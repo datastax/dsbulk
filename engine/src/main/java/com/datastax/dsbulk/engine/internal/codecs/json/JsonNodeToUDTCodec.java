@@ -96,61 +96,24 @@ public class JsonNodeToUDTCodec extends JsonNodeConvertingCodec<UDTValue> {
       Set<String> missing = Sets.difference(udtFieldNames, nodeFieldNames);
       boolean hasExtras = !allowExtraFields && !extraneous.isEmpty();
       boolean hasMissing = !allowMissingFields && !missing.isEmpty();
-      if (hasMissing || hasExtras) {
-        StringBuilder msg = new StringBuilder("JSON object does not match UDT definition: ");
-        if (hasExtras) {
-          msg.append("found ").append(extraneous.size()).append(" extraneous field");
-          if (extraneous.size() > 1) {
-            msg.append('s');
-          }
-          msg.append(": '").append(String.join("', '", extraneous)).append("'");
-        }
-        if (hasMissing) {
-          if (hasExtras) {
-            msg.append(" and ");
-          }
-          msg.append(missing.size());
-          if (missing.size() > 1) {
-            msg.append(" fields are missing: ");
-          } else {
-            msg.append(" field is missing: ");
-          }
-          msg.append("'").append(String.join("', '", missing)).append("'");
-        }
-        msg.append(" (");
-        if (hasExtras) {
-          msg.append("set schema.allowExtraFields to true to allow ")
-              .append("JSON objects to contain fields not present in the UDT definition");
-        }
-        if (hasMissing) {
-          if (hasExtras) {
-            msg.append(" and ");
-          }
-          msg.append("set schema.allowMissingFields to true to allow ")
-              .append("JSON objects to lack of fields present in the UDT definition");
-        }
-        msg.append(").");
-        throw new InvalidTypeException(msg.toString());
+      if (hasMissing && hasExtras) {
+        throw JsonSchemaMismatchException.objectHasMissingAndExtraneousFields(extraneous, missing);
+      } else if (hasExtras) {
+        throw JsonSchemaMismatchException.objectHasExtraneousFields(extraneous);
+      } else if (hasMissing) {
+        throw JsonSchemaMismatchException.objectHasMissingFields(missing);
       }
     }
   }
 
   private void checkJsonArray(JsonNode node) {
-    if (node.size() > definition.size() && !allowExtraFields) {
-      throw new InvalidTypeException(
-          String.format(
-              "JSON array does not match UDT definition: expecting %d elements, got %d "
-                  + "(set schema.allowExtraFields to true to allow "
-                  + "JSON arrays to contain more elements than the UDT definition).",
-              definition.size(), node.size()));
+    int udtSize = definition.size();
+    int nodeSize = node.size();
+    if (nodeSize > udtSize && !allowExtraFields) {
+      throw JsonSchemaMismatchException.arraySizeGreaterThanUDTSize(udtSize, nodeSize);
     }
-    if (node.size() < definition.size() && !allowMissingFields) {
-      throw new InvalidTypeException(
-          String.format(
-              "JSON array does not match UDT definition: expecting %d elements, got %d "
-                  + "(set schema.allowMissingFields to true to allow "
-                  + "JSON arrays to contain fewer elements than the UDT definition).",
-              definition.size(), node.size()));
+    if (nodeSize < udtSize && !allowMissingFields) {
+      throw JsonSchemaMismatchException.arraySizeLesserThanUDTSize(udtSize, nodeSize);
     }
   }
 

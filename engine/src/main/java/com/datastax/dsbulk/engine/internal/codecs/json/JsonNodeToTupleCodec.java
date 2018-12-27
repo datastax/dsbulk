@@ -49,26 +49,16 @@ public class JsonNodeToTupleCodec extends JsonNodeConvertingCodec<TupleValue> {
     if (!node.isArray()) {
       throw new InvalidTypeException("Expecting ARRAY node, got " + node.getNodeType());
     }
-    int size = definition.getComponentTypes().size();
-    if (node.size() > size && !allowExtraFields) {
-      node.fieldNames();
-      throw new InvalidTypeException(
-          String.format(
-              "JSON array does not match tuple definition: expecting %d elements, got %d "
-                  + "(set schema.allowExtraFields to true to allow "
-                  + "JSON arrays to contain more elements than the tuple definition).",
-              size, node.size()));
+    int tupleSize = definition.getComponentTypes().size();
+    int nodeSize = node.size();
+    if (nodeSize > tupleSize && !allowExtraFields) {
+      throw JsonSchemaMismatchException.arraySizeGreaterThanTupleSize(tupleSize, nodeSize);
     }
-    if (node.size() < size && !allowMissingFields) {
-      throw new InvalidTypeException(
-          String.format(
-              "JSON array does not match tuple definition: expecting %d elements, got %d "
-                  + "(set schema.allowMissingFields to true to allow "
-                  + "JSON arrays to contain fewer elements than the tuple definition).",
-              size, node.size()));
+    if (nodeSize < tupleSize && !allowMissingFields) {
+      throw JsonSchemaMismatchException.arraySizeLesserThanTupleSize(tupleSize, nodeSize);
     }
     TupleValue tuple = definition.newValue();
-    for (int i = 0; i < size && i < node.size(); i++) {
+    for (int i = 0; i < tupleSize && i < nodeSize; i++) {
       ConvertingCodec<JsonNode, Object> eltCodec = eltCodecs.get(i);
       Object o = eltCodec.externalToInternal(node.get(i));
       tuple.set(i, o, eltCodec.getInternalJavaType());

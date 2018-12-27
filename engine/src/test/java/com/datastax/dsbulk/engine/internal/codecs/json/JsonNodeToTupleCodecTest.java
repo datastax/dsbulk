@@ -15,6 +15,7 @@ import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.datastax.dsbulk.engine.internal.codecs.CodecTestUtils.newCodecRegistry;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.TupleType;
@@ -141,5 +142,17 @@ class JsonNodeToTupleCodecTest {
     assertThat(codec3)
         .cannotConvertFromExternal(
             objectMapper.readTree("[\"2016-07-24T20:34:12.999Z\",\"+01:00\",42]"));
+    // tests for error messages
+    assertThatThrownBy(
+            () ->
+                codec1.externalToInternal(objectMapper.readTree("[\"2016-07-24T20:34:12.999Z\"]")))
+        .isInstanceOf(JsonSchemaMismatchException.class)
+        .hasMessageContaining("expecting 2 elements, got 1");
+    assertThatThrownBy(
+            () ->
+                codec1.externalToInternal(
+                    objectMapper.readTree("[\"2016-07-24T20:34:12.999Z\",\"+01:00\",42]")))
+        .isInstanceOf(JsonSchemaMismatchException.class)
+        .hasMessageContaining("expecting 2 elements, got 3");
   }
 }

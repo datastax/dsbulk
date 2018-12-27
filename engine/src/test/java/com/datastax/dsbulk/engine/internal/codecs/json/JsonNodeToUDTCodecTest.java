@@ -19,6 +19,7 @@ import static com.datastax.driver.core.DriverCoreEngineTestHooks.newUserType;
 import static com.datastax.dsbulk.engine.internal.codecs.CodecTestUtils.newCodecRegistry;
 import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.Metadata;
@@ -202,6 +203,29 @@ class JsonNodeToUDTCodecTest {
     assertThat(udtCodec4)
         .cannotConvertFromExternal(objectMapper.readTree("{\"f1\":42,\"f2\":42,\"f3\":42}"))
         .cannotConvertFromExternal(objectMapper.readTree("[42,42,42]"));
+    // tests for error messages
+    assertThatThrownBy(
+            () ->
+                udtCodec1.externalToInternal(objectMapper.readTree("{\"F1A\":null,\"f1c\":null}")))
+        .isInstanceOf(JsonSchemaMismatchException.class)
+        .hasMessageContaining("1 extraneous field: 'f1c'")
+        .hasMessageContaining("1 missing field: 'f1b'");
+    assertThatThrownBy(
+            () -> udtCodec3.externalToInternal(objectMapper.readTree("{\"f1\":null,\"f3\":null}")))
+        .isInstanceOf(JsonSchemaMismatchException.class)
+        .satisfies(
+            t ->
+                assertThat(t.getMessage())
+                    .contains("1 missing field: 'f2'")
+                    .doesNotContain("1 extraneous field: 'f3'"));
+    assertThatThrownBy(
+            () -> udtCodec4.externalToInternal(objectMapper.readTree("{\"f1\":null,\"f3\":null}")))
+        .isInstanceOf(JsonSchemaMismatchException.class)
+        .satisfies(
+            t ->
+                assertThat(t.getMessage())
+                    .contains("1 extraneous field: 'f3'")
+                    .doesNotContain("1 missing field: 'f2'"));
   }
 
   @SuppressWarnings("SameParameterValue")
