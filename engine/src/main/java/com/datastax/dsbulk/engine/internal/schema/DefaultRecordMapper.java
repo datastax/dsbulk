@@ -108,12 +108,7 @@ public class DefaultRecordMapper implements RecordMapper {
           }
         } else if (!allowExtraFields) {
           // the field wasn't mapped to any known variable
-          throw new InvalidMappingException(
-              "Extraneous field "
-                  + field
-                  + " was found in record. "
-                  + "Please declare it explicitly in the mapping "
-                  + "or set schema.allowExtraFields to true.");
+          throw InvalidMappingException.extraneousField(field);
         }
       }
       ensurePrimaryKeySet(bs);
@@ -134,11 +129,7 @@ public class DefaultRecordMapper implements RecordMapper {
     ByteBuffer bb = codec.serialize(raw, protocolVersion);
     if (isNull(bb, cqlType)) {
       if (variable instanceof CQLIdentifier && primaryKeyVariables.contains(variable)) {
-        throw new InvalidMappingException(
-            "Primary key column "
-                + variable.asCql()
-                + " cannot be mapped to null. "
-                + "Check that your settings (schema.mapping or schema.query) match your dataset contents.");
+        throw InvalidMappingException.nullPrimaryKey((CQLIdentifier) variable);
       }
       if (nullToUnset) {
         return;
@@ -174,14 +165,7 @@ public class DefaultRecordMapper implements RecordMapper {
       // Note: in practice, there can be only one field mapped to a given variable when loading
       for (Field field : fields) {
         if (!recordFields.contains(field)) {
-          throw new InvalidMappingException(
-              "Required field "
-                  + field
-                  + " (mapped to column "
-                  + variable.asCql()
-                  + ") was missing from record. "
-                  + "Please remove it from the mapping "
-                  + "or set schema.allowMissingFields to true.");
+          throw InvalidMappingException.missingField(field, variable);
         }
       }
     }
@@ -190,11 +174,7 @@ public class DefaultRecordMapper implements RecordMapper {
   private void ensurePrimaryKeySet(BoundStatement bs) {
     for (CQLIdentifier variable : primaryKeyVariables) {
       if (!bs.isSet(variable.asVariable())) {
-        throw new InvalidMappingException(
-            "Primary key column "
-                + variable.asCql()
-                + " cannot be left unmapped. "
-                + "Check that your settings (schema.mapping or schema.query) match your dataset contents.");
+        throw InvalidMappingException.unsetPrimaryKey(variable);
       }
     }
   }
