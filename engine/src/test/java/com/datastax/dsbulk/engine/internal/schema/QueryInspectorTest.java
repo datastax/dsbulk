@@ -536,6 +536,13 @@ class QueryInspectorTest {
   void should_report_named_token_range_restriction_variables() {
     QueryInspector inspector =
         new QueryInspector(
+            "SELECT a,b,c FROM ks.t1 WHERE token(pk) > :\"begin\" AND token(pk) <= :finish");
+    assertThat(inspector.getTokenRangeRestrictionStartVariable())
+        .contains(CQLIdentifier.fromInternal("begin"));
+    assertThat(inspector.getTokenRangeRestrictionEndVariable())
+        .contains(CQLIdentifier.fromInternal("finish"));
+    inspector =
+        new QueryInspector(
             "SELECT a,b,c FROM ks.t1 WHERE token(pk) <= :finish AND token(pk) > :\"begin\"");
     assertThat(inspector.getTokenRangeRestrictionStartVariable())
         .contains(CQLIdentifier.fromInternal("begin"));
