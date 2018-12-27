@@ -1,5 +1,6 @@
 package com.datastax.dsbulk.engine.internal.utils;
 
+import static com.datastax.dsbulk.engine.internal.utils.ClusterInformationUtils.LIMIT_NODES_INFORMATION;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -12,6 +13,9 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.assertj.core.util.Sets;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
@@ -91,11 +95,38 @@ class ClusterInformationUtilsTest {
                 "address: /1.2.3.5, dseVersion: 6.7.0, cassandraVersion: null, dataCenter: dc2"));
   }
 
+  @Test
+  void should_limit_information_about_hosts_to_100() throws UnknownHostException {
+    // given
+    Cluster cluster = mock(Cluster.class);
+    Metadata metadata = mock(Metadata.class);
+    when(cluster.getMetadata()).thenReturn(metadata);
+    when(metadata.getPartitioner()).thenReturn("simple-partitioner");
+    Set<Host> hosts =
+        IntStream.range(0, 110)
+            .mapToObj(i -> createHost("dc1", "1.2.3." + i))
+            .collect(Collectors.toSet());
+    when(metadata.getAllHosts()).thenReturn(hosts);
+
+    // when
+    ClusterInformation infoAboutCluster = ClusterInformationUtils.getInfoAboutCluster(cluster);
+
+    // then
+    assertThat(infoAboutCluster.getDataCenters()).isEqualTo(Sets.newLinkedHashSet("dc1"));
+    assertThat(infoAboutCluster.getPartitioner()).isEqualTo("simple-partitioner");
+    assertThat(infoAboutCluster.getNumberOfHosts()).isEqualTo(110);
+    assertThat(infoAboutCluster.getHostsInfo().size()).isEqualTo(LIMIT_NODES_INFORMATION);
+  }
+
   @NotNull
-  private Host createHost(String dataCenter, String address) throws UnknownHostException {
+  private Host createHost(String dataCenter, String address) {
     Host h1 = mock(Host.class);
     when(h1.getDseVersion()).thenReturn(VersionNumber.parse("6.7.0"));
-    when(h1.getAddress()).thenReturn(InetAddress.getByName(address));
+    try {
+      when(h1.getAddress()).thenReturn(InetAddress.getByName(address));
+    } catch (UnknownHostException e) {
+      throw new RuntimeException(e);
+    }
     when(h1.getDatacenter()).thenReturn(dataCenter);
     return h1;
   }

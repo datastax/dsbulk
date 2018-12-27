@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
 
 public class ClusterInformationUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterInformationUtils.class);
-  private static final int LIMIT_NODES_INFORMATION = 100;
+  static final int LIMIT_NODES_INFORMATION = 100;
 
   public static void printDebugInfoAboutCluster(Cluster cluster) {
     if (LOGGER.isDebugEnabled()) {
@@ -27,6 +27,9 @@ public class ClusterInformationUtils {
       LOGGER.debug("Hosts:");
       for (String hostSummary : infoAboutCluster.getHostsInfo()) {
         LOGGER.debug(hostSummary);
+      }
+      if (infoAboutCluster.isSomeNodesOmitted()) {
+        LOGGER.debug("other nodes omitted");
       }
     }
   }
@@ -46,7 +49,15 @@ public class ClusterInformationUtils {
             .map(ClusterInformationUtils::getHostInfo)
             .collect(Collectors.toList());
     return new ClusterInformation(
-        cluster.getMetadata().getPartitioner(), allHosts.size(), dataCenters, hostsInfo);
+        cluster.getMetadata().getPartitioner(),
+        allHosts.size(),
+        dataCenters,
+        hostsInfo,
+        numberOfNodesAboveLimit(allHosts));
+  }
+
+  private static boolean numberOfNodesAboveLimit(Set<Host> allHosts) {
+    return allHosts.size() > LIMIT_NODES_INFORMATION;
   }
 
   private static Set<String> getAllDataCenters(Set<Host> allHosts) {

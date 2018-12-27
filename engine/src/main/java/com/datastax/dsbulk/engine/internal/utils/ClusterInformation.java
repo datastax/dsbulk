@@ -8,13 +8,19 @@ public class ClusterInformation {
   private final int numberOfHosts;
   private final Set<String> dataCenters;
   private final List<String> hostsInfo;
+  private boolean someNodesOmitted;
 
   ClusterInformation(
-      String partitioner, int numberOfHosts, Set<String> dataCenters, List<String> hostsInfo) {
+      String partitioner,
+      int numberOfHosts,
+      Set<String> dataCenters,
+      List<String> hostsInfo,
+      boolean someNodesOmitted) {
     this.partitioner = partitioner;
     this.numberOfHosts = numberOfHosts;
     this.dataCenters = dataCenters;
     this.hostsInfo = hostsInfo;
+    this.someNodesOmitted = someNodesOmitted;
   }
 
   String getPartitioner() {
@@ -31,5 +37,9 @@ public class ClusterInformation {
 
   List<String> getHostsInfo() {
     return hostsInfo;
+  }
+
+  public boolean isSomeNodesOmitted() {
+    return someNodesOmitted;
   }
 }
