@@ -24,8 +24,8 @@ public class ClusterInformationUtils {
           infoAboutCluster.getPartitioner(),
           infoAboutCluster.getNumberOfHosts());
       LOGGER.debug("DataCenters: {}", infoAboutCluster.getDataCenters());
+      LOGGER.debug("Hosts:");
       for (String hostSummary : infoAboutCluster.getHostsInfo()) {
-        LOGGER.debug("Hosts:");
         LOGGER.debug(hostSummary);
       }
     }

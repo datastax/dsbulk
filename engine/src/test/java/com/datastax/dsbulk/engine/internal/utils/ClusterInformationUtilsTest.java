@@ -32,14 +32,13 @@ class ClusterInformationUtilsTest {
     ClusterInformation infoAboutCluster = ClusterInformationUtils.getInfoAboutCluster(cluster);
 
     // then
-    assertThat(infoAboutCluster)
+    assertThat(infoAboutCluster.getDataCenters()).isEqualTo(Sets.newLinkedHashSet("dc1"));
+    assertThat(infoAboutCluster.getPartitioner()).isEqualTo("simple-partitioner");
+    assertThat(infoAboutCluster.getNumberOfHosts()).isEqualTo(1);
+    assertThat(infoAboutCluster.getHostsInfo())
         .isEqualTo(
-            new ClusterInformation(
-                "simple-partitioner",
-                1,
-                Sets.newLinkedHashSet("dc1"),
-                Collections.singletonList(
-                    "address: /1.2.3.4, dseVersion: 6.7.0, cassandraVersion: null, dataCenter: dc1")));
+            Collections.singletonList(
+                "address: /1.2.3.4, dseVersion: 6.7.0, cassandraVersion: null, dataCenter: dc1"));
   }
 
   @Test
@@ -57,15 +56,14 @@ class ClusterInformationUtilsTest {
     ClusterInformation infoAboutCluster = ClusterInformationUtils.getInfoAboutCluster(cluster);
 
     // then
-    assertThat(infoAboutCluster)
+    assertThat(infoAboutCluster.getDataCenters()).isEqualTo(Sets.newLinkedHashSet("dc1"));
+    assertThat(infoAboutCluster.getPartitioner()).isEqualTo("simple-partitioner");
+    assertThat(infoAboutCluster.getNumberOfHosts()).isEqualTo(2);
+    assertThat(infoAboutCluster.getHostsInfo())
         .isEqualTo(
-            new ClusterInformation(
-                "simple-partitioner",
-                2,
-                Sets.newLinkedHashSet("dc1"),
-                Arrays.asList(
-                    "address: /1.2.3.4, dseVersion: 6.7.0, cassandraVersion: null, dataCenter: dc1",
-                    "address: /1.2.3.5, dseVersion: 6.7.0, cassandraVersion: null, dataCenter: dc1")));
+            Arrays.asList(
+                "address: /1.2.3.4, dseVersion: 6.7.0, cassandraVersion: null, dataCenter: dc1",
+                "address: /1.2.3.5, dseVersion: 6.7.0, cassandraVersion: null, dataCenter: dc1"));
   }
 
   @Test
@@ -83,15 +81,14 @@ class ClusterInformationUtilsTest {
     ClusterInformation infoAboutCluster = ClusterInformationUtils.getInfoAboutCluster(cluster);
 
     // then
-    assertThat(infoAboutCluster)
+    assertThat(infoAboutCluster.getDataCenters()).isEqualTo(Sets.newLinkedHashSet("dc1", "dc2"));
+    assertThat(infoAboutCluster.getPartitioner()).isEqualTo("simple-partitioner");
+    assertThat(infoAboutCluster.getNumberOfHosts()).isEqualTo(2);
+    assertThat(infoAboutCluster.getHostsInfo())
         .isEqualTo(
-            new ClusterInformation(
-                "simple-partitioner",
-                2,
-                Sets.newLinkedHashSet("dc1", "dc2"),
-                Arrays.asList(
-                    "address: /1.2.3.4, dseVersion: 6.7.0, cassandraVersion: null, dataCenter: dc1",
-                    "address: /1.2.3.5, dseVersion: 6.7.0, cassandraVersion: null, dataCenter: dc2")));
+            Arrays.asList(
+                "address: /1.2.3.4, dseVersion: 6.7.0, cassandraVersion: null, dataCenter: dc1",
+                "address: /1.2.3.5, dseVersion: 6.7.0, cassandraVersion: null, dataCenter: dc2"));
   }
 
   @NotNull
