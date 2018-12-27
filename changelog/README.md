@@ -19,6 +19,7 @@
 - [improvement] DAT-319: Automatically add token range restriction to WHERE clauses.
 - [bug] DAT-369: Call to ArrayBackedRow.toString() causes fatal NPE.
 - [improvement] DAT-316: JsonNodeToUDTCodec should allow a Json array input.
+- [improvement] DAT-372: Improve WHERE clause token range restriction detection.
 
 
 ### 1.2.0

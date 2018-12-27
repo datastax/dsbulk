@@ -25,6 +25,7 @@ import static java.util.concurrent.TimeUnit.MICROSECONDS;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ColumnDefinitions;
+import com.datastax.driver.core.ColumnDefinitions.Definition;
 import com.datastax.driver.core.ColumnMetadata;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.EdgeMetadata;
@@ -39,6 +40,7 @@ import com.datastax.driver.core.VertexMetadata;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
+import com.datastax.dsbulk.commons.partitioner.TokenRangeReadStatement;
 import com.datastax.dsbulk.commons.partitioner.TokenRangeReadStatementGenerator;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.WorkflowType;
@@ -428,31 +430,40 @@ public class SchemaSettings {
     if (variables.size() == 0) {
       return Collections.singletonList(preparedStatement.bind());
     }
-    List<String> unrecognized =
-        StreamSupport.stream(variables.spliterator(), false)
-            .map(ColumnDefinitions.Definition::getName)
-            .filter(name -> !name.equals("start") && !name.equals("end"))
-            .map(Metadata::quoteIfNecessary)
-            .collect(Collectors.toList());
-    if (!unrecognized.isEmpty()) {
+    boolean ok = true;
+    Optional<CQLIdentifier> start = queryInspector.getTokenRangeRestrictionStartVariable();
+    Optional<CQLIdentifier> end = queryInspector.getTokenRangeRestrictionEndVariable();
+    if (!start.isPresent() || !end.isPresent()) {
+      ok = false;
+    }
+    if (start.isPresent() && end.isPresent()) {
+      Optional<CQLIdentifier> unrecognized =
+          StreamSupport.stream(variables.spliterator(), false)
+              .map(Definition::getName)
+              .map(CQLIdentifier::fromInternal)
+              .filter(name -> !name.equals(start.get()) && !name.equals(end.get()))
+              .findAny();
+      ok = !unrecognized.isPresent();
+    }
+    if (!ok) {
       throw new BulkConfigurationException(
-          String.format(
-              "The provided statement (schema.query) contains unrecognized bound variables: %s; "
-                  + "only 'start' and 'end' can be used to define a token range",
-              String.join(", ", unrecognized)));
+          "The provided statement (schema.query) contains unrecognized WHERE restrictions; "
+              + "the WHERE clause is only allowed to contain one token range restriction "
+              + "of the form: WHERE token(...) > :start AND token(...) <= :end");
     }
     Metadata metadata = cluster.getMetadata();
     TokenRangeReadStatementGenerator generator =
         new TokenRangeReadStatementGenerator(table, metadata);
-    return generator.generate(
-        splitCount,
-        range -> {
-          LOGGER.debug("Generating bound statement for token range: {}", range);
-          return preparedStatement
-              .bind()
-              .setToken("start", metadata.newToken(range.start().toString()))
-              .setToken("end", metadata.newToken(range.end().toString()));
-        });
+    List<TokenRangeReadStatement> statements =
+        generator.generate(
+            splitCount,
+            range ->
+                preparedStatement
+                    .bind()
+                    .setToken(start.get().asCql(), metadata.newToken(range.start().toString()))
+                    .setToken(end.get().asCql(), metadata.newToken(range.end().toString())));
+    LOGGER.debug("Generated {} bound statements", statements.size());
+    return statements;
   }
 
   @NotNull
@@ -531,6 +542,7 @@ public class SchemaSettings {
                 .append(query.substring(queryInspector.getFromClauseStartIndex()))
                 .toString();
       }
+      queryInspector = new QueryInspector(query);
     }
     preparedStatement = session.prepare(query);
     if (config.hasPath(QUERY)) {
