@@ -373,7 +373,6 @@ public class SchemaSettings {
           }
         }
       }
-
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "schema");
     }

@@ -8,6 +8,7 @@
  */
 package com.datastax.dsbulk.engine;
 
+import static com.datastax.dsbulk.engine.internal.utils.ClusterInformationUtils.printDebugInfoAboutCluster;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.driver.core.Statement;
@@ -92,6 +93,7 @@ public class CountWorkflow implements Workflow {
         Schedulers.newParallel(
             Runtime.getRuntime().availableProcessors(), new DefaultThreadFactory("workflow"));
     cluster = driverSettings.newCluster();
+    printDebugInfoAboutCluster(cluster);
     schemaSettings.init(WorkflowType.COUNT, cluster, false);
     DseSession session = cluster.connect();
     logManager = logSettings.newLogManager(WorkflowType.COUNT, cluster);

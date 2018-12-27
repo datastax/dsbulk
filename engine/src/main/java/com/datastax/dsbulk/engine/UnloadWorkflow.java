@@ -8,6 +8,7 @@
  */
 package com.datastax.dsbulk.engine;
 
+import static com.datastax.dsbulk.engine.internal.utils.ClusterInformationUtils.printDebugInfoAboutCluster;
 import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.TPC_THRESHOLD;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
@@ -99,6 +100,7 @@ public class UnloadWorkflow implements Workflow {
         Schedulers.newParallel(
             Runtime.getRuntime().availableProcessors(), new DefaultThreadFactory("workflow"));
     cluster = driverSettings.newCluster();
+    printDebugInfoAboutCluster(cluster);
     schemaSettings.init(
         WorkflowType.UNLOAD, cluster, !connector.supports(CommonConnectorFeature.MAPPED_RECORDS));
     DseSession session = cluster.connect();
