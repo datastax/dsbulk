@@ -4,11 +4,16 @@ import static com.datastax.dsbulk.engine.internal.utils.ClusterInformationUtils.
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.slf4j.event.Level.DEBUG;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Host;
 import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.VersionNumber;
+import com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions;
+import com.datastax.dsbulk.commons.tests.logging.LogCapture;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
@@ -19,7 +24,9 @@ import java.util.stream.IntStream;
 import org.assertj.core.util.Sets;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(LogInterceptingExtension.class)
 class ClusterInformationUtilsTest {
 
   @Test
@@ -116,6 +123,31 @@ class ClusterInformationUtilsTest {
     assertThat(infoAboutCluster.getPartitioner()).isEqualTo("simple-partitioner");
     assertThat(infoAboutCluster.getNumberOfHosts()).isEqualTo(110);
     assertThat(infoAboutCluster.getHostsInfo().size()).isEqualTo(LIMIT_NODES_INFORMATION);
+  }
+
+  @Test
+  void should_log_cluster_information_in_debug_mode(
+      @LogCapture(value = ClusterInformationUtils.class, level = DEBUG)
+          LogInterceptor interceptor) {
+    // given
+    Cluster cluster = mock(Cluster.class);
+    Metadata metadata = mock(Metadata.class);
+    when(cluster.getMetadata()).thenReturn(metadata);
+    when(metadata.getPartitioner()).thenReturn("simple-partitioner");
+    Set<Host> hosts =
+        IntStream.range(0, 110)
+            .mapToObj(i -> createHost("dc1", "1.2.3." + i))
+            .collect(Collectors.toSet());
+    when(metadata.getAllHosts()).thenReturn(hosts);
+
+    // when
+    ClusterInformationUtils.printDebugInfoAboutCluster(cluster);
+
+    // then
+    CommonsAssertions.assertThat(interceptor)
+        .hasMessageMatching("Partitioner: simple-partitioner, numberOfHosts: 110");
+    CommonsAssertions.assertThat(interceptor).hasMessageMatching("Hosts:");
+    CommonsAssertions.assertThat(interceptor).hasMessageMatching("other nodes omitted");
   }
 
   @NotNull

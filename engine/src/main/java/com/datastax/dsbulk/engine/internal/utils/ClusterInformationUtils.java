@@ -5,6 +5,7 @@ import com.datastax.driver.core.Host;
 import com.datastax.driver.core.Metadata;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -47,7 +48,7 @@ public class ClusterInformationUtils {
             .sorted(Comparator.comparing(o -> o.getAddress().getHostAddress()))
             .limit(LIMIT_NODES_INFORMATION)
             .map(ClusterInformationUtils::getHostInfo)
-            .collect(Collectors.toList());
+            .collect(Collectors.toCollection(LinkedList::new));
     return new ClusterInformation(
         cluster.getMetadata().getPartitioner(),
         allHosts.size(),
