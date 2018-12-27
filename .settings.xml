@@ -1,0 +1,43 @@
+<settings>
+
+  <profiles>
+
+    <profile>
+      <id>artifactory</id>
+      <repositories>
+        <repository>
+          <id>artifactory</id>
+          <name>DataStax Artifactory</name>
+          <releases>
+            <enabled>true</enabled>
+            <updatePolicy>never</updatePolicy>
+            <checksumPolicy>warn</checksumPolicy>
+          </releases>
+          <snapshots>
+            <enabled>true</enabled>
+            <updatePolicy>always</updatePolicy>
+            <checksumPolicy>fail</checksumPolicy>
+          </snapshots>
+          <url>https://repo.datastax.com/dse</url>
+          <layout>default</layout>
+        </repository>
+      </repositories>
+    </profile>
+
+  </profiles>
+
+  <servers>
+
+    <server>
+      <id>artifactory</id>
+      <username>${env.ARTIFACTORY_USERNAME}</username>
+      <password>${env.ARTIFACTORY_PASSWORD}</password>
+    </server>
+
+  </servers>
+
+  <activeProfiles>
+    <activeProfile>artifactory</activeProfile>
+  </activeProfiles>
+
+</settings>
