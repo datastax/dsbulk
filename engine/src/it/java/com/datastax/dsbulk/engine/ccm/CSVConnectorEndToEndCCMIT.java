@@ -2365,17 +2365,17 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         Lists.newArrayList(
             "unload",
             "--log.directory",
-            escapeUserInput(logDir),
+            quoteJson(logDir),
             "-header",
             "false",
             "--connector.csv.url",
-            escapeUserInput(unloadDir),
+            quoteJson(unloadDir),
             "--connector.csv.maxConcurrentFiles",
             "1",
             "--schema.keyspace",
             session.getLoggedKeyspace(),
             "--schema.query",
-            escapeUserInput(
+            quoteJson(
                 "SELECT pk, cc, v FROM unload_token_range "
                     + "WHERE token(pk) > :\"My Start\" AND token(pk) <= :\"My End\""));
 
@@ -2397,11 +2397,11 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         Lists.newArrayList(
             "load",
             "--log.directory",
-            escapeUserInput(logDir),
+            quoteJson(logDir),
             "-header",
             "true",
             "--connector.csv.url",
-            escapeUserInput(getClass().getResource("/duplicates.csv")),
+            quoteJson(getClass().getResource("/duplicates.csv")),
             "--schema.keyspace",
             session.getLoggedKeyspace(),
             "--schema.table",
@@ -2421,11 +2421,11 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         Lists.newArrayList(
             "unload",
             "--log.directory",
-            escapeUserInput(logDir),
+            quoteJson(logDir),
             "-header",
             "true",
             "--connector.csv.url",
-            escapeUserInput(unloadDir),
+            quoteJson(unloadDir),
             "--connector.csv.maxConcurrentFiles",
             "1",
             "--schema.keyspace",
