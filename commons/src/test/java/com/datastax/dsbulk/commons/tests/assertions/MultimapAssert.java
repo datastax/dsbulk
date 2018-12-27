@@ -35,4 +35,12 @@ public class MultimapAssert<K, V>
         .isTrue();
     return this;
   }
+
+  public MultimapAssert<K, V> hasSize(int expected) {
+    assertThat(actual.size())
+        .overridingErrorMessage(
+            "Expecting %s to have size %d but it had size %d", actual, expected, actual.size())
+        .isEqualTo(expected);
+    return this;
+  }
 }

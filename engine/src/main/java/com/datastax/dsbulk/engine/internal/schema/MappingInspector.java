@@ -27,7 +27,7 @@ import com.datastax.dsbulk.engine.schema.generated.MappingParser.SimpleEntryCont
 import com.datastax.dsbulk.engine.schema.generated.MappingParser.VariableContext;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.LinkedListMultimap;
+import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -67,7 +67,7 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   private final Set<CQLFragment> writeTimeVariablesBuilder = new LinkedHashSet<>();
   private final ImmutableSet<CQLFragment> writeTimeVariables;
 
-  private final LinkedListMultimap<MappingField, CQLFragment> explicitVariablesBuilder;
+  private final LinkedHashMultimap<MappingField, CQLFragment> explicitVariablesBuilder;
   private final ImmutableMultimap<MappingField, CQLFragment> explicitVariables;
   private final List<CQLFragment> excludedVariables;
 
@@ -105,7 +105,7 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
     parser.removeErrorListeners();
     parser.addErrorListener(listener);
     MappingParser.MappingContext ctx = parser.mapping();
-    explicitVariablesBuilder = LinkedListMultimap.create();
+    explicitVariablesBuilder = LinkedHashMultimap.create();
     excludedVariables = new ArrayList<>();
     visit(ctx);
     if (indexed) {
@@ -334,9 +334,9 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
     }
   }
 
-  public static LinkedListMultimap<MappingField, CQLFragment> sortFieldsByIndex(
+  public static LinkedHashMultimap<MappingField, CQLFragment> sortFieldsByIndex(
       Multimap<MappingField, CQLFragment> unsorted) {
-    LinkedListMultimap<MappingField, CQLFragment> sorted = LinkedListMultimap.create();
+    LinkedHashMultimap<MappingField, CQLFragment> sorted = LinkedHashMultimap.create();
     unsorted
         .entries()
         .stream()

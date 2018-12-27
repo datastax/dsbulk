@@ -271,6 +271,18 @@ class MappingInspectorTest {
   }
 
   @Test
+  void should_accept_duplicate_mapping_when_loading_and_unloading() {
+    MappingInspector inspector = new MappingInspector(" a = c1, a = c1", false, LOAD);
+    assertThat(inspector.getExplicitVariables())
+        .hasSize(1)
+        .containsEntry(new MappedMappingField("a"), CQLIdentifier.fromInternal("c1"));
+    inspector = new MappingInspector(" a = c1, a = c1", false, UNLOAD);
+    assertThat(inspector.getExplicitVariables())
+        .hasSize(1)
+        .containsEntry(new MappedMappingField("a"), CQLIdentifier.fromInternal("c1"));
+  }
+
+  @Test
   void should_report_indexed_mapping() {
     // indexed entries: always indexed
     assertThat(new MappingInspector("now()=a,1=b,2=c", false, LOAD).isIndexed()).isTrue();

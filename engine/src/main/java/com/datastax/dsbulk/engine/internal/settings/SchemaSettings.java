@@ -64,7 +64,7 @@ import com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.LinkedListMultimap;
+import com.google.common.collect.Multimap;
 import com.typesafe.config.ConfigException;
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -1068,7 +1068,7 @@ public class SchemaSettings {
     Set<CQLFragment> cols;
     if (mapping != null && mapping.isIndexed()) {
       // order columns by index
-      LinkedListMultimap<MappingField, CQLFragment> sorted =
+      Multimap<MappingField, CQLFragment> sorted =
           MappingInspector.sortFieldsByIndex(fieldsToVariables);
       cols = new LinkedHashSet<>(sorted.values());
       cols.addAll(fieldsToVariables.values());
