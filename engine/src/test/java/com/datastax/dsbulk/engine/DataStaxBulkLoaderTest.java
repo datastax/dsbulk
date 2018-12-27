@@ -11,7 +11,7 @@ package com.datastax.dsbulk.engine;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDOUT;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
-import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
+import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.createTempDirectory;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -278,8 +278,7 @@ class DataStaxBulkLoaderTest {
     try {
       unloadDir = createTempDirectory("test");
       Files.createFile(unloadDir.resolve("output-000001.csv"));
-      new DataStaxBulkLoader(
-              new String[] {"unload", "--connector.csv.url", escapeUserInput(unloadDir)})
+      new DataStaxBulkLoader(new String[] {"unload", "--connector.csv.url", quoteJson(unloadDir)})
           .run();
       String err = logs.getAllMessagesAsString();
       assertThat(err).contains("connector.csv.url: target directory").contains("must be empty");
@@ -297,9 +296,7 @@ class DataStaxBulkLoaderTest {
       unloadDir = createTempDirectory("test");
       Files.createFile(unloadDir.resolve("output-000001.json"));
       new DataStaxBulkLoader(
-              new String[] {
-                "unload", "-c", "json", "--connector.json.url", escapeUserInput(unloadDir)
-              })
+              new String[] {"unload", "-c", "json", "--connector.json.url", quoteJson(unloadDir)})
           .run();
       String err = logs.getAllMessagesAsString();
       assertThat(err).contains("connector.json.url: target directory").contains("must be empty");

@@ -14,7 +14,7 @@ import static com.datastax.driver.core.HostDistance.LOCAL;
 import static com.datastax.driver.core.HostDistance.REMOTE;
 import static com.datastax.driver.core.ProtocolOptions.Compression.NONE;
 import static com.datastax.dsbulk.commons.tests.utils.ReflectionUtils.getInternalState;
-import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
+import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -197,7 +197,7 @@ class DriverSettingsTest {
                             + "keyTab = \"%s\", "
                             + "authorizationId = \"bob@DATASTAX.COM\","
                             + "saslService = foo }",
-                        escapeUserInput(keyTab)))
+                        quoteJson(keyTab)))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config);
     driverSettings.init();
@@ -231,7 +231,7 @@ class DriverSettingsTest {
                             + "keyTab = \"%s\", "
                             + "authorizationId = \"bob@DATASTAX.COM\","
                             + "saslService = foo }",
-                        escapeUserInput(keyTab)))
+                        quoteJson(keyTab)))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config);
     driverSettings.init();
@@ -267,7 +267,7 @@ class DriverSettingsTest {
                             + "keyTab = \"%s\", "
                             + "authorizationId = \"bob@DATASTAX.COM\","
                             + "saslService = foo }",
-                        escapeUserInput(keyTab)))
+                        quoteJson(keyTab)))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config);
     driverSettings.init();
@@ -357,7 +357,7 @@ class DriverSettingsTest {
                             + "   password = cassandra1sfun"
                             + "}"
                             + "}",
-                        escapeUserInput(keystore), escapeUserInput(truststore)))
+                        quoteJson(keystore), quoteJson(truststore)))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config);
     driverSettings.init();
@@ -391,9 +391,7 @@ class DriverSettingsTest {
                             + "   password = cassandra1sfun "
                             + "}"
                             + "}",
-                        escapeUserInput(keyCertChain),
-                        escapeUserInput(privateKey),
-                        escapeUserInput(truststore)))
+                        quoteJson(keyCertChain), quoteJson(privateKey), quoteJson(truststore)))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config);
     driverSettings.init();
@@ -622,7 +620,7 @@ class DriverSettingsTest {
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
                       "auth.provider = DseGSSAPIAuthProvider, auth.keyTab = "
-                          + escapeUserInput(keytabPath))
+                          + quoteJson(keytabPath))
                   .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
       DriverSettings settings = new DriverSettings(config);
       assertThatThrownBy(settings::init)
@@ -655,7 +653,7 @@ class DriverSettingsTest {
       LoaderConfig config =
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
-                      "ssl.provider = JDK, ssl.keystore.path = " + escapeUserInput(keystore))
+                      "ssl.provider = JDK, ssl.keystore.path = " + quoteJson(keystore))
                   .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
       DriverSettings settings = new DriverSettings(config);
       assertThatThrownBy(settings::init)
@@ -687,8 +685,7 @@ class DriverSettingsTest {
       LoaderConfig config =
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
-                      "ssl.provider = OpenSSL, ssl.openssl.keyCertChain = "
-                          + escapeUserInput(chain))
+                      "ssl.provider = OpenSSL, ssl.openssl.keyCertChain = " + quoteJson(chain))
                   .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
       DriverSettings settings = new DriverSettings(config);
       assertThatThrownBy(settings::init)
@@ -707,7 +704,7 @@ class DriverSettingsTest {
       LoaderConfig config =
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
-                      "ssl.provider = OpenSSL, ssl.openssl.privateKey = " + escapeUserInput(key))
+                      "ssl.provider = OpenSSL, ssl.openssl.privateKey = " + quoteJson(key))
                   .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
       DriverSettings settings = new DriverSettings(config);
       assertThatThrownBy(settings::init)
@@ -726,7 +723,7 @@ class DriverSettingsTest {
       LoaderConfig config =
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
-                      "ssl.provider = JDK, ssl.truststore.path = " + escapeUserInput(truststore))
+                      "ssl.provider = JDK, ssl.truststore.path = " + quoteJson(truststore))
                   .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
       DriverSettings settings = new DriverSettings(config);
       assertThatThrownBy(settings::init)
@@ -789,7 +786,7 @@ class DriverSettingsTest {
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
                       "ssl.truststore.password = mypass, ssl.truststore.path = "
-                          + escapeUserInput(truststore))
+                          + quoteJson(truststore))
                   .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
       DriverSettings settings = new DriverSettings(config);
       settings.init();
@@ -835,8 +832,7 @@ class DriverSettingsTest {
       LoaderConfig config =
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
-                      "ssl.keystore.password = mypass, ssl.keystore.path = "
-                          + escapeUserInput(keystore))
+                      "ssl.keystore.password = mypass, ssl.keystore.path = " + quoteJson(keystore))
                   .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
       DriverSettings settings = new DriverSettings(config);
       settings.init();
@@ -855,7 +851,7 @@ class DriverSettingsTest {
                       "ssl.provider = OpenSSL, "
                           + "ssl.openssl.keyCertChain = noexist.chain, "
                           + "ssl.openssl.privateKey = "
-                          + escapeUserInput(key))
+                          + quoteJson(key))
                   .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
       DriverSettings settings = new DriverSettings(config);
       assertThatThrownBy(settings::init)
@@ -877,7 +873,7 @@ class DriverSettingsTest {
                       "ssl.provider = OpenSSL, "
                           + "ssl.openssl.keyCertChain = \".\", "
                           + "ssl.openssl.privateKey = "
-                          + escapeUserInput(key))
+                          + quoteJson(key))
                   .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
       DriverSettings settings = new DriverSettings(config);
       assertThatThrownBy(settings::init)
@@ -898,9 +894,9 @@ class DriverSettingsTest {
               ConfigFactory.parseString(
                       "ssl.provider = OpenSSL,"
                           + "ssl.openssl.keyCertChain = "
-                          + escapeUserInput(chain)
+                          + quoteJson(chain)
                           + ", ssl.openssl.privateKey = "
-                          + escapeUserInput(key))
+                          + quoteJson(key))
                   .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
       DriverSettings settings = new DriverSettings(config);
       settings.init();
@@ -920,7 +916,7 @@ class DriverSettingsTest {
                       "ssl.provider = OpenSSL,"
                           + "ssl.openssl.privateKey = noexist.key,"
                           + "ssl.openssl.keyCertChain = "
-                          + escapeUserInput(chain))
+                          + quoteJson(chain))
                   .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
       DriverSettings settings = new DriverSettings(config);
       assertThatThrownBy(settings::init)
@@ -941,7 +937,7 @@ class DriverSettingsTest {
                       "ssl.provider = OpenSSL,"
                           + "ssl.openssl.privateKey = \".\","
                           + "ssl.openssl.keyCertChain = "
-                          + escapeUserInput(chain))
+                          + quoteJson(chain))
                   .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
       DriverSettings settings = new DriverSettings(config);
       assertThatThrownBy(settings::init)

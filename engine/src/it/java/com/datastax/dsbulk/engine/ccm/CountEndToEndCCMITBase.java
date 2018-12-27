@@ -10,7 +10,7 @@ package com.datastax.dsbulk.engine.ccm;
 
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
-import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
+import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static java.nio.file.Files.createTempDirectory;
 import static org.slf4j.event.Level.ERROR;
@@ -84,7 +84,7 @@ class CountEndToEndCCMITBase extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("count");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("-stats");
     args.add("partitions");
     args.add("--schema.keyspace");
@@ -111,7 +111,7 @@ class CountEndToEndCCMITBase extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("count");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("-stats");
     args.add("partitions");
     args.add("--schema.keyspace");

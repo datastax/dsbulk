@@ -17,7 +17,7 @@ import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.DEFAULT_CL
 import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD;
 import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PATH;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
-import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
+import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createIpByCountryTable;
@@ -84,9 +84,9 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(CSV_RECORDS_UNIQUE));
+    args.add(quoteJson(CSV_RECORDS_UNIQUE));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -114,9 +114,9 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args = new ArrayList<>();
     args.add("unload");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(unloadDir));
+    args.add(quoteJson(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--connector.csv.maxConcurrentFiles");
@@ -149,9 +149,9 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(CSV_RECORDS_UNIQUE));
+    args.add(quoteJson(CSV_RECORDS_UNIQUE));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -179,9 +179,9 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args = new ArrayList<>();
     args.add("unload");
     args.add("--log.directory");
-    args.add(escapeUserInput(logDir));
+    args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(escapeUserInput(unloadDir));
+    args.add(quoteJson(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--connector.csv.maxConcurrentFiles");

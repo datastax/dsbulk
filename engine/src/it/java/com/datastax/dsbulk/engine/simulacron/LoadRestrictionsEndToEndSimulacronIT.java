@@ -11,7 +11,7 @@ package com.datastax.dsbulk.engine.simulacron;
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
-import static com.datastax.dsbulk.commons.tests.utils.StringUtils.escapeUserInput;
+import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.INSERT_INTO_IP_BY_COUNTRY;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED;
@@ -100,11 +100,11 @@ class LoadRestrictionsEndToEndSimulacronIT {
     String[] args = {
       "load",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "-header",
       "false",
       "--connector.csv.url",
-      escapeUserInput(CSV_RECORDS_UNIQUE),
+      quoteJson(CSV_RECORDS_UNIQUE),
       "--driver.hosts",
       hostname,
       "--driver.port",
@@ -144,11 +144,11 @@ class LoadRestrictionsEndToEndSimulacronIT {
     String[] args = {
       "load",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "-header",
       "false",
       "--connector.csv.url",
-      escapeUserInput(CSV_RECORDS_UNIQUE),
+      quoteJson(CSV_RECORDS_UNIQUE),
       "--driver.hosts",
       hostname,
       "--driver.port",
@@ -174,11 +174,11 @@ class LoadRestrictionsEndToEndSimulacronIT {
     String[] args = {
       "load",
       "--log.directory",
-      escapeUserInput(logDir),
+      quoteJson(logDir),
       "-header",
       "false",
       "--connector.csv.url",
-      escapeUserInput(CSV_RECORDS_UNIQUE),
+      quoteJson(CSV_RECORDS_UNIQUE),
       "--driver.hosts",
       hostname,
       "--driver.port",
