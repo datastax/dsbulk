@@ -2355,6 +2355,40 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(lines.get(0)).matches("0,1,\\d{4}-\\d{2}-\\d{2}");
   }
 
+  /** test for DAT-372 exercising custom bound variable names in WHERE clause restrictions */
+  @Test
+  void unload_token_range_restriction() throws IOException {
+
+    session.execute("DROP TABLE IF EXISTS unload_token_range");
+    session.execute(
+        "CREATE TABLE unload_token_range (pk int, cc int, v int, PRIMARY KEY (pk, cc))");
+    session.execute("INSERT INTO unload_token_range (pk, cc, v) values (0, 1, 2)");
+
+    List<String> args =
+        Lists.newArrayList(
+            "unload",
+            "--log.directory",
+            escapeUserInput(logDir),
+            "-header",
+            "false",
+            "--connector.csv.url",
+            escapeUserInput(unloadDir),
+            "--connector.csv.maxConcurrentFiles",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            escapeUserInput(
+                "SELECT pk, cc, v FROM unload_token_range "
+                    + "WHERE token(pk) > :\"My Start\" AND token(pk) <= :\"My End\""));
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    List<String> lines =
+        FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
+    assertThat(lines).hasSize(1).containsExactly("0,1,2");
+  }
+
   static void checkNumbersWritten(
       OverflowStrategy overflowStrategy, RoundingMode roundingMode, Session session) {
     Map<String, Double> doubles = new HashMap<>();

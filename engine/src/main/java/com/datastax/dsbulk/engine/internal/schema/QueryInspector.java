@@ -43,11 +43,11 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
 
   // can't use Guava's immutable builders here as some map keys may appear twice in the query
   private final Map<CQLFragment, CQLFragment> resultSetVariablesBuilder = new LinkedHashMap<>();
-  private final Map<CQLIdentifier, CQLFragment> boundVariablesBuilder = new LinkedHashMap<>();
+  private final Map<CQLIdentifier, CQLFragment> assignmentsBuilder = new LinkedHashMap<>();
   private final Set<CQLFragment> writeTimeVariablesBuilder = new LinkedHashSet<>();
 
   private final ImmutableMap<CQLFragment, CQLFragment> resultSetVariables;
-  private final ImmutableMap<CQLIdentifier, CQLFragment> boundVariables;
+  private final ImmutableMap<CQLIdentifier, CQLFragment> assignments;
   private final ImmutableSet<CQLFragment> writeTimeVariables;
 
   private CQLIdentifier keyspaceName;
@@ -55,6 +55,8 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   private int fromClauseStartIndex = -1;
   private int fromClauseEndIndex = -1;
   private boolean hasWhereClause = false;
+  private CQLIdentifier tokenRangeRestrictionStartVariable;
+  private CQLIdentifier tokenRangeRestrictionEndVariable;
 
   public QueryInspector(String query) {
     this.query = query;
@@ -86,7 +88,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
     CqlParser.CqlStatementContext statement = parser.cqlStatement();
     visit(statement);
     resultSetVariables = ImmutableMap.copyOf(resultSetVariablesBuilder);
-    boundVariables = ImmutableMap.copyOf(boundVariablesBuilder);
+    assignments = ImmutableMap.copyOf(assignmentsBuilder);
     writeTimeVariables = ImmutableSet.copyOf(writeTimeVariablesBuilder);
   }
 
@@ -106,7 +108,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
    *     functions (e.g. col1 = now()). Only used for write queries (INSERT, UPDATE, DELETE).
    */
   public ImmutableMap<CQLIdentifier, CQLFragment> getAssignments() {
-    return boundVariables;
+    return assignments;
   }
 
   /**
@@ -149,6 +151,22 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
     return hasWhereClause;
   }
 
+  /**
+   * @return the variable name used to define a token range start, e.g. if the restriction is {@code
+   *     token(...) > :start}, this method will report {@code start}.
+   */
+  public Optional<CQLIdentifier> getTokenRangeRestrictionStartVariable() {
+    return Optional.ofNullable(tokenRangeRestrictionStartVariable);
+  }
+
+  /**
+   * @return the variable name used to define a token range end, e.g. if the restriction is {@code
+   *     token(...) <= :end}, this method will report {@code end}.
+   */
+  public Optional<CQLIdentifier> getTokenRangeRestrictionEndVariable() {
+    return Optional.ofNullable(tokenRangeRestrictionEndVariable);
+  }
+
   // INSERT
 
   @Override
@@ -169,7 +187,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
       CQLIdentifier column = visitCident(ctx.cident().get(i));
       CQLFragment variable = visitTerm(ctx.term().get(i));
       if (variable != null) {
-        boundVariablesBuilder.put(column, variable == QUESTION_MARK ? column : variable);
+        assignmentsBuilder.put(column, variable == QUESTION_MARK ? column : variable);
       }
     }
     if (ctx.usingClause() != null) {
@@ -193,7 +211,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
       CQLIdentifier column = visitCident(op.cident());
       CQLFragment variable = visitColumnOperationDifferentiator(op.columnOperationDifferentiator());
       if (variable != null) {
-        boundVariablesBuilder.put(column, variable == QUESTION_MARK ? column : variable);
+        assignmentsBuilder.put(column, variable == QUESTION_MARK ? column : variable);
       }
     }
     visitWhereClause(ctx.whereClause());
@@ -319,7 +337,23 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
       CQLIdentifier column = visitCident(ctx.cident());
       CQLFragment variable = visitTerm(ctx.term().get(0));
       if (variable != null) {
-        boundVariablesBuilder.put(column, variable.equals(QUESTION_MARK) ? column : variable);
+        assignmentsBuilder.put(column, variable.equals(QUESTION_MARK) ? column : variable);
+      }
+    } else if (ctx.K_TOKEN() != null) {
+      CQLFragment variable = visitTerm(ctx.term().get(0));
+      if (variable instanceof CQLIdentifier) {
+        if (variable == QUESTION_MARK) {
+          throw new BulkConfigurationException(
+              String.format(
+                  "Invalid query: positional variables are not allowed in WHERE token(...) clauses, "
+                      + "please une named variables instead: %s.",
+                  query));
+        }
+        if (ctx.relationType().getText().equals(">")) {
+          tokenRangeRestrictionStartVariable = (CQLIdentifier) variable;
+        } else if (ctx.relationType().getText().equals("<=")) {
+          tokenRangeRestrictionEndVariable = (CQLIdentifier) variable;
+        }
       }
     }
     // other relation types: unsupported
