@@ -74,10 +74,6 @@ class LogManagerTest {
   private URI resource2;
   private URI resource3;
 
-  private URI location1;
-  private URI location2;
-  private URI location3;
-
   private Record csvRecord1;
   private Record csvRecord2;
   private Record csvRecord3;
@@ -123,24 +119,15 @@ class LogManagerTest {
     resource1 = new URI("file:///file1.csv");
     resource2 = new URI("file:///file2.csv");
     resource3 = new URI("file:///file3.csv");
-    location1 = new URI("file:///file1.csv?line=1");
-    location2 = new URI("file:///file2.csv?line=2");
-    location3 = new URI("file:///file3.csv?line=3");
     csvRecord1 =
-        new DefaultErrorRecord(
-            source1, () -> resource1, 1, () -> location1, new RuntimeException("error 1"));
+        new DefaultErrorRecord(source1, () -> resource1, 1, new RuntimeException("error 1"));
     csvRecord2 =
-        new DefaultErrorRecord(
-            source2, () -> resource2, 2, () -> location2, new RuntimeException("error 2"));
+        new DefaultErrorRecord(source2, () -> resource2, 2, new RuntimeException("error 2"));
     csvRecord3 =
-        new DefaultErrorRecord(
-            source3, () -> resource3, 3, () -> location3, new RuntimeException("error 3"));
-    unmappableStmt1 =
-        new UnmappableStatement(csvRecord1, () -> location1, new RuntimeException("error 1"));
-    unmappableStmt2 =
-        new UnmappableStatement(csvRecord2, () -> location2, new RuntimeException("error 2"));
-    unmappableStmt3 =
-        new UnmappableStatement(csvRecord3, () -> location3, new RuntimeException("error 3"));
+        new DefaultErrorRecord(source3, () -> resource3, 3, new RuntimeException("error 3"));
+    unmappableStmt1 = new UnmappableStatement(csvRecord1, new RuntimeException("error 1"));
+    unmappableStmt2 = new UnmappableStatement(csvRecord2, new RuntimeException("error 2"));
+    unmappableStmt3 = new UnmappableStatement(csvRecord3, new RuntimeException("error 3"));
     failedWriteResult1 =
         new DefaultWriteResult(
             new BulkExecutionException(
@@ -188,25 +175,13 @@ class LogManagerTest {
     ReadResult successfulReadResult3 = new DefaultReadResult(stmt3, info, row3);
     rowRecord1 =
         new DefaultErrorRecord(
-            successfulReadResult1,
-            () -> resource1,
-            1,
-            () -> location1,
-            new RuntimeException("error 1"));
+            successfulReadResult1, () -> resource1, 1, new RuntimeException("error 1"));
     rowRecord2 =
         new DefaultErrorRecord(
-            successfulReadResult2,
-            () -> resource2,
-            2,
-            () -> location2,
-            new RuntimeException("error 2"));
+            successfulReadResult2, () -> resource2, 2, new RuntimeException("error 2"));
     rowRecord3 =
         new DefaultErrorRecord(
-            successfulReadResult3,
-            () -> resource3,
-            3,
-            () -> location3,
-            new RuntimeException("error 3"));
+            successfulReadResult3, () -> resource3, 3, new RuntimeException("error 3"));
   }
 
   @Test
@@ -248,13 +223,13 @@ class LogManagerTest {
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
     assertThat(content)
-        .containsOnlyOnce("Location: " + location1)
+        .containsOnlyOnce("Resource: " + resource1)
         .containsOnlyOnce("Source: " + LogUtils.formatSingleLine(source1))
         .containsOnlyOnce("java.lang.RuntimeException: error 1")
-        .containsOnlyOnce("Location: " + location2)
+        .containsOnlyOnce("Resource: " + resource2)
         .containsOnlyOnce("Source: " + LogUtils.formatSingleLine(source2))
         .containsOnlyOnce("java.lang.RuntimeException: error 2")
-        .containsOnlyOnce("Location: " + location3)
+        .containsOnlyOnce("Resource: " + resource3)
         .containsOnlyOnce("Source: " + LogUtils.formatSingleLine(source3))
         .containsOnlyOnce("java.lang.RuntimeException: error 2");
   }
@@ -293,10 +268,10 @@ class LogManagerTest {
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
     assertThat(content)
-        .containsOnlyOnce("Location: " + location1)
+        .containsOnlyOnce("Resource: " + resource1)
         .containsOnlyOnce("Source: " + LogUtils.formatSingleLine(source1))
         .containsOnlyOnce("java.lang.RuntimeException: error 1")
-        .containsOnlyOnce("Location: " + location2)
+        .containsOnlyOnce("Resource: " + resource2)
         .containsOnlyOnce("Source: " + LogUtils.formatSingleLine(source2))
         .containsOnlyOnce("java.lang.RuntimeException: error 2");
   }
@@ -340,17 +315,17 @@ class LogManagerTest {
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
     assertThat(content)
-        .containsOnlyOnce("Location: " + location1)
+        .containsOnlyOnce("Resource: " + resource1)
         .containsOnlyOnce("Source: " + LogUtils.formatSingleLine(source1))
         .contains("INSERT 1")
         .containsOnlyOnce(
             "com.datastax.dsbulk.executor.api.exception.BulkExecutionException: Statement execution failed: INSERT 1 (error 1)")
-        .containsOnlyOnce("Location: " + location2)
+        .containsOnlyOnce("Resource: " + resource2)
         .containsOnlyOnce("Source: " + LogUtils.formatSingleLine(source2))
         .contains("INSERT 2")
         .containsOnlyOnce(
             "com.datastax.dsbulk.executor.api.exception.BulkExecutionException: Statement execution failed: INSERT 2 (error 2)")
-        .containsOnlyOnce("Location: " + location3)
+        .containsOnlyOnce("Resource: " + resource3)
         .containsOnlyOnce("Source: " + LogUtils.formatSingleLine(source3))
         .contains("INSERT 3")
         .containsOnlyOnce(
@@ -395,17 +370,17 @@ class LogManagerTest {
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
     assertThat(content)
-        .containsOnlyOnce("Location: " + location1)
+        .containsOnlyOnce("Resource: " + resource1)
         .containsOnlyOnce("Source: " + LogUtils.formatSingleLine(source1))
         .contains("INSERT 1")
         .containsOnlyOnce(
             "com.datastax.dsbulk.executor.api.exception.BulkExecutionException: Statement execution failed: INSERT 1 (error 1)")
-        .containsOnlyOnce("Location: " + location2)
+        .containsOnlyOnce("Resource: " + resource2)
         .containsOnlyOnce("Source: " + LogUtils.formatSingleLine(source2))
         .contains("INSERT 2")
         .containsOnlyOnce(
             "com.datastax.dsbulk.executor.api.exception.BulkExecutionException: Statement execution failed: INSERT 2 (error 2)")
-        .containsOnlyOnce("Location: " + location3)
+        .containsOnlyOnce("Resource: " + resource3)
         .containsOnlyOnce("Source: " + LogUtils.formatSingleLine(source3))
         .contains("INSERT 3")
         .containsOnlyOnce(
@@ -456,9 +431,9 @@ class LogManagerTest {
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
     assertThat(content)
-        .containsOnlyOnce("Location: " + location1.toString())
-        .containsOnlyOnce("Location: " + location2.toString())
-        .containsOnlyOnce("Location: " + location3.toString())
+        .containsOnlyOnce("Resource: " + resource1.toString())
+        .containsOnlyOnce("Resource: " + resource2.toString())
+        .containsOnlyOnce("Resource: " + resource3.toString())
         .containsOnlyOnce("Source: " + LogUtils.formatSingleLine(source1))
         .containsOnlyOnce("Source: " + LogUtils.formatSingleLine(source2))
         .containsOnlyOnce("Source: " + LogUtils.formatSingleLine(source3))
@@ -664,7 +639,7 @@ class LogManagerTest {
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
     assertThat(content)
-        .containsOnlyOnce("Location: " + location1)
+        .containsOnlyOnce("Resource: " + resource1)
         .containsOnlyOnce("Source: " + LogUtils.formatSingleLine(source1))
         .contains("INSERT 1")
         .containsOnlyOnce(
@@ -809,11 +784,9 @@ class LogManagerTest {
 
   private static WriteResult result(long position) throws URISyntaxException {
     URI resource = new URI("file1");
-    URI location = new URI("file1?line=" + position);
     return new DefaultWriteResult(
         new BulkSimpleStatement<>(
-            DefaultRecord.indexed("irrelevant", () -> resource, position, () -> location),
-            "INSERT 1"),
+            DefaultRecord.indexed("irrelevant", () -> resource, position), "INSERT 1"),
         new ExecutionInfo(0, 0, emptyList(), ONE, emptyMap()));
   }
 

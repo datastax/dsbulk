@@ -20,6 +20,7 @@
 - [bug] DAT-369: Call to ArrayBackedRow.toString() causes fatal NPE.
 - [improvement] DAT-316: JsonNodeToUDTCodec should allow a Json array input.
 - [improvement] DAT-372: Improve WHERE clause token range restriction detection.
+- [improvement] DAT-370: Remove record location URI.
 
 
 ### 1.2.0

@@ -129,15 +129,11 @@ class DefaultReadResultMapperTest {
     ErrorRecord record = (ErrorRecord) mapper.map(result);
     assertThat(record.getError()).isSameAs(exception);
     assertThat(record.getSource()).isSameAs(result);
-    assertThat(record.getLocation())
+    assertThat(record.getResource())
         .hasScheme("cql")
         .hasHost("127.0.0.1")
         .hasPort(9042)
         .hasPath("/ks/t")
-        .hasParameter("start", "1234")
-        .hasParameter("end", "5678")
-        .hasParameter(C1, "42")
-        .hasParameter(C2, "\'foo\'")
-        .hasParameter(C3, "\'bar\'");
+        .hasNoParameters();
   }
 }

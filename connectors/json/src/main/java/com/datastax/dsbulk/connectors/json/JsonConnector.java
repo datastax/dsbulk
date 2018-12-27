@@ -13,7 +13,6 @@ import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.io.IOUtils;
 import com.datastax.dsbulk.commons.internal.reactive.SimpleBackpressureController;
-import com.datastax.dsbulk.commons.internal.uri.URIUtils;
 import com.datastax.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.ConnectorFeature;
@@ -38,7 +37,6 @@ import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import com.google.common.base.Suppliers;
 import com.google.common.reflect.TypeToken;
 import com.typesafe.config.ConfigException;
 import io.netty.util.concurrent.DefaultThreadFactory;
@@ -340,7 +338,7 @@ public class JsonConnector implements Connector {
         Flux.create(
             sink -> {
               LOGGER.debug("Reading {}", url);
-              URI resource = URIUtils.createResourceURI(url);
+              URI resource = URI.create(url.toExternalForm());
               SimpleBackpressureController controller = new SimpleBackpressureController();
               sink.onRequest(controller::signalRequested);
               // DAT-177: Do not call sink.onDispose nor sink.onCancel,
@@ -365,9 +363,6 @@ public class JsonConnector implements Connector {
                             "Expecting START_OBJECT, got %s. Did you forget to set connector.json.mode to SINGLE_DOCUMENT?",
                             parser.currentToken()));
                   }
-                  long finalRecordNumber = recordNumber++;
-                  Supplier<URI> location =
-                      Suppliers.memoize(() -> URIUtils.createLocationURI(url, finalRecordNumber));
                   Record record;
                   JsonNode node = it.next();
                   Map<String, JsonNode> values = objectMapper.convertValue(node, jsonNodeMapType);
@@ -378,9 +373,7 @@ public class JsonConnector implements Connector {
                           .collect(
                               Collectors.toMap(
                                   e -> new DefaultMappedField(e.getKey()), Entry::getValue));
-                  record =
-                      DefaultRecord.mapped(
-                          node, () -> resource, finalRecordNumber, location, fields);
+                  record = DefaultRecord.mapped(node, () -> resource, recordNumber++, fields);
                   LOGGER.trace("Emitting record {}", record);
                   controller.awaitRequested(1);
                   sink.next(record);

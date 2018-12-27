@@ -23,19 +23,16 @@ public class DefaultErrorRecord implements ErrorRecord {
   private final Object source;
   private final Supplier<URI> resource;
   private final long position;
-  private final Supplier<URI> location;
   private final Throwable error;
 
   public DefaultErrorRecord(
       @NotNull Object source,
       @NotNull Supplier<URI> resource,
       long position,
-      @NotNull Supplier<URI> location,
       @NotNull Throwable error) {
     this.source = source;
     this.resource = resource;
     this.position = position;
-    this.location = location;
     this.error = error;
   }
 
@@ -54,12 +51,6 @@ public class DefaultErrorRecord implements ErrorRecord {
   @Override
   public long getPosition() {
     return position;
-  }
-
-  @NotNull
-  @Override
-  public URI getLocation() {
-    return location.get();
   }
 
   @NotNull

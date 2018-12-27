@@ -23,6 +23,7 @@ import com.typesafe.config.ConfigFactory;
 import org.junit.jupiter.api.Test;
 
 class ConnectorSettingsTest {
+
   private static final Config CONNECTOR_DEFAULT_SETTINGS =
       ConfigFactory.defaultReference().getConfig("dsbulk.connector");
 

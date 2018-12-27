@@ -71,7 +71,6 @@ class CSVConnectorTest {
       ConfigFactory.defaultReference().getConfig("dsbulk.connector.csv");
 
   private final Supplier<URI> resource = () -> URI.create("file://file1.csv");
-  private final Supplier<URI> location = () -> URI.create("file://file1.csv?pos=1");
 
   @Test
   void should_read_single_file() throws Exception {
@@ -207,8 +206,7 @@ class CSVConnectorTest {
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
-      Flux.<Record>just(
-              DefaultRecord.indexed("source", resource, -1, location, "fóô", "bàr", "qïx"))
+      Flux.<Record>just(DefaultRecord.indexed("source", resource, -1, "fóô", "bàr", "qïx"))
           .transform(connector.write())
           .blockLast();
       connector.close();
@@ -257,8 +255,7 @@ class CSVConnectorTest {
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
-      Flux.<Record>just(
-              DefaultRecord.indexed("source", resource, -1, location, "abc", "de\nf", "ghk"))
+      Flux.<Record>just(DefaultRecord.indexed("source", resource, -1, "abc", "de\nf", "ghk"))
           .transform(connector.write())
           .blockLast();
       connector.close();
@@ -694,7 +691,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
-    Flux.<Record>just(DefaultRecord.indexed("source", resource, -1, location, " foo "))
+    Flux.<Record>just(DefaultRecord.indexed("source", resource, -1, " foo "))
         .transform(connector.write())
         .blockFirst();
     connector.close();
@@ -719,7 +716,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
-    Flux.<Record>just(DefaultRecord.indexed("source", resource, -1, location, " foo "))
+    Flux.<Record>just(DefaultRecord.indexed("source", resource, -1, " foo "))
         .transform(connector.write())
         .blockFirst();
     connector.close();
@@ -830,7 +827,6 @@ class CSVConnectorTest {
                 "source",
                 resource,
                 -1,
-                location,
                 new Field[] {new DefaultMappedField("field1")},
                 new Object[] {null}))
         .transform(connector.write())
@@ -854,7 +850,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
-    Flux.<Record>just(DefaultRecord.indexed("source", resource, -1, location, new Object[] {null}))
+    Flux.<Record>just(DefaultRecord.indexed("source", resource, -1, new Object[] {null}))
         .transform(connector.write())
         .blockFirst();
     connector.close();
@@ -1261,7 +1257,6 @@ class CSVConnectorTest {
             "source",
             resource,
             -1,
-            location,
             fields,
             "1997",
             "Ford",
@@ -1273,7 +1268,6 @@ class CSVConnectorTest {
             "source",
             resource,
             -1,
-            location,
             fields,
             "1999",
             "Chevy",
@@ -1285,7 +1279,6 @@ class CSVConnectorTest {
             "source",
             resource,
             -1,
-            location,
             fields,
             "1996",
             "Jeep",
@@ -1297,7 +1290,6 @@ class CSVConnectorTest {
             "source",
             resource,
             -1,
-            location,
             fields,
             "1999",
             "Chevy",
@@ -1309,7 +1301,6 @@ class CSVConnectorTest {
             "source",
             resource,
             -1,
-            location,
             fields,
             null,
             null,

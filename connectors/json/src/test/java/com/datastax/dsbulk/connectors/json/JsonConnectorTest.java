@@ -73,7 +73,6 @@ class JsonConnectorTest {
   private final ObjectMapper objectMapper = new ObjectMapper();
 
   private final Supplier<URI> resource = () -> URI.create("file://file1.csv");
-  private final Supplier<URI> location = () -> URI.create("file://file1.csv?pos=1");
 
   @Test
   void should_read_single_file_multi_doc() throws Exception {
@@ -212,7 +211,6 @@ class JsonConnectorTest {
                   "source",
                   resource,
                   -1,
-                  location,
                   factory.textNode("fóô"),
                   factory.textNode("bàr"),
                   factory.textNode("qïx")))
@@ -932,7 +930,6 @@ class JsonConnectorTest {
             "source",
             resource,
             -1,
-            location,
             fields,
             factory.numberNode(1997),
             factory.textNode("Ford"),
@@ -944,7 +941,6 @@ class JsonConnectorTest {
             "source",
             resource,
             -1,
-            location,
             fields,
             factory.numberNode(1999),
             factory.textNode("Chevy"),
@@ -956,7 +952,6 @@ class JsonConnectorTest {
             "source",
             resource,
             -1,
-            location,
             fields,
             factory.numberNode(1996),
             factory.textNode("Jeep"),
@@ -968,7 +963,6 @@ class JsonConnectorTest {
             "source",
             resource,
             -1,
-            location,
             fields,
             factory.numberNode(1999),
             factory.textNode("Chevy"),
@@ -980,7 +974,6 @@ class JsonConnectorTest {
             "source",
             resource,
             -1,
-            location,
             fields,
             null,
             null,
