@@ -17,6 +17,8 @@ import static java.math.BigDecimal.ZERO;
 import static java.math.RoundingMode.HALF_EVEN;
 import static java.time.Instant.EPOCH;
 import static java.time.ZoneOffset.UTC;
+import static java.util.Collections.emptySet;
+import static java.util.Collections.singleton;
 import static java.util.Locale.US;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
@@ -137,13 +139,13 @@ class DefaultRecordMapperTest {
 
     when(record.getSource()).thenReturn("source");
 
-    when(mapping.fieldToVariable(F1)).thenReturn(C1_ID);
-    when(mapping.fieldToVariable(F2)).thenReturn(C2_ID);
-    when(mapping.fieldToVariable(F3)).thenReturn(C3_ID);
+    when(mapping.fieldToVariables(F1)).thenReturn(singleton(C1_ID));
+    when(mapping.fieldToVariables(F2)).thenReturn(singleton(C2_ID));
+    when(mapping.fieldToVariables(F3)).thenReturn(singleton(C3_ID));
 
-    when(mapping.variableToField(C1_ID)).thenReturn(F1);
-    when(mapping.variableToField(C2_ID)).thenReturn(F2);
-    when(mapping.variableToField(C3_ID)).thenReturn(F3);
+    when(mapping.variableToFields(C1_ID)).thenReturn(singleton(F1));
+    when(mapping.variableToFields(C2_ID)).thenReturn(singleton(F2));
+    when(mapping.variableToFields(C3_ID)).thenReturn(singleton(F3));
 
     when(mapping.codec(C1_ID, DataType.cint(), TypeToken.of(String.class))).thenReturn(codec1);
     when(mapping.codec(C2_ID, DataType.bigint(), TypeToken.of(String.class))).thenReturn(codec2);
@@ -470,7 +472,7 @@ class DefaultRecordMapperTest {
   @Test
   void should_return_unmappable_statement_when_extra_field() {
     when(record.fields()).thenReturn(set(F1, F2, F3));
-    when(mapping.fieldToVariable(F3)).thenReturn(null);
+    when(mapping.fieldToVariables(F3)).thenReturn(emptySet());
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
