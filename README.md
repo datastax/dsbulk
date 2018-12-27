@@ -1,3 +1,7 @@
+[![Build Status](https://travis-ci.com/riptano/dsbulk.svg?token=HsKMUW45xxTpytJgq1ku&branch=1.x)](https://travis-ci.com/riptano/dsbulk)
+
+[![Build status](https://ci.appveyor.com/api/projects/status/p7cicgkbyanmxlsl/branch/1.x?svg=true)](https://ci.appveyor.com/project/DataStax/dsbulk/branch/1.x)
+
 # DataStax Bulk Loader
 
 A unified tool for loading into and unloading from DSE storage engines (i.e., Cassandra/Apollo and DataStax Enterprise).

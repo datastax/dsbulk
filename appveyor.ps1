@@ -31,3 +31,5 @@ $env:PATH="$($maven_path)\bin;$($env:PATH)"
 $env:DEFAULT_TIMEOUT_MILLIS=1000
 $env:DEFAULT_NO_SIGNALS_TIMEOUT_MILLIS=1000
 $env:PUBLISHER_REFERENCE_GC_TIMEOUT_MILLIS=1000
+
+Copy-Item .settings.xml -Destination "$($maven_path)\conf\settings.xml"
