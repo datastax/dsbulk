@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 public class ClusterInformationUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterInformationUtils.class);
   static final int LIMIT_NODES_INFORMATION = 100;
+  private static final Comparator<Host> HOST_COMPARATOR = new HostComparator();
 
   public static void printDebugInfoAboutCluster(Cluster cluster) {
     if (LOGGER.isDebugEnabled()) {
@@ -52,7 +53,7 @@ public class ClusterInformationUtils {
     List<String> hostsInfo =
         allHosts
             .stream()
-            .sorted(Comparator.comparing(o -> o.getSocketAddress().getHostName()))
+            .sorted(HOST_COMPARATOR)
             .limit(LIMIT_NODES_INFORMATION)
             .map(ClusterInformationUtils::getHostInfo)
             .collect(Collectors.toCollection(LinkedList::new));
