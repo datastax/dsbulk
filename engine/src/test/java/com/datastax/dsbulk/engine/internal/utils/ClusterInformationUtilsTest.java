@@ -9,7 +9,7 @@
 package com.datastax.dsbulk.engine.internal.utils;
 
 import static com.datastax.dsbulk.engine.internal.utils.ClusterInformationUtils.LIMIT_NODES_INFORMATION;
-import static org.assertj.core.api.Assertions.assertThat;
+import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.slf4j.event.Level.DEBUG;
@@ -22,8 +22,7 @@ import com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
+import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Set;
@@ -38,7 +37,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 class ClusterInformationUtilsTest {
 
   @Test
-  void should_get_information_about_cluster_with_one_host() throws UnknownHostException {
+  void should_get_information_about_cluster_with_one_host() {
     // given
     Cluster cluster = mock(Cluster.class);
     Metadata metadata = mock(Metadata.class);
@@ -57,11 +56,11 @@ class ClusterInformationUtilsTest {
     assertThat(infoAboutCluster.getHostsInfo())
         .isEqualTo(
             Collections.singletonList(
-                "address: /1.2.3.4, dseVersion: 6.7.0, cassandraVersion: null, dataCenter: dc1"));
+                "address: 1.2.3.4:9042, dseVersion: 6.7.0, cassandraVersion: null, dataCenter: dc1"));
   }
 
   @Test
-  void should_get_information_about_cluster_with_two_hosts() throws UnknownHostException {
+  void should_get_information_about_cluster_with_two_hosts() {
     // given
     Cluster cluster = mock(Cluster.class);
     Metadata metadata = mock(Metadata.class);
@@ -81,12 +80,12 @@ class ClusterInformationUtilsTest {
     assertThat(infoAboutCluster.getHostsInfo())
         .isEqualTo(
             Arrays.asList(
-                "address: /1.2.3.4, dseVersion: 6.7.0, cassandraVersion: null, dataCenter: dc1",
-                "address: /1.2.3.5, dseVersion: 6.7.0, cassandraVersion: null, dataCenter: dc1"));
+                "address: 1.2.3.4:9042, dseVersion: 6.7.0, cassandraVersion: null, dataCenter: dc1",
+                "address: 1.2.3.5:9042, dseVersion: 6.7.0, cassandraVersion: null, dataCenter: dc1"));
   }
 
   @Test
-  void should_get_information_about_cluster_with_two_different_dc() throws UnknownHostException {
+  void should_get_information_about_cluster_with_two_different_dc() {
     // given
     Cluster cluster = mock(Cluster.class);
     Metadata metadata = mock(Metadata.class);
@@ -106,12 +105,12 @@ class ClusterInformationUtilsTest {
     assertThat(infoAboutCluster.getHostsInfo())
         .isEqualTo(
             Arrays.asList(
-                "address: /1.2.3.4, dseVersion: 6.7.0, cassandraVersion: null, dataCenter: dc1",
-                "address: /1.2.3.5, dseVersion: 6.7.0, cassandraVersion: null, dataCenter: dc2"));
+                "address: 1.2.3.4:9042, dseVersion: 6.7.0, cassandraVersion: null, dataCenter: dc1",
+                "address: 1.2.3.5:9042, dseVersion: 6.7.0, cassandraVersion: null, dataCenter: dc2"));
   }
 
   @Test
-  void should_limit_information_about_hosts_to_100() throws UnknownHostException {
+  void should_limit_information_about_hosts_to_100() {
     // given
     Cluster cluster = mock(Cluster.class);
     Metadata metadata = mock(Metadata.class);
@@ -152,21 +151,17 @@ class ClusterInformationUtilsTest {
     ClusterInformationUtils.printDebugInfoAboutCluster(cluster);
 
     // then
-    CommonsAssertions.assertThat(interceptor)
-        .hasMessageMatching("Partitioner: simple-partitioner, numberOfHosts: 110");
+    CommonsAssertions.assertThat(interceptor).hasMessageMatching("Partitioner: simple-partitioner");
+    CommonsAssertions.assertThat(interceptor).hasMessageMatching("Total number of hosts: 110");
     CommonsAssertions.assertThat(interceptor).hasMessageMatching("Hosts:");
-    CommonsAssertions.assertThat(interceptor).hasMessageMatching("other nodes omitted");
+    CommonsAssertions.assertThat(interceptor).hasMessageMatching("(Other nodes omitted)");
   }
 
   @NotNull
   private Host createHost(String dataCenter, String address) {
     Host h1 = mock(Host.class);
     when(h1.getDseVersion()).thenReturn(VersionNumber.parse("6.7.0"));
-    try {
-      when(h1.getAddress()).thenReturn(InetAddress.getByName(address));
-    } catch (UnknownHostException e) {
-      throw new RuntimeException(e);
-    }
+    when(h1.getSocketAddress()).thenReturn(InetSocketAddress.createUnresolved(address, 9042));
     when(h1.getDatacenter()).thenReturn(dataCenter);
     return h1;
   }
