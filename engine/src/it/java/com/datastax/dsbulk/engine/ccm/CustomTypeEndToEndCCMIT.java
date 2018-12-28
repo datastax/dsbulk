@@ -96,9 +96,18 @@ class CustomTypeEndToEndCCMIT extends EndToEndCCMITBase {
     stderr.clear();
   }
 
-  /** Simple test case which attempts to load and unload data using ccm. */
+  /**
+   * Test for customType without associated codec. Data should be inserted as the blob. To transform
+   * DynamicCompositeType into blob:
+   *
+   * <p>ByteBuffer foo = com.datastax.driver.core.TestUtils.serializeForDynamicCompositeType("foo",
+   * 32); String blobHex = com.datastax.driver.core.utils.Bytes.toHexString(foo.array());
+   *
+   * <p>and uses blobHex to insert into table custom_types_table - c1 column (see custom-type.csv
+   * file for actual hex value)
+   */
   @Test
-  void full_load_unload() throws Exception {
+  void full_load_unload_load() throws Exception {
 
     List<String> args = new ArrayList<>();
     args.add("load");
@@ -140,5 +149,25 @@ class CustomTypeEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(1, unloadDir);
+
+    args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.csv.url");
+    args.add(quoteJson(CUSTOM_TYPES_CSV));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("custom_types_table");
+    args.add("--schema.mapping");
+    args.add("0=k, 1=c1");
+
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    validateResultSetSize(1, "SELECT * FROM custom_types_table");
+    deleteDirectory(logDir);
   }
 }
