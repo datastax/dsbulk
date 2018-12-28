@@ -27,22 +27,30 @@ class StringToTupleCodecTest {
 
   private TupleType tupleType;
 
-  private StringToTupleCodec codec;
+  private StringToTupleCodec codec1;
+  private StringToTupleCodec codec2;
+  private StringToTupleCodec codec3;
 
   @BeforeEach
   void setUp() {
     tupleType =
         newTupleType(
             V4, new CodecRegistry().register(InstantCodec.instance), timestamp(), varchar());
-    codec =
+    codec1 =
         (StringToTupleCodec)
             newCodecRegistry("nullStrings = [NULL, \"\"]")
                 .codecFor(tupleType, TypeToken.of(String.class));
+    codec2 =
+        (StringToTupleCodec)
+            newCodecRegistry("", true, false).codecFor(tupleType, TypeToken.of(String.class));
+    codec3 =
+        (StringToTupleCodec)
+            newCodecRegistry("", false, true).codecFor(tupleType, TypeToken.of(String.class));
   }
 
   @Test
   void should_convert_from_valid_external() {
-    assertThat(codec)
+    assertThat(codec1)
         .convertsFromExternal("[\"2016-07-24T20:34:12.999\",\"+01:00\"]")
         .toInternal(tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
         .convertsFromExternal("['2016-07-24T20:34:12.999','+01:00']")
@@ -67,11 +75,41 @@ class StringToTupleCodecTest {
         .toInternal(null)
         .convertsFromExternal("")
         .toInternal(null);
+    // should allow extra elements
+    assertThat(codec2)
+        .convertsFromExternal("[\"2016-07-24T20:34:12.999\",\"+01:00\", 42]")
+        .toInternal(tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
+        .convertsFromExternal("[,\"\",\"\"]")
+        .toInternal(tupleType.newValue(null, ""))
+        .convertsFromExternal("[null,null,null]")
+        .toInternal(tupleType.newValue(null, null))
+        .convertsFromExternal("[,,]")
+        .toInternal(tupleType.newValue(null, null))
+        .convertsFromExternal("")
+        .toInternal(null)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal("")
+        .toInternal(null);
+    // should allow missing elements
+    assertThat(codec3)
+        .convertsFromExternal("[\"2016-07-24T20:34:12.999\"]")
+        .toInternal(tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), null))
+        .convertsFromExternal("[null]")
+        .toInternal(tupleType.newValue(null, null))
+        .convertsFromExternal("[]")
+        .toInternal(tupleType.newValue(null, null))
+        .convertsFromExternal("")
+        .toInternal(null)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal("")
+        .toInternal(null);
   }
 
   @Test
   void should_convert_from_valid_internal() {
-    assertThat(codec)
+    assertThat(codec1)
         .convertsFromInternal(
             tupleType.newValue(Instant.parse("2016-07-24T20:34:12.999Z"), "+01:00"))
         .toExternal("[\"2016-07-24T20:34:12.999Z\",\"+01:00\"]")
@@ -87,9 +125,12 @@ class StringToTupleCodecTest {
 
   @Test
   void should_not_convert_from_invalid_external() {
-    assertThat(codec)
-        .cannotConvertFromExternal("[\"not a valid tuple\"]")
-        .cannotConvertFromExternal("{\"not a valid tuple\":42}")
-        .cannotConvertFromExternal("[\"2016-07-24T20:34:12.999\"]");
+    assertThat(codec1).cannotConvertFromExternal("{\"not a valid tuple\":42}");
+    // should not allow missing elements
+    assertThat(codec2)
+        .cannotConvertFromExternal("[\"2016-07-24T20:34:12.999Z\"]")
+        .cannotConvertFromExternal("[]");
+    // should not allow extra elements
+    assertThat(codec3).cannotConvertFromExternal("[\"2016-07-24T20:34:12.999Z\",\"+01:00\",42]");
   }
 }

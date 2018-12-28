@@ -476,6 +476,14 @@ public class SchemaSettings {
     }
   }
 
+  public boolean isAllowExtraFields() {
+    return allowExtraFields;
+  }
+
+  public boolean isAllowMissingFields() {
+    return allowMissingFields;
+  }
+
   @NotNull
   private DefaultMapping prepareStatementAndCreateMapping(
       Session session,
