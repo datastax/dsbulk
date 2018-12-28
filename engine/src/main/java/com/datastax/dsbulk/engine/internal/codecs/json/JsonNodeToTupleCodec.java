@@ -23,16 +23,22 @@ public class JsonNodeToTupleCodec extends JsonNodeConvertingCodec<TupleValue> {
   private final TupleType definition;
   private final List<ConvertingCodec<JsonNode, Object>> eltCodecs;
   private final ObjectMapper objectMapper;
+  private final boolean allowExtraFields;
+  private final boolean allowMissingFields;
 
   public JsonNodeToTupleCodec(
       TypeCodec<TupleValue> tupleCodec,
       List<ConvertingCodec<JsonNode, Object>> eltCodecs,
       ObjectMapper objectMapper,
-      List<String> nullStrings) {
+      List<String> nullStrings,
+      boolean allowExtraFields,
+      boolean allowMissingFields) {
     super(tupleCodec, nullStrings);
     this.eltCodecs = eltCodecs;
     definition = (TupleType) tupleCodec.getCqlType();
     this.objectMapper = objectMapper;
+    this.allowExtraFields = allowExtraFields;
+    this.allowMissingFields = allowMissingFields;
   }
 
   @Override
@@ -43,13 +49,16 @@ public class JsonNodeToTupleCodec extends JsonNodeConvertingCodec<TupleValue> {
     if (!node.isArray()) {
       throw new InvalidTypeException("Expecting ARRAY node, got " + node.getNodeType());
     }
-    int size = definition.getComponentTypes().size();
-    if (node.size() != size) {
-      throw new InvalidTypeException(
-          String.format("Expecting %d elements, got %d", size, node.size()));
+    int tupleSize = definition.getComponentTypes().size();
+    int nodeSize = node.size();
+    if (nodeSize > tupleSize && !allowExtraFields) {
+      throw JsonSchemaMismatchException.arraySizeGreaterThanTupleSize(tupleSize, nodeSize);
+    }
+    if (nodeSize < tupleSize && !allowMissingFields) {
+      throw JsonSchemaMismatchException.arraySizeLesserThanTupleSize(tupleSize, nodeSize);
     }
     TupleValue tuple = definition.newValue();
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < tupleSize && i < nodeSize; i++) {
       ConvertingCodec<JsonNode, Object> eltCodec = eltCodecs.get(i);
       Object o = eltCodec.externalToInternal(node.get(i));
       tuple.set(i, o, eltCodec.getInternalJavaType());

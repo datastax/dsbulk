@@ -143,6 +143,8 @@ public class ExtendedCodecRegistry {
   private final ZonedDateTime epoch;
   private final ObjectMapper objectMapper;
   private final TimeUUIDGenerator generator;
+  private final boolean allowExtraFields;
+  private final boolean allowMissingFields;
 
   public ExtendedCodecRegistry(
       CodecRegistry codecRegistry,
@@ -160,7 +162,9 @@ public class ExtendedCodecRegistry {
       TimeUnit timeUnit,
       ZonedDateTime epoch,
       TimeUUIDGenerator generator,
-      ObjectMapper objectMapper) {
+      ObjectMapper objectMapper,
+      boolean allowExtraFields,
+      boolean allowMissingFields) {
     this.codecRegistry = codecRegistry;
     this.nullStrings = nullStrings;
     this.booleanInputWords = booleanInputWords;
@@ -177,6 +181,8 @@ public class ExtendedCodecRegistry {
     this.epoch = epoch;
     this.generator = generator;
     this.objectMapper = objectMapper;
+    this.allowExtraFields = allowExtraFields;
+    this.allowMissingFields = allowMissingFields;
     // register Java Time API codecs
     codecRegistry.register(LocalDateCodec.instance, LocalTimeCodec.instance, InstantCodec.instance);
   }
@@ -731,7 +737,13 @@ public class ExtendedCodecRegistry {
                 (ConvertingCodec<JsonNode, Object>) createJsonNodeConvertingCodec(eltType, false);
             eltCodecs.add(eltCodec);
           }
-          return new JsonNodeToTupleCodec(tupleCodec, eltCodecs.build(), objectMapper, nullStrings);
+          return new JsonNodeToTupleCodec(
+              tupleCodec,
+              eltCodecs.build(),
+              objectMapper,
+              nullStrings,
+              allowExtraFields,
+              allowMissingFields);
         }
       case UDT:
         {
@@ -746,7 +758,13 @@ public class ExtendedCodecRegistry {
                     createJsonNodeConvertingCodec(field.getType(), false);
             fieldCodecs.put(field.getName(), fieldCodec);
           }
-          return new JsonNodeToUDTCodec(udtCodec, fieldCodecs.build(), objectMapper, nullStrings);
+          return new JsonNodeToUDTCodec(
+              udtCodec,
+              fieldCodecs.build(),
+              objectMapper,
+              nullStrings,
+              allowExtraFields,
+              allowMissingFields);
         }
       case CUSTOM:
         {

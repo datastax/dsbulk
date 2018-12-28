@@ -111,7 +111,10 @@ public class CountWorkflow implements Workflow {
     metricsManager.init();
     executor = executorSettings.newReadExecutor(session, metricsManager.getExecutionListener());
     ExtendedCodecRegistry codecRegistry =
-        codecSettings.createCodecRegistry(cluster.getConfiguration().getCodecRegistry());
+        codecSettings.createCodecRegistry(
+            cluster.getConfiguration().getCodecRegistry(),
+            schemaSettings.isAllowExtraFields(),
+            schemaSettings.isAllowMissingFields());
     EnumSet<StatsSettings.StatisticsMode> modes = statsSettings.getStatisticsModes();
     int numPartitions = statsSettings.getNumPartitions();
     readResultCounter =
