@@ -14,6 +14,7 @@ import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
 import static java.nio.file.Files.createTempDirectory;
 
 import com.datastax.driver.core.Session;
@@ -117,27 +118,27 @@ class CustomTypeEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(1, "SELECT * FROM custom_types_table");
-    //    deleteDirectory(logDir);
-    //
-    //    args = new ArrayList<>();
-    //    args.add("unload");
-    //    args.add("--log.directory");
-    //    args.add(quoteJson(logDir));
-    //    args.add("--connector.csv.url");
-    //    args.add(quoteJson(unloadDir));
-    //    args.add("--connector.csv.header");
-    //    args.add("false");
-    //    args.add("--connector.csv.maxConcurrentFiles");
-    //    args.add("1");
-    //    args.add("--schema.keyspace");
-    //    args.add(session.getLoggedKeyspace());
-    //    args.add("--schema.table");
-    //    args.add("ip_by_country");
-    //    args.add("--schema.mapping");
-    //    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
-    //
-    //    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
-    //    assertThat(status).isZero();
-    //    validateOutputFiles(24, unloadDir);
+    deleteDirectory(logDir);
+
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.csv.url");
+    args.add(quoteJson(unloadDir));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--connector.csv.maxConcurrentFiles");
+    args.add("1");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("custom_types_table");
+    args.add("--schema.mapping");
+    args.add("0=k, 1=c1");
+
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    validateOutputFiles(1, unloadDir);
   }
 }
