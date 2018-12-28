@@ -8,6 +8,14 @@
  */
 package com.datastax.dsbulk.engine.ccm;
 
+import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
+import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DDAC;
+import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
+import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
+import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
+import static java.nio.file.Files.createTempDirectory;
+
 import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
@@ -19,26 +27,17 @@ import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
+import java.io.IOException;
+import java.net.URL;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-
-import java.io.IOException;
-import java.net.URL;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-
-import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
-import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DDAC;
-import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
-import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
-import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
-import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
-import static java.nio.file.Files.createTempDirectory;
 
 @ExtendWith(LogInterceptingExtension.class)
 @ExtendWith(StreamInterceptingExtension.class)
@@ -69,7 +68,8 @@ class CustomTypeEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   private void createTableWithCustomType(Session session) {
-    session.execute("CREATE TABLE custom_types_table (k int PRIMARY KEY, c1 'DynamicCompositeType(s => UTF8Type, i => Int32Type)')");
+    session.execute(
+        "CREATE TABLE custom_types_table (k int PRIMARY KEY, c1 'DynamicCompositeType(s => UTF8Type, i => Int32Type)')");
   }
 
   @BeforeEach
@@ -117,27 +117,27 @@ class CustomTypeEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(1, "SELECT * FROM custom_types_table");
-//    deleteDirectory(logDir);
-//
-//    args = new ArrayList<>();
-//    args.add("unload");
-//    args.add("--log.directory");
-//    args.add(quoteJson(logDir));
-//    args.add("--connector.csv.url");
-//    args.add(quoteJson(unloadDir));
-//    args.add("--connector.csv.header");
-//    args.add("false");
-//    args.add("--connector.csv.maxConcurrentFiles");
-//    args.add("1");
-//    args.add("--schema.keyspace");
-//    args.add(session.getLoggedKeyspace());
-//    args.add("--schema.table");
-//    args.add("ip_by_country");
-//    args.add("--schema.mapping");
-//    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
-//
-//    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
-//    assertThat(status).isZero();
-//    validateOutputFiles(24, unloadDir);
+    //    deleteDirectory(logDir);
+    //
+    //    args = new ArrayList<>();
+    //    args.add("unload");
+    //    args.add("--log.directory");
+    //    args.add(quoteJson(logDir));
+    //    args.add("--connector.csv.url");
+    //    args.add(quoteJson(unloadDir));
+    //    args.add("--connector.csv.header");
+    //    args.add("false");
+    //    args.add("--connector.csv.maxConcurrentFiles");
+    //    args.add("1");
+    //    args.add("--schema.keyspace");
+    //    args.add(session.getLoggedKeyspace());
+    //    args.add("--schema.table");
+    //    args.add("ip_by_country");
+    //    args.add("--schema.mapping");
+    //    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
+    //
+    //    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    //    assertThat(status).isZero();
+    //    validateOutputFiles(24, unloadDir);
   }
 }
