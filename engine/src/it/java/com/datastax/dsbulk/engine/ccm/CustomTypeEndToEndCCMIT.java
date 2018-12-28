@@ -100,8 +100,10 @@ class CustomTypeEndToEndCCMIT extends EndToEndCCMITBase {
    * Test for customType without associated codec. Data should be inserted as the blob. To transform
    * DynamicCompositeType into blob:
    *
-   * <p>ByteBuffer foo = com.datastax.driver.core.TestUtils.serializeForDynamicCompositeType("foo",
-   * 32); String blobHex = com.datastax.driver.core.utils.Bytes.toHexString(foo.array());
+   * <pre>{@code
+   * ByteBuffer foo = com.datastax.driver.core.TestUtils.serializeForDynamicCompositeType("foo",32);
+   * String blobHex = com.datastax.driver.core.utils.Bytes.toHexString(foo.array());
+   * }</pre>
    *
    * <p>and uses blobHex to insert into table custom_types_table - c1 column (see custom-type.csv
    * file for actual hex value)
