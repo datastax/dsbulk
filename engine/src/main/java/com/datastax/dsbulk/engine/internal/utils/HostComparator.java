@@ -14,9 +14,7 @@ import java.util.Comparator;
 public class HostComparator implements Comparator<Host> {
   @Override
   public int compare(Host o1, Host o2) {
-    if (o1 == o2) {
-      return 0;
-    } else if (o1.getSocketAddress() == null || o2.getSocketAddress() == null) {
+    if (o1.equals(o2)) {
       return 0;
     } else if (o1.getSocketAddress().getHostName() == null
         || o2.getSocketAddress().getHostName() == null) {
