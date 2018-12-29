@@ -288,6 +288,16 @@ public interface CCMCluster extends Closeable {
   Version getVersion();
 
   /**
+   * Returns the Cassandra version of this CCM cluster, even if it is a DSE cluster.
+   *
+   * <p>In case of a DSE cluster, returns the associated Cassandra version; for OSS Cassandra and
+   * DDAC, returns the same version as {@link #getVersion()}.
+   *
+   * @return The Cassandra version of this CCM cluster.
+   */
+  Version getCassandraVersion();
+
+  /**
    * Returns the factory directory for this CCM cluster.
    *
    * @return The factory directory for this CCM cluster.
