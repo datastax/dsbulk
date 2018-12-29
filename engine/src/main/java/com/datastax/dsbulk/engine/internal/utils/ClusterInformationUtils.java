@@ -11,9 +11,9 @@ package com.datastax.dsbulk.engine.internal.utils;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Host;
 import com.datastax.driver.core.Metadata;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -56,7 +56,7 @@ public class ClusterInformationUtils {
             .sorted(HOST_COMPARATOR)
             .limit(LIMIT_NODES_INFORMATION)
             .map(ClusterInformationUtils::getHostInfo)
-            .collect(Collectors.toCollection(LinkedList::new));
+            .collect(Collectors.toCollection(ArrayList::new));
     return new ClusterInformation(
         cluster.getMetadata().getPartitioner(),
         allHosts.size(),
