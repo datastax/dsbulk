@@ -111,7 +111,12 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
   @Override
   protected String getLocalDCName(ExtensionContext context) {
     CCMCluster ccm = getOrCreateCCM(context);
-    return ccm.getDC(1);
+    try {
+      return ccm.getDC(1);
+    } catch (Exception e) {
+      LOGGER.error("Could not determine local DC name", e);
+      return ccm.isMultiDC() ? "dc1" : "Cassandra";
+    }
   }
 
   private CCMCluster getOrCreateCCM(ExtensionContext context) {
