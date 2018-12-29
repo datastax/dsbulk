@@ -110,8 +110,10 @@ public class LoadWorkflow implements Workflow {
     executorSettings.init();
     engineSettings.init();
     cluster = driverSettings.newCluster();
-    printDebugInfoAboutCluster(cluster);
+    cluster.init();
     checkProductCompatibility(cluster);
+    driverSettings.checkProtocolVersion(cluster);
+    printDebugInfoAboutCluster(cluster);
     schemaSettings.init(
         WorkflowType.LOAD,
         cluster,

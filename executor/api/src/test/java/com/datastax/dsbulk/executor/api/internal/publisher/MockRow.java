@@ -6,7 +6,7 @@
  * and will post the amended terms at
  * https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
  */
-package com.datastax.dsbulk.executor.api.tck;
+package com.datastax.dsbulk.executor.api.internal.publisher;
 
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.LocalDate;

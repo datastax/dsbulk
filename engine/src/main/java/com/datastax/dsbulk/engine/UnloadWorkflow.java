@@ -101,6 +101,8 @@ public class UnloadWorkflow implements Workflow {
         Schedulers.newParallel(
             Runtime.getRuntime().availableProcessors(), new DefaultThreadFactory("workflow"));
     cluster = driverSettings.newCluster();
+    cluster.init();
+    driverSettings.checkProtocolVersion(cluster);
     printDebugInfoAboutCluster(cluster);
     schemaSettings.init(
         WorkflowType.UNLOAD,
@@ -130,8 +132,7 @@ public class UnloadWorkflow implements Workflow {
             schemaSettings.isAllowMissingFields());
     readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-    readStatements =
-        schemaSettings.createReadStatements(cluster, Runtime.getRuntime().availableProcessors());
+    readStatements = schemaSettings.createReadStatements(cluster);
     closed.set(false);
   }
 

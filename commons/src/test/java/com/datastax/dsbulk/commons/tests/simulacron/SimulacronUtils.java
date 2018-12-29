@@ -426,7 +426,7 @@ public class SimulacronUtils {
           Query whenSelectFromTableWhere =
               new Query(
                   String.format(
-                      "SELECT %s FROM %s.%s WHERE token(%s) > :start AND token(%s) <= :end",
+                      "SELECT %s FROM %s.%s WHERE token(%s) > ? AND token(%s) <= ?",
                       table
                           .allColumns()
                           .stream()

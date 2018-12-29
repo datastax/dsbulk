@@ -13,18 +13,27 @@ import static com.datastax.driver.core.ConsistencyLevel.LOCAL_SERIAL;
 import static com.datastax.driver.core.HostDistance.LOCAL;
 import static com.datastax.driver.core.HostDistance.REMOTE;
 import static com.datastax.driver.core.ProtocolOptions.Compression.NONE;
+import static com.datastax.driver.core.ProtocolVersion.V1;
 import static com.datastax.dsbulk.commons.tests.utils.ReflectionUtils.getInternalState;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
-import static org.assertj.core.api.Assertions.assertThat;
+import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.slf4j.event.Level.WARN;
 
 import com.datastax.driver.core.AtomicMonotonicTimestampGenerator;
 import com.datastax.driver.core.AuthProvider;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Host;
+import com.datastax.driver.core.HostDistance;
 import com.datastax.driver.core.PlainTextAuthProvider;
 import com.datastax.driver.core.PoolingOptions;
+import com.datastax.driver.core.ProtocolOptions;
+import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.QueryOptions;
 import com.datastax.driver.core.RemoteEndpointAwareJdkSSLOptions;
 import com.datastax.driver.core.RemoteEndpointAwareNettySSLOptions;
@@ -45,6 +54,9 @@ import com.datastax.driver.dse.auth.DsePlainTextAuthProvider;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.tests.logging.LogCapture;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.engine.internal.policies.MultipleRetryPolicy;
 import com.google.common.base.Predicate;
 import com.typesafe.config.ConfigFactory;
@@ -58,8 +70,12 @@ import java.nio.file.Paths;
 import java.util.List;
 import javax.security.auth.login.Configuration;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mockito;
 
+@ExtendWith(LogInterceptingExtension.class)
 class DriverSettingsTest {
 
   @Test
@@ -110,8 +126,9 @@ class DriverSettingsTest {
     assertThat(poolingOptions.getMaxConnectionsPerHost(LOCAL)).isEqualTo(8);
     assertThat(poolingOptions.getCoreConnectionsPerHost(REMOTE)).isEqualTo(1);
     assertThat(poolingOptions.getMaxConnectionsPerHost(REMOTE)).isEqualTo(1);
-    assertThat(poolingOptions.getMaxRequestsPerConnection(LOCAL)).isEqualTo(32768);
-    assertThat(poolingOptions.getMaxRequestsPerConnection(REMOTE)).isEqualTo(1024);
+    // max requests per connection is set only after cluster is initialized
+    assertThat(poolingOptions.getMaxRequestsPerConnection(LOCAL)).isEqualTo(PoolingOptions.UNSET);
+    assertThat(poolingOptions.getMaxRequestsPerConnection(REMOTE)).isEqualTo(PoolingOptions.UNSET);
     assertThat(poolingOptions.getHeartbeatIntervalSeconds()).isEqualTo(30);
     SocketOptions socketOptions = configuration.getSocketOptions();
     assertThat(socketOptions.getReadTimeoutMillis()).isEqualTo(60000);
@@ -410,7 +427,7 @@ class DriverSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    " port = 9123, "
+                    " port = 9042, "
                         + "policy { "
                         + "  lbp { "
                         + "    name=dse, "
@@ -452,9 +469,9 @@ class DriverSettingsTest {
     // verify that our two hosts are in the white list.
     @SuppressWarnings({"unchecked", "Guava"})
     Predicate<Host> predicate = (Predicate<Host>) getInternalState(whiteListPolicy, "predicate");
-    assertThat(predicate.apply(makeHostWithAddress("127.0.0.1", 9123))).isTrue();
-    assertThat(predicate.apply(makeHostWithAddress("127.0.0.3", 9123))).isFalse();
-    assertThat(predicate.apply(makeHostWithAddress("127.0.0.4", 9123))).isTrue();
+    assertThat(predicate.apply(makeHostWithAddress("127.0.0.1"))).isTrue();
+    assertThat(predicate.apply(makeHostWithAddress("127.0.0.3"))).isFalse();
+    assertThat(predicate.apply(makeHostWithAddress("127.0.0.4"))).isTrue();
 
     // The whitelist policy chains to a token-aware policy.
     assertThat(whiteListPolicy.getChildPolicy()).isInstanceOf(TokenAwarePolicy.class);
@@ -1139,9 +1156,119 @@ class DriverSettingsTest {
             "Invalid value at 'pooling.heartbeat': No number in duration value 'NotADuration'");
   }
 
-  private static Host makeHostWithAddress(String host, int port) {
-    Host h = Mockito.mock(Host.class);
-    Mockito.when(h.getSocketAddress()).thenReturn(new InetSocketAddress(host, port));
+  @Test
+  void should_detect_unlimited_fetch_size() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("query.fetchSize = 0")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    settings.init();
+    DseCluster cluster = settings.newCluster();
+    assertThat(cluster.getConfiguration().getQueryOptions().getFetchSize())
+        .isEqualTo(Integer.MAX_VALUE);
+    config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("query.fetchSize = -1")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    settings = new DriverSettings(config);
+    settings.init();
+    cluster = settings.newCluster();
+    assertThat(cluster.getConfiguration().getQueryOptions().getFetchSize())
+        .isEqualTo(Integer.MAX_VALUE);
+  }
+
+  @ParameterizedTest(
+      name = "[{index}] should_log_warning_when_max_local_requests_exceeds_maximum (version {0})")
+  @EnumSource(
+      value = ProtocolVersion.class,
+      names = {"V1", "V2"})
+  void should_log_warning_when_max_local_requests_exceeds_maximum(
+      ProtocolVersion version,
+      @LogCapture(value = DriverSettings.class, level = WARN) LogInterceptor logs) {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    "pooling.local.requests = 129, pooling.remote.requests = 128, query.fetchSize = 0")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    settings.init();
+    DseCluster cluster = spy(settings.newCluster());
+    emulateClusterInit(cluster, version);
+    settings.checkProtocolVersion(cluster);
+    assertThat(logs)
+        .hasMessageContaining(
+            String.format(
+                "Value for driver.pooling.local.requests exceeds the maximum allowed (128) "
+                    + "for the protocol version in use (%s): 129; using 128 instead.",
+                version));
+    verify(cluster.getConfiguration().getPoolingOptions())
+        .setMaxRequestsPerConnection(HostDistance.LOCAL, 128);
+  }
+
+  @ParameterizedTest(
+      name = "[{index}] should_log_warning_when_max_remote_requests_exceeds_maximum (version {0})")
+  @EnumSource(
+      value = ProtocolVersion.class,
+      names = {"V1", "V2"})
+  void should_log_warning_when_max_remote_requests_exceeds_maximum(
+      ProtocolVersion version,
+      @LogCapture(value = DriverSettings.class, level = WARN) LogInterceptor logs) {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    "pooling.local.requests = 128, pooling.remote.requests = 129, query.fetchSize = 0")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    settings.init();
+    DseCluster cluster = spy(settings.newCluster());
+    emulateClusterInit(cluster, version);
+    settings.checkProtocolVersion(cluster);
+    assertThat(logs)
+        .hasMessageContaining(
+            String.format(
+                "Value for driver.pooling.remote.requests exceeds the maximum allowed (128) "
+                    + "for the protocol version in use (%s): 129; using 128 instead.",
+                version));
+    verify(cluster.getConfiguration().getPoolingOptions())
+        .setMaxRequestsPerConnection(HostDistance.REMOTE, 128);
+  }
+
+  @Test
+  void should_log_warning_when_max_remote_requests_exceeds_maximum(
+      @LogCapture(value = DriverSettings.class, level = WARN) LogInterceptor logs) {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    "pooling.local.requests = 128, pooling.remote.requests = 128, query.fetchSize = 1")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    settings.init();
+    DseCluster cluster = spy(settings.newCluster());
+    emulateClusterInit(cluster, V1);
+    settings.checkProtocolVersion(cluster);
+    assertThat(logs)
+        .hasMessageContaining(
+            "Value for driver.query.fetchSize should be lesser than or equal to zero (paging disabled) "
+                + "when the protocol version in use is V1; forcibly disabling paging.");
+    verify(cluster.getConfiguration().getQueryOptions()).setFetchSize(Integer.MAX_VALUE);
+  }
+
+  private static void emulateClusterInit(DseCluster cluster, ProtocolVersion version) {
+    DseConfiguration configuration = spy(cluster.getConfiguration());
+    ProtocolOptions protocolOptions = spy(configuration.getProtocolOptions());
+    PoolingOptions poolingOptions = spy(configuration.getPoolingOptions());
+    QueryOptions queryOptions = spy(configuration.getQueryOptions());
+    when(cluster.getConfiguration()).thenReturn(configuration);
+    when(configuration.getProtocolOptions()).thenReturn(protocolOptions);
+    when(configuration.getPoolingOptions()).thenReturn(poolingOptions);
+    when(configuration.getQueryOptions()).thenReturn(queryOptions);
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
+  }
+
+  private static Host makeHostWithAddress(String host) {
+    Host h = mock(Host.class);
+    Mockito.when(h.getSocketAddress()).thenReturn(new InetSocketAddress(host, 9042));
     return h;
   }
 }

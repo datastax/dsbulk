@@ -16,8 +16,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.datastax.driver.core.BoundStatement;
+import com.datastax.driver.core.Cluster;
+import com.datastax.driver.core.Configuration;
+import com.datastax.driver.core.ProtocolOptions;
+import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.Statement;
@@ -48,7 +53,8 @@ public abstract class BulkExecutorTestBase {
   private final SimpleStatement successful2 = new SimpleStatement("should succeed 2");
   private final SimpleStatement failed = new SimpleStatement("should fail");
 
-  protected final Session session = mock(Session.class);
+  protected Session session;
+  protected Configuration configuration;
 
   private Consumer<? super WriteResult> writeConsumer;
   private Consumer<? super ReadResult> readConsumer;
@@ -60,6 +66,18 @@ public abstract class BulkExecutorTestBase {
     RxJavaPlugins.setErrorHandler((t) -> {});
   }
 
+  @BeforeEach
+  void setUpSession() throws Exception {
+    session = mock(Session.class);
+    Cluster cluster = mock(Cluster.class);
+    when(session.getCluster()).thenReturn(cluster);
+    configuration = mock(Configuration.class);
+    when(cluster.getConfiguration()).thenReturn(configuration);
+    ProtocolOptions protocolOptions = mock(ProtocolOptions.class);
+    when(configuration.getProtocolOptions()).thenReturn(protocolOptions);
+    when(protocolOptions.getProtocolVersion()).thenReturn(ProtocolVersion.V4);
+  }
+
   @SuppressWarnings("unchecked")
   @BeforeEach
   void setUpConsumers() {
@@ -67,7 +85,6 @@ public abstract class BulkExecutorTestBase {
     readConsumer = mock(Consumer.class);
   }
 
-  @SuppressWarnings("unchecked")
   @BeforeEach
   void setUpListener() {
     listener = mock(ExecutionListener.class);

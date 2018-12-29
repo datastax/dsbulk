@@ -39,8 +39,9 @@ import org.mockito.Mockito;
 
 public abstract class BulkExecutorITBase {
 
-  protected static final String WRITE_QUERY = "INSERT INTO test_write (pk, v) VALUES (?, ?)";
-  private static final SimpleStatement WRITE_STATEMENT = new SimpleStatement(WRITE_QUERY, 0, 0);
+  protected static final String WRITE_QUERY = "INSERT INTO test_write (pk, v) VALUES (%d, %d)";
+  private static final SimpleStatement WRITE_STATEMENT =
+      new SimpleStatement(String.format(WRITE_QUERY, 0, 0));
 
   protected static final String READ_QUERY = "SELECT * FROM test_read";
   private static final SimpleStatement READ_STATEMENT = new SimpleStatement(READ_QUERY);
@@ -48,17 +49,17 @@ public abstract class BulkExecutorITBase {
   protected static final String FAILED_QUERY = "should fail";
   private static final SimpleStatement FAILED_STATEMENT = new SimpleStatement(FAILED_QUERY);
 
-  private static final Flowable<SimpleStatement> WRITE_STATEMENTS =
-      Flowable.range(0, 100).map(i -> new SimpleStatement(WRITE_QUERY, i, i));
-
-  private static final Flowable<SimpleStatement> WRITE_STATEMENTS_WITH_LAST_BAD =
-      WRITE_STATEMENTS.skipLast(1).concatWith(Flowable.just(FAILED_STATEMENT));
-
   private static final Flowable<String> WRITE_QUERIES =
-      Flowable.range(0, 100).map(i -> WRITE_QUERY.replace("?, ?", i + ", " + i));
+      Flowable.range(0, 100).map(i -> String.format(WRITE_QUERY, i, i));
 
   private static final Flowable<String> WRITE_QUERIES_WITH_LAST_BAD =
       WRITE_QUERIES.skipLast(1).concatWith(Flowable.just(FAILED_QUERY));
+
+  private static final Flowable<SimpleStatement> WRITE_STATEMENTS =
+      WRITE_QUERIES.map(SimpleStatement::new);
+
+  private static final Flowable<SimpleStatement> WRITE_STATEMENTS_WITH_LAST_BAD =
+      WRITE_STATEMENTS.skipLast(1).concatWith(Flowable.just(FAILED_STATEMENT));
 
   protected final BulkExecutor failFastExecutor;
   private final BulkExecutor failSafeExecutor;
@@ -109,7 +110,7 @@ public abstract class BulkExecutorITBase {
   @Test
   void writeSyncStatementTest() {
     WriteResult r = failFastExecutor.writeSync(WRITE_STATEMENT);
-    verifySuccessfulWriteResult(r, WRITE_QUERY);
+    verifySuccessfulWriteResult(r, String.format(WRITE_QUERY, 0, 0));
   }
 
   @Test
@@ -318,7 +319,7 @@ public abstract class BulkExecutorITBase {
   @Test
   void writeAsyncStatementTest() throws Exception {
     WriteResult r = failFastExecutor.writeAsync(WRITE_STATEMENT).get();
-    verifySuccessfulWriteResult(r, WRITE_QUERY);
+    verifySuccessfulWriteResult(r, String.format(WRITE_QUERY, 0, 0));
   }
 
   @Test

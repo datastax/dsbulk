@@ -156,14 +156,17 @@ The field-to-column mapping to use, that applies to both loading and unloading; 
 - Indexed data sources: `0 = col1, 1 = col2, 2 = col3`, where `0`, `1`, `2`, are the zero-based indices of fields in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
     - A shortcut to map the first `n` fields is to simply specify the destination columns: `col1, col2, col3`.
 - Mapped data sources: `fieldA = col1, fieldB = col2, fieldC = col3`, where `fieldA`, `fieldB`, `fieldC`, are field names in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
+    - A shortcut to map fields named like columns is to simply specify the destination columns: `col1, col2, col3`.
 
 To specify that a field should be used as the timestamp (a.k.a. write-time) or ttl (a.k.a. time-to-live) of the inserted row, use the specially named fake columns `__ttl` and `__timestamp`: `fieldA = __timestamp, fieldB = __ttl`. Note that Timestamp fields are parsed as regular CQL timestamp columns and must comply with either `codec.timestamp`, or alternatively, with `codec.unit` + `codec.epoch`. TTL fields are parsed as integers representing durations in seconds, and must comply with `codec.number`.
 
-To specify that a column should be populated with the result of a function call, specify the function call as the input field (e.g. `now() = c4`). Note, this is only relevant for load operations. In addition, for mapped data sources, it is also possible to specify that the mapping be partly auto-generated and partly explicitly specified. For example, if a source row has fields `c1`, `c2`, `c3`, and `c5`, and the table has columns `c1`, `c2`, `c3`, `c4`, one can map all like-named columns and specify that `c5` in the source maps to `c4` in the table as follows: `* = *, c5 = c4`.
+To specify that a column should be populated with the result of a function call, specify the function call as the input field (e.g. `now() = c4`). Note, this is only relevant for load operations. Similarly, to specify that a field should be populated with the result of a function call, specify the function call as the input column (e.g. `field2 = now()`). This is only relevant for unload operations.
+
+In addition, for mapped data sources, it is also possible to specify that the mapping be partly auto-generated and partly explicitly specified. For example, if a source row has fields `c1`, `c2`, `c3`, and `c5`, and the table has columns `c1`, `c2`, `c3`, `c4`, one can map all like-named columns and specify that `c5` in the source maps to `c4` in the table as follows: `* = *, c5 = c4`.
 
 One can specify that all like-named fields be mapped, except for `c2`: `* = -c2`. To skip `c2` and `c3`: `* = [-c2, -c3]`.
 
-Any identifier, field or column, that is not strictly alphanumeric (i.e. not matching [a-zA-Z0-9_]+) must be surrounded by double-quotes: `"Field ""A""" = "Column 2"` (to escape a double-quote, simply double it).
+Any identifier, field or column, that is not strictly alphanumeric (i.e. not matching [a-zA-Z0-9_]+) must be surrounded by double-quotes, just like you would do in CQL: `"Field ""A""" = "Column 2"` (to escape a double-quote, simply double it). Note that, contrary to the CQL grammar, unquoted identifiers will not be lower-cased: an identifier such as `MyColumn1` will match a column named `"MyColumn1"` and not `mycolumn1`.
 
 The exact type of mapping to use depends on the connector being used. Some connectors can only produce indexed records; others can only produce mapped ones, while others are capable of producing both indexed and mapped records at the same time. Refer to the connector's documentation to know which kinds of mapping it supports.
 
@@ -579,14 +582,17 @@ The field-to-column mapping to use, that applies to both loading and unloading; 
 - Indexed data sources: `0 = col1, 1 = col2, 2 = col3`, where `0`, `1`, `2`, are the zero-based indices of fields in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
     - A shortcut to map the first `n` fields is to simply specify the destination columns: `col1, col2, col3`.
 - Mapped data sources: `fieldA = col1, fieldB = col2, fieldC = col3`, where `fieldA`, `fieldB`, `fieldC`, are field names in the source data; and `col1`, `col2`, `col3` are bound variable names in the insert statement.
+    - A shortcut to map fields named like columns is to simply specify the destination columns: `col1, col2, col3`.
 
 To specify that a field should be used as the timestamp (a.k.a. write-time) or ttl (a.k.a. time-to-live) of the inserted row, use the specially named fake columns `__ttl` and `__timestamp`: `fieldA = __timestamp, fieldB = __ttl`. Note that Timestamp fields are parsed as regular CQL timestamp columns and must comply with either `codec.timestamp`, or alternatively, with `codec.unit` + `codec.epoch`. TTL fields are parsed as integers representing durations in seconds, and must comply with `codec.number`.
 
-To specify that a column should be populated with the result of a function call, specify the function call as the input field (e.g. `now() = c4`). Note, this is only relevant for load operations. In addition, for mapped data sources, it is also possible to specify that the mapping be partly auto-generated and partly explicitly specified. For example, if a source row has fields `c1`, `c2`, `c3`, and `c5`, and the table has columns `c1`, `c2`, `c3`, `c4`, one can map all like-named columns and specify that `c5` in the source maps to `c4` in the table as follows: `* = *, c5 = c4`.
+To specify that a column should be populated with the result of a function call, specify the function call as the input field (e.g. `now() = c4`). Note, this is only relevant for load operations. Similarly, to specify that a field should be populated with the result of a function call, specify the function call as the input column (e.g. `field2 = now()`). This is only relevant for unload operations.
+
+In addition, for mapped data sources, it is also possible to specify that the mapping be partly auto-generated and partly explicitly specified. For example, if a source row has fields `c1`, `c2`, `c3`, and `c5`, and the table has columns `c1`, `c2`, `c3`, `c4`, one can map all like-named columns and specify that `c5` in the source maps to `c4` in the table as follows: `* = *, c5 = c4`.
 
 One can specify that all like-named fields be mapped, except for `c2`: `* = -c2`. To skip `c2` and `c3`: `* = [-c2, -c3]`.
 
-Any identifier, field or column, that is not strictly alphanumeric (i.e. not matching [a-zA-Z0-9_]+) must be surrounded by double-quotes: `"Field ""A""" = "Column 2"` (to escape a double-quote, simply double it).
+Any identifier, field or column, that is not strictly alphanumeric (i.e. not matching [a-zA-Z0-9_]+) must be surrounded by double-quotes, just like you would do in CQL: `"Field ""A""" = "Column 2"` (to escape a double-quote, simply double it). Note that, contrary to the CQL grammar, unquoted identifiers will not be lower-cased: an identifier such as `MyColumn1` will match a column named `"MyColumn1"` and not `mycolumn1`.
 
 The exact type of mapping to use depends on the connector being used. Some connectors can only produce indexed records; others can only produce mapped ones, while others are capable of producing both indexed and mapped records at the same time. Refer to the connector's documentation to know which kinds of mapping it supports.
 
@@ -632,7 +638,7 @@ Specify whether to map `null` input values to "unset" in the database, i.e., don
 
 Note that this setting is applied after the *codec.nullStrings* setting, and may intercept `null`s produced by that setting.
 
-This setting is ignored when counting.
+This setting is ignored when counting. When set to true but the protocol version in use does not support unset values (i.e., all protocol versions lesser than 4), this setting will be forced to false and a warning will be logged.
 
 Default: **true**.
 
@@ -644,7 +650,7 @@ For loading, the statement can be any `INSERT`, `UPDATE` or `DELETE` statement. 
 
 For unloading and counting, the statement can be any regular `SELECT` statement. If the statement does not contain a WHERE clause, the engine will generate a token range restriction clause of the form: `WHERE token(...) > :start and token(...) <= :end` and will generate as many statements as there are token ranges in the cluster, thus allowing parallelization of reads while at the same time targeting coordinators that are also replicas. If the statement does contain a WHERE clause however, that clause will remain intact; the engine will only be able to parallelize the operation if that WHERE clause also includes a `token(...) > :start and token(...) <= :end` relation (the bound variables can have any name).
 
-Statements can use both named and positional bound variables. Named bound variables are preferred; they usually have names matching those of the columns in the destination table, but this is not a strict requirement; it is, however, required that their names match those of fields specified in the mapping. Positional variables can also be used, and will be named after their corresponding column in the destination table. Note however that positional variables are not allowed in a few situations: in `USING TIMESTAMP` and `USING TTL` clauses, and in WHERE clause restrictions involving the `token` function.
+Statements can use both named and positional bound variables. Named bound variables should be preferred, unless the protocol version in use does not allow them; they usually have names matching those of the columns in the destination table, but this is not a strict requirement; it is, however, required that their names match those of fields specified in the mapping. Positional variables can also be used, and will be named after their corresponding column in the destination table.
 
 When loading and unloading graph data, the query must be provided in plain CQL; Gremlin queries are not supported.
 
@@ -667,6 +673,12 @@ Default: **null**.
 The Time-To-Live (TTL) of inserted/updated cells during load (seconds); a value of -1 means there is no TTL. Not applicable to unloading nor counting. For more information, see the [CQL Reference](https://docs.datastax.com/en/dse/6.0/cql/cql/cql_reference/cql_commands/cqlInsert.html#cqlInsert__ime-value), [Setting the time-to-live (TTL) for value](http://docs.datastax.com/en/dse/6.0/cql/cql/cql_using/useTTL.html), and [Expiring data with time-to-live](http://docs.datastax.com/en/dse/6.0/cql/cql/cql_using/useExpire.html).
 
 Default: **-1**.
+
+#### --schema.splits _&lt;string&gt;_
+
+The number of token range splits in which to divide the token ring. In other words, this setting determines how many read requests will be generated in order to read an entire table. Only used when unloading and counting; ignored otherwise. Note that the actual number of splits may be slightly greater or lesser than the number specified here, depending on the actual cluster topology and token ownership. Also, it is not possible to generate fewer splits than the total number of primary token ranges in the cluster, so the actual number of splits is always equal to or greater than that number. Set this to higher values if you experience timeouts when reading from DSE, specially if paging is disabled. The special syntax `NC` can be used to specify a number that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 splits.
+
+Default: **"8C"**.
 
 #### -to,--schema.to _&lt;string&gt;_
 
@@ -1102,7 +1114,7 @@ Default: **8**.
 
 #### --driver.pooling.local.requests _&lt;number&gt;_
 
-The maximum number of requests (1 to 32768) that can be executed concurrently on a connection.
+The maximum number of requests (1 to 32768) that can be executed concurrently on a connection. If connecting to legacy clusters using protocol version 1 or 2, any value greater than 128 will be capped at 128 and a warning will be logged.
 
 Default: **32768**.
 
@@ -1114,7 +1126,7 @@ Default: **1**.
 
 #### --driver.pooling.remote.requests _&lt;number&gt;_
 
-The maximum number of requests (1 to 32768) that can be executed concurrently on a connection.
+The maximum number of requests (1 to 32768) that can be executed concurrently on a connection. If connecting to legacy clusters using protocol version 1 or 2, any value greater than 128 will be capped at 128 and a warning will be logged.
 
 Default: **1024**.
 
@@ -1144,7 +1156,7 @@ Default: **"LOCAL_ONE"**.
 
 #### --driver.query.fetchSize _&lt;number&gt;_
 
-The page size, or how many rows will be retrieved simultaneously in a single network round trip. This setting will limit the number of results loaded into memory simultaneously during unloading or counting. Not applicable for loading.
+The page size, or how many rows will be retrieved simultaneously in a single network round trip. This setting will limit the number of results loaded into memory simultaneously during unloading or counting. Setting this value to any negative value will disable paging, i.e., the entire result set will be retrieved in one pass (not recommended). Not applicable for loading. When connecting with a positive page size to legacy clusters with protocol version 1, which does not support paging, paging will be automatically disabled and a warning will be logged. Note that this setting controls paging for regular queries; to customize the page size for continuous queries, use the `executor.continuousPaging.pageSize` setting instead.
 
 Default: **5000**.
 

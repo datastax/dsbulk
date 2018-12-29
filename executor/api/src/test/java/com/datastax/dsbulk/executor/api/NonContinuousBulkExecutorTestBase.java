@@ -13,8 +13,6 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.Configuration;
 import com.datastax.driver.core.ExecutionInfo;
 import com.datastax.driver.core.PagingState;
 import com.datastax.driver.core.QueryOptions;
@@ -54,7 +52,10 @@ public abstract class NonContinuousBulkExecutorTestBase extends BulkExecutorTest
   private List<Row> page2a = Collections.singletonList(row2aa);
 
   @BeforeEach
-  void setUpSession() throws ExecutionException, InterruptedException {
+  @Override
+  void setUpSession() throws Exception {
+    super.setUpSession();
+    when(configuration.getQueryOptions()).thenReturn(new QueryOptions().setFetchSize(100));
     when(session.executeAsync(any(SimpleStatement.class)))
         .thenAnswer(
             invocation -> {
@@ -138,11 +139,5 @@ public abstract class NonContinuousBulkExecutorTestBase extends BulkExecutorTest
             })
         .when(failedFuture)
         .addListener(any(Runnable.class), any(Executor.class));
-
-    Cluster cluster = mock(Cluster.class);
-    when(session.getCluster()).thenReturn(cluster);
-    Configuration configuration = mock(Configuration.class);
-    when(cluster.getConfiguration()).thenReturn(configuration);
-    when(configuration.getQueryOptions()).thenReturn(new QueryOptions().setFetchSize(100));
   }
 }

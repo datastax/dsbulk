@@ -6,7 +6,7 @@
  * and will post the amended terms at
  * https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
  */
-package com.datastax.dsbulk.executor.api.tck;
+package com.datastax.dsbulk.executor.api.internal.publisher;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -17,40 +17,42 @@ import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Configuration;
 import com.datastax.driver.core.ExecutionInfo;
 import com.datastax.driver.core.PagingState;
+import com.datastax.driver.core.ProtocolOptions;
+import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.QueryOptions;
 import com.datastax.driver.core.ResultSetFuture;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.Statement;
-import com.datastax.dsbulk.executor.api.listener.ExecutionContext;
-import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import io.reactivex.Flowable;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.Executor;
-import org.reactivestreams.tck.PublisherVerification;
-import org.reactivestreams.tck.TestEnvironment;
+import org.reactivestreams.Publisher;
 
-public abstract class ReadResultPublisherTestBase extends PublisherVerification<ReadResult> {
-
-  public static final ExecutionListener FAILED_LISTENER =
-      new ExecutionListener() {
-        // we need something that fails right away, inside the subscribe() method,
-        // and that does not leave us with many choices.
-        @Override
-        public void onExecutionStarted(Statement statement, ExecutionContext context) {
-          throw new IllegalArgumentException("whatever");
-        }
-      };
+public class ReadResultPublisherTest extends ResultPublisherTestBase<ReadResult> {
 
   private static final int PAGE_SIZE = 5;
 
-  public ReadResultPublisherTestBase() {
-    super(new TestEnvironment());
+  @Override
+  public Publisher<ReadResult> createPublisher(long elements) {
+    Statement statement = new SimpleStatement("irrelevant");
+    Session session = setUpSession(elements);
+    return new ReadResultPublisher(
+        statement, session, Optional.empty(), Optional.empty(), Optional.empty(), true);
   }
 
-  public static Session setUpSession(long elements) {
+  @Override
+  public Publisher<ReadResult> createFailedPublisher() {
+    Statement statement = new SimpleStatement("irrelevant");
+    Session session = setUpSession(1);
+    return new ReadResultPublisher(
+        statement, session, FAILED_LISTENER, Optional.empty(), Optional.empty(), true);
+  }
+
+  private static Session setUpSession(long elements) {
     Session session = mock(Session.class);
     Cluster cluster = mock(Cluster.class);
     when(session.getCluster()).thenReturn(cluster);
@@ -58,7 +60,10 @@ public abstract class ReadResultPublisherTestBase extends PublisherVerification<
     when(cluster.getConfiguration()).thenReturn(configuration);
     QueryOptions queryOptions = mock(QueryOptions.class);
     when(configuration.getQueryOptions()).thenReturn(queryOptions);
+    ProtocolOptions protocolOptions = mock(ProtocolOptions.class);
+    when(configuration.getProtocolOptions()).thenReturn(protocolOptions);
     when(queryOptions.getFetchSize()).thenReturn(PAGE_SIZE);
+    when(protocolOptions.getProtocolVersion()).thenReturn(ProtocolVersion.V4);
     ResultSetFuture previous = mockPages(elements);
     when(session.executeAsync(any(SimpleStatement.class))).thenReturn(previous);
     return session;

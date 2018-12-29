@@ -93,6 +93,8 @@ public class CountWorkflow implements Workflow {
         Schedulers.newParallel(
             Runtime.getRuntime().availableProcessors(), new DefaultThreadFactory("workflow"));
     cluster = driverSettings.newCluster();
+    cluster.init();
+    driverSettings.checkProtocolVersion(cluster);
     printDebugInfoAboutCluster(cluster);
     schemaSettings.init(WorkflowType.COUNT, cluster, false, false);
     DseSession session = cluster.connect();
@@ -119,8 +121,7 @@ public class CountWorkflow implements Workflow {
     int numPartitions = statsSettings.getNumPartitions();
     readResultCounter =
         schemaSettings.createReadResultCounter(session, codecRegistry, modes, numPartitions);
-    readStatements =
-        schemaSettings.createReadStatements(cluster, Runtime.getRuntime().availableProcessors());
+    readStatements = schemaSettings.createReadStatements(cluster);
     closed.set(false);
     success = false;
   }

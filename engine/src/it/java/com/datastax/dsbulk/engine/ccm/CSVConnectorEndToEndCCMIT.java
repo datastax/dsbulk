@@ -39,6 +39,7 @@ import static java.math.RoundingMode.UNNECESSARY;
 import static java.nio.file.Files.createTempDirectory;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.junit.jupiter.api.Assumptions.assumingThat;
 
 import com.datastax.driver.core.ResultSet;
@@ -49,7 +50,6 @@ import com.datastax.driver.core.UDTValue;
 import com.datastax.driver.extras.codecs.jdk8.InstantCodec;
 import com.datastax.driver.extras.codecs.jdk8.LocalDateCodec;
 import com.datastax.driver.extras.codecs.jdk8.LocalTimeCodec;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
@@ -61,13 +61,11 @@ import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.commons.tests.utils.Version;
-import com.datastax.dsbulk.connectors.api.Record;
-import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
-import com.datastax.dsbulk.connectors.csv.CSVConnector;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.dsbulk.engine.tests.MockConnector;
+import com.datastax.dsbulk.engine.tests.utils.RecordUtils;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
 import java.io.IOException;
@@ -85,7 +83,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
@@ -94,15 +91,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.reactivestreams.Publisher;
-import reactor.core.publisher.Flux;
 
 @ExtendWith(LogInterceptingExtension.class)
 @ExtendWith(StreamInterceptingExtension.class)
-@CCMConfig(numberOfNodes = 1)
+@CCMConfig(numberOfNodes = 1, config = "enable_user_defined_functions:true")
 @Tag("medium")
 @CCMRequirements(compatibleTypes = {DSE, DDAC})
 class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
+
+  private static final Version V3 = Version.parse("3.0");
+  private static final Version V2_2 = Version.parse("2.2");
+  private static final Version V2_1 = Version.parse("2.1");
 
   private final LogInterceptor logs;
   private final StreamInterceptor stderr;
@@ -302,6 +301,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
    */
   @Test
   void full_load_unload_complex() throws Exception {
+
+    assumeTrue(
+        ccm.getCassandraVersion().compareTo(V2_1) >= 0, "UDTs are not compatible with C* < 2.1");
 
     session.execute("DROP TABLE IF EXISTS complex");
     session.execute("DROP TYPE IF EXISTS contacts");
@@ -843,7 +845,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             "1");
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(3, unloadDir);
+    validateOutputFiles(2, unloadDir);
   }
 
   @Test
@@ -877,7 +879,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   @Test
-  void load_ttl_timestamp_now_in_query_and_mapping() {
+  void load_ttl_timestamp_now_in_query_and_mapping_positional_external_names() {
     session.execute(
         "CREATE TABLE IF NOT EXISTS table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
 
@@ -894,12 +896,105 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             ClassLoader.getSystemResource("ttl-timestamp.csv").toExternalForm(),
             "--driver.pooling.local.connections",
             "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
             "--schema.query",
-            "insert into "
-                + session.getLoggedKeyspace()
-                + ".table_ttl_timestamp (key, value, loaded_at) values (:key, :value, now()) using ttl :t1 and timestamp :t2",
+            "insert into table_ttl_timestamp (key, value, loaded_at) values (?, ?, now()) using ttl ? and timestamp ?",
+            "--schema.mapping",
+            "*=*, created_at = __timestamp, time_to_live = __ttl");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    assertTtlAndTimestamp();
+  }
+
+  @Test
+  void load_ttl_timestamp_now_in_query_and_mapping_positional_internal_names() {
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
+
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            quoteJson(logDir),
+            "--connector.csv.ignoreLeadingWhitespaces",
+            "true",
+            "--connector.csv.ignoreTrailingWhitespaces",
+            "true",
+            "--connector.csv.url",
+            ClassLoader.getSystemResource("ttl-timestamp.csv").toExternalForm(),
+            "--driver.pooling.local.connections",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            "insert into table_ttl_timestamp (key, value, loaded_at) values (?, ?, now()) using ttl ? and timestamp ?",
+            "--schema.mapping",
+            // using internal names directly in the mapping should work too
+            quoteJson("*=*, created_at = \"[timestamp]\", time_to_live = \"[ttl]\""));
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    assertTtlAndTimestamp();
+  }
+
+  @Test
+  void load_ttl_timestamp_now_in_query_and_mapping_real_names() {
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
+
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            quoteJson(logDir),
+            "--connector.csv.ignoreLeadingWhitespaces",
+            "true",
+            "--connector.csv.ignoreTrailingWhitespaces",
+            "true",
+            "--connector.csv.url",
+            ClassLoader.getSystemResource("ttl-timestamp.csv").toExternalForm(),
+            "--driver.pooling.local.connections",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            "insert into table_ttl_timestamp (key, value, loaded_at) values (:key, :value, now()) using ttl :t1 and timestamp :t2",
             "--schema.mapping",
             "*=*, created_at = t2, time_to_live = t1");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    assertTtlAndTimestamp();
+  }
+
+  @Test
+  void load_ttl_timestamp_now_in_query_and_mapping_external_names() {
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
+
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            quoteJson(logDir),
+            "--connector.csv.ignoreLeadingWhitespaces",
+            "true",
+            "--connector.csv.ignoreTrailingWhitespaces",
+            "true",
+            "--connector.csv.url",
+            ClassLoader.getSystemResource("ttl-timestamp.csv").toExternalForm(),
+            "--driver.pooling.local.connections",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            "insert into table_ttl_timestamp (key, value, loaded_at) values (:key, :value, now()) using ttl :t1 and timestamp :t2",
+            "--schema.mapping",
+            // using __timestamp and __ttl should work too (although not very useful), they should
+            // map to t2 and t1 respectively
+            "*=*, created_at = __timestamp, time_to_live = __ttl");
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -938,7 +1033,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   private void assertTtlAndTimestamp() {
     assertThat(session.execute("SELECT COUNT(*) FROM table_ttl_timestamp").one().getLong(0))
-        .isEqualTo(2L);
+        .isEqualTo(1L);
 
     Row row;
 
@@ -946,15 +1041,6 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         session
             .execute(
                 "SELECT TTL(value), WRITETIME(value), loaded_at FROM table_ttl_timestamp WHERE key = 1")
-            .one();
-    assertThat(row.getInt(0)).isZero();
-    assertThat(row.getLong(1)).isNotZero(); // cannot assert its true value
-    assertThat(row.getUUID(2)).isNotNull();
-
-    row =
-        session
-            .execute(
-                "SELECT TTL(value), WRITETIME(value), loaded_at FROM table_ttl_timestamp WHERE key = 2")
             .one();
     assertThat(row.getInt(0)).isNotZero().isLessThanOrEqualTo(1000);
     assertThat(row.getLong(1))
@@ -1587,30 +1673,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     session.execute("INSERT INTO test_delete (pk, cc, value) VALUES (1,1,1)");
     session.execute("INSERT INTO test_delete (pk, cc, value) VALUES (1,2,2)");
 
-    MockConnector.setDelegate(
-        new CSVConnector() {
-
-          @Override
-          public void init() {}
-
-          @Override
-          public void configure(LoaderConfig settings, boolean read) {}
-
-          @Override
-          public int estimatedResourceCount() {
-            return -1;
-          }
-
-          @Override
-          public Supplier<? extends Publisher<Publisher<Record>>> readByResource() {
-            return () -> Flux.just(read().get());
-          }
-
-          @Override
-          public Supplier<? extends Publisher<Record>> read() {
-            return () -> Flux.just(DefaultRecord.indexed("1,1", () -> null, 0, "1", "1"));
-          }
-        });
+    MockConnector.mockReads(RecordUtils.mappedCSV("pk", "1", "cc", "1"));
 
     List<String> args = new ArrayList<>();
     args.add("load");
@@ -1640,30 +1703,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     session.execute("INSERT INTO test_delete (\"PK\", \"CC\", value) VALUES (1,1,1)");
     session.execute("INSERT INTO test_delete (\"PK\", \"CC\", value) VALUES (1,2,2)");
 
-    MockConnector.setDelegate(
-        new CSVConnector() {
-
-          @Override
-          public void init() {}
-
-          @Override
-          public void configure(LoaderConfig settings, boolean read) {}
-
-          @Override
-          public int estimatedResourceCount() {
-            return -1;
-          }
-
-          @Override
-          public Supplier<? extends Publisher<Publisher<Record>>> readByResource() {
-            return () -> Flux.just(read().get());
-          }
-
-          @Override
-          public Supplier<? extends Publisher<Record>> read() {
-            return () -> Flux.just(DefaultRecord.indexed("1,1", () -> null, 0, "1", "1"));
-          }
-        });
+    MockConnector.mockReads(RecordUtils.mappedCSV("Field A", "1", "Field B", "1"));
 
     List<String> args = new ArrayList<>();
     args.add("load");
@@ -1697,30 +1737,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     session.execute("INSERT INTO test_delete (pk, cc, value) VALUES (1,1,1)");
     session.execute("INSERT INTO test_delete (pk, cc, value) VALUES (1,2,2)");
 
-    MockConnector.setDelegate(
-        new CSVConnector() {
-
-          @Override
-          public void init() {}
-
-          @Override
-          public void configure(LoaderConfig settings, boolean read) {}
-
-          @Override
-          public int estimatedResourceCount() {
-            return -1;
-          }
-
-          @Override
-          public Supplier<? extends Publisher<Publisher<Record>>> readByResource() {
-            return () -> Flux.just(read().get());
-          }
-
-          @Override
-          public Supplier<? extends Publisher<Record>> read() {
-            return () -> Flux.just(DefaultRecord.indexed("1,1", () -> null, 0, "1", "1"));
-          }
-        });
+    MockConnector.mockReads(RecordUtils.mappedCSV("pk", "1", "cc", "1"));
 
     List<String> args = new ArrayList<>();
     args.add("load");
@@ -1756,30 +1773,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     session.execute("INSERT INTO test_delete (\"PK\", cc, value) VALUES (1,1,1)");
     session.execute("INSERT INTO test_delete (\"PK\", cc, value) VALUES (1,2,2)");
 
-    MockConnector.setDelegate(
-        new CSVConnector() {
-
-          @Override
-          public void init() {}
-
-          @Override
-          public void configure(LoaderConfig settings, boolean read) {}
-
-          @Override
-          public int estimatedResourceCount() {
-            return -1;
-          }
-
-          @Override
-          public Supplier<? extends Publisher<Publisher<Record>>> readByResource() {
-            return () -> Flux.just(read().get());
-          }
-
-          @Override
-          public Supplier<? extends Publisher<Record>> read() {
-            return () -> Flux.just(DefaultRecord.indexed("1,1", () -> null, 0, "1", "1", ""));
-          }
-        });
+    MockConnector.mockReads(RecordUtils.indexedCSV("1", "1", ""));
 
     List<String> args = new ArrayList<>();
     args.add("load");
@@ -1792,7 +1786,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("test_delete");
     args.add("--schema.mapping");
-    args.add("PK,cc,value");
+    args.add("0=PK,1=cc,2=value");
     args.add("--schema.nullToUnset");
     args.add("false");
 
@@ -1821,30 +1815,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     session.execute(
         "CREATE TABLE IF NOT EXISTS test_batch2 (pk int, cc int, value int, PRIMARY KEY (pk, cc))");
 
-    MockConnector.setDelegate(
-        new CSVConnector() {
-
-          @Override
-          public void init() {}
-
-          @Override
-          public void configure(LoaderConfig settings, boolean read) {}
-
-          @Override
-          public int estimatedResourceCount() {
-            return -1;
-          }
-
-          @Override
-          public Supplier<? extends Publisher<Publisher<Record>>> readByResource() {
-            return () -> Flux.just(read().get());
-          }
-
-          @Override
-          public Supplier<? extends Publisher<Record>> read() {
-            return () -> Flux.just(DefaultRecord.indexed("1,1", () -> null, 0, "1", "2", "3", "4"));
-          }
-        });
+    MockConnector.mockReads(RecordUtils.indexedCSV("1", "2", "3", "4"));
 
     List<String> args = new ArrayList<>();
     args.add("load");
@@ -1855,7 +1826,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.keyspace");
     args.add(session.getLoggedKeyspace());
     args.add("--schema.mapping");
-    args.add("pk,cc,value1,value2");
+    args.add("0=pk,1=cc,2=value1,3=value2");
     args.add("--schema.query");
     args.add(
         "BEGIN BATCH "
@@ -1880,6 +1851,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   /** Test for DAT-236. */
   @Test
   void temporal_roundtrip() throws Exception {
+
+    assumeTrue(
+        ccm.getCassandraVersion().compareTo(V3) >= 0,
+        "CQL type date is not compatible with C* < 3.0");
 
     session.execute("DROP TABLE IF EXISTS temporals");
     session.execute(
@@ -1993,6 +1968,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   /** Test for DAT-364 (numeric timestamps). */
   @Test
   void temporal_roundtrip_numeric() throws Exception {
+
+    assumeTrue(
+        ccm.getCassandraVersion().compareTo(V3) >= 0,
+        "CQL type date is not compatible with C* < 3.0");
 
     session.execute("DROP TABLE IF EXISTS temporals");
     session.execute(
@@ -2291,6 +2270,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   @Test
   void unload_with_custom_query_and_function_with_header() throws IOException {
 
+    assumeTrue(
+        ccm.getCassandraVersion().compareTo(V3) >= 0,
+        "CQL function toDate is not compatible with C* < 3.0");
+
     session.execute("DROP TABLE IF EXISTS unload_with_function1");
     session.execute(
         "CREATE TABLE IF NOT EXISTS unload_with_function1 (pk int, cc timeuuid, v int, PRIMARY KEY (pk, cc))");
@@ -2323,6 +2306,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   @Test
   void unload_with_custom_query_and_function_without_header() throws IOException {
+
+    assumeTrue(
+        ccm.getCassandraVersion().compareTo(V3) >= 0,
+        "CQL function toDate is not compatible with C* < 3.0");
 
     session.execute("DROP TABLE IF EXISTS unload_with_function2");
     session.execute(
@@ -2387,6 +2374,39 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(lines).hasSize(1).containsExactly("0,1,2");
   }
 
+  @Test
+  void unload_token_range_restriction_positional() throws IOException {
+
+    session.execute("DROP TABLE IF EXISTS unload_token_range");
+    session.execute(
+        "CREATE TABLE unload_token_range (pk int, cc int, v int, PRIMARY KEY (pk, cc))");
+    session.execute("INSERT INTO unload_token_range (pk, cc, v) values (0, 1, 2)");
+
+    List<String> args =
+        Lists.newArrayList(
+            "unload",
+            "--log.directory",
+            quoteJson(logDir),
+            "-header",
+            "false",
+            "--connector.csv.url",
+            quoteJson(unloadDir),
+            "--connector.csv.maxConcurrentFiles",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            quoteJson(
+                "SELECT pk, cc, v FROM unload_token_range "
+                    + "WHERE token(pk) > ? AND token(pk) <= ?"));
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    List<String> lines =
+        FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
+    assertThat(lines).hasSize(1).containsExactly("0,1,2");
+  }
+
   /** Test for DAT-373. */
   @Test
   void duplicate_mappings() throws IOException {
@@ -2441,6 +2461,135 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     List<String> lines = readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
     assertThat(lines).containsExactly("pk,a,b,c,d", "1,42,42,42,42");
+  }
+
+  @Test
+  void load_user_defined_functions_custom_query() {
+
+    assumeTrue(
+        ccm.getCassandraVersion().compareTo(V2_2) >= 0,
+        "User-defined functions are not compatible with C* < 2.2");
+
+    session.execute("DROP TABLE IF EXISTS udf_table");
+    session.execute(
+        "CREATE TABLE udf_table (pk int PRIMARY KEY, \"Value 1\" int, \"Value 2\" int, \"SUM\" int)");
+
+    session.execute("DROP FUNCTION IF EXISTS plus");
+    session.execute(
+        "CREATE FUNCTION plus(s int, v int) RETURNS NULL ON NULL INPUT RETURNS int LANGUAGE java AS 'return s+v;';");
+
+    MockConnector.mockReads(RecordUtils.mappedCSV("pk", "0", "Value 1", "1", "Value 2", "2"));
+
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            quoteJson(logDir),
+            "--connector.name",
+            "mock",
+            "--connector.csv.maxConcurrentFiles",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            quoteJson(
+                "INSERT INTO udf_table "
+                    + "(pk, \"Value 1\", \"Value 2\", \"SUM\") "
+                    + "VALUES "
+                    + "(:pk, :\"Value 1\", :\"Value 2\", plus(:\"Value 1\", :\"Value 2\"))"));
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+
+    Row row = session.execute("SELECT * FROM udf_table").one();
+    assertThat(row.getInt("pk")).isEqualTo(0);
+    assertThat(row.getInt("\"Value 1\"")).isEqualTo(1);
+    assertThat(row.getInt("\"Value 2\"")).isEqualTo(2);
+    assertThat(row.getInt("\"SUM\"")).isEqualTo(3);
+  }
+
+  @Test
+  void unload_user_defined_functions_custom_query() throws IOException {
+
+    assumeTrue(
+        ccm.getCassandraVersion().compareTo(V2_2) >= 0,
+        "User-defined functions are not compatible with C* < 2.2");
+
+    session.execute("DROP TABLE IF EXISTS udf_table");
+    session.execute(
+        "CREATE TABLE udf_table (pk int PRIMARY KEY, \"Value 1\" int, \"Value 2\" int)");
+    session.execute("INSERT INTO udf_table (pk, \"Value 1\", \"Value 2\") VALUES (0,1,2)");
+
+    session.execute("DROP FUNCTION IF EXISTS plus");
+    session.execute(
+        "CREATE FUNCTION plus(s int, v int) RETURNS NULL ON NULL INPUT RETURNS int LANGUAGE java AS 'return s+v;';");
+
+    List<String> args =
+        Lists.newArrayList(
+            "unload",
+            "--log.directory",
+            quoteJson(logDir),
+            "-header",
+            "true",
+            "--connector.csv.url",
+            quoteJson(unloadDir),
+            "--connector.csv.maxConcurrentFiles",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            quoteJson(
+                "SELECT "
+                    + "\"Value 1\", \"Value 2\", "
+                    + "plus(\"Value 1\", \"Value 2\") AS \"SUM\""
+                    + "FROM udf_table"));
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+
+    List<String> lines = readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
+    assertThat(lines).containsExactly("Value 1,Value 2,SUM", "1,2,3");
+  }
+
+  @Test
+  void unload_user_defined_functions_mapping() throws IOException {
+
+    assumeTrue(
+        ccm.getCassandraVersion().compareTo(V2_2) >= 0,
+        "User-defined functions are not compatible with C* < 2.2");
+
+    session.execute("DROP TABLE IF EXISTS udf_table");
+    session.execute(
+        "CREATE TABLE udf_table (pk int PRIMARY KEY, \"Value 1\" int, \"Value 2\" int)");
+    session.execute("INSERT INTO udf_table (pk, \"Value 1\", \"Value 2\") VALUES (0,1,2)");
+
+    session.execute("DROP FUNCTION IF EXISTS plus");
+    session.execute(
+        "CREATE FUNCTION plus(s int, v int) RETURNS NULL ON NULL INPUT RETURNS int LANGUAGE java AS 'return s+v;';");
+
+    List<String> args =
+        Lists.newArrayList(
+            "unload",
+            "--log.directory",
+            quoteJson(logDir),
+            "-header",
+            "true",
+            "--connector.csv.url",
+            quoteJson(unloadDir),
+            "--connector.csv.maxConcurrentFiles",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.table",
+            "udf_table",
+            "--schema.mapping",
+            quoteJson("* = [-pk], SUM = plus(\"Value 1\", \"Value 2\")"));
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+
+    List<String> lines = readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
+    assertThat(lines).containsExactly("SUM,Value 1,Value 2", "3,1,2");
   }
 
   static void checkNumbersWritten(

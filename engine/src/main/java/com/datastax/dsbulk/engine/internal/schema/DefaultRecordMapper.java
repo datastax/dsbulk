@@ -32,9 +32,6 @@ import org.jetbrains.annotations.Nullable;
 
 public class DefaultRecordMapper implements RecordMapper {
 
-  private static final String FIELD = "field";
-  private static final String CQL_TYPE = "cqlType";
-
   private final PreparedStatement insertStatement;
   private final ImmutableSet<CQLIdentifier> primaryKeyVariables;
   private final ProtocolVersion protocolVersion;
@@ -112,6 +109,9 @@ public class DefaultRecordMapper implements RecordMapper {
         }
       }
       ensurePrimaryKeySet(bs);
+      if (protocolVersion.compareTo(ProtocolVersion.V4) < 0) {
+        ensureAllVariablesSet(bs);
+      }
       record.clear();
       return bs;
     } catch (Exception e) {
@@ -175,6 +175,15 @@ public class DefaultRecordMapper implements RecordMapper {
     for (CQLIdentifier variable : primaryKeyVariables) {
       if (!bs.isSet(variable.asVariable())) {
         throw InvalidMappingException.unsetPrimaryKey(variable);
+      }
+    }
+  }
+
+  private void ensureAllVariablesSet(BoundStatement bs) {
+    ColumnDefinitions variables = insertStatement.getVariables();
+    for (int i = 0; i < variables.size(); i++) {
+      if (!bs.isSet(i)) {
+        bs.setToNull(i);
       }
     }
   }

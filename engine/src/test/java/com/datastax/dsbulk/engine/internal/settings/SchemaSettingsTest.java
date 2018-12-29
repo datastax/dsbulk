@@ -17,11 +17,14 @@ import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newPreparedId;
 import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newToken;
 import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newTokenRange;
 import static com.datastax.driver.core.DriverCoreHooks.wrappedStatement;
+import static com.datastax.driver.core.ProtocolVersion.V1;
 import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.datastax.dsbulk.commons.tests.utils.ReflectionUtils.getInternalState;
+import static com.datastax.dsbulk.engine.WorkflowType.LOAD;
+import static com.datastax.dsbulk.engine.WorkflowType.UNLOAD;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
-import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERNAL_TIMESTAMP_VARNAME;
-import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERNAL_TTL_VARNAME;
+import static com.datastax.dsbulk.engine.internal.schema.QueryInspector.INTERNAL_TIMESTAMP_VARNAME;
+import static com.datastax.dsbulk.engine.internal.schema.QueryInspector.INTERNAL_TTL_VARNAME;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.global;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.hosts;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.partitions;
@@ -50,6 +53,7 @@ import com.datastax.driver.core.KeyspaceMetadata;
 import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.ProtocolOptions;
+import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.StatementWrapper;
@@ -92,6 +96,8 @@ import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 
 @SuppressWarnings("unchecked")
@@ -128,6 +134,7 @@ class SchemaSettingsTest {
   private ColumnMetadata col1;
   private ColumnMetadata col2;
   private ColumnMetadata col3;
+  private ProtocolOptions protocolOptions;
 
   SchemaSettingsTest(@LogCapture(level = WARN) LogInterceptor logs) {
     this.logs = logs;
@@ -144,8 +151,8 @@ class SchemaSettingsTest {
     col1 = mock(ColumnMetadata.class);
     col2 = mock(ColumnMetadata.class);
     col3 = mock(ColumnMetadata.class);
+    protocolOptions = mock(ProtocolOptions.class);
     Configuration configuration = mock(Configuration.class);
-    ProtocolOptions protocolOptions = mock(ProtocolOptions.class);
     List<ColumnMetadata> columns = newArrayList(col1, col2, col3);
     when(session.getCluster()).thenReturn(cluster);
     when(cluster.getMetadata()).thenReturn(metadata);
@@ -195,15 +202,14 @@ class SchemaSettingsTest {
                 + "nullToUnset = true, "
                 + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, true, false);
+    schemaSettings.init(LOAD, cluster, true, false);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
-        .isEqualTo(
-            String.format("INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (:\"%2$s\",:%1$s)", C1, C2));
+        .isEqualTo(String.format("INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (?,?)", C1, C2));
     assertMapping((DefaultMapping) getInternalState(recordMapper, "mapping"), "0", C2, "2", C1);
     assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
   }
@@ -215,7 +221,7 @@ class SchemaSettingsTest {
     when(col3.getType()).thenReturn(counter());
     LoaderConfig config = makeLoaderConfig("keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, false, true);
+    schemaSettings.init(LOAD, cluster, false, true);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
@@ -224,8 +230,7 @@ class SchemaSettingsTest {
     assertThat(argument.getValue())
         .isEqualTo(
             String.format(
-                "UPDATE ks.t1 SET \"%2$s\"=\"%2$s\"+:\"%2$s\",%3$s=%3$s+:%3$s WHERE %1$s=:%1$s",
-                C1, C2, C3));
+                "UPDATE ks.t1 SET \"%2$s\"=\"%2$s\"+?,%3$s=%3$s+? WHERE %1$s=?", C1, C2, C3));
     DefaultMapping mapping = (DefaultMapping) getInternalState(recordMapper, "mapping");
     assertMapping(mapping, C2, C2, C1, C1, C3, C3);
     assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
@@ -235,7 +240,7 @@ class SchemaSettingsTest {
   void should_fail_to_create_schema_settings_when_mapping_many_to_one() {
     LoaderConfig config = makeLoaderConfig("mapping = \" 0 = f1, 1 = f1\", keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, false, true))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, false, true))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
             "Invalid schema.mapping: the following variables are mapped to more than one field: f1. Please review schema.mapping for duplicates.");
@@ -250,7 +255,7 @@ class SchemaSettingsTest {
                 + "nullToUnset = true, "
                 + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, true, false);
+    schemaSettings.init(LOAD, cluster, true, false);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
@@ -259,9 +264,8 @@ class SchemaSettingsTest {
     assertThat(argument.getValue())
         .isEqualTo(
             String.format(
-                "INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (:\"%2$s\",:%1$s) "
-                    + "USING TTL :%3$s AND TIMESTAMP :%4$s",
-                C1, C2, INTERNAL_TTL_VARNAME, INTERNAL_TIMESTAMP_VARNAME));
+                "INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (?,?) " + "USING TTL ? AND TIMESTAMP ?",
+                C1, C2));
     assertMapping(
         (DefaultMapping) getInternalState(recordMapper, "mapping"),
         "0",
@@ -282,14 +286,14 @@ class SchemaSettingsTest {
             String.format("mapping = \" now() = \\\"%2$s\\\" , 2 = %1$s \", ", C1, C2)
                 + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, true, false);
+    schemaSettings.init(LOAD, cluster, true, false);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
-        .isEqualTo(String.format("INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (now(),:%1$s)", C1, C2));
+        .isEqualTo(String.format("INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (now(),?)", C1, C2));
     assertMapping((DefaultMapping) getInternalState(recordMapper, "mapping"), "2", C1);
   }
 
@@ -300,14 +304,13 @@ class SchemaSettingsTest {
             String.format("mapping = \" 0 = \\\"%2$s\\\" , 2 = %1$s \", ", C1, C2)
                 + "keyspace=ks, table=t1, queryTtl=30");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, false, true);
+    schemaSettings.init(LOAD, cluster, false, true);
     schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
         .isEqualTo(
-            String.format(
-                "INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (:\"%2$s\",:%1$s) USING TTL 30", C1, C2));
+            String.format("INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (?,?) USING TTL 30", C1, C2));
   }
 
   @Test
@@ -317,14 +320,14 @@ class SchemaSettingsTest {
             String.format("mapping = \" 0 = \\\"%2$s\\\" , 2 = %1$s \", ", C1, C2)
                 + "keyspace=ks, table=t1, queryTimestamp=\"2017-01-02T00:00:01Z\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, false, true);
+    schemaSettings.init(LOAD, cluster, false, true);
     schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
         .isEqualTo(
             String.format(
-                "INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (:\"%2$s\",:%1$s) USING TIMESTAMP %3$s",
+                "INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (?,?) USING TIMESTAMP %3$s",
                 C1,
                 C2,
                 instantToNumber(Instant.parse("2017-01-02T00:00:01Z"), MICROSECONDS, EPOCH)));
@@ -337,14 +340,14 @@ class SchemaSettingsTest {
             String.format("mapping = \" 0 = \\\"%2$s\\\" , 2 = %1$s \", ", C1, C2)
                 + "keyspace=ks, table=t1, queryTimestamp=\"2017-01-02T00:00:01Z\", queryTtl=25");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, false, true);
+    schemaSettings.init(LOAD, cluster, false, true);
     schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
         .isEqualTo(
             String.format(
-                "INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (:\"%2$s\",:%1$s) "
+                "INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (?,?) "
                     + "USING TTL 25 AND TIMESTAMP %3$s",
                 C1,
                 C2,
@@ -362,7 +365,7 @@ class SchemaSettingsTest {
                 + "query = \"INSERT INTO ks.t1(c2, c1) VALUES (:c2var, :c1var)\", "
                 + "nullToUnset = true");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, true, false);
+    schemaSettings.init(LOAD, cluster, true, false);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
@@ -382,15 +385,14 @@ class SchemaSettingsTest {
                 + "nullToUnset = true, "
                 + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, true, false);
+    schemaSettings.init(LOAD, cluster, true, false);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
-        .isEqualTo(
-            String.format("INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (:\"%2$s\",:%1$s)", C1, C2));
+        .isEqualTo(String.format("INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (?,?)", C1, C2));
     assertMapping((DefaultMapping) getInternalState(recordMapper, "mapping"), "0", C2, "1", C1);
     assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
   }
@@ -403,15 +405,14 @@ class SchemaSettingsTest {
                 + "nullToUnset = true, "
                 + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, false, true);
+    schemaSettings.init(LOAD, cluster, false, true);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
-        .isEqualTo(
-            String.format("INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (:\"%2$s\",:%1$s)", C1, C2));
+        .isEqualTo(String.format("INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (?,?)", C1, C2));
     assertMapping((DefaultMapping) getInternalState(recordMapper, "mapping"), C1, C1, C2, C2);
     assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
   }
@@ -426,7 +427,7 @@ class SchemaSettingsTest {
                     "query=\"insert into ks.t1 (%1$s,\\\"%2$s\\\") values (:%1$s,:\\\"%2$s\\\")\"",
                     C1, C2));
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, true, false);
+    schemaSettings.init(LOAD, cluster, true, false);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
@@ -443,7 +444,7 @@ class SchemaSettingsTest {
   void should_create_record_mapper_when_keyspace_and_table_provided() {
     LoaderConfig config = makeLoaderConfig("nullToUnset = true, keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, true, true);
+    schemaSettings.init(LOAD, cluster, true, true);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
@@ -451,9 +452,7 @@ class SchemaSettingsTest {
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
         .isEqualTo(
-            String.format(
-                "INSERT INTO ks.t1(%1$s,\"%2$s\",%3$s) VALUES (:%1$s,:\"%2$s\",:%3$s)",
-                C1, C2, C3));
+            String.format("INSERT INTO ks.t1(%1$s,\"%2$s\",%3$s) VALUES (?,?,?)", C1, C2, C3));
     assertMapping((DefaultMapping) getInternalState(recordMapper, "mapping"));
     assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
   }
@@ -466,7 +465,7 @@ class SchemaSettingsTest {
             "nullToUnset = true, keyspace=ks, table=t1, "
                 + String.format("mapping = \" *=*, %1$s = %2$s \"", C4, C3));
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, false, true);
+    schemaSettings.init(LOAD, cluster, false, true);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
@@ -474,9 +473,7 @@ class SchemaSettingsTest {
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
         .isEqualTo(
-            String.format(
-                "INSERT INTO ks.t1(%3$s,%1$s,\"%2$s\") VALUES (:%3$s,:%1$s,:\"%2$s\")",
-                C1, C2, C3));
+            String.format("INSERT INTO ks.t1(%3$s,%1$s,\"%2$s\") VALUES (?,?,?)", C1, C2, C3));
     assertMapping(
         (DefaultMapping) getInternalState(recordMapper, "mapping"), C1, C1, C2, C2, C4, C3);
     assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
@@ -490,14 +487,14 @@ class SchemaSettingsTest {
             "nullToUnset = true, keyspace=ks, table=t1, "
                 + String.format("mapping = \" *=-\\\"%1$s\\\" \"", C2));
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, false, true);
+    schemaSettings.init(LOAD, cluster, false, true);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
-        .isEqualTo(String.format("INSERT INTO ks.t1(%1$s,%2$s) VALUES (:%1$s,:%2$s)", C1, C3));
+        .isEqualTo(String.format("INSERT INTO ks.t1(%1$s,%2$s) VALUES (?,?)", C1, C3));
     assertMapping((DefaultMapping) getInternalState(recordMapper, "mapping"), C1, C1, C3, C3);
     assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
   }
@@ -510,14 +507,14 @@ class SchemaSettingsTest {
             "nullToUnset = true, keyspace=ks, table=t1, "
                 + String.format("mapping = \" *=[-\\\"%1$s\\\", -%2$s] \"", C2, C3));
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, false, true);
+    schemaSettings.init(LOAD, cluster, false, true);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
-        .isEqualTo(String.format("INSERT INTO ks.t1(%1$s) VALUES (:%1$s)", C1));
+        .isEqualTo(String.format("INSERT INTO ks.t1(%1$s) VALUES (?)", C1));
     assertMapping((DefaultMapping) getInternalState(recordMapper, "mapping"), C1, C1);
     assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
   }
@@ -526,7 +523,7 @@ class SchemaSettingsTest {
   void should_create_record_mapper_when_null_to_unset_is_false() {
     LoaderConfig config = makeLoaderConfig("nullToUnset = false, keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, false, true);
+    schemaSettings.init(LOAD, cluster, false, true);
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(recordMapper).isNotNull();
@@ -534,9 +531,7 @@ class SchemaSettingsTest {
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
         .isEqualTo(
-            String.format(
-                "INSERT INTO ks.t1(%1$s,\"%2$s\",%3$s) VALUES (:%1$s,:\"%2$s\",:%3$s)",
-                C1, C2, C3));
+            String.format("INSERT INTO ks.t1(%1$s,\"%2$s\",%3$s) VALUES (?,?,?)", C1, C2, C3));
     assertMapping((DefaultMapping) getInternalState(recordMapper, "mapping"));
     assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isFalse();
   }
@@ -549,7 +544,7 @@ class SchemaSettingsTest {
                 + "nullToUnset = true, "
                 + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD, cluster, true, false);
+    schemaSettings.init(UNLOAD, cluster, true, false);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThat(readResultMapper).isNotNull();
@@ -558,8 +553,7 @@ class SchemaSettingsTest {
     assertThat(argument.getValue())
         .isEqualTo(
             String.format(
-                "SELECT \"%2$s\",%1$s FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end",
-                C1, C2));
+                "SELECT \"%2$s\",%1$s FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?", C1, C2));
     assertMapping((DefaultMapping) getInternalState(readResultMapper, "mapping"), "0", C2, "2", C1);
   }
 
@@ -571,7 +565,7 @@ class SchemaSettingsTest {
                 + "nullToUnset = true, "
                 + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD, cluster, true, false);
+    schemaSettings.init(UNLOAD, cluster, true, false);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThat(readResultMapper).isNotNull();
@@ -580,8 +574,7 @@ class SchemaSettingsTest {
     assertThat(argument.getValue())
         .isEqualTo(
             String.format(
-                "SELECT \"%2$s\",%1$s FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end",
-                C1, C2));
+                "SELECT \"%2$s\",%1$s FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?", C1, C2));
     assertMapping((DefaultMapping) getInternalState(readResultMapper, "mapping"), "0", C2, "1", C1);
   }
 
@@ -593,7 +586,7 @@ class SchemaSettingsTest {
                 + "nullToUnset = true, "
                 + "keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD, cluster, false, true);
+    schemaSettings.init(UNLOAD, cluster, false, true);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThat(readResultMapper).isNotNull();
@@ -602,8 +595,7 @@ class SchemaSettingsTest {
     assertThat(argument.getValue())
         .isEqualTo(
             String.format(
-                "SELECT \"%2$s\",%1$s FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end",
-                C1, C2));
+                "SELECT \"%2$s\",%1$s FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?", C1, C2));
     assertMapping((DefaultMapping) getInternalState(readResultMapper, "mapping"), C1, C1, C2, C2);
   }
 
@@ -615,7 +607,7 @@ class SchemaSettingsTest {
             "nullToUnset = true, keyspace=ks, table=t1, "
                 + String.format("mapping = \" *=*, %1$s = %2$s \"", C4, C3));
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD, cluster, false, true);
+    schemaSettings.init(UNLOAD, cluster, false, true);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThat(readResultMapper).isNotNull();
@@ -624,7 +616,7 @@ class SchemaSettingsTest {
     assertThat(argument.getValue())
         .isEqualTo(
             String.format(
-                "SELECT %3$s,%1$s,\"%2$s\" FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end",
+                "SELECT %3$s,%1$s,\"%2$s\" FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?",
                 C1, C2, C3));
     assertMapping(
         (DefaultMapping) getInternalState(readResultMapper, "mapping"), C1, C1, C2, C2, C4, C3);
@@ -638,7 +630,7 @@ class SchemaSettingsTest {
             "nullToUnset = true, keyspace=ks, table=t1, "
                 + String.format("mapping = \" *=-\\\"%1$s\\\" \"", C2));
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD, cluster, false, true);
+    schemaSettings.init(UNLOAD, cluster, false, true);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThat(readResultMapper).isNotNull();
@@ -647,8 +639,7 @@ class SchemaSettingsTest {
     assertThat(argument.getValue())
         .isEqualTo(
             String.format(
-                "SELECT %1$s,%2$s FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end",
-                C1, C3));
+                "SELECT %1$s,%2$s FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?", C1, C3));
     assertMapping((DefaultMapping) getInternalState(readResultMapper, "mapping"), C1, C1, C3, C3);
   }
 
@@ -660,7 +651,7 @@ class SchemaSettingsTest {
             "nullToUnset = true, keyspace=ks, table=t1, "
                 + String.format("mapping = \" *=[-\\\"%1$s\\\", -%2$s] \"", C2, C3));
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD, cluster, false, true);
+    schemaSettings.init(UNLOAD, cluster, false, true);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThat(readResultMapper).isNotNull();
@@ -668,8 +659,7 @@ class SchemaSettingsTest {
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
         .isEqualTo(
-            String.format(
-                "SELECT %1$s FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end", C1));
+            String.format("SELECT %1$s FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?", C1));
     assertMapping((DefaultMapping) getInternalState(readResultMapper, "mapping"), C1, C1);
   }
 
@@ -681,7 +671,7 @@ class SchemaSettingsTest {
                 + "nullToUnset = true, "
                 + String.format("query=\"select \\\"%2$s\\\",%1$s from ks.t1\"", C1, C2));
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD, cluster, true, false);
+    schemaSettings.init(UNLOAD, cluster, true, false);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThat(readResultMapper).isNotNull();
@@ -690,8 +680,7 @@ class SchemaSettingsTest {
     assertThat(argument.getValue())
         .isEqualTo(
             String.format(
-                "select \"%2$s\",%1$s from ks.t1 "
-                    + "WHERE token(c1) > :start AND token(c1) <= :end",
+                "select \"%2$s\",%1$s from ks.t1 " + "WHERE token(c1) > ? AND token(c1) <= ?",
                 C1, C2));
     assertMapping((DefaultMapping) getInternalState(readResultMapper, "mapping"), "0", C2, "2", C1);
   }
@@ -700,7 +689,7 @@ class SchemaSettingsTest {
   void should_create_row_mapper_when_keyspace_and_table_provided() {
     LoaderConfig config = makeLoaderConfig("nullToUnset = true, keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD, cluster, false, true);
+    schemaSettings.init(UNLOAD, cluster, false, true);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThat(readResultMapper).isNotNull();
@@ -709,7 +698,7 @@ class SchemaSettingsTest {
     assertThat(argument.getValue())
         .isEqualTo(
             String.format(
-                "SELECT %1$s,\"%2$s\",%3$s FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end",
+                "SELECT %1$s,\"%2$s\",%3$s FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?",
                 C1, C2, C3));
     assertMapping((DefaultMapping) getInternalState(readResultMapper, "mapping"));
   }
@@ -718,7 +707,7 @@ class SchemaSettingsTest {
   void should_create_row_mapper_when_null_to_unset_is_false() {
     LoaderConfig config = makeLoaderConfig("nullToUnset = false, keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD, cluster, false, true);
+    schemaSettings.init(UNLOAD, cluster, false, true);
     ReadResultMapper readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThat(readResultMapper).isNotNull();
@@ -727,7 +716,7 @@ class SchemaSettingsTest {
     assertThat(argument.getValue())
         .isEqualTo(
             String.format(
-                "SELECT %1$s,\"%2$s\",%3$s FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end",
+                "SELECT %1$s,\"%2$s\",%3$s FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?",
                 C1, C2, C3));
     assertMapping((DefaultMapping) getInternalState(readResultMapper, "mapping"));
   }
@@ -737,7 +726,7 @@ class SchemaSettingsTest {
     LoaderConfig config =
         makeLoaderConfig("keyspace = ks, table = t1, mapping = \" *=*, f1 = __timestamp \"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, false, true);
+    schemaSettings.init(LOAD, cluster, false, true);
     RecordMapper mapper = schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     DefaultMapping mapping = (DefaultMapping) getInternalState(mapper, "mapping");
     assertThat(mapping).isNotNull();
@@ -758,7 +747,7 @@ class SchemaSettingsTest {
             "query = \"INSERT INTO ks.t1 (c1,c2) VALUES (:c1,:c2) USING TIMESTAMP :c3\","
                 + "mapping = \" f1 = c1 , f2 = c2 , f3 = c3 \" ");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, false, true);
+    schemaSettings.init(LOAD, cluster, false, true);
     RecordMapper mapper = schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     DefaultMapping mapping = (DefaultMapping) getInternalState(mapper, "mapping");
     assertThat(mapping).isNotNull();
@@ -777,7 +766,7 @@ class SchemaSettingsTest {
         makeLoaderConfig(
             "query = \"INSERT INTO ks.t1 (c1,c2) VALUES (:c1,:c2) USING TTL 123 AND tImEsTaMp     :\\\"This is a quoted \\\"\\\" variable name\\\"\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, false, true);
+    schemaSettings.init(LOAD, cluster, false, true);
     RecordMapper mapper = schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     DefaultMapping mapping = (DefaultMapping) getInternalState(mapper, "mapping");
     assertThat(mapping).isNotNull();
@@ -790,10 +779,10 @@ class SchemaSettingsTest {
     LoaderConfig config =
         makeLoaderConfig("keyspace = ks, table = t1, mapping = \" f1 = c1, now() = c3 \"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, false, true);
+    schemaSettings.init(LOAD, cluster, false, true);
     schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     assertThat(getInternalState(schemaSettings, "query"))
-        .isEqualTo("INSERT INTO ks.t1(c1,c3) VALUES (:c1,now())");
+        .isEqualTo("INSERT INTO ks.t1(c1,c3) VALUES (?,now())");
   }
 
   @Test
@@ -801,10 +790,11 @@ class SchemaSettingsTest {
     LoaderConfig config =
         makeLoaderConfig("keyspace = ks, table = t1, mapping = \" f1 = c1, f2 = now() \"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD, cluster, false, true);
+    schemaSettings.init(UNLOAD, cluster, false, true);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThat(getInternalState(schemaSettings, "query"))
-        .isEqualTo("SELECT c1,now() FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end");
+        .isEqualTo(
+            "SELECT c1,now() AS \"now()\" FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?");
   }
 
   @Test
@@ -812,10 +802,8 @@ class SchemaSettingsTest {
     LoaderConfig config =
         makeLoaderConfig("keyspace = ks, table = t1, mapping = \" f1 = c1, f2 = now() \"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, false, true);
-    assertThatThrownBy(
-            () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry))
-        .isInstanceOf(IllegalArgumentException.class)
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, false, true))
+        .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
             "Misplaced function call detected on the right side of a mapping entry; "
                 + "please review your schema.mapping setting");
@@ -826,10 +814,8 @@ class SchemaSettingsTest {
     LoaderConfig config =
         makeLoaderConfig("keyspace = ks, table = t1, mapping = \" f1 = c1, now() = c3 \"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD, cluster, false, true);
-    assertThatThrownBy(
-            () -> schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry))
-        .isInstanceOf(IllegalArgumentException.class)
+    assertThatThrownBy(() -> schemaSettings.init(UNLOAD, cluster, false, true))
+        .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
             "Misplaced function call detected on the left side of a mapping entry; "
                 + "please review your schema.mapping setting");
@@ -842,9 +828,9 @@ class SchemaSettingsTest {
     when(ps.bind()).thenReturn(bs);
     LoaderConfig config = makeLoaderConfig("query = \"SELECT a,b,c FROM ks.t1\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD, cluster, false, true);
+    schemaSettings.init(UNLOAD, cluster, false, true);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-    List<? extends Statement> statements = schemaSettings.createReadStatements(cluster, 3);
+    List<? extends Statement> statements = schemaSettings.createReadStatements(cluster);
     assertThat(statements).hasSize(1);
     assertThat(statements.get(0)).isEqualTo(bs);
   }
@@ -852,23 +838,25 @@ class SchemaSettingsTest {
   @Test
   void should_create_multiple_read_statements() {
     ColumnDefinitions definitions =
-        newColumnDefinitions(newDefinition("start", bigint()), newDefinition("end", bigint()));
+        newColumnDefinitions(
+            newDefinition("partition key token", bigint()),
+            newDefinition("partition key token", bigint()));
     when(ps.getVariables()).thenReturn(definitions);
     BoundStatement bs1 = mock(BoundStatement.class);
-    when(bs1.setToken("start", token1)).thenReturn(bs1);
-    when(bs1.setToken("end", token2)).thenReturn(bs1);
+    when(bs1.setToken(0, token1)).thenReturn(bs1);
+    when(bs1.setToken(1, token2)).thenReturn(bs1);
     BoundStatement bs2 = mock(BoundStatement.class);
-    when(bs2.setToken("start", token2)).thenReturn(bs2);
-    when(bs2.setToken("end", token3)).thenReturn(bs2);
+    when(bs2.setToken(0, token2)).thenReturn(bs2);
+    when(bs2.setToken(1, token3)).thenReturn(bs2);
     BoundStatement bs3 = mock(BoundStatement.class);
-    when(bs3.setToken("start", token3)).thenReturn(bs3);
-    when(bs3.setToken("end", token1)).thenReturn(bs3);
+    when(bs3.setToken(0, token3)).thenReturn(bs3);
+    when(bs3.setToken(1, token1)).thenReturn(bs3);
     when(ps.bind()).thenReturn(bs1, bs2, bs3);
-    LoaderConfig config = makeLoaderConfig("keyspace = ks, table = t1");
+    LoaderConfig config = makeLoaderConfig("keyspace = ks, table = t1, splits = 3");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD, cluster, false, true);
+    schemaSettings.init(UNLOAD, cluster, false, true);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-    List<? extends Statement> statements = schemaSettings.createReadStatements(cluster, 3);
+    List<? extends Statement> statements = schemaSettings.createReadStatements(cluster);
     assertThat(statements)
         .hasSize(3)
         .anySatisfy(
@@ -912,22 +900,83 @@ class SchemaSettingsTest {
         newColumnDefinitions(newDefinition("start", bigint()), newDefinition("end", bigint()));
     when(ps.getVariables()).thenReturn(definitions);
     BoundStatement bs1 = mock(BoundStatement.class);
-    when(bs1.setToken("start", token1)).thenReturn(bs1);
-    when(bs1.setToken("end", token2)).thenReturn(bs1);
+    when(bs1.setToken(0, token1)).thenReturn(bs1);
+    when(bs1.setToken(1, token2)).thenReturn(bs1);
     BoundStatement bs2 = mock(BoundStatement.class);
-    when(bs2.setToken("start", token2)).thenReturn(bs2);
-    when(bs2.setToken("end", token3)).thenReturn(bs2);
+    when(bs2.setToken(0, token2)).thenReturn(bs2);
+    when(bs2.setToken(1, token3)).thenReturn(bs2);
     BoundStatement bs3 = mock(BoundStatement.class);
-    when(bs3.setToken("start", token3)).thenReturn(bs3);
-    when(bs3.setToken("end", token1)).thenReturn(bs3);
+    when(bs3.setToken(0, token3)).thenReturn(bs3);
+    when(bs3.setToken(1, token1)).thenReturn(bs3);
     when(ps.bind()).thenReturn(bs1, bs2, bs3);
     LoaderConfig config =
         makeLoaderConfig(
-            "keyspace = ks, query = \"SELECT a,b,c FROM t1 WHERE token(a) > :start and token(a) <= :end \"");
+            "keyspace = ks, query = \"SELECT a,b,c FROM t1 WHERE token(a) > :start and token(a) <= :end \", splits = 3");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD, cluster, false, true);
+    schemaSettings.init(UNLOAD, cluster, false, true);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-    List<? extends Statement> statements = schemaSettings.createReadStatements(cluster, 3);
+    List<? extends Statement> statements = schemaSettings.createReadStatements(cluster);
+    assertThat(statements)
+        .hasSize(3)
+        .anySatisfy(
+            // token range 1
+            stmt -> {
+              assertThat(stmt).isInstanceOf(StatementWrapper.class);
+              Statement wrapped = wrappedStatement((StatementWrapper) stmt);
+              assertThat(wrapped).isInstanceOf(BoundStatement.class);
+              BoundStatement bs = (BoundStatement) wrapped;
+              assertThat(bs).isSameAs(bs1);
+              assertThat(stmt.getRoutingToken()).isEqualTo(token2);
+              assertThat(stmt.getKeyspace()).isEqualTo("ks");
+            })
+        .anySatisfy(
+            // token range 2
+            stmt -> {
+              assertThat(stmt).isInstanceOf(StatementWrapper.class);
+              Statement wrapped = wrappedStatement((StatementWrapper) stmt);
+              assertThat(wrapped).isInstanceOf(BoundStatement.class);
+              BoundStatement bs = (BoundStatement) wrapped;
+              assertThat(bs).isSameAs(bs2);
+              assertThat(stmt.getRoutingToken()).isEqualTo(token3);
+              assertThat(stmt.getKeyspace()).isEqualTo("ks");
+            })
+        .anySatisfy(
+            // token range 3
+            stmt -> {
+              assertThat(stmt).isInstanceOf(StatementWrapper.class);
+              Statement wrapped = wrappedStatement((StatementWrapper) stmt);
+              assertThat(wrapped).isInstanceOf(BoundStatement.class);
+              BoundStatement bs = (BoundStatement) wrapped;
+              assertThat(bs).isSameAs(bs3);
+              assertThat(stmt.getRoutingToken()).isEqualTo(token1);
+              assertThat(stmt.getKeyspace()).isEqualTo("ks");
+            });
+  }
+
+  @Test
+  void should_create_multiple_read_statements_when_token_range_provided_in_query_positional() {
+    ColumnDefinitions definitions =
+        newColumnDefinitions(
+            newDefinition("partition key token", bigint()),
+            newDefinition("partition key token", bigint()));
+    when(ps.getVariables()).thenReturn(definitions);
+    BoundStatement bs1 = mock(BoundStatement.class);
+    when(bs1.setToken(1, token1)).thenReturn(bs1);
+    when(bs1.setToken(0, token2)).thenReturn(bs1);
+    BoundStatement bs2 = mock(BoundStatement.class);
+    when(bs2.setToken(1, token2)).thenReturn(bs2);
+    when(bs2.setToken(0, token3)).thenReturn(bs2);
+    BoundStatement bs3 = mock(BoundStatement.class);
+    when(bs3.setToken(1, token3)).thenReturn(bs3);
+    when(bs3.setToken(0, token1)).thenReturn(bs3);
+    when(ps.bind()).thenReturn(bs1, bs2, bs3);
+    LoaderConfig config =
+        makeLoaderConfig(
+            "keyspace = ks, query = \"SELECT a,b,c FROM t1 WHERE token(a) <= ? AND token(a) > ?\", splits = 3");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(UNLOAD, cluster, false, true);
+    schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+    List<? extends Statement> statements = schemaSettings.createReadStatements(cluster);
     assertThat(statements)
         .hasSize(3)
         .anySatisfy(
@@ -968,23 +1017,25 @@ class SchemaSettingsTest {
   @Test
   void should_create_multiple_read_statements_for_counting() {
     ColumnDefinitions definitions =
-        newColumnDefinitions(newDefinition("start", bigint()), newDefinition("end", bigint()));
+        newColumnDefinitions(
+            newDefinition("partition key token", bigint()),
+            newDefinition("partition key token", bigint()));
     when(ps.getVariables()).thenReturn(definitions);
     BoundStatement bs1 = mock(BoundStatement.class);
-    when(bs1.setToken("start", token1)).thenReturn(bs1);
-    when(bs1.setToken("end", token2)).thenReturn(bs1);
+    when(bs1.setToken(0, token1)).thenReturn(bs1);
+    when(bs1.setToken(1, token2)).thenReturn(bs1);
     BoundStatement bs2 = mock(BoundStatement.class);
-    when(bs2.setToken("start", token2)).thenReturn(bs2);
-    when(bs2.setToken("end", token3)).thenReturn(bs2);
+    when(bs2.setToken(0, token2)).thenReturn(bs2);
+    when(bs2.setToken(1, token3)).thenReturn(bs2);
     BoundStatement bs3 = mock(BoundStatement.class);
-    when(bs3.setToken("start", token3)).thenReturn(bs3);
-    when(bs3.setToken("end", token1)).thenReturn(bs3);
+    when(bs3.setToken(0, token3)).thenReturn(bs3);
+    when(bs3.setToken(1, token1)).thenReturn(bs3);
     when(ps.bind()).thenReturn(bs1, bs2, bs3);
-    LoaderConfig config = makeLoaderConfig("keyspace = ks, table = t1");
+    LoaderConfig config = makeLoaderConfig("keyspace = ks, table = t1, splits = 3");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.COUNT, cluster, false, true);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-    List<? extends Statement> statements = schemaSettings.createReadStatements(cluster, 3);
+    List<? extends Statement> statements = schemaSettings.createReadStatements(cluster);
     assertThat(statements)
         .hasSize(3)
         .anySatisfy(
@@ -1028,22 +1079,22 @@ class SchemaSettingsTest {
         newColumnDefinitions(newDefinition("start", bigint()), newDefinition("end", bigint()));
     when(ps.getVariables()).thenReturn(definitions);
     BoundStatement bs1 = mock(BoundStatement.class);
-    when(bs1.setToken("start", token1)).thenReturn(bs1);
-    when(bs1.setToken("end", token2)).thenReturn(bs1);
+    when(bs1.setToken(0, token1)).thenReturn(bs1);
+    when(bs1.setToken(1, token2)).thenReturn(bs1);
     BoundStatement bs2 = mock(BoundStatement.class);
-    when(bs2.setToken("start", token2)).thenReturn(bs2);
-    when(bs2.setToken("end", token3)).thenReturn(bs2);
+    when(bs2.setToken(0, token2)).thenReturn(bs2);
+    when(bs2.setToken(1, token3)).thenReturn(bs2);
     BoundStatement bs3 = mock(BoundStatement.class);
-    when(bs3.setToken("start", token3)).thenReturn(bs3);
-    when(bs3.setToken("end", token1)).thenReturn(bs3);
+    when(bs3.setToken(0, token3)).thenReturn(bs3);
+    when(bs3.setToken(1, token1)).thenReturn(bs3);
     when(ps.bind()).thenReturn(bs1, bs2, bs3);
     LoaderConfig config =
         makeLoaderConfig(
-            "keyspace = ks, query = \"SELECT token(a) FROM t1 WHERE token(a) > :start and token(a) <= :end \"");
+            "keyspace = ks, query = \"SELECT token(a) FROM t1 WHERE token(a) > :start and token(a) <= :end \", splits = 3");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.COUNT, cluster, false, true);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-    List<? extends Statement> statements = schemaSettings.createReadStatements(cluster, 3);
+    List<? extends Statement> statements = schemaSettings.createReadStatements(cluster);
     assertThat(statements)
         .hasSize(3)
         .anySatisfy(
@@ -1093,7 +1144,7 @@ class SchemaSettingsTest {
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
-        .isEqualTo("SELECT c1 FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end");
+        .isEqualTo("SELECT c1 FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?");
   }
 
   @Test
@@ -1108,7 +1159,7 @@ class SchemaSettingsTest {
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
-        .isEqualTo("SELECT c1 FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end");
+        .isEqualTo("SELECT c1 FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?");
   }
 
   @Test
@@ -1122,7 +1173,7 @@ class SchemaSettingsTest {
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
-        .isEqualTo("SELECT token(c1) FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end");
+        .isEqualTo("SELECT token(c1) FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?");
   }
 
   @Test
@@ -1136,7 +1187,7 @@ class SchemaSettingsTest {
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
-        .isEqualTo("SELECT token(c1) FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end");
+        .isEqualTo("SELECT token(c1) FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?");
   }
 
   @Test
@@ -1152,7 +1203,7 @@ class SchemaSettingsTest {
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
-        .isEqualTo("SELECT c1 FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end");
+        .isEqualTo("SELECT c1 FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?");
   }
 
   @Test
@@ -1211,7 +1262,7 @@ class SchemaSettingsTest {
         makeLoaderConfig(
             "keyspace = ks, query = \"SELECT a,b,c FROM t1 WHERE token(a) > :\\\"My Start\\\" and token(a) <= :\\\"My End\\\"\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD, cluster, false, true);
+    schemaSettings.init(UNLOAD, cluster, false, true);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -1227,14 +1278,14 @@ class SchemaSettingsTest {
     LoaderConfig config =
         makeLoaderConfig("keyspace = ks, query = \"SELECT a,b,c FROM t1 WHERE foo = :bar\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD, cluster, false, true);
+    schemaSettings.init(UNLOAD, cluster, false, true);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-    assertThatThrownBy(() -> schemaSettings.createReadStatements(cluster, 3))
+    assertThatThrownBy(() -> schemaSettings.createReadStatements(cluster))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
             "The provided statement (schema.query) contains unrecognized WHERE restrictions; "
                 + "the WHERE clause is only allowed to contain one token range restriction of the form: "
-                + "WHERE token(...) > :start AND token(...) <= :end");
+                + "WHERE token(...) > ? AND token(...) <= ?");
   }
 
   @Test
@@ -1246,21 +1297,21 @@ class SchemaSettingsTest {
         makeLoaderConfig(
             "keyspace = ks, query = \"SELECT a,b,c FROM t1 WHERE token(a) >= :foo and token(a) < :bar \"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD, cluster, false, true);
+    schemaSettings.init(UNLOAD, cluster, false, true);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-    assertThatThrownBy(() -> schemaSettings.createReadStatements(cluster, 3))
+    assertThatThrownBy(() -> schemaSettings.createReadStatements(cluster))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
             "The provided statement (schema.query) contains unrecognized WHERE restrictions; "
                 + "the WHERE clause is only allowed to contain one token range restriction of the form: "
-                + "WHERE token(...) > :start AND token(...) <= :end");
+                + "WHERE token(...) > ? AND token(...) <= ?");
   }
 
   @Test
   void should_warn_that_keyspace_was_not_found() {
     LoaderConfig config = makeLoaderConfig("keyspace = KS, table = t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, false, true))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, false, true))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
             "Keyspace \"KS\" does not exist, however a keyspace ks was found. Did you mean to use -k ks?");
@@ -1272,7 +1323,7 @@ class SchemaSettingsTest {
     when(keyspace.getTable("mytable")).thenReturn(table);
     LoaderConfig config = makeLoaderConfig("keyspace = ks, table = T1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, false, true))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, false, true))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
             "Table \"T1\" does not exist, however a table t1 was found. Did you mean to use -t t1?");
@@ -1284,7 +1335,7 @@ class SchemaSettingsTest {
     when(metadata.getKeyspace("myks")).thenReturn(null);
     LoaderConfig config = makeLoaderConfig("keyspace = MyKs, table = t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, false, true))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, false, true))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage("Keyspace \"MyKs\" does not exist");
   }
@@ -1295,7 +1346,7 @@ class SchemaSettingsTest {
     when(keyspace.getTable("mytable")).thenReturn(null);
     LoaderConfig config = makeLoaderConfig("keyspace = ks, table = MyTable");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, false, true))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, false, true))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage("Table \"MyTable\" does not exist");
   }
@@ -1304,7 +1355,7 @@ class SchemaSettingsTest {
   void should_warn_that_mapped_fields_not_supported() {
     LoaderConfig config = makeLoaderConfig("keyspace = ks, table = t1, mapping = \"c1=c1\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true, false))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
             "Schema mapping contains named fields, but connector only supports indexed fields");
@@ -1314,7 +1365,7 @@ class SchemaSettingsTest {
   void should_error_when_graph_and_keyspace_both_present() {
     LoaderConfig config = makeLoaderConfig("keyspace=ks, graph=graph1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true, false))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage("Settings schema.keyspace and schema.graph are mutually exclusive");
   }
@@ -1323,7 +1374,7 @@ class SchemaSettingsTest {
   void should_error_when_table_and_vertex_both_present() {
     LoaderConfig config = makeLoaderConfig("table=t1, vertex=v1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true, false))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage("Settings schema.table and schema.vertex are mutually exclusive");
   }
@@ -1332,7 +1383,7 @@ class SchemaSettingsTest {
   void should_error_when_table_and_edge_both_present() {
     LoaderConfig config = makeLoaderConfig("table=t1, edge=e1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true, false))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage("Settings schema.table and schema.edge are mutually exclusive");
   }
@@ -1341,7 +1392,7 @@ class SchemaSettingsTest {
   void should_error_when_vertex_and_edge_both_present() {
     LoaderConfig config = makeLoaderConfig("vertex=v1, edge=e1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true, false))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage("Settings schema.vertex and schema.edge are mutually exclusive");
   }
@@ -1350,7 +1401,7 @@ class SchemaSettingsTest {
   void should_error_when_edge_without_from_vertex() {
     LoaderConfig config = makeLoaderConfig("edge=e1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true, false))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage("Setting schema.from is required when schema.edge is specified");
   }
@@ -1359,7 +1410,7 @@ class SchemaSettingsTest {
   void should_error_when_edge_without_to_vertex() {
     LoaderConfig config = makeLoaderConfig("edge=e1, from=v1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true, false))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage("Setting schema.to is required when schema.edge is specified");
   }
@@ -1368,7 +1419,7 @@ class SchemaSettingsTest {
   void should_error_invalid_schema_settings() {
     LoaderConfig config = makeLoaderConfig("");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true, false))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
             "When schema.query is not defined, then either schema.keyspace or schema.graph must be defined, and either schema.table, schema.vertex or schema.edge must be defined");
@@ -1378,7 +1429,7 @@ class SchemaSettingsTest {
   void should_error_invalid_schema_mapping_missing_keyspace_and_table() {
     LoaderConfig config = makeLoaderConfig("mapping=\"c1=c2\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true, false))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
             "When schema.query is not defined, then either schema.keyspace or schema.graph must be defined, and either schema.table, schema.vertex or schema.edge must be defined");
@@ -1389,7 +1440,7 @@ class SchemaSettingsTest {
     LoaderConfig config =
         makeLoaderConfig("query=\"INSERT INTO ks.t1 (col1) VALUES (?)\", keyspace=ks");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true, false))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
             "schema.keyspace must not be provided when schema.query contains a keyspace-qualified statement");
@@ -1399,7 +1450,7 @@ class SchemaSettingsTest {
   void should_error_when_query_is_not_qualified_and_keyspace_not_provided() {
     LoaderConfig config = makeLoaderConfig("query=\"INSERT INTO t1 (col1) VALUES (?)\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true, false))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
             "schema.keyspace must be provided when schema.query does not contain a keyspace-qualified statement");
@@ -1410,7 +1461,7 @@ class SchemaSettingsTest {
     when(metadata.getKeyspace("ks")).thenReturn(null);
     LoaderConfig config = makeLoaderConfig("query=\"INSERT INTO ks.t1 (col1) VALUES (?)\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true, false))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining("schema.query references a non-existent keyspace: ks");
   }
@@ -1420,7 +1471,7 @@ class SchemaSettingsTest {
     when(keyspace.getTable("t1")).thenReturn(null);
     LoaderConfig config = makeLoaderConfig("query=\"INSERT INTO ks.t1 (col1) VALUES (?)\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true, false))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining("schema.query references a non-existent table: t1");
   }
@@ -1430,7 +1481,7 @@ class SchemaSettingsTest {
     LoaderConfig config =
         makeLoaderConfig("query=\"INSERT INTO t1 (col1) VALUES (?)\", queryTtl=30, keyspace=ks");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true, false))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
             "schema.query must not be defined if schema.queryTtl or schema.queryTimestamp is defined");
@@ -1442,7 +1493,7 @@ class SchemaSettingsTest {
         makeLoaderConfig(
             "query=\"INSERT INTO t1 (col1) VALUES (?)\", queryTimestamp=\"2018-05-18T15:00:00Z\", keyspace=ks");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true, false))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
             "schema.query must not be defined if schema.queryTtl or schema.queryTimestamp is defined");
@@ -1454,10 +1505,10 @@ class SchemaSettingsTest {
         makeLoaderConfig(
             "query=\"INSERT INTO t1 (col1) VALUES (?)\", mapping = \"f1=__timestamp\", keyspace=ks");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, false, true))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, false, true))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
-            "schema.query must not be defined when mapping a field to query-timestamp");
+            "__timestamp variable is not allowed when schema.query does not contain a USING TIMESTAMP clause");
   }
 
   @Test
@@ -1466,7 +1517,7 @@ class SchemaSettingsTest {
         makeLoaderConfig(
             "query=\"INSERT INTO t1 (col1) VALUES (?)\", keyspace=keyspace, table=table");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true, false))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
             "schema.query must not be defined if schema.table, schema.vertex or schema.edge are defined");
@@ -1478,9 +1529,10 @@ class SchemaSettingsTest {
         makeLoaderConfig(
             "query=\"INSERT INTO t1 (col1) VALUES (?)\", mapping = \"f1=__ttl\", keyspace=ks");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, false, true))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, false, true))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessageContaining("schema.query must not be defined when mapping a field to query-ttl");
+        .hasMessageContaining(
+            "__ttl variable is not allowed when schema.query does not contain a USING TTL clause");
   }
 
   @Test
@@ -1496,7 +1548,7 @@ class SchemaSettingsTest {
   void should_error_invalid_timestamp() {
     LoaderConfig config = makeLoaderConfig("queryTimestamp=junk, keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true, false))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
             "Expecting schema.queryTimestamp to be in ISO_ZONED_DATE_TIME format but got 'junk'");
@@ -1506,22 +1558,36 @@ class SchemaSettingsTest {
   void should_error_invalid_schema_missing_keyspace() {
     LoaderConfig config = makeLoaderConfig("table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true, false))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
             "schema.keyspace or schema.graph must be defined if schema.table, schema.vertex or schema.edge are defined");
   }
 
   @Test
-  void should_error_invalid_schema_query_present_and_function_present() {
+  void should_error_invalid_schema_query_present_and_function_present_load() {
     LoaderConfig config =
         makeLoaderConfig(
             "mapping=\"now() = c1, 0 = c2\", query=\"INSERT INTO t1 (col1) VALUES (?)\", keyspace=ks");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true, false))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
-            "schema.query must not be defined when mapping a function to a column");
+            "Setting schema.query must not be defined when loading "
+                + "if schema.mapping contains a function on the left side of a mapping entry");
+  }
+
+  @Test
+  void should_error_invalid_schema_query_present_and_function_present_unload() {
+    LoaderConfig config =
+        makeLoaderConfig(
+            "mapping=\"f1 = now(), f2 = c2\", query=\"SELECT c1, c2 FROM t1\", keyspace=ks");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    assertThatThrownBy(() -> schemaSettings.init(UNLOAD, cluster, false, true))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining(
+            "Setting schema.query must not be defined when unloading "
+                + "if schema.mapping contains a function on the right side of a mapping entry");
   }
 
   @Test
@@ -1531,7 +1597,7 @@ class SchemaSettingsTest {
             ConfigFactory.parseString("keyspace=ks, table=t1, nullToUnset = NotABoolean")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true, false))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage("Invalid value for schema.nullToUnset: Expecting BOOLEAN, got STRING");
   }
@@ -1543,7 +1609,7 @@ class SchemaSettingsTest {
             ConfigFactory.parseString("graph=ks, vertex=v1")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true, false))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage("Vertex label v1 does not exist");
   }
@@ -1558,7 +1624,7 @@ class SchemaSettingsTest {
             ConfigFactory.parseString("graph=ks, vertex=\"V1\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true, false))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
             "Vertex label \"V1\" does not exist, however a vertex label v1 was found. Did you mean to use -v v1?");
@@ -1571,7 +1637,7 @@ class SchemaSettingsTest {
             ConfigFactory.parseString("graph=ks, edge=e1, from=v1, to=v2")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true, false))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage("Edge label e1 from v1 to v2 does not exist");
   }
@@ -1588,7 +1654,7 @@ class SchemaSettingsTest {
             ConfigFactory.parseString("graph=ks, edge=\"E1\", from=\"V1\", to=\"V2\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, true, false))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
             "Edge label \"E1\" from \"V1\" to \"V2\" does not exist, however an edge label e1 from v1 to \"V2\" was found. Did you mean to use -e e1 -from v1 -to \"V2\"?");
@@ -1605,7 +1671,7 @@ class SchemaSettingsTest {
             ConfigFactory.parseString("graph=ks, vertex=v1")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, true, false);
+    schemaSettings.init(LOAD, cluster, true, false);
     assertThat(getInternalState(schemaSettings, "table")).isSameAs(table);
   }
 
@@ -1622,7 +1688,7 @@ class SchemaSettingsTest {
             ConfigFactory.parseString("graph=ks, edge=e1, from=v1, to=v2")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, true, false);
+    schemaSettings.init(LOAD, cluster, true, false);
     assertThat(getInternalState(schemaSettings, "table")).isSameAs(table);
   }
 
@@ -1631,7 +1697,7 @@ class SchemaSettingsTest {
     LoaderConfig config =
         makeLoaderConfig("keyspace=ks, table=t1, mapping = \"fieldA = nonExistentCol\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, false, true);
+    schemaSettings.init(LOAD, cluster, false, true);
     assertThatThrownBy(
             () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry))
         .isInstanceOf(BulkConfigurationException.class)
@@ -1645,7 +1711,7 @@ class SchemaSettingsTest {
         makeLoaderConfig(
             "query = \"INSERT INTO ks.t1 (c1, c2) VALUES (:c1, :c2)\", mapping = \"fieldA = nonExistentCol\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, false, true);
+    schemaSettings.init(LOAD, cluster, false, true);
     assertThatThrownBy(
             () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry))
         .isInstanceOf(BulkConfigurationException.class)
@@ -1657,7 +1723,7 @@ class SchemaSettingsTest {
   void should_error_when_mapping_does_not_contain_primary_key() {
     LoaderConfig config = makeLoaderConfig("keyspace=ks, table=t1, mapping = \"fieldA = c3\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, false, true);
+    schemaSettings.init(LOAD, cluster, false, true);
     assertThatThrownBy(
             () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry))
         .isInstanceOf(BulkConfigurationException.class)
@@ -1668,7 +1734,7 @@ class SchemaSettingsTest {
   void should_error_when_insert_query_does_not_contain_primary_key() {
     LoaderConfig config = makeLoaderConfig("query = \"INSERT INTO ks.t1 (c2) VALUES (:c2)\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, false, true);
+    schemaSettings.init(LOAD, cluster, false, true);
     assertThatThrownBy(
             () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry))
         .isInstanceOf(BulkConfigurationException.class)
@@ -1699,7 +1765,7 @@ class SchemaSettingsTest {
     when(host.toString()).thenReturn("host1");
     LoaderConfig config = makeLoaderConfig("graph=ks, vertex=v1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, false, true))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, false, true))
         .isInstanceOf(IllegalStateException.class)
         .hasMessage("Graph operations not available due to incompatible cluster");
     assertThat(logs)
@@ -1716,7 +1782,7 @@ class SchemaSettingsTest {
     when(vertexMetadata.getLabelName()).thenReturn("v1");
     LoaderConfig config = makeLoaderConfig("graph=ks, vertex=v1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, false, true))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, false, true))
         .isInstanceOf(IllegalStateException.class)
         .hasMessage("Graph operations requested but provided keyspace is not a graph: ks");
   }
@@ -1729,7 +1795,7 @@ class SchemaSettingsTest {
     when(keyspace.getGraphEngine()).thenReturn("Legacy");
     LoaderConfig config = makeLoaderConfig("graph=ks, vertex=v1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(WorkflowType.LOAD, cluster, false, true))
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, false, true))
         .isInstanceOf(IllegalStateException.class)
         .hasMessage(
             "Graph operations requested but provided graph ks was created with an unsupported graph engine: Legacy");
@@ -1743,7 +1809,7 @@ class SchemaSettingsTest {
             ConfigFactory.parseString("keyspace=ks, table=t1")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, true, false);
+    schemaSettings.init(LOAD, cluster, true, false);
     assertThat(logs)
         .hasMessageContaining(
             "Provided keyspace is a graph; "
@@ -1759,7 +1825,7 @@ class SchemaSettingsTest {
             ConfigFactory.parseString("keyspace=ks, table=t1")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.LOAD, cluster, true, false);
+    schemaSettings.init(LOAD, cluster, true, false);
     assertThat(logs)
         .hasMessageContaining(
             "Provided keyspace is a graph created with a legacy graph engine: "
@@ -1770,87 +1836,94 @@ class SchemaSettingsTest {
   @Test
   void should_insert_where_clause_in_select_statement_simple() {
     ColumnDefinitions definitions =
-        newColumnDefinitions(newDefinition("start", bigint()), newDefinition("end", bigint()));
+        newColumnDefinitions(
+            newDefinition("partition key token", bigint()),
+            newDefinition("partition key token", bigint()));
     when(ps.getVariables()).thenReturn(definitions);
     BoundStatement bs1 = mock(BoundStatement.class);
-    when(bs1.setToken("start", token1)).thenReturn(bs1);
-    when(bs1.setToken("end", token2)).thenReturn(bs1);
+    when(bs1.setToken(0, token1)).thenReturn(bs1);
+    when(bs1.setToken(1, token2)).thenReturn(bs1);
     BoundStatement bs2 = mock(BoundStatement.class);
-    when(bs2.setToken("start", token2)).thenReturn(bs2);
-    when(bs2.setToken("end", token3)).thenReturn(bs2);
+    when(bs2.setToken(0, token2)).thenReturn(bs2);
+    when(bs2.setToken(1, token3)).thenReturn(bs2);
     BoundStatement bs3 = mock(BoundStatement.class);
-    when(bs3.setToken("start", token3)).thenReturn(bs3);
-    when(bs3.setToken("end", token1)).thenReturn(bs3);
+    when(bs3.setToken(0, token3)).thenReturn(bs3);
+    when(bs3.setToken(1, token1)).thenReturn(bs3);
     when(ps.bind()).thenReturn(bs1, bs2, bs3);
-    LoaderConfig config = makeLoaderConfig("keyspace = ks, query = \"SELECT a,b,c FROM t1\"");
+    LoaderConfig config =
+        makeLoaderConfig("keyspace = ks, query = \"SELECT a,b,c FROM t1\", splits = 3");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD, cluster, false, true);
+    schemaSettings.init(UNLOAD, cluster, false, true);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-    List<? extends Statement> stmts = schemaSettings.createReadStatements(cluster, 3);
+    List<? extends Statement> stmts = schemaSettings.createReadStatements(cluster);
     assertThat(stmts).hasSize(3);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
-        .isEqualTo("SELECT a,b,c FROM t1 WHERE token(c1) > :start AND token(c1) <= :end");
+        .isEqualTo("SELECT a,b,c FROM t1 WHERE token(c1) > ? AND token(c1) <= ?");
   }
 
   @Test
   void should_insert_where_clause_in_select_statement_complex() {
     ColumnDefinitions definitions =
-        newColumnDefinitions(newDefinition("start", bigint()), newDefinition("end", bigint()));
+        newColumnDefinitions(
+            newDefinition("partition key token", bigint()),
+            newDefinition("partition key token", bigint()));
     when(ps.getVariables()).thenReturn(definitions);
     BoundStatement bs1 = mock(BoundStatement.class);
-    when(bs1.setToken("start", token1)).thenReturn(bs1);
-    when(bs1.setToken("end", token2)).thenReturn(bs1);
+    when(bs1.setToken(0, token1)).thenReturn(bs1);
+    when(bs1.setToken(1, token2)).thenReturn(bs1);
     BoundStatement bs2 = mock(BoundStatement.class);
-    when(bs2.setToken("start", token2)).thenReturn(bs2);
-    when(bs2.setToken("end", token3)).thenReturn(bs2);
+    when(bs2.setToken(0, token2)).thenReturn(bs2);
+    when(bs2.setToken(1, token3)).thenReturn(bs2);
     BoundStatement bs3 = mock(BoundStatement.class);
-    when(bs3.setToken("start", token3)).thenReturn(bs3);
-    when(bs3.setToken("end", token1)).thenReturn(bs3);
+    when(bs3.setToken(0, token3)).thenReturn(bs3);
+    when(bs3.setToken(1, token1)).thenReturn(bs3);
     when(ps.bind()).thenReturn(bs1, bs2, bs3);
     LoaderConfig config =
-        makeLoaderConfig("keyspace = ks, query = \"SELECT a,b,c FROM t1 LIMIT 1000\"");
+        makeLoaderConfig("keyspace = ks, query = \"SELECT a,b,c FROM t1 LIMIT 1000\", splits = 3");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD, cluster, false, true);
+    schemaSettings.init(UNLOAD, cluster, false, true);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-    List<? extends Statement> stmts = schemaSettings.createReadStatements(cluster, 3);
+    List<? extends Statement> stmts = schemaSettings.createReadStatements(cluster);
     assertThat(stmts).hasSize(3);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
-        .isEqualTo(
-            "SELECT a,b,c FROM t1 WHERE token(c1) > :start AND token(c1) <= :end LIMIT 1000");
+        .isEqualTo("SELECT a,b,c FROM t1 WHERE token(c1) > ? AND token(c1) <= ? LIMIT 1000");
   }
 
   @Test
   void should_insert_where_clause_in_select_statement_case_sensitive() {
     when(keyspace.getTable("\"MyTable\"")).thenReturn(table);
     ColumnDefinitions definitions =
-        newColumnDefinitions(newDefinition("start", bigint()), newDefinition("end", bigint()));
+        newColumnDefinitions(
+            newDefinition("partition key token", bigint()),
+            newDefinition("partition key token", bigint()));
     when(ps.getVariables()).thenReturn(definitions);
     BoundStatement bs1 = mock(BoundStatement.class);
-    when(bs1.setToken("start", token1)).thenReturn(bs1);
-    when(bs1.setToken("end", token2)).thenReturn(bs1);
+    when(bs1.setToken(0, token1)).thenReturn(bs1);
+    when(bs1.setToken(1, token2)).thenReturn(bs1);
     BoundStatement bs2 = mock(BoundStatement.class);
-    when(bs2.setToken("start", token2)).thenReturn(bs2);
-    when(bs2.setToken("end", token3)).thenReturn(bs2);
+    when(bs2.setToken(0, token2)).thenReturn(bs2);
+    when(bs2.setToken(1, token3)).thenReturn(bs2);
     BoundStatement bs3 = mock(BoundStatement.class);
-    when(bs3.setToken("start", token3)).thenReturn(bs3);
-    when(bs3.setToken("end", token1)).thenReturn(bs3);
+    when(bs3.setToken(0, token3)).thenReturn(bs3);
+    when(bs3.setToken(1, token1)).thenReturn(bs3);
     when(ps.bind()).thenReturn(bs1, bs2, bs3);
     LoaderConfig config =
-        makeLoaderConfig("keyspace = ks, query = \"SELECT a,b,c FROM \\\"MyTable\\\" LIMIT 1000\"");
+        makeLoaderConfig(
+            "keyspace = ks, query = \"SELECT a,b,c FROM \\\"MyTable\\\" LIMIT 1000\", splits = 3");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD, cluster, false, true);
+    schemaSettings.init(UNLOAD, cluster, false, true);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-    List<? extends Statement> stmts = schemaSettings.createReadStatements(cluster, 3);
+    List<? extends Statement> stmts = schemaSettings.createReadStatements(cluster);
     assertThat(stmts).hasSize(3);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
         .isEqualTo(
-            "SELECT a,b,c FROM \"MyTable\" WHERE token(c1) > :start AND token(c1) <= :end LIMIT 1000");
+            "SELECT a,b,c FROM \"MyTable\" WHERE token(c1) > ? AND token(c1) <= ? LIMIT 1000");
   }
 
   @Test
@@ -1862,13 +1935,104 @@ class SchemaSettingsTest {
     LoaderConfig config =
         makeLoaderConfig("keyspace = ks, query = \"SELECT a,b,c FROM t1 WHERE c1 = 1\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.UNLOAD, cluster, false, true);
+    schemaSettings.init(UNLOAD, cluster, false, true);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-    List<? extends Statement> stmts = schemaSettings.createReadStatements(cluster, 3);
+    List<? extends Statement> stmts = schemaSettings.createReadStatements(cluster);
     assertThat(stmts).hasSize(1);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue()).isEqualTo("SELECT a,b,c FROM t1 WHERE c1 = 1");
+  }
+
+  @ParameterizedTest(
+      name =
+          "[{index}] should_warn_when_null_to_unset_true_and_protocol_version_lesser_than_4 (version {0})")
+  @EnumSource(
+      value = ProtocolVersion.class,
+      names = {"V1", "V2", "V3"})
+  void should_warn_when_null_to_unset_true_and_protocol_version_lesser_than_4(
+      ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
+    LoaderConfig config = makeLoaderConfig("nullToUnset = true, keyspace=ks, table=t1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(LOAD, cluster, false, true);
+    RecordMapper recordMapper =
+        schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+    assertThat(recordMapper).isNotNull();
+    assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isFalse();
+    assertThat(logs)
+        .hasMessageContaining(
+            String.format(
+                "Protocol version in use (%s) does not support unset bound variables; "
+                    + "forcing schema.nullToUnset to false",
+                version));
+  }
+
+  @Test
+  void should_infer_result_set_variables_from_query_when_protocol_version_v1() {
+    when(protocolOptions.getProtocolVersion()).thenReturn(V1);
+    BoundStatement bs1 = mock(BoundStatement.class);
+    when(ps.bind()).thenReturn(bs1);
+    LoaderConfig config =
+        makeLoaderConfig(
+            String.format(
+                "keyspace = ks, query = \"SELECT \\\"%1$s\\\", \\\"%2$s\\\", \\\"%3$s\\\" FROM t1\"",
+                C1, C2, C3));
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(UNLOAD, cluster, false, true);
+    ReadResultMapper readResultMapper =
+        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue())
+        .isEqualTo(
+            String.format(
+                "SELECT \"%1$s\", \"%2$s\", \"%3$s\" FROM t1 WHERE token(%1$s) > ? AND token(%1$s) <= ?",
+                C1, C2, C3));
+    assertMapping(
+        (DefaultMapping) getInternalState(readResultMapper, "mapping"), C1, C1, C2, C2, C3, C3);
+  }
+
+  @Test
+  void should_error_when_unsupported_result_set_variables_in_query_and_protocol_version_v1() {
+    when(protocolOptions.getProtocolVersion()).thenReturn(V1);
+    BoundStatement bs1 = mock(BoundStatement.class);
+    when(ps.bind()).thenReturn(bs1);
+    LoaderConfig config =
+        makeLoaderConfig("keyspace = ks, query = \"SELECT CAST(c1 as boolean) FROM t1\"");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(UNLOAD, cluster, false, true);
+    assertThatThrownBy(
+            () -> schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining("Invalid schema.query: the SELECT clause has unsupported selectors");
+  }
+
+  @Test
+  void should_infer_result_set_variables_from_query_when_protocol_version_v1_and_select_star() {
+    when(protocolOptions.getProtocolVersion()).thenReturn(V1);
+    BoundStatement bs1 = mock(BoundStatement.class);
+    when(ps.bind()).thenReturn(bs1);
+    LoaderConfig config = makeLoaderConfig("keyspace = ks, query = \"SELECT * FROM t1\"");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(UNLOAD, cluster, false, true);
+    ReadResultMapper readResultMapper =
+        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue())
+        .isEqualTo("SELECT * FROM t1 WHERE token(c1) > ? AND token(c1) <= ?");
+    assertMapping(
+        (DefaultMapping) getInternalState(readResultMapper, "mapping"), C1, C1, C2, C2, C3, C3);
+  }
+
+  @Test
+  void should_error_when_both_indexed_and_mapped_mappings_unsupported() {
+    LoaderConfig config = makeLoaderConfig("keyspace=ks, table=t1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, false, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining("Connector must support at least one of indexed or mapped mappings");
   }
 
   @NotNull

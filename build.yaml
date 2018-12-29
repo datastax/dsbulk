@@ -4,7 +4,8 @@ schedules:
     schedule: per_commit
     matrix:
       exclude:
-        - cassandra: ['graph-prototyping', 'dse-6.7', 'dse-6.0', 'dse-5.1', 'dse-5.0', '3.11']
+        - java: ['openjdk11']
+        - cassandra: ['graph-prototyping', 'dse-6.7', 'dse-6.0', 'dse-5.1', 'dse-5.0', 'dse-4.8', 'dse-4.7', 'dse-4.6', '3.11', '3.0', '2.2', '2.1', '2.0', '1.2']
     env_vars: |
       TEST_GROUPS="short,medium"
   nightly:
@@ -16,31 +17,34 @@ schedules:
     env_vars: |
       TEST_GROUPS="short,medium,long"
   adhoc:
-    # Run short and medium suites on demand, on 3 different clusters (DSE, DDAC, OSS).
+    # Run full suite on demand.
     schedule: adhoc
     matrix:
       exclude:
-        - cassandra: ['dse-6.7', 'dse-5.1', 'dse-5.0']
-        # - java: ['oraclejdk10']
+        - java: ['openjdk11']
     env_vars: |
-      TEST_GROUPS="short,medium"
+      TEST_GROUPS="short,medium,long"
 java:
   - openjdk8
   - openjdk11
-  # Temporarily disable builds against JDK 10, see DAT-318
-  # - oraclejdk10
 os:
   - ubuntu/bionic64/java-driver
 cassandra:
-  # Temporarily disable builds with DSE 4.8, see DAT-312
-  # - dse-4.8
+  - 3.11
+  - 3.0
+  - 2.2
+  - 2.1
+  - 2.0
+  - 1.2
+  - ddac-5.1
+  - dse-4.6
+  - dse-4.7
+  - dse-4.8
   - dse-5.0
   - dse-5.1
   - dse-6.0
   - dse-6.7
   - graph-prototyping
-  - ddac-5.1
-  - 3.11
 build:
   - type: maven
     version: 3.2.5
