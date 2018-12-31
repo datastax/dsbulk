@@ -108,7 +108,6 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   private final StreamInterceptor stderr;
   private Path logDir;
   private Path unloadDir;
-  private static final URL CUSTOM_TYPES_CSV = ClassLoader.getSystemResource("custom-type.csv");
 
   CSVConnectorEndToEndCCMIT(
       CCMCluster ccm,
@@ -125,7 +124,6 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     createIpByCountryTable(session);
     createWithSpacesTable(session);
     createIpByCountryCaseSensitiveTable(session);
-    createTableWithCustomType(session);
   }
 
   @BeforeEach
@@ -137,7 +135,6 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   @BeforeEach
   void truncateTable() {
     session.execute("TRUNCATE ip_by_country");
-    session.execute("TRUNCATE custom_types_table");
   }
 
   @AfterEach
@@ -2730,12 +2727,15 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   @Test
   void full_load_unload_load_of_custom_types() throws Exception {
 
+    URL customTypesCsv = ClassLoader.getSystemResource("custom-type.csv");
+    createTableWithCustomType(session);
+
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
     args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(quoteJson(CUSTOM_TYPES_CSV));
+    args.add(quoteJson(customTypesCsv));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -2776,7 +2776,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--log.directory");
     args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(quoteJson(CUSTOM_TYPES_CSV));
+    args.add(quoteJson(customTypesCsv));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -2790,6 +2790,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(status).isZero();
     validateResultSetSize(1, "SELECT * FROM custom_types_table");
     deleteDirectory(logDir);
+
+    session.execute("TRUNCATE custom_types_table");
   }
 
   static void checkTemporalsWritten(Session session) {
