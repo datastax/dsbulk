@@ -2728,7 +2728,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
    * file for actual hex value)
    */
   @Test
-  void full_load_unload_load() throws Exception {
+  void full_load_unload_load_of_custom_types() throws Exception {
 
     List<String> args = new ArrayList<>();
     args.add("load");
