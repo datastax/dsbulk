@@ -44,7 +44,6 @@ class HostComparatorTest {
 
     @Override
     public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
-      InetAddress nullInetAddress = null;
       List<Arguments> args = new ArrayList<>();
       args.add(
           Arguments.of(
@@ -53,11 +52,14 @@ class HostComparatorTest {
               -1));
       args.add(
           Arguments.of(
-              new InetSocketAddress(nullInetAddress, 9090),
-              new InetSocketAddress(nullInetAddress, 9090),
+              new InetSocketAddress((InetAddress) null, 9090),
+              new InetSocketAddress((InetAddress) null, 9090),
               0));
-      args.add(Arguments.of(null, null, 0));
-      args.add(Arguments.of(null, InetSocketAddress.createUnresolved("1.2.3.5", 9090), 0));
+      args.add(
+          Arguments.of(
+              new InetSocketAddress("com.datastax.dsbulk1", 9090),
+              new InetSocketAddress("com.datastax.dsbulk2", 9090),
+              -1));
       return args.stream();
     }
   }

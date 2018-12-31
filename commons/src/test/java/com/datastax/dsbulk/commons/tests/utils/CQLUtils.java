@@ -13,7 +13,7 @@ import com.datastax.driver.core.Metadata;
 public abstract class CQLUtils {
 
   private static final String CREATE_KEYSPACE_SIMPLE_FORMAT =
-      "CREATE KEYSPACE IF NOT EXISTS %s WITH replication = { 'class' : 'SimpleStrategy', 'replication_factor' : %d }";
+      "CREATE KEYSPACE %s WITH replication = { 'class' : 'SimpleStrategy', 'replication_factor' : %d }";
 
   public static String createKeyspaceSimpleStrategy(String keyspace, int replicationFactor) {
     return String.format(
@@ -23,7 +23,7 @@ public abstract class CQLUtils {
   public static String createKeyspaceNetworkTopologyStrategy(
       String keyspace, int... replicationFactors) {
     StringBuilder sb =
-        new StringBuilder("CREATE KEYSPACE IF NOT EXISTS ")
+        new StringBuilder("CREATE KEYSPACE ")
             .append(Metadata.quoteIfNecessary(keyspace))
             .append(" WITH replication = { 'class' : 'NetworkTopologyStrategy', ");
     for (int i = 0; i < replicationFactors.length; i++) {

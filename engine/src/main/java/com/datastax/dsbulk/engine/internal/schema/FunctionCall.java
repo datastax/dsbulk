@@ -37,15 +37,17 @@ public class FunctionCall implements MappingField, CQLFragment {
   public FunctionCall(@NotNull CQLIdentifier name, @NotNull List<CQLFragment> args) {
     this.name = name;
     this.args = ImmutableList.copyOf(args);
+    // Note: the delimiter must be ', ' with a space after the comma, since that is the way
+    // C* creates variable names from function calls.
     cql =
         name.asCql()
             + "("
-            + args.stream().map(CQLFragment::asCql).collect(Collectors.joining(","))
+            + args.stream().map(CQLFragment::asCql).collect(Collectors.joining(", "))
             + ")";
     internal =
         name.asInternal()
             + "("
-            + args.stream().map(CQLFragment::asInternal).collect(Collectors.joining(","))
+            + args.stream().map(CQLFragment::asInternal).collect(Collectors.joining(", "))
             + ")";
     // a function call appears in result set variables in a particular form: its internal
     // representation is considered as its CQL form itself.

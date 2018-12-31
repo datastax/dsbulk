@@ -88,6 +88,23 @@ public class DefaultCCMCluster implements CCMCluster {
   private static final File DEFAULT_SERVER_TRUSTSTORE_FILE = createTempStore("/server.truststore");
   private static final File DEFAULT_SERVER_KEYSTORE_FILE = createTempStore("/server.keystore");
 
+  // major DSE versions
+  private static final Version V6_0_0 = Version.parse("6.0.0");
+  private static final Version V5_1_0 = Version.parse("5.1.0");
+  private static final Version V5_0_0 = Version.parse("5.0.0");
+  private static final Version V4_8_0 = Version.parse("4.8.0");
+  private static final Version V4_7_0 = Version.parse("4.7.0");
+  private static final Version V4_6_0 = Version.parse("4.6.0");
+
+  // mapped C* versions from DSE versions
+  private static final Version V4_0_0 = Version.parse("4.0.0");
+  private static final Version V3_10 = Version.parse("3.10");
+  private static final Version V3_0_15 = Version.parse("3.0.15");
+  private static final Version V2_2_0 = Version.parse("2.2.0");
+  private static final Version V2_1_19 = Version.parse("2.1.19");
+  private static final Version V2_1_11 = Version.parse("2.1.11");
+  private static final Version V2_0_14 = Version.parse("2.0.14");
+
   /** The install arguments to pass to CCM when creating the cluster. */
   private static final Set<String> DEFAULT_CREATE_OPTIONS;
 
@@ -156,6 +173,9 @@ public class DefaultCCMCluster implements CCMCluster {
   }
 
   private final String clusterName;
+  private final Type clusterType;
+  private final Version version;
+  private final Version cassandraVersion;
   private final int[] nodesPerDC;
   private final int storagePort;
   private final int thriftPort;
@@ -168,12 +188,18 @@ public class DefaultCCMCluster implements CCMCluster {
 
   private DefaultCCMCluster(
       String clusterName,
+      CCMCluster.Type clusterType,
+      Version version,
+      Version cassandraVersion,
       int[] nodesPerDC,
       int binaryPort,
       int thriftPort,
       int storagePort,
       String jvmArgs) {
     this.clusterName = clusterName;
+    this.clusterType = clusterType;
+    this.version = version;
+    this.cassandraVersion = cassandraVersion;
     this.nodesPerDC = nodesPerDC;
     this.storagePort = storagePort;
     this.thriftPort = thriftPort;
@@ -221,7 +247,7 @@ public class DefaultCCMCluster implements CCMCluster {
 
   @Override
   public Type getClusterType() {
-    return CCM_TYPE;
+    return clusterType;
   }
 
   @Override
@@ -237,7 +263,12 @@ public class DefaultCCMCluster implements CCMCluster {
 
   @Override
   public Version getVersion() {
-    return CCM_VERSION;
+    return version;
+  }
+
+  @Override
+  public Version getCassandraVersion() {
+    return cassandraVersion;
   }
 
   @Override
@@ -297,7 +328,7 @@ public class DefaultCCMCluster implements CCMCluster {
         LOGGER.debug("Starting: {} - free memory: {} MB", this, MemoryUtils.getFreeMemoryMB());
       }
       try {
-        execute(CCM_COMMAND + " start --wait-other-notice " + jvmArgs);
+        execute(CCM_COMMAND + " start --no-wait " + jvmArgs);
         LOGGER.debug("Waiting for binary protocol to show up");
         for (InetAddress node : getInitialContactPoints()) {
           NetworkUtils.waitUntilPortIsUp(new InetSocketAddress(node, getBinaryPort()));
@@ -488,7 +519,7 @@ public class DefaultCCMCluster implements CCMCluster {
     String storageItf = ip + ":" + storagePort;
     String binaryItf = ip + ":" + binaryPort;
     String remoteLogItf = ip + ":" + findAvailablePort();
-    if (CCM_VERSION.compareTo(Version.parse("6.0.0")) >= 0) {
+    if (CCM_VERSION.compareTo(V6_0_0) >= 0) {
       execute(
           CCM_COMMAND
               + " add node%d -d dc%s -i %s -l %s --binary-itf %s -j %d -r %s -s -b"
@@ -810,7 +841,7 @@ public class DefaultCCMCluster implements CCMCluster {
       String clusterName = StringUtils.uniqueIdentifier("ccm");
       Map<String, Object> cassandraConfiguration = randomizePorts(this.cassandraConfiguration);
       Map<String, Object> dseConfiguration = randomizePorts(this.dseConfiguration);
-      if (CCM_TYPE == DSE && CCM_VERSION.compareTo(Version.parse("5.0")) >= 0) {
+      if (CCM_TYPE == DSE && CCM_VERSION.compareTo(V5_0_0) >= 0) {
         if (!dseConfiguration.containsKey("lease_netty_server_port")) {
           dseConfiguration.put("lease_netty_server_port", findAvailablePort());
         }
@@ -822,21 +853,32 @@ public class DefaultCCMCluster implements CCMCluster {
           dseConfiguration.put("graph.gremlin_server.port", findAvailablePort());
         }
       }
-      if (((CCM_TYPE == DSE) && (CCM_VERSION.compareTo(Version.parse("5.0.0")) < 0))
-          || ((CCM_TYPE == OSS) && (CCM_VERSION.compareTo(Version.parse("2.2.0")) < 0))) {
+      if (((CCM_TYPE == DSE) && (CCM_VERSION.compareTo(V5_0_0) < 0))
+          || ((CCM_TYPE == OSS) && (CCM_VERSION.compareTo(V2_2_0) < 0))) {
         cassandraConfiguration.remove("enable_user_defined_functions");
       }
       int storagePort = Integer.parseInt(cassandraConfiguration.get("storage_port").toString());
       int thriftPort = Integer.parseInt(cassandraConfiguration.get("rpc_port").toString());
       int binaryPort =
           Integer.parseInt(cassandraConfiguration.get("native_transport_port").toString());
-      if (CCM_TYPE == DSE && CCM_VERSION.compareTo(Version.parse("6.0.0")) >= 0) {
+      if (CCM_TYPE == DSE && CCM_VERSION.compareTo(V6_0_0) >= 0) {
         cassandraConfiguration.remove("start_rpc");
         cassandraConfiguration.remove("rpc_port");
       }
+      if (CCM_TYPE == DSE && CCM_VERSION.compareTo(V4_6_0) < 0) {
+        dseConfiguration.remove("cql_slow_log_options.enabled");
+      }
       DefaultCCMCluster ccm =
           new DefaultCCMCluster(
-              clusterName, nodes, binaryPort, thriftPort, storagePort, joinJvmArgs());
+              clusterName,
+              CCM_TYPE,
+              CCM_VERSION,
+              cassandraVersion(),
+              nodes,
+              binaryPort,
+              thriftPort,
+              storagePort,
+              joinJvmArgs());
       Runtime.getRuntime()
           .addShutdownHook(
               new Thread(
@@ -856,6 +898,25 @@ public class DefaultCCMCluster implements CCMCluster {
         }
       }
       return ccm;
+    }
+
+    private static Version cassandraVersion() {
+      if (CCM_TYPE == DSE) {
+        if (CCM_VERSION.compareTo(V6_0_0) >= 0) {
+          return V4_0_0;
+        } else if (CCM_VERSION.compareTo(V5_1_0) >= 0) {
+          return V3_10;
+        } else if (CCM_VERSION.compareTo(V5_0_0) >= 0) {
+          return V3_0_15;
+        } else if (CCM_VERSION.compareTo(V4_8_0) >= 0) {
+          return V2_1_19;
+        } else if (CCM_VERSION.compareTo(V4_7_0) >= 0) {
+          return V2_1_11;
+        } else {
+          return V2_0_14;
+        }
+      }
+      return CCM_VERSION;
     }
 
     private String joinJvmArgs() {
