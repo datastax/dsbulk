@@ -328,7 +328,7 @@ public class DefaultCCMCluster implements CCMCluster {
         LOGGER.debug("Starting: {} - free memory: {} MB", this, MemoryUtils.getFreeMemoryMB());
       }
       try {
-        execute(CCM_COMMAND + " start --no-wait " + jvmArgs);
+        execute(CCM_COMMAND + " start " + jvmArgs);
         LOGGER.debug("Waiting for binary protocol to show up");
         for (InetAddress node : getInitialContactPoints()) {
           NetworkUtils.waitUntilPortIsUp(new InetSocketAddress(node, getBinaryPort()));
