@@ -2728,7 +2728,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   void full_load_unload_load_of_custom_types() throws Exception {
 
     URL customTypesCsv = ClassLoader.getSystemResource("custom-type.csv");
-    createTableWithCustomType(session);
+    session.execute(
+        "CREATE TABLE custom_types_table (k int PRIMARY KEY, c1 'DynamicCompositeType(s => UTF8Type, i => Int32Type)')");
 
     List<String> args = new ArrayList<>();
     args.add("load");
@@ -2743,7 +2744,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("custom_types_table");
     args.add("--schema.mapping");
-    args.add("0=k, 1=c1");
+    args.add("k, c1");
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -2765,7 +2766,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("custom_types_table");
     args.add("--schema.mapping");
-    args.add("0=k, 1=c1");
+    args.add("k, c1");
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
@@ -2776,7 +2777,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--log.directory");
     args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(quoteJson(customTypesCsv));
+    args.add(quoteJson(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -2784,14 +2785,11 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("custom_types_table");
     args.add("--schema.mapping");
-    args.add("0=k, 1=c1");
+    args.add("k, c1");
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(1, "SELECT * FROM custom_types_table");
-    deleteDirectory(logDir);
-
-    session.execute("TRUNCATE custom_types_table");
   }
 
   static void checkTemporalsWritten(Session session) {
@@ -2827,10 +2825,5 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     for (String s : msg) {
       assertThat(console).contains(s);
     }
-  }
-
-  private void createTableWithCustomType(Session session) {
-    session.execute(
-        "CREATE TABLE custom_types_table (k int PRIMARY KEY, c1 'DynamicCompositeType(s => UTF8Type, i => Int32Type)')");
   }
 }
