@@ -23,9 +23,9 @@ ctool install -a public -i package -v 6.5.4 dsbulk-dse opscenter
 ctool start dsbulk-dse opscenter
 
 dse_ip=`ctool info --public-ips dsbulk-dse`
-curl "http://${dse_ip}:8888/opscenter/index.html" #verifying that opscenter started
+curl "http://${dse_ip}:8888/opscenter/index.html" #verifying that ops-center started
 
-ctool install_agents dsbulk-dse dsbulk-client
+ctool install_agents dsbulk-dse dsbulk-dse
 
 #setup data-set
 ctool run --sudo dsbulk-client "mkdir /mnt/data; chmod 777 /mnt/data"
