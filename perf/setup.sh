@@ -41,8 +41,13 @@ ctool run dsbulk-dse 0 "cqlsh -e \"CREATE TABLE IF NOT EXISTS test.test100(pkey 
 ctool run dsbulk-dse 0 "cqlsh -e \"CREATE TABLE IF NOT EXISTS test.test10(pkey BIGINT, ccol BIGINT, col0 BIGINT, col1 BIGINT, col2 BIGINT, col3 BIGINT, col4 BIGINT, col5 BIGINT, col6 BIGINT, col7 BIGINT, PRIMARY KEY ((pkey), ccol));\""
 
 #install maven && java
-ctool run --sudo dsbulk-client "sudo apt update --assume-yes; sudo apt install maven --assume-yes;"
+ctool run --sudo dsbulk-client "sudo apt update --assume-yes; sudo apt install maven --assume-yes; sudo apt-get install unzip --assume-yes"
 
-github_username="your_username"
-github_password="your_password"
-ctool run --sudo dsbulk-client "cd /mnt/data; git clone https://${github_username}:${github_password}@github.com/riptano/dsbulk.git; cd dsbulk; mvn clean package -DskipTests -P release"
+github_username="username"
+github_password="password"
+#to build
+ctool run --sudo dsbulk-client "cd /mnt/data; git clone https://${github_username}:${github_password}@github.com/riptano/dsbulk.git"
+ctool run --sudo dsbulk-client "cd /mnt/data/dsbulk; sudo mvn clean package -DskipTests -P release"
+
+#to download release
+#ctool run --sudo dsbulk-client "cd /mnt/data; curl -L https://api.github.com/repos/riptano/dsbulk/zipball/${release} -u ${github_username}:${github_password}> dsbulk.zip; unzip dsbulk.zip"
