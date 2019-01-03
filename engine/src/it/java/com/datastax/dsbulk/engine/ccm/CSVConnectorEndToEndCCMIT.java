@@ -73,6 +73,7 @@ import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
@@ -2709,6 +2710,86 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         assertThat(numbers.get("too_many_digits")).isNull();
       }
     }
+  }
+
+  /**
+   * Test for customType without associated codec. Data should be inserted as the blob. To transform
+   * DynamicCompositeType into blob:
+   *
+   * <pre>{@code
+   * ByteBuffer foo = com.datastax.driver.core.TestUtils.serializeForDynamicCompositeType("foo",32);
+   * String blobHex = com.datastax.driver.core.utils.Bytes.toHexString(foo.array());
+   * }</pre>
+   *
+   * <p>and uses blobHex to insert into table custom_types_table - c1 column (see custom-type.csv
+   * file for actual hex value)
+   */
+  @Test
+  void full_load_unload_load_of_custom_types() throws Exception {
+
+    URL customTypesCsv = ClassLoader.getSystemResource("custom-type.csv");
+    session.execute(
+        "CREATE TABLE custom_types_table (k int PRIMARY KEY, c1 'DynamicCompositeType(s => UTF8Type, i => Int32Type)')");
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.csv.url");
+    args.add(quoteJson(customTypesCsv));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("custom_types_table");
+    args.add("--schema.mapping");
+    args.add("k, c1");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    validateResultSetSize(1, "SELECT * FROM custom_types_table");
+    deleteDirectory(logDir);
+
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.csv.url");
+    args.add(quoteJson(unloadDir));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--connector.csv.maxConcurrentFiles");
+    args.add("1");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("custom_types_table");
+    args.add("--schema.mapping");
+    args.add("k, c1");
+
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    validateOutputFiles(1, unloadDir);
+
+    args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.csv.url");
+    args.add(quoteJson(unloadDir));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("custom_types_table");
+    args.add("--schema.mapping");
+    args.add("k, c1");
+
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    validateResultSetSize(1, "SELECT * FROM custom_types_table");
   }
 
   static void checkTemporalsWritten(Session session) {
