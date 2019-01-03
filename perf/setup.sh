@@ -14,20 +14,22 @@ ctool --provider=ironic launch -p devtools-ironic dsbulk-client 1
 #ctool launch -p xenial dsbulk-dse 3
 #ctool launch -p xenial dsbulk-client 1
 
-#setup dse and opscenter
+#setup dse
 ctool install dsbulk-dse -i tar -v 6.0.4 enterprise
 ctool run --sudo dsbulk-dse "mkdir /mnt/data; mkdir /mnt/data/data; mkdir /mnt/data/saved_caches; mkdir /mnt/commitlogs; chmod 777 /mnt/data; chmod 777 /mnt/data/data; chmod 777 /mnt/data/saved_caches; chmod 777 /mnt/commitlogs"
 ctool yaml -f cassandra.yaml -o set -k data_file_directories -v '["/mnt/data/data"]' dsbulk-dse all
 ctool yaml -f cassandra.yaml -o set -k commitlog_directory -v '["/mnt/commitlogs"]' dsbulk-dse all
 ctool yaml -f cassandra.yaml -o set -k saved_caches_directory -v '["/mnt/data/saved_caches"]' dsbulk-dse all
 ctool start dsbulk-dse enterprise
+
+#setup ops-center
 ctool install -a public -i package -v 6.5.4 dsbulk-dse opscenter
 ctool start dsbulk-dse opscenter
 
-dse_ip=`ctool info --public-ips dsbulk-dse`
-curl "http://${dse_ip}:8888/opscenter/index.html" #verifying that ops-center started
-
 ctool install_agents dsbulk-dse dsbulk-dse
+
+dse_ip=`ctool info --public-ips dsbulk-dse -n 0`
+curl "http://${dse_ip}:8888/opscenter/index.html" #verifying that ops-center started
 
 #setup data-set
 ctool run --sudo dsbulk-client "mkdir /mnt/data; chmod 777 /mnt/data"
@@ -46,8 +48,19 @@ ctool run dsbulk-dse 0 "cqlsh -e \"CREATE TABLE IF NOT EXISTS test.test10(pkey B
 #install maven && java
 ctool run --sudo dsbulk-client "sudo apt update --assume-yes; sudo apt install maven --assume-yes; sudo apt-get install unzip --assume-yes"
 
-github_username="username"
-github_password="password"
-#to build dsbulk
-ctool run --sudo dsbulk-client "cd /mnt/data; git clone https://${github_username}:${github_password}@github.com/riptano/dsbulk.git"
-ctool run --sudo dsbulk-client "cd /mnt/data/dsbulk; sudo mvn clean package -DskipTests -P release"
+#to build dsbulk on dsbulk-client (dsbulk should not have SNAPSHOT dependencies to build on ctool created instance)
+#github_username="username"
+#github_password="password"
+#ctool run --sudo dsbulk-client "cd /mnt/data; git clone https://${github_username}:${github_password}@github.com/riptano/dsbulk.git"
+#ctool run --sudo dsbulk-client "cd /mnt/data/dsbulk; sudo mvn clean package -DskipTests -P release"
+
+#to build locally and scp to dsbulk-client
+dsbulk_version=1.2.1-SNAPSHOT
+rm -rf /tmp/dsbulk
+mkdir /tmp/dsbulk
+cd /tmp/dsbulk
+`github_username="username"; github_password="password"; git clone https://${github_username}:${github_password}@github.com/riptano/dsbulk.git`
+cd dsbulk
+mvn clean package -DskipTests -P release
+ctool scp -R dsbulk-client 0 /tmp/dsbulk/dsbulk/dist/target/*.zip /mnt/data/
+ctool run --sudo dsbulk-client "cd /mnt/data/; unzip *.zip; mv dsbulk-${dsbulk_version} dsbulk"
