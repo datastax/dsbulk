@@ -6,11 +6,13 @@ export LC_CTYPE="en_US.UTF-8"
 
 ctool destroy dsbulk-dse
 ctool destroy dsbulk-client
-#ctool --provider=ironic launch -p devtools-ironic dsbulk-dse 3
-#ctool --provider=ironic launch -p devtools-ironic dsbulk-client 1
+#to launch ironic machines on openstack:
+ctool --provider=ironic launch -p devtools-ironic dsbulk-dse 3
+ctool --provider=ironic launch -p devtools-ironic dsbulk-client 1
 
-ctool launch -p xenial dsbulk-dse 3
-ctool launch -p xenial dsbulk-client 1
+#to launch virtual machines on openstack:
+#ctool launch -p xenial dsbulk-dse 3
+#ctool launch -p xenial dsbulk-client 1
 
 #setup dse and opscenter
 ctool install dsbulk-dse -i tar -v 6.0.4 enterprise
@@ -33,6 +35,7 @@ ctool run --sudo dsbulk-client "cd /mnt/data; sudo su automaton; git clone https
 
 #setup DSE keyspaces/tables
 ctool run dsbulk-dse 0 "cqlsh -e \"CREATE KEYSPACE IF NOT EXISTS test WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '3'};\""
+ctool run dsbulk-dse 'nodetool -h localhost disableautocompaction test'
 ctool run dsbulk-dse 0 "cqlsh -e \"CREATE TABLE IF NOT EXISTS test.test100b(pkey TEXT, ccol BIGINT, data TEXT, PRIMARY KEY ((pkey), ccol));\""
 ctool run dsbulk-dse 0 "cqlsh -e \"CREATE TABLE IF NOT EXISTS test.test1kb(pkey TEXT, ccol BIGINT, data TEXT, PRIMARY KEY ((pkey), ccol));\""
 ctool run dsbulk-dse 0 "cqlsh -e \"CREATE TABLE IF NOT EXISTS test.test10kb(pkey TEXT, ccol BIGINT, data TEXT, PRIMARY KEY ((pkey), ccol));\""
@@ -45,9 +48,6 @@ ctool run --sudo dsbulk-client "sudo apt update --assume-yes; sudo apt install m
 
 github_username="username"
 github_password="password"
-#to build
+#to build dsbulk
 ctool run --sudo dsbulk-client "cd /mnt/data; git clone https://${github_username}:${github_password}@github.com/riptano/dsbulk.git"
 ctool run --sudo dsbulk-client "cd /mnt/data/dsbulk; sudo mvn clean package -DskipTests -P release"
-
-#to download release
-#ctool run --sudo dsbulk-client "cd /mnt/data; curl -L https://api.github.com/repos/riptano/dsbulk/zipball/${release} -u ${github_username}:${github_password}> dsbulk.zip; unzip dsbulk.zip"
