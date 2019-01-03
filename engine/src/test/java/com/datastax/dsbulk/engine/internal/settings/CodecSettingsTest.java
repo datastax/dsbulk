@@ -37,6 +37,7 @@ import static org.mockito.Mockito.when;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.Configuration;
+import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.TupleType;
 import com.datastax.driver.core.UserType;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
@@ -44,6 +45,7 @@ import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
+import com.datastax.dsbulk.engine.internal.codecs.json.JsonNodeToUnknownTypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.number.BooleanToNumberCodec;
 import com.datastax.dsbulk.engine.internal.codecs.number.NumberToBooleanCodec;
 import com.datastax.dsbulk.engine.internal.codecs.number.NumberToNumberCodec;
@@ -66,11 +68,13 @@ import com.datastax.dsbulk.engine.internal.codecs.string.StringToShortCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToTupleCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToUDTCodec;
 import com.datastax.dsbulk.engine.internal.codecs.string.StringToUUIDCodec;
+import com.datastax.dsbulk.engine.internal.codecs.string.StringToUnknownTypeCodec;
 import com.datastax.dsbulk.engine.internal.codecs.temporal.DateToTemporalCodec;
 import com.datastax.dsbulk.engine.internal.codecs.temporal.DateToUUIDCodec;
 import com.datastax.dsbulk.engine.internal.codecs.temporal.TemporalToTemporalCodec;
 import com.datastax.dsbulk.engine.internal.codecs.temporal.TemporalToUUIDCodec;
 import com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.reflect.TypeToken;
 import com.typesafe.config.ConfigFactory;
 import java.math.BigDecimal;
@@ -419,6 +423,27 @@ class CodecSettingsTest {
       assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullStrings"))
           .containsOnly("NIL", "NULL");
     }
+  }
+
+  @Test
+  void should_return_string_to_unknown_type_codec_for_dynamic_composite_type() {
+    LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.codec"));
+    CodecSettings settings = new CodecSettings(config);
+    settings.init();
+    ExtendedCodecRegistry codecRegistry =
+        settings.createCodecRegistry(cluster.getConfiguration().getCodecRegistry(), false, false);
+    assertThat(
+            codecRegistry.convertingCodecFor(
+                DataType.custom("org.apache.cassandra.db.marshal.DynamicCompositeType"),
+                TypeToken.of(String.class)))
+        .isNotNull()
+        .isInstanceOf(StringToUnknownTypeCodec.class);
+    assertThat(
+            codecRegistry.convertingCodecFor(
+                DataType.custom("org.apache.cassandra.db.marshal.DynamicCompositeType"),
+                TypeToken.of(JsonNode.class)))
+        .isNotNull()
+        .isInstanceOf(JsonNodeToUnknownTypeCodec.class);
   }
 
   @NotNull
