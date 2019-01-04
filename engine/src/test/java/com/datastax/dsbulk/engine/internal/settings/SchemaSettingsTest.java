@@ -1093,21 +1093,6 @@ class SchemaSettingsTest {
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
-        .isEqualTo("SELECT TTL(c3) FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end");
-  }
-
-  @Test
-  void should_create_row_counter_for_global_stats_no_regular_column() {
-    when(table.getPrimaryKey()).thenReturn(newArrayList(col1, col2, col3));
-    LoaderConfig config = makeLoaderConfig("keyspace=ks, table=t1");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.COUNT, cluster, false);
-    ReadResultCounter counter =
-        schemaSettings.createReadResultCounter(session, codecRegistry, EnumSet.of(global), 10);
-    assertThat(counter).isNotNull();
-    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
-    verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
         .isEqualTo("SELECT c1 FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end");
   }
 
