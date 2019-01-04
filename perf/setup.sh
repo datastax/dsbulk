@@ -82,4 +82,6 @@ ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test
 
 #run dsbulk step (ordered data-set)
 dse_node_ips=`ctool info --public-ips dsbulk-dse`
-ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -header false --batch.mode REPLICA_SET -url /mnt/data/data_faker/generated -h ${dse_node_ips} -delim '|' -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' --codec.timestamp ISO_ZONED_DATE_TIME &> ordered_data"
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -header false --batch.mode REPLICA_SET -url /mnt/data/data_faker/generated -h ${dse_node_ips} -delim '|' -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' --codec.timestamp ISO_ZONED_DATE_TIME &> ordered_data_first"
+ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.transactions;\""
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -header false --batch.mode REPLICA_SET -url /mnt/data/data_faker/generated -h ${dse_node_ips} -delim '|' -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' --codec.timestamp ISO_ZONED_DATE_TIME &> ordered_data_second"
