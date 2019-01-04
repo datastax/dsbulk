@@ -36,7 +36,8 @@ ctool run --sudo dsbulk-client "mkdir /mnt/data; chmod 777 /mnt/data"
 ctool run --sudo dsbulk-client "cd /mnt/data; sudo su automaton; git clone https://github.com/brianmhess/DSEBulkLoadTest; cd DSEBulkLoadTest; make compile; make dirs; make data"
 
 #setup data-set (multiple records per Partition Key)
-ctool run --sudo dsbulk-client "cd /mnt/data; sudo su automaton; git clone https://github.com/tomekl007/data_faker; cd data_faker; mvn clean package"
+github_username="username"; github_password="password";
+ctool run --sudo dsbulk-client "cd /mnt/data; sudo su automaton; git clone https://${github_username}:${github_password}@github.com/riptano/data_faker.git; cd data_faker; mvn clean package"
 #generate 1 million PKs. Every PK has >= 50 && <= 100 records.
 ctool run --sudo dsbulk-client "cd /mnt/data/data_faker; java -jar target/fake-data-generator-1.0.jar 32 1000000 50 100 false"
 
@@ -71,8 +72,10 @@ mvn clean package -DskipTests -P release
 ctool scp -R dsbulk-client 0 /tmp/dsbulk/dsbulk/dist/target/*.zip /mnt/data/
 ctool run --sudo dsbulk-client "cd /mnt/data/; unzip *.zip; mv dsbulk-${dsbulk_version} dsbulk"
 
-#run dsbulk step
+#run dsbulk step (random data-set)
 dse_node_ips=`ctool info --public-ips dsbulk-dse`
 ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -header false --batch.mode REPLICA_SET -url /mnt/data/DSEBulkLoadTest/in/data100B/ -h ${dse_node_ips} &> test100bLOAD_first"
 ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.test100b;\""
 ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -header false --batch.mode REPLICA_SET -url /mnt/data/DSEBulkLoadTest/in/data100B/ -h ${dse_node_ips} &> test100bLOAD_second"
+
+#run dsbulk step (ordered data-set)
