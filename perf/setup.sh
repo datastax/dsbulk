@@ -76,7 +76,7 @@ mvn clean package -DskipTests -P release
 ctool scp -R dsbulk-client 0 /tmp/dsbulk/dsbulk/dist/target/*.zip /mnt/data/
 ctool run --sudo dsbulk-client "cd /mnt/data/; unzip *.zip; mv dsbulk-${dsbulk_version} dsbulk"
 
-#LOAD-----------------------------------------------------------------------------------------------
+#LOAD - CSV-----------------------------------------------------------------------------------------------
 
 #run dsbulk step (random data-set) - LOAD
 dse_node_ips=`ctool info --public-ips dsbulk-dse`
@@ -131,7 +131,7 @@ ctool run --sudo dsbulk-client "rm -Rf /mnt/data/DSEBulkLoadTest/out/data1MB/; /
 ctool run --sudo dsbulk-client "rm -Rf /mnt/data/DSEBulkLoadTest/out/data10/; /mnt/data/dsbulk/bin/dsbulk unload -k test -t test1mb -header false -url /mnt/data/DSEBulkLoadTest/out/data10/ -h ${dse_node_ips} &> 10UNLOAD"
 
 #run dsbulk step (sorted data-set) - UNLOAD
-ctool run --sudo dsbulk-client "rm -Rf /mnt/data/data_faker/generated; /mnt/data/dsbulk/bin/dsbulk unload -k test -t transactions -header false -url /mnt/data/data_faker/generated -h ${dse_node_ips} &> transactionsUNLOAD"
+ctool run --sudo dsbulk-client "rm -Rf /mnt/data/data_faker/generated; /mnt/data/dsbulk/bin/dsbulk unload -k test -t transactions -header false -url /mnt/data/data_faker/generated -h ${dse_node_ips} -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' &> transactionsUNLOAD"
 
 
 #COUNT-----------------------------------------------------------------------------------------------
