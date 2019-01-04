@@ -45,7 +45,6 @@ ctool run --sudo dsbulk-client "cd /mnt/data/data_faker; java -jar target/fake-d
 
 #setup DSE keyspaces/tables
 ctool run dsbulk-dse 0 "cqlsh -e \"CREATE KEYSPACE IF NOT EXISTS test WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '3'};\""
-ctool run dsbulk-dse 'nodetool -h localhost disableautocompaction test'
 ctool run dsbulk-dse 0 "cqlsh -e \"CREATE TABLE IF NOT EXISTS test.test100b(pkey TEXT, ccol BIGINT, data TEXT, PRIMARY KEY ((pkey), ccol));\""
 ctool run dsbulk-dse 0 "cqlsh -e \"CREATE TABLE IF NOT EXISTS test.test1kb(pkey TEXT, ccol BIGINT, data TEXT, PRIMARY KEY ((pkey), ccol));\""
 ctool run dsbulk-dse 0 "cqlsh -e \"CREATE TABLE IF NOT EXISTS test.test10kb(pkey TEXT, ccol BIGINT, data TEXT, PRIMARY KEY ((pkey), ccol));\""
@@ -77,6 +76,7 @@ ctool scp -R dsbulk-client 0 /tmp/dsbulk/dsbulk/dist/target/*.zip /mnt/data/
 ctool run --sudo dsbulk-client "cd /mnt/data/; unzip *.zip; mv dsbulk-${dsbulk_version} dsbulk"
 
 #LOAD - CSV-----------------------------------------------------------------------------------------------
+ctool run dsbulk-dse 'nodetool -h localhost disableautocompaction test'
 
 #run dsbulk step (random data-set) - LOAD
 dse_node_ips=`ctool info --public-ips dsbulk-dse`
@@ -102,15 +102,15 @@ ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test
 
 #10 number columns
 ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test10 -header false --batch.mode REPLICA_SET -url /mnt/data/DSEBulkLoadTest/in/data10/ -h ${dse_node_ips} &> test10LOAD_first"
-ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.data10;\""
+ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.test10;\""
 ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test10 -header false --batch.mode REPLICA_SET -url /mnt/data/DSEBulkLoadTest/in/data10/ -h ${dse_node_ips} &> test10LOAD_second"
 
 
 #run dsbulk step (ordered data-set) - LOAD
 dse_node_ips=`ctool info --public-ips dsbulk-dse`
-ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -header false --batch.mode REPLICA_SET -url /mnt/data/data_faker/generated -h ${dse_node_ips} -delim '|' -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' --codec.timestamp ISO_ZONED_DATE_TIME &> ordered_data_first"
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -header false --batch.mode REPLICA_SET -url /mnt/data/data_faker/generated -h ${dse_node_ips} -delim '|' -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' --codec.timestamp ISO_ZONED_DATE_TIME &> transactionsLOAD_first"
 ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.transactions;\""
-ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -header false --batch.mode REPLICA_SET -url /mnt/data/data_faker/generated -h ${dse_node_ips} -delim '|' -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' --codec.timestamp ISO_ZONED_DATE_TIME &> ordered_data_second"
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -header false --batch.mode REPLICA_SET -url /mnt/data/data_faker/generated -h ${dse_node_ips} -delim '|' -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' --codec.timestamp ISO_ZONED_DATE_TIME &> transactionsLOAD_second"
 
 
 #UNLOAD as CSV-----------------------------------------------------------------------------------------------
@@ -147,7 +147,7 @@ ctool run --sudo dsbulk-client "rm -Rf /mnt/data/DSEBulkLoadTest/out/data1MB/; /
 ctool run --sudo dsbulk-client "rm -Rf /mnt/data/DSEBulkLoadTest/out/data10/; /mnt/data/dsbulk/bin/dsbulk unload -k test -t test10 -c json -url /mnt/data/DSEBulkLoadTest/out/data10/ -h ${dse_node_ips} &> 10UNLOADjson"
 
 #run dsbulk step (sorted data-set) - UNLOAD
-ctool run --sudo dsbulk-client "rm -Rf /mnt/data/data_faker/generated; /mnt/data/dsbulk/bin/dsbulk unload -k test -t transactions -c json -url /mnt/data/data_faker/generated -h ${dse_node_ips} -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' &> transactionsUNLOADjson"
+ctool run --sudo dsbulk-client "rm -Rf /mnt/data/data_faker/generated; /mnt/data/dsbulk/bin/dsbulk unload -k test -t transactions -c json -url /mnt/data/data_faker/generated -h ${dse_node_ips} &> transactionsUNLOADjson"
 
 
 #COUNT-----------------------------------------------------------------------------------------------
@@ -161,3 +161,43 @@ ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk count -k test -t tes
 
 #run dsbulk step (ordered data-set) - COUNT
 ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk count -k test -t transactions -h ${dse_node_ips} &> countTransactions"
+
+#LOAD - JSON-----------------------------------------------------------------------------------------------
+ctool run dsbulk-dse 'nodetool -h localhost disableautocompaction test'
+
+#run dsbulk step (random data-set)
+#100b
+ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.test100b;\""
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -c json --batch.mode REPLICA_SET -url /mnt/data/DSEBulkLoadTest/in/data100B/ -h ${dse_node_ips} &> test100bLOADjson_first"
+ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.test100b;\""
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -c json --batch.mode REPLICA_SET -url /mnt/data/DSEBulkLoadTest/in/data100B/ -h ${dse_node_ips} &> test100bLOADjson_second"
+
+#1KB
+ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.test1kb;\""
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test1kb -c json --batch.mode REPLICA_SET -url /mnt/data/DSEBulkLoadTest/in/data1KB/ -h ${dse_node_ips} &> test1KBLOADjson_first"
+ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.test1kb;\""
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test1kb -c json --batch.mode REPLICA_SET -url /mnt/data/DSEBulkLoadTest/in/data1KB/ -h ${dse_node_ips} &> test1KBLOADjson_second"
+
+#10KB
+ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.test10kb;\""
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test10kb -c json --batch.mode REPLICA_SET --connector.csv.maxCharsPerColumn 11000 -url /mnt/data/DSEBulkLoadTest/in/data10KB/ -h ${dse_node_ips} &> test10KBLOADjson_first"
+ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.test10kb;\""
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test10kb -c json --batch.mode REPLICA_SET --connector.csv.maxCharsPerColumn 11000 -url /mnt/data/DSEBulkLoadTest/in/data10KB/ -h ${dse_node_ips} &> test10KBLOADjson_second"
+
+#1MB
+ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.test1mb;\""
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test1mb -c json --batch.mode DISABLED --connector.csv.maxCharsPerColumn 1100000 --executor.maxInFlight 64 -url /mnt/data/DSEBulkLoadTest/in/data1MB/ -h ${dse_node_ips} &> test1MBLOADjson_first"
+ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.test1mb;\""
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test1mb -c json --batch.mode DISABLED --connector.csv.maxCharsPerColumn 1100000 --executor.maxInFlight 64 -url /mnt/data/DSEBulkLoadTest/in/data1MB/ -h ${dse_node_ips} &> test1MBLOADjson_second"
+
+#10 number columns
+ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.test10;\""
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test10 -c json --batch.mode REPLICA_SET -url /mnt/data/DSEBulkLoadTest/in/data10/ -h ${dse_node_ips} &> test10LOADjson_first"
+ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.test10;\""
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test10 -c json --batch.mode REPLICA_SET -url /mnt/data/DSEBulkLoadTest/in/data10/ -h ${dse_node_ips} &> test10LOADjson_second"
+
+#run dsbulk step (ordered data-set)
+ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.transactions;\""
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -c json --batch.mode REPLICA_SET -url /mnt/data/data_faker/generated -h ${dse_node_ips} --codec.timestamp ISO_ZONED_DATE_TIME &> transactionsLOAD_json_first"
+ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.transactions;\""
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -c json --batch.mode REPLICA_SET -url /mnt/data/data_faker/generated -h ${dse_node_ips} --codec.timestamp ISO_ZONED_DATE_TIME &> transactionsLOAD_json_second"
