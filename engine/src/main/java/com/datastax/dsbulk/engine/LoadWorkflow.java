@@ -9,6 +9,8 @@
 package com.datastax.dsbulk.engine;
 
 import static com.datastax.driver.core.ConsistencyLevel.ONE;
+import static com.datastax.dsbulk.connectors.api.CommonConnectorFeature.INDEXED_RECORDS;
+import static com.datastax.dsbulk.connectors.api.CommonConnectorFeature.MAPPED_RECORDS;
 import static com.datastax.dsbulk.engine.internal.utils.ClusterInformationUtils.printDebugInfoAboutCluster;
 import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.checkProductCompatibility;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -18,7 +20,6 @@ import com.datastax.driver.core.Statement;
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
@@ -112,7 +113,10 @@ public class LoadWorkflow implements Workflow {
     printDebugInfoAboutCluster(cluster);
     checkProductCompatibility(cluster);
     schemaSettings.init(
-        WorkflowType.LOAD, cluster, !connector.supports(CommonConnectorFeature.MAPPED_RECORDS));
+        WorkflowType.LOAD,
+        cluster,
+        connector.supports(INDEXED_RECORDS),
+        connector.supports(MAPPED_RECORDS));
     DseSession session = cluster.connect();
     batchingEnabled = batchSettings.isBatchingEnabled();
     batchBufferSize = batchSettings.getBufferSize();

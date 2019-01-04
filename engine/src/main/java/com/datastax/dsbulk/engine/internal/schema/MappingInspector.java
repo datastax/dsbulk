@@ -9,6 +9,8 @@
 package com.datastax.dsbulk.engine.internal.schema;
 
 import static com.datastax.dsbulk.engine.WorkflowType.LOAD;
+import static com.datastax.dsbulk.engine.internal.schema.MappingPreference.INDEXED_ONLY;
+import static com.datastax.dsbulk.engine.internal.schema.MappingPreference.MAPPED_ONLY;
 import static java.util.stream.Collectors.counting;
 import static java.util.stream.Collectors.groupingBy;
 
@@ -61,7 +63,7 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
 
   private static final CQLIdentifier WRITETIME = CQLIdentifier.fromInternal("writetime");
 
-  private final boolean preferIndexedMapping;
+  private final MappingPreference mappingPreference;
   private final WorkflowType workflowType;
 
   private final Set<CQLFragment> writeTimeVariablesBuilder = new LinkedHashSet<>();
@@ -74,9 +76,11 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   private int currentIndex;
   private boolean inferring;
   private boolean indexed;
+  private boolean hasRegularMappedEntry = false;
 
-  public MappingInspector(String mapping, boolean preferIndexedMapping, WorkflowType workflowType) {
-    this.preferIndexedMapping = preferIndexedMapping;
+  public MappingInspector(
+      String mapping, WorkflowType workflowType, MappingPreference mappingPreference) {
+    this.mappingPreference = mappingPreference;
     this.workflowType = workflowType;
     CodePointCharStream input = CharStreams.fromString(mapping);
     MappingLexer lexer = new MappingLexer(input);
@@ -132,11 +136,6 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
     return inferring;
   }
 
-  /** @return true if the mapping is indexed, false otherwise. */
-  public boolean isIndexed() {
-    return indexed;
-  }
-
   /**
    * @return the list of variables to exclude from the inferred mapping, as in "* = -c1". Returns
    *     empty if there is no such variable of if the mapping does not contain an inferred entry.
@@ -157,11 +156,12 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   public MappingToken visitMapping(MappingParser.MappingContext ctx) {
     currentIndex = 0;
     if (!ctx.simpleEntry().isEmpty()) {
+      indexed = mappingPreference == INDEXED_ONLY;
       for (SimpleEntryContext entry : ctx.simpleEntry()) {
         visitSimpleEntry(entry);
       }
     } else if (!ctx.indexedEntry().isEmpty()) {
-      indexed = true;
+      indexed = mappingPreference != MAPPED_ONLY;
       for (MappingParser.IndexedEntryContext entry : ctx.indexedEntry()) {
         visitIndexedEntry(entry);
       }
@@ -169,6 +169,12 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
       indexed = false;
       for (MappingParser.MappedEntryContext entry : ctx.mappedEntry()) {
         visitMappedEntry(entry);
+      }
+      if (hasRegularMappedEntry && mappingPreference == INDEXED_ONLY) {
+        throw new BulkConfigurationException(
+            "Schema mapping contains named fields, but connector only supports indexed fields, "
+                + "please enable support for named fields in the connector, or alternatively, "
+                + "provide an indexed mapping of the form: '0=col1,1=col2,...'");
       }
     }
     return null;
@@ -182,11 +188,9 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
           "Invalid schema.mapping: simple entries cannot contain function calls when loading, "
               + "please use mapped entries instead.");
     }
-    if (preferIndexedMapping) {
-      indexed = true;
+    if (mappingPreference == INDEXED_ONLY) {
       explicitVariablesBuilder.put(new IndexedMappingField(currentIndex++), variable);
     } else {
-      indexed = false;
       explicitVariablesBuilder.put(new MappedMappingField(variable.asInternal()), variable);
     }
     return null;
@@ -210,12 +214,18 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   }
 
   @Override
-  public IndexedMappingField visitIndex(IndexContext ctx) {
-    return new IndexedMappingField(Integer.parseInt(ctx.INTEGER().getText()));
+  public MappingField visitIndex(IndexContext ctx) {
+    String index = ctx.INTEGER().getText();
+    if (mappingPreference == MAPPED_ONLY) {
+      return new MappedMappingField(index);
+    } else {
+      return new IndexedMappingField(Integer.parseInt(index));
+    }
   }
 
   @Override
   public MappingToken visitRegularMappedEntry(MappingParser.RegularMappedEntryContext ctx) {
+    hasRegularMappedEntry = true;
     MappingField field = visitFieldOrFunction(ctx.fieldOrFunction());
     CQLFragment variable = visitVariableOrFunction(ctx.variableOrFunction());
     explicitVariablesBuilder.put(field, variable);

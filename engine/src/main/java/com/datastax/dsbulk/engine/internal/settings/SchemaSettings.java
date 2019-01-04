@@ -16,6 +16,7 @@ import static com.datastax.dsbulk.engine.WorkflowType.UNLOAD;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
 import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERNAL_TIMESTAMP_VARNAME;
 import static com.datastax.dsbulk.engine.internal.schema.MappingInspector.INTERNAL_TTL_VARNAME;
+import static com.datastax.dsbulk.engine.internal.schema.MappingPreference.INDEXED_ONLY;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.hosts;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.partitions;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.ranges;
@@ -56,6 +57,7 @@ import com.datastax.dsbulk.engine.internal.schema.IndexedMappingField;
 import com.datastax.dsbulk.engine.internal.schema.MappedMappingField;
 import com.datastax.dsbulk.engine.internal.schema.MappingField;
 import com.datastax.dsbulk.engine.internal.schema.MappingInspector;
+import com.datastax.dsbulk.engine.internal.schema.MappingPreference;
 import com.datastax.dsbulk.engine.internal.schema.QueryInspector;
 import com.datastax.dsbulk.engine.internal.schema.ReadResultCounter;
 import com.datastax.dsbulk.engine.internal.schema.ReadResultMapper;
@@ -121,16 +123,18 @@ public class SchemaSettings {
   private QueryInspector queryInspector;
   private PreparedStatement preparedStatement;
   private ImmutableSet<CQLFragment> writeTimeVariables;
-  private boolean preferIndexedMapping;
+  private MappingPreference mappingPreference;
 
   SchemaSettings(LoaderConfig config) {
     this.config = config;
   }
 
-  public void init(WorkflowType workflowType, Cluster cluster, boolean expectIndexedMapping) {
+  public void init(
+      WorkflowType workflowType,
+      Cluster cluster,
+      boolean indexedMappingSupported,
+      boolean mappedMappingSupported) {
     try {
-
-      preferIndexedMapping = expectIndexedMapping;
 
       // Sanity Checks
 
@@ -276,6 +280,14 @@ public class SchemaSettings {
 
       // Mapping
 
+      if (indexedMappingSupported && mappedMappingSupported) {
+        mappingPreference = MappingPreference.MAPPED_OR_INDEXED;
+      } else if (indexedMappingSupported) {
+        mappingPreference = INDEXED_ONLY;
+      } else {
+        mappingPreference = MappingPreference.MAPPED_ONLY;
+      }
+
       if (config.hasPath(MAPPING)) {
 
         if (workflowType == COUNT) {
@@ -283,15 +295,7 @@ public class SchemaSettings {
               "Setting schema.mapping must not be defined when counting rows in a table");
         }
 
-        mapping =
-            new MappingInspector(config.getString(MAPPING), preferIndexedMapping, workflowType);
-
-        if (preferIndexedMapping && !mapping.isIndexed()) {
-          throw new BulkConfigurationException(
-              "Schema mapping contains named fields, but connector only supports indexed fields, "
-                  + "please enable support for named fields in the connector, or alternatively, "
-                  + "provide an indexed mapping of the form: '0=col1,1=col2,...'");
-        }
+        mapping = new MappingInspector(config.getString(MAPPING), workflowType, mappingPreference);
 
         // Error out if the explicit variables map timestamp or ttl and
         // there is an explicit query.
@@ -329,6 +333,9 @@ public class SchemaSettings {
                 .addAll(writeTimeVariables)
                 .addAll(mapping.getWriteTimeVariables())
                 .build();
+      } else {
+
+        mapping = new MappingInspector("*=*", workflowType, mappingPreference);
       }
 
       // Misc
@@ -592,33 +599,27 @@ public class SchemaSettings {
 
   private ImmutableMultimap<MappingField, CQLFragment> createFieldsToVariablesMap(
       List<CQLFragment> columns) throws BulkConfigurationException {
+
     ImmutableMultimap<MappingField, CQLFragment> fieldsToVariables;
-    // create indexed mappings only for unload, and only if the connector really requires it, to
-    // match the order in which the query declares variables.
-    if (mapping == null) {
+    if (mapping.isInferring()) {
       fieldsToVariables = inferFieldsToVariablesMap(columns);
     } else {
-      if (mapping.isInferring()) {
-        fieldsToVariables = inferFieldsToVariablesMap(columns);
-      } else {
-        fieldsToVariables = ImmutableMultimap.of();
-      }
+      fieldsToVariables = ImmutableMultimap.of();
+    }
 
-      ImmutableMultimap<MappingField, CQLFragment> explicitVariables =
-          mapping.getExplicitVariables();
-      if (!explicitVariables.isEmpty()) {
-        ImmutableMultimap.Builder<MappingField, CQLFragment> builder = ImmutableMultimap.builder();
-        for (Map.Entry<MappingField, CQLFragment> entry : explicitVariables.entries()) {
+    ImmutableMultimap<MappingField, CQLFragment> explicitVariables = mapping.getExplicitVariables();
+    if (!explicitVariables.isEmpty()) {
+      ImmutableMultimap.Builder<MappingField, CQLFragment> builder = ImmutableMultimap.builder();
+      for (Map.Entry<MappingField, CQLFragment> entry : explicitVariables.entries()) {
+        builder.put(entry.getKey(), entry.getValue());
+      }
+      for (Map.Entry<MappingField, CQLFragment> entry : fieldsToVariables.entries()) {
+        if (!explicitVariables.containsKey(entry.getKey())
+            && !explicitVariables.containsValue(entry.getValue())) {
           builder.put(entry.getKey(), entry.getValue());
         }
-        for (Map.Entry<MappingField, CQLFragment> entry : fieldsToVariables.entries()) {
-          if (!explicitVariables.containsKey(entry.getKey())
-              && !explicitVariables.containsValue(entry.getValue())) {
-            builder.put(entry.getKey(), entry.getValue());
-          }
-        }
-        fieldsToVariables = builder.build();
       }
+      fieldsToVariables = builder.build();
     }
 
     Preconditions.checkState(
@@ -811,8 +812,8 @@ public class SchemaSettings {
 
     int i = 0;
     for (CQLFragment colName : columns) {
-      if (mapping == null || !mapping.getExcludedVariables().contains(colName)) {
-        if (preferIndexedMapping) {
+      if (!mapping.getExcludedVariables().contains(colName)) {
+        if (mappingPreference == INDEXED_ONLY) {
           fieldsToVariables.put(new IndexedMappingField(i), colName);
         } else {
           fieldsToVariables.put(new MappedMappingField(colName.asInternal()), colName);
@@ -1065,7 +1066,7 @@ public class SchemaSettings {
   private Set<CQLFragment> maybeSortCols(
       ImmutableMultimap<MappingField, CQLFragment> fieldsToVariables) {
     Set<CQLFragment> cols;
-    if (mapping != null && mapping.isIndexed()) {
+    if (mappingPreference == INDEXED_ONLY) {
       // order columns by index
       Multimap<MappingField, CQLFragment> sorted =
           MappingInspector.sortFieldsByIndex(fieldsToVariables);
