@@ -988,16 +988,8 @@ public class SchemaSettings {
 
   @NotNull
   private String getGlobalCountSelector() {
-    // When counting global rows we can select anything; we use the ttl of the first regular
-    // column since it is an int and only takes 4 bytes; if no regular column exists, we use
-    // the first partition key column.
-    return table
-        .getColumns()
-        .stream()
-        .filter(col -> !table.getPrimaryKey().contains(col))
-        .map(col -> "TTL(" + quoteIfNecessary(col.getName()) + ")")
-        .findFirst()
-        .orElse(quoteIfNecessary(table.getPartitionKey().get(0).getName()));
+    // When counting global rows we can select anything; we use the first partition key column.
+    return quoteIfNecessary(table.getPartitionKey().get(0).getName());
   }
 
   private Set<CQLIdentifier> primaryKeyVariables() {
