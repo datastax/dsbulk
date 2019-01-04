@@ -113,25 +113,41 @@ ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.transactions;\""
 ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -header false --batch.mode REPLICA_SET -url /mnt/data/data_faker/generated -h ${dse_node_ips} -delim '|' -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' --codec.timestamp ISO_ZONED_DATE_TIME &> ordered_data_second"
 
 
-#UNLOAD-----------------------------------------------------------------------------------------------
+#UNLOAD as CSV-----------------------------------------------------------------------------------------------
 ctool run dsbulk-dse 'nodetool -h localhost enableautocompaction test'
 #wait for compaction to finish - http://${dse_ip}:8888/opscenter/index.html todo automate blocking wait for compaction
 
 #run dsbulk step (random data-set) - UNLOAD
-ctool run --sudo dsbulk-client "rm -Rf /mnt/data/DSEBulkLoadTest/out/data1MB/; /mnt/data/dsbulk/bin/dsbulk unload -k test -t test1mb -header false -url /mnt/data/DSEBulkLoadTest/out/data1MB/ -h ${dse_node_ips} &> 10mbUNLOAD"
 
 ctool run --sudo dsbulk-client "rm -Rf /mnt/data/DSEBulkLoadTest/out/data100B/; /mnt/data/dsbulk/bin/dsbulk unload -k test -t test100b -header false -url /mnt/data/DSEBulkLoadTest/out/data100B/ -h ${dse_node_ips} &> 100BUNLOAD"
 
-ctool run --sudo dsbulk-client "rm -Rf /mnt/data/DSEBulkLoadTest/out/data1KB/; /mnt/data/dsbulk/bin/dsbulk unload -k test -t test1mb -header false -url /mnt/data/DSEBulkLoadTest/out/data1KB/ -h ${dse_node_ips} &> 1KBUNLOAD"
+ctool run --sudo dsbulk-client "rm -Rf /mnt/data/DSEBulkLoadTest/out/data1KB/; /mnt/data/dsbulk/bin/dsbulk unload -k test -t test1kb -header false -url /mnt/data/DSEBulkLoadTest/out/data1KB/ -h ${dse_node_ips} &> 1KBUNLOAD"
 
-ctool run --sudo dsbulk-client "rm -Rf /mnt/data/DSEBulkLoadTest/out/data10KB/; /mnt/data/dsbulk/bin/dsbulk unload -k test -t test1mb -header false -url /mnt/data/DSEBulkLoadTest/out/data10KB/ -h ${dse_node_ips} &> 10kbUNLOAD"
+ctool run --sudo dsbulk-client "rm -Rf /mnt/data/DSEBulkLoadTest/out/data10KB/; /mnt/data/dsbulk/bin/dsbulk unload -k test -t test10kb -header false -url /mnt/data/DSEBulkLoadTest/out/data10KB/ -h ${dse_node_ips} &> 10kbUNLOAD"
 
-ctool run --sudo dsbulk-client "rm -Rf /mnt/data/DSEBulkLoadTest/out/data1MB/; /mnt/data/dsbulk/bin/dsbulk unload -k test -t test1mb -header false -url /mnt/data/DSEBulkLoadTest/out/data1MB/ -h ${dse_node_ips} &> 10mbUNLOAD"
+ctool run --sudo dsbulk-client "rm -Rf /mnt/data/DSEBulkLoadTest/out/data1MB/; /mnt/data/dsbulk/bin/dsbulk unload -k test -t test1mb -header false -url /mnt/data/DSEBulkLoadTest/out/data1MB/ -h ${dse_node_ips} --executor.continuousPaging.pageSize 1000000 --executor.continuousPaging.pageUnit BYTES &> 1mbUNLOAD"
 
-ctool run --sudo dsbulk-client "rm -Rf /mnt/data/DSEBulkLoadTest/out/data10/; /mnt/data/dsbulk/bin/dsbulk unload -k test -t test1mb -header false -url /mnt/data/DSEBulkLoadTest/out/data10/ -h ${dse_node_ips} &> 10UNLOAD"
+ctool run --sudo dsbulk-client "rm -Rf /mnt/data/DSEBulkLoadTest/out/data10/; /mnt/data/dsbulk/bin/dsbulk unload -k test -t test10 -header false -url /mnt/data/DSEBulkLoadTest/out/data10/ -h ${dse_node_ips} &> 10UNLOAD"
 
 #run dsbulk step (sorted data-set) - UNLOAD
 ctool run --sudo dsbulk-client "rm -Rf /mnt/data/data_faker/generated; /mnt/data/dsbulk/bin/dsbulk unload -k test -t transactions -header false -url /mnt/data/data_faker/generated -h ${dse_node_ips} -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' &> transactionsUNLOAD"
+
+
+#UNLOAD as JSON-----------------------------------------------------------------------------------------------
+
+#run dsbulk step (random data-set) - UNLOAD
+ctool run --sudo dsbulk-client "rm -Rf /mnt/data/DSEBulkLoadTest/out/data100B/; /mnt/data/dsbulk/bin/dsbulk unload -k test -t test100b -c json -url /mnt/data/DSEBulkLoadTest/out/data100B/ -h ${dse_node_ips} &> 100BUNLOADjson"
+
+ctool run --sudo dsbulk-client "rm -Rf /mnt/data/DSEBulkLoadTest/out/data1KB/; /mnt/data/dsbulk/bin/dsbulk unload -k test -t test1kb -c json -url /mnt/data/DSEBulkLoadTest/out/data1KB/ -h ${dse_node_ips} &> 1KBUNLOADjson"
+
+ctool run --sudo dsbulk-client "rm -Rf /mnt/data/DSEBulkLoadTest/out/data10KB/; /mnt/data/dsbulk/bin/dsbulk unload -k test -t test10kb -c json -url /mnt/data/DSEBulkLoadTest/out/data10KB/ -h ${dse_node_ips} &> 10kbUNLOADjson"
+
+ctool run --sudo dsbulk-client "rm -Rf /mnt/data/DSEBulkLoadTest/out/data1MB/; /mnt/data/dsbulk/bin/dsbulk unload -k test -t test1mb -c json -url /mnt/data/DSEBulkLoadTest/out/data1MB/ -h ${dse_node_ips} --executor.continuousPaging.pageSize 1000000 --executor.continuousPaging.pageUnit BYTES &> 1mbUNLOADjson"
+
+ctool run --sudo dsbulk-client "rm -Rf /mnt/data/DSEBulkLoadTest/out/data10/; /mnt/data/dsbulk/bin/dsbulk unload -k test -t test10 -c json -url /mnt/data/DSEBulkLoadTest/out/data10/ -h ${dse_node_ips} &> 10UNLOADjson"
+
+#run dsbulk step (sorted data-set) - UNLOAD
+ctool run --sudo dsbulk-client "rm -Rf /mnt/data/data_faker/generated; /mnt/data/dsbulk/bin/dsbulk unload -k test -t transactions -c json -url /mnt/data/data_faker/generated -h ${dse_node_ips} -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' &> transactionsUNLOADjson"
 
 
 #COUNT-----------------------------------------------------------------------------------------------
