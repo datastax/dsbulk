@@ -100,7 +100,7 @@ ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test
 ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.test1mb;\""
 ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test1mb -header false --batch.mode DISABLED --connector.csv.maxCharsPerColumn 1100000 --executor.maxInFlight 64 -url /mnt/data/DSEBulkLoadTest/in/data1MB/ -h ${dse_node_ips} &> test1MBLOAD_second"
 
-#10 number columns
+#10 number of columns
 ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test10 -header false --batch.mode REPLICA_SET -url /mnt/data/DSEBulkLoadTest/in/data10/ -h ${dse_node_ips} &> test10LOAD_first"
 ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.test10;\""
 ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test10 -header false --batch.mode REPLICA_SET -url /mnt/data/DSEBulkLoadTest/in/data10/ -h ${dse_node_ips} &> test10LOAD_second"
@@ -190,7 +190,7 @@ ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test
 ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.test1mb;\""
 ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test1mb -c json --batch.mode DISABLED --connector.csv.maxCharsPerColumn 1100000 --executor.maxInFlight 64 -url /mnt/data/DSEBulkLoadTest/in/data1MB/ -h ${dse_node_ips} &> test1MBLOADjson_second"
 
-#10 number columns
+#10 number of columns
 ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.test10;\""
 ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test10 -c json --batch.mode REPLICA_SET -url /mnt/data/DSEBulkLoadTest/in/data10/ -h ${dse_node_ips} &> test10LOADjson_first"
 ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.test10;\""
