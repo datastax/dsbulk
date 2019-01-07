@@ -838,7 +838,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     checkTemporalsWritten(session);
   }
 
-  /** Test for DAT-317. */
+  /** Test for DAT-377. */
   @Test
   void load_numeric_fields() {
 
