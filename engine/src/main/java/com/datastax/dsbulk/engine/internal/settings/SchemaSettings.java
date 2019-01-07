@@ -303,6 +303,10 @@ public class SchemaSettings {
             "Connector must support at least one of indexed or mapped mappings");
       }
 
+      ProtocolVersion protocolVersion = cluster.getConfiguration()
+          .getProtocolOptions()
+          .getProtocolVersion();
+
       if (config.hasPath(MAPPING)) {
 
         if (workflowType == COUNT) {
@@ -315,7 +319,7 @@ public class SchemaSettings {
                 config.getString(MAPPING),
                 workflowType,
                 mappingPreference,
-                cluster.getConfiguration().getProtocolOptions().getProtocolVersion(),
+                protocolVersion,
                 usingTimestampVariable,
                 usingTTLVariable);
 
@@ -358,7 +362,7 @@ public class SchemaSettings {
                 "*=*",
                 workflowType,
                 mappingPreference,
-                cluster.getConfiguration().getProtocolOptions().getProtocolVersion(),
+                protocolVersion,
                 usingTimestampVariable,
                 usingTTLVariable);
       }
