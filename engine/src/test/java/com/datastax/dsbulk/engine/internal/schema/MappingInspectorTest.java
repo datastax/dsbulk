@@ -410,6 +410,7 @@ class MappingInspectorTest {
         .containsExactly(
             new Alias(
                 new FunctionCall(
+                    null,
                     CQLIdentifier.fromInternal("writetime"),
                     CQLIdentifier.fromInternal("My Col 2")),
                 CQLIdentifier.fromInternal("writetime(My Col 2)")));
@@ -428,7 +429,9 @@ class MappingInspectorTest {
     assertThat(inspector.getWriteTimeVariables())
         .containsExactly(
             new FunctionCall(
-                CQLIdentifier.fromInternal("writetime"), CQLIdentifier.fromInternal("My Col 2")));
+                null,
+                CQLIdentifier.fromInternal("writetime"),
+                CQLIdentifier.fromInternal("My Col 2")));
   }
 
   @ParameterizedTest
@@ -444,10 +447,11 @@ class MappingInspectorTest {
             INTERNAL_TTL_VARNAME);
     assertThat(inspector.getExplicitVariables())
         .containsEntry(
-            new FunctionCall(CQLIdentifier.fromInternal("now")), CQLIdentifier.fromCql("col1"))
+            new FunctionCall(null, CQLIdentifier.fromInternal("now")),
+            CQLIdentifier.fromCql("col1"))
         .containsEntry(
             new FunctionCall(
-                CQLIdentifier.fromInternal("max"), new CQLLiteral("1"), new CQLLiteral("2")),
+                null, CQLIdentifier.fromInternal("max"), new CQLLiteral("1"), new CQLLiteral("2")),
             CQLIdentifier.fromCql("col2"));
   }
 
@@ -465,7 +469,7 @@ class MappingInspectorTest {
     assertThat(inspector.getExplicitVariables())
         .containsEntry(
             new FunctionCall(
-                CQLIdentifier.fromInternal("MAX"), new CQLLiteral("1"), new CQLLiteral("2")),
+                null, CQLIdentifier.fromInternal("MAX"), new CQLLiteral("1"), new CQLLiteral("2")),
             CQLIdentifier.fromCql("col2"));
   }
 
@@ -484,31 +488,34 @@ class MappingInspectorTest {
         .containsEntry(
             new MappedMappingField("fieldA"),
             new Alias(
-                new FunctionCall(CQLIdentifier.fromInternal("now")),
+                new FunctionCall(null, CQLIdentifier.fromInternal("now")),
                 CQLIdentifier.fromInternal("now()")))
         .containsEntry(
             new MappedMappingField("fieldB"),
             new Alias(
                 new FunctionCall(
-                    CQLIdentifier.fromInternal("max"), new CQLLiteral("1"), new CQLLiteral("2")),
+                    null,
+                    CQLIdentifier.fromInternal("max"),
+                    new CQLLiteral("1"),
+                    new CQLLiteral("2")),
                 CQLIdentifier.fromInternal("max(1, 2)")))
         .containsEntry(
             new MappedMappingField("fieldC"),
             new Alias(
                 new FunctionCall(
-                    CQLIdentifier.fromInternal("ttl"), CQLIdentifier.fromInternal("a")),
+                    null, CQLIdentifier.fromInternal("ttl"), CQLIdentifier.fromInternal("a")),
                 CQLIdentifier.fromInternal("ttl(a)")))
         .containsEntry(
             new MappedMappingField("fieldD"),
             new Alias(
                 new FunctionCall(
-                    CQLIdentifier.fromInternal("writetime"), CQLIdentifier.fromInternal("a")),
+                    null, CQLIdentifier.fromInternal("writetime"), CQLIdentifier.fromInternal("a")),
                 CQLIdentifier.fromInternal("writetime(a)")));
     assertThat(inspector.getWriteTimeVariables())
         .containsExactly(
             new Alias(
                 new FunctionCall(
-                    CQLIdentifier.fromInternal("writetime"), CQLIdentifier.fromInternal("a")),
+                    null, CQLIdentifier.fromInternal("writetime"), CQLIdentifier.fromInternal("a")),
                 CQLIdentifier.fromInternal("writetime(a)")));
   }
 
@@ -524,22 +531,24 @@ class MappingInspectorTest {
             INTERNAL_TTL_VARNAME);
     assertThat(inspector.getExplicitVariables())
         .containsEntry(
-            new MappedMappingField("fieldA"), new FunctionCall(CQLIdentifier.fromInternal("now")))
+            new MappedMappingField("fieldA"),
+            new FunctionCall(null, CQLIdentifier.fromInternal("now")))
         .containsEntry(
             new MappedMappingField("fieldB"),
             new FunctionCall(
-                CQLIdentifier.fromInternal("max"), new CQLLiteral("1"), new CQLLiteral("2")))
+                null, CQLIdentifier.fromInternal("max"), new CQLLiteral("1"), new CQLLiteral("2")))
         .containsEntry(
             new MappedMappingField("fieldC"),
-            new FunctionCall(CQLIdentifier.fromInternal("ttl"), CQLIdentifier.fromInternal("a")))
+            new FunctionCall(
+                null, CQLIdentifier.fromInternal("ttl"), CQLIdentifier.fromInternal("a")))
         .containsEntry(
             new MappedMappingField("fieldD"),
             new FunctionCall(
-                CQLIdentifier.fromInternal("writetime"), CQLIdentifier.fromInternal("a")));
+                null, CQLIdentifier.fromInternal("writetime"), CQLIdentifier.fromInternal("a")));
     assertThat(inspector.getWriteTimeVariables())
         .containsExactly(
             new FunctionCall(
-                CQLIdentifier.fromInternal("writetime"), CQLIdentifier.fromInternal("a")));
+                null, CQLIdentifier.fromInternal("writetime"), CQLIdentifier.fromInternal("a")));
   }
 
   @ParameterizedTest
@@ -558,6 +567,7 @@ class MappingInspectorTest {
             new MappedMappingField("fieldA"),
             new Alias(
                 new FunctionCall(
+                    null,
                     CQLIdentifier.fromInternal("MAX"),
                     CQLIdentifier.fromInternal("My Col 1"),
                     CQLIdentifier.fromInternal("My Col 2")),
@@ -578,6 +588,7 @@ class MappingInspectorTest {
         .containsEntry(
             new MappedMappingField("fieldA"),
             new FunctionCall(
+                null,
                 CQLIdentifier.fromInternal("MAX"),
                 CQLIdentifier.fromInternal("My Col 1"),
                 CQLIdentifier.fromInternal("My Col 2")));
@@ -614,7 +625,7 @@ class MappingInspectorTest {
         .containsEntry(
             new MappedMappingField("now()"),
             new Alias(
-                new FunctionCall(CQLIdentifier.fromInternal("now")),
+                new FunctionCall(null, CQLIdentifier.fromInternal("now")),
                 CQLIdentifier.fromInternal("now()")));
     inspector =
         new MappingInspector(
@@ -628,7 +639,7 @@ class MappingInspectorTest {
         .containsEntry(
             new IndexedMappingField(3),
             new Alias(
-                new FunctionCall(CQLIdentifier.fromInternal("now")),
+                new FunctionCall(null, CQLIdentifier.fromInternal("now")),
                 CQLIdentifier.fromInternal("now()")));
   }
 
@@ -644,7 +655,8 @@ class MappingInspectorTest {
             INTERNAL_TTL_VARNAME);
     assertThat(inspector.getExplicitVariables())
         .containsEntry(
-            new MappedMappingField("now()"), new FunctionCall(CQLIdentifier.fromInternal("now")));
+            new MappedMappingField("now()"),
+            new FunctionCall(null, CQLIdentifier.fromInternal("now")));
     inspector =
         new MappingInspector(
             "a,b,c,now()",
@@ -655,7 +667,7 @@ class MappingInspectorTest {
             INTERNAL_TTL_VARNAME);
     assertThat(inspector.getExplicitVariables())
         .containsEntry(
-            new IndexedMappingField(3), new FunctionCall(CQLIdentifier.fromInternal("now")));
+            new IndexedMappingField(3), new FunctionCall(null, CQLIdentifier.fromInternal("now")));
   }
 
   @ParameterizedTest
@@ -927,5 +939,52 @@ class MappingInspectorTest {
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
             "Invalid mapping: __timestamp variable is not allowed when schema.query does not contain a USING TIMESTAMP clause");
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = ProtocolVersion.class, names = "V1", mode = EXCLUDE)
+  void should_detect_qualified_function_name(ProtocolVersion version) {
+    MappingInspector inspector =
+        new MappingInspector("\"MyKs1\".\"NOW\"() = c1", LOAD, MAPPED_ONLY, version, null, null);
+    assertThat(inspector.getExplicitVariables())
+        .containsEntry(
+            new FunctionCall(
+                CQLIdentifier.fromInternal("MyKs1"), CQLIdentifier.fromInternal("NOW")),
+            CQLIdentifier.fromInternal("c1"));
+    inspector =
+        new MappingInspector(
+            "f1 = \"MyKs1\".\"PLUS\"(\"C1\",\"C2\")", UNLOAD, MAPPED_ONLY, version, null, null);
+    assertThat(inspector.getExplicitVariables())
+        .containsEntry(
+            new MappedMappingField("f1"),
+            new Alias(
+                new FunctionCall(
+                    CQLIdentifier.fromInternal("MyKs1"),
+                    CQLIdentifier.fromInternal("PLUS"),
+                    CQLIdentifier.fromInternal("C1"),
+                    CQLIdentifier.fromInternal("C2")),
+                CQLIdentifier.fromInternal("MyKs1.PLUS(C1, C2)")));
+  }
+
+  @Test
+  void should_detect_qualified_function_name_v1() {
+    MappingInspector inspector =
+        new MappingInspector("\"MyKs1\".\"NOW\"() = c1", LOAD, MAPPED_ONLY, V1, null, null);
+    assertThat(inspector.getExplicitVariables())
+        .containsEntry(
+            new FunctionCall(
+                CQLIdentifier.fromInternal("MyKs1"), CQLIdentifier.fromInternal("NOW")),
+            CQLIdentifier.fromInternal("c1"));
+    inspector =
+        new MappingInspector(
+            "f1 = \"MyKs1\".\"PLUS\"(\"C1\",\"C2\")", UNLOAD, MAPPED_ONLY, V1, null, null);
+    assertThat(inspector.getExplicitVariables())
+        .containsEntry(
+            new MappedMappingField("f1"),
+            new FunctionCall(
+                CQLIdentifier.fromInternal("MyKs1"),
+                CQLIdentifier.fromInternal("PLUS"),
+                CQLIdentifier.fromInternal("C1"),
+                CQLIdentifier.fromInternal("C2")));
   }
 }

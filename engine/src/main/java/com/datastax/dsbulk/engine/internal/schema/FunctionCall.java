@@ -12,8 +12,10 @@ import com.google.common.collect.ImmutableList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * A CQL function call as declared in a query or in a mapping entry.
@@ -24,31 +26,56 @@ import org.jetbrains.annotations.NotNull;
  */
 public class FunctionCall implements MappingField, CQLFragment {
 
-  private final CQLIdentifier name;
+  private final CQLIdentifier keyspaceName;
+  private final CQLIdentifier functionName;
   private final ImmutableList<CQLFragment> args;
   private final String cql;
   private final String variable;
   private final String internal;
 
-  public FunctionCall(@NotNull CQLIdentifier name, @NotNull CQLFragment... args) {
-    this(name, Arrays.asList(args));
+  public FunctionCall(
+      @Nullable CQLIdentifier keyspaceName,
+      @NotNull CQLIdentifier functionName,
+      @NotNull CQLFragment... args) {
+    this(keyspaceName, functionName, Arrays.asList(args));
   }
 
-  public FunctionCall(@NotNull CQLIdentifier name, @NotNull List<CQLFragment> args) {
-    this.name = name;
+  public FunctionCall(
+      @Nullable CQLIdentifier keyspaceName,
+      @NotNull CQLIdentifier functionName,
+      @NotNull List<CQLFragment> args) {
+    this.keyspaceName = keyspaceName;
+    this.functionName = functionName;
     this.args = ImmutableList.copyOf(args);
     // Note: the delimiter must be ', ' with a space after the comma, since that is the way
     // C* creates variable names from function calls.
-    cql =
-        name.asCql()
-            + "("
-            + args.stream().map(CQLFragment::asCql).collect(Collectors.joining(", "))
-            + ")";
-    internal =
-        name.asInternal()
-            + "("
-            + args.stream().map(CQLFragment::asInternal).collect(Collectors.joining(", "))
-            + ")";
+    if (keyspaceName == null) {
+      cql =
+          functionName.asCql()
+              + "("
+              + args.stream().map(CQLFragment::asCql).collect(Collectors.joining(", "))
+              + ")";
+      internal =
+          functionName.asInternal()
+              + "("
+              + args.stream().map(CQLFragment::asInternal).collect(Collectors.joining(", "))
+              + ")";
+    } else {
+      cql =
+          keyspaceName.asCql()
+              + '.'
+              + functionName.asCql()
+              + "("
+              + args.stream().map(CQLFragment::asCql).collect(Collectors.joining(", "))
+              + ")";
+      internal =
+          keyspaceName.asInternal()
+              + '.'
+              + functionName.asInternal()
+              + "("
+              + args.stream().map(CQLFragment::asInternal).collect(Collectors.joining(", "))
+              + ")";
+    }
     // a function call appears in result set variables in a particular form: its internal
     // representation is considered as its CQL form itself.
     // Note: this is only true for built-in functions, such as now(), ttl(), writetime() or token();
@@ -59,8 +86,13 @@ public class FunctionCall implements MappingField, CQLFragment {
   }
 
   @NotNull
+  public Optional<CQLIdentifier> getKeyspaceName() {
+    return Optional.ofNullable(keyspaceName);
+  }
+
+  @NotNull
   public CQLIdentifier getFunctionName() {
-    return name;
+    return functionName;
   }
 
   @Override
@@ -101,12 +133,14 @@ public class FunctionCall implements MappingField, CQLFragment {
       return false;
     }
     FunctionCall that = (FunctionCall) o;
-    return name.equals(that.name) && args.equals(that.args);
+    return Objects.equals(keyspaceName, that.keyspaceName)
+        && functionName.equals(that.functionName)
+        && args.equals(that.args);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, args);
+    return Objects.hash(keyspaceName, functionName, args);
   }
 
   @Override

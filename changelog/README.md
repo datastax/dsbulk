@@ -25,6 +25,7 @@
 - [improvement] DAT-373: Allow columns and fields to be mapped more than once.
 - [improvement] DAT-315: UDT and tuple codecs should respect allowExtraFields and allowMissingFields.
 - [improvement] DAT-312: Add support for DSE 4.8 and lower.
+- [improvement] DAT-378: Add support for keyspace-qualified UDFs in mappings.
 
 
 ### 1.2.0

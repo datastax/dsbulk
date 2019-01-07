@@ -176,7 +176,8 @@ class QueryInspectorTest {
         .containsEntry(CQLIdentifier.fromInternal("pk"), CQLIdentifier.fromInternal("pk"))
         .containsEntry(CQLIdentifier.fromInternal("cc"), CQLIdentifier.fromInternal("cc"))
         .containsEntry(
-            CQLIdentifier.fromInternal("v"), new FunctionCall(CQLIdentifier.fromInternal("now")));
+            CQLIdentifier.fromInternal("v"),
+            new FunctionCall(null, CQLIdentifier.fromInternal("now")));
   }
 
   @Test
@@ -230,7 +231,8 @@ class QueryInspectorTest {
         .containsEntry(CQLIdentifier.fromInternal("pk"), CQLIdentifier.fromInternal("pk"))
         .containsEntry(CQLIdentifier.fromInternal("cc"), CQLIdentifier.fromInternal("cc"))
         .containsEntry(
-            CQLIdentifier.fromInternal("v"), new FunctionCall(CQLIdentifier.fromInternal("now")));
+            CQLIdentifier.fromInternal("v"),
+            new FunctionCall(null, CQLIdentifier.fromInternal("now")));
   }
 
   @Test
@@ -265,7 +267,8 @@ class QueryInspectorTest {
     assertThat(inspector.getAssignments())
         .containsEntry(CQLIdentifier.fromInternal("pk"), CQLIdentifier.fromInternal("pk"))
         .containsEntry(
-            CQLIdentifier.fromInternal("cc"), new FunctionCall(CQLIdentifier.fromInternal("now")));
+            CQLIdentifier.fromInternal("cc"),
+            new FunctionCall(null, CQLIdentifier.fromInternal("now")));
   }
 
   @Test
@@ -431,7 +434,9 @@ class QueryInspectorTest {
         .hasSize(1)
         .containsOnly(
             new FunctionCall(
-                CQLIdentifier.fromInternal("writetime"), CQLIdentifier.fromInternal("mycol")));
+                null,
+                CQLIdentifier.fromInternal("writetime"),
+                CQLIdentifier.fromInternal("mycol")));
   }
 
   @Test
@@ -441,7 +446,9 @@ class QueryInspectorTest {
         .hasSize(1)
         .containsOnly(
             new FunctionCall(
-                CQLIdentifier.fromInternal("writetime"), CQLIdentifier.fromInternal("My Col")));
+                null,
+                CQLIdentifier.fromInternal("writetime"),
+                CQLIdentifier.fromInternal("My Col")));
   }
 
   @Test
@@ -476,8 +483,8 @@ class QueryInspectorTest {
     QueryInspector inspector =
         new QueryInspector("SELECT TTL(col1) as t1, ttl(\"My Col 2\") FROM ks.foo");
     CQLIdentifier name = CQLIdentifier.fromInternal("ttl");
-    FunctionCall ttl1 = new FunctionCall(name, CQLIdentifier.fromInternal("col1"));
-    FunctionCall ttl2 = new FunctionCall(name, CQLIdentifier.fromInternal("My Col 2"));
+    FunctionCall ttl1 = new FunctionCall(null, name, CQLIdentifier.fromInternal("col1"));
+    FunctionCall ttl2 = new FunctionCall(null, name, CQLIdentifier.fromInternal("My Col 2"));
     assertThat(inspector.getResultSetVariables())
         .hasSize(2)
         .containsKeys(ttl1, ttl2)
@@ -491,8 +498,8 @@ class QueryInspectorTest {
             "SELECT myFunction(col1) as f1, \"MyFunction\"(\"My Col 2\") FROM ks.foo");
     CQLIdentifier name1 = CQLIdentifier.fromInternal("myfunction");
     CQLIdentifier name2 = CQLIdentifier.fromInternal("MyFunction");
-    FunctionCall f1 = new FunctionCall(name1, CQLIdentifier.fromInternal("col1"));
-    FunctionCall f2 = new FunctionCall(name2, CQLIdentifier.fromInternal("My Col 2"));
+    FunctionCall f1 = new FunctionCall(null, name1, CQLIdentifier.fromInternal("col1"));
+    FunctionCall f2 = new FunctionCall(null, name2, CQLIdentifier.fromInternal("My Col 2"));
     assertThat(inspector.getResultSetVariables())
         .hasSize(2)
         .containsKeys(f1, f2)
@@ -637,17 +644,18 @@ class QueryInspectorTest {
     QueryInspector inspector = new QueryInspector("INSERT INTO table1 (pk, v) VALUES (0, now())");
     assertThat(inspector.getAssignments())
         .hasSize(2)
-        .containsValue(new FunctionCall(CQLIdentifier.fromInternal("now")));
+        .containsValue(new FunctionCall(null, CQLIdentifier.fromInternal("now")));
     inspector = new QueryInspector("INSERT INTO table1 (pk, v) VALUES (0, sqrt(16))");
     assertThat(inspector.getAssignments())
         .hasSize(2)
-        .containsValue(new FunctionCall(CQLIdentifier.fromInternal("sqrt"), new CQLLiteral("16")));
+        .containsValue(
+            new FunctionCall(null, CQLIdentifier.fromInternal("sqrt"), new CQLLiteral("16")));
     inspector = new QueryInspector("INSERT INTO table1 (pk, v) VALUES (0, max(2, 3))");
     assertThat(inspector.getAssignments())
         .hasSize(2)
         .containsValue(
             new FunctionCall(
-                CQLIdentifier.fromInternal("max"), new CQLLiteral("2"), new CQLLiteral("3")));
+                null, CQLIdentifier.fromInternal("max"), new CQLLiteral("2"), new CQLLiteral("3")));
   }
 
   @Test
@@ -655,17 +663,18 @@ class QueryInspectorTest {
     QueryInspector inspector = new QueryInspector("UPDATE table1 set v = now() WHERE pk = 0");
     assertThat(inspector.getAssignments())
         .hasSize(2)
-        .containsValue(new FunctionCall(CQLIdentifier.fromInternal("now")));
+        .containsValue(new FunctionCall(null, CQLIdentifier.fromInternal("now")));
     inspector = new QueryInspector("UPDATE table1 set v = sqrt(16) WHERE pk = 0");
     assertThat(inspector.getAssignments())
         .hasSize(2)
-        .containsValue(new FunctionCall(CQLIdentifier.fromInternal("sqrt"), new CQLLiteral("16")));
+        .containsValue(
+            new FunctionCall(null, CQLIdentifier.fromInternal("sqrt"), new CQLLiteral("16")));
     inspector = new QueryInspector("UPDATE table1 set v = max(2, 3) WHERE pk = 0");
     assertThat(inspector.getAssignments())
         .hasSize(2)
         .containsValue(
             new FunctionCall(
-                CQLIdentifier.fromInternal("max"), new CQLLiteral("2"), new CQLLiteral("3")));
+                null, CQLIdentifier.fromInternal("max"), new CQLLiteral("2"), new CQLLiteral("3")));
   }
 
   @Test
@@ -673,17 +682,98 @@ class QueryInspectorTest {
     QueryInspector inspector = new QueryInspector("SELECT now() FROM table1");
     assertThat(inspector.getResultSetVariables())
         .hasSize(1)
-        .containsValue(new FunctionCall(CQLIdentifier.fromInternal("now")));
+        .containsValue(new FunctionCall(null, CQLIdentifier.fromInternal("now")));
     inspector = new QueryInspector("SELECT sqrt(c1) FROM table1");
     assertThat(inspector.getResultSetVariables())
         .hasSize(1)
         .containsValue(
-            new FunctionCall(CQLIdentifier.fromInternal("sqrt"), CQLIdentifier.fromInternal("c1")));
+            new FunctionCall(
+                null, CQLIdentifier.fromInternal("sqrt"), CQLIdentifier.fromInternal("c1")));
     inspector = new QueryInspector("SELECT max(c1, c2)  FROM table1");
     assertThat(inspector.getResultSetVariables())
         .hasSize(1)
         .containsValue(
             new FunctionCall(
+                null,
+                CQLIdentifier.fromInternal("max"),
+                CQLIdentifier.fromInternal("c1"),
+                CQLIdentifier.fromInternal("c2")));
+  }
+
+  @Test
+  void should_detect_qualified_functions_insert() {
+    QueryInspector inspector =
+        new QueryInspector("INSERT INTO table1 (pk, v) VALUES (0, ks1.now())");
+    assertThat(inspector.getAssignments())
+        .hasSize(2)
+        .containsValue(
+            new FunctionCall(CQLIdentifier.fromInternal("ks1"), CQLIdentifier.fromInternal("now")));
+    inspector = new QueryInspector("INSERT INTO table1 (pk, v) VALUES (0, \"MyKs1\".sqrt(16))");
+    assertThat(inspector.getAssignments())
+        .hasSize(2)
+        .containsValue(
+            new FunctionCall(
+                CQLIdentifier.fromInternal("MyKs1"),
+                CQLIdentifier.fromInternal("sqrt"),
+                new CQLLiteral("16")));
+    inspector = new QueryInspector("INSERT INTO table1 (pk, v) VALUES (0, ks2 . max(2, 3))");
+    assertThat(inspector.getAssignments())
+        .hasSize(2)
+        .containsValue(
+            new FunctionCall(
+                CQLIdentifier.fromInternal("ks2"),
+                CQLIdentifier.fromInternal("max"),
+                new CQLLiteral("2"),
+                new CQLLiteral("3")));
+  }
+
+  @Test
+  void should_detect_qualified_functions_update() {
+    QueryInspector inspector = new QueryInspector("UPDATE table1 set v = ks1.now() WHERE pk = 0");
+    assertThat(inspector.getAssignments())
+        .hasSize(2)
+        .containsValue(
+            new FunctionCall(CQLIdentifier.fromInternal("ks1"), CQLIdentifier.fromInternal("now")));
+    inspector = new QueryInspector("UPDATE table1 set v = \"MyKs1\".sqrt(16) WHERE pk = 0");
+    assertThat(inspector.getAssignments())
+        .hasSize(2)
+        .containsValue(
+            new FunctionCall(
+                CQLIdentifier.fromInternal("MyKs1"),
+                CQLIdentifier.fromInternal("sqrt"),
+                new CQLLiteral("16")));
+    inspector = new QueryInspector("UPDATE table1 set v = ks2 . max(2, 3) WHERE pk = 0");
+    assertThat(inspector.getAssignments())
+        .hasSize(2)
+        .containsValue(
+            new FunctionCall(
+                CQLIdentifier.fromInternal("ks2"),
+                CQLIdentifier.fromInternal("max"),
+                new CQLLiteral("2"),
+                new CQLLiteral("3")));
+  }
+
+  @Test
+  void should_detect_qualified_functions_select() {
+    QueryInspector inspector = new QueryInspector("SELECT ks1.now() FROM table1");
+    assertThat(inspector.getResultSetVariables())
+        .hasSize(1)
+        .containsValue(
+            new FunctionCall(CQLIdentifier.fromInternal("ks1"), CQLIdentifier.fromInternal("now")));
+    inspector = new QueryInspector("SELECT  \"MyKs1\".sqrt(c1) FROM table1");
+    assertThat(inspector.getResultSetVariables())
+        .hasSize(1)
+        .containsValue(
+            new FunctionCall(
+                CQLIdentifier.fromInternal("MyKs1"),
+                CQLIdentifier.fromInternal("sqrt"),
+                CQLIdentifier.fromInternal("c1")));
+    inspector = new QueryInspector("SELECT ks2 . max(c1, c2)  FROM table1");
+    assertThat(inspector.getResultSetVariables())
+        .hasSize(1)
+        .containsValue(
+            new FunctionCall(
+                CQLIdentifier.fromInternal("ks2"),
                 CQLIdentifier.fromInternal("max"),
                 CQLIdentifier.fromInternal("c1"),
                 CQLIdentifier.fromInternal("c2")));
