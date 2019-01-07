@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.engine.ccm;
 
 import ch.qos.logback.core.joran.spi.JoranException;
+import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
@@ -27,10 +28,12 @@ abstract class EndToEndCCMITBase {
 
   protected final CCMCluster ccm;
   final Session session;
+  final ProtocolVersion protocolVersion;
 
-  protected EndToEndCCMITBase(CCMCluster ccm, Session session) {
+  EndToEndCCMITBase(CCMCluster ccm, Session session) {
     this.ccm = ccm;
     this.session = session;
+    this.protocolVersion = session.getCluster().getConfiguration().getProtocolOptions().getProtocolVersion();
   }
 
   @AfterEach

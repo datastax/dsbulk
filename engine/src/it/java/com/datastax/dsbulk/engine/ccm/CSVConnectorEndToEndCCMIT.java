@@ -42,6 +42,7 @@ import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.junit.jupiter.api.Assumptions.assumingThat;
 
+import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
@@ -794,8 +795,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   @Test
   void load_ttl_timestamp_now_in_mapping_and_unload() throws IOException {
+
+    session.execute("DROP TABLE IF EXISTS table_ttl_timestamp");
     session.execute(
-        "CREATE TABLE IF NOT EXISTS table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
+        "CREATE TABLE table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
 
     List<String> args =
         Lists.newArrayList(
@@ -819,7 +822,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    assertTtlAndTimestamp();
+    assertTTLAndTimestamp();
     deleteDirectory(logDir);
 
     args =
@@ -850,8 +853,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   @Test
   void load_ttl_timestamp_now_in_query() {
+
+    session.execute("DROP TABLE IF EXISTS table_ttl_timestamp");
     session.execute(
-        "CREATE TABLE IF NOT EXISTS table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
+        "CREATE TABLE table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
 
     List<String> args =
         Lists.newArrayList(
@@ -875,13 +880,15 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    assertTtlAndTimestamp();
+    assertTTLAndTimestamp();
   }
 
   @Test
   void load_ttl_timestamp_now_in_query_and_mapping_positional_external_names() {
+
+    session.execute("DROP TABLE IF EXISTS table_ttl_timestamp");
     session.execute(
-        "CREATE TABLE IF NOT EXISTS table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
+        "CREATE TABLE table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
 
     List<String> args =
         Lists.newArrayList(
@@ -905,13 +912,15 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    assertTtlAndTimestamp();
+    assertTTLAndTimestamp();
   }
 
   @Test
   void load_ttl_timestamp_now_in_query_and_mapping_positional_internal_names() {
+
+    session.execute("DROP TABLE IF EXISTS table_ttl_timestamp");
     session.execute(
-        "CREATE TABLE IF NOT EXISTS table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
+        "CREATE TABLE table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
 
     List<String> args =
         Lists.newArrayList(
@@ -936,13 +945,15 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    assertTtlAndTimestamp();
+    assertTTLAndTimestamp();
   }
 
   @Test
   void load_ttl_timestamp_now_in_query_and_mapping_real_names() {
+
+    session.execute("DROP TABLE IF EXISTS table_ttl_timestamp");
     session.execute(
-        "CREATE TABLE IF NOT EXISTS table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
+        "CREATE TABLE table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
 
     List<String> args =
         Lists.newArrayList(
@@ -966,13 +977,15 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    assertTtlAndTimestamp();
+    assertTTLAndTimestamp();
   }
 
   @Test
   void load_ttl_timestamp_now_in_query_and_mapping_external_names() {
+
+    session.execute("DROP TABLE IF EXISTS table_ttl_timestamp");
     session.execute(
-        "CREATE TABLE IF NOT EXISTS table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
+        "CREATE TABLE table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
 
     List<String> args =
         Lists.newArrayList(
@@ -998,13 +1011,15 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    assertTtlAndTimestamp();
+    assertTTLAndTimestamp();
   }
 
   @Test
   void load_ttl_timestamp_now_in_query_and_mapping_with_keyspace_provided_separately() {
+
+    session.execute("DROP TABLE IF EXISTS table_ttl_timestamp");
     session.execute(
-        "CREATE TABLE IF NOT EXISTS table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
+        "CREATE TABLE table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
 
     List<String> args =
         Lists.newArrayList(
@@ -1028,10 +1043,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    assertTtlAndTimestamp();
+    assertTTLAndTimestamp();
   }
 
-  private void assertTtlAndTimestamp() {
+  private void assertTTLAndTimestamp() {
     assertThat(session.execute("SELECT COUNT(*) FROM table_ttl_timestamp").one().getLong(0))
         .isEqualTo(1L);
 
@@ -1041,6 +1056,312 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         session
             .execute(
                 "SELECT TTL(value), WRITETIME(value), loaded_at FROM table_ttl_timestamp WHERE key = 1")
+            .one();
+    assertThat(row.getInt(0)).isNotZero().isLessThanOrEqualTo(1000);
+    assertThat(row.getLong(1))
+        .isEqualTo(
+            instantToNumber(
+                ZonedDateTime.parse("2017-11-29T14:32:15+02:00").toInstant(), MICROSECONDS, EPOCH));
+    assertThat(row.getUUID(2)).isNotNull();
+  }
+
+  @Test
+  void load_ttl_timestamp_now_in_mapping_and_unload_unset_values() throws IOException {
+
+    assumeTrue(
+        protocolVersion.compareTo(ProtocolVersion.V4) > 0,
+        "Unset values are not compatible with protocol version < 4");
+
+    session.execute("DROP TABLE IF EXISTS table_ttl_timestamp");
+    session.execute(
+        "CREATE TABLE table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
+
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            quoteJson(logDir),
+            "--connector.csv.ignoreLeadingWhitespaces",
+            "true",
+            "--connector.csv.ignoreTrailingWhitespaces",
+            "true",
+            "--connector.csv.url",
+            ClassLoader.getSystemResource("ttl-timestamp-unset.csv").toExternalForm(),
+            "--driver.pooling.local.connections",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.table",
+            "table_ttl_timestamp",
+            "--schema.mapping",
+            "*:*,now()=loaded_at,created_at=__timestamp,time_to_live=__ttl");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    assertTTLAndTimestampUnsetValues();
+    deleteDirectory(logDir);
+
+    args =
+        Lists.newArrayList(
+            "unload",
+            "--connector.csv.url",
+            quoteJson(unloadDir),
+            "--log.directory",
+            quoteJson(logDir),
+            "--connector.csv.ignoreLeadingWhitespaces",
+            "true",
+            "--connector.csv.ignoreTrailingWhitespaces",
+            "true",
+            "--driver.pooling.local.connections",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.table",
+            "table_ttl_timestamp",
+            "--schema.mapping",
+            "*:*,created_at=writetime(value),time_to_live=ttl(value)",
+            "--connector.csv.maxConcurrentFiles",
+            "1");
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    validateOutputFiles(3, unloadDir);
+  }
+
+  @Test
+  void load_ttl_timestamp_now_in_query_unset_values() {
+
+    assumeTrue(
+        protocolVersion.compareTo(ProtocolVersion.V4) > 0,
+        "Unset values are not compatible with protocol version < 4");
+
+    session.execute("DROP TABLE IF EXISTS table_ttl_timestamp");
+    session.execute(
+        "CREATE TABLE table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
+
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            quoteJson(logDir),
+            "--connector.csv.ignoreLeadingWhitespaces",
+            "true",
+            "--connector.csv.ignoreTrailingWhitespaces",
+            "true",
+            "--connector.csv.url",
+            ClassLoader.getSystemResource("ttl-timestamp-unset.csv").toExternalForm(),
+            "--driver.pooling.local.connections",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            "insert into table_ttl_timestamp (key, value, loaded_at) "
+                + "values (:key, :value, now()) "
+                + "using ttl :time_to_live and timestamp :created_at");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    assertTTLAndTimestampUnsetValues();
+  }
+
+  @Test
+  void load_ttl_timestamp_now_in_query_and_mapping_positional_external_names_unset_values() {
+
+    session.execute("DROP TABLE IF EXISTS table_ttl_timestamp");
+    session.execute(
+        "CREATE TABLE table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
+
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            quoteJson(logDir),
+            "--connector.csv.ignoreLeadingWhitespaces",
+            "true",
+            "--connector.csv.ignoreTrailingWhitespaces",
+            "true",
+            "--connector.csv.url",
+            ClassLoader.getSystemResource("ttl-timestamp-unset.csv").toExternalForm(),
+            "--driver.pooling.local.connections",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            "insert into table_ttl_timestamp (key, value, loaded_at) values (?, ?, now()) using ttl ? and timestamp ?",
+            "--schema.mapping",
+            "*=*, created_at = __timestamp, time_to_live = __ttl");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    assertTTLAndTimestampUnsetValues();
+  }
+
+  @Test
+  void load_ttl_timestamp_now_in_query_and_mapping_positional_internal_names_unset_values() {
+
+    assumeTrue(
+        protocolVersion.compareTo(ProtocolVersion.V4) > 0,
+        "Unset values are not compatible with protocol version < 4");
+
+    session.execute("DROP TABLE IF EXISTS table_ttl_timestamp");
+    session.execute(
+        "CREATE TABLE table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
+
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            quoteJson(logDir),
+            "--connector.csv.ignoreLeadingWhitespaces",
+            "true",
+            "--connector.csv.ignoreTrailingWhitespaces",
+            "true",
+            "--connector.csv.url",
+            ClassLoader.getSystemResource("ttl-timestamp-unset.csv").toExternalForm(),
+            "--driver.pooling.local.connections",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            "insert into table_ttl_timestamp (key, value, loaded_at) values (?, ?, now()) using ttl ? and timestamp ?",
+            "--schema.mapping",
+            // using internal names directly in the mapping should work too
+            quoteJson("*=*, created_at = \"[timestamp]\", time_to_live = \"[ttl]\""));
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    assertTTLAndTimestampUnsetValues();
+  }
+
+  @Test
+  void load_ttl_timestamp_now_in_query_and_mapping_real_names_unset_values() {
+
+    assumeTrue(
+        protocolVersion.compareTo(ProtocolVersion.V4) > 0,
+        "Unset values are not compatible with protocol version < 4");
+
+    session.execute("DROP TABLE IF EXISTS table_ttl_timestamp");
+    session.execute(
+        "CREATE TABLE table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
+
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            quoteJson(logDir),
+            "--connector.csv.ignoreLeadingWhitespaces",
+            "true",
+            "--connector.csv.ignoreTrailingWhitespaces",
+            "true",
+            "--connector.csv.url",
+            ClassLoader.getSystemResource("ttl-timestamp-unset.csv").toExternalForm(),
+            "--driver.pooling.local.connections",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            "insert into table_ttl_timestamp (key, value, loaded_at) values (:key, :value, now()) using ttl :t1 and timestamp :t2",
+            "--schema.mapping",
+            "*=*, created_at = t2, time_to_live = t1");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    assertTTLAndTimestampUnsetValues();
+  }
+
+  @Test
+  void load_ttl_timestamp_now_in_query_and_mapping_external_names_unset_values() {
+
+    assumeTrue(
+        protocolVersion.compareTo(ProtocolVersion.V4) > 0,
+        "Unset values are not compatible with protocol version < 4");
+
+    session.execute("DROP TABLE IF EXISTS table_ttl_timestamp");
+    session.execute(
+        "CREATE TABLE table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
+
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            quoteJson(logDir),
+            "--connector.csv.ignoreLeadingWhitespaces",
+            "true",
+            "--connector.csv.ignoreTrailingWhitespaces",
+            "true",
+            "--connector.csv.url",
+            ClassLoader.getSystemResource("ttl-timestamp-unset.csv").toExternalForm(),
+            "--driver.pooling.local.connections",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            "insert into table_ttl_timestamp (key, value, loaded_at) values (:key, :value, now()) using ttl :t1 and timestamp :t2",
+            "--schema.mapping",
+            // using __timestamp and __ttl should work too (although not very useful), they should
+            // map to t2 and t1 respectively
+            "*=*, created_at = __timestamp, time_to_live = __ttl");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    assertTTLAndTimestampUnsetValues();
+  }
+
+  @Test
+  void
+      load_ttl_timestamp_now_in_query_and_mapping_with_keyspace_provided_separately_unset_values() {
+
+    assumeTrue(
+        protocolVersion.compareTo(ProtocolVersion.V4) > 0,
+        "Unset values are not compatible with protocol version < 4");
+
+    session.execute("DROP TABLE IF EXISTS table_ttl_timestamp");
+    session.execute(
+        "CREATE TABLE table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
+
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            quoteJson(logDir),
+            "--connector.csv.ignoreLeadingWhitespaces",
+            "true",
+            "--connector.csv.ignoreTrailingWhitespaces",
+            "true",
+            "--connector.csv.url",
+            ClassLoader.getSystemResource("ttl-timestamp-unset.csv").toExternalForm(),
+            "--driver.pooling.local.connections",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            "insert into table_ttl_timestamp (key, value, loaded_at) values (:key, :value, now()) using ttl :t1 and timestamp :t2",
+            "--schema.mapping",
+            "*=*, created_at = t2, time_to_live = t1");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    assertTTLAndTimestampUnsetValues();
+  }
+
+  private void assertTTLAndTimestampUnsetValues() {
+    assertThat(session.execute("SELECT COUNT(*) FROM table_ttl_timestamp").one().getLong(0))
+        .isEqualTo(2L);
+
+    Row row;
+
+    row =
+        session
+            .execute(
+                "SELECT TTL(value), WRITETIME(value), loaded_at FROM table_ttl_timestamp WHERE key = 1")
+            .one();
+    assertThat(row.getInt(0)).isZero();
+    assertThat(row.getLong(1)).isNotZero(); // cannot assert its true value
+    assertThat(row.getUUID(2)).isNotNull();
+
+    row =
+        session
+            .execute(
+                "SELECT TTL(value), WRITETIME(value), loaded_at FROM table_ttl_timestamp WHERE key = 2")
             .one();
     assertThat(row.getInt(0)).isNotZero().isLessThanOrEqualTo(1000);
     assertThat(row.getLong(1))
@@ -2621,7 +2942,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     Map<String, String> bigdecimals = new HashMap<>();
     List<String> lines = readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
     for (String line : lines) {
-      List<String> cols = Splitter.on(';').splitToList(line);
+      List<String> cols = Lists.newArrayList(Splitter.on(';').split(line));
       doubles.put(cols.get(0), cols.get(1));
       bigdecimals.put(cols.get(0), cols.get(2));
     }
@@ -2953,7 +3274,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   private static void checkTemporalsRead(Path unloadDir, boolean numeric) throws IOException {
     String line = readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList()).get(0);
-    List<String> cols = Splitter.on(';').splitToList(line);
+    List<String> cols = Lists.newArrayList(Splitter.on(';').split(line));
     assertThat(cols).hasSize(4);
     assertThat(cols.get(1)).isEqualTo("vendredi, 9 mars 2018");
     assertThat(cols.get(2)).isEqualTo("171232584");
