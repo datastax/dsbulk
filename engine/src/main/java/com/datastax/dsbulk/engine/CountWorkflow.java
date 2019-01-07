@@ -96,7 +96,7 @@ public class CountWorkflow implements Workflow {
     cluster.init();
     driverSettings.checkProtocolVersion(cluster);
     printDebugInfoAboutCluster(cluster);
-    schemaSettings.init(WorkflowType.COUNT, cluster, false, false);
+    schemaSettings.init(WorkflowType.COUNT, cluster, true, true);
     DseSession session = cluster.connect();
     logManager = logSettings.newLogManager(WorkflowType.COUNT, cluster);
     logManager.init();
