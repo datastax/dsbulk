@@ -33,7 +33,8 @@ abstract class EndToEndCCMITBase {
   EndToEndCCMITBase(CCMCluster ccm, Session session) {
     this.ccm = ccm;
     this.session = session;
-    this.protocolVersion = session.getCluster().getConfiguration().getProtocolOptions().getProtocolVersion();
+    this.protocolVersion =
+        session.getCluster().getConfiguration().getProtocolOptions().getProtocolVersion();
   }
 
   @AfterEach

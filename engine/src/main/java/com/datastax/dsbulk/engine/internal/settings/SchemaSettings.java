@@ -303,9 +303,8 @@ public class SchemaSettings {
             "Connector must support at least one of indexed or mapped mappings");
       }
 
-      ProtocolVersion protocolVersion = cluster.getConfiguration()
-          .getProtocolOptions()
-          .getProtocolVersion();
+      ProtocolVersion protocolVersion =
+          cluster.getConfiguration().getProtocolOptions().getProtocolVersion();
 
       if (config.hasPath(MAPPING)) {
 
