@@ -838,6 +838,33 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     checkTemporalsWritten(session);
   }
 
+  /** Test for DAT-377. */
+  @Test
+  void load_numeric_fields() {
+
+    session.execute("drop table if exists numeric_fields");
+    session.execute("create table numeric_fields (pk int, cc int, v int, primary key (pk, cc))");
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.name");
+    args.add("json");
+    args.add("--connector.json.url");
+    args.add(quoteJson(ClassLoader.getSystemResource("numeric-fields.json")));
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("numeric_fields");
+    args.add("--schema.mapping");
+    args.add("0=pk,1=cc,2=v");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    validateResultSetSize(1, "SELECT * FROM numeric_fields");
+  }
+
   private static void checkNumbersRead(OverflowStrategy overflowStrategy, Path unloadDir)
       throws IOException {
     Map<String, String> doubles = new HashMap<>();

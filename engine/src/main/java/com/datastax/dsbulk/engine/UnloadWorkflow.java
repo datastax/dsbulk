@@ -8,6 +8,8 @@
  */
 package com.datastax.dsbulk.engine;
 
+import static com.datastax.dsbulk.connectors.api.CommonConnectorFeature.INDEXED_RECORDS;
+import static com.datastax.dsbulk.connectors.api.CommonConnectorFeature.MAPPED_RECORDS;
 import static com.datastax.dsbulk.engine.internal.utils.ClusterInformationUtils.printDebugInfoAboutCluster;
 import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.TPC_THRESHOLD;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -17,7 +19,6 @@ import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
@@ -102,7 +103,10 @@ public class UnloadWorkflow implements Workflow {
     cluster = driverSettings.newCluster();
     printDebugInfoAboutCluster(cluster);
     schemaSettings.init(
-        WorkflowType.UNLOAD, cluster, !connector.supports(CommonConnectorFeature.MAPPED_RECORDS));
+        WorkflowType.UNLOAD,
+        cluster,
+        connector.supports(INDEXED_RECORDS),
+        connector.supports(MAPPED_RECORDS));
     DseSession session = cluster.connect();
     logManager = logSettings.newLogManager(WorkflowType.UNLOAD, cluster);
     logManager.init();
