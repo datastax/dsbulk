@@ -11,7 +11,13 @@ package com.datastax.dsbulk.engine.internal.schema;
 import java.util.Objects;
 import org.jetbrains.annotations.NotNull;
 
-/** An alias for a selector in a SELECT clause. */
+/**
+ * An alias for a selector in a SELECT clause.
+ *
+ * <p>Aliases are automatically generated for mapping entries that involve function calls, because
+ * function calls can have complex variable names that dsbulk cannot always correctly guess; by
+ * using aliases, we eliminate the risk of inferring a wrong name for such variables.
+ */
 public class Alias implements CQLFragment {
 
   private final CQLFragment target;
