@@ -115,7 +115,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
     Objects.requireNonNull(statement);
     return Mono.from(
         new WriteResultPublisher(
-            statement, session, listener, requestPermits, rateLimiter, failFast));
+            statement, session, failFast, listener, requestPermits, rateLimiter));
   }
 
   @Override
@@ -193,7 +193,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
     Objects.requireNonNull(statement);
     return Flux.from(
         new ReadResultPublisher(
-            statement, session, listener, requestPermits, rateLimiter, failFast));
+            statement, session, failFast, listener, requestPermits, rateLimiter));
   }
 
   @Override

@@ -40,8 +40,7 @@ public class ReadResultPublisherTest extends ResultPublisherTestBase<ReadResult>
   public Publisher<ReadResult> createPublisher(long elements) {
     Statement statement = new SimpleStatement("irrelevant");
     Session session = setUpSession(elements);
-    return new ReadResultPublisher(
-        statement, session, Optional.empty(), Optional.empty(), Optional.empty(), true);
+    return new ReadResultPublisher(statement, session, true);
   }
 
   @Override
@@ -49,7 +48,7 @@ public class ReadResultPublisherTest extends ResultPublisherTestBase<ReadResult>
     Statement statement = new SimpleStatement("irrelevant");
     Session session = setUpSession(1);
     return new ReadResultPublisher(
-        statement, session, FAILED_LISTENER, Optional.empty(), Optional.empty(), true);
+        statement, session, true, FAILED_LISTENER, Optional.empty(), Optional.empty());
   }
 
   private static Session setUpSession(long elements) {

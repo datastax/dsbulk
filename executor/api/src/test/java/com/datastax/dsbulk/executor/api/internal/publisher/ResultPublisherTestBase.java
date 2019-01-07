@@ -26,7 +26,7 @@ public abstract class ResultPublisherTestBase<T extends Result> extends Publishe
             // and that does not leave us with many choices.
             @Override
             public void onExecutionStarted(Statement statement, ExecutionContext context) {
-              throw new IllegalArgumentException("whatever");
+              throw new IllegalArgumentException("irrelevant");
             }
           });
 

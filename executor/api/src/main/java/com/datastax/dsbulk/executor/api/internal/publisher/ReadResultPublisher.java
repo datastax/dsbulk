@@ -19,10 +19,16 @@ import com.google.common.util.concurrent.RateLimiter;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Semaphore;
+import org.jetbrains.annotations.NotNull;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 
-@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
+/**
+ * A {@link Publisher} for {@link ReadResult}s.
+ *
+ * @see com.datastax.dsbulk.executor.api.AbstractBulkExecutor#readReactive(Statement)
+ */
+@SuppressWarnings({"OptionalUsedAsFieldOrParameterType", "UnstableApiUsage"})
 public class ReadResultPublisher implements Publisher<ReadResult> {
 
   private final Statement statement;
@@ -32,13 +38,37 @@ public class ReadResultPublisher implements Publisher<ReadResult> {
   private final Optional<RateLimiter> rateLimiter;
   private final boolean failFast;
 
+  /**
+   * Creates a new {@link ReadResultPublisher} without {@link ExecutionListener} and without
+   * throughput regulation.
+   *
+   * @param statement The {@link Statement} to execute.
+   * @param session The {@link Session} to use.
+   * @param failFast whether to fail-fast in case of error.
+   */
   public ReadResultPublisher(
-      Statement statement,
-      Session session,
-      Optional<ExecutionListener> listener,
-      Optional<Semaphore> requestPermits,
-      Optional<RateLimiter> rateLimiter,
-      boolean failFast) {
+      @NotNull Statement statement, @NotNull Session session, boolean failFast) {
+    this(statement, session, failFast, Optional.empty(), Optional.empty(), Optional.empty());
+  }
+
+  /**
+   * Creates a new {@link ReadResultPublisher}.
+   *
+   * @param statement The {@link Statement} to execute.
+   * @param session The {@link Session} to use.
+   * @param failFast whether to fail-fast in case of error.
+   * @param listener The {@link ExecutionListener} to use.
+   * @param requestPermits The {@link Semaphore} to use to regulate the amount of in-flight
+   *     requests.
+   * @param rateLimiter The {@link RateLimiter} to use to regulate throughput.
+   */
+  public ReadResultPublisher(
+      @NotNull Statement statement,
+      @NotNull Session session,
+      boolean failFast,
+      @NotNull Optional<ExecutionListener> listener,
+      @NotNull Optional<Semaphore> requestPermits,
+      @NotNull Optional<RateLimiter> rateLimiter) {
     this.statement = statement;
     this.session = session;
     this.listener = listener;

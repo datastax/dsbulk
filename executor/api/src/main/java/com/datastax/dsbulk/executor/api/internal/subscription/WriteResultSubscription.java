@@ -24,7 +24,7 @@ import org.reactivestreams.Subscriber;
 
 public class WriteResultSubscription extends ResultSubscription<WriteResult, ResultSet> {
 
-  @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
+  @SuppressWarnings({"OptionalUsedAsFieldOrParameterType", "UnstableApiUsage"})
   public WriteResultSubscription(
       Subscriber<? super WriteResult> subscriber,
       Statement statement,

@@ -18,10 +18,16 @@ import com.google.common.util.concurrent.RateLimiter;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Semaphore;
+import org.jetbrains.annotations.NotNull;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 
-@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
+/**
+ * A {@link Publisher} for {@link ReadResult}s that uses continuous paging.
+ *
+ * @see com.datastax.dsbulk.executor.api.AbstractBulkExecutor#readReactive(Statement)
+ */
+@SuppressWarnings({"OptionalUsedAsFieldOrParameterType", "UnstableApiUsage"})
 public class ContinuousReadResultPublisher implements Publisher<ReadResult> {
 
   private final Statement statement;
@@ -32,14 +38,63 @@ public class ContinuousReadResultPublisher implements Publisher<ReadResult> {
   private final Optional<RateLimiter> rateLimiter;
   private final boolean failFast;
 
+  /**
+   * Creates a new {@link ContinuousReadResultPublisher} with default paging options, without {@link
+   * ExecutionListener} and without throughput regulation.
+   *
+   * @param statement The {@link Statement} to execute.
+   * @param session The {@link ContinuousPagingSession} to use.
+   * @param failFast whether to fail-fast in case of error.
+   */
   public ContinuousReadResultPublisher(
-      Statement statement,
-      ContinuousPagingSession session,
-      ContinuousPagingOptions options,
-      Optional<ExecutionListener> listener,
-      Optional<Semaphore> requestPermits,
-      Optional<RateLimiter> rateLimiter,
+      @NotNull Statement statement, @NotNull ContinuousPagingSession session, boolean failFast) {
+    this(statement, session, ContinuousPagingOptions.builder().build(), failFast);
+  }
+
+  /**
+   * Creates a new {@link ContinuousReadResultPublisher} with the given paging options, without
+   * {@link ExecutionListener} and without throughput regulation.
+   *
+   * @param statement The {@link Statement} to execute.
+   * @param session The {@link ContinuousPagingSession} to use.
+   * @param options The {@link ContinuousPagingOptions} to use.
+   * @param failFast whether to fail-fast in case of error.
+   */
+  public ContinuousReadResultPublisher(
+      @NotNull Statement statement,
+      @NotNull ContinuousPagingSession session,
+      @NotNull ContinuousPagingOptions options,
       boolean failFast) {
+    this(
+        statement,
+        session,
+        options,
+        failFast,
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty());
+  }
+
+  /**
+   * Creates a new {@link ContinuousReadResultPublisher}.
+   *
+   * @param statement The {@link Statement} to execute.
+   * @param session The {@link ContinuousPagingSession} to use.
+   * @param options The {@link ContinuousPagingOptions} to use.
+   * @param failFast whether to fail-fast in case of error.
+   * @param listener The {@link ExecutionListener} to use.
+   * @param requestPermits The {@link Semaphore} to use to regulate the amount of in-flight
+   *     requests.
+   * @param rateLimiter The {@link RateLimiter} to use to regulate throughput.
+   */
+  public ContinuousReadResultPublisher(
+      @NotNull Statement statement,
+      @NotNull ContinuousPagingSession session,
+      @NotNull ContinuousPagingOptions options,
+      boolean failFast,
+      @NotNull Optional<ExecutionListener> listener,
+      @NotNull Optional<Semaphore> requestPermits,
+      @NotNull Optional<RateLimiter> rateLimiter) {
     this.statement = statement;
     this.session = session;
     this.options = options;

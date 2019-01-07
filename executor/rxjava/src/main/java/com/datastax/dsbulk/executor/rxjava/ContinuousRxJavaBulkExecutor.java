@@ -38,7 +38,7 @@ public class ContinuousRxJavaBulkExecutor extends DefaultRxJavaBulkExecutor
   }
 
   private final ContinuousPagingSession continuousPagingSession;
-  private final ContinuousPagingOptions options;
+  private final ContinuousPagingOptions continuousPagingOptions;
 
   /**
    * Creates a new instance using the given {@link ContinuousPagingSession} and using defaults for
@@ -61,19 +61,20 @@ public class ContinuousRxJavaBulkExecutor extends DefaultRxJavaBulkExecutor
    * builder} method instead.
    *
    * @param continuousPagingSession the {@link ContinuousPagingSession} to use.
-   * @param options the {@link ContinuousPagingOptions} to use.
+   * @param continuousPagingOptions the {@link ContinuousPagingOptions} to use.
    */
   public ContinuousRxJavaBulkExecutor(
-      ContinuousPagingSession continuousPagingSession, ContinuousPagingOptions options) {
+      ContinuousPagingSession continuousPagingSession,
+      ContinuousPagingOptions continuousPagingOptions) {
     super(continuousPagingSession);
     this.continuousPagingSession = continuousPagingSession;
-    this.options = options;
+    this.continuousPagingOptions = continuousPagingOptions;
   }
 
   ContinuousRxJavaBulkExecutor(ContinuousRxJavaBulkExecutorBuilder builder) {
     super(builder);
     this.continuousPagingSession = builder.continuousPagingSession;
-    this.options = builder.options;
+    this.continuousPagingOptions = builder.options;
   }
 
   @Override
@@ -83,10 +84,10 @@ public class ContinuousRxJavaBulkExecutor extends DefaultRxJavaBulkExecutor
         new ContinuousReadResultPublisher(
             statement,
             continuousPagingSession,
-            options,
+            continuousPagingOptions,
+            failFast,
             listener,
             requestPermits,
-            rateLimiter,
-            failFast));
+            rateLimiter));
   }
 }

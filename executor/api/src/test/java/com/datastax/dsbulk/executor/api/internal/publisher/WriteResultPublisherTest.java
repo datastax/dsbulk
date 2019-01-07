@@ -34,8 +34,7 @@ public class WriteResultPublisherTest extends ResultPublisherTestBase<WriteResul
   public Publisher<WriteResult> createPublisher(long elements) {
     Statement statement = new SimpleStatement("irrelevant");
     Session session = setUpSession();
-    return new WriteResultPublisher(
-        statement, session, Optional.empty(), Optional.empty(), Optional.empty(), true);
+    return new WriteResultPublisher(statement, session, true);
   }
 
   @Override
@@ -43,7 +42,7 @@ public class WriteResultPublisherTest extends ResultPublisherTestBase<WriteResul
     Statement statement = new SimpleStatement("irrelevant");
     Session session = mock(Session.class);
     return new WriteResultPublisher(
-        statement, session, FAILED_LISTENER, Optional.empty(), Optional.empty(), true);
+        statement, session, true, FAILED_LISTENER, Optional.empty(), Optional.empty());
   }
 
   private static Session setUpSession() {

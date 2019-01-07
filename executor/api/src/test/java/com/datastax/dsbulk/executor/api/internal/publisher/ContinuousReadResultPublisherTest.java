@@ -31,21 +31,11 @@ import org.reactivestreams.Publisher;
 
 public class ContinuousReadResultPublisherTest extends ResultPublisherTestBase<ReadResult> {
 
-  private static final ContinuousPagingOptions PAGING_OPTIONS =
-      ContinuousPagingOptions.builder().build();
-
   @Override
   public Publisher<ReadResult> createPublisher(long elements) {
     Statement statement = new SimpleStatement("irrelevant");
     ContinuousPagingSession session = setUpSession(elements);
-    return new ContinuousReadResultPublisher(
-        statement,
-        session,
-        PAGING_OPTIONS,
-        Optional.empty(),
-        Optional.empty(),
-        Optional.empty(),
-        true);
+    return new ContinuousReadResultPublisher(statement, session, true);
   }
 
   @Override
@@ -55,11 +45,11 @@ public class ContinuousReadResultPublisherTest extends ResultPublisherTestBase<R
     return new ContinuousReadResultPublisher(
         statement,
         session,
-        PAGING_OPTIONS,
+        ContinuousPagingOptions.builder().build(),
+        true,
         FAILED_LISTENER,
         Optional.empty(),
-        Optional.empty(),
-        true);
+        Optional.empty());
   }
 
   private static ContinuousPagingSession setUpSession(long elements) {
