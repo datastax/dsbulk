@@ -47,41 +47,17 @@ public class FunctionCall implements MappingField, CQLFragment {
     this.keyspaceName = keyspaceName;
     this.functionName = functionName;
     this.args = ImmutableList.copyOf(args);
-    // Note: the delimiter must be ', ' with a space after the comma, since that is the way
-    // C* creates variable names from function calls.
-    if (keyspaceName == null) {
-      cql =
-          functionName.asCql()
-              + "("
-              + args.stream().map(CQLFragment::asCql).collect(Collectors.joining(", "))
-              + ")";
-      internal =
-          functionName.asInternal()
-              + "("
-              + args.stream().map(CQLFragment::asInternal).collect(Collectors.joining(", "))
-              + ")";
-    } else {
-      cql =
-          keyspaceName.asCql()
-              + '.'
-              + functionName.asCql()
-              + "("
-              + args.stream().map(CQLFragment::asCql).collect(Collectors.joining(", "))
-              + ")";
-      internal =
-          keyspaceName.asInternal()
-              + '.'
-              + functionName.asInternal()
-              + "("
-              + args.stream().map(CQLFragment::asInternal).collect(Collectors.joining(", "))
-              + ")";
-    }
+    cql = createCQL(keyspaceName, functionName, args);
+    internal = createInternal(keyspaceName, functionName, args);
     // a function call appears in result set variables in a particular form: its internal
-    // representation is considered as its CQL form itself.
-    // Note: this is only true for built-in functions, such as now(), ttl(), writetime() or token();
-    // user-defined functions appear keyspace-qualified in result set variable names.
-    // In practice, this will never be a problem since we only care about built-in functions
-    // and specially writetime() – see DefaultMapping.
+    // representation is considered as its CQL form itself; also, user-defined functions appear
+    // keyspace-qualified in result set variable names.
+    // In practice, we only care about the exact result set variable name in two cases:
+    // 1) For the writetime() function, because we must apply a special treatment to it – see
+    // DefaultMapping.
+    // 2) For all functions under protocol V1, since in protocol V1 the server does not return
+    // result set metadata; hopefully, with protocol V1 only a small set of built-in functions
+    // exist, and we have tests that validate that they all work as expected.
     variable = CQLIdentifier.fromInternal(internal).asCql();
   }
 
@@ -146,5 +122,46 @@ public class FunctionCall implements MappingField, CQLFragment {
   @Override
   public String toString() {
     return asCql();
+  }
+
+  // Note: the delimiter must be ', ' with a space after the comma, since that is the way
+  // C* creates variable names from function calls.
+
+  private static String createCQL(
+      @Nullable CQLIdentifier keyspaceName,
+      @NotNull CQLIdentifier functionName,
+      @NotNull List<CQLFragment> args) {
+    if (keyspaceName == null) {
+      return functionName.asCql()
+          + "("
+          + args.stream().map(CQLFragment::asCql).collect(Collectors.joining(", "))
+          + ")";
+    } else {
+      return keyspaceName.asCql()
+          + '.'
+          + functionName.asCql()
+          + "("
+          + args.stream().map(CQLFragment::asCql).collect(Collectors.joining(", "))
+          + ")";
+    }
+  }
+
+  private static String createInternal(
+      @Nullable CQLIdentifier keyspaceName,
+      @NotNull CQLIdentifier functionName,
+      @NotNull List<CQLFragment> args) {
+    if (keyspaceName == null) {
+      return functionName.asInternal()
+          + "("
+          + args.stream().map(CQLFragment::asInternal).collect(Collectors.joining(", "))
+          + ")";
+    } else {
+      return keyspaceName.asInternal()
+          + '.'
+          + functionName.asInternal()
+          + "("
+          + args.stream().map(CQLFragment::asInternal).collect(Collectors.joining(", "))
+          + ")";
+    }
   }
 }
