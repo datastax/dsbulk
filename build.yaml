@@ -4,7 +4,7 @@ schedules:
     schedule: per_commit
     matrix:
       exclude:
-        - cassandra: ['graph-prototyping', 'dse-6.7', 'dse-6.0', 'dse-5.1', 'dse-5.0', '3.11']
+        - cassandra: ['dse-6.8', 'dse-6.7', 'dse-6.0', 'dse-5.1', 'dse-5.0', '3.11']
     env_vars: |
       TEST_GROUPS="short,medium"
   nightly:
