@@ -12,18 +12,57 @@ import static com.datastax.dsbulk.engine.internal.schema.QueryInspector.INTERNAL
 import static com.datastax.dsbulk.engine.internal.schema.QueryInspector.INTERNAL_TTL_VARNAME;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
+import com.google.common.collect.Lists;
+import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class QueryInspectorTest {
+
+  private static final CQLIdentifier NOW = CQLIdentifier.fromInternal("now");
+  private static final CQLIdentifier MAX = CQLIdentifier.fromInternal("max");
+  private static final CQLIdentifier SQRT = CQLIdentifier.fromInternal("sqrt");
+
+  private static final FunctionCall FUNC_NOW = new FunctionCall(null, NOW);
+
+  private static final CQLIdentifier KS = CQLIdentifier.fromInternal("ks");
+  private static final CQLIdentifier MY_KS = CQLIdentifier.fromInternal("MyKs1");
+  private static final CQLIdentifier MY_KEYSPACE = CQLIdentifier.fromInternal("MyKeyspace");
+
+  private static final CQLIdentifier MY_TABLE = CQLIdentifier.fromInternal("MyTable");
+
+  private static final CQLIdentifier COL_1 = CQLIdentifier.fromInternal("col1");
+  private static final CQLIdentifier MY_COL_2 = CQLIdentifier.fromInternal("My Col 2");
+
+  private static final CQLIdentifier FOO = CQLIdentifier.fromInternal("foo");
+  private static final CQLIdentifier PK = CQLIdentifier.fromInternal("pk");
+  private static final CQLIdentifier CC = CQLIdentifier.fromInternal("cc");
+  private static final CQLIdentifier V = CQLIdentifier.fromInternal("v");
+  private static final CQLIdentifier MY_PK = CQLIdentifier.fromInternal("My PK");
+  private static final CQLIdentifier MY_CC = CQLIdentifier.fromInternal("My CC");
+  private static final CQLIdentifier MY_VALUE = CQLIdentifier.fromInternal("My Value");
+  private static final CQLIdentifier WRITETIME = CQLIdentifier.fromInternal("writetime");
+  private static final CQLIdentifier TTL = CQLIdentifier.fromInternal("ttl");
+  private static final CQLIdentifier MY_WRITETIME = CQLIdentifier.fromInternal("My Writetime");
+  private static final CQLIdentifier MY_TTL = CQLIdentifier.fromInternal("My TTL");
+  private static final CQLIdentifier T_1 = CQLIdentifier.fromInternal("t1");
+  private static final CQLIdentifier T_2 = CQLIdentifier.fromInternal("t2");
+
+  private static final CQLLiteral _16 = new CQLLiteral("16");
+  private static final CQLLiteral _2 = new CQLLiteral("2");
+  private static final CQLLiteral _3 = new CQLLiteral("3");
 
   @Test
   void should_detect_table_name_simple_insert() {
     QueryInspector inspector =
         new QueryInspector("INSERT INTO foo (pk, cc, v) VALUES (:pk, :cc, :v)");
     assertThat(inspector.getKeyspaceName()).isNotPresent();
-    assertThat(inspector.getTableName()).isEqualTo(CQLIdentifier.fromInternal("foo"));
+    assertThat(inspector.getTableName()).isEqualTo(FOO);
   }
 
   @Test
@@ -31,15 +70,15 @@ class QueryInspectorTest {
     QueryInspector inspector =
         new QueryInspector("INSERT INTO \"MyTable\" (pk, cc, v) VALUES (:pk, :cc, :v)");
     assertThat(inspector.getKeyspaceName()).isNotPresent();
-    assertThat(inspector.getTableName()).isEqualTo(CQLIdentifier.fromInternal("MyTable"));
+    assertThat(inspector.getTableName()).isEqualTo(MY_TABLE);
   }
 
   @Test
   void should_detect_keyspace_and_table_name_simple_insert() {
     QueryInspector inspector =
         new QueryInspector("INSERT INTO ks.foo (pk, cc, v) VALUES (:pk, :cc, :v)");
-    assertThat(inspector.getKeyspaceName()).hasValue(CQLIdentifier.fromInternal("ks"));
-    assertThat(inspector.getTableName()).isEqualTo(CQLIdentifier.fromInternal("foo"));
+    assertThat(inspector.getKeyspaceName()).hasValue(KS);
+    assertThat(inspector.getTableName()).isEqualTo(FOO);
   }
 
   @Test
@@ -47,94 +86,94 @@ class QueryInspectorTest {
     QueryInspector inspector =
         new QueryInspector(
             "INSERT INTO \"MyKeyspace\".\"MyTable\" (pk, cc, v) VALUES (:pk, :cc, :v)");
-    assertThat(inspector.getKeyspaceName()).hasValue(CQLIdentifier.fromInternal("MyKeyspace"));
-    assertThat(inspector.getTableName()).isEqualTo(CQLIdentifier.fromInternal("MyTable"));
+    assertThat(inspector.getKeyspaceName()).hasValue(MY_KEYSPACE);
+    assertThat(inspector.getTableName()).isEqualTo(MY_TABLE);
   }
 
   @Test
   void should_detect_table_name_simple_update() {
     QueryInspector inspector = new QueryInspector("UPDATE foo SET v = ? WHERE pk = ?");
     assertThat(inspector.getKeyspaceName()).isNotPresent();
-    assertThat(inspector.getTableName()).isEqualTo(CQLIdentifier.fromInternal("foo"));
+    assertThat(inspector.getTableName()).isEqualTo(FOO);
   }
 
   @Test
   void should_detect_table_name_quoted_update() {
     QueryInspector inspector = new QueryInspector("UPDATE \"MyTable\" SET v = ? WHERE pk = ?");
     assertThat(inspector.getKeyspaceName()).isNotPresent();
-    assertThat(inspector.getTableName()).isEqualTo(CQLIdentifier.fromInternal("MyTable"));
+    assertThat(inspector.getTableName()).isEqualTo(MY_TABLE);
   }
 
   @Test
   void should_detect_keyspace_and_table_name_simple_update() {
     QueryInspector inspector = new QueryInspector("UPDATE ks.foo SET v = ? WHERE pk = ?");
-    assertThat(inspector.getKeyspaceName()).hasValue(CQLIdentifier.fromInternal("ks"));
-    assertThat(inspector.getTableName()).isEqualTo(CQLIdentifier.fromInternal("foo"));
+    assertThat(inspector.getKeyspaceName()).hasValue(KS);
+    assertThat(inspector.getTableName()).isEqualTo(FOO);
   }
 
   @Test
   void should_detect_keyspace_and_table_name_quoted_update() {
     QueryInspector inspector =
         new QueryInspector("UPDATE \"MyKeyspace\".\"MyTable\" SET v = ? WHERE pk = ?");
-    assertThat(inspector.getKeyspaceName()).hasValue(CQLIdentifier.fromInternal("MyKeyspace"));
-    assertThat(inspector.getTableName()).isEqualTo(CQLIdentifier.fromInternal("MyTable"));
+    assertThat(inspector.getKeyspaceName()).hasValue(MY_KEYSPACE);
+    assertThat(inspector.getTableName()).isEqualTo(MY_TABLE);
   }
 
   @Test
   void should_detect_table_name_simple_select() {
     QueryInspector inspector = new QueryInspector("SELECT c1 FROM foo");
     assertThat(inspector.getKeyspaceName()).isNotPresent();
-    assertThat(inspector.getTableName()).isEqualTo(CQLIdentifier.fromInternal("foo"));
+    assertThat(inspector.getTableName()).isEqualTo(FOO);
   }
 
   @Test
   void should_detect_table_name_quoted_select() {
     QueryInspector inspector = new QueryInspector("SELECT c1 FROM \"MyTable\"");
     assertThat(inspector.getKeyspaceName()).isNotPresent();
-    assertThat(inspector.getTableName()).isEqualTo(CQLIdentifier.fromInternal("MyTable"));
+    assertThat(inspector.getTableName()).isEqualTo(MY_TABLE);
   }
 
   @Test
   void should_detect_keyspace_and_table_name_simple_select() {
     QueryInspector inspector = new QueryInspector("SELECT c1 FROM ks.foo");
-    assertThat(inspector.getKeyspaceName()).hasValue(CQLIdentifier.fromInternal("ks"));
-    assertThat(inspector.getTableName()).isEqualTo(CQLIdentifier.fromInternal("foo"));
+    assertThat(inspector.getKeyspaceName()).hasValue(KS);
+    assertThat(inspector.getTableName()).isEqualTo(FOO);
   }
 
   @Test
   void should_detect_keyspace_and_table_name_quoted_select() {
     QueryInspector inspector = new QueryInspector("SELECT c1 FROM \"MyKeyspace\".\"MyTable\"");
-    assertThat(inspector.getKeyspaceName()).hasValue(CQLIdentifier.fromInternal("MyKeyspace"));
-    assertThat(inspector.getTableName()).isEqualTo(CQLIdentifier.fromInternal("MyTable"));
+    assertThat(inspector.getKeyspaceName()).hasValue(MY_KEYSPACE);
+    assertThat(inspector.getTableName()).isEqualTo(MY_TABLE);
   }
 
   @Test
   void should_detect_table_name_simple_delete() {
     QueryInspector inspector = new QueryInspector("DELETE c1 FROM foo WHERE pk = 1");
     assertThat(inspector.getKeyspaceName()).isNotPresent();
-    assertThat(inspector.getTableName()).isEqualTo(CQLIdentifier.fromInternal("foo"));
+    assertThat(inspector.getTableName()).isEqualTo(FOO);
   }
 
   @Test
   void should_detect_table_name_quoted_delete() {
     QueryInspector inspector = new QueryInspector("DELETE c1 FROM \"MyTable\" WHERE pk = 1");
     assertThat(inspector.getKeyspaceName()).isNotPresent();
-    assertThat(inspector.getTableName()).isEqualTo(CQLIdentifier.fromInternal("MyTable"));
+    assertThat(inspector.getTableName()).isEqualTo(MY_TABLE);
   }
 
   @Test
   void should_detect_keyspace_and_table_name_simple_delete() {
     QueryInspector inspector = new QueryInspector("DELETE c1 FROM ks.foo WHERE pk = 1");
-    assertThat(inspector.getKeyspaceName()).hasValue(CQLIdentifier.fromInternal("ks"));
-    assertThat(inspector.getTableName()).isEqualTo(CQLIdentifier.fromInternal("foo"));
+    assertThat(inspector.getKeyspaceName()).hasValue(KS);
+    assertThat(inspector.getTableName()).isEqualTo(FOO);
   }
 
   @Test
   void should_detect_keyspace_and_table_name_quoted_delete() {
     QueryInspector inspector =
         new QueryInspector("DELETE c1 FROM \"MyKeyspace\".\"MyTable\" WHERE pk = 1");
-    assertThat(inspector.getKeyspaceName()).hasValue(CQLIdentifier.fromInternal("MyKeyspace"));
-    assertThat(inspector.getTableName()).isEqualTo(CQLIdentifier.fromInternal("MyTable"));
+    assertThat(inspector.getKeyspaceName()).hasValue(MY_KEYSPACE);
+    assertThat(inspector.getTableName()).isEqualTo(MY_TABLE);
   }
 
   @Test
@@ -142,9 +181,9 @@ class QueryInspectorTest {
     QueryInspector inspector =
         new QueryInspector("INSERT INTO ks.foo (pk, cc, v) VALUES (:pk, :cc, :v)");
     assertThat(inspector.getAssignments())
-        .containsEntry(CQLIdentifier.fromInternal("pk"), CQLIdentifier.fromInternal("pk"))
-        .containsEntry(CQLIdentifier.fromInternal("cc"), CQLIdentifier.fromInternal("cc"))
-        .containsEntry(CQLIdentifier.fromInternal("v"), CQLIdentifier.fromInternal("v"));
+        .containsEntry(PK, PK)
+        .containsEntry(CC, CC)
+        .containsEntry(V, V);
   }
 
   @Test
@@ -153,19 +192,18 @@ class QueryInspectorTest {
         new QueryInspector(
             "INSERT INTO ks.foo (\"My PK\", \"My CC\", \"My Value\") VALUES (:\"My PK\", :\"My CC\", :\"My Value\")");
     assertThat(inspector.getAssignments())
-        .containsEntry(CQLIdentifier.fromInternal("My PK"), CQLIdentifier.fromInternal("My PK"))
-        .containsEntry(CQLIdentifier.fromInternal("My CC"), CQLIdentifier.fromInternal("My CC"))
-        .containsEntry(
-            CQLIdentifier.fromInternal("My Value"), CQLIdentifier.fromInternal("My Value"));
+        .containsEntry(MY_PK, MY_PK)
+        .containsEntry(MY_CC, MY_CC)
+        .containsEntry(MY_VALUE, MY_VALUE);
   }
 
   @Test
   void should_detect_positional_variable_insert() {
     QueryInspector inspector = new QueryInspector("INSERT INTO ks.foo (pk, cc, v) VALUES (?,?,?)");
     assertThat(inspector.getAssignments())
-        .containsEntry(CQLIdentifier.fromInternal("pk"), CQLIdentifier.fromInternal("pk"))
-        .containsEntry(CQLIdentifier.fromInternal("cc"), CQLIdentifier.fromInternal("cc"))
-        .containsEntry(CQLIdentifier.fromInternal("v"), CQLIdentifier.fromInternal("v"));
+        .containsEntry(PK, PK)
+        .containsEntry(CC, CC)
+        .containsEntry(V, V);
   }
 
   @Test
@@ -173,11 +211,9 @@ class QueryInspectorTest {
     QueryInspector inspector =
         new QueryInspector("INSERT INTO ks.foo (pk, cc, v) VALUES (?,?,now())");
     assertThat(inspector.getAssignments())
-        .containsEntry(CQLIdentifier.fromInternal("pk"), CQLIdentifier.fromInternal("pk"))
-        .containsEntry(CQLIdentifier.fromInternal("cc"), CQLIdentifier.fromInternal("cc"))
-        .containsEntry(
-            CQLIdentifier.fromInternal("v"),
-            new FunctionCall(null, CQLIdentifier.fromInternal("now")));
+        .containsEntry(PK, PK)
+        .containsEntry(CC, CC)
+        .containsEntry(V, FUNC_NOW);
   }
 
   @Test
@@ -185,9 +221,9 @@ class QueryInspectorTest {
     QueryInspector inspector =
         new QueryInspector("UPDATE ks.foo SET v = v + :v WHERE pk = :pk AND cc = :cc");
     assertThat(inspector.getAssignments())
-        .containsEntry(CQLIdentifier.fromInternal("pk"), CQLIdentifier.fromInternal("pk"))
-        .containsEntry(CQLIdentifier.fromInternal("cc"), CQLIdentifier.fromInternal("cc"))
-        .containsEntry(CQLIdentifier.fromInternal("v"), CQLIdentifier.fromInternal("v"));
+        .containsEntry(PK, PK)
+        .containsEntry(CC, CC)
+        .containsEntry(V, V);
   }
 
   @Test
@@ -195,9 +231,9 @@ class QueryInspectorTest {
     QueryInspector inspector =
         new QueryInspector("UPDATE ks.foo SET v += :v WHERE pk = :pk AND cc = :cc");
     assertThat(inspector.getAssignments())
-        .containsEntry(CQLIdentifier.fromInternal("pk"), CQLIdentifier.fromInternal("pk"))
-        .containsEntry(CQLIdentifier.fromInternal("cc"), CQLIdentifier.fromInternal("cc"))
-        .containsEntry(CQLIdentifier.fromInternal("v"), CQLIdentifier.fromInternal("v"));
+        .containsEntry(PK, PK)
+        .containsEntry(CC, CC)
+        .containsEntry(V, V);
   }
 
   @Test
@@ -207,10 +243,9 @@ class QueryInspectorTest {
             "UPDATE ks.foo SET \"My Value\" = \"My Value\" + :\"My Value\" "
                 + "WHERE \"My PK\" = :\"My PK\" AND \"My CC\" = :\"My CC\"");
     assertThat(inspector.getAssignments())
-        .containsEntry(CQLIdentifier.fromInternal("My PK"), CQLIdentifier.fromInternal("My PK"))
-        .containsEntry(CQLIdentifier.fromInternal("My CC"), CQLIdentifier.fromInternal("My CC"))
-        .containsEntry(
-            CQLIdentifier.fromInternal("My Value"), CQLIdentifier.fromInternal("My Value"));
+        .containsEntry(MY_PK, MY_PK)
+        .containsEntry(MY_CC, MY_CC)
+        .containsEntry(MY_VALUE, MY_VALUE);
   }
 
   @Test
@@ -218,9 +253,9 @@ class QueryInspectorTest {
     QueryInspector inspector =
         new QueryInspector("UPDATE ks.foo SET v = v + ? WHERE pk = ? AND cc = ?");
     assertThat(inspector.getAssignments())
-        .containsEntry(CQLIdentifier.fromInternal("pk"), CQLIdentifier.fromInternal("pk"))
-        .containsEntry(CQLIdentifier.fromInternal("cc"), CQLIdentifier.fromInternal("cc"))
-        .containsEntry(CQLIdentifier.fromInternal("v"), CQLIdentifier.fromInternal("v"));
+        .containsEntry(PK, PK)
+        .containsEntry(CC, CC)
+        .containsEntry(V, V);
   }
 
   @Test
@@ -228,19 +263,15 @@ class QueryInspectorTest {
     QueryInspector inspector =
         new QueryInspector("UPDATE ks.foo SET v = v + now() WHERE pk = ? AND cc = ?");
     assertThat(inspector.getAssignments())
-        .containsEntry(CQLIdentifier.fromInternal("pk"), CQLIdentifier.fromInternal("pk"))
-        .containsEntry(CQLIdentifier.fromInternal("cc"), CQLIdentifier.fromInternal("cc"))
-        .containsEntry(
-            CQLIdentifier.fromInternal("v"),
-            new FunctionCall(null, CQLIdentifier.fromInternal("now")));
+        .containsEntry(PK, PK)
+        .containsEntry(CC, CC)
+        .containsEntry(V, FUNC_NOW);
   }
 
   @Test
   void should_detect_named_variable_delete() {
     QueryInspector inspector = new QueryInspector("DELETE FROM ks.foo WHERE pk = :pk AND cc = :cc");
-    assertThat(inspector.getAssignments())
-        .containsEntry(CQLIdentifier.fromInternal("pk"), CQLIdentifier.fromInternal("pk"))
-        .containsEntry(CQLIdentifier.fromInternal("cc"), CQLIdentifier.fromInternal("cc"));
+    assertThat(inspector.getAssignments()).containsEntry(PK, PK).containsEntry(CC, CC);
   }
 
   @Test
@@ -248,58 +279,34 @@ class QueryInspectorTest {
     QueryInspector inspector =
         new QueryInspector(
             "DELETE FROM ks.foo WHERE \"My PK\" = :\"My PK\" AND \"My CC\" = :\"My CC\"");
-    assertThat(inspector.getAssignments())
-        .containsEntry(CQLIdentifier.fromInternal("My PK"), CQLIdentifier.fromInternal("My PK"))
-        .containsEntry(CQLIdentifier.fromInternal("My CC"), CQLIdentifier.fromInternal("My CC"));
+    assertThat(inspector.getAssignments()).containsEntry(MY_PK, MY_PK).containsEntry(MY_CC, MY_CC);
   }
 
   @Test
   void should_detect_positional_variable_delete() {
     QueryInspector inspector = new QueryInspector("DELETE FROM ks.foo WHERE pk = ? AND cc = ?");
-    assertThat(inspector.getAssignments())
-        .containsEntry(CQLIdentifier.fromInternal("pk"), CQLIdentifier.fromInternal("pk"))
-        .containsEntry(CQLIdentifier.fromInternal("cc"), CQLIdentifier.fromInternal("cc"));
+    assertThat(inspector.getAssignments()).containsEntry(PK, PK).containsEntry(CC, CC);
   }
 
   @Test
   void should_detect_function_variable_delete() {
     QueryInspector inspector = new QueryInspector("DELETE FROM ks.foo WHERE pk = ? AND cc = now()");
-    assertThat(inspector.getAssignments())
-        .containsEntry(CQLIdentifier.fromInternal("pk"), CQLIdentifier.fromInternal("pk"))
-        .containsEntry(
-            CQLIdentifier.fromInternal("cc"),
-            new FunctionCall(null, CQLIdentifier.fromInternal("now")));
+    assertThat(inspector.getAssignments()).containsEntry(PK, PK).containsEntry(CC, FUNC_NOW);
   }
 
   @Test
   void should_detect_named_variable_select() {
     QueryInspector inspector = new QueryInspector("SELECT pk, cc, v FROM ks.foo");
-    assertThat(inspector.getResultSetVariables().keySet())
-        .contains(
-            CQLIdentifier.fromInternal("pk"),
-            CQLIdentifier.fromInternal("cc"),
-            CQLIdentifier.fromInternal("v"));
-    assertThat(inspector.getResultSetVariables().values())
-        .contains(
-            CQLIdentifier.fromInternal("pk"),
-            CQLIdentifier.fromInternal("cc"),
-            CQLIdentifier.fromInternal("v"));
+    assertThat(inspector.getResultSetVariables().keySet()).contains(PK, CC, V);
+    assertThat(inspector.getResultSetVariables().values()).contains(PK, CC, V);
   }
 
   @Test
   void should_detect_named_variable_quoted_select() {
     QueryInspector inspector =
         new QueryInspector("SELECT \"My PK\", \"My CC\",\"My Value\" FROM ks.foo");
-    assertThat(inspector.getResultSetVariables().keySet())
-        .contains(
-            CQLIdentifier.fromInternal("My PK"),
-            CQLIdentifier.fromInternal("My CC"),
-            CQLIdentifier.fromInternal("My Value"));
-    assertThat(inspector.getResultSetVariables().values())
-        .contains(
-            CQLIdentifier.fromInternal("My PK"),
-            CQLIdentifier.fromInternal("My CC"),
-            CQLIdentifier.fromInternal("My Value"));
+    assertThat(inspector.getResultSetVariables().keySet()).contains(MY_PK, MY_CC, MY_VALUE);
+    assertThat(inspector.getResultSetVariables().values()).contains(MY_PK, MY_CC, MY_VALUE);
   }
 
   @Test
@@ -307,16 +314,8 @@ class QueryInspectorTest {
     QueryInspector inspector =
         new QueryInspector(
             "SELECT pk AS \"My PK\", cc AS \"My CC\", v AS \"My Value\" FROM ks.foo");
-    assertThat(inspector.getResultSetVariables().keySet())
-        .contains(
-            CQLIdentifier.fromInternal("pk"),
-            CQLIdentifier.fromInternal("cc"),
-            CQLIdentifier.fromInternal("v"));
-    assertThat(inspector.getResultSetVariables().values())
-        .contains(
-            CQLIdentifier.fromInternal("My PK"),
-            CQLIdentifier.fromInternal("My CC"),
-            CQLIdentifier.fromInternal("My Value"));
+    assertThat(inspector.getResultSetVariables().keySet()).contains(PK, CC, V);
+    assertThat(inspector.getResultSetVariables().values()).contains(MY_PK, MY_CC, MY_VALUE);
   }
 
   @Test
@@ -324,12 +323,9 @@ class QueryInspectorTest {
     QueryInspector inspector =
         new QueryInspector(
             "INSERT INTO ks.foo (pk, cc, v) VALUES (?, ?, ?) USING TTL :ttl AND TIMESTAMP :writetime");
-    assertThat(inspector.getWriteTimeVariables())
-        .hasSize(1)
-        .containsOnly(CQLIdentifier.fromInternal("writetime"));
-    assertThat(inspector.getUsingTimestampVariable())
-        .contains(CQLIdentifier.fromInternal("writetime"));
-    assertThat(inspector.getUsingTTLVariable()).contains(CQLIdentifier.fromInternal("ttl"));
+    assertThat(inspector.getWriteTimeVariables()).hasSize(1).containsOnly(WRITETIME);
+    assertThat(inspector.getUsingTimestampVariable()).contains(WRITETIME);
+    assertThat(inspector.getUsingTTLVariable()).contains(TTL);
   }
 
   @Test
@@ -338,12 +334,9 @@ class QueryInspectorTest {
         new QueryInspector(
             "INSERT INTO ks.foo (pk, cc, v) VALUES (?, ?, ?) "
                 + "USING TTL :\"My TTL\" AND TIMESTAMP :\"My Writetime\"");
-    assertThat(inspector.getWriteTimeVariables())
-        .hasSize(1)
-        .containsOnly(CQLIdentifier.fromInternal("My Writetime"));
-    assertThat(inspector.getUsingTimestampVariable())
-        .contains(CQLIdentifier.fromInternal("My Writetime"));
-    assertThat(inspector.getUsingTTLVariable()).contains(CQLIdentifier.fromInternal("My TTL"));
+    assertThat(inspector.getWriteTimeVariables()).hasSize(1).containsOnly(MY_WRITETIME);
+    assertThat(inspector.getUsingTimestampVariable()).contains(MY_WRITETIME);
+    assertThat(inspector.getUsingTTLVariable()).contains(MY_TTL);
   }
 
   @Test
@@ -351,12 +344,9 @@ class QueryInspectorTest {
     QueryInspector inspector =
         new QueryInspector(
             "UPDATE ks.foo USING TTL :ttl AND TIMESTAMP :writetime SET foo = :bar WHERE pk = 1");
-    assertThat(inspector.getWriteTimeVariables())
-        .hasSize(1)
-        .containsOnly(CQLIdentifier.fromInternal("writetime"));
-    assertThat(inspector.getUsingTimestampVariable())
-        .contains(CQLIdentifier.fromInternal("writetime"));
-    assertThat(inspector.getUsingTTLVariable()).contains(CQLIdentifier.fromInternal("ttl"));
+    assertThat(inspector.getWriteTimeVariables()).hasSize(1).containsOnly(WRITETIME);
+    assertThat(inspector.getUsingTimestampVariable()).contains(WRITETIME);
+    assertThat(inspector.getUsingTTLVariable()).contains(TTL);
   }
 
   @Test
@@ -364,34 +354,25 @@ class QueryInspectorTest {
     QueryInspector inspector =
         new QueryInspector(
             "UPDATE ks.foo USING TTL :\"My TTL\" AND TiMeStAmP :\"My Writetime\" SET foo = :bar WHERE pk = 1");
-    assertThat(inspector.getWriteTimeVariables())
-        .hasSize(1)
-        .containsOnly(CQLIdentifier.fromInternal("My Writetime"));
-    assertThat(inspector.getUsingTimestampVariable())
-        .contains(CQLIdentifier.fromInternal("My Writetime"));
-    assertThat(inspector.getUsingTTLVariable()).contains(CQLIdentifier.fromInternal("My TTL"));
+    assertThat(inspector.getWriteTimeVariables()).hasSize(1).containsOnly(MY_WRITETIME);
+    assertThat(inspector.getUsingTimestampVariable()).contains(MY_WRITETIME);
+    assertThat(inspector.getUsingTTLVariable()).contains(MY_TTL);
   }
 
   @Test
   void should_detect_writetime_delete() {
     QueryInspector inspector =
         new QueryInspector("DELETE FROM ks.foo USING TIMESTAMP :writetime WHERE pk = 1");
-    assertThat(inspector.getWriteTimeVariables())
-        .hasSize(1)
-        .containsOnly(CQLIdentifier.fromInternal("writetime"));
-    assertThat(inspector.getUsingTimestampVariable())
-        .contains(CQLIdentifier.fromInternal("writetime"));
+    assertThat(inspector.getWriteTimeVariables()).hasSize(1).containsOnly(WRITETIME);
+    assertThat(inspector.getUsingTimestampVariable()).contains(WRITETIME);
   }
 
   @Test
   void should_detect_writetime_quoted_delete() {
     QueryInspector inspector =
         new QueryInspector("DELETE FROM ks.foo USING TiMeStAmP :\"My Writetime\" WHERE pk = 1");
-    assertThat(inspector.getWriteTimeVariables())
-        .hasSize(1)
-        .containsOnly(CQLIdentifier.fromInternal("My Writetime"));
-    assertThat(inspector.getUsingTimestampVariable())
-        .contains(CQLIdentifier.fromInternal("My Writetime"));
+    assertThat(inspector.getWriteTimeVariables()).hasSize(1).containsOnly(MY_WRITETIME);
+    assertThat(inspector.getUsingTimestampVariable()).contains(MY_WRITETIME);
   }
 
   @Test
@@ -432,11 +413,7 @@ class QueryInspectorTest {
     QueryInspector inspector = new QueryInspector("SELECT WrItEtImE(mycol) FROM ks.foo");
     assertThat(inspector.getWriteTimeVariables())
         .hasSize(1)
-        .containsOnly(
-            new FunctionCall(
-                null,
-                CQLIdentifier.fromInternal("writetime"),
-                CQLIdentifier.fromInternal("mycol")));
+        .containsOnly(new FunctionCall(null, WRITETIME, CQLIdentifier.fromInternal("mycol")));
   }
 
   @Test
@@ -444,51 +421,40 @@ class QueryInspectorTest {
     QueryInspector inspector = new QueryInspector("SELECT WrItEtImE(\"My Col\") FROM ks.foo");
     assertThat(inspector.getWriteTimeVariables())
         .hasSize(1)
-        .containsOnly(
-            new FunctionCall(
-                null,
-                CQLIdentifier.fromInternal("writetime"),
-                CQLIdentifier.fromInternal("My Col")));
+        .containsOnly(new FunctionCall(null, WRITETIME, CQLIdentifier.fromInternal("My Col")));
   }
 
   @Test
   void should_detect_writetime_select_aliased() {
     QueryInspector inspector =
         new QueryInspector("SELECT WrItEtImE(mycol) AS WRITETIME FROM ks.foo");
-    assertThat(inspector.getWriteTimeVariables())
-        .hasSize(1)
-        .containsOnly(CQLIdentifier.fromInternal("writetime"));
+    assertThat(inspector.getWriteTimeVariables()).hasSize(1).containsOnly(WRITETIME);
   }
 
   @Test
   void should_detect_writetime_quoted_select_aliased() {
     QueryInspector inspector =
         new QueryInspector("SELECT WrItEtImE(\"My Col\") AS \"My Writetime\" FROM ks.foo");
-    assertThat(inspector.getWriteTimeVariables())
-        .hasSize(1)
-        .containsOnly(CQLIdentifier.fromInternal("My Writetime"));
+    assertThat(inspector.getWriteTimeVariables()).hasSize(1).containsOnly(MY_WRITETIME);
   }
 
   @Test
   void should_detect_multiple_writetime_select() {
     QueryInspector inspector =
         new QueryInspector("SELECT writetime(col1) as t1, writetime(col2) as t2 FROM ks.foo");
-    assertThat(inspector.getWriteTimeVariables())
-        .hasSize(2)
-        .containsExactly(CQLIdentifier.fromInternal("t1"), CQLIdentifier.fromInternal("t2"));
+    assertThat(inspector.getWriteTimeVariables()).hasSize(2).containsExactly(T_1, T_2);
   }
 
   @Test
   void should_detect_ttl_select() {
     QueryInspector inspector =
         new QueryInspector("SELECT TTL(col1) as t1, ttl(\"My Col 2\") FROM ks.foo");
-    CQLIdentifier name = CQLIdentifier.fromInternal("ttl");
-    FunctionCall ttl1 = new FunctionCall(null, name, CQLIdentifier.fromInternal("col1"));
-    FunctionCall ttl2 = new FunctionCall(null, name, CQLIdentifier.fromInternal("My Col 2"));
+    FunctionCall ttl1 = new FunctionCall(null, TTL, COL_1);
+    FunctionCall ttl2 = new FunctionCall(null, TTL, MY_COL_2);
     assertThat(inspector.getResultSetVariables())
         .hasSize(2)
         .containsKeys(ttl1, ttl2)
-        .containsValues(CQLIdentifier.fromInternal("t1"), ttl2);
+        .containsValues(T_1, ttl2);
   }
 
   @Test
@@ -498,8 +464,8 @@ class QueryInspectorTest {
             "SELECT myFunction(col1) as f1, \"MyFunction\"(\"My Col 2\") FROM ks.foo");
     CQLIdentifier name1 = CQLIdentifier.fromInternal("myfunction");
     CQLIdentifier name2 = CQLIdentifier.fromInternal("MyFunction");
-    FunctionCall f1 = new FunctionCall(null, name1, CQLIdentifier.fromInternal("col1"));
-    FunctionCall f2 = new FunctionCall(null, name2, CQLIdentifier.fromInternal("My Col 2"));
+    FunctionCall f1 = new FunctionCall(null, name1, COL_1);
+    FunctionCall f2 = new FunctionCall(null, name2, MY_COL_2);
     assertThat(inspector.getResultSetVariables())
         .hasSize(2)
         .containsKeys(f1, f2)
@@ -570,212 +536,165 @@ class QueryInspectorTest {
     assertThat(inspector.getFromClauseEndIndex()).isEqualTo("SELECT a,b,c FROM ks.t1".length() - 1);
   }
 
-  @Test
-  void should_report_named_token_range_restriction_variables() {
-    QueryInspector inspector =
-        new QueryInspector(
-            "SELECT a,b,c FROM ks.t1 WHERE token(pk) > :\"begin\" AND token(pk) <= :finish");
+  @ParameterizedTest
+  @MethodSource
+  void should_report_named_token_range_restriction_variables(
+      String query, int startIndex, int endIndex) {
+    QueryInspector inspector = new QueryInspector(query);
     assertThat(inspector.getTokenRangeRestrictionStartVariable())
         .contains(CQLIdentifier.fromInternal("begin"));
     assertThat(inspector.getTokenRangeRestrictionEndVariable())
         .contains(CQLIdentifier.fromInternal("finish"));
-    assertThat(inspector.getTokenRangeRestrictionStartVariableIndex()).isZero();
-    assertThat(inspector.getTokenRangeRestrictionEndVariableIndex()).isOne();
-    inspector =
-        new QueryInspector(
-            "SELECT a,b,c FROM ks.t1 WHERE token(pk) <= :finish AND token(pk) > :\"begin\"");
-    assertThat(inspector.getTokenRangeRestrictionStartVariable())
-        .contains(CQLIdentifier.fromInternal("begin"));
-    assertThat(inspector.getTokenRangeRestrictionEndVariable())
-        .contains(CQLIdentifier.fromInternal("finish"));
-    assertThat(inspector.getTokenRangeRestrictionStartVariableIndex()).isOne();
-    assertThat(inspector.getTokenRangeRestrictionEndVariableIndex()).isZero();
+    assertThat(inspector.getTokenRangeRestrictionStartVariableIndex()).isEqualTo(startIndex);
+    assertThat(inspector.getTokenRangeRestrictionEndVariableIndex()).isEqualTo(endIndex);
   }
 
-  @Test
-  void should_report_positional_token_range_restriction_variables() {
-    QueryInspector inspector =
-        new QueryInspector("SELECT a,b,c FROM ks.t1 WHERE token(pk) > ? AND token(pk) <= ?");
-    assertThat(inspector.getTokenRangeRestrictionStartVariable())
-        .contains(CQLIdentifier.fromInternal("partition key token"));
-    assertThat(inspector.getTokenRangeRestrictionEndVariable())
-        .contains(CQLIdentifier.fromInternal("partition key token"));
-    assertThat(inspector.getTokenRangeRestrictionStartVariableIndex()).isZero();
-    assertThat(inspector.getTokenRangeRestrictionEndVariableIndex()).isOne();
-    inspector =
-        new QueryInspector("SELECT a,b,c FROM ks.t1 WHERE token(pk) <= ? AND token(pk) > ?");
+  @SuppressWarnings("unused")
+  static List<Arguments> should_report_named_token_range_restriction_variables() {
+    return Lists.newArrayList(
+        arguments(
+            "SELECT a,b,c FROM ks.t1 WHERE token(pk) > :\"begin\" AND token(pk) <= :finish", 0, 1),
+        arguments(
+            "SELECT a,b,c FROM ks.t1 WHERE token(pk) <= :finish AND token(pk) > :\"begin\"", 1, 0),
+        arguments(
+            "SELECT a,b,c FROM ks.t1 WHERE foo = 42 AND token(pk) <= :finish AND token(pk) > :\"begin\"",
+            1,
+            0));
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  void should_report_positional_token_range_restriction_variables(
+      String query, int startIndex, int endIndex) {
+    QueryInspector inspector = new QueryInspector(query);
     assertThat(inspector.getTokenRangeRestrictionStartVariable())
         .contains(CQLIdentifier.fromInternal("partition key token"));
     assertThat(inspector.getTokenRangeRestrictionEndVariable())
         .contains(CQLIdentifier.fromInternal("partition key token"));
-    assertThat(inspector.getTokenRangeRestrictionStartVariableIndex()).isOne();
-    assertThat(inspector.getTokenRangeRestrictionEndVariableIndex()).isZero();
+    assertThat(inspector.getTokenRangeRestrictionStartVariableIndex()).isEqualTo(startIndex);
+    assertThat(inspector.getTokenRangeRestrictionEndVariableIndex()).isEqualTo(endIndex);
   }
 
-  @Test
-  void should_detect_select_star() {
-    assertThat(new QueryInspector("SELECT * FROM ks.t1").isSelectStar()).isTrue();
-    assertThat(new QueryInspector("SELECT a FROM ks.t1").isSelectStar()).isFalse();
-    assertThat(new QueryInspector("SELECT a,b,c FROM ks.t1").isSelectStar()).isFalse();
+  @SuppressWarnings("unused")
+  static List<Arguments> should_report_positional_token_range_restriction_variables() {
+    return Lists.newArrayList(
+        arguments("SELECT a,b,c FROM ks.t1 WHERE token(pk) > ? AND token(pk) <= ?", 0, 1),
+        arguments("SELECT a,b,c FROM ks.t1 WHERE token(pk) <= ? AND token(pk) > ?", 1, 0),
+        arguments(
+            "SELECT a,b,c FROM ks.t1 WHERE foo = 42 AND token(pk) <= ? AND token(pk) > ?", 1, 0));
   }
 
-  @Test
-  void should_detect_unsupported_selector() {
-    assertThat(new QueryInspector("SELECT myUdt.myField FROM ks.t1").hasUnsupportedSelectors())
-        .isTrue();
-    assertThat(new QueryInspector("SELECT COUNT(*) FROM ks.t1").hasUnsupportedSelectors()).isTrue();
-    assertThat(new QueryInspector("SELECT CAST (c1 as int) FROM ks.t1").hasUnsupportedSelectors())
-        .isTrue();
-    assertThat(new QueryInspector("SELECT (int) 1 FROM ks.t1").hasUnsupportedSelectors()).isTrue();
-    assertThat(
-            new QueryInspector("SELECT c1, writetime(c1), ttl(c1), now() FROM ks.t1")
-                .hasUnsupportedSelectors())
-        .isFalse();
-    assertThat(
-            new QueryInspector(
-                    "SELECT c1, writetime(c1) AS wrt, ttl(c1) as ttl, now() as now FROM ks.t1")
-                .hasUnsupportedSelectors())
-        .isFalse();
-    assertThat(new QueryInspector("SELECT * FROM ks.t1").hasUnsupportedSelectors()).isFalse();
+  @ParameterizedTest
+  @MethodSource
+  void should_detect_select_star(String query, boolean expected) {
+    assertThat(new QueryInspector(query).isSelectStar()).isEqualTo(expected);
   }
 
-  @Test
-  void should_detect_functions_insert() {
-    QueryInspector inspector = new QueryInspector("INSERT INTO table1 (pk, v) VALUES (0, now())");
-    assertThat(inspector.getAssignments())
-        .hasSize(2)
-        .containsValue(new FunctionCall(null, CQLIdentifier.fromInternal("now")));
-    inspector = new QueryInspector("INSERT INTO table1 (pk, v) VALUES (0, sqrt(16))");
-    assertThat(inspector.getAssignments())
-        .hasSize(2)
-        .containsValue(
-            new FunctionCall(null, CQLIdentifier.fromInternal("sqrt"), new CQLLiteral("16")));
-    inspector = new QueryInspector("INSERT INTO table1 (pk, v) VALUES (0, max(2, 3))");
-    assertThat(inspector.getAssignments())
-        .hasSize(2)
-        .containsValue(
-            new FunctionCall(
-                null, CQLIdentifier.fromInternal("max"), new CQLLiteral("2"), new CQLLiteral("3")));
+  @SuppressWarnings("unused")
+  static List<Arguments> should_detect_select_star() {
+    return Lists.newArrayList(
+        arguments("SELECT * FROM ks.t1", true),
+        arguments("SELECT a FROM ks.t1", false),
+        arguments("SELECT a,b,c FROM ks.t1", false));
   }
 
-  @Test
-  void should_detect_functions_update() {
-    QueryInspector inspector = new QueryInspector("UPDATE table1 set v = now() WHERE pk = 0");
-    assertThat(inspector.getAssignments())
-        .hasSize(2)
-        .containsValue(new FunctionCall(null, CQLIdentifier.fromInternal("now")));
-    inspector = new QueryInspector("UPDATE table1 set v = sqrt(16) WHERE pk = 0");
-    assertThat(inspector.getAssignments())
-        .hasSize(2)
-        .containsValue(
-            new FunctionCall(null, CQLIdentifier.fromInternal("sqrt"), new CQLLiteral("16")));
-    inspector = new QueryInspector("UPDATE table1 set v = max(2, 3) WHERE pk = 0");
-    assertThat(inspector.getAssignments())
-        .hasSize(2)
-        .containsValue(
-            new FunctionCall(
-                null, CQLIdentifier.fromInternal("max"), new CQLLiteral("2"), new CQLLiteral("3")));
+  @ParameterizedTest
+  @MethodSource
+  void should_detect_unsupported_selector(String query, boolean expected) {
+    assertThat(new QueryInspector(query).hasUnsupportedSelectors()).isEqualTo(expected);
   }
 
-  @Test
-  void should_detect_functions_select() {
-    QueryInspector inspector = new QueryInspector("SELECT now() FROM table1");
-    assertThat(inspector.getResultSetVariables())
-        .hasSize(1)
-        .containsValue(new FunctionCall(null, CQLIdentifier.fromInternal("now")));
-    inspector = new QueryInspector("SELECT sqrt(c1) FROM table1");
-    assertThat(inspector.getResultSetVariables())
-        .hasSize(1)
-        .containsValue(
-            new FunctionCall(
-                null, CQLIdentifier.fromInternal("sqrt"), CQLIdentifier.fromInternal("c1")));
-    inspector = new QueryInspector("SELECT max(c1, c2)  FROM table1");
-    assertThat(inspector.getResultSetVariables())
-        .hasSize(1)
-        .containsValue(
-            new FunctionCall(
-                null,
-                CQLIdentifier.fromInternal("max"),
-                CQLIdentifier.fromInternal("c1"),
-                CQLIdentifier.fromInternal("c2")));
+  @SuppressWarnings("unused")
+  static List<Arguments> should_detect_unsupported_selector() {
+    return Lists.newArrayList(
+        arguments("SELECT myUdt.myField FROM ks.t1", true),
+        arguments("SELECT COUNT(*) FROM ks.t1", true),
+        arguments("SELECT CAST (c1 as int) FROM ks.t1", true),
+        arguments("SELECT (int) 1 FROM ks.t1", true),
+        arguments("SELECT c1, writetime(c1), ttl(c1), now() FROM ks.t1", false),
+        arguments(
+            "SELECT c1, writetime(c1) AS wrt, ttl(c1) as ttl, now() as now FROM ks.t1", false),
+        arguments("SELECT * FROM ks.t1", false));
   }
 
-  @Test
-  void should_detect_qualified_functions_insert() {
-    QueryInspector inspector =
-        new QueryInspector("INSERT INTO table1 (pk, v) VALUES (0, ks1.now())");
+  @ParameterizedTest
+  @MethodSource
+  void should_detect_functions_in_assignments(
+      String query, int expectedTotalAssignments, FunctionCall expectedValue) {
+    QueryInspector inspector = new QueryInspector(query);
     assertThat(inspector.getAssignments())
-        .hasSize(2)
-        .containsValue(
-            new FunctionCall(CQLIdentifier.fromInternal("ks1"), CQLIdentifier.fromInternal("now")));
-    inspector = new QueryInspector("INSERT INTO table1 (pk, v) VALUES (0, \"MyKs1\".sqrt(16))");
-    assertThat(inspector.getAssignments())
-        .hasSize(2)
-        .containsValue(
-            new FunctionCall(
-                CQLIdentifier.fromInternal("MyKs1"),
-                CQLIdentifier.fromInternal("sqrt"),
-                new CQLLiteral("16")));
-    inspector = new QueryInspector("INSERT INTO table1 (pk, v) VALUES (0, ks2 . max(2, 3))");
-    assertThat(inspector.getAssignments())
-        .hasSize(2)
-        .containsValue(
-            new FunctionCall(
-                CQLIdentifier.fromInternal("ks2"),
-                CQLIdentifier.fromInternal("max"),
-                new CQLLiteral("2"),
-                new CQLLiteral("3")));
+        .hasSize(expectedTotalAssignments)
+        .containsValue(expectedValue);
   }
 
-  @Test
-  void should_detect_qualified_functions_update() {
-    QueryInspector inspector = new QueryInspector("UPDATE table1 set v = ks1.now() WHERE pk = 0");
-    assertThat(inspector.getAssignments())
-        .hasSize(2)
-        .containsValue(
-            new FunctionCall(CQLIdentifier.fromInternal("ks1"), CQLIdentifier.fromInternal("now")));
-    inspector = new QueryInspector("UPDATE table1 set v = \"MyKs1\".sqrt(16) WHERE pk = 0");
-    assertThat(inspector.getAssignments())
-        .hasSize(2)
-        .containsValue(
-            new FunctionCall(
-                CQLIdentifier.fromInternal("MyKs1"),
-                CQLIdentifier.fromInternal("sqrt"),
-                new CQLLiteral("16")));
-    inspector = new QueryInspector("UPDATE table1 set v = ks2 . max(2, 3) WHERE pk = 0");
-    assertThat(inspector.getAssignments())
-        .hasSize(2)
-        .containsValue(
-            new FunctionCall(
-                CQLIdentifier.fromInternal("ks2"),
-                CQLIdentifier.fromInternal("max"),
-                new CQLLiteral("2"),
-                new CQLLiteral("3")));
+  @SuppressWarnings("unused")
+  static List<Arguments> should_detect_functions_in_assignments() {
+    return Lists.newArrayList(
+        // INSERT
+        arguments("INSERT INTO table1 (pk, v) VALUES (0, now())", 2, FUNC_NOW),
+        arguments(
+            "INSERT INTO table1 (pk, v) VALUES (0, sqrt(16))",
+            2,
+            new FunctionCall(null, SQRT, _16)),
+        arguments(
+            "INSERT INTO table1 (pk, v) VALUES (0, max(2, 3))",
+            2,
+            new FunctionCall(null, MAX, _2, _3)),
+        // INSERT, qualified
+        arguments("INSERT INTO table1 (pk, v) VALUES (0, ks.now())", 2, new FunctionCall(KS, NOW)),
+        arguments(
+            "INSERT INTO table1 (pk, v) VALUES (0, \"MyKs1\".sqrt(16))",
+            2,
+            new FunctionCall(MY_KS, SQRT, _16)),
+        arguments(
+            "INSERT INTO table1 (pk, v) VALUES (0, ks.max(2, 3))",
+            2,
+            new FunctionCall(KS, MAX, _2, _3)),
+        // UPDATE
+        arguments("UPDATE table1 set v = now() WHERE pk = 0", 2, FUNC_NOW),
+        arguments(
+            "UPDATE table1 set v = sqrt(16) WHERE pk = 0", 2, new FunctionCall(null, SQRT, _16)),
+        arguments(
+            "UPDATE table1 set v = max(2, 3) WHERE pk = 0", 2, new FunctionCall(null, MAX, _2, _3)),
+        // UPDATE, qualified
+        arguments("UPDATE table1 set v = ks.now() WHERE pk = 0", 2, new FunctionCall(KS, NOW)),
+        arguments(
+            "UPDATE table1 set v = \"MyKs1\".sqrt(16) WHERE pk = 0",
+            2,
+            new FunctionCall(MY_KS, SQRT, _16)),
+        arguments(
+            "UPDATE table1 set v = ks.max(2, 3) WHERE pk = 0",
+            2,
+            new FunctionCall(KS, MAX, _2, _3)));
   }
 
-  @Test
-  void should_detect_qualified_functions_select() {
-    QueryInspector inspector = new QueryInspector("SELECT ks1.now() FROM table1");
-    assertThat(inspector.getResultSetVariables())
-        .hasSize(1)
-        .containsValue(
-            new FunctionCall(CQLIdentifier.fromInternal("ks1"), CQLIdentifier.fromInternal("now")));
-    inspector = new QueryInspector("SELECT  \"MyKs1\".sqrt(c1) FROM table1");
-    assertThat(inspector.getResultSetVariables())
-        .hasSize(1)
-        .containsValue(
+  @ParameterizedTest
+  @MethodSource
+  void should_detect_functions_in_result_set(String query, FunctionCall expectedValue) {
+    QueryInspector inspector = new QueryInspector(query);
+    assertThat(inspector.getResultSetVariables()).hasSize(1).containsValue(expectedValue);
+  }
+
+  @SuppressWarnings("unused")
+  static List<Arguments> should_detect_functions_in_result_set() {
+    return Lists.newArrayList(
+        // SELECT
+        arguments("SELECT now() FROM table1", FUNC_NOW),
+        arguments(
+            "SELECT sqrt(c1) FROM table1",
+            new FunctionCall(null, SQRT, CQLIdentifier.fromInternal("c1"))),
+        arguments(
+            "SELECT max(c1, c2)  FROM table1",
             new FunctionCall(
-                CQLIdentifier.fromInternal("MyKs1"),
-                CQLIdentifier.fromInternal("sqrt"),
-                CQLIdentifier.fromInternal("c1")));
-    inspector = new QueryInspector("SELECT ks2 . max(c1, c2)  FROM table1");
-    assertThat(inspector.getResultSetVariables())
-        .hasSize(1)
-        .containsValue(
+                null, MAX, CQLIdentifier.fromInternal("c1"), CQLIdentifier.fromInternal("c2"))),
+        // SELECT, qualified
+        arguments("SELECT ks.now() FROM table1", new FunctionCall(KS, NOW)),
+        arguments(
+            "SELECT \"MyKs1\".sqrt(c1) FROM table1",
+            new FunctionCall(MY_KS, SQRT, CQLIdentifier.fromInternal("c1"))),
+        arguments(
+            "SELECT ks.max(c1, c2)  FROM table1",
             new FunctionCall(
-                CQLIdentifier.fromInternal("ks2"),
-                CQLIdentifier.fromInternal("max"),
-                CQLIdentifier.fromInternal("c1"),
-                CQLIdentifier.fromInternal("c2")));
+                KS, MAX, CQLIdentifier.fromInternal("c1"), CQLIdentifier.fromInternal("c2"))));
   }
 }
