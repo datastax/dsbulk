@@ -14,6 +14,7 @@ import static com.datastax.dsbulk.engine.internal.schema.MappingPreference.MAPPE
 import static java.util.stream.Collectors.counting;
 import static java.util.stream.Collectors.groupingBy;
 
+import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
@@ -25,6 +26,8 @@ import com.datastax.dsbulk.engine.schema.generated.MappingParser.FunctionContext
 import com.datastax.dsbulk.engine.schema.generated.MappingParser.FunctionNameContext;
 import com.datastax.dsbulk.engine.schema.generated.MappingParser.IndexContext;
 import com.datastax.dsbulk.engine.schema.generated.MappingParser.IndexOrFunctionContext;
+import com.datastax.dsbulk.engine.schema.generated.MappingParser.SelectorFunctionArgContext;
+import com.datastax.dsbulk.engine.schema.generated.MappingParser.SelectorFunctionContext;
 import com.datastax.dsbulk.engine.schema.generated.MappingParser.SimpleEntryContext;
 import com.datastax.dsbulk.engine.schema.generated.MappingParser.VariableContext;
 import com.google.common.collect.ImmutableMultimap;
@@ -47,16 +50,13 @@ import org.antlr.v4.runtime.CodePointCharStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public class MappingInspector extends MappingBaseVisitor<MappingToken> {
 
   // A mapping spec may refer to these special variables which are used to bind
   // input fields to the write timestamp or ttl of the record.
-
-  public static final CQLIdentifier INTERNAL_TTL_VARNAME =
-      CQLIdentifier.fromInternal("dsbulk_internal_ttl");
-  public static final CQLIdentifier INTERNAL_TIMESTAMP_VARNAME =
-      CQLIdentifier.fromInternal("dsbulk_internal_timestamp");
 
   private static final String EXTERNAL_TTL_VARNAME = "__ttl";
   private static final String EXTERNAL_TIMESTAMP_VARNAME = "__timestamp";
@@ -65,6 +65,9 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
 
   private final MappingPreference mappingPreference;
   private final WorkflowType workflowType;
+  private final ProtocolVersion protocolVersion;
+  private final CQLIdentifier usingTimestampVariable;
+  private final CQLIdentifier usingTTLVariable;
 
   private final Set<CQLFragment> writeTimeVariablesBuilder = new LinkedHashSet<>();
   private final ImmutableSet<CQLFragment> writeTimeVariables;
@@ -77,11 +80,21 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   private boolean inferring;
   private boolean indexed;
   private boolean hasRegularMappedEntry = false;
+  private boolean hasUsingTimestamp = false;
+  private boolean hasUsingTTL = false;
 
   public MappingInspector(
-      String mapping, WorkflowType workflowType, MappingPreference mappingPreference) {
-    this.mappingPreference = mappingPreference;
+      @NotNull String mapping,
+      @NotNull WorkflowType workflowType,
+      @NotNull MappingPreference mappingPreference,
+      @NotNull ProtocolVersion protocolVersion,
+      @Nullable CQLIdentifier usingTimestampVariable,
+      @Nullable CQLIdentifier usingTTLVariable) {
     this.workflowType = workflowType;
+    this.mappingPreference = mappingPreference;
+    this.protocolVersion = protocolVersion;
+    this.usingTimestampVariable = usingTimestampVariable;
+    this.usingTTLVariable = usingTTLVariable;
     CodePointCharStream input = CharStreams.fromString(mapping);
     MappingLexer lexer = new MappingLexer(input);
     CommonTokenStream tokens = new CommonTokenStream(lexer);
@@ -152,6 +165,23 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
     return writeTimeVariables;
   }
 
+  /**
+   * @return true if the mapping has a field mapped to a USING TIMESTAMP clause (using the special
+   *     __timestamp variable or the internal writetime variable name provided at instantiation);
+   *     false otherwise.
+   */
+  public boolean hasUsingTimestamp() {
+    return hasUsingTimestamp;
+  }
+
+  /**
+   * @return true if the mapping has a field mapped to a USING TTL clause (using the special __ttl
+   *     variable or the internal TTL variable name provided at instantiation); false otherwise.
+   */
+  public boolean hasUsingTTL() {
+    return hasUsingTTL;
+  }
+
   @Override
   public MappingToken visitMapping(MappingParser.MappingContext ctx) {
     currentIndex = 0;
@@ -183,7 +213,7 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   @Override
   public MappingToken visitSimpleEntry(SimpleEntryContext ctx) {
     CQLFragment variable = visitVariableOrFunction(ctx.variableOrFunction());
-    if (workflowType == LOAD && variable instanceof FunctionCall) {
+    if (workflowType == LOAD && isFunctionCall(variable)) {
       throw new BulkConfigurationException(
           "Invalid schema.mapping: simple entries cannot contain function calls when loading, "
               + "please use mapped entries instead.");
@@ -244,6 +274,7 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   }
 
   @Override
+  @NotNull
   public MappingField visitFieldOrFunction(MappingParser.FieldOrFunctionContext ctx) {
     if (ctx.field() != null) {
       return visitField(ctx.field());
@@ -253,6 +284,7 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   }
 
   @Override
+  @NotNull
   public MappedMappingField visitField(MappingParser.FieldContext ctx) {
     MappedMappingField field;
     if (ctx.QUOTED_IDENTIFIER() != null) {
@@ -264,15 +296,17 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   }
 
   @Override
+  @NotNull
   public CQLFragment visitVariableOrFunction(MappingParser.VariableOrFunctionContext ctx) {
     if (ctx.variable() != null) {
       return visitVariable(ctx.variable());
     } else {
-      return visitFunction(ctx.function());
+      return visitSelectorFunction(ctx.selectorFunction());
     }
   }
 
   @Override
+  @NotNull
   public CQLIdentifier visitVariable(VariableContext ctx) {
     CQLIdentifier variable;
     if (ctx.QUOTED_IDENTIFIER() != null) {
@@ -280,40 +314,78 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
     } else {
       String text = ctx.UNQUOTED_IDENTIFIER().getText();
       // Rename the user-specified __ttl and __timestamp vars to the (legal) bound variable
-      // names.
+      // names provided at instantiation.
       if (text.equals(EXTERNAL_TTL_VARNAME)) {
-        variable = INTERNAL_TTL_VARNAME;
+        if (usingTTLVariable == null) {
+          throw new BulkConfigurationException(
+              String.format(
+                  "Invalid mapping: %s variable is not allowed when schema.query does not contain a USING TTL clause",
+                  EXTERNAL_TTL_VARNAME));
+        }
+        variable = usingTTLVariable;
       } else if (text.equals(EXTERNAL_TIMESTAMP_VARNAME)) {
-        variable = INTERNAL_TIMESTAMP_VARNAME;
-        writeTimeVariablesBuilder.add(variable);
+        if (usingTimestampVariable == null) {
+          throw new BulkConfigurationException(
+              String.format(
+                  "Invalid mapping: %s variable is not allowed when schema.query does not contain a USING TIMESTAMP clause",
+                  EXTERNAL_TIMESTAMP_VARNAME));
+        }
+        variable = usingTimestampVariable;
       } else {
+        // Note: contrary to how the CQL grammar handles unquoted identifiers,
+        // in a mapping entry we do not lower-case the unquoted identifier,
+        // to avoid forcing users to quote identifiers just because they are case-sensitive.
         variable = CQLIdentifier.fromInternal(text);
       }
+    }
+    if (variable.equals(usingTimestampVariable)) {
+      writeTimeVariablesBuilder.add(variable);
+      hasUsingTimestamp = true;
+    }
+    if (variable.equals(usingTTLVariable)) {
+      hasUsingTTL = true;
     }
     return variable;
   }
 
   @Override
+  @NotNull
   public FunctionCall visitFunction(FunctionContext ctx) {
-    FunctionCall functionCall;
+    List<CQLFragment> args = new ArrayList<>();
+    if (ctx.functionArgs() != null) {
+      for (FunctionArgContext arg : ctx.functionArgs().functionArg()) {
+        args.add(visitFunctionArg(arg));
+      }
+    }
+    return new FunctionCall(visitFunctionName(ctx.functionName()), args);
+  }
+
+  @Override
+  @NotNull
+  public CQLFragment visitSelectorFunction(SelectorFunctionContext ctx) {
+    CQLFragment functionCall;
     if (ctx.WRITETIME() != null) {
       functionCall =
-          new FunctionCall(
-              WRITETIME, Collections.singletonList(visitFunctionArg(ctx.functionArg())));
+          maybeCreateAlias(
+              new FunctionCall(
+                  WRITETIME,
+                  Collections.singletonList(visitSelectorFunctionArg(ctx.selectorFunctionArg()))));
       writeTimeVariablesBuilder.add(functionCall);
     } else {
       List<CQLFragment> args = new ArrayList<>();
-      if (ctx.functionArgs() != null) {
-        for (FunctionArgContext arg : ctx.functionArgs().functionArg()) {
-          args.add(visitFunctionArg(arg));
+      if (ctx.selectorFunctionArgs() != null) {
+        for (SelectorFunctionArgContext arg : ctx.selectorFunctionArgs().selectorFunctionArg()) {
+          args.add(visitSelectorFunctionArg(arg));
         }
       }
-      functionCall = new FunctionCall(visitFunctionName(ctx.functionName()), args);
+      functionCall =
+          maybeCreateAlias(new FunctionCall(visitFunctionName(ctx.functionName()), args));
     }
     return functionCall;
   }
 
   @Override
+  @NotNull
   public CQLIdentifier visitFunctionName(FunctionNameContext ctx) {
     CQLIdentifier functionName;
     if (ctx.QUOTED_IDENTIFIER() != null) {
@@ -325,14 +397,21 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   }
 
   @Override
-  public CQLFragment visitFunctionArg(FunctionArgContext ctx) {
+  @NotNull
+  public CQLLiteral visitFunctionArg(FunctionArgContext ctx) {
+    return new CQLLiteral(ctx.getText());
+  }
+
+  @Override
+  @NotNull
+  public CQLFragment visitSelectorFunctionArg(SelectorFunctionArgContext ctx) {
     CQLFragment functionArg;
     if (ctx.QUOTED_IDENTIFIER() != null) {
       functionArg = CQLIdentifier.fromCql(ctx.QUOTED_IDENTIFIER().getText());
     } else if (ctx.UNQUOTED_IDENTIFIER() != null) {
       functionArg = CQLIdentifier.fromCql(ctx.UNQUOTED_IDENTIFIER().getText());
     } else {
-      functionArg = new CQLLiteral(ctx.getText());
+      functionArg = visitFunctionArg(ctx.functionArg());
     }
     return functionArg;
   }
@@ -400,5 +479,19 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
               "Invalid schema.mapping: %s: %s. Please review schema.mapping for duplicates.",
               msg, offending));
     }
+  }
+
+  private CQLFragment maybeCreateAlias(CQLFragment target) {
+    if (protocolVersion == ProtocolVersion.V1) {
+      return target;
+    }
+    return new Alias(target, CQLIdentifier.fromInternal(target.asInternal()));
+  }
+
+  private static boolean isFunctionCall(CQLFragment variable) {
+    if (variable instanceof Alias) {
+      variable = ((Alias) variable).getTarget();
+    }
+    return variable instanceof FunctionCall;
   }
 }

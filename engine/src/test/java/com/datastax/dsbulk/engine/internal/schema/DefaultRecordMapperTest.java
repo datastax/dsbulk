@@ -10,6 +10,7 @@ package com.datastax.dsbulk.engine.internal.schema;
 
 import static com.datastax.driver.core.DataType.bigint;
 import static com.datastax.driver.core.Metadata.quoteIfNecessary;
+import static com.datastax.driver.core.ProtocolVersion.V1;
 import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.math.BigDecimal.ONE;
@@ -25,6 +26,7 @@ import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -119,6 +121,9 @@ class DefaultRecordMapperTest {
     when(boundStatement.isSet(quoteIfNecessary(C1))).thenReturn(true);
     when(boundStatement.isSet(quoteIfNecessary(C2))).thenReturn(true);
     when(boundStatement.isSet(quoteIfNecessary(C3))).thenReturn(true);
+    when(boundStatement.isSet(0)).thenReturn(true);
+    when(boundStatement.isSet(1)).thenReturn(true);
+    when(boundStatement.isSet(2)).thenReturn(true);
 
     when(insertStatement.getVariables()).thenReturn(variables);
 
@@ -394,6 +399,31 @@ class DefaultRecordMapperTest {
     assertThat(result).isSameAs(boundStatement);
     verify(boundStatement).setBytesUnsafe(variableCaptor.capture(), valueCaptor.capture());
     assertParameter(0, C1, null);
+  }
+
+  @Test
+  void should_map_null_to_null_with_protocol_v1() {
+    when(record.getFieldValue(F1)).thenReturn(null);
+    when(boundStatement.isSet(0)).thenReturn(false);
+    RecordMapper mapper =
+        new DefaultRecordMapper(
+            insertStatement,
+            set(C2_ID, C3_ID),
+            V1,
+            mapping,
+            recordMetadata,
+            true,
+            true,
+            true,
+            (mappedRecord, statement) -> boundStatement);
+    Statement result = mapper.map(record);
+    assertThat(result).isSameAs(boundStatement);
+    verify(boundStatement).isSet(0);
+    verify(boundStatement).setToNull(0);
+    verify(boundStatement).isSet(1);
+    verify(boundStatement, never()).setToNull(1);
+    verify(boundStatement).isSet(2);
+    verify(boundStatement, never()).setToNull(2);
   }
 
   @Test

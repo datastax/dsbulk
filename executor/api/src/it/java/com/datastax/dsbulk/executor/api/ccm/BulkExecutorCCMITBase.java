@@ -32,8 +32,8 @@ public abstract class BulkExecutorCCMITBase extends BulkExecutorITBase {
 
   @BeforeAll
   void createTables() {
-    session.execute("CREATE TABLE IF NOT EXISTS test_write (pk int PRIMARY KEY, v int)");
-    session.execute("CREATE TABLE IF NOT EXISTS test_read (pk int PRIMARY KEY, v int)");
+    session.execute("CREATE TABLE test_write (pk int PRIMARY KEY, v int)");
+    session.execute("CREATE TABLE test_read (pk int PRIMARY KEY, v int)");
     for (int i = 0; i < 100; i++) {
       session.execute(String.format("INSERT INTO test_read (pk, v) VALUES (%d, %d)", i, i));
     }

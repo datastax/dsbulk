@@ -51,6 +51,10 @@ public class FunctionCall implements MappingField, CQLFragment {
             + ")";
     // a function call appears in result set variables in a particular form: its internal
     // representation is considered as its CQL form itself.
+    // Note: this is only true for built-in functions, such as now(), ttl(), writetime() or token();
+    // user-defined functions appear keyspace-qualified in result set variable names.
+    // In practice, this will never be a problem since we only care about built-in functions
+    // and specially writetime() – see DefaultMapping.
     variable = CQLIdentifier.fromInternal(internal).asCql();
   }
 

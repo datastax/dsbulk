@@ -23,7 +23,7 @@ import java.util.Optional;
 import java.util.concurrent.Semaphore;
 import org.reactivestreams.Subscriber;
 
-@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
+@SuppressWarnings({"OptionalUsedAsFieldOrParameterType", "UnstableApiUsage"})
 public class ContinuousReadResultSubscription
     extends ResultSubscription<ReadResult, AsyncContinuousPagingResult> {
 

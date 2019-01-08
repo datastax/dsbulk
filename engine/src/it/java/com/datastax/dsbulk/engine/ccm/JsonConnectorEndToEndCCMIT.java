@@ -30,12 +30,14 @@ import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_WITH
 import static java.math.RoundingMode.UNNECESSARY;
 import static java.nio.file.Files.createTempDirectory;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
+import com.datastax.dsbulk.commons.tests.utils.Version;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
@@ -59,6 +61,9 @@ import org.junit.jupiter.api.Test;
 @Tag("medium")
 @CCMRequirements(compatibleTypes = {DSE, DDAC})
 class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
+
+  private static final Version V3 = Version.parse("3.0");
+  private static final Version V2_1 = Version.parse("2.1");
 
   private Path unloadDir;
   private Path logDir;
@@ -173,8 +178,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     validateExceptionsLog(
         1, "Primary key column cc cannot be left unmapped", "mapping-errors.log", logPath);
     validateResultSetSize(0, "SELECT * FROM missing");
-    deleteDirectory(logDir);
   }
+
   /**
    * DAT-307: Test to validate that missing primary keys will fail to load with case-sensitive
    * identifiers.
@@ -216,7 +221,6 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     validateExceptionsLog(
         1, "Primary key column \"CC\" cannot be left unmapped", "mapping-errors.log", logPath);
     validateResultSetSize(0, "SELECT * FROM missing");
-    deleteDirectory(logDir);
   }
 
   /** Simple test case which attempts to load and unload data using ccm and compression (LZ4). */
@@ -326,6 +330,9 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
    */
   @Test
   void full_load_unload_complex() throws Exception {
+
+    assumeTrue(
+        ccm.getCassandraVersion().compareTo(V2_1) >= 0, "UDTs are not compatible with C* < 2.1");
 
     session.execute("DROP TABLE IF EXISTS complex");
     session.execute("DROP TYPE IF EXISTS contacts");
@@ -736,6 +743,10 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   /** Test for DAT-236. */
   @Test
   void temporal_roundtrip() throws IOException {
+
+    assumeTrue(
+        ccm.getCassandraVersion().compareTo(V3) >= 0,
+        "CQL type date is not compatible with C* < 3.0");
 
     session.execute("DROP TABLE IF EXISTS temporals");
     session.execute(

@@ -6,7 +6,7 @@
  * and will post the amended terms at
  * https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
  */
-package com.datastax.dsbulk.executor.api.tck;
+package com.datastax.dsbulk.executor.api.internal.publisher;
 
 import com.datastax.driver.core.AsyncContinuousPagingResult;
 import com.datastax.driver.core.ColumnDefinitions;
@@ -18,6 +18,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.jetbrains.annotations.NotNull;
 
 class MockResultSet implements ResultSet, AsyncContinuousPagingResult {
 
@@ -50,6 +51,7 @@ class MockResultSet implements ResultSet, AsyncContinuousPagingResult {
     return rows;
   }
 
+  @NotNull
   @Override
   public Iterator<Row> iterator() {
     return iterator;

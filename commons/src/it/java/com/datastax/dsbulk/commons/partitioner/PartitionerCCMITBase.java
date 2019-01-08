@@ -56,7 +56,8 @@ abstract class PartitionerCCMITBase {
     for (int i = 0; i < expectedTotal; i++) {
       Statement stmt =
           new SimpleStatement(
-                  String.format("INSERT INTO %s.\"MY_TABLE\" (\"PK\", \"V\") VALUES (?, 1)", ks), i)
+                  String.format(
+                      "INSERT INTO %s.\"MY_TABLE\" (\"PK\", \"V\") VALUES (%d, 1)", ks, i))
               .setConsistencyLevel(ALL);
       session.execute(stmt);
     }

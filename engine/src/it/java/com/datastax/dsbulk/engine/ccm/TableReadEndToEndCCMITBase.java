@@ -31,14 +31,10 @@ import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
-import com.datastax.dsbulk.connectors.api.Connector;
-import com.datastax.dsbulk.connectors.api.Record;
-import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode;
 import com.datastax.dsbulk.engine.tests.MockConnector;
 import com.google.common.collect.Lists;
-import com.google.common.reflect.TypeToken;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
@@ -49,8 +45,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.function.Function;
-import java.util.function.Supplier;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterAll;
@@ -64,8 +59,6 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.reactivestreams.Publisher;
-import reactor.core.publisher.Flux;
 
 @ExtendWith(LogInterceptingExtension.class)
 @ExtendWith(StreamInterceptingExtension.class)
@@ -75,7 +68,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
   private final StreamInterceptor stdout;
 
   private Path logDir;
-  private List<Record> records;
+  private AtomicInteger records;
   private int expectedTotal;
   private Map<String, Map<String, Map<TokenRange, Integer>>> allRanges;
   private Map<String, Map<String, Map<Host, Integer>>> allHosts;
@@ -134,7 +127,46 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add("--log.directory");
     args.add(quoteJson(logDir));
     args.add("--schema.query");
-    args.add(String.format("\"SELECT * FROM \\\"%s\\\".\\\"%s\\\"\"", keyspace, table));
+    args.add(quoteJson(String.format("SELECT * FROM \"%s\".\"%s\"", keyspace, table)));
+    args.add(table);
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+
+    assertUnload();
+  }
+
+  @ParameterizedTest(name = "[{index}] unload keyspace {0} table {1} (custom result set)")
+  @CsvSource({
+    "RF_1,SINGLE_PK",
+    "RF_1,composite_pk",
+    "rf_2,SINGLE_PK",
+    "rf_2,composite_pk",
+    "rf_3,SINGLE_PK",
+    "rf_3,composite_pk",
+  })
+  void full_unload_custom_result_set(String keyspace, String table) {
+
+    List<String> args = new ArrayList<>();
+    args.add("unload");
+    args.add("--connector.name");
+    args.add("mock");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--schema.query");
+    if (table.equals("SINGLE_PK")) {
+      args.add(
+          quoteJson(
+              String.format(
+                  "SELECT pk, ttl(v), writetime(v), token(pk), now() FROM \"%s\".\"%s\"",
+                  keyspace, table)));
+    } else {
+      args.add(
+          quoteJson(
+              String.format(
+                  "SELECT \"PK1\", ttl(v), writetime(v), token(\"PK1\", \"PK2\"), now() FROM \"%s\".\"%s\"",
+                  keyspace, table)));
+    }
     args.add(table);
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
@@ -175,7 +207,8 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add("-stats");
     args.add(modes.stream().map(Enum::name).collect(Collectors.joining(",")));
     args.add("--schema.query");
-    args.add(String.format("\"SELECT * FROM \\\"%s\\\".\\\"%s\\\"\"", keyspace, table));
+    args.add(quoteJson(String.format("SELECT * FROM \"%s\".\"%s\"", keyspace, table)));
+
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
 
@@ -184,7 +217,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
 
   private void assertUnload() {
     assertThat(logs).hasMessageContaining(String.format("Reads: total: %,d", expectedTotal));
-    assertThat(records).hasSize(expectedTotal);
+    assertThat(records).hasValue(expectedTotal);
   }
 
   private void assertCount(String keyspace, String table, EnumSet<StatisticsMode> modes) {
@@ -237,11 +270,11 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
         "CREATE TABLE rf_3.\"SINGLE_PK\" (pk int, cc int, v int, PRIMARY KEY (pk, cc))");
 
     session.execute(
-        "CREATE TABLE \"RF_1\".composite_pk (pk1 int, pk2 int, cc int, v int, PRIMARY KEY ((pk1, pk2), cc))");
+        "CREATE TABLE \"RF_1\".composite_pk (\"PK1\" int, \"PK2\" int, cc int, v int, PRIMARY KEY ((\"PK1\", \"PK2\"), cc))");
     session.execute(
-        "CREATE TABLE rf_2.composite_pk (pk1 int, pk2 int, cc int, v int, PRIMARY KEY ((pk1, pk2), cc))");
+        "CREATE TABLE rf_2.composite_pk (\"PK1\" int, \"PK2\" int, cc int, v int, PRIMARY KEY ((\"PK1\", \"PK2\"), cc))");
     session.execute(
-        "CREATE TABLE rf_3.composite_pk (pk1 int, pk2 int, cc int, v int, PRIMARY KEY ((pk1, pk2), cc))");
+        "CREATE TABLE rf_3.composite_pk (\"PK1\" int, \"PK2\" int, cc int, v int, PRIMARY KEY ((\"PK1\", \"PK2\"), cc))");
 
     allRanges = new HashMap<>();
     allHosts = new HashMap<>();
@@ -258,9 +291,9 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
 
   @AfterAll
   void dropKeyspaces() {
-    session.execute("DROP KEYSPACE IF EXISTS \"RF_1\"");
-    session.execute("DROP KEYSPACE IF EXISTS rf_2");
-    session.execute("DROP KEYSPACE IF EXISTS rf_3");
+    session.execute("DROP KEYSPACE \"RF_1\"");
+    session.execute("DROP KEYSPACE rf_2");
+    session.execute("DROP KEYSPACE rf_3");
   }
 
   @BeforeEach
@@ -281,32 +314,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
 
   @BeforeEach
   void setUpConnector() {
-    records = new ArrayList<>();
-    MockConnector.setDelegate(
-        new Connector() {
-
-          @Override
-          public RecordMetadata getRecordMetadata() {
-            return (field, cqlType) -> TypeToken.of(Integer.class);
-          }
-
-          @Override
-          public Supplier<? extends Publisher<Record>> read() {
-            // not used
-            return null;
-          }
-
-          @Override
-          public Supplier<? extends Publisher<Publisher<Record>>> readByResource() {
-            // not used
-            return null;
-          }
-
-          @Override
-          public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
-            return upstream -> Flux.from(upstream).doOnNext(record -> records.add(record));
-          }
-        });
+    records = MockConnector.mockCountingWrites();
   }
 
   private void populateSinglePkTable(String keyspace) {
@@ -382,10 +390,8 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
         metadata.getTokenRanges().stream().filter(r -> r.contains(token)).findFirst().orElse(null);
     ranges.compute(range, (r, t) -> t == null ? 1 : t + 1);
     session.execute(
-        String.format("INSERT INTO \"%s\".\"SINGLE_PK\" (pk, cc, v) VALUES (?, ?, ?)", keyspace),
-        i,
-        j,
-        42);
+        String.format(
+            "INSERT INTO \"%s\".\"SINGLE_PK\" (pk, cc, v) VALUES (%d,%d,42)", keyspace, i, j));
   }
 
   private void insertIntoCompositePkTable(
@@ -408,11 +414,8 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     ranges.compute(range, (r, t) -> t == null ? 1 : t + 1);
     session.execute(
         String.format(
-            "INSERT INTO \"%s\".composite_pk (pk1, pk2, cc, v) VALUES (?, ?, ?, ?)", keyspace),
-        i,
-        j,
-        k,
-        42);
+            "INSERT INTO \"%s\".composite_pk (\"PK1\", \"PK2\", cc, v) VALUES (%d,%d,%d,42)",
+            keyspace, i, j, k));
   }
 
   private static class CountWorkflowArgumentsProvider implements ArgumentsProvider {

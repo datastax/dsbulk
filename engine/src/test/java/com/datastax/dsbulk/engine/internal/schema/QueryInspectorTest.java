@@ -8,6 +8,8 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
+import static com.datastax.dsbulk.engine.internal.schema.QueryInspector.INTERNAL_TIMESTAMP_VARNAME;
+import static com.datastax.dsbulk.engine.internal.schema.QueryInspector.INTERNAL_TTL_VARNAME;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -322,6 +324,9 @@ class QueryInspectorTest {
     assertThat(inspector.getWriteTimeVariables())
         .hasSize(1)
         .containsOnly(CQLIdentifier.fromInternal("writetime"));
+    assertThat(inspector.getUsingTimestampVariable())
+        .contains(CQLIdentifier.fromInternal("writetime"));
+    assertThat(inspector.getUsingTTLVariable()).contains(CQLIdentifier.fromInternal("ttl"));
   }
 
   @Test
@@ -329,10 +334,13 @@ class QueryInspectorTest {
     QueryInspector inspector =
         new QueryInspector(
             "INSERT INTO ks.foo (pk, cc, v) VALUES (?, ?, ?) "
-                + "USING TTL :ttl AND TIMESTAMP :\"My Writetime\"");
+                + "USING TTL :\"My TTL\" AND TIMESTAMP :\"My Writetime\"");
     assertThat(inspector.getWriteTimeVariables())
         .hasSize(1)
         .containsOnly(CQLIdentifier.fromInternal("My Writetime"));
+    assertThat(inspector.getUsingTimestampVariable())
+        .contains(CQLIdentifier.fromInternal("My Writetime"));
+    assertThat(inspector.getUsingTTLVariable()).contains(CQLIdentifier.fromInternal("My TTL"));
   }
 
   @Test
@@ -343,16 +351,22 @@ class QueryInspectorTest {
     assertThat(inspector.getWriteTimeVariables())
         .hasSize(1)
         .containsOnly(CQLIdentifier.fromInternal("writetime"));
+    assertThat(inspector.getUsingTimestampVariable())
+        .contains(CQLIdentifier.fromInternal("writetime"));
+    assertThat(inspector.getUsingTTLVariable()).contains(CQLIdentifier.fromInternal("ttl"));
   }
 
   @Test
   void should_detect_writetime_quoted_update() {
     QueryInspector inspector =
         new QueryInspector(
-            "UPDATE ks.foo USING TTL :ttl AND TiMeStAmP :\"My Writetime\" SET foo = :bar WHERE pk = 1");
+            "UPDATE ks.foo USING TTL :\"My TTL\" AND TiMeStAmP :\"My Writetime\" SET foo = :bar WHERE pk = 1");
     assertThat(inspector.getWriteTimeVariables())
         .hasSize(1)
         .containsOnly(CQLIdentifier.fromInternal("My Writetime"));
+    assertThat(inspector.getUsingTimestampVariable())
+        .contains(CQLIdentifier.fromInternal("My Writetime"));
+    assertThat(inspector.getUsingTTLVariable()).contains(CQLIdentifier.fromInternal("My TTL"));
   }
 
   @Test
@@ -362,6 +376,8 @@ class QueryInspectorTest {
     assertThat(inspector.getWriteTimeVariables())
         .hasSize(1)
         .containsOnly(CQLIdentifier.fromInternal("writetime"));
+    assertThat(inspector.getUsingTimestampVariable())
+        .contains(CQLIdentifier.fromInternal("writetime"));
   }
 
   @Test
@@ -371,6 +387,41 @@ class QueryInspectorTest {
     assertThat(inspector.getWriteTimeVariables())
         .hasSize(1)
         .containsOnly(CQLIdentifier.fromInternal("My Writetime"));
+    assertThat(inspector.getUsingTimestampVariable())
+        .contains(CQLIdentifier.fromInternal("My Writetime"));
+  }
+
+  @Test
+  void should_detect_writetime_insert_positional() {
+    QueryInspector inspector =
+        new QueryInspector(
+            "INSERT INTO ks.foo (pk, cc, v) VALUES (?, ?, ?) USING TTL ? AND TIMESTAMP ?");
+    assertThat(inspector.getWriteTimeVariables())
+        .hasSize(1)
+        .containsOnly(INTERNAL_TIMESTAMP_VARNAME);
+    assertThat(inspector.getUsingTimestampVariable()).contains(INTERNAL_TIMESTAMP_VARNAME);
+    assertThat(inspector.getUsingTTLVariable()).contains(INTERNAL_TTL_VARNAME);
+  }
+
+  @Test
+  void should_detect_writetime_update_positional() {
+    QueryInspector inspector =
+        new QueryInspector("UPDATE ks.foo USING TTL ? AND TIMESTAMP ? SET foo = ? WHERE pk = 1");
+    assertThat(inspector.getWriteTimeVariables())
+        .hasSize(1)
+        .containsOnly(INTERNAL_TIMESTAMP_VARNAME);
+    assertThat(inspector.getUsingTimestampVariable()).contains(INTERNAL_TIMESTAMP_VARNAME);
+    assertThat(inspector.getUsingTTLVariable()).contains(INTERNAL_TTL_VARNAME);
+  }
+
+  @Test
+  void should_detect_writetime_delete_positional() {
+    QueryInspector inspector =
+        new QueryInspector("DELETE FROM ks.foo USING TIMESTAMP ? WHERE pk = 1");
+    assertThat(inspector.getWriteTimeVariables())
+        .hasSize(1)
+        .containsOnly(INTERNAL_TIMESTAMP_VARNAME);
+    assertThat(inspector.getUsingTimestampVariable()).contains(INTERNAL_TIMESTAMP_VARNAME);
   }
 
   @Test
@@ -471,26 +522,6 @@ class QueryInspectorTest {
   }
 
   @Test
-  void should_error_out_if_writetime_positional() {
-    assertThatThrownBy(
-            () ->
-                new QueryInspector(
-                    "INSERT INTO ks.foo (pk, cc, v) VALUES (?, ?, ?) USING TIMESTAMP ?"))
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessageContaining(
-            "Invalid query: positional variables are not allowed in USING TIMESTAMP clauses");
-  }
-
-  @Test
-  void should_error_out_if_ttl_positional() {
-    assertThatThrownBy(
-            () -> new QueryInspector("INSERT INTO ks.foo (pk, cc, v) VALUES (?, ?, ?) USING TTL ?"))
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessageContaining(
-            "Invalid query: positional variables are not allowed in USING TTL clauses");
-  }
-
-  @Test
   void should_error_out_if_insert_values_mismatch() {
     assertThatThrownBy(() -> new QueryInspector("INSERT INTO ks.foo (pk, cc, v) VALUES (?, ?)"))
         .isInstanceOf(BulkConfigurationException.class)
@@ -541,6 +572,8 @@ class QueryInspectorTest {
         .contains(CQLIdentifier.fromInternal("begin"));
     assertThat(inspector.getTokenRangeRestrictionEndVariable())
         .contains(CQLIdentifier.fromInternal("finish"));
+    assertThat(inspector.getTokenRangeRestrictionStartVariableIndex()).isZero();
+    assertThat(inspector.getTokenRangeRestrictionEndVariableIndex()).isOne();
     inspector =
         new QueryInspector(
             "SELECT a,b,c FROM ks.t1 WHERE token(pk) <= :finish AND token(pk) > :\"begin\"");
@@ -548,18 +581,111 @@ class QueryInspectorTest {
         .contains(CQLIdentifier.fromInternal("begin"));
     assertThat(inspector.getTokenRangeRestrictionEndVariable())
         .contains(CQLIdentifier.fromInternal("finish"));
+    assertThat(inspector.getTokenRangeRestrictionStartVariableIndex()).isOne();
+    assertThat(inspector.getTokenRangeRestrictionEndVariableIndex()).isZero();
   }
 
   @Test
   void should_report_positional_token_range_restriction_variables() {
-    assertThatThrownBy(
-            () ->
-                new QueryInspector(
-                    "SELECT a,b,c FROM ks.t1 WHERE token(pk) <= ? AND token(pk) > ?"))
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage(
-            "Invalid query: positional variables are not allowed in WHERE token(...) clauses, "
-                + "please une named variables instead: "
-                + "SELECT a,b,c FROM ks.t1 WHERE token(pk) <= ? AND token(pk) > ?.");
+    QueryInspector inspector =
+        new QueryInspector("SELECT a,b,c FROM ks.t1 WHERE token(pk) > ? AND token(pk) <= ?");
+    assertThat(inspector.getTokenRangeRestrictionStartVariable())
+        .contains(CQLIdentifier.fromInternal("partition key token"));
+    assertThat(inspector.getTokenRangeRestrictionEndVariable())
+        .contains(CQLIdentifier.fromInternal("partition key token"));
+    assertThat(inspector.getTokenRangeRestrictionStartVariableIndex()).isZero();
+    assertThat(inspector.getTokenRangeRestrictionEndVariableIndex()).isOne();
+    inspector =
+        new QueryInspector("SELECT a,b,c FROM ks.t1 WHERE token(pk) <= ? AND token(pk) > ?");
+    assertThat(inspector.getTokenRangeRestrictionStartVariable())
+        .contains(CQLIdentifier.fromInternal("partition key token"));
+    assertThat(inspector.getTokenRangeRestrictionEndVariable())
+        .contains(CQLIdentifier.fromInternal("partition key token"));
+    assertThat(inspector.getTokenRangeRestrictionStartVariableIndex()).isOne();
+    assertThat(inspector.getTokenRangeRestrictionEndVariableIndex()).isZero();
+  }
+
+  @Test
+  void should_detect_select_star() {
+    assertThat(new QueryInspector("SELECT * FROM ks.t1").isSelectStar()).isTrue();
+    assertThat(new QueryInspector("SELECT a FROM ks.t1").isSelectStar()).isFalse();
+    assertThat(new QueryInspector("SELECT a,b,c FROM ks.t1").isSelectStar()).isFalse();
+  }
+
+  @Test
+  void should_detect_unsupported_selector() {
+    assertThat(new QueryInspector("SELECT myUdt.myField FROM ks.t1").hasUnsupportedSelectors())
+        .isTrue();
+    assertThat(new QueryInspector("SELECT COUNT(*) FROM ks.t1").hasUnsupportedSelectors()).isTrue();
+    assertThat(new QueryInspector("SELECT CAST (c1 as int) FROM ks.t1").hasUnsupportedSelectors())
+        .isTrue();
+    assertThat(new QueryInspector("SELECT (int) 1 FROM ks.t1").hasUnsupportedSelectors()).isTrue();
+    assertThat(
+            new QueryInspector("SELECT c1, writetime(c1), ttl(c1), now() FROM ks.t1")
+                .hasUnsupportedSelectors())
+        .isFalse();
+    assertThat(
+            new QueryInspector(
+                    "SELECT c1, writetime(c1) AS wrt, ttl(c1) as ttl, now() as now FROM ks.t1")
+                .hasUnsupportedSelectors())
+        .isFalse();
+    assertThat(new QueryInspector("SELECT * FROM ks.t1").hasUnsupportedSelectors()).isFalse();
+  }
+
+  @Test
+  void should_detect_functions_insert() {
+    QueryInspector inspector = new QueryInspector("INSERT INTO table1 (pk, v) VALUES (0, now())");
+    assertThat(inspector.getAssignments())
+        .hasSize(2)
+        .containsValue(new FunctionCall(CQLIdentifier.fromInternal("now")));
+    inspector = new QueryInspector("INSERT INTO table1 (pk, v) VALUES (0, sqrt(16))");
+    assertThat(inspector.getAssignments())
+        .hasSize(2)
+        .containsValue(new FunctionCall(CQLIdentifier.fromInternal("sqrt"), new CQLLiteral("16")));
+    inspector = new QueryInspector("INSERT INTO table1 (pk, v) VALUES (0, max(2, 3))");
+    assertThat(inspector.getAssignments())
+        .hasSize(2)
+        .containsValue(
+            new FunctionCall(
+                CQLIdentifier.fromInternal("max"), new CQLLiteral("2"), new CQLLiteral("3")));
+  }
+
+  @Test
+  void should_detect_functions_update() {
+    QueryInspector inspector = new QueryInspector("UPDATE table1 set v = now() WHERE pk = 0");
+    assertThat(inspector.getAssignments())
+        .hasSize(2)
+        .containsValue(new FunctionCall(CQLIdentifier.fromInternal("now")));
+    inspector = new QueryInspector("UPDATE table1 set v = sqrt(16) WHERE pk = 0");
+    assertThat(inspector.getAssignments())
+        .hasSize(2)
+        .containsValue(new FunctionCall(CQLIdentifier.fromInternal("sqrt"), new CQLLiteral("16")));
+    inspector = new QueryInspector("UPDATE table1 set v = max(2, 3) WHERE pk = 0");
+    assertThat(inspector.getAssignments())
+        .hasSize(2)
+        .containsValue(
+            new FunctionCall(
+                CQLIdentifier.fromInternal("max"), new CQLLiteral("2"), new CQLLiteral("3")));
+  }
+
+  @Test
+  void should_detect_functions_select() {
+    QueryInspector inspector = new QueryInspector("SELECT now() FROM table1");
+    assertThat(inspector.getResultSetVariables())
+        .hasSize(1)
+        .containsValue(new FunctionCall(CQLIdentifier.fromInternal("now")));
+    inspector = new QueryInspector("SELECT sqrt(c1) FROM table1");
+    assertThat(inspector.getResultSetVariables())
+        .hasSize(1)
+        .containsValue(
+            new FunctionCall(CQLIdentifier.fromInternal("sqrt"), CQLIdentifier.fromInternal("c1")));
+    inspector = new QueryInspector("SELECT max(c1, c2)  FROM table1");
+    assertThat(inspector.getResultSetVariables())
+        .hasSize(1)
+        .containsValue(
+            new FunctionCall(
+                CQLIdentifier.fromInternal("max"),
+                CQLIdentifier.fromInternal("c1"),
+                CQLIdentifier.fromInternal("c2")));
   }
 }

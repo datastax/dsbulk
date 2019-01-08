@@ -13,10 +13,32 @@ import com.datastax.dsbulk.commons.cql3.CqlBaseVisitor;
 import com.datastax.dsbulk.commons.cql3.CqlLexer;
 import com.datastax.dsbulk.commons.cql3.CqlParser;
 import com.datastax.dsbulk.commons.cql3.CqlParser.AllowedFunctionNameContext;
+import com.datastax.dsbulk.commons.cql3.CqlParser.CfNameContext;
+import com.datastax.dsbulk.commons.cql3.CqlParser.CidentContext;
+import com.datastax.dsbulk.commons.cql3.CqlParser.ColumnFamilyNameContext;
+import com.datastax.dsbulk.commons.cql3.CqlParser.ColumnOperationContext;
+import com.datastax.dsbulk.commons.cql3.CqlParser.ColumnOperationDifferentiatorContext;
+import com.datastax.dsbulk.commons.cql3.CqlParser.CqlStatementContext;
+import com.datastax.dsbulk.commons.cql3.CqlParser.DeleteStatementContext;
 import com.datastax.dsbulk.commons.cql3.CqlParser.FunctionContext;
 import com.datastax.dsbulk.commons.cql3.CqlParser.FunctionNameContext;
+import com.datastax.dsbulk.commons.cql3.CqlParser.InsertStatementContext;
+import com.datastax.dsbulk.commons.cql3.CqlParser.IntValueContext;
+import com.datastax.dsbulk.commons.cql3.CqlParser.JsonInsertStatementContext;
+import com.datastax.dsbulk.commons.cql3.CqlParser.KsNameContext;
+import com.datastax.dsbulk.commons.cql3.CqlParser.NoncolIdentContext;
+import com.datastax.dsbulk.commons.cql3.CqlParser.NormalInsertStatementContext;
+import com.datastax.dsbulk.commons.cql3.CqlParser.RelationContext;
+import com.datastax.dsbulk.commons.cql3.CqlParser.RelationTypeContext;
+import com.datastax.dsbulk.commons.cql3.CqlParser.SelectClauseContext;
+import com.datastax.dsbulk.commons.cql3.CqlParser.SelectStatementContext;
+import com.datastax.dsbulk.commons.cql3.CqlParser.SelectorContext;
 import com.datastax.dsbulk.commons.cql3.CqlParser.TermContext;
 import com.datastax.dsbulk.commons.cql3.CqlParser.UnaliasedSelectorContext;
+import com.datastax.dsbulk.commons.cql3.CqlParser.UpdateStatementContext;
+import com.datastax.dsbulk.commons.cql3.CqlParser.UsingClauseDeleteContext;
+import com.datastax.dsbulk.commons.cql3.CqlParser.UsingClauseObjectiveContext;
+import com.datastax.dsbulk.commons.cql3.CqlParser.ValueContext;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import java.util.ArrayList;
@@ -32,8 +54,16 @@ import org.antlr.v4.runtime.CodePointCharStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
+
+  public static final CQLIdentifier INTERNAL_TIMESTAMP_VARNAME =
+      CQLIdentifier.fromInternal("[timestamp]");
+  public static final CQLIdentifier INTERNAL_TTL_VARNAME = CQLIdentifier.fromInternal("[ttl]");
+  private static final CQLIdentifier INTERNAL_TOKEN_VARNAME =
+      CQLIdentifier.fromInternal("partition key token");
 
   private static final CQLIdentifier QUESTION_MARK = CQLIdentifier.fromInternal("?");
   private static final CQLIdentifier WRITETIME = CQLIdentifier.fromInternal("writetime");
@@ -57,6 +87,13 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   private boolean hasWhereClause = false;
   private CQLIdentifier tokenRangeRestrictionStartVariable;
   private CQLIdentifier tokenRangeRestrictionEndVariable;
+  private int tokenRangeRestrictionVariableIndex = 0;
+  private int tokenRangeRestrictionStartVariableIndex = -1;
+  private int tokenRangeRestrictionEndVariableIndex = -1;
+  private boolean selectStar = false;
+  private boolean hasUnsupportedSelectors = false;
+  private CQLIdentifier usingTimestampVariable;
+  private CQLIdentifier usingTTLVariable;
 
   public QueryInspector(String query) {
     this.query = query;
@@ -85,7 +122,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
     lexer.addErrorListener(listener);
     parser.removeErrorListeners();
     parser.addErrorListener(listener);
-    CqlParser.CqlStatementContext statement = parser.cqlStatement();
+    CqlStatementContext statement = parser.cqlStatement();
     visit(statement);
     resultSetVariables = ImmutableMap.copyOf(resultSetVariablesBuilder);
     assignments = ImmutableMap.copyOf(assignmentsBuilder);
@@ -103,9 +140,8 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   }
 
   /**
-   * @return a map of assignments found in the query, from column to value. This map only includes
-   *     assignments of columns to named bound variables (e.g. col1 = :val1) and columns to
-   *     functions (e.g. col1 = now()). Only used for write queries (INSERT, UPDATE, DELETE).
+   * @return a map of assignments found in the query, from column to value. Only used for write
+   *     queries (INSERT, UPDATE, DELETE).
    */
   public ImmutableMap<CQLIdentifier, CQLFragment> getAssignments() {
     return assignments;
@@ -115,10 +151,30 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
    * @return a map of result set variables found in the query, from unaliased to aliased (if no
    *     alias is present, the aliased form is identical to the unaliased one). This map includes
    *     only regular column selections (e.g. SELECT col1) and function call selections (e.g. SELECT
-   *     token(pk)). Only used for read queries (SELECT).
+   *     token(pk)). Only used for read queries (SELECT) under protocol V1, to infer the contents of
+   *     the result set.
    */
   public ImmutableMap<CQLFragment, CQLFragment> getResultSetVariables() {
     return resultSetVariables;
+  }
+
+  /**
+   * @return true if the statement is a SELECT statement with a 'select all' clause ({@code SELECT
+   *     *}).
+   */
+  public boolean isSelectStar() {
+    return selectStar;
+  }
+
+  /**
+   * @return true if the statement is a SELECT statement and at least one of the selectors cannot be
+   *     fully parsed by dsbulk (i.e., not a regular column selection nor a ttl/writetime function
+   *     call). This is usually only useful in protocol V1, because prepared statements do not
+   *     return result set metadata, and dsbulk needs to rely on its own parsing of the query to
+   *     infer the result set variables.
+   */
+  public boolean hasUnsupportedSelectors() {
+    return hasUnsupportedSelectors;
   }
 
   /**
@@ -128,6 +184,22 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
    */
   public ImmutableSet<CQLFragment> getWriteTimeVariables() {
     return writeTimeVariables;
+  }
+
+  /**
+   * @return the variable name used in a USING TIMESTAMP clause; or none if no such clause or no
+   *     such variable.
+   */
+  public Optional<CQLIdentifier> getUsingTimestampVariable() {
+    return Optional.ofNullable(usingTimestampVariable);
+  }
+
+  /**
+   * @return the variable name used in a USING TTL clause; or none if no such clause or no such
+   *     variable.
+   */
+  public Optional<CQLIdentifier> getUsingTTLVariable() {
+    return Optional.ofNullable(usingTTLVariable);
   }
 
   /**
@@ -167,16 +239,32 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
     return Optional.ofNullable(tokenRangeRestrictionEndVariable);
   }
 
+  /**
+   * @return the zero-based index of the start variable of a token range restriction; or -1 if no
+   *     such variable is present.
+   */
+  public int getTokenRangeRestrictionStartVariableIndex() {
+    return tokenRangeRestrictionStartVariableIndex;
+  }
+
+  /**
+   * @return the zero-based index of the end variable of a token range restriction; or -1 if no such
+   *     variable is present.
+   */
+  public int getTokenRangeRestrictionEndVariableIndex() {
+    return tokenRangeRestrictionEndVariableIndex;
+  }
+
   // INSERT
 
   @Override
-  public CQLFragment visitInsertStatement(CqlParser.InsertStatementContext ctx) {
+  public CQLFragment visitInsertStatement(InsertStatementContext ctx) {
     visitColumnFamilyName(ctx.columnFamilyName());
     return visitChildren(ctx);
   }
 
   @Override
-  public CQLFragment visitNormalInsertStatement(CqlParser.NormalInsertStatementContext ctx) {
+  public CQLFragment visitNormalInsertStatement(NormalInsertStatementContext ctx) {
     if (ctx.cident().size() != ctx.term().size()) {
       throw new BulkConfigurationException(
           String.format(
@@ -186,9 +274,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
     for (int i = 0; i < ctx.cident().size(); i++) {
       CQLIdentifier column = visitCident(ctx.cident().get(i));
       CQLFragment variable = visitTerm(ctx.term().get(i));
-      if (variable != null) {
-        assignmentsBuilder.put(column, variable == QUESTION_MARK ? column : variable);
-      }
+      assignmentsBuilder.put(column, variable == QUESTION_MARK ? column : variable);
     }
     if (ctx.usingClause() != null) {
       visitUsingClause(ctx.usingClause());
@@ -197,7 +283,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   }
 
   @Override
-  public CQLFragment visitJsonInsertStatement(CqlParser.JsonInsertStatementContext ctx) {
+  public CQLFragment visitJsonInsertStatement(JsonInsertStatementContext ctx) {
     throw new BulkConfigurationException(
         String.format("Invalid query: INSERT JSON is not supported: %s.", query));
   }
@@ -205,9 +291,9 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   // UPDATE
 
   @Override
-  public CQLFragment visitUpdateStatement(CqlParser.UpdateStatementContext ctx) {
+  public CQLFragment visitUpdateStatement(UpdateStatementContext ctx) {
     visitColumnFamilyName(ctx.columnFamilyName());
-    for (CqlParser.ColumnOperationContext op : ctx.columnOperation()) {
+    for (ColumnOperationContext op : ctx.columnOperation()) {
       CQLIdentifier column = visitCident(op.cident());
       CQLFragment variable = visitColumnOperationDifferentiator(op.columnOperationDifferentiator());
       if (variable != null) {
@@ -222,8 +308,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   }
 
   @Override
-  public CQLFragment visitColumnOperationDifferentiator(
-      CqlParser.ColumnOperationDifferentiatorContext ctx) {
+  public CQLFragment visitColumnOperationDifferentiator(ColumnOperationDifferentiatorContext ctx) {
     if (ctx.normalColumnOperation() != null) {
       // normal update operation: column = :variable
       return visitTerm(ctx.normalColumnOperation().term());
@@ -238,7 +323,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   // SELECT
 
   @Override
-  public CQLFragment visitSelectStatement(CqlParser.SelectStatementContext ctx) {
+  public CQLFragment visitSelectStatement(SelectStatementContext ctx) {
     if (ctx.K_JSON() != null) {
       throw new BulkConfigurationException(
           String.format("Invalid query: SELECT JSON is not supported: %s.", query));
@@ -254,11 +339,20 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   }
 
   @Override
-  public CQLFragment visitSelector(CqlParser.SelectorContext ctx) {
+  public CQLFragment visitSelectClause(SelectClauseContext ctx) {
+    if (ctx.getText().equals("*")) {
+      selectStar = true;
+    }
+    return super.visitSelectClause(ctx);
+  }
+
+  @Override
+  @Nullable
+  public CQLFragment visitSelector(SelectorContext ctx) {
     CQLFragment unaliased = visitUnaliasedSelector(ctx.unaliasedSelector());
     if (unaliased != null) {
-      CQLFragment alias =
-          ctx.noncolIdent() != null ? visitNoncolIdent(ctx.noncolIdent()) : unaliased;
+      boolean hasAlias = ctx.noncolIdent() != null;
+      CQLFragment alias = hasAlias ? visitNoncolIdent(ctx.noncolIdent()) : unaliased;
       resultSetVariablesBuilder.put(unaliased, alias);
       if (unaliased instanceof FunctionCall) {
         FunctionCall function = (FunctionCall) unaliased;
@@ -267,11 +361,14 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
           writeTimeVariablesBuilder.add(alias);
         }
       }
+    } else {
+      hasUnsupportedSelectors = true;
     }
     return unaliased;
   }
 
   @Override
+  @Nullable
   public CQLFragment visitUnaliasedSelector(UnaliasedSelectorContext ctx) {
     if (!ctx.fident().isEmpty()) {
       // UDT field selection: unsupported
@@ -285,7 +382,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
     } else if (ctx.K_TTL() != null) {
       return new FunctionCall(TTL, visitCident(ctx.cident()));
     } else if (ctx.functionName() != null) {
-      // function call
+      // function calls
       CQLIdentifier name = visitFunctionName(ctx.functionName());
       List<CQLFragment> args = new ArrayList<>();
       if (ctx.selectionFunctionArgs() != null) {
@@ -294,8 +391,8 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
           if (term != null) {
             args.add(term);
           } else {
-            // unknown argument type: record as a CQL literal, it doesn't matter much
-            args.add(new CQLLiteral(arg.getText()));
+            // unknown argument type
+            return null;
           }
         }
       }
@@ -308,7 +405,8 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   // DELETE
 
   @Override
-  public CQLFragment visitDeleteStatement(CqlParser.DeleteStatementContext ctx) {
+  @Nullable
+  public CQLFragment visitDeleteStatement(DeleteStatementContext ctx) {
     visitColumnFamilyName(ctx.columnFamilyName());
     // do not inspect delete selection, only the WHERE clause matters
     visitWhereClause(ctx.whereClause());
@@ -321,7 +419,8 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   // WHERE clause
 
   @Override
-  public CQLFragment visitRelation(CqlParser.RelationContext ctx) {
+  @Nullable
+  public CQLFragment visitRelation(RelationContext ctx) {
     // relation contains another relation: drill down
     while (ctx.relation() != null) {
       ctx = ctx.relation();
@@ -330,29 +429,25 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
     // and only care about primary key equality constraints such as
     // myCol = :myVar or myCol = ?
     if (ctx.getChildCount() == 3
-        && ctx.getChild(0) instanceof CqlParser.CidentContext
-        && ctx.getChild(1) instanceof CqlParser.RelationTypeContext
-        && ctx.getChild(2) instanceof CqlParser.TermContext
+        && ctx.getChild(0) instanceof CidentContext
+        && ctx.getChild(1) instanceof RelationTypeContext
+        && ctx.getChild(2) instanceof TermContext
         && ctx.getChild(1).getText().equals("=")) {
       CQLIdentifier column = visitCident(ctx.cident());
       CQLFragment variable = visitTerm(ctx.term().get(0));
-      if (variable != null) {
-        assignmentsBuilder.put(column, variable.equals(QUESTION_MARK) ? column : variable);
-      }
+      assignmentsBuilder.put(column, variable.equals(QUESTION_MARK) ? column : variable);
     } else if (ctx.K_TOKEN() != null) {
       CQLFragment variable = visitTerm(ctx.term().get(0));
       if (variable instanceof CQLIdentifier) {
         if (variable == QUESTION_MARK) {
-          throw new BulkConfigurationException(
-              String.format(
-                  "Invalid query: positional variables are not allowed in WHERE token(...) clauses, "
-                      + "please une named variables instead: %s.",
-                  query));
+          variable = INTERNAL_TOKEN_VARNAME;
         }
         if (ctx.relationType().getText().equals(">")) {
           tokenRangeRestrictionStartVariable = (CQLIdentifier) variable;
+          tokenRangeRestrictionStartVariableIndex = tokenRangeRestrictionVariableIndex++;
         } else if (ctx.relationType().getText().equals("<=")) {
           tokenRangeRestrictionEndVariable = (CQLIdentifier) variable;
+          tokenRangeRestrictionEndVariableIndex = tokenRangeRestrictionVariableIndex++;
         }
       }
     }
@@ -363,7 +458,8 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   // TERMS AND VALUES
 
   @Override
-  public CQLFragment visitTerm(CqlParser.TermContext ctx) {
+  @NotNull
+  public CQLFragment visitTerm(TermContext ctx) {
     // ( comparator ) term
     while (ctx.term() != null) {
       ctx = ctx.term();
@@ -371,27 +467,26 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
     // term is a value
     if (ctx.value() != null) {
       return visitValue(ctx.value());
-    }
-    // term is a function
-    if (ctx.function() != null) {
+    } else {
+      // term is a function
+      assert ctx.function() != null;
       return visitFunction(ctx.function());
     }
-    // other terms: unsupported
-    return null;
   }
 
   @Override
+  @NotNull
   public FunctionCall visitFunction(FunctionContext ctx) {
     CQLIdentifier functionName = visitFunctionName(ctx.functionName());
     List<CQLFragment> args = new ArrayList<>();
     if (ctx.functionArgs() != null) {
       for (TermContext arg : ctx.functionArgs().term()) {
         CQLFragment term = visitTerm(arg);
-        if (term != null) {
-          args.add(term);
-        } else {
-          // unknown argument type: record as a CQL literal, it doesn't matter much
-          args.add(new CQLLiteral(arg.getText()));
+        if (term == QUESTION_MARK) {
+          throw new BulkConfigurationException(
+              String.format(
+                  "Invalid query: positional variables are not allowed as function parameters: %s.",
+                  query));
         }
         args.add(term);
       }
@@ -400,12 +495,14 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   }
 
   @Override
+  @NotNull
   public CQLIdentifier visitFunctionName(FunctionNameContext ctx) {
     return visitAllowedFunctionName(ctx.allowedFunctionName());
   }
 
   @Override
-  public CQLIdentifier visitValue(CqlParser.ValueContext ctx) {
+  @NotNull
+  public CQLFragment visitValue(ValueContext ctx) {
     // value is a positional bind marker
     if (ctx.QMARK() != null) {
       return QUESTION_MARK;
@@ -414,22 +511,23 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
     if (ctx.noncolIdent() != null) {
       return visitNoncolIdent(ctx.noncolIdent());
     }
-    // other values: unsupported
-    return null;
+    return new CQLLiteral(ctx.getText());
   }
 
   // IDENTIFIERS
 
   @Override
-  public CQLFragment visitColumnFamilyName(CqlParser.ColumnFamilyNameContext ctx) {
+  @NotNull
+  public CQLFragment visitColumnFamilyName(ColumnFamilyNameContext ctx) {
     if (ctx.ksName() != null) {
       keyspaceName = visitKsName(ctx.ksName());
     }
     tableName = visitCfName(ctx.cfName());
-    return null;
+    return tableName;
   }
 
   @Override
+  @NotNull
   public CQLIdentifier visitAllowedFunctionName(AllowedFunctionNameContext ctx) {
     if (ctx.QUOTED_NAME() != null) {
       return CQLIdentifier.fromCql(ctx.getText());
@@ -439,7 +537,8 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   }
 
   @Override
-  public CQLIdentifier visitKsName(CqlParser.KsNameContext ctx) {
+  @NotNull
+  public CQLIdentifier visitKsName(KsNameContext ctx) {
     if (ctx.QUOTED_NAME() != null) {
       return CQLIdentifier.fromCql(ctx.getText());
     } else {
@@ -448,7 +547,8 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   }
 
   @Override
-  public CQLIdentifier visitCfName(CqlParser.CfNameContext ctx) {
+  @NotNull
+  public CQLIdentifier visitCfName(CfNameContext ctx) {
     if (ctx.QUOTED_NAME() != null) {
       return CQLIdentifier.fromCql(ctx.getText());
     } else {
@@ -457,7 +557,8 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   }
 
   @Override
-  public CQLIdentifier visitCident(CqlParser.CidentContext ctx) {
+  @NotNull
+  public CQLIdentifier visitCident(CidentContext ctx) {
     if (ctx.QUOTED_NAME() != null) {
       return CQLIdentifier.fromCql(ctx.getText());
     } else {
@@ -466,7 +567,8 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   }
 
   @Override
-  public CQLIdentifier visitNoncolIdent(CqlParser.NoncolIdentContext ctx) {
+  @NotNull
+  public CQLIdentifier visitNoncolIdent(NoncolIdentContext ctx) {
     if (ctx.QUOTED_NAME() != null) {
       return CQLIdentifier.fromCql(ctx.getText());
     } else {
@@ -477,40 +579,42 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   // USING TIMESTAMP AND TTL
 
   @Override
-  public CQLFragment visitUsingClauseObjective(CqlParser.UsingClauseObjectiveContext ctx) {
+  @Nullable
+  public CQLFragment visitUsingClauseObjective(UsingClauseObjectiveContext ctx) {
     if (ctx.K_TIMESTAMP() != null) {
-      visitUsingTimestamp(ctx.intValue());
-    } else if (ctx.K_TTL() != null) {
-      visitUsingTTL(ctx.intValue());
+      return visitUsingTimestamp(ctx.intValue());
+    } else {
+      assert ctx.K_TTL() != null;
+      return visitUsingTTL(ctx.intValue());
     }
-    return null;
   }
 
   @Override
-  public CQLFragment visitUsingClauseDelete(CqlParser.UsingClauseDeleteContext ctx) {
-    visitUsingTimestamp(ctx.intValue());
-    return null;
+  @Nullable
+  public CQLFragment visitUsingClauseDelete(UsingClauseDeleteContext ctx) {
+    return visitUsingTimestamp(ctx.intValue());
   }
 
-  private void visitUsingTimestamp(CqlParser.IntValueContext intValueContext) {
+  @Nullable
+  private CQLIdentifier visitUsingTimestamp(IntValueContext intValueContext) {
     if (intValueContext.noncolIdent() != null) {
-      writeTimeVariablesBuilder.add(visitNoncolIdent(intValueContext.noncolIdent()));
+      CQLIdentifier variable = visitNoncolIdent(intValueContext.noncolIdent());
+      writeTimeVariablesBuilder.add(variable);
+      usingTimestampVariable = variable;
     } else if (intValueContext.QMARK() != null) {
-      throw new BulkConfigurationException(
-          String.format(
-              "Invalid query: positional variables are not allowed in USING TIMESTAMP clauses, "
-                  + "please une named variables instead: %s.",
-              query));
+      writeTimeVariablesBuilder.add(INTERNAL_TIMESTAMP_VARNAME);
+      usingTimestampVariable = INTERNAL_TIMESTAMP_VARNAME;
     }
+    return usingTimestampVariable;
   }
 
-  private void visitUsingTTL(CqlParser.IntValueContext intValueContext) {
-    if (intValueContext.QMARK() != null) {
-      throw new BulkConfigurationException(
-          String.format(
-              "Invalid query: positional variables are not allowed in USING TTL clauses, "
-                  + "please une named variables instead: %s.",
-              query));
+  @Nullable
+  private CQLIdentifier visitUsingTTL(IntValueContext intValueContext) {
+    if (intValueContext.noncolIdent() != null) {
+      usingTTLVariable = visitNoncolIdent(intValueContext.noncolIdent());
+    } else if (intValueContext.QMARK() != null) {
+      usingTTLVariable = INTERNAL_TTL_VARNAME;
     }
+    return usingTTLVariable;
   }
 }

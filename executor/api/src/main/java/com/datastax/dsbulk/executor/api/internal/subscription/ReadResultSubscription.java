@@ -22,7 +22,7 @@ import java.util.Optional;
 import java.util.concurrent.Semaphore;
 import org.reactivestreams.Subscriber;
 
-@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
+@SuppressWarnings({"OptionalUsedAsFieldOrParameterType", "UnstableApiUsage"})
 public class ReadResultSubscription extends ResultSubscription<ReadResult, ResultSet> {
 
   private final int pageSize;

@@ -15,8 +15,8 @@ import com.datastax.dsbulk.executor.api.AbstractBulkExecutor;
 import com.datastax.dsbulk.executor.api.AbstractBulkExecutorBuilder;
 import com.datastax.dsbulk.executor.api.BulkExecutor;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
-import com.datastax.dsbulk.executor.api.internal.subscription.ReadResultSubscription;
-import com.datastax.dsbulk.executor.api.internal.subscription.WriteResultSubscription;
+import com.datastax.dsbulk.executor.api.internal.publisher.ReadResultPublisher;
+import com.datastax.dsbulk.executor.api.internal.publisher.WriteResultPublisher;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
 import java.util.Objects;
@@ -24,7 +24,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -104,7 +103,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
     CompletableFuture<Void> future = new CompletableFuture<>();
     Flux.from(statements)
         .flatMap(this::writeReactive)
-        .doOnNext(consumer::accept)
+        .doOnNext(consumer)
         .doOnComplete(() -> future.complete(null))
         .doOnError(future::completeExceptionally)
         .subscribe();
@@ -114,7 +113,9 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
   @Override
   public Mono<WriteResult> writeReactive(Statement statement) {
     Objects.requireNonNull(statement);
-    return Mono.from(new WriteResultPublisher(statement));
+    return Mono.from(
+        new WriteResultPublisher(
+            statement, session, failFast, listener, requestPermits, rateLimiter));
   }
 
   @Override
@@ -175,7 +176,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
     CompletableFuture<Void> future = new CompletableFuture<>();
     Flux.from(statements)
         .flatMap(this::readReactive)
-        .doOnNext(consumer::accept)
+        .doOnNext(consumer)
         .doOnComplete(() -> future.complete(null))
         .doOnError(future::completeExceptionally)
         .subscribe();
@@ -190,7 +191,9 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
   @Override
   public Flux<ReadResult> readReactive(Statement statement) {
     Objects.requireNonNull(statement);
-    return Flux.from(new ReadResultPublisher(statement));
+    return Flux.from(
+        new ReadResultPublisher(
+            statement, session, failFast, listener, requestPermits, rateLimiter));
   }
 
   @Override
@@ -209,83 +212,5 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
   public Flux<ReadResult> readReactive(Publisher<? extends Statement> statements)
       throws BulkExecutionException {
     return Flux.from(statements).flatMap(this::readReactive);
-  }
-
-  private class ReadResultPublisher implements Publisher<ReadResult> {
-
-    private final Statement statement;
-
-    private ReadResultPublisher(Statement statement) {
-      this.statement = statement;
-    }
-
-    @Override
-    public void subscribe(Subscriber<? super ReadResult> subscriber) {
-      // As per rule 1.9, we need to throw an NPE if subscriber is null
-      Objects.requireNonNull(subscriber, "Subscriber cannot be null");
-      // As per rule 1.11, this publisher supports multiple subscribers in a unicast configuration,
-      // i.e., each subscriber triggers an independent execution/subscription and gets its own copy
-      // of the results.
-      int fetchSize = statement.getFetchSize();
-      if (fetchSize <= 0) {
-        fetchSize = session.getCluster().getConfiguration().getQueryOptions().getFetchSize();
-      }
-      ReadResultSubscription subscription =
-          new ReadResultSubscription(
-              subscriber, statement, listener, requestPermits, rateLimiter, failFast, fetchSize);
-      try {
-        subscriber.onSubscribe(subscription);
-        // must be called after onSubscribe
-        subscription.start(() -> session.executeAsync(statement));
-      } catch (Throwable t) {
-        // As per rule 2.13: In the case that this rule is violated,
-        // any associated Subscription to the Subscriber MUST be considered as
-        // cancelled, and the caller MUST raise this error condition in a fashion
-        // that is adequate for the runtime environment.
-        subscription.doOnError(
-            new IllegalStateException(
-                subscriber
-                    + " violated the Reactive Streams rule 2.13 by throwing an exception from onSubscribe.",
-                t));
-      }
-      // As per 2.13, this method must return normally (i.e. not throw)
-    }
-  }
-
-  private class WriteResultPublisher implements Publisher<WriteResult> {
-
-    private final Statement statement;
-
-    private WriteResultPublisher(Statement statement) {
-      this.statement = statement;
-    }
-
-    @Override
-    public void subscribe(Subscriber<? super WriteResult> subscriber) {
-      // As per rule 1.9, we need to throw an NPE if subscriber is null
-      Objects.requireNonNull(subscriber, "Subscriber cannot be null");
-      // As per rule 1.11, this publisher supports multiple subscribers in a unicast configuration,
-      // i.e., each subscriber triggers an independent execution/subscription and gets its own copy
-      // of the results.
-      WriteResultSubscription subscription =
-          new WriteResultSubscription(
-              subscriber, statement, listener, requestPermits, rateLimiter, failFast);
-      try {
-        subscriber.onSubscribe(subscription);
-        // must be called after onSubscribe
-        subscription.start(() -> session.executeAsync(statement));
-      } catch (Throwable t) {
-        // As per rule 2.13: In the case that this rule is violated,
-        // any associated Subscription to the Subscriber MUST be considered as
-        // cancelled, and the caller MUST raise this error condition in a fashion
-        // that is adequate for the runtime environment.
-        subscription.doOnError(
-            new IllegalStateException(
-                subscriber
-                    + " violated the Reactive Streams rule 2.13 by throwing an exception from onSubscribe.",
-                t));
-      }
-      // As per 2.13, this method must return normally (i.e. not throw)
-    }
   }
 }

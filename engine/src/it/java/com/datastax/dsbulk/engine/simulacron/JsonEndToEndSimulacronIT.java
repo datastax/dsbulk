@@ -704,10 +704,7 @@ class JsonEndToEndSimulacronIT {
     int status = new DataStaxBulkLoader(unloadArgs).run();
     assertThat(status).isZero();
     validateQueryCount(
-        simulacron,
-        1,
-        "SELECT pk,c1 FROM ks1.table1 WHERE token(pk) > :start AND token(pk) <= :end",
-        ONE);
+        simulacron, 1, "SELECT pk,c1 FROM ks1.table1 WHERE token(pk) > ? AND token(pk) <= ?", ONE);
     validateOutputFiles(1, unloadDir);
     Optional<String> line = readAllLinesInDirectoryAsStream(unloadDir).findFirst();
     assertThat(line).isPresent().hasValue("{pk:1}");

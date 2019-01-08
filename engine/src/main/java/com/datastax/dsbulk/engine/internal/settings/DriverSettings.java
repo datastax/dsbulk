@@ -17,6 +17,7 @@ import com.datastax.driver.core.HostDistance;
 import com.datastax.driver.core.PlainTextAuthProvider;
 import com.datastax.driver.core.PoolingOptions;
 import com.datastax.driver.core.ProtocolOptions;
+import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.QueryOptions;
 import com.datastax.driver.core.RemoteEndpointAwareJdkSSLOptions;
 import com.datastax.driver.core.RemoteEndpointAwareNettySSLOptions;
@@ -30,6 +31,7 @@ import com.datastax.driver.core.policies.RoundRobinPolicy;
 import com.datastax.driver.core.policies.TokenAwarePolicy;
 import com.datastax.driver.core.policies.WhiteListPolicy;
 import com.datastax.driver.dse.DseCluster;
+import com.datastax.driver.dse.DseConfiguration;
 import com.datastax.driver.dse.DseLoadBalancingPolicy;
 import com.datastax.driver.dse.auth.DseGSSAPIAuthProvider;
 import com.datastax.driver.dse.auth.DsePlainTextAuthProvider;
@@ -127,6 +129,8 @@ public class DriverSettings {
   private static final String PLAINTEXT_PROVIDER = "PlainTextAuthProvider";
   private static final String DSE_PLAINTEXT_PROVIDER = "DsePlainTextAuthProvider";
   private static final String DSE_GSSAPI_PROVIDER = "DseGSSAPIAuthProvider";
+
+  private static final int MAX_STREAM_PER_CONNECTION_V2 = 128;
 
   private final LoaderConfig config;
   private List<String> hosts;
@@ -366,14 +370,13 @@ public class DriverSettings {
                 .setMaxConnectionsPerHost(HostDistance.LOCAL, poolingLocalConnections)
                 .setCoreConnectionsPerHost(HostDistance.REMOTE, poolingRemoteConnections)
                 .setMaxConnectionsPerHost(HostDistance.REMOTE, poolingRemoteConnections)
-                .setMaxRequestsPerConnection(HostDistance.LOCAL, poolingLocalRequests)
-                .setMaxRequestsPerConnection(HostDistance.REMOTE, poolingRemoteRequests)
+                // we will set max requests per connection later
                 .setHeartbeatIntervalSeconds((int) poolingHeartbeat.getSeconds()))
         .withQueryOptions(
             new QueryOptions()
                 .setConsistencyLevel(queryConsistency)
                 .setSerialConsistencyLevel(querySerialConsistency)
-                .setFetchSize(queryFetchSize)
+                .setFetchSize(queryFetchSize <= 0 ? Integer.MAX_VALUE : queryFetchSize)
                 .setDefaultIdempotence(queryIdempotence))
         .withSocketOptions(
             new SocketOptions().setReadTimeoutMillis((int) socketReadTimeout.toMillis()))
@@ -402,8 +405,43 @@ public class DriverSettings {
       }
       builder.withSSL(sslOptions);
     }
-
     return builder.build();
+  }
+
+  public void checkProtocolVersion(DseCluster cluster) {
+    DseConfiguration configuration = cluster.getConfiguration();
+    ProtocolVersion protocolVersion = configuration.getProtocolOptions().getProtocolVersion();
+    if (protocolVersion != null) {
+      LOGGER.debug("Using protocol version: " + protocolVersion);
+      if (protocolVersion.compareTo(ProtocolVersion.V3) < 0) {
+        if (poolingLocalRequests > MAX_STREAM_PER_CONNECTION_V2) {
+          LOGGER.warn(
+              String.format(
+                  "Value for driver.pooling.local.requests exceeds the maximum allowed (128) "
+                      + "for the protocol version in use (%s): %d; using 128 instead.",
+                  protocolVersion, poolingLocalRequests));
+          poolingLocalRequests = MAX_STREAM_PER_CONNECTION_V2;
+        }
+        if (poolingRemoteRequests > MAX_STREAM_PER_CONNECTION_V2) {
+          LOGGER.warn(
+              String.format(
+                  "Value for driver.pooling.remote.requests exceeds the maximum allowed (128) "
+                      + "for the protocol version in use (%s): %d; using 128 instead.",
+                  protocolVersion, poolingRemoteRequests));
+          poolingRemoteRequests = MAX_STREAM_PER_CONNECTION_V2;
+        }
+      }
+      if (protocolVersion == ProtocolVersion.V1 && queryFetchSize > 0) {
+        LOGGER.warn(
+            "Value for driver.query.fetchSize should be lesser than or equal to zero (paging disabled) "
+                + "when the protocol version in use is V1; forcibly disabling paging.");
+        configuration.getQueryOptions().setFetchSize(Integer.MAX_VALUE);
+      }
+    }
+    configuration
+        .getPoolingOptions()
+        .setMaxRequestsPerConnection(HostDistance.LOCAL, poolingLocalRequests)
+        .setMaxRequestsPerConnection(HostDistance.REMOTE, poolingRemoteRequests);
   }
 
   private LoadBalancingPolicy getLoadBalancingPolicy(LoaderConfig config, BuiltinLBP lbpName)

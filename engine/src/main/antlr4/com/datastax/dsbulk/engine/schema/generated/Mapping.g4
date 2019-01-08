@@ -64,7 +64,7 @@ field
 
 variableOrFunction
     : variable
-    | function
+    | selectorFunction
     ;
 
 variable
@@ -73,9 +73,14 @@ variable
     ;
 
 function
-    : WRITETIME '(' functionArg ')'
-    | functionName '(' ')'
+    : functionName '(' ')'
     | functionName '(' functionArgs ')'
+    ;
+
+selectorFunction
+    : WRITETIME '(' selectorFunctionArg ')'
+    | functionName '(' ')'
+    | functionName '(' selectorFunctionArgs ')'
     ;
 
 functionName
@@ -87,6 +92,10 @@ functionArgs
     :  functionArg ( ',' functionArg )*
     ;
 
+selectorFunctionArgs
+    :  selectorFunctionArg ( ',' selectorFunctionArg )*
+    ;
+
 functionArg
     : INTEGER
     | FLOAT
@@ -95,9 +104,13 @@ functionArg
     | UUID
     | HEXNUMBER
     | STRING_LITERAL
-    | UNQUOTED_IDENTIFIER
-    | QUOTED_IDENTIFIER
     | ( '-' )? ( K_NAN | K_INFINITY )
+    ;
+
+selectorFunctionArg
+    : functionArg
+    | QUOTED_IDENTIFIER
+    | UNQUOTED_IDENTIFIER
     ;
 
 // Case-insensitive alpha characters

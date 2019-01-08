@@ -6,7 +6,7 @@
  * and will post the amended terms at
  * https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
  */
-package com.datastax.dsbulk.executor.api.tck;
+package com.datastax.dsbulk.executor.api.internal.publisher;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -19,23 +19,40 @@ import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.driver.core.ExecutionInfo;
 import com.datastax.driver.core.PagingState;
 import com.datastax.driver.core.SimpleStatement;
+import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.google.common.util.concurrent.ListenableFuture;
 import io.reactivex.Flowable;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.Executor;
-import org.reactivestreams.tck.PublisherVerification;
-import org.reactivestreams.tck.TestEnvironment;
+import org.reactivestreams.Publisher;
 
-public abstract class ContinuousReadResultPublisherTestBase
-    extends PublisherVerification<ReadResult> {
+public class ContinuousReadResultPublisherTest extends ResultPublisherTestBase<ReadResult> {
 
-  public ContinuousReadResultPublisherTestBase() {
-    super(new TestEnvironment());
+  @Override
+  public Publisher<ReadResult> createPublisher(long elements) {
+    Statement statement = new SimpleStatement("irrelevant");
+    ContinuousPagingSession session = setUpSession(elements);
+    return new ContinuousReadResultPublisher(statement, session, true);
   }
 
-  protected static ContinuousPagingSession setUpSuccessfulSession(long elements) {
+  @Override
+  public Publisher<ReadResult> createFailedPublisher() {
+    Statement statement = new SimpleStatement("irrelevant");
+    ContinuousPagingSession session = setUpSession(1);
+    return new ContinuousReadResultPublisher(
+        statement,
+        session,
+        ContinuousPagingOptions.builder().build(),
+        true,
+        FAILED_LISTENER,
+        Optional.empty(),
+        Optional.empty());
+  }
+
+  private static ContinuousPagingSession setUpSession(long elements) {
     ContinuousPagingSession session = mock(ContinuousPagingSession.class);
     ListenableFuture<AsyncContinuousPagingResult> previous = mockPages(elements);
     when(session.executeContinuouslyAsync(
