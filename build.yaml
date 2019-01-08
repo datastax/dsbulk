@@ -5,7 +5,7 @@ schedules:
     matrix:
       exclude:
         - java: ['openjdk11']
-        - cassandra: ['graph-prototyping', 'dse-6.7', 'dse-6.0', 'dse-5.1', 'dse-5.0', 'dse-4.8', 'dse-4.7', 'dse-4.6', '3.11', '3.0', '2.2', '2.1', '2.0', '1.2']
+        - cassandra: ['dse-6.8', 'dse-6.7', 'dse-6.0', 'dse-5.1', 'dse-5.0', 'dse-4.8', 'dse-4.7', 'dse-4.6', '3.11', '3.0', '2.2', '2.1', '2.0', '1.2']
     env_vars: |
       TEST_GROUPS="short,medium"
   nightly:
@@ -44,7 +44,7 @@ cassandra:
   - dse-5.1
   - dse-6.0
   - dse-6.7
-  - graph-prototyping
+  - dse-6.8
 build:
   - type: maven
     version: 3.2.5
