@@ -286,7 +286,7 @@ class JsonEndToEndSimulacronIT {
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",
-      "INSERT INTO ks1.table1 (key,value) VALUES (:key,:value)",
+      "INSERT INTO ks1.table1 (key, value) VALUES (:key, :value)",
       "--connector.json.parserFeatures",
       "{ALLOW_COMMENTS = true}",
       "--connector.json.deserializationFeatures",
@@ -296,7 +296,7 @@ class JsonEndToEndSimulacronIT {
     int status = new DataStaxBulkLoader(args).run();
     assertThat(status).isZero();
     validateQueryCount(
-        simulacron, 1, "INSERT INTO ks1.table1 (key,value) VALUES (:key,:value)", ONE);
+        simulacron, 1, "INSERT INTO ks1.table1 (key, value) VALUES (:key, :value)", ONE);
   }
 
   @Test
@@ -500,7 +500,7 @@ class JsonEndToEndSimulacronIT {
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",
-      "INSERT INTO ks1.table1 (a,b,c,d) VALUES (:a,:b,:c,:d)",
+      "INSERT INTO ks1.table1 (a, b, c, d) VALUES (:a, :b, :c, :d)",
       "--schema.mapping",
       "A = a, B = b, C = c, D = d",
       "--schema.allowMissingFields",
@@ -554,7 +554,7 @@ class JsonEndToEndSimulacronIT {
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",
-      "INSERT INTO ks1.table1 (a,b) VALUES (:a,:b)",
+      "INSERT INTO ks1.table1 (a, b) VALUES (:a, :b)",
       "--schema.mapping",
       "A = a, B = b",
       "--schema.allowExtraFields",
@@ -694,7 +694,7 @@ class JsonEndToEndSimulacronIT {
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",
-      "SELECT pk,c1 FROM ks1.table1",
+      "SELECT pk, c1 FROM ks1.table1",
       "--connector.json.generatorFeatures",
       "{QUOTE_FIELD_NAMES = false}",
       "--connector.json.serializationStrategy",
@@ -704,7 +704,10 @@ class JsonEndToEndSimulacronIT {
     int status = new DataStaxBulkLoader(unloadArgs).run();
     assertThat(status).isZero();
     validateQueryCount(
-        simulacron, 1, "SELECT pk,c1 FROM ks1.table1 WHERE token(pk) > ? AND token(pk) <= ?", ONE);
+        simulacron,
+        1,
+        "SELECT pk, c1 FROM ks1.table1 WHERE token(pk) > :start AND token(pk) <= :end",
+        ONE);
     validateOutputFiles(1, unloadDir);
     Optional<String> line = readAllLinesInDirectoryAsStream(unloadDir).findFirst();
     assertThat(line).isPresent().hasValue("{pk:1}");

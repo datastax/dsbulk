@@ -8,11 +8,18 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
+import static com.datastax.dsbulk.engine.internal.schema.CQLRenderMode.INTERNAL;
+import static com.datastax.dsbulk.engine.internal.schema.CQLRenderMode.NAMED_ASSIGNMENT;
+import static com.datastax.dsbulk.engine.internal.schema.CQLRenderMode.POSITIONAL_ASSIGNMENT;
+import static com.datastax.dsbulk.engine.internal.schema.CQLRenderMode.UNALIASED_SELECTOR;
+import static com.datastax.dsbulk.engine.internal.schema.CQLRenderMode.VARIABLE;
+
 import com.google.common.collect.ImmutableList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -26,12 +33,22 @@ import org.jetbrains.annotations.Nullable;
  */
 public class FunctionCall implements MappingField, CQLFragment {
 
+  /**
+   * Note: the delimiter must be ', ' with a space after the comma, since that is the way C* creates
+   * variable names from function calls.
+   */
+  private static final Collector<CharSequence, ?, String> COMMA = Collectors.joining(", ");
+
   private final CQLIdentifier keyspaceName;
   private final CQLIdentifier functionName;
   private final ImmutableList<CQLFragment> args;
-  private final String cql;
-  private final String variable;
+
+  private final String namedAssignment;
+  private final String positionalAssignment;
   private final String internal;
+  private final String identifier;
+  private final String unaliasedSelector;
+  private final String aliasedSelector;
 
   public FunctionCall(
       @Nullable CQLIdentifier keyspaceName,
@@ -47,18 +64,56 @@ public class FunctionCall implements MappingField, CQLFragment {
     this.keyspaceName = keyspaceName;
     this.functionName = functionName;
     this.args = ImmutableList.copyOf(args);
-    cql = createCQL(keyspaceName, functionName, args);
-    internal = createInternal(keyspaceName, functionName, args);
-    // a function call appears in result set variables in a particular form: its internal
-    // representation is considered as its CQL form itself; also, user-defined functions appear
-    // keyspace-qualified in result set variable names.
-    // In practice, we only care about the exact result set variable name in two cases:
-    // 1) For the writetime() function, because we must apply a special treatment to it – see
-    // DefaultMapping.
-    // 2) For all functions under protocol V1, since in protocol V1 the server does not return
-    // result set metadata; hopefully, with protocol V1 only a small set of built-in functions
-    // exist, and we have tests that validate that they all work as expected.
-    variable = CQLIdentifier.fromInternal(internal).asCql();
+    namedAssignment = renderNamedAssignment();
+    positionalAssignment = renderPositionalAssignment();
+    internal = renderInternal();
+    identifier = CQLIdentifier.fromInternal(internal).render(VARIABLE);
+    unaliasedSelector = renderUnaliasedSelector();
+    aliasedSelector = renderAliasedSelector();
+  }
+
+  private String renderNamedAssignment() {
+    String name = functionName.render(VARIABLE);
+    String argsList = args.stream().map(arg -> arg.render(NAMED_ASSIGNMENT)).collect(COMMA);
+    if (keyspaceName == null) {
+      return String.format("%s(%s)", name, argsList);
+    } else {
+      return String.format("%s.%s(%s)", keyspaceName.render(VARIABLE), name, argsList);
+    }
+  }
+
+  private String renderPositionalAssignment() {
+    String name = functionName.render(VARIABLE);
+    String argsList = args.stream().map(arg -> arg.render(POSITIONAL_ASSIGNMENT)).collect(COMMA);
+    if (keyspaceName == null) {
+      return String.format("%s(%s)", name, argsList);
+    } else {
+      return String.format("%s.%s(%s)", keyspaceName.render(VARIABLE), name, argsList);
+    }
+  }
+
+  private String renderInternal() {
+    String name = functionName.render(INTERNAL);
+    String argsList = args.stream().map(arg -> arg.render(INTERNAL)).collect(COMMA);
+    if (keyspaceName == null) {
+      return String.format("%s(%s)", name, argsList);
+    } else {
+      return String.format("%s.%s(%s)", keyspaceName.render(INTERNAL), name, argsList);
+    }
+  }
+
+  private String renderUnaliasedSelector() {
+    String name = functionName.render(VARIABLE);
+    String argsList = args.stream().map(arg -> arg.render(UNALIASED_SELECTOR)).collect(COMMA);
+    if (keyspaceName == null) {
+      return String.format("%s(%s)", name, argsList);
+    } else {
+      return String.format("%s.%s(%s)", keyspaceName.render(VARIABLE), name, argsList);
+    }
+  }
+
+  private String renderAliasedSelector() {
+    return String.format("%s AS %s", unaliasedSelector, identifier);
   }
 
   @NotNull
@@ -74,7 +129,7 @@ public class FunctionCall implements MappingField, CQLFragment {
   @Override
   @NotNull
   public String getFieldDescription() {
-    return getFunctionName().asCql();
+    return render(INTERNAL);
   }
 
   @NotNull
@@ -83,21 +138,22 @@ public class FunctionCall implements MappingField, CQLFragment {
   }
 
   @Override
-  @NotNull
-  public String asCql() {
-    return cql;
-  }
-
-  @Override
-  @NotNull
-  public String asVariable() {
-    return variable;
-  }
-
-  @Override
-  @NotNull
-  public String asInternal() {
-    return internal;
+  public String render(CQLRenderMode mode) {
+    switch (mode) {
+      case NAMED_ASSIGNMENT:
+        return namedAssignment;
+      case POSITIONAL_ASSIGNMENT:
+        return positionalAssignment;
+      case UNALIASED_SELECTOR:
+        return unaliasedSelector;
+      case ALIASED_SELECTOR:
+        return aliasedSelector;
+      case VARIABLE:
+        return identifier;
+      case INTERNAL:
+      default:
+        return internal;
+    }
   }
 
   @Override
@@ -121,47 +177,6 @@ public class FunctionCall implements MappingField, CQLFragment {
 
   @Override
   public String toString() {
-    return asCql();
-  }
-
-  // Note: the delimiter must be ', ' with a space after the comma, since that is the way
-  // C* creates variable names from function calls.
-
-  private static String createCQL(
-      @Nullable CQLIdentifier keyspaceName,
-      @NotNull CQLIdentifier functionName,
-      @NotNull List<CQLFragment> args) {
-    if (keyspaceName == null) {
-      return functionName.asCql()
-          + "("
-          + args.stream().map(CQLFragment::asCql).collect(Collectors.joining(", "))
-          + ")";
-    } else {
-      return keyspaceName.asCql()
-          + '.'
-          + functionName.asCql()
-          + "("
-          + args.stream().map(CQLFragment::asCql).collect(Collectors.joining(", "))
-          + ")";
-    }
-  }
-
-  private static String createInternal(
-      @Nullable CQLIdentifier keyspaceName,
-      @NotNull CQLIdentifier functionName,
-      @NotNull List<CQLFragment> args) {
-    if (keyspaceName == null) {
-      return functionName.asInternal()
-          + "("
-          + args.stream().map(CQLFragment::asInternal).collect(Collectors.joining(", "))
-          + ")";
-    } else {
-      return keyspaceName.asInternal()
-          + '.'
-          + functionName.asInternal()
-          + "("
-          + args.stream().map(CQLFragment::asInternal).collect(Collectors.joining(", "))
-          + ")";
-    }
+    return getFieldDescription();
   }
 }

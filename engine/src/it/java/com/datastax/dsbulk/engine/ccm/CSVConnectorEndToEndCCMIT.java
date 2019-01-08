@@ -3010,6 +3010,51 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(lines).containsExactly("Value 1,Value 2,SUM", "1,2,3");
   }
 
+  /** Test for DAT-379 */
+  @Test
+  void load_qualified_user_defined_functions_mapping() {
+
+    assumeTrue(
+        ccm.getCassandraVersion().compareTo(V2_2) >= 0,
+        "User-defined functions are not compatible with C* < 2.2");
+
+    session.execute("DROP TABLE IF EXISTS udf_table");
+    session.execute(
+        "CREATE TABLE udf_table (pk int PRIMARY KEY, \"Value 1\" int, \"Value 2\" int, \"SUM\" int)");
+
+    session.execute("DROP KEYSPACE IF EXISTS \"MyKs1\"");
+    session.execute(CQLUtils.createKeyspaceSimpleStrategy("MyKs1", 1));
+
+    session.execute("DROP FUNCTION IF EXISTS \"MyKs1\".plus");
+    session.execute(
+        "CREATE FUNCTION \"MyKs1\".plus(s int, v int) RETURNS NULL ON NULL INPUT RETURNS int LANGUAGE java AS 'return s+v;';");
+
+    MockConnector.mockReads(RecordUtils.mappedCSV("pk", "0", "Value 1", "1", "Value 2", "2"));
+
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            quoteJson(logDir),
+            "--connector.name",
+            "mock",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.table",
+            "udf_table",
+            "--schema.mapping",
+            quoteJson("* = *, \"MyKs1\".plus(\"Value 1\", \"Value 2\") = SUM"));
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+
+    Row row = session.execute("SELECT * FROM udf_table").one();
+    assertThat(row.getInt("pk")).isEqualTo(0);
+    assertThat(row.getInt("\"Value 1\"")).isEqualTo(1);
+    assertThat(row.getInt("\"Value 2\"")).isEqualTo(2);
+    assertThat(row.getInt("\"SUM\"")).isEqualTo(3);
+  }
+
   /** Test for DAT-378 */
   @Test
   void unload_qualified_user_defined_functions_mapping() throws IOException {

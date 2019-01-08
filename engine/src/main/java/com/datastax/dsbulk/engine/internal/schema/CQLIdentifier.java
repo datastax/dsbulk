@@ -72,29 +72,31 @@ public class CQLIdentifier implements CQLFragment {
   }
 
   private final String internal;
-  private final String cql;
+  private final String variable;
+  private final String assignment;
 
   private CQLIdentifier(String internal) {
     this.internal = internal;
-    cql = StringUtils.needsDoubleQuotes(internal) ? StringUtils.doubleQuote(internal) : internal;
+    variable =
+        StringUtils.needsDoubleQuotes(internal) ? StringUtils.doubleQuote(internal) : internal;
+    assignment = ':' + variable;
   }
 
-  /** Returns the identifier in a format appropriate for concatenation in a CQL query. */
   @Override
-  @NotNull
-  public String asCql() {
-    return cql;
-  }
-
-  /**
-   * Returns the identifier in the "internal" format.
-   *
-   * @return the identifier in its exact case, unquoted.
-   */
-  @Override
-  @NotNull
-  public String asInternal() {
-    return internal;
+  public String render(CQLRenderMode mode) {
+    switch (mode) {
+      case NAMED_ASSIGNMENT:
+        return assignment;
+      case POSITIONAL_ASSIGNMENT:
+        return "?";
+      case ALIASED_SELECTOR:
+      case UNALIASED_SELECTOR:
+      case VARIABLE:
+        return variable;
+      case INTERNAL:
+      default:
+        return internal;
+    }
   }
 
   @Override
@@ -116,6 +118,6 @@ public class CQLIdentifier implements CQLFragment {
 
   @Override
   public String toString() {
-    return asCql();
+    return internal;
   }
 }
