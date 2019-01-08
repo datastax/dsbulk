@@ -21,7 +21,6 @@ import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.schema.generated.MappingBaseVisitor;
 import com.datastax.dsbulk.engine.schema.generated.MappingLexer;
 import com.datastax.dsbulk.engine.schema.generated.MappingParser;
-import com.datastax.dsbulk.engine.schema.generated.MappingParser.AliasContext;
 import com.datastax.dsbulk.engine.schema.generated.MappingParser.FunctionArgContext;
 import com.datastax.dsbulk.engine.schema.generated.MappingParser.FunctionContext;
 import com.datastax.dsbulk.engine.schema.generated.MappingParser.FunctionNameContext;
