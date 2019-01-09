@@ -60,6 +60,7 @@ import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
+import com.datastax.dsbulk.commons.tests.utils.CQLUtils;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.commons.tests.utils.Version;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
@@ -2905,6 +2906,147 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             "udf_table",
             "--schema.mapping",
             quoteJson("* = [-pk], SUM = plus(\"Value 1\", \"Value 2\")"));
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+
+    List<String> lines = readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
+    assertThat(lines).containsExactly("SUM,Value 1,Value 2", "3,1,2");
+  }
+
+  /** Test for DAT-378 */
+  @Test
+  void load_qualified_user_defined_functions_custom_query() {
+
+    assumeTrue(
+        ccm.getCassandraVersion().compareTo(V2_2) >= 0,
+        "User-defined functions are not compatible with C* < 2.2");
+
+    session.execute("DROP TABLE IF EXISTS udf_table");
+    session.execute(
+        "CREATE TABLE udf_table (pk int PRIMARY KEY, \"Value 1\" int, \"Value 2\" int, \"SUM\" int)");
+
+    session.execute("DROP KEYSPACE IF EXISTS \"MyKs1\"");
+    session.execute(CQLUtils.createKeyspaceSimpleStrategy("MyKs1", 1));
+
+    session.execute("DROP FUNCTION IF EXISTS \"MyKs1\".plus");
+    session.execute(
+        "CREATE FUNCTION \"MyKs1\".plus(s int, v int) RETURNS NULL ON NULL INPUT RETURNS int LANGUAGE java AS 'return s+v;';");
+
+    MockConnector.mockReads(RecordUtils.mappedCSV("pk", "0", "Value 1", "1", "Value 2", "2"));
+
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            quoteJson(logDir),
+            "--connector.name",
+            "mock",
+            "--connector.csv.maxConcurrentFiles",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            quoteJson(
+                "INSERT INTO udf_table "
+                    + "(pk, \"Value 1\", \"Value 2\", \"SUM\") "
+                    + "VALUES "
+                    + "(:pk, :\"Value 1\", :\"Value 2\", \"MyKs1\".plus(:\"Value 1\", :\"Value 2\"))"));
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+
+    Row row = session.execute("SELECT * FROM udf_table").one();
+    assertThat(row.getInt("pk")).isEqualTo(0);
+    assertThat(row.getInt("\"Value 1\"")).isEqualTo(1);
+    assertThat(row.getInt("\"Value 2\"")).isEqualTo(2);
+    assertThat(row.getInt("\"SUM\"")).isEqualTo(3);
+  }
+
+  /** Test for DAT-378 */
+  @Test
+  void unload_qualified_user_defined_functions_custom_query() throws IOException {
+
+    assumeTrue(
+        ccm.getCassandraVersion().compareTo(V2_2) >= 0,
+        "User-defined functions are not compatible with C* < 2.2");
+
+    session.execute("DROP TABLE IF EXISTS udf_table");
+    session.execute(
+        "CREATE TABLE udf_table (pk int PRIMARY KEY, \"Value 1\" int, \"Value 2\" int)");
+    session.execute("INSERT INTO udf_table (pk, \"Value 1\", \"Value 2\") VALUES (0,1,2)");
+
+    session.execute("DROP KEYSPACE IF EXISTS \"MyKs1\"");
+    session.execute(CQLUtils.createKeyspaceSimpleStrategy("MyKs1", 1));
+
+    session.execute("DROP FUNCTION IF EXISTS \"MyKs1\".plus");
+    session.execute(
+        "CREATE FUNCTION \"MyKs1\".plus(s int, v int) RETURNS NULL ON NULL INPUT RETURNS int LANGUAGE java AS 'return s+v;';");
+
+    List<String> args =
+        Lists.newArrayList(
+            "unload",
+            "--log.directory",
+            quoteJson(logDir),
+            "-header",
+            "true",
+            "--connector.csv.url",
+            quoteJson(unloadDir),
+            "--connector.csv.maxConcurrentFiles",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            quoteJson(
+                "SELECT "
+                    + "\"Value 1\", \"Value 2\", "
+                    + "\"MyKs1\".plus(\"Value 1\", \"Value 2\") AS \"SUM\""
+                    + "FROM udf_table"));
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+
+    List<String> lines = readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
+    assertThat(lines).containsExactly("Value 1,Value 2,SUM", "1,2,3");
+  }
+
+  /** Test for DAT-378 */
+  @Test
+  void unload_qualified_user_defined_functions_mapping() throws IOException {
+
+    assumeTrue(
+        ccm.getCassandraVersion().compareTo(V2_2) >= 0,
+        "User-defined functions are not compatible with C* < 2.2");
+
+    session.execute("DROP TABLE IF EXISTS udf_table");
+    session.execute(
+        "CREATE TABLE udf_table (pk int PRIMARY KEY, \"Value 1\" int, \"Value 2\" int)");
+    session.execute("INSERT INTO udf_table (pk, \"Value 1\", \"Value 2\") VALUES (0,1,2)");
+
+    session.execute("DROP KEYSPACE IF EXISTS \"MyKs1\"");
+    session.execute(CQLUtils.createKeyspaceSimpleStrategy("MyKs1", 1));
+
+    session.execute("DROP FUNCTION IF EXISTS \"MyKs1\".plus");
+    session.execute(
+        "CREATE FUNCTION \"MyKs1\".plus(s int, v int) RETURNS NULL ON NULL INPUT RETURNS int LANGUAGE java AS 'return s+v;';");
+
+    List<String> args =
+        Lists.newArrayList(
+            "unload",
+            "--log.directory",
+            quoteJson(logDir),
+            "-header",
+            "true",
+            "--connector.csv.url",
+            quoteJson(unloadDir),
+            "--connector.csv.maxConcurrentFiles",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.table",
+            "udf_table",
+            "--schema.mapping",
+            quoteJson("* = [-pk], SUM = \"MyKs1\".plus(\"Value 1\", \"Value 2\")"));
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();

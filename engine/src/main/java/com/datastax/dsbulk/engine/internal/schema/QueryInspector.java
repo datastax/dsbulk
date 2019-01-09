@@ -21,10 +21,10 @@ import com.datastax.dsbulk.commons.cql3.CqlParser.ColumnOperationDifferentiatorC
 import com.datastax.dsbulk.commons.cql3.CqlParser.CqlStatementContext;
 import com.datastax.dsbulk.commons.cql3.CqlParser.DeleteStatementContext;
 import com.datastax.dsbulk.commons.cql3.CqlParser.FunctionContext;
-import com.datastax.dsbulk.commons.cql3.CqlParser.FunctionNameContext;
 import com.datastax.dsbulk.commons.cql3.CqlParser.InsertStatementContext;
 import com.datastax.dsbulk.commons.cql3.CqlParser.IntValueContext;
 import com.datastax.dsbulk.commons.cql3.CqlParser.JsonInsertStatementContext;
+import com.datastax.dsbulk.commons.cql3.CqlParser.KeyspaceNameContext;
 import com.datastax.dsbulk.commons.cql3.CqlParser.KsNameContext;
 import com.datastax.dsbulk.commons.cql3.CqlParser.NoncolIdentContext;
 import com.datastax.dsbulk.commons.cql3.CqlParser.NormalInsertStatementContext;
@@ -378,12 +378,17 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
       // regular column selection
       return visitCident(ctx.cident());
     } else if (ctx.K_WRITETIME() != null) {
-      return new FunctionCall(WRITETIME, visitCident(ctx.cident()));
+      return new FunctionCall(null, WRITETIME, visitCident(ctx.cident()));
     } else if (ctx.K_TTL() != null) {
-      return new FunctionCall(TTL, visitCident(ctx.cident()));
+      return new FunctionCall(null, TTL, visitCident(ctx.cident()));
     } else if (ctx.functionName() != null) {
       // function calls
-      CQLIdentifier name = visitFunctionName(ctx.functionName());
+      CQLIdentifier keyspaceName = null;
+      if (ctx.functionName().keyspaceName() != null) {
+        keyspaceName = visitKeyspaceName(ctx.functionName().keyspaceName());
+      }
+      CQLIdentifier functionName =
+          visitAllowedFunctionName(ctx.functionName().allowedFunctionName());
       List<CQLFragment> args = new ArrayList<>();
       if (ctx.selectionFunctionArgs() != null) {
         for (UnaliasedSelectorContext arg : ctx.selectionFunctionArgs().unaliasedSelector()) {
@@ -396,7 +401,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
           }
         }
       }
-      return new FunctionCall(name, args);
+      return new FunctionCall(keyspaceName, functionName, args);
     }
     // other selectors: unsupported
     return null;
@@ -477,7 +482,11 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   @Override
   @NotNull
   public FunctionCall visitFunction(FunctionContext ctx) {
-    CQLIdentifier functionName = visitFunctionName(ctx.functionName());
+    CQLIdentifier keyspaceName = null;
+    if (ctx.functionName().keyspaceName() != null) {
+      keyspaceName = visitKeyspaceName(ctx.functionName().keyspaceName());
+    }
+    CQLIdentifier functionName = visitAllowedFunctionName(ctx.functionName().allowedFunctionName());
     List<CQLFragment> args = new ArrayList<>();
     if (ctx.functionArgs() != null) {
       for (TermContext arg : ctx.functionArgs().term()) {
@@ -491,13 +500,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
         args.add(term);
       }
     }
-    return new FunctionCall(functionName, args);
-  }
-
-  @Override
-  @NotNull
-  public CQLIdentifier visitFunctionName(FunctionNameContext ctx) {
-    return visitAllowedFunctionName(ctx.allowedFunctionName());
+    return new FunctionCall(keyspaceName, functionName, args);
   }
 
   @Override
@@ -534,6 +537,11 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
     } else {
       return CQLIdentifier.fromInternal(ctx.getText().toLowerCase());
     }
+  }
+
+  @Override
+  public CQLIdentifier visitKeyspaceName(KeyspaceNameContext ctx) {
+    return visitKsName(ctx.ksName());
   }
 
   @Override

@@ -73,14 +73,23 @@ variable
     ;
 
 function
-    : functionName '(' ')'
-    | functionName '(' functionArgs ')'
+    : qualifiedFunctionName '(' ')'
+    | qualifiedFunctionName '(' functionArgs ')'
     ;
 
 selectorFunction
     : WRITETIME '(' selectorFunctionArg ')'
-    | functionName '(' ')'
-    | functionName '(' selectorFunctionArgs ')'
+    | qualifiedFunctionName '(' ')'
+    | qualifiedFunctionName '(' selectorFunctionArgs ')'
+    ;
+
+qualifiedFunctionName
+    : ( keyspaceName '.' )? functionName
+    ;
+
+keyspaceName
+    : UNQUOTED_IDENTIFIER
+    | QUOTED_IDENTIFIER
     ;
 
 functionName

@@ -26,6 +26,7 @@ import com.datastax.dsbulk.engine.schema.generated.MappingParser.FunctionContext
 import com.datastax.dsbulk.engine.schema.generated.MappingParser.FunctionNameContext;
 import com.datastax.dsbulk.engine.schema.generated.MappingParser.IndexContext;
 import com.datastax.dsbulk.engine.schema.generated.MappingParser.IndexOrFunctionContext;
+import com.datastax.dsbulk.engine.schema.generated.MappingParser.KeyspaceNameContext;
 import com.datastax.dsbulk.engine.schema.generated.MappingParser.SelectorFunctionArgContext;
 import com.datastax.dsbulk.engine.schema.generated.MappingParser.SelectorFunctionContext;
 import com.datastax.dsbulk.engine.schema.generated.MappingParser.SimpleEntryContext;
@@ -357,7 +358,12 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
         args.add(visitFunctionArg(arg));
       }
     }
-    return new FunctionCall(visitFunctionName(ctx.functionName()), args);
+    CQLIdentifier keyspaceName = null;
+    if (ctx.qualifiedFunctionName().keyspaceName() != null) {
+      keyspaceName = visitKeyspaceName(ctx.qualifiedFunctionName().keyspaceName());
+    }
+    CQLIdentifier functionName = visitFunctionName(ctx.qualifiedFunctionName().functionName());
+    return new FunctionCall(keyspaceName, functionName, args);
   }
 
   @Override
@@ -368,20 +374,36 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
       functionCall =
           maybeCreateAlias(
               new FunctionCall(
+                  null,
                   WRITETIME,
                   Collections.singletonList(visitSelectorFunctionArg(ctx.selectorFunctionArg()))));
       writeTimeVariablesBuilder.add(functionCall);
     } else {
+      CQLIdentifier keyspaceName = null;
+      if (ctx.qualifiedFunctionName().keyspaceName() != null) {
+        keyspaceName = visitKeyspaceName(ctx.qualifiedFunctionName().keyspaceName());
+      }
+      CQLIdentifier functionName = visitFunctionName(ctx.qualifiedFunctionName().functionName());
       List<CQLFragment> args = new ArrayList<>();
       if (ctx.selectorFunctionArgs() != null) {
         for (SelectorFunctionArgContext arg : ctx.selectorFunctionArgs().selectorFunctionArg()) {
           args.add(visitSelectorFunctionArg(arg));
         }
       }
-      functionCall =
-          maybeCreateAlias(new FunctionCall(visitFunctionName(ctx.functionName()), args));
+      functionCall = maybeCreateAlias(new FunctionCall(keyspaceName, functionName, args));
     }
     return functionCall;
+  }
+
+  @Override
+  public CQLIdentifier visitKeyspaceName(KeyspaceNameContext ctx) {
+    CQLIdentifier keyspaceName;
+    if (ctx.QUOTED_IDENTIFIER() != null) {
+      keyspaceName = CQLIdentifier.fromCql(ctx.QUOTED_IDENTIFIER().getText());
+    } else {
+      keyspaceName = CQLIdentifier.fromCql(ctx.UNQUOTED_IDENTIFIER().getText());
+    }
+    return keyspaceName;
   }
 
   @Override
