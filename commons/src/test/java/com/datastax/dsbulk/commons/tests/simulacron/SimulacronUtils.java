@@ -114,6 +114,7 @@ public class SimulacronUtils {
           .put("tokens", "set<varchar>")
           .put("truncated_at", "map<uuid, blob>")
           .put("workload", "varchar")
+          // Simulacron does not handle frozen collections
           .put("workloads", /*"frozen<set<varchar>>"*/ "set<varchar>")
           .build();
 
