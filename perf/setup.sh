@@ -112,6 +112,9 @@ ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t tran
 ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.transactions;\""
 ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -header false --batch.mode REPLICA_SET -url /mnt/data/data_faker/generated -h ${dse_node_ips} -delim '|' -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' --codec.timestamp ISO_ZONED_DATE_TIME &> transactionsLOAD_second"
 
+#run repair to make COUNT and LOAD yield proper results
+ctool run dsbulk-dse 'nodetool -h localhost repair'
+
 
 #UNLOAD as CSV-----------------------------------------------------------------------------------------------
 ctool run dsbulk-dse 'nodetool -h localhost enableautocompaction test'
