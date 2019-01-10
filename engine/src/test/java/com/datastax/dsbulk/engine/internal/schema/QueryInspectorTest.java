@@ -708,7 +708,6 @@ class QueryInspectorTest {
   @SuppressWarnings("unused")
   static List<Arguments> should_detect_solr_query() {
     return Lists.newArrayList(
-        // SELECT
         arguments("INSERT INTO table1 (pk, v) VALUES (1, 2)", false),
         arguments("UPDATE table1 SET v = 1 WHERE pk = 0", false),
         arguments("DELETE FROM table1 WHERE pk = 0", false),
