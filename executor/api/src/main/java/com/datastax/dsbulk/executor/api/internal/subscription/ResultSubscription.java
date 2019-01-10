@@ -67,8 +67,8 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
    */
 
   final Optional<ExecutionListener> listener;
-  private final Optional<Semaphore> requestPermits;
-  final Optional<Semaphore> queryPermits;
+  private final Optional<Semaphore> maxConcurrentRequests;
+  private final Optional<Semaphore> maxConcurrentQueries;
   final Optional<RateLimiter> rateLimiter;
   private final boolean failFast;
 
@@ -137,15 +137,15 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
       Subscriber<? super R> subscriber,
       Statement statement,
       Optional<ExecutionListener> listener,
-      Optional<Semaphore> requestPermits,
-      Optional<Semaphore> queryPermits,
+      Optional<Semaphore> maxConcurrentRequests,
+      Optional<Semaphore> maxConcurrentQueries,
       Optional<RateLimiter> rateLimiter,
       boolean failFast) {
     this.statement = statement;
     this.subscriber = subscriber;
     this.listener = listener;
-    this.requestPermits = requestPermits;
-    this.queryPermits = queryPermits;
+    this.maxConcurrentRequests = maxConcurrentRequests;
+    this.maxConcurrentQueries = maxConcurrentQueries;
     this.rateLimiter = rateLimiter;
     this.failFast = failFast;
     if (statement instanceof BatchStatement) {
@@ -163,7 +163,7 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
   public void start(Callable<ListenableFuture<P>> initial) {
     global.start();
     listener.ifPresent(l -> l.onExecutionStarted(statement, global));
-    queryPermits.ifPresent(Semaphore::acquireUninterruptibly);
+    maxConcurrentQueries.ifPresent(Semaphore::acquireUninterruptibly);
     fetchNextPage(new Page(initial));
   }
 
@@ -338,11 +338,11 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
     current
         .nextPage()
         // as soon as the response arrives, notify our listener and
-        // update requestPermits.
+        // update maxConcurrentRequests.
         .whenComplete(
             (rs, t) -> {
-              requestPermits.ifPresent(Semaphore::release);
-              queryPermits.ifPresent(
+              maxConcurrentRequests.ifPresent(Semaphore::release);
+              maxConcurrentQueries.ifPresent(
                   permits -> {
                     if (t != null || isLastPage(rs)) {
                       permits.release();
@@ -386,7 +386,7 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
   }
 
   void onBeforeRequestStarted() {
-    requestPermits.ifPresent(Semaphore::acquireUninterruptibly);
+    maxConcurrentRequests.ifPresent(Semaphore::acquireUninterruptibly);
   }
 
   /*

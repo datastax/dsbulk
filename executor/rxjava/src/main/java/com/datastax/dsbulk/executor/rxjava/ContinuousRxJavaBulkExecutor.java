@@ -87,8 +87,8 @@ public class ContinuousRxJavaBulkExecutor extends DefaultRxJavaBulkExecutor
             continuousPagingOptions,
             failFast,
             listener,
-            requestPermits,
-            queryPermits,
+            maxConcurrentRequests,
+            maxConcurrentQueries,
             rateLimiter));
   }
 }

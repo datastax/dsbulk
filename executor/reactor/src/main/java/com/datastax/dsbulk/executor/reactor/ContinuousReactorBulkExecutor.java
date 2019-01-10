@@ -87,8 +87,8 @@ public class ContinuousReactorBulkExecutor extends DefaultReactorBulkExecutor
             continuousPagingOptions,
             failFast,
             listener,
-            requestPermits,
-            queryPermits,
+            maxConcurrentRequests,
+            maxConcurrentQueries,
             rateLimiter));
   }
 }

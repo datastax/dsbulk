@@ -31,11 +31,18 @@ public class ContinuousReadResultSubscription
       Subscriber<? super ReadResult> subscriber,
       Statement statement,
       Optional<ExecutionListener> listener,
-      Optional<Semaphore> requestPermits,
-      Optional<Semaphore> queryPermits,
+      Optional<Semaphore> maxConcurrentRequests,
+      Optional<Semaphore> maxConcurrentQueries,
       Optional<RateLimiter> rateLimiter,
       boolean failFast) {
-    super(subscriber, statement, listener, requestPermits, queryPermits, rateLimiter, failFast);
+    super(
+        subscriber,
+        statement,
+        listener,
+        maxConcurrentRequests,
+        maxConcurrentQueries,
+        rateLimiter,
+        failFast);
   }
 
   @Override

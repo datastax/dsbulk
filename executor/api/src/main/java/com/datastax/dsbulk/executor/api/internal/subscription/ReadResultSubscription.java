@@ -31,12 +31,19 @@ public class ReadResultSubscription extends ResultSubscription<ReadResult, Resul
       Subscriber<? super ReadResult> subscriber,
       Statement statement,
       Optional<ExecutionListener> listener,
-      Optional<Semaphore> requestPermits,
-      Optional<Semaphore> queryPermits,
+      Optional<Semaphore> maxConcurrentRequests,
+      Optional<Semaphore> maxConcurrentQueries,
       Optional<RateLimiter> rateLimiter,
       boolean failFast,
       int pageSize) {
-    super(subscriber, statement, listener, requestPermits, queryPermits, rateLimiter, failFast);
+    super(
+        subscriber,
+        statement,
+        listener,
+        maxConcurrentRequests,
+        maxConcurrentQueries,
+        rateLimiter,
+        failFast);
     this.pageSize = pageSize;
   }
 

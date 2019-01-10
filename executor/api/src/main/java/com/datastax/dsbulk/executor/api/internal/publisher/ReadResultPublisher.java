@@ -34,8 +34,8 @@ public class ReadResultPublisher implements Publisher<ReadResult> {
   private final Statement statement;
   private final Session session;
   private final Optional<ExecutionListener> listener;
-  private final Optional<Semaphore> requestPermits;
-  private final Optional<Semaphore> queryPermits;
+  private final Optional<Semaphore> maxConcurrentRequests;
+  private final Optional<Semaphore> maxConcurrentQueries;
   private final Optional<RateLimiter> rateLimiter;
   private final boolean failFast;
 
@@ -66,9 +66,10 @@ public class ReadResultPublisher implements Publisher<ReadResult> {
    * @param session The {@link Session} to use.
    * @param failFast whether to fail-fast in case of error.
    * @param listener The {@link ExecutionListener} to use.
-   * @param requestPermits The {@link Semaphore} to use to regulate the amount of in-flight
+   * @param maxConcurrentRequests The {@link Semaphore} to use to regulate the amount of in-flight
    *     requests.
-   * @param queryPermits The {@link Semaphore} to use to regulate the amount of in-flight queries.
+   * @param maxConcurrentQueries The {@link Semaphore} to use to regulate the amount of in-flight
+   *     queries.
    * @param rateLimiter The {@link RateLimiter} to use to regulate throughput.
    */
   public ReadResultPublisher(
@@ -76,14 +77,14 @@ public class ReadResultPublisher implements Publisher<ReadResult> {
       @NotNull Session session,
       boolean failFast,
       @NotNull Optional<ExecutionListener> listener,
-      @NotNull Optional<Semaphore> requestPermits,
-      @NotNull Optional<Semaphore> queryPermits,
+      @NotNull Optional<Semaphore> maxConcurrentRequests,
+      @NotNull Optional<Semaphore> maxConcurrentQueries,
       @NotNull Optional<RateLimiter> rateLimiter) {
     this.statement = statement;
     this.session = session;
     this.listener = listener;
-    this.requestPermits = requestPermits;
-    this.queryPermits = queryPermits;
+    this.maxConcurrentRequests = maxConcurrentRequests;
+    this.maxConcurrentQueries = maxConcurrentQueries;
     this.rateLimiter = rateLimiter;
     this.failFast = failFast;
   }
@@ -100,8 +101,8 @@ public class ReadResultPublisher implements Publisher<ReadResult> {
             subscriber,
             statement,
             listener,
-            requestPermits,
-            queryPermits,
+            maxConcurrentRequests,
+            maxConcurrentQueries,
             rateLimiter,
             failFast,
             getPageSize());

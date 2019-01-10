@@ -189,7 +189,7 @@ class ExecutorSettingsTest {
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
     ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null, false);
-    assertThat((Optional<Semaphore>) getInternalState(executor, "requestPermits"))
+    assertThat((Optional<Semaphore>) getInternalState(executor, "maxConcurrentRequests"))
         .isNotEmpty()
         .hasValueSatisfying(s -> assertThat(s.availablePermits()).isEqualTo(100));
   }
@@ -203,7 +203,7 @@ class ExecutorSettingsTest {
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
     ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null, false);
-    assertThat((Optional<Semaphore>) getInternalState(executor, "requestPermits")).isEmpty();
+    assertThat((Optional<Semaphore>) getInternalState(executor, "maxConcurrentRequests")).isEmpty();
   }
 
   @Test
@@ -227,7 +227,7 @@ class ExecutorSettingsTest {
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
     ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null, false);
-    assertThat((Optional<Semaphore>) getInternalState(executor, "queryPermits"))
+    assertThat((Optional<Semaphore>) getInternalState(executor, "maxConcurrentQueries"))
         .isNotEmpty()
         .hasValueSatisfying(s -> assertThat(s.availablePermits()).isEqualTo(100));
   }
@@ -241,7 +241,7 @@ class ExecutorSettingsTest {
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
     ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null, false);
-    assertThat((Optional<Semaphore>) getInternalState(executor, "queryPermits")).isEmpty();
+    assertThat((Optional<Semaphore>) getInternalState(executor, "maxConcurrentQueries")).isEmpty();
   }
 
   @Test

@@ -32,9 +32,9 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
 
   protected final boolean failFast;
 
-  protected final Optional<Semaphore> requestPermits;
+  protected final Optional<Semaphore> maxConcurrentRequests;
 
-  protected final Optional<Semaphore> queryPermits;
+  protected final Optional<Semaphore> maxConcurrentQueries;
 
   protected final Optional<RateLimiter> rateLimiter;
 
@@ -70,11 +70,11 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
     Objects.requireNonNull(session, "session cannot be null");
     this.session = session;
     this.failFast = failFast;
-    this.requestPermits =
+    this.maxConcurrentRequests =
         maxInFlightRequests <= 0
             ? Optional.empty()
             : Optional.of(new Semaphore(maxInFlightRequests));
-    this.queryPermits =
+    this.maxConcurrentQueries =
         maxInFlightQueries <= 0 ? Optional.empty() : Optional.of(new Semaphore(maxInFlightQueries));
     this.rateLimiter =
         maxRequestsPerSecond <= 0

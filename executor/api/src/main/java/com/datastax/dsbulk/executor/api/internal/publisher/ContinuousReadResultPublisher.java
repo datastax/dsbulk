@@ -34,8 +34,8 @@ public class ContinuousReadResultPublisher implements Publisher<ReadResult> {
   private final ContinuousPagingSession session;
   private final ContinuousPagingOptions options;
   private final Optional<ExecutionListener> listener;
-  private final Optional<Semaphore> requestPermits;
-  private final Optional<Semaphore> queryPermits;
+  private final Optional<Semaphore> maxConcurrentRequests;
+  private final Optional<Semaphore> maxConcurrentQueries;
   private final Optional<RateLimiter> rateLimiter;
   private final boolean failFast;
 
@@ -85,9 +85,10 @@ public class ContinuousReadResultPublisher implements Publisher<ReadResult> {
    * @param options The {@link ContinuousPagingOptions} to use.
    * @param failFast whether to fail-fast in case of error.
    * @param listener The {@link ExecutionListener} to use.
-   * @param requestPermits The {@link Semaphore} to use to regulate the amount of in-flight
+   * @param maxConcurrentRequests The {@link Semaphore} to use to regulate the amount of in-flight
    *     requests.
-   * @param queryPermits The {@link Semaphore} to use to regulate the amount of in-flight queries.
+   * @param maxConcurrentQueries The {@link Semaphore} to use to regulate the amount of in-flight
+   *     queries.
    * @param rateLimiter The {@link RateLimiter} to use to regulate throughput.
    */
   public ContinuousReadResultPublisher(
@@ -96,15 +97,15 @@ public class ContinuousReadResultPublisher implements Publisher<ReadResult> {
       @NotNull ContinuousPagingOptions options,
       boolean failFast,
       @NotNull Optional<ExecutionListener> listener,
-      @NotNull Optional<Semaphore> requestPermits,
-      @NotNull Optional<Semaphore> queryPermits,
+      @NotNull Optional<Semaphore> maxConcurrentRequests,
+      @NotNull Optional<Semaphore> maxConcurrentQueries,
       @NotNull Optional<RateLimiter> rateLimiter) {
     this.statement = statement;
     this.session = session;
     this.options = options;
     this.listener = listener;
-    this.requestPermits = requestPermits;
-    this.queryPermits = queryPermits;
+    this.maxConcurrentRequests = maxConcurrentRequests;
+    this.maxConcurrentQueries = maxConcurrentQueries;
     this.rateLimiter = rateLimiter;
     this.failFast = failFast;
   }
@@ -118,7 +119,13 @@ public class ContinuousReadResultPublisher implements Publisher<ReadResult> {
     // of the results.
     ContinuousReadResultSubscription subscription =
         new ContinuousReadResultSubscription(
-            subscriber, statement, listener, requestPermits, queryPermits, rateLimiter, failFast);
+            subscriber,
+            statement,
+            listener,
+            maxConcurrentRequests,
+            maxConcurrentQueries,
+            rateLimiter,
+            failFast);
     try {
       subscriber.onSubscribe(subscription);
       // must be called after onSubscribe
