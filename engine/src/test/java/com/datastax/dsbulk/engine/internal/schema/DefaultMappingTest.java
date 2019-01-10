@@ -31,8 +31,8 @@ class DefaultMappingTest {
 
   @Test
   void should_create_mapping() {
-    ImmutableMultimap<Field, CQLFragment> fieldsToVariables =
-        ImmutableMultimap.<Field, CQLFragment>builder()
+    ImmutableMultimap<Field, CQLIdentifier> fieldsToVariables =
+        ImmutableMultimap.<Field, CQLIdentifier>builder()
             .put(new DefaultMappedField("f1"), CQLIdentifier.fromInternal("c1"))
             .build();
     ExtendedCodecRegistry extendedCodecRegistry = mock(ExtendedCodecRegistry.class);

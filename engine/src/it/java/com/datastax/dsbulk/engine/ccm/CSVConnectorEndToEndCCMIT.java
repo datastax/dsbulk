@@ -565,13 +565,14 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
                   "SELECT pk1 as \"Field A\", \"PK2\" AS \"Field B\", \"C1\" AS \"Field C\", "
                       + "c2 AS \"Field D\", c3 AS \"Field E\" FROM counters"));
           args.add("--schema.mapping");
-          args.add(quoteJson("\"Field E\",\"Field D\",\"Field C\",\"Field B\",\"Field A\""));
+          args.add(quoteJson("\"Field D\",\"Field C\",\"Field B\",\"Field A\""));
 
           status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
           assertThat(status).isZero();
           validateOutputFiles(2, unloadDir);
           assertThat(readAllLinesInDirectoryAsStream(unloadDir))
-              .containsExactly("Field E,Field D,Field C,Field B,Field A", ",0,42,2,1");
+              // the result set order wins over the mapping order
+              .containsExactly("Field A,Field B,Field C,Field D", "1,2,42,0");
         });
   }
 

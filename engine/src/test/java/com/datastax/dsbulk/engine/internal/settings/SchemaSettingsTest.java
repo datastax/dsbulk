@@ -25,7 +25,6 @@ import static com.datastax.dsbulk.engine.WorkflowType.LOAD;
 import static com.datastax.dsbulk.engine.WorkflowType.UNLOAD;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
 import static com.datastax.dsbulk.engine.internal.schema.CQLRenderMode.INTERNAL;
-import static com.datastax.dsbulk.engine.internal.schema.CQLRenderMode.VARIABLE;
 import static com.datastax.dsbulk.engine.internal.schema.QueryInspector.INTERNAL_TIMESTAMP_VARNAME;
 import static com.datastax.dsbulk.engine.internal.schema.QueryInspector.INTERNAL_TTL_VARNAME;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.global;
@@ -1005,7 +1004,7 @@ class SchemaSettingsTest {
     DefaultMapping mapping = (DefaultMapping) getInternalState(mapper, "mapping");
     assertThat(mapping).isNotNull();
     assertThat((Set) getInternalState(mapping, "writeTimeVariables"))
-        .containsOnly(INTERNAL_TIMESTAMP_VARNAME.render(VARIABLE));
+        .containsOnly(INTERNAL_TIMESTAMP_VARNAME);
   }
 
   @Test
@@ -1025,7 +1024,8 @@ class SchemaSettingsTest {
     RecordMapper mapper = schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     DefaultMapping mapping = (DefaultMapping) getInternalState(mapper, "mapping");
     assertThat(mapping).isNotNull();
-    assertThat((Set) getInternalState(mapping, "writeTimeVariables")).containsOnly("c3");
+    assertThat((Set) getInternalState(mapping, "writeTimeVariables"))
+        .containsOnly(CQLIdentifier.fromInternal(C3));
   }
 
   @Test
@@ -1045,8 +1045,7 @@ class SchemaSettingsTest {
     DefaultMapping mapping = (DefaultMapping) getInternalState(mapper, "mapping");
     assertThat(mapping).isNotNull();
     assertThat((Set) getInternalState(mapping, "writeTimeVariables"))
-        .containsOnly(
-            CQLIdentifier.fromInternal("This is a quoted \" variable name").render(VARIABLE));
+        .containsOnly(CQLIdentifier.fromInternal("This is a quoted \" variable name"));
   }
 
   @ParameterizedTest
@@ -2042,7 +2041,7 @@ class SchemaSettingsTest {
             () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
-            "Schema mapping entry 'nonExistentCol' doesn't match any column found in table t1");
+            "Schema mapping entry \"nonExistentCol\" doesn't match any column found in table t1");
   }
 
   @Test
@@ -2056,7 +2055,7 @@ class SchemaSettingsTest {
             () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
-            "Schema mapping entry 'nonExistentCol' doesn't match any bound variable found in query: 'INSERT INTO ks.t1 (c1, c2) VALUES (:c1, :c2)'");
+            "Schema mapping entry \"nonExistentCol\" doesn't match any bound variable found in query: 'INSERT INTO ks.t1 (c1, c2) VALUES (:c1, :c2)'");
   }
 
   @Test
@@ -2439,8 +2438,6 @@ class SchemaSettingsTest {
         expected.put(new DefaultMappedField(first), CQLIdentifier.fromInternal(second));
       }
     }
-    Multimap<Field, CQLFragment> fieldsToVariables =
-        (Multimap<Field, CQLFragment>) getInternalState(mapping, "fieldsToVariables");
-    assertThat(fieldsToVariables).isEqualTo(expected);
+    assertThat((Multimap) getInternalState(mapping, "fieldsToVariables")).isEqualTo(expected);
   }
 }

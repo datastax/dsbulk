@@ -33,7 +33,7 @@ public interface Mapping {
    *     field does not map to any known bound statement variable.
    */
   @NotNull
-  Collection<CQLFragment> fieldToVariables(@NotNull Field field);
+  Collection<CQLIdentifier> fieldToVariables(@NotNull Field field);
 
   /**
    * Maps the given row variable to a field.
@@ -43,7 +43,7 @@ public interface Mapping {
    *     map to any known field.
    */
   @NotNull
-  Collection<Field> variableToFields(@NotNull CQLFragment variable);
+  Collection<Field> variableToFields(@NotNull CQLIdentifier variable);
 
   /**
    * Returns the codec to use for the given bound statement or row variable.
@@ -60,7 +60,7 @@ public interface Mapping {
    */
   @NotNull
   <T> TypeCodec<T> codec(
-      @NotNull CQLFragment variable,
+      @NotNull CQLIdentifier variable,
       @NotNull DataType cqlType,
       @NotNull TypeToken<? extends T> javaType)
       throws CodecNotFoundException;
@@ -79,5 +79,5 @@ public interface Mapping {
    * @return the variables in this mapping.
    */
   @NotNull
-  Set<CQLFragment> variables();
+  Set<CQLIdentifier> variables();
 }

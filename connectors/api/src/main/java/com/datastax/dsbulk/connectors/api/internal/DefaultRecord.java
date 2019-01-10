@@ -78,6 +78,19 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
   private final Supplier<URI> resource;
   private final long position;
 
+  /**
+   * Creates an empty record.
+   *
+   * @param source the record source (its original form).
+   * @param resource the record resource (where it comes from: file, database, etc).
+   * @param position the record position inside the resource (line number, etc.).
+   */
+  public DefaultRecord(Object source, Supplier<URI> resource, long position) {
+    this.source = source;
+    this.resource = resource;
+    this.position = position;
+  }
+
   private DefaultRecord(Object source, Supplier<URI> resource, long position, Object... values) {
     this.source = source;
     this.resource = resource;

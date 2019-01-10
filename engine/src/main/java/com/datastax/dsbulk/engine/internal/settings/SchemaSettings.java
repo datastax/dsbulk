@@ -52,6 +52,7 @@ import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.partitioner.TokenRangeReadStatement;
 import com.datastax.dsbulk.commons.partitioner.TokenRangeReadStatementGenerator;
+import com.datastax.dsbulk.connectors.api.Field;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
@@ -75,6 +76,7 @@ import com.datastax.dsbulk.engine.internal.schema.RecordMapper;
 import com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMultimap;
+import com.google.common.collect.ImmutableMultimap.Builder;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import com.typesafe.config.ConfigException;
@@ -88,6 +90,7 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -647,7 +650,9 @@ public class SchemaSettings {
     }
     assert fieldsToVariables != null;
     return new DefaultMapping(
-        ImmutableMultimap.copyOf(fieldsToVariables), codecRegistry, writeTimeVariables);
+        processFieldsToVariables(fieldsToVariables),
+        codecRegistry,
+        processWriteTimeVariables(writeTimeVariables));
   }
 
   private boolean isCounterTable() {
@@ -835,14 +840,14 @@ public class SchemaSettings {
             if (!config.hasPath(QUERY)) {
               throw new BulkConfigurationException(
                   String.format(
-                      "Schema mapping entry '%s' doesn't match any column found in table %s",
-                      value.render(INTERNAL), tableName));
+                      "Schema mapping entry %s doesn't match any column found in table %s",
+                      value.render(VARIABLE), tableName));
             } else {
               assert query != null;
               throw new BulkConfigurationException(
                   String.format(
-                      "Schema mapping entry '%s' doesn't match any bound variable found in query: '%s'",
-                      value.render(INTERNAL), query));
+                      "Schema mapping entry %s doesn't match any bound variable found in query: '%s'",
+                      value.render(VARIABLE), query));
             }
           }
         });
@@ -1164,6 +1169,7 @@ public class SchemaSettings {
     return col == INTERNAL_TTL_VARNAME || col == INTERNAL_TIMESTAMP_VARNAME;
   }
 
+  @NotNull
   private static ImmutableMultimap<MappingField, CQLFragment> processMappingFunctions(
       ImmutableMultimap<MappingField, CQLFragment> fieldsToVariables) {
     ImmutableMultimap.Builder<MappingField, CQLFragment> builder = ImmutableMultimap.builder();
@@ -1184,6 +1190,33 @@ public class SchemaSettings {
         // SELECT plus(col1,col2) AS "plus(col1,col2)" ...
         builder.put(entry);
       }
+    }
+    return builder.build();
+  }
+
+  @NotNull
+  private static ImmutableMultimap<Field, CQLIdentifier> processFieldsToVariables(
+      ImmutableMultimap<MappingField, CQLFragment> fieldsToVariables) {
+    Builder<Field, CQLIdentifier> builder = ImmutableMultimap.builder();
+    for (Entry<MappingField, CQLFragment> entry : fieldsToVariables.entries()) {
+      // transform all CQL fragments into CQL identifiers since that's the way they will be searched
+      // for in DefaultMapping
+      CQLFragment value = entry.getValue();
+      String internal = value.render(INTERNAL);
+      builder.put(entry.getKey(), CQLIdentifier.fromInternal(internal));
+    }
+    return builder.build();
+  }
+
+  @NotNull
+  private static ImmutableSet<CQLIdentifier> processWriteTimeVariables(
+      ImmutableSet<CQLFragment> writeTimeVariables) {
+    ImmutableSet.Builder<CQLIdentifier> builder = ImmutableSet.builder();
+    for (CQLFragment variable : writeTimeVariables) {
+      // transform all CQL fragments into CQL identifiers since that's the way they will be searched
+      // for in DefaultMapping
+      String internal = variable.render(INTERNAL);
+      builder.add(CQLIdentifier.fromInternal(internal));
     }
     return builder.build();
   }

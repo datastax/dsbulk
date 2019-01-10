@@ -81,6 +81,9 @@ class DefaultReadResultMapperTest {
     when(mapping.fieldToVariables(F0)).thenReturn(singleton(C1_ID));
     when(mapping.fieldToVariables(F1)).thenReturn(singleton(C2_ID));
     when(mapping.fieldToVariables(F2)).thenReturn(singleton(C3_ID));
+    when(mapping.variableToFields(C1_ID)).thenReturn(singleton(F0));
+    when(mapping.variableToFields(C2_ID)).thenReturn(singleton(F1));
+    when(mapping.variableToFields(C3_ID)).thenReturn(singleton(F2));
     TypeCodec codec1 = TypeCodec.cint();
     TypeCodec codec2 = TypeCodec.varchar();
     when(mapping.codec(C1_ID, DataType.cint(), TypeToken.of(Integer.class))).thenReturn(codec1);

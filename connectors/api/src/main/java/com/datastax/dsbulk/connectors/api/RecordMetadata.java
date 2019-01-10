@@ -11,7 +11,6 @@ package com.datastax.dsbulk.connectors.api;
 import com.datastax.driver.core.DataType;
 import com.google.common.reflect.TypeToken;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * Defines metadata applicable to a {@link com.datastax.dsbulk.connectors.api.Record record}, in
@@ -24,8 +23,8 @@ public interface RecordMetadata {
    *
    * @param field the field to get the type from.
    * @param cqlType the CQL type associated with the given field.
-   * @return the type of the given field, or {@code null} if the field isn't defined in this schema.
+   * @return the type of the given field.
    */
-  @Nullable
+  @NotNull
   TypeToken<?> getFieldType(@NotNull Field field, @NotNull DataType cqlType);
 }

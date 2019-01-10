@@ -94,17 +94,14 @@ public class DefaultRecordMapper implements RecordMapper {
       }
       BoundStatement bs = boundStatementFactory.apply(record, insertStatement);
       for (Field field : record.fields()) {
-        Collection<CQLFragment> variables = mapping.fieldToVariables(field);
-        // Note: when loading, a field can be mapped to one or more variables.
+        Collection<CQLIdentifier> variables = mapping.fieldToVariables(field);
         if (!variables.isEmpty()) {
-          for (CQLFragment variable : variables) {
+          for (CQLIdentifier variable : variables) {
             String name = variable.render(VARIABLE);
             DataType cqlType = insertStatement.getVariables().getType(name);
             TypeToken<?> fieldType = recordMetadata.getFieldType(field, cqlType);
-            if (fieldType != null) {
-              Object raw = record.getFieldValue(field);
-              bindColumn(bs, variable, name, raw, cqlType, fieldType);
-            }
+            Object raw = record.getFieldValue(field);
+            bindColumn(bs, variable, name, raw, cqlType, fieldType);
           }
         } else if (!allowExtraFields) {
           // the field wasn't mapped to any known variable
@@ -124,7 +121,7 @@ public class DefaultRecordMapper implements RecordMapper {
 
   private <T> void bindColumn(
       BoundStatement bs,
-      CQLFragment variable,
+      CQLIdentifier variable,
       String name,
       @Nullable T raw,
       DataType cqlType,
@@ -132,8 +129,8 @@ public class DefaultRecordMapper implements RecordMapper {
     TypeCodec<T> codec = mapping.codec(variable, cqlType, javaType);
     ByteBuffer bb = codec.serialize(raw, protocolVersion);
     if (isNull(bb, cqlType)) {
-      if (variable instanceof CQLIdentifier && primaryKeyVariables.contains(variable)) {
-        throw InvalidMappingException.nullPrimaryKey((CQLIdentifier) variable);
+      if (primaryKeyVariables.contains(variable)) {
+        throw InvalidMappingException.nullPrimaryKey(variable);
       }
       if (nullToUnset) {
         return;
