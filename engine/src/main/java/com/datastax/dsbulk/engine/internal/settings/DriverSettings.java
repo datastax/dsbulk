@@ -450,6 +450,7 @@ public class DriverSettings {
     return getLoadBalancingPolicy(config, lbpName, seenPolicies);
   }
 
+  @SuppressWarnings("deprecation")
   private LoadBalancingPolicy getLoadBalancingPolicy(
       LoaderConfig config, BuiltinLBP lbpName, Set<BuiltinLBP> seenPolicies)
       throws BulkConfigurationException {
@@ -582,8 +583,7 @@ public class DriverSettings {
               new SecureRandom());
 
           RemoteEndpointAwareJdkSSLOptions.Builder builder =
-              (RemoteEndpointAwareJdkSSLOptions.Builder)
-                  RemoteEndpointAwareJdkSSLOptions.builder().withSSLContext(sslContext);
+              RemoteEndpointAwareJdkSSLOptions.builder().withSSLContext(sslContext);
           if (!cipherSuites.isEmpty()) {
             builder.withCipherSuites(cipherSuites.toArray(new String[0]));
           }

@@ -1036,6 +1036,8 @@ Default: **null**.
 
 Enable or disable whether to allow remote datacenters to count for local consistency level in round robin awareness.
 
+*DEPRECATED*: This functionality will be removed in the next major release of DSBulk.
+
 Default: **false**.
 
 #### --driver.policy.lbp.dcAwareRoundRobin.localDc _&lt;string&gt;_
@@ -1047,6 +1049,8 @@ Default: **null**.
 #### --driver.policy.lbp.dcAwareRoundRobin.usedHostsPerRemoteDc _&lt;number&gt;_
 
 The number of hosts per remote datacenter that the round robin policy should consider.
+
+*DEPRECATED*: This functionality will be removed in the next major release of DSBulk.
 
 Default: **0**.
 
