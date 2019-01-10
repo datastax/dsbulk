@@ -146,6 +146,8 @@ public class SimulacronUtils {
           .put("workloads", Sets.newLinkedHashSet("Cassandra"))
           .build();
 
+  private static final String COMMA = ", ";
+
   public static class Keyspace {
 
     private String name;
@@ -368,12 +370,12 @@ public class SimulacronUtils {
                         .allColumns()
                         .stream()
                         .map(col -> Metadata.quoteIfNecessary(col.name))
-                        .collect(Collectors.joining(", ")),
+                        .collect(Collectors.joining(COMMA)),
                     table
                         .allColumns()
                         .stream()
                         .map(col -> ":" + Metadata.quoteIfNecessary(col.name))
-                        .collect(Collectors.joining(", "))),
+                        .collect(Collectors.joining(COMMA))),
                 emptyList(),
                 emptyMap(),
                 table.allColumnTypes());
@@ -396,7 +398,7 @@ public class SimulacronUtils {
                                 Metadata.quoteIfNecessary(col.name)
                                     + "=:"
                                     + Metadata.quoteIfNecessary(col.name))
-                        .collect(Collectors.joining(", "))),
+                        .collect(Collectors.joining(COMMA))),
                 emptyList(),
                 emptyMap(),
                 table.allColumnTypes());
@@ -414,7 +416,7 @@ public class SimulacronUtils {
                           .allColumns()
                           .stream()
                           .map(col -> Metadata.quoteIfNecessary(col.name))
-                          .collect(Collectors.joining(", ")),
+                          .collect(Collectors.joining(COMMA)),
                       Metadata.quoteIfNecessary(keyspace.name),
                       Metadata.quoteIfNecessary(table.name)));
           simulacron.prime(
@@ -431,19 +433,19 @@ public class SimulacronUtils {
                           .allColumns()
                           .stream()
                           .map(col -> Metadata.quoteIfNecessary(col.name))
-                          .collect(Collectors.joining(", ")),
+                          .collect(Collectors.joining(COMMA)),
                       Metadata.quoteIfNecessary(keyspace.name),
                       Metadata.quoteIfNecessary(table.name),
                       table
                           .partitionKey
                           .stream()
                           .map(col -> Metadata.quoteIfNecessary(col.name))
-                          .collect(Collectors.joining(", ")),
+                          .collect(Collectors.joining(COMMA)),
                       table
                           .partitionKey
                           .stream()
                           .map(col -> Metadata.quoteIfNecessary(col.name))
-                          .collect(Collectors.joining(", "))));
+                          .collect(Collectors.joining(COMMA))));
           simulacron.prime(
               new Prime(
                   new RequestPrime(
@@ -457,19 +459,19 @@ public class SimulacronUtils {
                           .allColumns()
                           .stream()
                           .map(col -> Metadata.quoteIfNecessary(col.name))
-                          .collect(Collectors.joining(", ")),
+                          .collect(Collectors.joining(COMMA)),
                       Metadata.quoteIfNecessary(keyspace.name),
                       Metadata.quoteIfNecessary(table.name),
                       table
                           .partitionKey
                           .stream()
                           .map(col -> Metadata.quoteIfNecessary(col.name))
-                          .collect(Collectors.joining(", ")),
+                          .collect(Collectors.joining(COMMA)),
                       table
                           .partitionKey
                           .stream()
                           .map(col -> Metadata.quoteIfNecessary(col.name))
-                          .collect(Collectors.joining(", "))));
+                          .collect(Collectors.joining(COMMA))));
           simulacron.prime(
               new Prime(
                   new RequestPrime(
