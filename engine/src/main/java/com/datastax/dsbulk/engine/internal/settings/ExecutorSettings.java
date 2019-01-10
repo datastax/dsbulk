@@ -44,6 +44,7 @@ public class ExecutorSettings {
   private static final String PAGE_UNIT = "pageUnit";
   private static final String MAX_PAGES = "maxPages";
   private static final String MAX_PAGES_PER_SECOND = "maxPagesPerSecond";
+  private static final String MAX_CONCURRENT_REQUESTS = "maxConcurrentQueries";
 
   private final LoaderConfig config;
 
@@ -54,6 +55,7 @@ public class ExecutorSettings {
   private int maxPages;
   private int maxPagesPerSecond;
   private ContinuousPagingOptions.PageUnit pageUnit;
+  private int maxConcurrentQueries;
 
   ExecutorSettings(LoaderConfig config) {
     this.config = config;
@@ -63,6 +65,10 @@ public class ExecutorSettings {
     try {
       maxPerSecond = config.getInt(MAX_PER_SECOND);
       maxInFlight = config.getInt(MAX_IN_FLIGHT);
+    } catch (ConfigException e) {
+      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "executor");
+    }
+    try {
       Config continuousPagingConfig = config.getConfig(CONTINUOUS_PAGING);
       continuousPagingEnabled = continuousPagingConfig.getBoolean(ENABLED);
       if (continuousPagingEnabled) {
@@ -71,9 +77,10 @@ public class ExecutorSettings {
             continuousPagingConfig.getEnum(ContinuousPagingOptions.PageUnit.class, PAGE_UNIT);
         maxPages = continuousPagingConfig.getInt(MAX_PAGES);
         maxPagesPerSecond = continuousPagingConfig.getInt(MAX_PAGES_PER_SECOND);
+        maxConcurrentQueries = continuousPagingConfig.getInt(MAX_CONCURRENT_REQUESTS);
       }
     } catch (ConfigException e) {
-      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "executor");
+      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "executor.continuousPaging");
     }
   }
 
@@ -127,7 +134,10 @@ public class ExecutorSettings {
             .withMaxPages(maxPages)
             .withMaxPagesPerSecond(maxPagesPerSecond)
             .build();
-    return builder.withContinuousPagingOptions(options).build();
+    return builder
+        .withContinuousPagingOptions(options)
+        .withMaxInFlightQueries(maxConcurrentQueries)
+        .build();
   }
 
   public int getMaxInFlight() {

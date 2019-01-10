@@ -32,17 +32,18 @@ public class ReadResultSubscription extends ResultSubscription<ReadResult, Resul
       Statement statement,
       Optional<ExecutionListener> listener,
       Optional<Semaphore> requestPermits,
+      Optional<Semaphore> queryPermits,
       Optional<RateLimiter> rateLimiter,
       boolean failFast,
       int pageSize) {
-    super(subscriber, statement, listener, requestPermits, rateLimiter, failFast);
+    super(subscriber, statement, listener, requestPermits, queryPermits, rateLimiter, failFast);
     this.pageSize = pageSize;
   }
 
   @Override
   Page toPage(ResultSet rs, ExecutionContext local) {
-    boolean hasMorePages = rs.getExecutionInfo().getPagingState() != null;
-    return new Page(new ReadResultIterator(rs, local), hasMorePages ? rs::fetchMoreResults : null);
+    return new Page(
+        new ReadResultIterator(rs, local), isLastPage(rs) ? rs::fetchMoreResults : null);
   }
 
   @Override
@@ -56,13 +57,18 @@ public class ReadResultSubscription extends ResultSubscription<ReadResult, Resul
   }
 
   @Override
-  void onRequestSuccessful(ResultSet resultSet, ExecutionContext local) {
+  void onRequestSuccessful(ResultSet rs, ExecutionContext local) {
     listener.ifPresent(l -> l.onReadRequestSuccessful(statement, local));
   }
 
   @Override
   void onRequestFailed(Throwable t, ExecutionContext local) {
     listener.ifPresent(l -> l.onReadRequestFailed(statement, t, local));
+  }
+
+  @Override
+  boolean isLastPage(ResultSet page) {
+    return page.getExecutionInfo().getPagingState() != null;
   }
 
   @Override

@@ -1305,6 +1305,12 @@ Enable or disable continuous paging. If the target cluster does not support cont
 
 Default: **true**.
 
+#### --executor.continuousPaging.maxConcurrentQueries _&lt;number&gt;_
+
+The maximum number of concurrent continuous paging queries that should be carried in parallel. Set this number to a value equal to or lesser than the value configured server-side for `continuous_paging.max_concurrent_sessions` in the cassandra.yaml configuration file (60 by default); otherwise some requests might be rejected. Settting this option to any negative value or zero will disable it.
+
+Default: **60**.
+
 #### --executor.continuousPaging.maxPages _&lt;number&gt;_
 
 The maximum number of pages to retrieve. Setting this value to zero retrieves all pages available.

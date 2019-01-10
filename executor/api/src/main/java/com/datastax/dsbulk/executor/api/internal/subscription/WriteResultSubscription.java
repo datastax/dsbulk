@@ -30,9 +30,10 @@ public class WriteResultSubscription extends ResultSubscription<WriteResult, Res
       Statement statement,
       Optional<ExecutionListener> listener,
       Optional<Semaphore> requestPermits,
+      Optional<Semaphore> queryPermits,
       Optional<RateLimiter> rateLimiter,
       boolean failFast) {
-    super(subscriber, statement, listener, requestPermits, rateLimiter, failFast);
+    super(subscriber, statement, listener, requestPermits, queryPermits, rateLimiter, failFast);
   }
 
   @Override
@@ -72,5 +73,10 @@ public class WriteResultSubscription extends ResultSubscription<WriteResult, Res
   @Override
   void onRequestFailed(Throwable t, ExecutionContext local) {
     listener.ifPresent(l -> l.onWriteRequestFailed(statement, t, local));
+  }
+
+  @Override
+  boolean isLastPage(ResultSet page) {
+    return true;
   }
 }

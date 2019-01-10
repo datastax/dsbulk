@@ -68,6 +68,7 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
 
   final Optional<ExecutionListener> listener;
   private final Optional<Semaphore> requestPermits;
+  final Optional<Semaphore> queryPermits;
   final Optional<RateLimiter> rateLimiter;
   private final boolean failFast;
 
@@ -137,12 +138,14 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
       Statement statement,
       Optional<ExecutionListener> listener,
       Optional<Semaphore> requestPermits,
+      Optional<Semaphore> queryPermits,
       Optional<RateLimiter> rateLimiter,
       boolean failFast) {
     this.statement = statement;
     this.subscriber = subscriber;
     this.listener = listener;
     this.requestPermits = requestPermits;
+    this.queryPermits = queryPermits;
     this.rateLimiter = rateLimiter;
     this.failFast = failFast;
     if (statement instanceof BatchStatement) {
@@ -160,6 +163,7 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
   public void start(Callable<ListenableFuture<P>> initial) {
     global.start();
     listener.ifPresent(l -> l.onExecutionStarted(statement, global));
+    queryPermits.ifPresent(Semaphore::acquireUninterruptibly);
     fetchNextPage(new Page(initial));
   }
 
@@ -337,7 +341,13 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
         // update requestPermits.
         .whenComplete(
             (rs, t) -> {
-              requestPermits.ifPresent(permits -> permits.release(1));
+              requestPermits.ifPresent(Semaphore::release);
+              queryPermits.ifPresent(
+                  permits -> {
+                    if (t != null || isLastPage(rs)) {
+                      permits.release();
+                    }
+                  });
               local.stop();
               if (t == null) {
                 onRequestSuccessful(rs, local);
@@ -517,6 +527,12 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
     BulkExecutionException error = new BulkExecutionException(t, statement);
     return new Page(Collections.singleton(toErrorResult(error)).iterator(), null);
   }
+
+  /**
+   * @param page The page to inspect.
+   * @return {@code true} if this is the last page, {@code false} otherwise.
+   */
+  abstract boolean isLastPage(P page);
 
   /**
    * Creates a result from the given error.

@@ -48,7 +48,13 @@ public class ReadResultPublisherTest extends ResultPublisherTestBase<ReadResult>
     Statement statement = new SimpleStatement("irrelevant");
     Session session = setUpSession(1);
     return new ReadResultPublisher(
-        statement, session, true, FAILED_LISTENER, Optional.empty(), Optional.empty());
+        statement,
+        session,
+        true,
+        FAILED_LISTENER,
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty());
   }
 
   private static Session setUpSession(long elements) {

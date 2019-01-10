@@ -49,6 +49,7 @@ public class ContinuousReadResultPublisherTest extends ResultPublisherTestBase<R
         true,
         FAILED_LISTENER,
         Optional.empty(),
+        Optional.empty(),
         Optional.empty());
   }
 

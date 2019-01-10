@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.engine.internal.settings;
 
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
+import static com.datastax.dsbulk.commons.tests.utils.ReflectionUtils.getInternalState;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -31,12 +32,16 @@ import com.datastax.dsbulk.executor.api.reader.ReactiveBulkReader;
 import com.datastax.dsbulk.executor.api.writer.ReactiveBulkWriter;
 import com.datastax.dsbulk.executor.reactor.ContinuousReactorBulkExecutor;
 import com.datastax.dsbulk.executor.reactor.DefaultReactorBulkExecutor;
+import com.google.common.util.concurrent.RateLimiter;
 import com.typesafe.config.ConfigFactory;
+import java.util.Optional;
+import java.util.concurrent.Semaphore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(LogInterceptingExtension.class)
+@SuppressWarnings({"unchecked", "UnstableApiUsage"})
 class ExecutorSettingsTest {
 
   private Session session;
@@ -138,6 +143,32 @@ class ExecutorSettingsTest {
   }
 
   @Test
+  void should_enable_maxPerSecond() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxPerSecond=100")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.executor")));
+    ExecutorSettings settings = new ExecutorSettings(config);
+    settings.init();
+    ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null, false);
+    assertThat((Optional<RateLimiter>) getInternalState(executor, "rateLimiter"))
+        .isNotEmpty()
+        .hasValueSatisfying(s -> assertThat(s.getRate()).isEqualTo(100));
+  }
+
+  @Test
+  void should_disable_maxPerSecond() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxPerSecond=0")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.executor")));
+    ExecutorSettings settings = new ExecutorSettings(config);
+    settings.init();
+    ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null, false);
+    assertThat((Optional<RateLimiter>) getInternalState(executor, "rateLimiter")).isEmpty();
+  }
+
+  @Test
   void should_throw_exception_when_maxPerSecond_not_a_number() {
     LoaderConfig config =
         new DefaultLoaderConfig(
@@ -150,6 +181,32 @@ class ExecutorSettingsTest {
   }
 
   @Test
+  void should_enable_maxInFlight() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxInFlight=100")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.executor")));
+    ExecutorSettings settings = new ExecutorSettings(config);
+    settings.init();
+    ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null, false);
+    assertThat((Optional<Semaphore>) getInternalState(executor, "requestPermits"))
+        .isNotEmpty()
+        .hasValueSatisfying(s -> assertThat(s.availablePermits()).isEqualTo(100));
+  }
+
+  @Test
+  void should_disable_maxInFlight() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxInFlight=0")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.executor")));
+    ExecutorSettings settings = new ExecutorSettings(config);
+    settings.init();
+    ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null, false);
+    assertThat((Optional<Semaphore>) getInternalState(executor, "requestPermits")).isEmpty();
+  }
+
+  @Test
   void should_throw_exception_when_maxInFlight_not_a_number() {
     LoaderConfig config =
         new DefaultLoaderConfig(
@@ -159,5 +216,44 @@ class ExecutorSettingsTest {
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage("Invalid value for executor.maxInFlight: Expecting NUMBER, got STRING");
+  }
+
+  @Test
+  void should_enable_maxConcurrentQueries() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("continuousPaging.maxConcurrentQueries=100")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.executor")));
+    ExecutorSettings settings = new ExecutorSettings(config);
+    settings.init();
+    ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null, false);
+    assertThat((Optional<Semaphore>) getInternalState(executor, "queryPermits"))
+        .isNotEmpty()
+        .hasValueSatisfying(s -> assertThat(s.availablePermits()).isEqualTo(100));
+  }
+
+  @Test
+  void should_disable_maxConcurrentQueries() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("continuousPaging.maxConcurrentQueries=0")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.executor")));
+    ExecutorSettings settings = new ExecutorSettings(config);
+    settings.init();
+    ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null, false);
+    assertThat((Optional<Semaphore>) getInternalState(executor, "queryPermits")).isEmpty();
+  }
+
+  @Test
+  void should_throw_exception_when_maxConcurrentQueries_not_a_number() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("continuousPaging.maxConcurrentQueries=NotANumber")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.executor")));
+    ExecutorSettings settings = new ExecutorSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage(
+            "Invalid value for executor.continuousPaging.maxConcurrentQueries: Expecting NUMBER, got STRING");
   }
 }

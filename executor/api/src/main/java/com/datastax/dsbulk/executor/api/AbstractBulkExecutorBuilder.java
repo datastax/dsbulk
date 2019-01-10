@@ -26,6 +26,8 @@ public abstract class AbstractBulkExecutorBuilder<T extends AbstractBulkExecutor
 
   protected int maxInFlightRequests = AbstractBulkExecutor.DEFAULT_MAX_IN_FLIGHT_REQUESTS;
 
+  protected int maxInFlightQueries = AbstractBulkExecutor.DEFAULT_MAX_IN_FLIGHT_QUERIES;
+
   protected int maxRequestsPerSecond = AbstractBulkExecutor.DEFAULT_MAX_REQUESTS_PER_SECOND;
 
   protected ExecutionListener listener;
@@ -64,8 +66,8 @@ public abstract class AbstractBulkExecutorBuilder<T extends AbstractBulkExecutor
   }
 
   /**
-   * Sets the maximum number of "in-flight" requests. In other words, sets the maximum number of
-   * concurrent uncompleted futures waiting for a response from the server. If that limit is
+   * Sets the maximum number of in-flight requests. In other words, sets the maximum number of
+   * concurrent uncompleted requests waiting for a response from the server. If that limit is
    * reached, the executor will block until the number of in-flight requests drops below the
    * threshold. <em>This feature should not be used in a fully non-blocking application</em>.
    *
@@ -74,12 +76,38 @@ public abstract class AbstractBulkExecutorBuilder<T extends AbstractBulkExecutor
    * com.datastax.dsbulk.executor.api.AbstractBulkExecutor#DEFAULT_MAX_IN_FLIGHT_REQUESTS}. Setting
    * this option to any negative value will disable it.
    *
-   * @param maxInFlightRequests the maximum number of "in-flight" requests.
+   * <p>This method acts on request level; its equivalent on the query level is {@link
+   * #withMaxInFlightQueries(int)}.
+   *
+   * @param maxInFlightRequests the maximum number of in-flight requests.
    * @return this builder (for method chaining).
    */
   @SuppressWarnings("UnusedReturnValue")
   public AbstractBulkExecutorBuilder<T> withMaxInFlightRequests(int maxInFlightRequests) {
     this.maxInFlightRequests = maxInFlightRequests;
+    return this;
+  }
+
+  /**
+   * Sets the maximum number of in-flight queries. In other words, sets the maximum number of
+   * concurrent uncompleted queries waiting for completion. If that limit is reached, the executor
+   * will block until the number of in-flight queries drops below the threshold. <em>This feature
+   * should not be used in a fully non-blocking application</em>.
+   *
+   * <p>This acts as a safeguard against workflows that generate more queries than they can handle.
+   * The default is {@link
+   * com.datastax.dsbulk.executor.api.AbstractBulkExecutor#DEFAULT_MAX_IN_FLIGHT_QUERIES}. Setting
+   * this option to any negative value will disable it.
+   *
+   * <p>This method acts on query level; its equivalent on the request level is {@link
+   * #withMaxInFlightRequests(int)}.
+   *
+   * @param maxInFlightQueries the maximum number of in-flight queries.
+   * @return this builder (for method chaining).
+   */
+  @SuppressWarnings("UnusedReturnValue")
+  public AbstractBulkExecutorBuilder<T> withMaxInFlightQueries(int maxInFlightQueries) {
+    this.maxInFlightQueries = maxInFlightQueries;
     return this;
   }
 

@@ -88,6 +88,7 @@ public class ContinuousRxJavaBulkExecutor extends DefaultRxJavaBulkExecutor
             failFast,
             listener,
             requestPermits,
+            queryPermits,
             rateLimiter));
   }
 }

@@ -35,6 +35,7 @@ public class ReadResultPublisher implements Publisher<ReadResult> {
   private final Session session;
   private final Optional<ExecutionListener> listener;
   private final Optional<Semaphore> requestPermits;
+  private final Optional<Semaphore> queryPermits;
   private final Optional<RateLimiter> rateLimiter;
   private final boolean failFast;
 
@@ -48,7 +49,14 @@ public class ReadResultPublisher implements Publisher<ReadResult> {
    */
   public ReadResultPublisher(
       @NotNull Statement statement, @NotNull Session session, boolean failFast) {
-    this(statement, session, failFast, Optional.empty(), Optional.empty(), Optional.empty());
+    this(
+        statement,
+        session,
+        failFast,
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty());
   }
 
   /**
@@ -60,6 +68,7 @@ public class ReadResultPublisher implements Publisher<ReadResult> {
    * @param listener The {@link ExecutionListener} to use.
    * @param requestPermits The {@link Semaphore} to use to regulate the amount of in-flight
    *     requests.
+   * @param queryPermits The {@link Semaphore} to use to regulate the amount of in-flight queries.
    * @param rateLimiter The {@link RateLimiter} to use to regulate throughput.
    */
   public ReadResultPublisher(
@@ -68,11 +77,13 @@ public class ReadResultPublisher implements Publisher<ReadResult> {
       boolean failFast,
       @NotNull Optional<ExecutionListener> listener,
       @NotNull Optional<Semaphore> requestPermits,
+      @NotNull Optional<Semaphore> queryPermits,
       @NotNull Optional<RateLimiter> rateLimiter) {
     this.statement = statement;
     this.session = session;
     this.listener = listener;
     this.requestPermits = requestPermits;
+    this.queryPermits = queryPermits;
     this.rateLimiter = rateLimiter;
     this.failFast = failFast;
   }
@@ -86,7 +97,14 @@ public class ReadResultPublisher implements Publisher<ReadResult> {
     // of the results.
     ReadResultSubscription subscription =
         new ReadResultSubscription(
-            subscriber, statement, listener, requestPermits, rateLimiter, failFast, getPageSize());
+            subscriber,
+            statement,
+            listener,
+            requestPermits,
+            queryPermits,
+            rateLimiter,
+            failFast,
+            getPageSize());
     try {
       subscriber.onSubscribe(subscription);
       // must be called after onSubscribe

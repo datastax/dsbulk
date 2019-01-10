@@ -42,7 +42,13 @@ public class WriteResultPublisherTest extends ResultPublisherTestBase<WriteResul
     Statement statement = new SimpleStatement("irrelevant");
     Session session = mock(Session.class);
     return new WriteResultPublisher(
-        statement, session, true, FAILED_LISTENER, Optional.empty(), Optional.empty());
+        statement,
+        session,
+        true,
+        FAILED_LISTENER,
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty());
   }
 
   private static Session setUpSession() {

@@ -88,6 +88,7 @@ public class ContinuousReactorBulkExecutor extends DefaultReactorBulkExecutor
             failFast,
             listener,
             requestPermits,
+            queryPermits,
             rateLimiter));
   }
 }

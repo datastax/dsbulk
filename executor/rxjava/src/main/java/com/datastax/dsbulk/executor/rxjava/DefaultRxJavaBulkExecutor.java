@@ -115,7 +115,7 @@ public class DefaultRxJavaBulkExecutor extends AbstractBulkExecutor implements R
     Objects.requireNonNull(statement);
     return Flowable.fromPublisher(
         new WriteResultPublisher(
-            statement, session, failFast, listener, requestPermits, rateLimiter));
+            statement, session, failFast, listener, requestPermits, queryPermits, rateLimiter));
   }
 
   @Override
@@ -193,7 +193,7 @@ public class DefaultRxJavaBulkExecutor extends AbstractBulkExecutor implements R
     Objects.requireNonNull(statement);
     return Flowable.fromPublisher(
         new ReadResultPublisher(
-            statement, session, failFast, listener, requestPermits, rateLimiter));
+            statement, session, failFast, listener, requestPermits, queryPermits, rateLimiter));
   }
 
   @Override

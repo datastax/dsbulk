@@ -32,9 +32,10 @@ public class ContinuousReadResultSubscription
       Statement statement,
       Optional<ExecutionListener> listener,
       Optional<Semaphore> requestPermits,
+      Optional<Semaphore> queryPermits,
       Optional<RateLimiter> rateLimiter,
       boolean failFast) {
-    super(subscriber, statement, listener, requestPermits, rateLimiter, failFast);
+    super(subscriber, statement, listener, requestPermits, queryPermits, rateLimiter, failFast);
   }
 
   @Override
@@ -84,6 +85,11 @@ public class ContinuousReadResultSubscription
   @Override
   void onBeforeResultEmitted(ReadResult result) {
     rateLimiter.ifPresent(RateLimiter::acquire);
+  }
+
+  @Override
+  boolean isLastPage(AsyncContinuousPagingResult page) {
+    return page.isLast();
   }
 
   @Override
