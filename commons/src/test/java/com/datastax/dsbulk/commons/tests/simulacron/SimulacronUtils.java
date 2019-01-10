@@ -8,11 +8,11 @@
  */
 package com.datastax.dsbulk.commons.tests.simulacron;
 
+import static com.datastax.driver.core.Metadata.quoteIfNecessary;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 
 import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.request.Query;
@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import org.assertj.core.util.Sets;
 
@@ -111,8 +112,7 @@ public class SimulacronUtils {
           .put("storage_port", "int")
           .put("storage_port_ssl", "int")
           .put("tokens", "set<varchar>")
-          // Simulacron does not handle maps of blobs
-          // .put("truncated_at", "map<uuid, blob>")
+          .put("truncated_at", "map<uuid, blob>")
           .put("workload", "varchar")
           // Simulacron does not handle frozen collections
           .put("workloads", /*"frozen<set<varchar>>"*/ "set<varchar>")
@@ -140,11 +140,12 @@ public class SimulacronUtils {
           .put("storage_port", 7000)
           .put("storage_port_ssl", 7001)
           .put("tokens", Sets.newLinkedHashSet("-9223372036854775808"))
-          // Simulacron does not handle maps of blobs
-          // .put("truncated_at", new HashMap<>())
+          .put("truncated_at", new HashMap<>())
           .put("workload", "Cassandra")
           .put("workloads", Sets.newLinkedHashSet("Cassandra"))
           .build();
+
+  private static final Collector<CharSequence, ?, String> COMMA = Collectors.joining(", ");
 
   public static class Keyspace {
 
@@ -362,18 +363,18 @@ public class SimulacronUtils {
             new Query(
                 String.format(
                     "INSERT INTO %s.%s (%s) VALUES (%s)",
-                    Metadata.quoteIfNecessary(keyspace.name),
-                    Metadata.quoteIfNecessary(table.name),
+                    quoteIfNecessary(keyspace.name),
+                    quoteIfNecessary(table.name),
                     table
                         .allColumns()
                         .stream()
-                        .map(col -> Metadata.quoteIfNecessary(col.name))
-                        .collect(Collectors.joining(",")),
+                        .map(col -> quoteIfNecessary(col.name))
+                        .collect(COMMA),
                     table
                         .allColumns()
                         .stream()
-                        .map(col -> ":" + Metadata.quoteIfNecessary(col.name))
-                        .collect(Collectors.joining(","))),
+                        .map(col -> ":" + quoteIfNecessary(col.name))
+                        .collect(COMMA)),
                 emptyList(),
                 emptyMap(),
                 table.allColumnTypes());
@@ -386,17 +387,13 @@ public class SimulacronUtils {
             new Query(
                 String.format(
                     "UPDATE %s.%s SET %s",
-                    Metadata.quoteIfNecessary(keyspace.name),
-                    Metadata.quoteIfNecessary(table.name),
+                    quoteIfNecessary(keyspace.name),
+                    quoteIfNecessary(table.name),
                     table
                         .allColumns()
                         .stream()
-                        .map(
-                            col ->
-                                Metadata.quoteIfNecessary(col.name)
-                                    + "=:"
-                                    + Metadata.quoteIfNecessary(col.name))
-                        .collect(Collectors.joining(","))),
+                        .map(col -> quoteIfNecessary(col.name) + "=:" + quoteIfNecessary(col.name))
+                        .collect(COMMA)),
                 emptyList(),
                 emptyMap(),
                 table.allColumnTypes());
@@ -413,10 +410,10 @@ public class SimulacronUtils {
                       table
                           .allColumns()
                           .stream()
-                          .map(col -> Metadata.quoteIfNecessary(col.name))
-                          .collect(Collectors.joining(",")),
-                      Metadata.quoteIfNecessary(keyspace.name),
-                      Metadata.quoteIfNecessary(table.name)));
+                          .map(col -> quoteIfNecessary(col.name))
+                          .collect(COMMA),
+                      quoteIfNecessary(keyspace.name),
+                      quoteIfNecessary(table.name)));
           simulacron.prime(
               new Prime(
                   new RequestPrime(
@@ -430,20 +427,46 @@ public class SimulacronUtils {
                       table
                           .allColumns()
                           .stream()
-                          .map(col -> Metadata.quoteIfNecessary(col.name))
-                          .collect(Collectors.joining(",")),
-                      Metadata.quoteIfNecessary(keyspace.name),
-                      Metadata.quoteIfNecessary(table.name),
+                          .map(col -> quoteIfNecessary(col.name))
+                          .collect(COMMA),
+                      quoteIfNecessary(keyspace.name),
+                      quoteIfNecessary(table.name),
                       table
                           .partitionKey
                           .stream()
-                          .map(col -> Metadata.quoteIfNecessary(col.name))
-                          .collect(Collectors.joining(",")),
+                          .map(col -> quoteIfNecessary(col.name))
+                          .collect(COMMA),
                       table
                           .partitionKey
                           .stream()
-                          .map(col -> Metadata.quoteIfNecessary(col.name))
-                          .collect(Collectors.joining(","))));
+                          .map(col -> quoteIfNecessary(col.name))
+                          .collect(COMMA)));
+          simulacron.prime(
+              new Prime(
+                  new RequestPrime(
+                      whenSelectFromTableWhere,
+                      new SuccessResult(table.rows, table.allColumnTypes()))));
+          whenSelectFromTableWhere =
+              new Query(
+                  String.format(
+                      "SELECT %s FROM %s.%s WHERE token(%s) > :start AND token(%s) <= :end",
+                      table
+                          .allColumns()
+                          .stream()
+                          .map(col -> quoteIfNecessary(col.name))
+                          .collect(COMMA),
+                      quoteIfNecessary(keyspace.name),
+                      quoteIfNecessary(table.name),
+                      table
+                          .partitionKey
+                          .stream()
+                          .map(col -> quoteIfNecessary(col.name))
+                          .collect(COMMA),
+                      table
+                          .partitionKey
+                          .stream()
+                          .map(col -> quoteIfNecessary(col.name))
+                          .collect(COMMA)));
           simulacron.prime(
               new Prime(
                   new RequestPrime(

@@ -9,7 +9,6 @@
 package com.datastax.dsbulk.engine.internal.schema;
 
 import java.util.Objects;
-import org.jetbrains.annotations.NotNull;
 
 /** A CQL literal, such as an integer, float, UUID, hex number, boolean, or string literal. */
 public class CQLLiteral implements CQLFragment {
@@ -25,12 +24,7 @@ public class CQLLiteral implements CQLFragment {
   }
 
   @Override
-  public @NotNull String asCql() {
-    return literal;
-  }
-
-  @Override
-  public @NotNull String asInternal() {
+  public String render(CQLRenderMode mode) {
     return literal;
   }
 

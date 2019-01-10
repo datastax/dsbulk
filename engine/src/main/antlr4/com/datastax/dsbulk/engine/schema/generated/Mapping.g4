@@ -64,7 +64,7 @@ field
 
 variableOrFunction
     : variable
-    | selectorFunction
+    | function
     ;
 
 variable
@@ -73,14 +73,9 @@ variable
     ;
 
 function
-    : qualifiedFunctionName '(' ')'
-    | qualifiedFunctionName '(' functionArgs ')'
-    ;
-
-selectorFunction
-    : WRITETIME '(' selectorFunctionArg ')'
+    : WRITETIME '(' functionArg ')'
     | qualifiedFunctionName '(' ')'
-    | qualifiedFunctionName '(' selectorFunctionArgs ')'
+    | qualifiedFunctionName '(' functionArgs ')'
     ;
 
 qualifiedFunctionName
@@ -101,10 +96,6 @@ functionArgs
     :  functionArg ( ',' functionArg )*
     ;
 
-selectorFunctionArgs
-    :  selectorFunctionArg ( ',' selectorFunctionArg )*
-    ;
-
 functionArg
     : INTEGER
     | FLOAT
@@ -114,10 +105,6 @@ functionArg
     | HEXNUMBER
     | STRING_LITERAL
     | ( '-' )? ( K_NAN | K_INFINITY )
-    ;
-
-selectorFunctionArg
-    : functionArg
     | QUOTED_IDENTIFIER
     | UNQUOTED_IDENTIFIER
     ;

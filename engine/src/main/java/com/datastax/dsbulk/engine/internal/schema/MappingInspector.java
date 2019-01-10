@@ -9,12 +9,12 @@
 package com.datastax.dsbulk.engine.internal.schema;
 
 import static com.datastax.dsbulk.engine.WorkflowType.LOAD;
+import static com.datastax.dsbulk.engine.internal.schema.CQLRenderMode.INTERNAL;
 import static com.datastax.dsbulk.engine.internal.schema.MappingPreference.INDEXED_ONLY;
 import static com.datastax.dsbulk.engine.internal.schema.MappingPreference.MAPPED_ONLY;
 import static java.util.stream.Collectors.counting;
 import static java.util.stream.Collectors.groupingBy;
 
-import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
@@ -27,8 +27,6 @@ import com.datastax.dsbulk.engine.schema.generated.MappingParser.FunctionNameCon
 import com.datastax.dsbulk.engine.schema.generated.MappingParser.IndexContext;
 import com.datastax.dsbulk.engine.schema.generated.MappingParser.IndexOrFunctionContext;
 import com.datastax.dsbulk.engine.schema.generated.MappingParser.KeyspaceNameContext;
-import com.datastax.dsbulk.engine.schema.generated.MappingParser.SelectorFunctionArgContext;
-import com.datastax.dsbulk.engine.schema.generated.MappingParser.SelectorFunctionContext;
 import com.datastax.dsbulk.engine.schema.generated.MappingParser.SimpleEntryContext;
 import com.datastax.dsbulk.engine.schema.generated.MappingParser.VariableContext;
 import com.google.common.collect.ImmutableMultimap;
@@ -66,7 +64,6 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
 
   private final MappingPreference mappingPreference;
   private final WorkflowType workflowType;
-  private final ProtocolVersion protocolVersion;
   private final CQLIdentifier usingTimestampVariable;
   private final CQLIdentifier usingTTLVariable;
 
@@ -88,12 +85,10 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
       @NotNull String mapping,
       @NotNull WorkflowType workflowType,
       @NotNull MappingPreference mappingPreference,
-      @NotNull ProtocolVersion protocolVersion,
       @Nullable CQLIdentifier usingTimestampVariable,
       @Nullable CQLIdentifier usingTTLVariable) {
     this.workflowType = workflowType;
     this.mappingPreference = mappingPreference;
-    this.protocolVersion = protocolVersion;
     this.usingTimestampVariable = usingTimestampVariable;
     this.usingTTLVariable = usingTTLVariable;
     CodePointCharStream input = CharStreams.fromString(mapping);
@@ -214,7 +209,7 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   @Override
   public MappingToken visitSimpleEntry(SimpleEntryContext ctx) {
     CQLFragment variable = visitVariableOrFunction(ctx.variableOrFunction());
-    if (workflowType == LOAD && isFunctionCall(variable)) {
+    if (workflowType == LOAD && variable instanceof FunctionCall) {
       throw new BulkConfigurationException(
           "Invalid schema.mapping: simple entries cannot contain function calls when loading, "
               + "please use mapped entries instead.");
@@ -222,7 +217,8 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
     if (mappingPreference == INDEXED_ONLY) {
       explicitVariablesBuilder.put(new IndexedMappingField(currentIndex++), variable);
     } else {
-      explicitVariablesBuilder.put(new MappedMappingField(variable.asInternal()), variable);
+      String fieldName = variable.render(INTERNAL);
+      explicitVariablesBuilder.put(new MappedMappingField(fieldName), variable);
     }
     return null;
   }
@@ -302,7 +298,7 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
     if (ctx.variable() != null) {
       return visitVariable(ctx.variable());
     } else {
-      return visitSelectorFunction(ctx.selectorFunction());
+      return visitFunction(ctx.function());
     }
   }
 
@@ -352,31 +348,11 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   @Override
   @NotNull
   public FunctionCall visitFunction(FunctionContext ctx) {
-    List<CQLFragment> args = new ArrayList<>();
-    if (ctx.functionArgs() != null) {
-      for (FunctionArgContext arg : ctx.functionArgs().functionArg()) {
-        args.add(visitFunctionArg(arg));
-      }
-    }
-    CQLIdentifier keyspaceName = null;
-    if (ctx.qualifiedFunctionName().keyspaceName() != null) {
-      keyspaceName = visitKeyspaceName(ctx.qualifiedFunctionName().keyspaceName());
-    }
-    CQLIdentifier functionName = visitFunctionName(ctx.qualifiedFunctionName().functionName());
-    return new FunctionCall(keyspaceName, functionName, args);
-  }
-
-  @Override
-  @NotNull
-  public CQLFragment visitSelectorFunction(SelectorFunctionContext ctx) {
-    CQLFragment functionCall;
+    FunctionCall functionCall;
     if (ctx.WRITETIME() != null) {
       functionCall =
-          maybeCreateAlias(
-              new FunctionCall(
-                  null,
-                  WRITETIME,
-                  Collections.singletonList(visitSelectorFunctionArg(ctx.selectorFunctionArg()))));
+          new FunctionCall(
+              null, WRITETIME, Collections.singletonList(visitFunctionArg(ctx.functionArg())));
       writeTimeVariablesBuilder.add(functionCall);
     } else {
       CQLIdentifier keyspaceName = null;
@@ -385,12 +361,12 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
       }
       CQLIdentifier functionName = visitFunctionName(ctx.qualifiedFunctionName().functionName());
       List<CQLFragment> args = new ArrayList<>();
-      if (ctx.selectorFunctionArgs() != null) {
-        for (SelectorFunctionArgContext arg : ctx.selectorFunctionArgs().selectorFunctionArg()) {
-          args.add(visitSelectorFunctionArg(arg));
+      if (ctx.functionArgs() != null) {
+        for (FunctionArgContext arg : ctx.functionArgs().functionArg()) {
+          args.add(visitFunctionArg(arg));
         }
       }
-      functionCall = maybeCreateAlias(new FunctionCall(keyspaceName, functionName, args));
+      functionCall = new FunctionCall(keyspaceName, functionName, args);
     }
     return functionCall;
   }
@@ -420,20 +396,14 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
 
   @Override
   @NotNull
-  public CQLLiteral visitFunctionArg(FunctionArgContext ctx) {
-    return new CQLLiteral(ctx.getText());
-  }
-
-  @Override
-  @NotNull
-  public CQLFragment visitSelectorFunctionArg(SelectorFunctionArgContext ctx) {
+  public CQLFragment visitFunctionArg(FunctionArgContext ctx) {
     CQLFragment functionArg;
     if (ctx.QUOTED_IDENTIFIER() != null) {
       functionArg = CQLIdentifier.fromCql(ctx.QUOTED_IDENTIFIER().getText());
     } else if (ctx.UNQUOTED_IDENTIFIER() != null) {
       functionArg = CQLIdentifier.fromCql(ctx.UNQUOTED_IDENTIFIER().getText());
     } else {
-      functionArg = visitFunctionArg(ctx.functionArg());
+      functionArg = new CQLLiteral(ctx.getText());
     }
     return functionArg;
   }
@@ -501,19 +471,5 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
               "Invalid schema.mapping: %s: %s. Please review schema.mapping for duplicates.",
               msg, offending));
     }
-  }
-
-  private CQLFragment maybeCreateAlias(CQLFragment target) {
-    if (protocolVersion == ProtocolVersion.V1) {
-      return target;
-    }
-    return new Alias(target, CQLIdentifier.fromInternal(target.asInternal()));
-  }
-
-  private static boolean isFunctionCall(CQLFragment variable) {
-    if (variable instanceof Alias) {
-      variable = ((Alias) variable).getTarget();
-    }
-    return variable instanceof FunctionCall;
   }
 }

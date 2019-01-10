@@ -12,6 +12,7 @@ import static com.datastax.driver.core.DataType.bigint;
 import static com.datastax.driver.core.Metadata.quoteIfNecessary;
 import static com.datastax.driver.core.ProtocolVersion.V1;
 import static com.datastax.driver.core.ProtocolVersion.V4;
+import static com.datastax.dsbulk.engine.internal.schema.CQLRenderMode.VARIABLE;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.math.BigDecimal.ONE;
 import static java.math.BigDecimal.ZERO;
@@ -127,12 +128,12 @@ class DefaultRecordMapperTest {
 
     when(insertStatement.getVariables()).thenReturn(variables);
 
-    when(variables.getType(C1_ID.asVariable())).thenReturn(DataType.cint());
-    when(variables.getType(C2_ID.asVariable())).thenReturn(DataType.bigint());
-    when(variables.getType(C3_ID.asVariable())).thenReturn(DataType.varchar());
-    when(variables.getIndexOf(C1_ID.asVariable())).thenReturn(0);
-    when(variables.getIndexOf(C2_ID.asVariable())).thenReturn(1);
-    when(variables.getIndexOf(C3_ID.asVariable())).thenReturn(2);
+    when(variables.getType(C1_ID.render(VARIABLE))).thenReturn(DataType.cint());
+    when(variables.getType(C2_ID.render(VARIABLE))).thenReturn(DataType.bigint());
+    when(variables.getType(C3_ID.render(VARIABLE))).thenReturn(DataType.varchar());
+    when(variables.getIndexOf(C1_ID.render(VARIABLE))).thenReturn(0);
+    when(variables.getIndexOf(C2_ID.render(VARIABLE))).thenReturn(1);
+    when(variables.getIndexOf(C3_ID.render(VARIABLE))).thenReturn(2);
     when(variables.getName(0)).thenReturn(C1);
     when(variables.getName(1)).thenReturn(C2);
     when(variables.getName(2)).thenReturn(C3);
@@ -203,7 +204,7 @@ class DefaultRecordMapperTest {
   @Test
   void should_bind_mapped_numeric_timestamp() {
     when(record.fields()).thenReturn(set(F1));
-    when(variables.getType(C1_ID.asVariable())).thenReturn(bigint());
+    when(variables.getType(C1_ID.render(VARIABLE))).thenReturn(bigint());
     // timestamp is 123456 minutes before unix epoch
     when(record.getFieldValue(F1)).thenReturn("-123456");
     StringToLongCodec codec =
@@ -235,13 +236,13 @@ class DefaultRecordMapperTest {
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
     verify(boundStatement)
-        .setBytesUnsafe(C1_ID.asVariable(), TypeCodec.bigint().serialize(-123456L, V4));
+        .setBytesUnsafe(C1_ID.render(VARIABLE), TypeCodec.bigint().serialize(-123456L, V4));
   }
 
   @Test
   void should_bind_mapped_numeric_timestamp_with_custom_unit_and_epoch() {
     when(record.fields()).thenReturn(set(F1));
-    when(variables.getType(C1_ID.asVariable())).thenReturn(bigint());
+    when(variables.getType(C1_ID.render(VARIABLE))).thenReturn(bigint());
     // timestamp is one minute before year 2000
     when(record.getFieldValue(F1)).thenReturn("-1");
     Instant millennium = Instant.parse("2000-01-01T00:00:00Z");
@@ -274,13 +275,13 @@ class DefaultRecordMapperTest {
     Statement result = mapper.map(record);
     assertThat(result).isSameAs(boundStatement);
     verify(boundStatement)
-        .setBytesUnsafe(C1_ID.asVariable(), TypeCodec.bigint().serialize(-1L, V4));
+        .setBytesUnsafe(C1_ID.render(VARIABLE), TypeCodec.bigint().serialize(-1L, V4));
   }
 
   @Test
   void should_bind_mapped_alphanumeric_timestamp() {
     when(record.fields()).thenReturn(set(F1));
-    when(variables.getType(C1_ID.asVariable())).thenReturn(bigint());
+    when(variables.getType(C1_ID.render(VARIABLE))).thenReturn(bigint());
     when(record.getFieldValue(F1)).thenReturn("2017-01-02T00:00:02");
     StringToLongCodec codec =
         spy(
@@ -312,14 +313,14 @@ class DefaultRecordMapperTest {
     assertThat(result).isSameAs(boundStatement);
     verify(boundStatement)
         .setBytesUnsafe(
-            C1_ID.asVariable(),
+            C1_ID.render(VARIABLE),
             TypeCodec.bigint().serialize(Instant.parse("2017-01-02T00:00:02Z").toEpochMilli(), V4));
   }
 
   @Test
   void should_bind_mapped_alphanumeric_timestamp_with_custom_pattern() {
     when(record.fields()).thenReturn(set(F1));
-    when(variables.getType(C1_ID.asVariable())).thenReturn(bigint());
+    when(variables.getType(C1_ID.render(VARIABLE))).thenReturn(bigint());
     when(record.getFieldValue(F1)).thenReturn("20171123-123456");
     TemporalFormat timestampFormat =
         new ZonedTemporalFormat(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"), UTC);
@@ -353,7 +354,7 @@ class DefaultRecordMapperTest {
     assertThat(result).isSameAs(boundStatement);
     verify(boundStatement)
         .setBytesUnsafe(
-            C1_ID.asVariable(),
+            C1_ID.render(VARIABLE),
             TypeCodec.bigint().serialize(Instant.parse("2017-11-23T12:34:56Z").toEpochMilli(), V4));
   }
 
@@ -477,7 +478,7 @@ class DefaultRecordMapperTest {
   @Test
   void should_return_unmappable_statement_when_pk_column_unmapped() {
     when(record.fields()).thenReturn(set(F1, F2, F3));
-    when(variables.getIndexOf(C1_ID.asVariable())).thenReturn(3);
+    when(variables.getIndexOf(C1_ID.render(VARIABLE))).thenReturn(3);
     when(variables.getName(3)).thenReturn(C1);
     when(boundStatement.isSet(C1)).thenReturn(false);
     RecordMapper mapper =

@@ -10,6 +10,7 @@ package com.datastax.dsbulk.engine.internal.schema;
 
 import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newColumnDefinitions;
 import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newDefinition;
+import static com.datastax.dsbulk.engine.internal.schema.CQLRenderMode.VARIABLE;
 import static java.util.Collections.singleton;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.util.Sets.newLinkedHashSet;
@@ -85,9 +86,9 @@ class DefaultReadResultMapperTest {
     when(mapping.codec(C1_ID, DataType.cint(), TypeToken.of(Integer.class))).thenReturn(codec1);
     when(mapping.codec(C2_ID, DataType.varchar(), TypeToken.of(String.class))).thenReturn(codec2);
     when(mapping.codec(C3_ID, DataType.varchar(), TypeToken.of(String.class))).thenReturn(codec2);
-    when(row.get(C1_ID.asVariable(), codec1)).thenReturn(42);
-    when(row.get(C2_ID.asVariable(), codec2)).thenReturn("foo");
-    when(row.get(C3_ID.asVariable(), codec2)).thenReturn("bar");
+    when(row.get(C1_ID.render(VARIABLE), codec1)).thenReturn(42);
+    when(row.get(C2_ID.render(VARIABLE), codec2)).thenReturn("foo");
+    when(row.get(C3_ID.render(VARIABLE), codec2)).thenReturn("bar");
 
     // to generate locations
     BoundStatement boundStatement = mock(BoundStatement.class);
@@ -104,9 +105,9 @@ class DefaultReadResultMapperTest {
     ColumnDefinitions.Definition end = newDefinition("end", DataType.bigint());
     ColumnDefinitions boundVariables = newColumnDefinitions(start, end);
     when(ps.getVariables()).thenReturn(boundVariables);
-    when(row.getObject(C1_ID.asVariable())).thenReturn(42);
-    when(row.getObject(C2_ID.asVariable())).thenReturn("foo");
-    when(row.getObject(C3_ID.asVariable())).thenReturn("bar");
+    when(row.getObject(C1_ID.render(VARIABLE))).thenReturn(42);
+    when(row.getObject(C2_ID.render(VARIABLE))).thenReturn("foo");
+    when(row.getObject(C3_ID.render(VARIABLE))).thenReturn("bar");
     when(boundStatement.getObject("start")).thenReturn(1234L);
     when(boundStatement.getObject("end")).thenReturn(5678L);
   }

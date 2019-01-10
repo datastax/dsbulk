@@ -10,6 +10,8 @@ package com.datastax.dsbulk.engine.internal.schema;
 
 import static com.datastax.driver.core.DataType.Name.BIGINT;
 import static com.datastax.driver.core.DataType.timestamp;
+import static com.datastax.dsbulk.engine.internal.schema.CQLRenderMode.VARIABLE;
+import static java.util.stream.Collectors.toSet;
 
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.TypeCodec;
@@ -42,10 +44,8 @@ public class DefaultMapping implements Mapping {
     this.fieldsToVariables = fieldsToVariables;
     this.codecRegistry = codecRegistry;
     this.writeTimeVariables =
-        writeTimeVariables
-            .stream()
-            .map(CQLFragment::asVariable)
-            .collect(ImmutableSet.toImmutableSet());
+        ImmutableSet.copyOf(
+            writeTimeVariables.stream().map(var -> var.render(VARIABLE)).collect(toSet()));
     variablesToCodecs = Caffeine.newBuilder().build();
     variablesToFields = fieldsToVariables.inverse();
   }
@@ -90,7 +90,7 @@ public class DefaultMapping implements Mapping {
                   // a resultset variable like "writetime(My Value)" to match
                   // a function call writetime("My Value"), since both have the
                   // same stringified variable form.
-                  if (writeTimeVariables.contains(variable.asVariable())) {
+                  if (writeTimeVariables.contains(variable.render(VARIABLE))) {
                     if (cqlType.getName() != BIGINT) {
                       throw new IllegalArgumentException(
                           "Cannot create a WriteTimeCodec for " + cqlType);

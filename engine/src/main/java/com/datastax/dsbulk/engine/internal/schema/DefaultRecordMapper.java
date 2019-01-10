@@ -8,6 +8,8 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
+import static com.datastax.dsbulk.engine.internal.schema.CQLRenderMode.VARIABLE;
+
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.DataType;
@@ -96,11 +98,12 @@ public class DefaultRecordMapper implements RecordMapper {
         // Note: when loading, a field can be mapped to one or more variables.
         if (!variables.isEmpty()) {
           for (CQLFragment variable : variables) {
-            DataType cqlType = insertStatement.getVariables().getType(variable.asVariable());
+            String name = variable.render(VARIABLE);
+            DataType cqlType = insertStatement.getVariables().getType(name);
             TypeToken<?> fieldType = recordMetadata.getFieldType(field, cqlType);
             if (fieldType != null) {
               Object raw = record.getFieldValue(field);
-              bindColumn(bs, variable, raw, cqlType, fieldType);
+              bindColumn(bs, variable, name, raw, cqlType, fieldType);
             }
           }
         } else if (!allowExtraFields) {
@@ -122,6 +125,7 @@ public class DefaultRecordMapper implements RecordMapper {
   private <T> void bindColumn(
       BoundStatement bs,
       CQLFragment variable,
+      String name,
       @Nullable T raw,
       DataType cqlType,
       TypeToken<? extends T> javaType) {
@@ -135,7 +139,7 @@ public class DefaultRecordMapper implements RecordMapper {
         return;
       }
     }
-    bs.setBytesUnsafe(variable.asVariable(), bb);
+    bs.setBytesUnsafe(name, bb);
   }
 
   private boolean isNull(ByteBuffer bb, DataType cqlType) {
@@ -173,7 +177,7 @@ public class DefaultRecordMapper implements RecordMapper {
 
   private void ensurePrimaryKeySet(BoundStatement bs) {
     for (CQLIdentifier variable : primaryKeyVariables) {
-      if (!bs.isSet(variable.asVariable())) {
+      if (!bs.isSet(variable.render(VARIABLE))) {
         throw InvalidMappingException.unsetPrimaryKey(variable);
       }
     }

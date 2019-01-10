@@ -18,11 +18,14 @@ import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newToken;
 import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newTokenRange;
 import static com.datastax.driver.core.DriverCoreHooks.wrappedStatement;
 import static com.datastax.driver.core.ProtocolVersion.V1;
+import static com.datastax.driver.core.ProtocolVersion.V3;
 import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.datastax.dsbulk.commons.tests.utils.ReflectionUtils.getInternalState;
 import static com.datastax.dsbulk.engine.WorkflowType.LOAD;
 import static com.datastax.dsbulk.engine.WorkflowType.UNLOAD;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
+import static com.datastax.dsbulk.engine.internal.schema.CQLRenderMode.INTERNAL;
+import static com.datastax.dsbulk.engine.internal.schema.CQLRenderMode.VARIABLE;
 import static com.datastax.dsbulk.engine.internal.schema.QueryInspector.INTERNAL_TIMESTAMP_VARNAME;
 import static com.datastax.dsbulk.engine.internal.schema.QueryInspector.INTERNAL_TTL_VARNAME;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.global;
@@ -194,8 +197,11 @@ class SchemaSettingsTest {
     when(ps.getPreparedId()).thenReturn(newPreparedId(definitions, new int[] {0}, V4));
   }
 
-  @Test
-  void should_create_record_mapper_when_mapping_keyspace_and_table_provided() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_record_mapper_when_mapping_keyspace_and_table_provided(
+      ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     LoaderConfig config =
         makeLoaderConfig(
             String.format("mapping = \" 0 = \\\"%2$s\\\" , 2 = %1$s \", ", C1, C2)
@@ -208,14 +214,28 @@ class SchemaSettingsTest {
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo(String.format("INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (?,?)", C1, C2));
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo(String.format("INSERT INTO ks.t1 (\"%2$s\", %1$s) VALUES (?, ?)", C1, C2));
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "INSERT INTO ks.t1 (\"%2$s\", %1$s) VALUES (:\"%2$s\", :%1$s)", C1, C2));
+    }
     assertMapping((DefaultMapping) getInternalState(recordMapper, "mapping"), "0", C2, "2", C1);
-    assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    if (version.compareTo(V3) <= 0) {
+      assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isFalse();
+    } else {
+      assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    }
   }
 
-  @Test
-  void should_create_record_mapper_when_mapping_keyspace_and_counter_table_provided() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_record_mapper_when_mapping_keyspace_and_counter_table_provided(
+      ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     when(col1.getType()).thenReturn(counter());
     when(col2.getType()).thenReturn(counter());
     when(col3.getType()).thenReturn(counter());
@@ -227,13 +247,26 @@ class SchemaSettingsTest {
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo(
-            String.format(
-                "UPDATE ks.t1 SET \"%2$s\"=\"%2$s\"+?,%3$s=%3$s+? WHERE %1$s=?", C1, C2, C3));
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "UPDATE ks.t1 SET \"%2$s\" = \"%2$s\" + ?, %3$s = %3$s + ? WHERE %1$s = ?",
+                  C1, C2, C3));
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "UPDATE ks.t1 SET \"%2$s\" = \"%2$s\" + :\"%2$s\", %3$s = %3$s + :%3$s WHERE %1$s = :%1$s",
+                  C1, C2, C3));
+    }
     DefaultMapping mapping = (DefaultMapping) getInternalState(recordMapper, "mapping");
     assertMapping(mapping, C2, C2, C1, C1, C3, C3);
-    assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    if (version.compareTo(V3) <= 0) {
+      assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isFalse();
+    } else {
+      assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    }
   }
 
   @Test
@@ -246,8 +279,10 @@ class SchemaSettingsTest {
             "Invalid schema.mapping: the following variables are mapped to more than one field: f1. Please review schema.mapping for duplicates.");
   }
 
-  @Test
-  void should_create_record_mapper_when_mapping_ttl_and_timestamp() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_record_mapper_when_mapping_ttl_and_timestamp(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     LoaderConfig config =
         makeLoaderConfig(
             String.format(
@@ -261,11 +296,19 @@ class SchemaSettingsTest {
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo(
-            String.format(
-                "INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (?,?) " + "USING TTL ? AND TIMESTAMP ?",
-                C1, C2));
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "INSERT INTO ks.t1 (\"%2$s\", %1$s) VALUES (?, ?) USING TTL ? AND TIMESTAMP ?",
+                  C1, C2));
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "INSERT INTO ks.t1 (\"%2$s\", %1$s) VALUES (:\"%2$s\", :%1$s) USING TTL :\"[ttl]\" AND TIMESTAMP :\"[timestamp]\"",
+                  C1, C2));
+    }
     assertMapping(
         (DefaultMapping) getInternalState(recordMapper, "mapping"),
         "0",
@@ -273,14 +316,20 @@ class SchemaSettingsTest {
         "2",
         C1,
         "1",
-        INTERNAL_TTL_VARNAME.asInternal(),
+        INTERNAL_TTL_VARNAME.render(INTERNAL),
         "3",
-        INTERNAL_TIMESTAMP_VARNAME.asInternal());
-    assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+        INTERNAL_TIMESTAMP_VARNAME.render(INTERNAL));
+    if (version.compareTo(V3) <= 0) {
+      assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isFalse();
+    } else {
+      assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    }
   }
 
-  @Test
-  void should_create_record_mapper_when_mapping_function() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_record_mapper_when_mapping_function(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     LoaderConfig config =
         makeLoaderConfig(
             String.format("mapping = \" now() = \\\"%2$s\\\" , 2 = %1$s \", ", C1, C2)
@@ -292,13 +341,21 @@ class SchemaSettingsTest {
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo(String.format("INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (now(),?)", C1, C2));
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo(String.format("INSERT INTO ks.t1 (\"%2$s\", %1$s) VALUES (now(), ?)", C1, C2));
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format("INSERT INTO ks.t1 (\"%2$s\", %1$s) VALUES (now(), :%1$s)", C1, C2));
+    }
     assertMapping((DefaultMapping) getInternalState(recordMapper, "mapping"), "2", C1);
   }
 
-  @Test
-  void should_create_record_mapper_with_static_ttl() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_record_mapper_with_static_ttl(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     LoaderConfig config =
         makeLoaderConfig(
             String.format("mapping = \" 0 = \\\"%2$s\\\" , 2 = %1$s \", ", C1, C2)
@@ -308,13 +365,24 @@ class SchemaSettingsTest {
     schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo(
-            String.format("INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (?,?) USING TTL 30", C1, C2));
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "INSERT INTO ks.t1 (\"%2$s\", %1$s) VALUES (?, ?) USING TTL 30", C1, C2));
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "INSERT INTO ks.t1 (\"%2$s\", %1$s) VALUES (:\"%2$s\", :%1$s) USING TTL 30",
+                  C1, C2));
+    }
   }
 
-  @Test
-  void should_create_record_mapper_with_static_timestamp() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_record_mapper_with_static_timestamp(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     LoaderConfig config =
         makeLoaderConfig(
             String.format("mapping = \" 0 = \\\"%2$s\\\" , 2 = %1$s \", ", C1, C2)
@@ -324,17 +392,29 @@ class SchemaSettingsTest {
     schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo(
-            String.format(
-                "INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (?,?) USING TIMESTAMP %3$s",
-                C1,
-                C2,
-                instantToNumber(Instant.parse("2017-01-02T00:00:01Z"), MICROSECONDS, EPOCH)));
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "INSERT INTO ks.t1 (\"%2$s\", %1$s) VALUES (?, ?) USING TIMESTAMP %3$s",
+                  C1,
+                  C2,
+                  instantToNumber(Instant.parse("2017-01-02T00:00:01Z"), MICROSECONDS, EPOCH)));
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "INSERT INTO ks.t1 (\"%2$s\", %1$s) VALUES (:\"%2$s\", :%1$s) USING TIMESTAMP %3$s",
+                  C1,
+                  C2,
+                  instantToNumber(Instant.parse("2017-01-02T00:00:01Z"), MICROSECONDS, EPOCH)));
+    }
   }
 
-  @Test
-  void should_create_record_mapper_with_static_timestamp_and_ttl() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_record_mapper_with_static_timestamp_and_ttl(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     LoaderConfig config =
         makeLoaderConfig(
             String.format("mapping = \" 0 = \\\"%2$s\\\" , 2 = %1$s \", ", C1, C2)
@@ -344,14 +424,25 @@ class SchemaSettingsTest {
     schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo(
-            String.format(
-                "INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (?,?) "
-                    + "USING TTL 25 AND TIMESTAMP %3$s",
-                C1,
-                C2,
-                instantToNumber(Instant.parse("2017-01-02T00:00:01Z"), MICROSECONDS, EPOCH)));
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "INSERT INTO ks.t1 (\"%2$s\", %1$s) VALUES (?, ?) "
+                      + "USING TTL 25 AND TIMESTAMP %3$s",
+                  C1,
+                  C2,
+                  instantToNumber(Instant.parse("2017-01-02T00:00:01Z"), MICROSECONDS, EPOCH)));
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "INSERT INTO ks.t1 (\"%2$s\", %1$s) VALUES (:\"%2$s\", :%1$s) "
+                      + "USING TTL 25 AND TIMESTAMP %3$s",
+                  C1,
+                  C2,
+                  instantToNumber(Instant.parse("2017-01-02T00:00:01Z"), MICROSECONDS, EPOCH)));
+    }
   }
 
   @Test
@@ -362,7 +453,7 @@ class SchemaSettingsTest {
     LoaderConfig config =
         makeLoaderConfig(
             "mapping = \"0 = c1var , 2 = c2var\", "
-                + "query = \"INSERT INTO ks.t1(c2, c1) VALUES (:c2var, :c1var)\", "
+                + "query = \"INSERT INTO ks.t1 (c2, c1) VALUES (:c2var, :c1var)\", "
                 + "nullToUnset = true");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(LOAD, cluster, true, false);
@@ -371,14 +462,16 @@ class SchemaSettingsTest {
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue()).isEqualTo("INSERT INTO ks.t1(c2, c1) VALUES (:c2var, :c1var)");
+    assertThat(argument.getValue()).isEqualTo("INSERT INTO ks.t1 (c2, c1) VALUES (:c2var, :c1var)");
     assertMapping(
         (DefaultMapping) getInternalState(recordMapper, "mapping"), "0", "c1var", "2", "c2var");
     assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
   }
 
-  @Test
-  void should_create_record_mapper_when_mapping_is_a_list_and_indexed() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_record_mapper_when_mapping_is_a_list_and_indexed(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     LoaderConfig config =
         makeLoaderConfig(
             String.format("mapping = \"\\\"%2$s\\\", %1$s\", ", C1, C2)
@@ -391,14 +484,27 @@ class SchemaSettingsTest {
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo(String.format("INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (?,?)", C1, C2));
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo(String.format("INSERT INTO ks.t1 (\"%2$s\", %1$s) VALUES (?, ?)", C1, C2));
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "INSERT INTO ks.t1 (\"%2$s\", %1$s) VALUES (:\"%2$s\", :%1$s)", C1, C2));
+    }
     assertMapping((DefaultMapping) getInternalState(recordMapper, "mapping"), "0", C2, "1", C1);
-    assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    if (version.compareTo(V3) <= 0) {
+      assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isFalse();
+    } else {
+      assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    }
   }
 
-  @Test
-  void should_create_record_mapper_when_mapping_is_a_list_and_mapped() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_record_mapper_when_mapping_is_a_list_and_mapped(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     LoaderConfig config =
         makeLoaderConfig(
             String.format("mapping = \"\\\"%2$s\\\", %1$s\", ", C1, C2)
@@ -411,10 +517,21 @@ class SchemaSettingsTest {
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo(String.format("INSERT INTO ks.t1(\"%2$s\",%1$s) VALUES (?,?)", C1, C2));
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo(String.format("INSERT INTO ks.t1 (\"%2$s\", %1$s) VALUES (?, ?)", C1, C2));
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "INSERT INTO ks.t1 (\"%2$s\", %1$s) VALUES (:\"%2$s\", :%1$s)", C1, C2));
+    }
     assertMapping((DefaultMapping) getInternalState(recordMapper, "mapping"), C1, C1, C2, C2);
-    assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    if (version.compareTo(V3) <= 0) {
+      assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isFalse();
+    } else {
+      assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    }
   }
 
   @Test
@@ -424,7 +541,7 @@ class SchemaSettingsTest {
             String.format("mapping = \" 0 = \\\"%2$s\\\" , 2 = %1$s \", ", C1, C2)
                 + "nullToUnset = true, "
                 + String.format(
-                    "query=\"insert into ks.t1 (%1$s,\\\"%2$s\\\") values (:%1$s,:\\\"%2$s\\\")\"",
+                    "query=\"insert into ks.t1 (%1$s,\\\"%2$s\\\") values (:%1$s, :\\\"%2$s\\\")\"",
                     C1, C2));
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(LOAD, cluster, true, false);
@@ -435,13 +552,15 @@ class SchemaSettingsTest {
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
         .isEqualTo(
-            String.format("insert into ks.t1 (%1$s,\"%2$s\") values (:%1$s,:\"%2$s\")", C1, C2));
+            String.format("insert into ks.t1 (%1$s,\"%2$s\") values (:%1$s, :\"%2$s\")", C1, C2));
     assertMapping((DefaultMapping) getInternalState(recordMapper, "mapping"), "0", C2, "2", C1);
     assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
   }
 
-  @Test
-  void should_create_record_mapper_when_keyspace_and_table_provided() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_record_mapper_when_keyspace_and_table_provided(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     LoaderConfig config = makeLoaderConfig("nullToUnset = true, keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(LOAD, cluster, true, true);
@@ -450,15 +569,30 @@ class SchemaSettingsTest {
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo(
-            String.format("INSERT INTO ks.t1(%1$s,\"%2$s\",%3$s) VALUES (?,?,?)", C1, C2, C3));
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "INSERT INTO ks.t1 (%1$s, \"%2$s\", %3$s) VALUES (?, ?, ?)", C1, C2, C3));
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "INSERT INTO ks.t1 (%1$s, \"%2$s\", %3$s) VALUES (:%1$s, :\"%2$s\", :%3$s)",
+                  C1, C2, C3));
+    }
     assertMapping((DefaultMapping) getInternalState(recordMapper, "mapping"));
-    assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    if (version.compareTo(V3) <= 0) {
+      assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isFalse();
+    } else {
+      assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    }
   }
 
-  @Test
-  void should_create_record_mapper_with_inferred_mapping_and_override() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_record_mapper_with_inferred_mapping_and_override(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     // Infer mapping, but override to set c4 source field to C3 column.
     LoaderConfig config =
         makeLoaderConfig(
@@ -471,16 +605,31 @@ class SchemaSettingsTest {
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo(
-            String.format("INSERT INTO ks.t1(%3$s,%1$s,\"%2$s\") VALUES (?,?,?)", C1, C2, C3));
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "INSERT INTO ks.t1 (%3$s, %1$s, \"%2$s\") VALUES (?, ?, ?)", C1, C2, C3));
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "INSERT INTO ks.t1 (%3$s, %1$s, \"%2$s\") VALUES (:%3$s, :%1$s, :\"%2$s\")",
+                  C1, C2, C3));
+    }
     assertMapping(
         (DefaultMapping) getInternalState(recordMapper, "mapping"), C1, C1, C2, C2, C4, C3);
-    assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    if (version.compareTo(V3) <= 0) {
+      assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isFalse();
+    } else {
+      assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    }
   }
 
-  @Test
-  void should_create_record_mapper_with_inferred_mapping_and_skip() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_record_mapper_with_inferred_mapping_and_skip(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     // Infer mapping, but skip C2.
     LoaderConfig config =
         makeLoaderConfig(
@@ -493,14 +642,26 @@ class SchemaSettingsTest {
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo(String.format("INSERT INTO ks.t1(%1$s,%2$s) VALUES (?,?)", C1, C3));
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo(String.format("INSERT INTO ks.t1 (%1$s, %2$s) VALUES (?, ?)", C1, C3));
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo(String.format("INSERT INTO ks.t1 (%1$s, %2$s) VALUES (:%1$s, :%2$s)", C1, C3));
+    }
     assertMapping((DefaultMapping) getInternalState(recordMapper, "mapping"), C1, C1, C3, C3);
-    assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    if (version.compareTo(V3) <= 0) {
+      assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isFalse();
+    } else {
+      assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    }
   }
 
-  @Test
-  void should_create_record_mapper_with_inferred_mapping_and_skip_multiple() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_record_mapper_with_inferred_mapping_and_skip_multiple(
+      ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     // Infer mapping, but skip C2 and C3.
     LoaderConfig config =
         makeLoaderConfig(
@@ -513,14 +674,25 @@ class SchemaSettingsTest {
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo(String.format("INSERT INTO ks.t1(%1$s) VALUES (?)", C1));
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo(String.format("INSERT INTO ks.t1 (%1$s) VALUES (?)", C1));
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo(String.format("INSERT INTO ks.t1 (%1$s) VALUES (:%1$s)", C1));
+    }
     assertMapping((DefaultMapping) getInternalState(recordMapper, "mapping"), C1, C1);
-    assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    if (version.compareTo(V3) <= 0) {
+      assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isFalse();
+    } else {
+      assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isTrue();
+    }
   }
 
-  @Test
-  void should_create_record_mapper_when_null_to_unset_is_false() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_record_mapper_when_null_to_unset_is_false(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     LoaderConfig config = makeLoaderConfig("nullToUnset = false, keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(LOAD, cluster, false, true);
@@ -529,15 +701,26 @@ class SchemaSettingsTest {
     assertThat(recordMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo(
-            String.format("INSERT INTO ks.t1(%1$s,\"%2$s\",%3$s) VALUES (?,?,?)", C1, C2, C3));
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "INSERT INTO ks.t1 (%1$s, \"%2$s\", %3$s) VALUES (?, ?, ?)", C1, C2, C3));
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "INSERT INTO ks.t1 (%1$s, \"%2$s\", %3$s) VALUES (:%1$s, :\"%2$s\", :%3$s)",
+                  C1, C2, C3));
+    }
     assertMapping((DefaultMapping) getInternalState(recordMapper, "mapping"));
     assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isFalse();
   }
 
-  @Test
-  void should_create_row_mapper_when_mapping_keyspace_and_table_provided() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_row_mapper_when_mapping_keyspace_and_table_provided(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     LoaderConfig config =
         makeLoaderConfig(
             String.format("mapping = \" 0 = \\\"%2$s\\\" , 2 = %1$s \", ", C1, C2)
@@ -550,15 +733,26 @@ class SchemaSettingsTest {
     assertThat(readResultMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo(
-            String.format(
-                "SELECT \"%2$s\",%1$s FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?", C1, C2));
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "SELECT \"%2$s\", %1$s FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?",
+                  C1, C2));
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "SELECT \"%2$s\", %1$s FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end",
+                  C1, C2));
+    }
     assertMapping((DefaultMapping) getInternalState(readResultMapper, "mapping"), "0", C2, "2", C1);
   }
 
-  @Test
-  void should_create_row_mapper_when_mapping_is_a_list_and_indexed() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_row_mapper_when_mapping_is_a_list_and_indexed(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     LoaderConfig config =
         makeLoaderConfig(
             String.format("mapping = \"\\\"%2$s\\\", %1$s\", ", C1, C2)
@@ -571,15 +765,26 @@ class SchemaSettingsTest {
     assertThat(readResultMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo(
-            String.format(
-                "SELECT \"%2$s\",%1$s FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?", C1, C2));
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "SELECT \"%2$s\", %1$s FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?",
+                  C1, C2));
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "SELECT \"%2$s\", %1$s FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end",
+                  C1, C2));
+    }
     assertMapping((DefaultMapping) getInternalState(readResultMapper, "mapping"), "0", C2, "1", C1);
   }
 
-  @Test
-  void should_create_row_mapper_when_mapping_is_a_list_and_mapped() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_row_mapper_when_mapping_is_a_list_and_mapped(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     LoaderConfig config =
         makeLoaderConfig(
             String.format("mapping = \"\\\"%2$s\\\", %1$s\", ", C1, C2)
@@ -592,15 +797,26 @@ class SchemaSettingsTest {
     assertThat(readResultMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo(
-            String.format(
-                "SELECT \"%2$s\",%1$s FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?", C1, C2));
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "SELECT \"%2$s\", %1$s FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?",
+                  C1, C2));
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "SELECT \"%2$s\", %1$s FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end",
+                  C1, C2));
+    }
     assertMapping((DefaultMapping) getInternalState(readResultMapper, "mapping"), C1, C1, C2, C2);
   }
 
-  @Test
-  void should_create_row_mapper_with_inferred_mapping_and_override() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_row_mapper_with_inferred_mapping_and_override(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     // Infer mapping, but override to set c4 source field to C3 column.
     LoaderConfig config =
         makeLoaderConfig(
@@ -613,17 +829,27 @@ class SchemaSettingsTest {
     assertThat(readResultMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo(
-            String.format(
-                "SELECT %3$s,%1$s,\"%2$s\" FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?",
-                C1, C2, C3));
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "SELECT %3$s, %1$s, \"%2$s\" FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?",
+                  C1, C2, C3));
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "SELECT %3$s, %1$s, \"%2$s\" FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end",
+                  C1, C2, C3));
+    }
     assertMapping(
         (DefaultMapping) getInternalState(readResultMapper, "mapping"), C1, C1, C2, C2, C4, C3);
   }
 
-  @Test
-  void should_create_row_mapper_with_inferred_mapping_and_skip() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_row_mapper_with_inferred_mapping_and_skip(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     // Infer mapping, but skip C2.
     LoaderConfig config =
         makeLoaderConfig(
@@ -636,15 +862,25 @@ class SchemaSettingsTest {
     assertThat(readResultMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo(
-            String.format(
-                "SELECT %1$s,%2$s FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?", C1, C3));
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "SELECT %1$s, %2$s FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?", C1, C3));
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "SELECT %1$s, %2$s FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end",
+                  C1, C3));
+    }
     assertMapping((DefaultMapping) getInternalState(readResultMapper, "mapping"), C1, C1, C3, C3);
   }
 
-  @Test
-  void should_create_row_mapper_with_inferred_mapping_and_skip_multiple() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_row_mapper_with_inferred_mapping_and_skip_multiple(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     // Infer mapping, but skip C2 and C3.
     LoaderConfig config =
         makeLoaderConfig(
@@ -657,19 +893,28 @@ class SchemaSettingsTest {
     assertThat(readResultMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo(
-            String.format("SELECT %1$s FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?", C1));
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format("SELECT %1$s FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?", C1));
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "SELECT %1$s FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end", C1));
+    }
     assertMapping((DefaultMapping) getInternalState(readResultMapper, "mapping"), C1, C1);
   }
 
-  @Test
-  void should_create_row_mapper_when_mapping_and_statement_provided() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_row_mapper_when_mapping_and_statement_provided(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     LoaderConfig config =
         makeLoaderConfig(
             String.format("mapping = \" 0 = \\\"%2$s\\\" , 2 = %1$s \", ", C1, C2)
                 + "nullToUnset = true, "
-                + String.format("query=\"select \\\"%2$s\\\",%1$s from ks.t1\"", C1, C2));
+                + String.format("query=\"select \\\"%2$s\\\", %1$s from ks.t1\"", C1, C2));
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(UNLOAD, cluster, true, false);
     ReadResultMapper readResultMapper =
@@ -677,16 +922,26 @@ class SchemaSettingsTest {
     assertThat(readResultMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo(
-            String.format(
-                "select \"%2$s\",%1$s from ks.t1 " + "WHERE token(c1) > ? AND token(c1) <= ?",
-                C1, C2));
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "select \"%2$s\", %1$s from ks.t1 WHERE token(c1) > ? AND token(c1) <= ?",
+                  C1, C2));
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "select \"%2$s\", %1$s from ks.t1 WHERE token(c1) > :start AND token(c1) <= :end",
+                  C1, C2));
+    }
     assertMapping((DefaultMapping) getInternalState(readResultMapper, "mapping"), "0", C2, "2", C1);
   }
 
-  @Test
-  void should_create_row_mapper_when_keyspace_and_table_provided() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_row_mapper_when_keyspace_and_table_provided(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     LoaderConfig config = makeLoaderConfig("nullToUnset = true, keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(UNLOAD, cluster, false, true);
@@ -695,16 +950,27 @@ class SchemaSettingsTest {
     assertThat(readResultMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo(
-            String.format(
-                "SELECT %1$s,\"%2$s\",%3$s FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?",
-                C1, C2, C3));
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "SELECT %1$s, \"%2$s\", %3$s FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?",
+                  C1, C2, C3));
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "SELECT %1$s, \"%2$s\", %3$s FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end",
+                  C1, C2, C3));
+    }
+
     assertMapping((DefaultMapping) getInternalState(readResultMapper, "mapping"));
   }
 
-  @Test
-  void should_create_row_mapper_when_null_to_unset_is_false() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_row_mapper_when_null_to_unset_is_false(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     LoaderConfig config = makeLoaderConfig("nullToUnset = false, keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(UNLOAD, cluster, false, true);
@@ -713,11 +979,19 @@ class SchemaSettingsTest {
     assertThat(readResultMapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo(
-            String.format(
-                "SELECT %1$s,\"%2$s\",%3$s FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?",
-                C1, C2, C3));
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "SELECT %1$s, \"%2$s\", %3$s FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?",
+                  C1, C2, C3));
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              String.format(
+                  "SELECT %1$s, \"%2$s\", %3$s FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end",
+                  C1, C2, C3));
+    }
     assertMapping((DefaultMapping) getInternalState(readResultMapper, "mapping"));
   }
 
@@ -731,7 +1005,7 @@ class SchemaSettingsTest {
     DefaultMapping mapping = (DefaultMapping) getInternalState(mapper, "mapping");
     assertThat(mapping).isNotNull();
     assertThat((Set) getInternalState(mapping, "writeTimeVariables"))
-        .containsOnly(INTERNAL_TIMESTAMP_VARNAME.asVariable());
+        .containsOnly(INTERNAL_TIMESTAMP_VARNAME.render(VARIABLE));
   }
 
   @Test
@@ -744,7 +1018,7 @@ class SchemaSettingsTest {
     when(ps.getVariables()).thenReturn(definitions);
     LoaderConfig config =
         makeLoaderConfig(
-            "query = \"INSERT INTO ks.t1 (c1,c2) VALUES (:c1,:c2) USING TIMESTAMP :c3\","
+            "query = \"INSERT INTO ks.t1 (c1,c2) VALUES (:c1, :c2) USING TIMESTAMP :c3\","
                 + "mapping = \" f1 = c1 , f2 = c2 , f3 = c3 \" ");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(LOAD, cluster, false, true);
@@ -764,37 +1038,52 @@ class SchemaSettingsTest {
     when(ps.getVariables()).thenReturn(definitions);
     LoaderConfig config =
         makeLoaderConfig(
-            "query = \"INSERT INTO ks.t1 (c1,c2) VALUES (:c1,:c2) USING TTL 123 AND tImEsTaMp     :\\\"This is a quoted \\\"\\\" variable name\\\"\"");
+            "query = \"INSERT INTO ks.t1 (c1,c2) VALUES (:c1, :c2) USING TTL 123 AND tImEsTaMp     :\\\"This is a quoted \\\"\\\" variable name\\\"\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(LOAD, cluster, false, true);
     RecordMapper mapper = schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     DefaultMapping mapping = (DefaultMapping) getInternalState(mapper, "mapping");
     assertThat(mapping).isNotNull();
     assertThat((Set) getInternalState(mapping, "writeTimeVariables"))
-        .containsOnly(CQLIdentifier.fromInternal("This is a quoted \" variable name").asVariable());
+        .containsOnly(
+            CQLIdentifier.fromInternal("This is a quoted \" variable name").render(VARIABLE));
   }
 
-  @Test
-  void should_include_function_call_in_insert_statement() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_include_function_call_in_insert_statement(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     LoaderConfig config =
         makeLoaderConfig("keyspace = ks, table = t1, mapping = \" f1 = c1, now() = c3 \"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(LOAD, cluster, false, true);
     schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
-    assertThat(getInternalState(schemaSettings, "query"))
-        .isEqualTo("INSERT INTO ks.t1(c1,c3) VALUES (?,now())");
+    if (version == V1) {
+      assertThat(getInternalState(schemaSettings, "query"))
+          .isEqualTo("INSERT INTO ks.t1 (c1, c3) VALUES (?, now())");
+    } else {
+      assertThat(getInternalState(schemaSettings, "query"))
+          .isEqualTo("INSERT INTO ks.t1 (c1, c3) VALUES (:c1, now())");
+    }
   }
 
-  @Test
-  void should_include_function_call_in_select_statement() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_include_function_call_in_select_statement(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     LoaderConfig config =
         makeLoaderConfig("keyspace = ks, table = t1, mapping = \" f1 = c1, f2 = now() \"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(UNLOAD, cluster, false, true);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-    assertThat(getInternalState(schemaSettings, "query"))
-        .isEqualTo(
-            "SELECT c1,now() AS \"now()\" FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?");
+    if (version == V1) {
+      assertThat(getInternalState(schemaSettings, "query"))
+          .isEqualTo("SELECT c1, now() FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?");
+    } else {
+      assertThat(getInternalState(schemaSettings, "query"))
+          .isEqualTo(
+              "SELECT c1, now() AS \"now()\" FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end");
+    }
   }
 
   @Test
@@ -835,12 +1124,20 @@ class SchemaSettingsTest {
     assertThat(statements.get(0)).isEqualTo(bs);
   }
 
-  @Test
-  void should_create_multiple_read_statements() {
-    ColumnDefinitions definitions =
-        newColumnDefinitions(
-            newDefinition("partition key token", bigint()),
-            newDefinition("partition key token", bigint()));
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_multiple_read_statements(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
+    ColumnDefinitions definitions;
+    if (version == V1) {
+      definitions =
+          newColumnDefinitions(
+              newDefinition("partition key token", bigint()),
+              newDefinition("partition key token", bigint()));
+    } else {
+      definitions =
+          newColumnDefinitions(newDefinition("start", bigint()), newDefinition("end", bigint()));
+    }
     when(ps.getVariables()).thenReturn(definitions);
     BoundStatement bs1 = mock(BoundStatement.class);
     when(bs1.setToken(0, token1)).thenReturn(bs1);
@@ -1014,12 +1311,20 @@ class SchemaSettingsTest {
             });
   }
 
-  @Test
-  void should_create_multiple_read_statements_for_counting() {
-    ColumnDefinitions definitions =
-        newColumnDefinitions(
-            newDefinition("partition key token", bigint()),
-            newDefinition("partition key token", bigint()));
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_multiple_read_statements_for_counting(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
+    ColumnDefinitions definitions;
+    if (version == V1) {
+      definitions =
+          newColumnDefinitions(
+              newDefinition("partition key token", bigint()),
+              newDefinition("partition key token", bigint()));
+    } else {
+      definitions =
+          newColumnDefinitions(newDefinition("start", bigint()), newDefinition("end", bigint()));
+    }
     when(ps.getVariables()).thenReturn(definitions);
     BoundStatement bs1 = mock(BoundStatement.class);
     when(bs1.setToken(0, token1)).thenReturn(bs1);
@@ -1132,8 +1437,10 @@ class SchemaSettingsTest {
             });
   }
 
-  @Test
-  void should_create_row_counter_for_global_stats() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_row_counter_for_global_stats(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     when(table.getPrimaryKey()).thenReturn(newArrayList(col1, col2));
     LoaderConfig config = makeLoaderConfig("keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
@@ -1143,12 +1450,19 @@ class SchemaSettingsTest {
     assertThat(counter).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo("SELECT c1 FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?");
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo("SELECT c1 FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?");
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo("SELECT c1 FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end");
+    }
   }
 
-  @Test
-  void should_create_row_counter_for_partition_stats() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_row_counter_for_partition_stats(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     when(table.getClusteringColumns()).thenReturn(Collections.singletonList(col2));
     LoaderConfig config = makeLoaderConfig("keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
@@ -1158,12 +1472,19 @@ class SchemaSettingsTest {
     assertThat(counter).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo("SELECT c1 FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?");
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo("SELECT c1 FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?");
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo("SELECT c1 FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end");
+    }
   }
 
-  @Test
-  void should_create_row_counter_for_hosts_stats() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_row_counter_for_hosts_stats(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     LoaderConfig config = makeLoaderConfig("keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.COUNT, cluster, false, true);
@@ -1172,12 +1493,19 @@ class SchemaSettingsTest {
     assertThat(counter).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo("SELECT token(c1) FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?");
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo("SELECT token(c1) FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?");
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo("SELECT token(c1) FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end");
+    }
   }
 
-  @Test
-  void should_create_row_counter_for_ranges_stats() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_row_counter_for_ranges_stats(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     LoaderConfig config = makeLoaderConfig("keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.COUNT, cluster, false, true);
@@ -1186,12 +1514,19 @@ class SchemaSettingsTest {
     assertThat(counter).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo("SELECT token(c1) FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?");
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo("SELECT token(c1) FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?");
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo("SELECT token(c1) FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end");
+    }
   }
 
-  @Test
-  void should_create_row_counter_for_partitions_and_ranges_stats() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_create_row_counter_for_partitions_and_ranges_stats(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     when(table.getClusteringColumns()).thenReturn(Collections.singletonList(col2));
     LoaderConfig config = makeLoaderConfig("keyspace=ks, table=t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
@@ -1202,8 +1537,13 @@ class SchemaSettingsTest {
     assertThat(counter).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo("SELECT c1 FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?");
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo("SELECT c1 FROM ks.t1 WHERE token(c1) > ? AND token(c1) <= ?");
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo("SELECT c1 FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end");
+    }
   }
 
   @Test
@@ -1833,12 +2173,20 @@ class SchemaSettingsTest {
                 + "may put the graph in an inconsistent state.");
   }
 
-  @Test
-  void should_insert_where_clause_in_select_statement_simple() {
-    ColumnDefinitions definitions =
-        newColumnDefinitions(
-            newDefinition("partition key token", bigint()),
-            newDefinition("partition key token", bigint()));
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_insert_where_clause_in_select_statement_simple(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
+    ColumnDefinitions definitions;
+    if (version == V1) {
+      definitions =
+          newColumnDefinitions(
+              newDefinition("partition key token", bigint()),
+              newDefinition("partition key token", bigint()));
+    } else {
+      definitions =
+          newColumnDefinitions(newDefinition("start", bigint()), newDefinition("end", bigint()));
+    }
     when(ps.getVariables()).thenReturn(definitions);
     BoundStatement bs1 = mock(BoundStatement.class);
     when(bs1.setToken(0, token1)).thenReturn(bs1);
@@ -1859,16 +2207,29 @@ class SchemaSettingsTest {
     assertThat(stmts).hasSize(3);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo("SELECT a,b,c FROM t1 WHERE token(c1) > ? AND token(c1) <= ?");
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo("SELECT a,b,c FROM t1 WHERE token(c1) > ? AND token(c1) <= ?");
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo("SELECT a,b,c FROM t1 WHERE token(c1) > :start AND token(c1) <= :end");
+    }
   }
 
-  @Test
-  void should_insert_where_clause_in_select_statement_complex() {
-    ColumnDefinitions definitions =
-        newColumnDefinitions(
-            newDefinition("partition key token", bigint()),
-            newDefinition("partition key token", bigint()));
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_insert_where_clause_in_select_statement_complex(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
+    ColumnDefinitions definitions;
+    if (version == V1) {
+      definitions =
+          newColumnDefinitions(
+              newDefinition("partition key token", bigint()),
+              newDefinition("partition key token", bigint()));
+    } else {
+      definitions =
+          newColumnDefinitions(newDefinition("start", bigint()), newDefinition("end", bigint()));
+    }
     when(ps.getVariables()).thenReturn(definitions);
     BoundStatement bs1 = mock(BoundStatement.class);
     when(bs1.setToken(0, token1)).thenReturn(bs1);
@@ -1889,17 +2250,31 @@ class SchemaSettingsTest {
     assertThat(stmts).hasSize(3);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo("SELECT a,b,c FROM t1 WHERE token(c1) > ? AND token(c1) <= ? LIMIT 1000");
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo("SELECT a,b,c FROM t1 WHERE token(c1) > ? AND token(c1) <= ? LIMIT 1000");
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              "SELECT a,b,c FROM t1 WHERE token(c1) > :start AND token(c1) <= :end LIMIT 1000");
+    }
   }
 
-  @Test
-  void should_insert_where_clause_in_select_statement_case_sensitive() {
+  @ParameterizedTest
+  @EnumSource(ProtocolVersion.class)
+  void should_insert_where_clause_in_select_statement_case_sensitive(ProtocolVersion version) {
+    when(protocolOptions.getProtocolVersion()).thenReturn(version);
     when(keyspace.getTable("\"MyTable\"")).thenReturn(table);
-    ColumnDefinitions definitions =
-        newColumnDefinitions(
-            newDefinition("partition key token", bigint()),
-            newDefinition("partition key token", bigint()));
+    ColumnDefinitions definitions;
+    if (version == V1) {
+      definitions =
+          newColumnDefinitions(
+              newDefinition("partition key token", bigint()),
+              newDefinition("partition key token", bigint()));
+    } else {
+      definitions =
+          newColumnDefinitions(newDefinition("start", bigint()), newDefinition("end", bigint()));
+    }
     when(ps.getVariables()).thenReturn(definitions);
     BoundStatement bs1 = mock(BoundStatement.class);
     when(bs1.setToken(0, token1)).thenReturn(bs1);
@@ -1921,9 +2296,15 @@ class SchemaSettingsTest {
     assertThat(stmts).hasSize(3);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue())
-        .isEqualTo(
-            "SELECT a,b,c FROM \"MyTable\" WHERE token(c1) > ? AND token(c1) <= ? LIMIT 1000");
+    if (version == V1) {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              "SELECT a,b,c FROM \"MyTable\" WHERE token(c1) > ? AND token(c1) <= ? LIMIT 1000");
+    } else {
+      assertThat(argument.getValue())
+          .isEqualTo(
+              "SELECT a,b,c FROM \"MyTable\" WHERE token(c1) > :start AND token(c1) <= :end LIMIT 1000");
+    }
   }
 
   @Test

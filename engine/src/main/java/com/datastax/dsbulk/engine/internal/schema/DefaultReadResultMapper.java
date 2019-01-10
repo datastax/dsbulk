@@ -8,6 +8,8 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
+import static com.datastax.dsbulk.engine.internal.schema.CQLRenderMode.VARIABLE;
+
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.TypeCodec;
@@ -48,11 +50,12 @@ public class DefaultReadResultMapper implements ReadResultMapper {
         Collection<CQLFragment> variables = mapping.fieldToVariables(field);
         // Note: in practice, there can be only one variable mapped to a given field when unloading
         for (CQLFragment variable : variables) {
-          DataType type = row.getColumnDefinitions().getType(variable.asVariable());
+          String name = variable.render(VARIABLE);
+          DataType type = row.getColumnDefinitions().getType(name);
           TypeToken<?> fieldType = recordMetadata.getFieldType(field, type);
           if (fieldType != null) {
             TypeCodec<?> codec = mapping.codec(variable, type, fieldType);
-            Object value = row.get(variable.asVariable(), codec);
+            Object value = row.get(name, codec);
             record.setFieldValue(field, value);
           }
         }

@@ -10,10 +10,17 @@ package com.datastax.dsbulk.engine.internal.settings;
 
 import static com.datastax.driver.core.DriverCoreHooks.resultSetVariables;
 import static com.datastax.driver.core.Metadata.quoteIfNecessary;
+import static com.datastax.driver.core.ProtocolVersion.V1;
 import static com.datastax.dsbulk.engine.WorkflowType.COUNT;
 import static com.datastax.dsbulk.engine.WorkflowType.LOAD;
 import static com.datastax.dsbulk.engine.WorkflowType.UNLOAD;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
+import static com.datastax.dsbulk.engine.internal.schema.CQLRenderMode.ALIASED_SELECTOR;
+import static com.datastax.dsbulk.engine.internal.schema.CQLRenderMode.INTERNAL;
+import static com.datastax.dsbulk.engine.internal.schema.CQLRenderMode.NAMED_ASSIGNMENT;
+import static com.datastax.dsbulk.engine.internal.schema.CQLRenderMode.POSITIONAL_ASSIGNMENT;
+import static com.datastax.dsbulk.engine.internal.schema.CQLRenderMode.UNALIASED_SELECTOR;
+import static com.datastax.dsbulk.engine.internal.schema.CQLRenderMode.VARIABLE;
 import static com.datastax.dsbulk.engine.internal.schema.MappingPreference.INDEXED_ONLY;
 import static com.datastax.dsbulk.engine.internal.schema.MappingPreference.MAPPED_ONLY;
 import static com.datastax.dsbulk.engine.internal.schema.MappingPreference.MAPPED_OR_INDEXED;
@@ -48,9 +55,9 @@ import com.datastax.dsbulk.commons.partitioner.TokenRangeReadStatementGenerator;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
-import com.datastax.dsbulk.engine.internal.schema.Alias;
 import com.datastax.dsbulk.engine.internal.schema.CQLFragment;
 import com.datastax.dsbulk.engine.internal.schema.CQLIdentifier;
+import com.datastax.dsbulk.engine.internal.schema.CQLRenderMode;
 import com.datastax.dsbulk.engine.internal.schema.DefaultMapping;
 import com.datastax.dsbulk.engine.internal.schema.DefaultReadResultCounter;
 import com.datastax.dsbulk.engine.internal.schema.DefaultReadResultMapper;
@@ -129,6 +136,7 @@ public class SchemaSettings {
   private PreparedStatement preparedStatement;
   private ImmutableSet<CQLFragment> writeTimeVariables;
   private MappingPreference mappingPreference;
+  private ProtocolVersion protocolVersion;
 
   SchemaSettings(LoaderConfig config) {
     this.config = config;
@@ -179,6 +187,8 @@ public class SchemaSettings {
         throw new BulkConfigurationException(
             "Settings schema.keyspace or schema.graph must be defined if schema.table, schema.vertex or schema.edge are defined");
       }
+
+      protocolVersion = cluster.getConfiguration().getProtocolOptions().getProtocolVersion();
 
       // Keyspace
 
@@ -236,12 +246,12 @@ public class SchemaSettings {
                 "Setting schema.keyspace must not be provided when schema.query contains a keyspace-qualified statement");
           }
           CQLIdentifier keyspaceName = queryInspector.getKeyspaceName().get();
-          keyspace = cluster.getMetadata().getKeyspace(keyspaceName.asCql());
+          keyspace = cluster.getMetadata().getKeyspace(keyspaceName.render(VARIABLE));
           if (keyspace == null) {
             throw new BulkConfigurationException(
                 String.format(
                     "Value for schema.query references a non-existent keyspace: %s",
-                    keyspaceName.asCql()));
+                    keyspaceName.render(VARIABLE)));
           }
         } else if (keyspace == null) {
           throw new BulkConfigurationException(
@@ -249,11 +259,12 @@ public class SchemaSettings {
         }
 
         CQLIdentifier tableName = queryInspector.getTableName();
-        table = keyspace.getTable(tableName.asCql());
+        table = keyspace.getTable(tableName.render(VARIABLE));
         if (table == null) {
           throw new BulkConfigurationException(
               String.format(
-                  "Value for schema.query references a non-existent table: %s", tableName.asCql()));
+                  "Value for schema.query references a non-existent table: %s",
+                  tableName.render(VARIABLE)));
         }
 
         // If a query is provided, ttl and timestamp must not be.
@@ -303,9 +314,6 @@ public class SchemaSettings {
             "Connector must support at least one of indexed or mapped mappings");
       }
 
-      ProtocolVersion protocolVersion =
-          cluster.getConfiguration().getProtocolOptions().getProtocolVersion();
-
       if (config.hasPath(MAPPING)) {
 
         if (workflowType == COUNT) {
@@ -318,7 +326,6 @@ public class SchemaSettings {
                 config.getString(MAPPING),
                 workflowType,
                 mappingPreference,
-                protocolVersion,
                 usingTimestampVariable,
                 usingTTLVariable);
 
@@ -358,12 +365,7 @@ public class SchemaSettings {
 
         mapping =
             new MappingInspector(
-                "*=*",
-                workflowType,
-                mappingPreference,
-                protocolVersion,
-                usingTimestampVariable,
-                usingTTLVariable);
+                "*=*", workflowType, mappingPreference, usingTimestampVariable, usingTTLVariable);
       }
 
       // Misc
@@ -570,7 +572,7 @@ public class SchemaSettings {
       if (workflowType == LOAD) {
         validatePrimaryKeyPresent(fieldsToVariables);
       }
-      fieldsToVariables = processMappingFunctions(fieldsToVariables, workflowType);
+      fieldsToVariables = processMappingFunctions(fieldsToVariables);
     }
     assert query != null;
     assert queryInspector != null;
@@ -606,7 +608,7 @@ public class SchemaSettings {
       // in the presence of user-provided queries, create the mapping *after* query preparation
       ProtocolVersion protocolVersion =
           session.getCluster().getConfiguration().getProtocolOptions().getProtocolVersion();
-      if (protocolVersion == ProtocolVersion.V1 && workflowType != LOAD) {
+      if (protocolVersion == V1 && workflowType != LOAD) {
         // In protocol V1 we don't have the result set variables, so we need
         // to work with the information we have from the query inspector, which may be incomplete.
         if (queryInspector.isSelectStar()) {
@@ -834,13 +836,13 @@ public class SchemaSettings {
               throw new BulkConfigurationException(
                   String.format(
                       "Schema mapping entry '%s' doesn't match any column found in table %s",
-                      value.asInternal(), tableName));
+                      value.render(INTERNAL), tableName));
             } else {
               assert query != null;
               throw new BulkConfigurationException(
                   String.format(
                       "Schema mapping entry '%s' doesn't match any bound variable found in query: '%s'",
-                      value.asInternal(), query));
+                      value.render(INTERNAL), query));
             }
           }
         });
@@ -858,7 +860,7 @@ public class SchemaSettings {
       if (queryVariable == null) {
         throw new BulkConfigurationException(
             "Missing required primary key column "
-                + pkVariable.asCql()
+                + pkVariable.render(VARIABLE)
                 + " from schema.mapping or schema.query");
       }
       // do not check if the mapping contains a PK
@@ -867,7 +869,9 @@ public class SchemaSettings {
         // the mapping did not contain such column
         if (!mappingVariables.contains(queryVariable)) {
           throw new BulkConfigurationException(
-              "Missing required primary key column " + pkVariable.asCql() + " from schema.mapping");
+              "Missing required primary key column "
+                  + pkVariable.render(VARIABLE)
+                  + " from schema.mapping");
         }
       }
     }
@@ -886,7 +890,7 @@ public class SchemaSettings {
         if (mappingPreference == INDEXED_ONLY) {
           fieldsToVariables.put(new IndexedMappingField(i), colName);
         } else {
-          fieldsToVariables.put(new MappedMappingField(colName.asInternal()), colName);
+          fieldsToVariables.put(new MappedMappingField(colName.render(INTERNAL)), colName);
         }
       }
       i++;
@@ -896,12 +900,13 @@ public class SchemaSettings {
 
   private String inferInsertQuery(ImmutableMultimap<MappingField, CQLFragment> fieldsToVariables) {
     StringBuilder sb = new StringBuilder("INSERT INTO ");
-    sb.append(keyspaceName).append('.').append(tableName).append('(');
-    appendColumnNames(fieldsToVariables, sb);
+    sb.append(keyspaceName).append('.').append(tableName).append(" (");
+    appendColumnNames(fieldsToVariables, sb, VARIABLE);
     sb.append(") VALUES (");
     Set<CQLFragment> cols = maybeSortCols(fieldsToVariables);
     Iterator<CQLFragment> it = cols.iterator();
     boolean isFirst = true;
+    CQLRenderMode assignment = protocolVersion != V1 ? NAMED_ASSIGNMENT : POSITIONAL_ASSIGNMENT;
     while (it.hasNext()) {
       CQLFragment col = it.next();
       if (isPseudoColumn(col)) {
@@ -909,16 +914,16 @@ public class SchemaSettings {
         continue;
       }
       if (!isFirst) {
-        sb.append(',');
+        sb.append(", ");
       }
       isFirst = false;
       // for insert queries there can be only one field mapped to a given column
       MappingField field = fieldsToVariables.inverse().get(col).iterator().next();
       if (field instanceof FunctionCall) {
         // append the function call as is
-        sb.append(((FunctionCall) field).asCql());
+        sb.append(((FunctionCall) field).render(assignment));
       } else {
-        sb.append('?');
+        sb.append(col.render(assignment));
       }
     }
     sb.append(')');
@@ -937,6 +942,7 @@ public class SchemaSettings {
     Set<CQLFragment> cols = maybeSortCols(fieldsToVariables);
     Iterator<CQLFragment> it = cols.iterator();
     boolean isFirst = true;
+    CQLRenderMode assignment = protocolVersion != V1 ? NAMED_ASSIGNMENT : POSITIONAL_ASSIGNMENT;
     List<CQLFragment> pks =
         table
             .getPrimaryKey()
@@ -956,10 +962,14 @@ public class SchemaSettings {
             "Function calls are not allowed when updating a counter table.");
       }
       if (!isFirst) {
-        sb.append(',');
+        sb.append(", ");
       }
       isFirst = false;
-      sb.append(col.asCql()).append('=').append(col.asCql()).append("+?");
+      sb.append(col.render(VARIABLE))
+          .append(" = ")
+          .append(col.render(VARIABLE))
+          .append(" + ")
+          .append(col.render(assignment));
     }
     sb.append(" WHERE ");
     it = pks.iterator();
@@ -970,7 +980,7 @@ public class SchemaSettings {
         sb.append(" AND ");
       }
       isFirst = false;
-      sb.append(col.asCql()).append("=?");
+      sb.append(col.render(VARIABLE)).append(" = ").append(col.render(assignment));
     }
     return sb.toString();
   }
@@ -985,12 +995,13 @@ public class SchemaSettings {
             "Cannot set TTL or timestamp when updating a counter table.");
       }
       sb.append(" USING ");
+      CQLRenderMode assignment = protocolVersion != V1 ? NAMED_ASSIGNMENT : POSITIONAL_ASSIGNMENT;
       if (hasTtl) {
         sb.append("TTL ");
         if (ttlSeconds != -1) {
           sb.append(ttlSeconds);
         } else {
-          sb.append('?');
+          sb.append(INTERNAL_TTL_VARNAME.render(assignment));
         }
         if (hasTimestamp) {
           sb.append(" AND ");
@@ -1001,7 +1012,7 @@ public class SchemaSettings {
         if (timestampMicros != -1) {
           sb.append(timestampMicros);
         } else {
-          sb.append('?');
+          sb.append(INTERNAL_TIMESTAMP_VARNAME.render(assignment));
         }
       }
     }
@@ -1009,7 +1020,8 @@ public class SchemaSettings {
 
   private String inferReadQuery(ImmutableMultimap<MappingField, CQLFragment> fieldsToVariables) {
     StringBuilder sb = new StringBuilder("SELECT ");
-    appendColumnNames(fieldsToVariables, sb);
+    CQLRenderMode mode = protocolVersion != V1 ? ALIASED_SELECTOR : UNALIASED_SELECTOR;
+    appendColumnNames(fieldsToVariables, sb, mode);
     sb.append(" FROM ").append(keyspaceName).append('.').append(tableName);
     appendTokenRangeRestriction(sb);
     return sb.toString();
@@ -1018,9 +1030,20 @@ public class SchemaSettings {
   private void appendTokenRangeRestriction(StringBuilder sb) {
     sb.append(" WHERE ");
     appendTokenFunction(sb);
-    sb.append(" > ? AND ");
+    sb.append(" > ");
+    if (protocolVersion != V1) {
+      sb.append(":start");
+    } else {
+      sb.append('?');
+    }
+    sb.append(" AND ");
     appendTokenFunction(sb);
-    sb.append(" <= ?");
+    sb.append(" <= ");
+    if (protocolVersion != V1) {
+      sb.append(":end");
+    } else {
+      sb.append('?');
+    }
   }
 
   private String inferCountQuery(EnumSet<StatisticsMode> modes) {
@@ -1034,7 +1057,7 @@ public class SchemaSettings {
           ColumnMetadata col = it.next();
           sb.append(quoteIfNecessary(col.getName()));
           if (it.hasNext()) {
-            sb.append(',');
+            sb.append(", ");
           }
         }
       } else {
@@ -1070,7 +1093,9 @@ public class SchemaSettings {
   }
 
   private void appendColumnNames(
-      ImmutableMultimap<MappingField, CQLFragment> fieldsToVariables, StringBuilder sb) {
+      ImmutableMultimap<MappingField, CQLFragment> fieldsToVariables,
+      StringBuilder sb,
+      CQLRenderMode mode) {
     // de-dup in case the mapping has both indexed and mapped entries
     // for the same bound variable
     Set<CQLFragment> cols = maybeSortCols(fieldsToVariables);
@@ -1085,10 +1110,10 @@ public class SchemaSettings {
         continue;
       }
       if (!isFirst) {
-        sb.append(',');
+        sb.append(", ");
       }
       isFirst = false;
-      sb.append(col.asCql());
+      sb.append(col.render(mode));
     }
   }
 
@@ -1100,7 +1125,7 @@ public class SchemaSettings {
       ColumnMetadata pk = pks.next();
       sb.append(quoteIfNecessary(pk.getName()));
       if (pks.hasNext()) {
-        sb.append(',');
+        sb.append(", ");
       }
     }
     sb.append(')');
@@ -1113,7 +1138,7 @@ public class SchemaSettings {
       ColumnMetadata pk = pks.next();
       sb.append(quoteIfNecessary(pk.getName()));
       if (pks.hasNext()) {
-        sb.append(',');
+        sb.append(", ");
       }
     }
   }
@@ -1140,39 +1165,27 @@ public class SchemaSettings {
   }
 
   private static ImmutableMultimap<MappingField, CQLFragment> processMappingFunctions(
-      ImmutableMultimap<MappingField, CQLFragment> fieldsToVariables, WorkflowType workflowType) {
+      ImmutableMultimap<MappingField, CQLFragment> fieldsToVariables) {
     ImmutableMultimap.Builder<MappingField, CQLFragment> builder = ImmutableMultimap.builder();
     for (Map.Entry<MappingField, CQLFragment> entry : fieldsToVariables.entries()) {
-      if (entry.getValue() instanceof FunctionCall) {
-        handleFunctionForUnload(builder, entry);
-      } else if (entry.getKey() instanceof FunctionCall) {
-        handleFunctionForLoad(workflowType);
+      if (entry.getKey() instanceof FunctionCall) {
+        // functions as fields should be included in the final mapping arg by arg, for every arg
+        // that is a field identifier, e.g. plus(fieldA,fieldB) will generate two bound variables:
+        // INSERT INTO ... VALUES ( plus(:fieldA,:fieldB) )
+        for (CQLFragment arg : ((FunctionCall) entry.getKey()).getArgs()) {
+          if (arg instanceof CQLIdentifier) {
+            // for each arg, create an arg -> arg mapping
+            builder.put(new MappedMappingField(arg.render(INTERNAL)), arg);
+          }
+        }
       } else {
+        // functions as variables must be included in the final mapping as a whole, e.g.
+        // plus(col1,col2) will generate one result set variable:
+        // SELECT plus(col1,col2) AS "plus(col1,col2)" ...
         builder.put(entry);
       }
     }
     return builder.build();
-  }
-
-  private static void handleFunctionForUnload(
-      ImmutableMultimap.Builder<MappingField, CQLFragment> builder,
-      Map.Entry<MappingField, CQLFragment> entry) {
-    // functions as variables are are only allowed when unloading, but this has already
-    // been validated when generating the query, so we don't need to re-validate here;
-    // function calls when unloading should be included in the final mapping so that their
-    // results can be retrieved by ReadResultMapper.
-    builder.put(entry.getKey(), entry.getValue());
-  }
-
-  private static void handleFunctionForLoad(WorkflowType workflowType) {
-    // functions as fields are only allowed when loading, and this needs to be validated now;
-    // and we need to remove such function calls from the final mapping since RecordMapper
-    // doesn't need them.
-    if (workflowType != LOAD) {
-      throw new IllegalArgumentException(
-          "Misplaced function call detected on the left side of a mapping entry; "
-              + "please review your schema.mapping setting");
-    }
   }
 
   @NotNull
@@ -1192,9 +1205,7 @@ public class SchemaSettings {
   }
 
   private static boolean containsFunctionCalls(Collection<?> coll) {
-    return coll.stream()
-        .map(o -> o instanceof Alias ? ((Alias) o).getTarget() : o)
-        .anyMatch(FunctionCall.class::isInstance);
+    return coll.stream().anyMatch(FunctionCall.class::isInstance);
   }
 
   private static boolean hasGraphOptions(LoaderConfig config) {
