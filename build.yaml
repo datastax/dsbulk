@@ -65,4 +65,4 @@ build:
     - "**/target/failsafe-reports/TEST-*.xml"
   - jacoco:
     exec_pattern: "**/target/**.exec"
-    exclusion_pattern: "com/datastax/dsbulk/**/generated/**/*"
+    exclusion_pattern: "**/generated/**"
