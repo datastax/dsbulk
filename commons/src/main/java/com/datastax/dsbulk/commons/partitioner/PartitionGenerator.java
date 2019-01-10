@@ -75,6 +75,13 @@ public class PartitionGenerator<V extends Number, T extends Token<V>> {
 
   private void checkRing(List<TokenRange<V, T>> splits) {
     double sum = splits.stream().map(TokenRange::fraction).reduce(0d, (f1, f2) -> f1 + f2);
-    assert Math.rint(sum) == 1.0d : "Incomplete partition detected";
+    if (Math.rint(sum) != 1.0d) {
+      throw new IllegalStateException(
+          String.format(
+              "Incomplete ring partition detected: %1.3f. "
+                  + "This is likely a bug in DSBulk, please report. "
+                  + "Generated splits: %s.",
+              sum, splits));
+    }
   }
 }
