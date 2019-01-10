@@ -68,6 +68,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   private static final CQLIdentifier QUESTION_MARK = CQLIdentifier.fromInternal("?");
   private static final CQLIdentifier WRITETIME = CQLIdentifier.fromInternal("writetime");
   private static final CQLIdentifier TTL = CQLIdentifier.fromInternal("ttl");
+  private static final CQLIdentifier SOLR_QUERY = CQLIdentifier.fromInternal("solr_query");
 
   private final String query;
 
@@ -94,6 +95,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   private boolean hasUnsupportedSelectors = false;
   private CQLIdentifier usingTimestampVariable;
   private CQLIdentifier usingTTLVariable;
+  private boolean hasSearchClause = false;
 
   public QueryInspector(String query) {
     this.query = query;
@@ -221,6 +223,11 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   /** @return true if the statement contains a WHERE clause, false otherwise. */
   public boolean hasWhereClause() {
     return hasWhereClause;
+  }
+
+  /** @return whether the SELECT statement has a search clause: WHERE solr_query = ... */
+  public boolean hasSearchClause() {
+    return hasSearchClause;
   }
 
   /**
@@ -439,6 +446,9 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
         && ctx.getChild(2) instanceof TermContext
         && ctx.getChild(1).getText().equals("=")) {
       CQLIdentifier column = visitCident(ctx.cident());
+      if (column.equals(SOLR_QUERY)) {
+        hasSearchClause = true;
+      }
       CQLFragment variable = visitTerm(ctx.term().get(0));
       assignmentsBuilder.put(column, variable.equals(QUESTION_MARK) ? column : variable);
     } else if (ctx.K_TOKEN() != null) {

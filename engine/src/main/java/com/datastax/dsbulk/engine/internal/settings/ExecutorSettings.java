@@ -78,30 +78,25 @@ public class ExecutorSettings {
   }
 
   public ReactorBulkWriter newWriteExecutor(Session session, ExecutionListener executionListener) {
-    return newBulkExecutor(session, executionListener, false);
+    return newBulkExecutor(session, executionListener, false, false);
   }
 
   public ReactorBulkReader newReadExecutor(
-      Session session, MetricsCollectingExecutionListener executionListener) {
-    return newBulkExecutor(session, executionListener, true);
+      Session session, MetricsCollectingExecutionListener executionListener, boolean searchQuery) {
+    return newBulkExecutor(session, executionListener, true, searchQuery);
   }
 
   private ReactorBulkExecutor newBulkExecutor(
-      Session session, ExecutionListener executionListener, boolean read) {
+      Session session, ExecutionListener executionListener, boolean read, boolean searchQuery) {
     if (read) {
       if (continuousPagingEnabled) {
+        if (searchQuery) {
+          LOGGER.warn(
+              "Continuous paging is enabled but is not compatible with search queries; disabling.");
+          return newDefaultExecutor(session, executionListener);
+        }
         if (continuousPagingAvailable(session)) {
-          ContinuousReactorBulkExecutorBuilder builder =
-              ContinuousReactorBulkExecutor.builder((ContinuousPagingSession) session);
-          configure(builder, executionListener);
-          ContinuousPagingOptions options =
-              ContinuousPagingOptions.builder()
-                  .withPageSize(pageSize, pageUnit)
-                  .withMaxPages(maxPages)
-                  .withMaxPagesPerSecond(maxPagesPerSecond)
-                  .build();
-          builder.withContinuousPagingOptions(options);
-          return builder.build();
+          return newContinuousExecutor((ContinuousPagingSession) session, executionListener);
         } else {
           LOGGER.warn(
               "Continuous paging is not available, read performance will not be optimal. "
@@ -112,9 +107,27 @@ public class ExecutorSettings {
         LOGGER.debug("Continuous paging was disabled by configuration.");
       }
     }
+    return newDefaultExecutor(session, executionListener);
+  }
+
+  private ReactorBulkExecutor newDefaultExecutor(
+      Session session, ExecutionListener executionListener) {
     DefaultReactorBulkExecutorBuilder builder = DefaultReactorBulkExecutor.builder(session);
-    configure(builder, executionListener);
+    configureExecutor(builder, executionListener);
     return builder.build();
+  }
+
+  private ReactorBulkExecutor newContinuousExecutor(
+      ContinuousPagingSession session, ExecutionListener executionListener) {
+    ContinuousReactorBulkExecutorBuilder builder = ContinuousReactorBulkExecutor.builder(session);
+    configureExecutor(builder, executionListener);
+    ContinuousPagingOptions options =
+        ContinuousPagingOptions.builder()
+            .withPageSize(pageSize, pageUnit)
+            .withMaxPages(maxPages)
+            .withMaxPagesPerSecond(maxPagesPerSecond)
+            .build();
+    return builder.withContinuousPagingOptions(options).build();
   }
 
   public int getMaxInFlight() {
@@ -131,7 +144,7 @@ public class ExecutorSettings {
             || consistencyLevel == ConsistencyLevel.LOCAL_ONE);
   }
 
-  private void configure(
+  private void configureExecutor(
       AbstractBulkExecutorBuilder<? extends ReactiveBulkExecutor> builder,
       ExecutionListener executionListener) {
     builder

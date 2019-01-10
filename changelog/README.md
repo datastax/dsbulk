@@ -27,6 +27,7 @@
 - [improvement] DAT-312: Add support for DSE 4.8 and lower.
 - [improvement] DAT-378: Add support for keyspace-qualified UDFs in mappings.
 - [improvement] DAT-379: Allow fields to appear as function parameters on the left side of mapping entries.
+- [improvement] DAT-309: Improve handling of search queries.
 
 
 ### 1.2.0

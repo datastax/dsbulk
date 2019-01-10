@@ -539,6 +539,10 @@ public class SchemaSettings {
     return allowMissingFields;
   }
 
+  public boolean isSearchQuery() {
+    return queryInspector.hasSearchClause();
+  }
+
   @NotNull
   private DefaultMapping prepareStatementAndCreateMapping(
       Session session,

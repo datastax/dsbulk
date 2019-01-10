@@ -77,7 +77,7 @@ class ExecutorSettingsTest {
         new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.executor"));
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
-    ReactiveBulkReader executor = settings.newReadExecutor(session, null);
+    ReactiveBulkReader executor = settings.newReadExecutor(session, null, false);
     assertThat(executor).isNotNull().isInstanceOf(DefaultReactorBulkExecutor.class);
     assertThat(logs)
         .hasMessageContaining(
@@ -92,7 +92,7 @@ class ExecutorSettingsTest {
         new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.executor"));
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
-    ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null);
+    ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null, false);
     assertThat(executor).isNotNull().isInstanceOf(DefaultReactorBulkExecutor.class);
     assertThat(logs)
         .hasMessageContaining(
@@ -105,7 +105,7 @@ class ExecutorSettingsTest {
         new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.executor"));
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
-    ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null);
+    ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null, false);
     assertThat(executor).isNotNull().isInstanceOf(ContinuousReactorBulkExecutor.class);
   }
 
@@ -117,8 +117,24 @@ class ExecutorSettingsTest {
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.executor")));
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
-    ReactiveBulkReader executor = settings.newReadExecutor(session, null);
+    ReactiveBulkReader executor = settings.newReadExecutor(session, null, false);
     assertThat(executor).isNotNull().isInstanceOf(DefaultReactorBulkExecutor.class);
+  }
+
+  @Test
+  void should_create_non_continuous_executor_when_read_workflow_and_search_query(
+      @LogCapture LogInterceptor logs) {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("continuousPagingOptions.enabled = false")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.executor")));
+    ExecutorSettings settings = new ExecutorSettings(config);
+    settings.init();
+    ReactiveBulkReader executor = settings.newReadExecutor(session, null, true);
+    assertThat(executor).isNotNull().isInstanceOf(DefaultReactorBulkExecutor.class);
+    assertThat(logs)
+        .hasMessageContaining(
+            "Continuous paging is enabled but is not compatible with search queries; disabling");
   }
 
   @Test
