@@ -53,7 +53,7 @@ public @interface CCMConfig {
    *
    * @return JVM args to use when starting hosts.
    */
-  String[] jvmArgs() default {"-Ddse.stability.checkIntervalMs=0"};
+  String[] jvmArgs() default {};
 
   /**
    * Free-form options that will be added at the end of the {@code ccm create} command.
