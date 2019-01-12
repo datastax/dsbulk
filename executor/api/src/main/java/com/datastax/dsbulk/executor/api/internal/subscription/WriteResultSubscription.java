@@ -18,20 +18,21 @@ import com.datastax.dsbulk.executor.api.result.WriteResult;
 import com.google.common.util.concurrent.RateLimiter;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.Optional;
 import java.util.concurrent.Semaphore;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.reactivestreams.Subscriber;
 
 public class WriteResultSubscription extends ResultSubscription<WriteResult, ResultSet> {
 
-  @SuppressWarnings({"OptionalUsedAsFieldOrParameterType", "UnstableApiUsage"})
+  @SuppressWarnings("UnstableApiUsage")
   public WriteResultSubscription(
-      Subscriber<? super WriteResult> subscriber,
-      Statement statement,
-      Optional<ExecutionListener> listener,
-      Optional<Semaphore> maxConcurrentRequests,
-      Optional<Semaphore> maxConcurrentQueries,
-      Optional<RateLimiter> rateLimiter,
+      @NotNull Subscriber<? super WriteResult> subscriber,
+      @NotNull Statement statement,
+      @Nullable ExecutionListener listener,
+      @Nullable Semaphore maxConcurrentRequests,
+      @Nullable Semaphore maxConcurrentQueries,
+      @Nullable RateLimiter rateLimiter,
       boolean failFast) {
     super(
         subscriber,
@@ -63,23 +64,31 @@ public class WriteResultSubscription extends ResultSubscription<WriteResult, Res
 
   @Override
   void onBeforeRequestStarted() {
-    rateLimiter.ifPresent(limiter -> limiter.acquire(batchSize));
+    if (rateLimiter != null) {
+      rateLimiter.acquire(batchSize);
+    }
     super.onBeforeRequestStarted();
   }
 
   @Override
   void onRequestStarted(ExecutionContext local) {
-    listener.ifPresent(l -> l.onWriteRequestStarted(statement, local));
+    if (listener != null) {
+      listener.onWriteRequestStarted(statement, local);
+    }
   }
 
   @Override
   void onRequestSuccessful(ResultSet rs, ExecutionContext local) {
-    listener.ifPresent(l -> l.onWriteRequestSuccessful(statement, local));
+    if (listener != null) {
+      listener.onWriteRequestSuccessful(statement, local);
+    }
   }
 
   @Override
   void onRequestFailed(Throwable t, ExecutionContext local) {
-    listener.ifPresent(l -> l.onWriteRequestFailed(statement, t, local));
+    if (listener != null) {
+      listener.onWriteRequestFailed(statement, t, local);
+    }
   }
 
   @Override

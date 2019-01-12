@@ -28,7 +28,6 @@ import com.datastax.dsbulk.executor.api.result.ReadResult;
 import io.reactivex.Flowable;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.Executor;
 import org.reactivestreams.Publisher;
 
@@ -47,14 +46,7 @@ public class ReadResultPublisherTest extends ResultPublisherTestBase<ReadResult>
   public Publisher<ReadResult> createFailedPublisher() {
     Statement statement = new SimpleStatement("irrelevant");
     Session session = setUpSession(1);
-    return new ReadResultPublisher(
-        statement,
-        session,
-        true,
-        FAILED_LISTENER,
-        Optional.empty(),
-        Optional.empty(),
-        Optional.empty());
+    return new ReadResultPublisher(statement, session, true, FAILED_LISTENER, null, null, null);
   }
 
   private static Session setUpSession(long elements) {

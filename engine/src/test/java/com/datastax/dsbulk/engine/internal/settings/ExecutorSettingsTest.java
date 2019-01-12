@@ -34,14 +34,13 @@ import com.datastax.dsbulk.executor.reactor.ContinuousReactorBulkExecutor;
 import com.datastax.dsbulk.executor.reactor.DefaultReactorBulkExecutor;
 import com.google.common.util.concurrent.RateLimiter;
 import com.typesafe.config.ConfigFactory;
-import java.util.Optional;
 import java.util.concurrent.Semaphore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(LogInterceptingExtension.class)
-@SuppressWarnings({"unchecked", "UnstableApiUsage"})
+@SuppressWarnings("UnstableApiUsage")
 class ExecutorSettingsTest {
 
   private Session session;
@@ -151,9 +150,7 @@ class ExecutorSettingsTest {
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
     ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null, false);
-    assertThat((Optional<RateLimiter>) getInternalState(executor, "rateLimiter"))
-        .isNotEmpty()
-        .hasValueSatisfying(s -> assertThat(s.getRate()).isEqualTo(100));
+    assertThat(((RateLimiter) getInternalState(executor, "rateLimiter")).getRate()).isEqualTo(100);
   }
 
   @Test
@@ -165,7 +162,7 @@ class ExecutorSettingsTest {
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
     ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null, false);
-    assertThat((Optional<RateLimiter>) getInternalState(executor, "rateLimiter")).isEmpty();
+    assertThat(getInternalState(executor, "rateLimiter")).isNull();
   }
 
   @Test
@@ -189,9 +186,8 @@ class ExecutorSettingsTest {
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
     ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null, false);
-    assertThat((Optional<Semaphore>) getInternalState(executor, "maxConcurrentRequests"))
-        .isNotEmpty()
-        .hasValueSatisfying(s -> assertThat(s.availablePermits()).isEqualTo(100));
+    assertThat(((Semaphore) getInternalState(executor, "maxConcurrentRequests")).availablePermits())
+        .isEqualTo(100);
   }
 
   @Test
@@ -203,7 +199,7 @@ class ExecutorSettingsTest {
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
     ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null, false);
-    assertThat((Optional<Semaphore>) getInternalState(executor, "maxConcurrentRequests")).isEmpty();
+    assertThat(getInternalState(executor, "maxConcurrentRequests")).isNull();
   }
 
   @Test
@@ -227,9 +223,8 @@ class ExecutorSettingsTest {
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
     ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null, false);
-    assertThat((Optional<Semaphore>) getInternalState(executor, "maxConcurrentQueries"))
-        .isNotEmpty()
-        .hasValueSatisfying(s -> assertThat(s.availablePermits()).isEqualTo(100));
+    assertThat(((Semaphore) getInternalState(executor, "maxConcurrentQueries")).availablePermits())
+        .isEqualTo(100);
   }
 
   @Test
@@ -241,7 +236,7 @@ class ExecutorSettingsTest {
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
     ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null, false);
-    assertThat((Optional<Semaphore>) getInternalState(executor, "maxConcurrentQueries")).isEmpty();
+    assertThat(getInternalState(executor, "maxConcurrentQueries")).isNull();
   }
 
   @Test

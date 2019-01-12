@@ -16,9 +16,9 @@ import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.google.common.util.concurrent.RateLimiter;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.Semaphore;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 
@@ -27,16 +27,16 @@ import org.reactivestreams.Subscriber;
  *
  * @see com.datastax.dsbulk.executor.api.AbstractBulkExecutor#readReactive(Statement)
  */
-@SuppressWarnings({"OptionalUsedAsFieldOrParameterType", "UnstableApiUsage"})
+@SuppressWarnings("UnstableApiUsage")
 public class ContinuousReadResultPublisher implements Publisher<ReadResult> {
 
-  private final Statement statement;
-  private final ContinuousPagingSession session;
-  private final ContinuousPagingOptions options;
-  private final Optional<ExecutionListener> listener;
-  private final Optional<Semaphore> maxConcurrentRequests;
-  private final Optional<Semaphore> maxConcurrentQueries;
-  private final Optional<RateLimiter> rateLimiter;
+  private final @NotNull Statement statement;
+  private final @NotNull ContinuousPagingSession session;
+  private final @NotNull ContinuousPagingOptions options;
+  private final @Nullable ExecutionListener listener;
+  private final @Nullable Semaphore maxConcurrentRequests;
+  private final @Nullable Semaphore maxConcurrentQueries;
+  private final @Nullable RateLimiter rateLimiter;
   private final boolean failFast;
 
   /**
@@ -66,15 +66,7 @@ public class ContinuousReadResultPublisher implements Publisher<ReadResult> {
       @NotNull ContinuousPagingSession session,
       @NotNull ContinuousPagingOptions options,
       boolean failFast) {
-    this(
-        statement,
-        session,
-        options,
-        failFast,
-        Optional.empty(),
-        Optional.empty(),
-        Optional.empty(),
-        Optional.empty());
+    this(statement, session, options, failFast, null, null, null, null);
   }
 
   /**
@@ -96,10 +88,10 @@ public class ContinuousReadResultPublisher implements Publisher<ReadResult> {
       @NotNull ContinuousPagingSession session,
       @NotNull ContinuousPagingOptions options,
       boolean failFast,
-      @NotNull Optional<ExecutionListener> listener,
-      @NotNull Optional<Semaphore> maxConcurrentRequests,
-      @NotNull Optional<Semaphore> maxConcurrentQueries,
-      @NotNull Optional<RateLimiter> rateLimiter) {
+      @Nullable ExecutionListener listener,
+      @Nullable Semaphore maxConcurrentRequests,
+      @Nullable Semaphore maxConcurrentQueries,
+      @Nullable RateLimiter rateLimiter) {
     this.statement = statement;
     this.session = session;
     this.options = options;

@@ -19,21 +19,22 @@ import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.google.common.collect.AbstractIterator;
 import com.google.common.util.concurrent.RateLimiter;
 import java.util.Iterator;
-import java.util.Optional;
 import java.util.concurrent.Semaphore;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.reactivestreams.Subscriber;
 
-@SuppressWarnings({"OptionalUsedAsFieldOrParameterType", "UnstableApiUsage"})
+@SuppressWarnings("UnstableApiUsage")
 public class ContinuousReadResultSubscription
     extends ResultSubscription<ReadResult, AsyncContinuousPagingResult> {
 
   public ContinuousReadResultSubscription(
-      Subscriber<? super ReadResult> subscriber,
-      Statement statement,
-      Optional<ExecutionListener> listener,
-      Optional<Semaphore> maxConcurrentRequests,
-      Optional<Semaphore> maxConcurrentQueries,
-      Optional<RateLimiter> rateLimiter,
+      @NotNull Subscriber<? super ReadResult> subscriber,
+      @NotNull Statement statement,
+      @Nullable ExecutionListener listener,
+      @Nullable Semaphore maxConcurrentRequests,
+      @Nullable Semaphore maxConcurrentQueries,
+      @Nullable RateLimiter rateLimiter,
       boolean failFast) {
     super(
         subscriber,
@@ -55,7 +56,9 @@ public class ContinuousReadResultSubscription
           protected ReadResult computeNext() {
             if (rows.hasNext()) {
               Row row = rows.next();
-              listener.ifPresent(l -> l.onRowReceived(row, local));
+              if (listener != null) {
+                listener.onRowReceived(row, local);
+              }
               return new DefaultReadResult(statement, rs.getExecutionInfo(), row);
             }
             return endOfData();
@@ -76,22 +79,30 @@ public class ContinuousReadResultSubscription
 
   @Override
   void onRequestStarted(ExecutionContext local) {
-    listener.ifPresent(l -> l.onReadRequestStarted(statement, local));
+    if (listener != null) {
+      listener.onReadRequestStarted(statement, local);
+    }
   }
 
   @Override
   void onRequestSuccessful(AsyncContinuousPagingResult page, ExecutionContext local) {
-    listener.ifPresent(l -> l.onReadRequestSuccessful(statement, local));
+    if (listener != null) {
+      listener.onReadRequestSuccessful(statement, local);
+    }
   }
 
   @Override
   void onRequestFailed(Throwable t, ExecutionContext local) {
-    listener.ifPresent(l -> l.onReadRequestFailed(statement, t, local));
+    if (listener != null) {
+      listener.onReadRequestFailed(statement, t, local);
+    }
   }
 
   @Override
   void onBeforeResultEmitted(ReadResult result) {
-    rateLimiter.ifPresent(RateLimiter::acquire);
+    if (rateLimiter != null) {
+      rateLimiter.acquire();
+    }
   }
 
   @Override

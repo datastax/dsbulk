@@ -17,9 +17,9 @@ import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.google.common.util.concurrent.RateLimiter;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.Semaphore;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 
@@ -28,15 +28,15 @@ import org.reactivestreams.Subscriber;
  *
  * @see com.datastax.dsbulk.executor.api.AbstractBulkExecutor#readReactive(Statement)
  */
-@SuppressWarnings({"OptionalUsedAsFieldOrParameterType", "UnstableApiUsage"})
+@SuppressWarnings("UnstableApiUsage")
 public class ReadResultPublisher implements Publisher<ReadResult> {
 
   private final Statement statement;
   private final Session session;
-  private final Optional<ExecutionListener> listener;
-  private final Optional<Semaphore> maxConcurrentRequests;
-  private final Optional<Semaphore> maxConcurrentQueries;
-  private final Optional<RateLimiter> rateLimiter;
+  private final @Nullable ExecutionListener listener;
+  private final @Nullable Semaphore maxConcurrentRequests;
+  private final @Nullable Semaphore maxConcurrentQueries;
+  private final @Nullable RateLimiter rateLimiter;
   private final boolean failFast;
 
   /**
@@ -49,14 +49,7 @@ public class ReadResultPublisher implements Publisher<ReadResult> {
    */
   public ReadResultPublisher(
       @NotNull Statement statement, @NotNull Session session, boolean failFast) {
-    this(
-        statement,
-        session,
-        failFast,
-        Optional.empty(),
-        Optional.empty(),
-        Optional.empty(),
-        Optional.empty());
+    this(statement, session, failFast, null, null, null, null);
   }
 
   /**
@@ -76,10 +69,10 @@ public class ReadResultPublisher implements Publisher<ReadResult> {
       @NotNull Statement statement,
       @NotNull Session session,
       boolean failFast,
-      @NotNull Optional<ExecutionListener> listener,
-      @NotNull Optional<Semaphore> maxConcurrentRequests,
-      @NotNull Optional<Semaphore> maxConcurrentQueries,
-      @NotNull Optional<RateLimiter> rateLimiter) {
+      @Nullable ExecutionListener listener,
+      @Nullable Semaphore maxConcurrentRequests,
+      @Nullable Semaphore maxConcurrentQueries,
+      @Nullable RateLimiter rateLimiter) {
     this.statement = statement;
     this.session = session;
     this.listener = listener;

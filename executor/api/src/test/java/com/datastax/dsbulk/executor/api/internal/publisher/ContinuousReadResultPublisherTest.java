@@ -25,7 +25,6 @@ import com.google.common.util.concurrent.ListenableFuture;
 import io.reactivex.Flowable;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.Executor;
 import org.reactivestreams.Publisher;
 
@@ -48,9 +47,9 @@ public class ContinuousReadResultPublisherTest extends ResultPublisherTestBase<R
         ContinuousPagingOptions.builder().build(),
         true,
         FAILED_LISTENER,
-        Optional.empty(),
-        Optional.empty(),
-        Optional.empty());
+        null,
+        null,
+        null);
   }
 
   private static ContinuousPagingSession setUpSession(long elements) {
