@@ -1168,6 +1168,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   @Test
   void load_ttl_timestamp_now_in_query_and_mapping_positional_external_names_unset_values() {
 
+    assumeTrue(
+        protocolVersion.compareTo(ProtocolVersion.V4) > 0,
+        "Unset values are not compatible with protocol version < 4");
+
     session.execute("DROP TABLE IF EXISTS table_ttl_timestamp");
     session.execute(
         "CREATE TABLE table_ttl_timestamp (key int PRIMARY KEY, value text, loaded_at timeuuid)");
