@@ -22,6 +22,7 @@ import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Workload;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMVersionRequirement;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMWorkload;
 import com.datastax.dsbulk.commons.tests.driver.annotations.SessionConfig;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
@@ -45,7 +46,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(LogInterceptingExtension.class)
 @Tag("medium")
 @CCMConfig(workloads = @CCMWorkload(Workload.solr))
-@CCMRequirements(compatibleTypes = DSE)
+@CCMRequirements(
+    compatibleTypes = DSE,
+    versionRequirements = @CCMVersionRequirement(type = DSE, min = "5.1"))
 class SearchEndToEndCCMIT extends EndToEndCCMITBase {
 
   private final LogInterceptor logs;
