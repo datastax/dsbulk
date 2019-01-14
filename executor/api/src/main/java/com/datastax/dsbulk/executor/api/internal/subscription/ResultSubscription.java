@@ -349,8 +349,11 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
               if (maxConcurrentRequests != null) {
                 maxConcurrentRequests.release();
               }
-              if (maxConcurrentQueries != null && (t != null || isLastPage(rs))) {
-                maxConcurrentQueries.release();
+              if (maxConcurrentQueries != null) {
+                boolean isLastPageOrError = t != null || isLastPage(rs);
+                if (isLastPageOrError) {
+                  maxConcurrentQueries.release();
+                }
               }
               local.stop();
               if (t == null) {
