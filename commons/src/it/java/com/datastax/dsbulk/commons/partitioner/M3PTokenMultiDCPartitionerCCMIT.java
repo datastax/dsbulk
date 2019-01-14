@@ -11,6 +11,7 @@ package com.datastax.dsbulk.commons.partitioner;
 import static com.datastax.dsbulk.commons.tests.driver.annotations.SessionConfig.UseKeyspaceMode.NONE;
 
 import com.datastax.driver.core.Session;
+import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.commons.tests.driver.annotations.SessionConfig;
 import org.junit.jupiter.api.Tag;
@@ -19,7 +20,8 @@ import org.junit.jupiter.api.Tag;
 @Tag("long")
 class M3PTokenMultiDCPartitionerCCMIT extends PartitionerCCMITBase {
 
-  M3PTokenMultiDCPartitionerCCMIT(@SessionConfig(useKeyspace = NONE) Session session) {
-    super(session, true);
+  M3PTokenMultiDCPartitionerCCMIT(
+      CCMCluster ccm, @SessionConfig(useKeyspace = NONE) Session session) {
+    super(ccm, session, true);
   }
 }
