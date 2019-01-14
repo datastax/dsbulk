@@ -11,6 +11,7 @@ package com.datastax.dsbulk.commons.tests.ccm;
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.CCM_TYPE;
 import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.CCM_VERSION;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.RemoteClusterExtension;
@@ -19,6 +20,7 @@ import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMVersionRequirement;
 import com.datastax.dsbulk.commons.tests.ccm.factory.CCMClusterFactory;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.commons.tests.utils.Version;
+import com.google.common.util.concurrent.Uninterruptibles;
 import java.lang.reflect.Parameter;
 import java.net.InetAddress;
 import java.util.Arrays;
@@ -125,11 +127,24 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
         .getOrComputeIfAbsent(
             CCM,
             f -> {
-              CCMClusterFactory factory =
-                  CCMClusterFactory.createInstanceForClass(context.getRequiredTestClass());
-              DefaultCCMCluster ccm = factory.createCCMClusterBuilder().build();
-              ccm.start();
-              return ccm;
+              int attempts = 1;
+              while (true) {
+                try {
+                  CCMClusterFactory factory =
+                      CCMClusterFactory.createInstanceForClass(context.getRequiredTestClass());
+                  DefaultCCMCluster ccm = factory.createCCMClusterBuilder().build();
+                  ccm.start();
+                  return ccm;
+                } catch (Exception e) {
+                  if (attempts == 3) {
+                    LOGGER.error("Could not start CCM cluster, giving up", e);
+                    throw e;
+                  }
+                  LOGGER.error("Could not start CCM cluster, retrying", e);
+                  Uninterruptibles.sleepUninterruptibly(10, SECONDS);
+                }
+                attempts++;
+              }
             },
             CCMCluster.class);
   }
