@@ -8,10 +8,12 @@
  */
 package com.datastax.dsbulk.commons.partitioner;
 
+import static java.math.BigInteger.ONE;
+import static java.math.BigInteger.ZERO;
+
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 class RandomTokenRangeSplitter implements TokenRangeSplitter<BigInteger, Token<BigInteger>> {
 
@@ -23,33 +25,31 @@ class RandomTokenRangeSplitter implements TokenRangeSplitter<BigInteger, Token<B
   public List<TokenRange<BigInteger, Token<BigInteger>>> split(
       TokenRange<BigInteger, Token<BigInteger>> tokenRange, int splitCount) {
     BigInteger rangeSize = tokenRange.size();
-    int splitPointsCount =
-        (rangeSize.compareTo(new BigInteger(String.valueOf(splitCount))) < 0)
-            ? rangeSize.intValueExact()
-            : splitCount;
-    List<Token<BigInteger>> splitPoints =
-        IntStream.range(0, splitPointsCount)
-            .mapToObj(
-                i -> {
-                  BigInteger nextToken =
-                      tokenRange
-                          .start()
-                          .value()
-                          .add(
-                              rangeSize
-                                  .multiply(BigInteger.valueOf(i))
-                                  .divide(BigInteger.valueOf(splitPointsCount)));
-                  return new RandomToken(wrap(nextToken));
-                })
-            .collect(Collectors.toList());
+    BigInteger val = BigInteger.valueOf(splitCount);
+    // If the range size is lesser than the number of splits,
+    // use the range size as number of splits and yield (size-of-range) splits of size 1
+    BigInteger splitPointsCount = rangeSize.compareTo(val) < 0 ? rangeSize : val;
+    BigInteger start = tokenRange.start().value();
+    List<Token<BigInteger>> splitPoints = new ArrayList<>();
+    for (BigInteger i = ZERO; i.compareTo(splitPointsCount) < 0; i = i.add(ONE)) {
+      // instead of applying a fix increment we multiply and
+      // divide again at each step to compensate for non-integral
+      // increment sizes and thus to create splits of sizes as even as
+      // possible (iow, to minimize the split sizes variance).
+      BigInteger increment = rangeSize.multiply(i).divide(splitPointsCount);
+      RandomToken splitPoint = new RandomToken(wrap(start.add(increment)));
+      splitPoints.add(splitPoint);
+    }
     splitPoints.add(tokenRange.end());
-    return IntStream.range(0, splitPoints.size() - 1)
-        .mapToObj(i -> splitPoints.subList(i, i + 2))
-        .map(
-            window ->
-                new TokenRange<>(
-                    window.get(0), window.get(1), tokenRange.replicas(), tokenRange.tokenFactory()))
-        .collect(Collectors.toList());
+    List<TokenRange<BigInteger, Token<BigInteger>>> splits = new ArrayList<>();
+    for (int i = 0; i < splitPoints.size() - 1; i++) {
+      List<Token<BigInteger>> window = splitPoints.subList(i, i + 2);
+      TokenRange<BigInteger, Token<BigInteger>> split =
+          new TokenRange<>(
+              window.get(0), window.get(1), tokenRange.replicas(), tokenRange.tokenFactory());
+      splits.add(split);
+    }
+    return splits;
   }
 
   private BigInteger wrap(BigInteger token) {
