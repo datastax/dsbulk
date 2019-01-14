@@ -114,6 +114,7 @@ ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t tran
 
 #run repair to make COUNT and LOAD yield proper results
 ctool run dsbulk-dse 'nodetool -h localhost repair'
+ctool run dsbulk-dse 'nodetool clearsnapshot --all'
 
 
 #UNLOAD as CSV-----------------------------------------------------------------------------------------------
