@@ -111,7 +111,8 @@ public class CountWorkflow implements Workflow {
             cluster.getConfiguration().getCodecRegistry(),
             schemaSettings.getRowType());
     metricsManager.init();
-    executor = executorSettings.newReadExecutor(session, metricsManager.getExecutionListener());
+    executor =
+        executorSettings.newReadExecutor(session, metricsManager.getExecutionListener(), false);
     ExtendedCodecRegistry codecRegistry =
         codecSettings.createCodecRegistry(
             cluster.getConfiguration().getCodecRegistry(),

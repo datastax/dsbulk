@@ -697,4 +697,21 @@ class QueryInspectorTest {
             "SELECT ks.max(col1, \"My Col 2\")  FROM table1",
             new FunctionCall(KS, MAX, COL_1, MY_COL_2)));
   }
+
+  @ParameterizedTest
+  @MethodSource
+  void should_detect_solr_query(String query, boolean expected) {
+    QueryInspector inspector = new QueryInspector(query);
+    assertThat(inspector.hasSearchClause()).isEqualTo(expected);
+  }
+
+  @SuppressWarnings("unused")
+  static List<Arguments> should_detect_solr_query() {
+    return Lists.newArrayList(
+        arguments("INSERT INTO table1 (pk, v) VALUES (1, 2)", false),
+        arguments("UPDATE table1 SET v = 1 WHERE pk = 0", false),
+        arguments("DELETE FROM table1 WHERE pk = 0", false),
+        arguments("SELECT * FROM table1 WHERE pk = 0", false),
+        arguments("SELECT * FROM table1 WHERE solr_query = 'irrelevant'", true));
+  }
 }
