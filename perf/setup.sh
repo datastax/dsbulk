@@ -202,6 +202,6 @@ ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test
 
 #run dsbulk step (ordered data-set)
 ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.transactions;\""
-ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -c json --batch.mode REPLICA_SET -url /mnt/data/data_faker/generated -h ${dse_node_ips} --codec.timestamp ISO_ZONED_DATE_TIME &> transactionsLOAD_json_first"
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -c json --batch.mode REPLICA_SET --driver.socket.readTimeout '5 minutes' -url /mnt/data/data_faker/generated -h ${dse_node_ips} --codec.timestamp ISO_ZONED_DATE_TIME &> transactionsLOAD_json_first"
 ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.transactions;\""
-ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -c json --batch.mode REPLICA_SET -url /mnt/data/data_faker/generated -h ${dse_node_ips} --codec.timestamp ISO_ZONED_DATE_TIME &> transactionsLOAD_json_second"
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -c json --batch.mode REPLICA_SET --driver.socket.readTimeout '5 minutes' -url /mnt/data/data_faker/generated -h ${dse_node_ips} --codec.timestamp ISO_ZONED_DATE_TIME &> transactionsLOAD_json_second"
