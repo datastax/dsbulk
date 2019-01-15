@@ -190,9 +190,9 @@ ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test
 
 #1MB
 ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.test1mb;\""
-ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test1mb -c json --batch.mode DISABLED --connector.csv.maxCharsPerColumn 1100000 --executor.maxInFlight 64 -url /mnt/data/DSEBulkLoadTest/out/data1MB/ -h ${dse_node_ips} &> test1MBLOADjson_first"
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test1mb -c json --batch.mode DISABLED --executor.maxInFlight 64 --driver.socket.readTimeout '5 minutes' -url /mnt/data/DSEBulkLoadTest/out/data1MB/ -h ${dse_node_ips} &> test1MBLOADjson_first"
 ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.test1mb;\""
-ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test1mb -c json --batch.mode DISABLED --connector.csv.maxCharsPerColumn 1100000 --executor.maxInFlight 64 -url /mnt/data/DSEBulkLoadTest/out/data1MB/ -h ${dse_node_ips} &> test1MBLOADjson_second"
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test1mb -c json --batch.mode DISABLED --executor.maxInFlight 64 --driver.socket.readTimeout '5 minutes' -url /mnt/data/DSEBulkLoadTest/out/data1MB/ -h ${dse_node_ips} &> test1MBLOADjson_second"
 
 #10 number of columns
 ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.test10;\""
