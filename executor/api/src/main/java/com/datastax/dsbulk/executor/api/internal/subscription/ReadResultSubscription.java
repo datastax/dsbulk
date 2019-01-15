@@ -18,31 +18,40 @@ import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.google.common.collect.AbstractIterator;
 import com.google.common.util.concurrent.RateLimiter;
-import java.util.Optional;
 import java.util.concurrent.Semaphore;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.reactivestreams.Subscriber;
 
-@SuppressWarnings({"OptionalUsedAsFieldOrParameterType", "UnstableApiUsage"})
+@SuppressWarnings("UnstableApiUsage")
 public class ReadResultSubscription extends ResultSubscription<ReadResult, ResultSet> {
 
   private final int pageSize;
 
   public ReadResultSubscription(
-      Subscriber<? super ReadResult> subscriber,
-      Statement statement,
-      Optional<ExecutionListener> listener,
-      Optional<Semaphore> requestPermits,
-      Optional<RateLimiter> rateLimiter,
+      @NotNull Subscriber<? super ReadResult> subscriber,
+      @NotNull Statement statement,
+      @Nullable ExecutionListener listener,
+      @Nullable Semaphore maxConcurrentRequests,
+      @Nullable Semaphore maxConcurrentQueries,
+      @Nullable RateLimiter rateLimiter,
       boolean failFast,
       int pageSize) {
-    super(subscriber, statement, listener, requestPermits, rateLimiter, failFast);
+    super(
+        subscriber,
+        statement,
+        listener,
+        maxConcurrentRequests,
+        maxConcurrentQueries,
+        rateLimiter,
+        failFast);
     this.pageSize = pageSize;
   }
 
   @Override
   Page toPage(ResultSet rs, ExecutionContext local) {
-    boolean hasMorePages = rs.getExecutionInfo().getPagingState() != null;
-    return new Page(new ReadResultIterator(rs, local), hasMorePages ? rs::fetchMoreResults : null);
+    return new Page(
+        new ReadResultIterator(rs, local), isLastPage(rs) ? rs::fetchMoreResults : null);
   }
 
   @Override
@@ -52,22 +61,35 @@ public class ReadResultSubscription extends ResultSubscription<ReadResult, Resul
 
   @Override
   void onRequestStarted(ExecutionContext local) {
-    listener.ifPresent(l -> l.onReadRequestStarted(statement, local));
+    if (listener != null) {
+      listener.onReadRequestStarted(statement, local);
+    }
   }
 
   @Override
-  void onRequestSuccessful(ResultSet resultSet, ExecutionContext local) {
-    listener.ifPresent(l -> l.onReadRequestSuccessful(statement, local));
+  void onRequestSuccessful(ResultSet rs, ExecutionContext local) {
+    if (listener != null) {
+      listener.onReadRequestSuccessful(statement, local);
+    }
   }
 
   @Override
   void onRequestFailed(Throwable t, ExecutionContext local) {
-    listener.ifPresent(l -> l.onReadRequestFailed(statement, t, local));
+    if (listener != null) {
+      listener.onReadRequestFailed(statement, t, local);
+    }
+  }
+
+  @Override
+  boolean isLastPage(ResultSet page) {
+    return page.getExecutionInfo().getPagingState() != null;
   }
 
   @Override
   void onBeforeResultEmitted(ReadResult result) {
-    rateLimiter.ifPresent(RateLimiter::acquire);
+    if (rateLimiter != null) {
+      rateLimiter.acquire();
+    }
   }
 
   private class ReadResultIterator extends AbstractIterator<ReadResult> {
@@ -96,7 +118,9 @@ public class ReadResultSubscription extends ResultSubscription<ReadResult, Resul
         // row will be null if this is the last page and the actual page size
         // is less than pageSize
         if (row != null) {
-          listener.ifPresent(l -> l.onRowReceived(row, local));
+          if (listener != null) {
+            listener.onRowReceived(row, local);
+          }
           return new DefaultReadResult(statement, rs.getExecutionInfo(), row);
         }
       }

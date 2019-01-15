@@ -19,7 +19,6 @@ import com.datastax.driver.core.Session;
 import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
-import java.util.Optional;
 import java.util.concurrent.Executor;
 import org.reactivestreams.Publisher;
 
@@ -41,8 +40,7 @@ public class WriteResultPublisherTest extends ResultPublisherTestBase<WriteResul
   public Publisher<WriteResult> createFailedPublisher() {
     Statement statement = new SimpleStatement("irrelevant");
     Session session = mock(Session.class);
-    return new WriteResultPublisher(
-        statement, session, true, FAILED_LISTENER, Optional.empty(), Optional.empty());
+    return new WriteResultPublisher(statement, session, true, FAILED_LISTENER, null, null, null);
   }
 
   private static Session setUpSession() {

@@ -15,9 +15,9 @@ import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
 import com.google.common.util.concurrent.RateLimiter;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.Semaphore;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 
@@ -26,14 +26,15 @@ import org.reactivestreams.Subscriber;
  *
  * @see com.datastax.dsbulk.executor.api.AbstractBulkExecutor#writeReactive(Statement)
  */
-@SuppressWarnings({"OptionalUsedAsFieldOrParameterType", "UnstableApiUsage"})
+@SuppressWarnings("UnstableApiUsage")
 public class WriteResultPublisher implements Publisher<WriteResult> {
 
   private final Statement statement;
   private final Session session;
-  private final Optional<ExecutionListener> listener;
-  private final Optional<Semaphore> requestPermits;
-  private final Optional<RateLimiter> rateLimiter;
+  private final @Nullable ExecutionListener listener;
+  private final @Nullable Semaphore maxConcurrentRequests;
+  private final @Nullable Semaphore maxConcurrentQueries;
+  private final @Nullable RateLimiter rateLimiter;
   private final boolean failFast;
 
   /**
@@ -46,7 +47,7 @@ public class WriteResultPublisher implements Publisher<WriteResult> {
    */
   public WriteResultPublisher(
       @NotNull Statement statement, @NotNull Session session, boolean failFast) {
-    this(statement, session, failFast, Optional.empty(), Optional.empty(), Optional.empty());
+    this(statement, session, failFast, null, null, null, null);
   }
 
   /**
@@ -56,21 +57,25 @@ public class WriteResultPublisher implements Publisher<WriteResult> {
    * @param session The {@link Session} to use.
    * @param failFast whether to fail-fast in case of error.
    * @param listener The {@link ExecutionListener} to use.
-   * @param requestPermits The {@link Semaphore} to use to regulate the amount of in-flight
+   * @param maxConcurrentRequests The {@link Semaphore} to use to regulate the amount of in-flight
    *     requests.
+   * @param maxConcurrentQueries The {@link Semaphore} to use to regulate the amount of in-flight
+   *     queries.
    * @param rateLimiter The {@link RateLimiter} to use to regulate throughput.
    */
   public WriteResultPublisher(
       @NotNull Statement statement,
       @NotNull Session session,
       boolean failFast,
-      @NotNull Optional<ExecutionListener> listener,
-      @NotNull Optional<Semaphore> requestPermits,
-      @NotNull Optional<RateLimiter> rateLimiter) {
+      @Nullable ExecutionListener listener,
+      @Nullable Semaphore maxConcurrentRequests,
+      @Nullable Semaphore maxConcurrentQueries,
+      @Nullable RateLimiter rateLimiter) {
     this.statement = statement;
     this.session = session;
     this.listener = listener;
-    this.requestPermits = requestPermits;
+    this.maxConcurrentRequests = maxConcurrentRequests;
+    this.maxConcurrentQueries = maxConcurrentQueries;
     this.rateLimiter = rateLimiter;
     this.failFast = failFast;
   }
@@ -84,7 +89,13 @@ public class WriteResultPublisher implements Publisher<WriteResult> {
     // of the results.
     WriteResultSubscription subscription =
         new WriteResultSubscription(
-            subscriber, statement, listener, requestPermits, rateLimiter, failFast);
+            subscriber,
+            statement,
+            listener,
+            maxConcurrentRequests,
+            maxConcurrentQueries,
+            rateLimiter,
+            failFast);
     try {
       subscriber.onSubscribe(subscription);
       // must be called after onSubscribe

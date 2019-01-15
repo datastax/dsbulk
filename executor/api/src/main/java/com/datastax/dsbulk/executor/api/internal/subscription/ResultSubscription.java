@@ -23,7 +23,6 @@ import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.RateLimiter;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
@@ -33,6 +32,8 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.jctools.queues.SpscArrayQueue;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
@@ -47,7 +48,7 @@ import org.slf4j.LoggerFactory;
  * @param <R> the result type ({@link com.datastax.dsbulk.executor.api.result.WriteResult} or {@link
  *     com.datastax.dsbulk.executor.api.result.ReadResult}).
  */
-@SuppressWarnings({"OptionalUsedAsFieldOrParameterType", "UnstableApiUsage"})
+@SuppressWarnings("UnstableApiUsage")
 public abstract class ResultSubscription<R extends Result, P> implements Subscription {
 
   private static final Logger LOG = LoggerFactory.getLogger(ResultSubscription.class);
@@ -66,9 +67,10 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
   are shared with other query executions.
    */
 
-  final Optional<ExecutionListener> listener;
-  private final Optional<Semaphore> requestPermits;
-  final Optional<RateLimiter> rateLimiter;
+  final @Nullable ExecutionListener listener;
+  private final @Nullable Semaphore maxConcurrentRequests;
+  private final @Nullable Semaphore maxConcurrentQueries;
+  final @Nullable RateLimiter rateLimiter;
   private final boolean failFast;
 
   /** The number of writes in the batch. 1 for other types of statement. */
@@ -105,7 +107,7 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
    * The global execution context, used to record latencies for the execution as a whole.
    *
    * @see #start(Callable)
-   * @see #stop(Optional)
+   * @see #stop(BulkExecutionException)
    */
   private final DefaultExecutionContext global = new DefaultExecutionContext();
 
@@ -133,16 +135,18 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
   private volatile boolean cancelled = false;
 
   ResultSubscription(
-      Subscriber<? super R> subscriber,
-      Statement statement,
-      Optional<ExecutionListener> listener,
-      Optional<Semaphore> requestPermits,
-      Optional<RateLimiter> rateLimiter,
+      @NotNull Subscriber<? super R> subscriber,
+      @NotNull Statement statement,
+      @Nullable ExecutionListener listener,
+      @Nullable Semaphore maxConcurrentRequests,
+      @Nullable Semaphore maxConcurrentQueries,
+      @Nullable RateLimiter rateLimiter,
       boolean failFast) {
     this.statement = statement;
     this.subscriber = subscriber;
     this.listener = listener;
-    this.requestPermits = requestPermits;
+    this.maxConcurrentRequests = maxConcurrentRequests;
+    this.maxConcurrentQueries = maxConcurrentQueries;
     this.rateLimiter = rateLimiter;
     this.failFast = failFast;
     if (statement instanceof BatchStatement) {
@@ -159,7 +163,12 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
    */
   public void start(Callable<ListenableFuture<P>> initial) {
     global.start();
-    listener.ifPresent(l -> l.onExecutionStarted(statement, global));
+    if (listener != null) {
+      listener.onExecutionStarted(statement, global);
+    }
+    if (maxConcurrentQueries != null) {
+      maxConcurrentQueries.acquireUninterruptibly();
+    }
     fetchNextPage(new Page(initial));
   }
 
@@ -248,14 +257,14 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
           doOnNext(result);
         }
         if (isExhausted()) {
-          stop(result.getError());
+          stop(result.getError().orElse(null));
           clear();
           return;
         }
         emitted++;
       }
       if (isExhausted()) {
-        stop(Optional.empty());
+        stop(null);
         clear();
         return;
       }
@@ -334,10 +343,18 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
     current
         .nextPage()
         // as soon as the response arrives, notify our listener and
-        // update requestPermits.
+        // update maxConcurrentRequests.
         .whenComplete(
             (rs, t) -> {
-              requestPermits.ifPresent(permits -> permits.release(1));
+              if (maxConcurrentRequests != null) {
+                maxConcurrentRequests.release();
+              }
+              if (maxConcurrentQueries != null) {
+                boolean isLastPageOrError = t != null || isLastPage(rs);
+                if (isLastPageOrError) {
+                  maxConcurrentQueries.release();
+                }
+              }
               local.stop();
               if (t == null) {
                 onRequestSuccessful(rs, local);
@@ -376,7 +393,9 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
   }
 
   void onBeforeRequestStarted() {
-    requestPermits.ifPresent(Semaphore::acquireUninterruptibly);
+    if (maxConcurrentRequests != null) {
+      maxConcurrentRequests.acquireUninterruptibly();
+    }
   }
 
   /*
@@ -446,17 +465,19 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
     // nothing to do by default
   }
 
-  private void stop(Optional<BulkExecutionException> error) {
+  private void stop(@Nullable BulkExecutionException error) {
     global.stop();
-    if (error.isPresent()) {
-      listener.ifPresent(l -> l.onExecutionFailed(error.get(), global));
-    } else {
-      listener.ifPresent(l -> l.onExecutionSuccessful(statement, global));
+    if (listener != null) {
+      if (error != null) {
+        listener.onExecutionFailed(error, global);
+      } else {
+        listener.onExecutionSuccessful(statement, global);
+      }
     }
-    if (!failFast || !error.isPresent()) {
+    if (!failFast || error == null) {
       doOnComplete();
     } else {
-      doOnError(error.get());
+      doOnError(error);
     }
   }
 
@@ -517,6 +538,12 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
     BulkExecutionException error = new BulkExecutionException(t, statement);
     return new Page(Collections.singleton(toErrorResult(error)).iterator(), null);
   }
+
+  /**
+   * @param page The page to inspect.
+   * @return {@code true} if this is the last page, {@code false} otherwise.
+   */
+  abstract boolean isLastPage(P page);
 
   /**
    * Creates a result from the given error.
