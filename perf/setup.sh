@@ -184,9 +184,9 @@ ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test
 
 #10KB
 ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.test10kb;\""
-ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test10kb -c json --batch.mode REPLICA_SET --connector.csv.maxCharsPerColumn 11000 -url /mnt/data/DSEBulkLoadTest/out/data10KB/ -h ${dse_node_ips} &> test10KBLOADjson_first"
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test10kb -c json --batch.mode DISABLED --driver.socket.readTimeout '5 minutes' -url /mnt/data/DSEBulkLoadTest/out/data10KB/ -h ${dse_node_ips} &> test10KBLOADjson_first"
 ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.test10kb;\""
-ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test10kb -c json --batch.mode REPLICA_SET --connector.csv.maxCharsPerColumn 11000 -url /mnt/data/DSEBulkLoadTest/out/data10KB/ -h ${dse_node_ips} &> test10KBLOADjson_second"
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test10kb -c json --batch.mode DISABLED --driver.socket.readTimeout '5 minutes' -url /mnt/data/DSEBulkLoadTest/out/data10KB/ -h ${dse_node_ips} &> test10KBLOADjson_second"
 
 #1MB
 ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.test1mb;\""
