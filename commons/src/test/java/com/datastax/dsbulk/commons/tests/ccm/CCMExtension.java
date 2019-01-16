@@ -116,7 +116,7 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
     try {
       return ccm.getDC(1);
     } catch (Exception e) {
-      LOGGER.error("Could not determine local DC name", e);
+      LOGGER.warn("Could not determine local DC name, using default names instead");
       return ccm.isMultiDC() ? "dc1" : "Cassandra";
     }
   }
