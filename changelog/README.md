@@ -1,6 +1,6 @@
 ## Changelog
 
-### 1.3.0 (in progress)
+### 1.3.0
 
 - [bug] DAT-334: Murmur3TokenRangeSplitter should allow long overflows when splitting ranges.
 - [improvement] DAT-336: Extend DSBulk's rate limiting capability to reads.
