@@ -13,10 +13,10 @@ import static com.datastax.driver.core.querybuilder.QueryBuilder.lte;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.select;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.token;
 
+import com.datastax.driver.core.AbstractTableMetadata;
 import com.datastax.driver.core.ColumnMetadata;
 import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.Statement;
-import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.core.querybuilder.BuiltStatement;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,14 +25,14 @@ import java.util.function.Function;
 /** Generates SELECT statements that read the entire table by token ranges. */
 public class TokenRangeReadStatementGenerator {
 
-  private final TableMetadata table;
+  private final AbstractTableMetadata table;
   private final Metadata metadata;
 
   /**
    * @param table The table to scan.
    * @param metadata The cluster metadata to use.
    */
-  public TokenRangeReadStatementGenerator(TableMetadata table, Metadata metadata) {
+  public TokenRangeReadStatementGenerator(AbstractTableMetadata table, Metadata metadata) {
     this.table = table;
     this.metadata = metadata;
   }
@@ -115,7 +115,9 @@ public class TokenRangeReadStatementGenerator {
             .map(Metadata::quoteIfNecessary)
             .toArray(String[]::new);
     return select(all)
-        .from(table)
+        .from(
+            Metadata.quoteIfNecessary(table.getKeyspace().getName()),
+            Metadata.quoteIfNecessary(table.getName()))
         .where(gt(token(pks), range.start().value()))
         .and(lte(token(pks), range.end().value()));
   }

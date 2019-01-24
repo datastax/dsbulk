@@ -1812,7 +1812,8 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessageContaining("schema.query references a non-existent table: t1");
+        .hasMessageContaining(
+            "schema.query references a non-existent table or materialized view: t1");
   }
 
   @Test

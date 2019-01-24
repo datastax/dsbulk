@@ -8,10 +8,10 @@
  */
 package com.datastax.dsbulk.commons.partitioner;
 
+import com.datastax.driver.core.AbstractTableMetadata;
 import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.StatementWrapper;
-import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.core.Token;
 
 public class TokenRangeReadStatement extends StatementWrapper {
@@ -22,7 +22,7 @@ public class TokenRangeReadStatement extends StatementWrapper {
   private final String tableName;
 
   public TokenRangeReadStatement(
-      Statement wrapped, TableMetadata table, TokenRange<?, ?> range, Token routingToken) {
+      Statement wrapped, AbstractTableMetadata table, TokenRange<?, ?> range, Token routingToken) {
     super(wrapped);
     this.range = range;
     this.routingToken = routingToken;
