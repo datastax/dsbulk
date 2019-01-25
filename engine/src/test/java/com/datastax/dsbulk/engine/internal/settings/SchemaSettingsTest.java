@@ -52,6 +52,7 @@ import com.datastax.driver.core.Configuration;
 import com.datastax.driver.core.EdgeMetadata;
 import com.datastax.driver.core.Host;
 import com.datastax.driver.core.KeyspaceMetadata;
+import com.datastax.driver.core.MaterializedViewMetadata;
 import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.ProtocolOptions;
@@ -154,6 +155,7 @@ class SchemaSettingsTest {
     col2 = mock(ColumnMetadata.class);
     col3 = mock(ColumnMetadata.class);
     protocolOptions = mock(ProtocolOptions.class);
+    MaterializedViewMetadata materializedView = mock(MaterializedViewMetadata.class);
     Configuration configuration = mock(Configuration.class);
     List<ColumnMetadata> columns = newArrayList(col1, col2, col3);
     when(session.getCluster()).thenReturn(cluster);
@@ -171,6 +173,8 @@ class SchemaSettingsTest {
     when(metadata.getReplicas(anyString(), any(Token.class))).thenReturn(Collections.emptySet());
     when(keyspace.getTable("t1")).thenReturn(table);
     when(keyspace.getTables()).thenReturn(singletonList(table));
+    when(keyspace.getMaterializedView("mv1")).thenReturn(materializedView);
+    when(keyspace.getMaterializedViews()).thenReturn(singletonList(materializedView));
     when(keyspace.getName()).thenReturn("ks");
     when(session.prepare(anyString())).thenReturn(ps);
     when(table.getColumns()).thenReturn(columns);
@@ -181,6 +185,7 @@ class SchemaSettingsTest {
     when(table.getPartitionKey()).thenReturn(singletonList(col1));
     when(table.getKeyspace()).thenReturn(keyspace);
     when(table.getName()).thenReturn("t1");
+    when(materializedView.getName()).thenReturn("mv1");
     when(col1.getName()).thenReturn(C1);
     when(col2.getName()).thenReturn(C2);
     when(col3.getName()).thenReturn(C3);
@@ -1647,7 +1652,7 @@ class SchemaSettingsTest {
   }
 
   @Test
-  void should_warn_that_keyspace_was_not_found() {
+  void should_warn_that_keyspace_was_not_found_but_similar_ks_exists() {
     LoaderConfig config = makeLoaderConfig("keyspace = KS, table = t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, false, true))
@@ -1657,9 +1662,7 @@ class SchemaSettingsTest {
   }
 
   @Test
-  void should_warn_that_table_was_not_found() {
-    when(keyspace.getTable("\"MyTable\"")).thenReturn(null);
-    when(keyspace.getTable("mytable")).thenReturn(table);
+  void should_warn_that_table_was_not_found_but_similar_table_exists() {
     LoaderConfig config = makeLoaderConfig("keyspace = ks, table = T1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, false, true))
@@ -1669,9 +1672,17 @@ class SchemaSettingsTest {
   }
 
   @Test
-  void should_warn_that_keyspace_was_not_found_2() {
-    when(metadata.getKeyspace("\"MyKs\"")).thenReturn(null);
-    when(metadata.getKeyspace("myks")).thenReturn(null);
+  void should_warn_that_table_was_not_found_but_similar_mv_exists() {
+    LoaderConfig config = makeLoaderConfig("keyspace = ks, table = MV1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    assertThatThrownBy(() -> schemaSettings.init(UNLOAD, cluster, false, true))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage(
+            "Table or materialized view \"MV1\" does not exist, however a materialized view mv1 was found. Did you mean to use -t mv1?");
+  }
+
+  @Test
+  void should_warn_that_keyspace_was_not_found() {
     LoaderConfig config = makeLoaderConfig("keyspace = MyKs, table = t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, false, true))
@@ -1680,14 +1691,21 @@ class SchemaSettingsTest {
   }
 
   @Test
-  void should_warn_that_table_was_not_found_2() {
-    when(keyspace.getTable("\"MyTable\"")).thenReturn(null);
-    when(keyspace.getTable("mytable")).thenReturn(null);
+  void should_warn_that_table_was_not_found() {
     LoaderConfig config = makeLoaderConfig("keyspace = ks, table = MyTable");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, false, true))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage("Table \"MyTable\" does not exist");
+  }
+
+  @Test
+  void should_warn_that_mv_was_not_found() {
+    LoaderConfig config = makeLoaderConfig("keyspace = ks, table = MyTable");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    assertThatThrownBy(() -> schemaSettings.init(UNLOAD, cluster, false, true))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("Table or materialized view \"MyTable\" does not exist");
   }
 
   @Test
