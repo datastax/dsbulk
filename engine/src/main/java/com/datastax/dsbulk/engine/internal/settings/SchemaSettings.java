@@ -746,41 +746,45 @@ public class SchemaSettings {
       KeyspaceMetadata keyspace, String tableName, WorkflowType workflowType) {
     AbstractTableMetadata table = keyspace.getTable(quoteIfNecessary(tableName));
     if (table == null) {
-      Optional<TableMetadata> match =
-          keyspace
-              .getTables()
-              .stream()
-              .filter(t -> t.getName().equalsIgnoreCase(tableName))
-              .findFirst();
-      if (match.isPresent()) {
-        String similarName = quoteIfNecessary(match.get().getName());
-        throw new BulkConfigurationException(
-            String.format(
-                "Table %s does not exist, however a table %s was found. Did you mean to use -t %s?",
-                quoteIfNecessary(tableName), similarName, similarName));
-      } else if (workflowType == COUNT || workflowType == UNLOAD) {
-        table = keyspace.getMaterializedView(tableName);
+      if (workflowType == COUNT || workflowType == UNLOAD) {
+        table = keyspace.getMaterializedView(quoteIfNecessary(tableName));
         if (table == null) {
-          Optional<MaterializedViewMetadata> mmatch =
+          Optional<MaterializedViewMetadata> match =
               keyspace
                   .getMaterializedViews()
                   .stream()
                   .filter(t -> t.getName().equalsIgnoreCase(tableName))
                   .findFirst();
-          if (mmatch.isPresent()) {
-            String similarName = quoteIfNecessary(mmatch.get().getName());
+          if (match.isPresent()) {
+            String similarName = quoteIfNecessary(match.get().getName());
             throw new BulkConfigurationException(
                 String.format(
-                    "Table or materialized view %s does not exist, however a materialized view %s was found. Did you mean to use -t %s?",
+                    "Table or materialized view %s does not exist, "
+                        + "however a materialized view %s was found. Did you mean to use -t %s?",
                     quoteIfNecessary(tableName), similarName, similarName));
           } else {
-            throw new IllegalArgumentException(
-                String.format("Table or materialized view %s does not exist", tableName));
+            throw new BulkConfigurationException(
+                String.format(
+                    "Table or materialized view %s does not exist", quoteIfNecessary(tableName)));
           }
         }
       } else {
-        throw new BulkConfigurationException(
-            String.format("Table %s does not exist", quoteIfNecessary(tableName)));
+        Optional<TableMetadata> match =
+            keyspace
+                .getTables()
+                .stream()
+                .filter(t -> t.getName().equalsIgnoreCase(tableName))
+                .findFirst();
+        if (match.isPresent()) {
+          String similarName = quoteIfNecessary(match.get().getName());
+          throw new BulkConfigurationException(
+              String.format(
+                  "Table %s does not exist, however a table %s was found. Did you mean to use -t %s?",
+                  quoteIfNecessary(tableName), similarName, similarName));
+        } else {
+          throw new BulkConfigurationException(
+              String.format("Table %s does not exist", quoteIfNecessary(tableName)));
+        }
       }
     }
     return table;
