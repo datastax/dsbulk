@@ -31,8 +31,8 @@ import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createQueryWi
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createQueryWithResultSetWithQuotes;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createSimpleParameterizedQuery;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.primeIpByCountryTable;
-import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateBadOps;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateExceptionsLog;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateNumberOfBadRecords;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validatePrepare;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateQueryCount;
@@ -297,9 +297,8 @@ class CSVEndToEndSimulacronIT {
     int status = new DataStaxBulkLoader(args).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
     validateQueryCount(simulacron, 21, "INSERT INTO ip_by_country", LOCAL_ONE);
-    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
-    validateBadOps(3, logPath);
-    validateExceptionsLog(3, "Source:", "mapping-errors.log", logPath);
+    validateNumberOfBadRecords(3);
+    validateExceptionsLog(3, "Source:", "mapping-errors.log");
   }
 
   @Test
@@ -377,9 +376,8 @@ class CSVEndToEndSimulacronIT {
     // There are 24 rows of data, but two extra queries due to the retry for the write timeout and
     // the unavailable.
     validateQueryCount(simulacron, 26, "INSERT INTO ip_by_country", LOCAL_ONE);
-    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
-    validateBadOps(4, logPath);
-    validateExceptionsLog(4, "Source:", "load-errors.log", logPath);
+    validateNumberOfBadRecords(4);
+    validateExceptionsLog(4, "Source:", "load-errors.log");
   }
 
   @Test
@@ -422,9 +420,8 @@ class CSVEndToEndSimulacronIT {
     int status = new DataStaxBulkLoader(args).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
     validateQueryCount(simulacron, 21, "INSERT INTO ip_by_country", LOCAL_ONE);
-    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
-    validateBadOps(3, logPath);
-    validateExceptionsLog(3, "Source:", "mapping-errors.log", logPath);
+    validateNumberOfBadRecords(3);
+    validateExceptionsLog(3, "Source:", "mapping-errors.log");
   }
 
   @Test
@@ -548,13 +545,9 @@ class CSVEndToEndSimulacronIT {
         .contains("aborted: Too many errors, the maximum allowed is 9")
         .contains("Records: total: 24, successful: 14, failed: 10");
     // the number of writes may vary due to the abortion
-    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
-    validateBadOps(10, logPath);
+    validateNumberOfBadRecords(10);
     validateExceptionsLog(
-        10,
-        "Primary key column country_code cannot be mapped to null",
-        "mapping-errors.log",
-        logPath);
+        10, "Primary key column country_code cannot be mapped to null", "mapping-errors.log");
   }
 
   @Test
@@ -604,12 +597,9 @@ class CSVEndToEndSimulacronIT {
         .contains("aborted: Too many errors, the maximum allowed is 2")
         .contains("Records: total: 3, successful: 0, failed: 3");
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
-    validateBadOps(3, logPath);
+    validateNumberOfBadRecords(3);
     validateExceptionsLog(
-        3,
-        "Required field D (mapped to column d) was missing from record",
-        "mapping-errors.log",
-        logPath);
+        3, "Required field D (mapped to column d) was missing from record", "mapping-errors.log");
   }
 
   @Test
@@ -653,9 +643,8 @@ class CSVEndToEndSimulacronIT {
         .contains("aborted: Too many errors, the maximum allowed is 2")
         .contains("Records: total: 3, successful: 0, failed: 3");
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
-    validateBadOps(3, logPath);
-    validateExceptionsLog(
-        3, "Extraneous field C was found in record", "mapping-errors.log", logPath);
+    validateNumberOfBadRecords(3);
+    validateExceptionsLog(3, "Extraneous field C was found in record", "mapping-errors.log");
   }
 
   @Test

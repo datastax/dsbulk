@@ -46,7 +46,6 @@ import com.datastax.dsbulk.executor.api.result.Result;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Range;
 import com.google.common.util.concurrent.MoreExecutors;
@@ -58,17 +57,13 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
-import org.jctools.maps.NonBlockingHashMap;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,7 +74,6 @@ import reactor.core.publisher.Signal;
 import reactor.core.publisher.UnicastProcessor;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
-import reactor.util.concurrent.Queues;
 
 public class LogManager implements AutoCloseable {
 
@@ -113,8 +107,6 @@ public class LogManager implements AutoCloseable {
       Caffeine.newBuilder()
           .build(path -> new PrintWriter(Files.newBufferedWriter(path, UTF_8, CREATE_NEW, WRITE)));
 
-  private final ConcurrentMap<URI, List<Range<Long>>> positions = new NonBlockingHashMap<>();
-
   private ScalableThreadPoolExecutor executor;
   private Scheduler scheduler;
 
@@ -122,6 +114,8 @@ public class LogManager implements AutoCloseable {
   private ProtocolVersion protocolVersion;
 
   private StackTracePrinter stackTracePrinter;
+
+  private PositionsTracker positionsTracker;
   private PrintWriter positionsPrinter;
 
   private FluxSink<ErrorRecord> failedRecordSink;
@@ -129,6 +123,7 @@ public class LogManager implements AutoCloseable {
   private FluxSink<UnmappableStatement> unmappableStatementSink;
   private FluxSink<WriteResult> writeResultSink;
   private FluxSink<ReadResult> readResultSink;
+  private FluxSink<Record> positionsSink;
 
   private UnicastProcessor<Void> uncaughtExceptionProcessor;
   private FluxSink<Void> uncaughtExceptionSink;
@@ -164,11 +159,13 @@ public class LogManager implements AutoCloseable {
     stackTracePrinter = new StackTracePrinter();
     stackTracePrinter.setOptionList(LogSettings.STACK_TRACE_PRINTER_OPTIONS);
     stackTracePrinter.start();
+    positionsTracker = new PositionsTracker();
     failedRecordSink = newFailedRecordSink();
     unmappableRecordSink = newUnmappableRecordSink();
     unmappableStatementSink = newUnmappableStatementSink();
-    writeResultSink = newWriteResultSink();
-    readResultSink = newReadResultSink();
+    writeResultSink = newFailedWriteResultSink();
+    readResultSink = newFailedReadResultSink();
+    positionsSink = newPositionsSink();
     uncaughtExceptionProcessor = UnicastProcessor.create();
     uncaughtExceptionSink = uncaughtExceptionProcessor.sink();
     invalidMappingWarningDone = new AtomicBoolean(false);
@@ -211,7 +208,8 @@ public class LogManager implements AutoCloseable {
               pw.flush();
               pw.close();
             });
-    if (workflowType == WorkflowType.LOAD && !positions.isEmpty()) {
+    positionsSink.complete();
+    if (workflowType == WorkflowType.LOAD && !positionsTracker.isEmpty()) {
       positionsPrinter =
           new PrintWriter(
               Files.newBufferedWriter(
@@ -220,7 +218,7 @@ public class LogManager implements AutoCloseable {
                   CREATE_NEW,
                   WRITE));
       // sort positions by URI
-      new TreeMap<>(positions)
+      new TreeMap<>(positionsTracker.getPositions())
           .forEach((resource, ranges) -> appendToPositionsFile(resource, ranges, positionsPrinter));
       positionsPrinter.flush();
       positionsPrinter.close();
@@ -247,7 +245,7 @@ public class LogManager implements AutoCloseable {
       LOGGER.info(
           "Errors are detailed in the following file(s): {}", Joiner.on(", ").join(debugFiles));
     }
-    if (positionsPrinter != null) {
+    if (positionsTracker != null) {
       LOGGER.info("Last processed positions can be found in {}", POSITIONS_FILE);
     }
   }
@@ -467,68 +465,26 @@ public class LogManager implements AutoCloseable {
   }
 
   /**
-   * A tracker for result positions.
+   * Handler for result positions.
    *
    * <p>Used only by the load workflow.
    *
-   * <p>Extracts the result's {@link Statement} and applies {@link #newStatementPositionTracker()
-   * statementPositionTracker}.
+   * <p>Extracts the result's {@link Record} and updates the positions.
    *
-   * @return A tracker for result positions.
+   * @return A handler for result positions.
    */
-  public Function<Flux<WriteResult>, Flux<Void>> newResultPositionTracker() {
-    return upstream -> upstream.map(Result::getStatement).transform(newStatementPositionTracker());
+  public Function<Flux<WriteResult>, Flux<Void>> newResultPositionsHandler() {
+    return upstream ->
+        upstream
+            .map(Result::getStatement)
+            .transform(newStatementToRecordMapper())
+            .doOnNext(record -> positionsSink.next(record))
+            .then()
+            .flux();
   }
 
   public <T> Function<Flux<T>, Flux<T>> newTotalItemsCounter() {
     return upstream -> upstream.doOnNext(r -> totalItems.increment());
-  }
-
-  /**
-   * A tracker for statement positions.
-   *
-   * <p>Used only by the load workflow.
-   *
-   * <p>Extracts the statements's {@link Record}s and applies {@link #newRecordPositionTracker()
-   * recordPositionTracker}.
-   *
-   * @return A tracker for statement positions.
-   */
-  private Function<Flux<? extends Statement>, Flux<Void>> newStatementPositionTracker() {
-    return upstream ->
-        upstream.transform(newStatementToRecordMapper()).transform(newRecordPositionTracker());
-  }
-
-  /**
-   * A tracker for record positions.
-   *
-   * <p>Used only by the load workflow.
-   *
-   * <p>Groups together records by {@linkplain Record#getResource() resource} then merges all their
-   * {@linkplain Record#getPosition() positions} into continuous ranges.
-   *
-   * @return A tracker for statement positions.
-   */
-  private Function<Flux<? extends Record>, Flux<Void>> newRecordPositionTracker() {
-    return upstream ->
-        upstream
-            .filter(record -> record.getPosition() > 0)
-            .window(Queues.SMALL_BUFFER_SIZE)
-            .flatMap(
-                window ->
-                    window
-                        .groupBy(Record::getResource, Record::getPosition)
-                        .flatMap(
-                            group ->
-                                group
-                                    .reduceWith(ArrayList::new, LogManager::addPosition)
-                                    .doOnNext(
-                                        ranges ->
-                                            positions.merge(
-                                                group.key(), ranges, LogManager::mergePositions)),
-                            Queues.SMALL_BUFFER_SIZE))
-            .then()
-            .flux();
   }
 
   /**
@@ -565,8 +521,7 @@ public class LogManager implements AutoCloseable {
    * <p>Used in both load and unload workflows.
    *
    * <p>Appends the record to the debug file, then (for load workflows only) to the bad file and
-   * forwards the record's position to the {@linkplain #newRecordPositionTracker() position
-   * tracker}.
+   * forwards the record's position to the position tracker.
    *
    * @return A processor for failed records.
    */
@@ -577,7 +532,7 @@ public class LogManager implements AutoCloseable {
         processor.publishOn(scheduler).doOnNext(this::appendFailedRecordToDebugFile);
     if (workflowType == WorkflowType.LOAD) {
       flux.doOnNext(record -> appendToBadFile(record, CONNECTOR_BAD_FILE))
-          .transform(newRecordPositionTracker())
+          .doOnNext(record -> positionsSink.next(record))
           .subscribe();
     } else {
       flux.subscribe();
@@ -591,9 +546,7 @@ public class LogManager implements AutoCloseable {
    *
    * <p>Used only in unload workflows.
    *
-   * <p>Appends the record to the debug file, then (for load workflows only) to the bad file and
-   * forwards the record's position to the {@linkplain #newRecordPositionTracker() position
-   * tracker}.
+   * <p>Appends the record to the debug file.
    *
    * @return A processor for unmappable records.
    */
@@ -608,14 +561,13 @@ public class LogManager implements AutoCloseable {
   }
 
   /**
-   * A processor for unmappable statementsproduced by the {@linkplain
-   * com.datastax.dsbulk.engine.internal.schema.RecordMapper} record mapper}.
+   * A processor for unmappable statements produced by the {@linkplain
+   * com.datastax.dsbulk.engine.internal.schema.RecordMapper record mapper}.
    *
    * <p>Used only in the load workflow.
    *
    * <p>Appends the statement to the debug file, then extracts its record, appends it to the bad
-   * file, then forwards the record's position to the {@linkplain #newRecordPositionTracker()
-   * position tracker}.
+   * file, then forwards the record's position to the position tracker.
    *
    * @return A processor for unmappable statements.
    */
@@ -628,7 +580,7 @@ public class LogManager implements AutoCloseable {
         .doOnNext(this::appendUnmappableStatementToDebugFile)
         .transform(newStatementToRecordMapper())
         .doOnNext(record -> appendToBadFile(record, MAPPING_BAD_FILE))
-        .transform(newRecordPositionTracker())
+        .doOnNext(record -> positionsSink.next(record))
         .subscribe();
     return processor.sink();
   }
@@ -639,13 +591,13 @@ public class LogManager implements AutoCloseable {
    * <p>Used only in the load workflow.
    *
    * <p>Appends the failed result to the debug file, then extracts its statement, then extracts its
-   * record, then appends it to the bad file, then forwards the record's position to the {@linkplain
-   * #newRecordPositionTracker() position tracker}.
+   * record, then appends it to the bad file, then forwards the record's position to the position
+   * tracker.
    *
    * @return A processor for failed write results.
    */
   @NotNull
-  private FluxSink<WriteResult> newWriteResultSink() {
+  private FluxSink<WriteResult> newFailedWriteResultSink() {
     UnicastProcessor<WriteResult> processor = UnicastProcessor.create();
     processor
         .publishOn(scheduler)
@@ -653,7 +605,7 @@ public class LogManager implements AutoCloseable {
         .map(Result::getStatement)
         .transform(newStatementToRecordMapper())
         .doOnNext(record -> appendToBadFile(record, LOAD_BAD_FILE))
-        .transform(newRecordPositionTracker())
+        .doOnNext(record -> positionsSink.next(record))
         .subscribe();
     return processor.sink();
   }
@@ -663,16 +615,34 @@ public class LogManager implements AutoCloseable {
    *
    * <p>Used only in the unload workflow.
    *
-   * <p>Extracts the statement, then appends it to the debug file, then extracts its record, appends
-   * it to the bad file, then forwards the record's position to the {@linkplain
-   * #newRecordPositionTracker() position tracker}.
+   * <p>Extracts the statement, then appends it to the debug file.
    *
    * @return A processor for failed read results.
    */
   @NotNull
-  private FluxSink<ReadResult> newReadResultSink() {
+  private FluxSink<ReadResult> newFailedReadResultSink() {
     UnicastProcessor<ReadResult> processor = UnicastProcessor.create();
     processor.publishOn(scheduler).doOnNext(this::appendFailedReadResultToDebugFile).subscribe();
+    return processor.sink();
+  }
+
+  /**
+   * A processor for record positions.
+   *
+   * <p>Used only in the load workflow.
+   *
+   * <p>Updates the position tracker for every record received.
+   *
+   * @return A processor for record positions.
+   */
+  @NotNull
+  private FluxSink<Record> newPositionsSink() {
+    UnicastProcessor<Record> processor = UnicastProcessor.create();
+    processor
+        // do not need to be published on the dedicated log scheduler, the computation is fairly
+        // cheap
+        .doOnNext(record -> positionsTracker.update(record.getResource(), record.getPosition()))
+        .subscribe();
     return processor.sink();
   }
 
@@ -768,103 +738,6 @@ public class LogManager implements AutoCloseable {
     positionsPrinter.print(':');
     positions.stream().findFirst().ifPresent(pos -> positionsPrinter.print(pos.upperEndpoint()));
     positionsPrinter.println();
-  }
-
-  @NotNull
-  @VisibleForTesting
-  static List<Range<Long>> addPosition(@NotNull List<Range<Long>> positions, long position) {
-    ListIterator<Range<Long>> iterator = positions.listIterator();
-    while (iterator.hasNext()) {
-      Range<Long> range = iterator.next();
-      if (range.contains(position)) {
-        return positions;
-      } else if (range.upperEndpoint() + 1L == position) {
-        range = Range.closed(range.lowerEndpoint(), position);
-        iterator.set(range);
-        if (iterator.hasNext()) {
-          Range<Long> next = iterator.next();
-          if (range.upperEndpoint() == next.lowerEndpoint() - 1) {
-            iterator.remove();
-            iterator.previous();
-            iterator.set(Range.closed(range.lowerEndpoint(), next.upperEndpoint()));
-          }
-        }
-        return positions;
-      } else if (range.lowerEndpoint() - 1L == position) {
-        range = Range.closed(position, range.upperEndpoint());
-        iterator.set(range);
-        return positions;
-      } else if (position < range.lowerEndpoint()) {
-        iterator.previous();
-        iterator.add(Range.singleton(position));
-        return positions;
-      }
-    }
-    iterator.add(Range.singleton(position));
-    return positions;
-  }
-
-  @NotNull
-  @VisibleForTesting
-  static List<Range<Long>> mergePositions(
-      @NotNull List<Range<Long>> positions1, @NotNull List<Range<Long>> positions2) {
-    if (positions1.isEmpty()) {
-      return positions2;
-    }
-    if (positions2.isEmpty()) {
-      return positions1;
-    }
-    List<Range<Long>> merged = new ArrayList<>();
-    ListIterator<Range<Long>> iterator1 = positions1.listIterator();
-    ListIterator<Range<Long>> iterator2 = positions2.listIterator();
-    Range<Long> previous = null;
-    while (true) {
-      Range<Long> current = nextRange(iterator1, iterator2);
-      if (current == null) {
-        merged.add(previous);
-        break;
-      }
-      if (previous == null) {
-        previous = current;
-      } else if (isContiguous(previous, current)) {
-        previous = previous.span(current);
-      } else {
-        merged.add(previous);
-        previous = current;
-      }
-    }
-    return merged;
-  }
-
-  private static boolean isContiguous(Range<Long> range1, Range<Long> range2) {
-    return range1.lowerEndpoint() - range2.upperEndpoint() <= 1
-        && range2.lowerEndpoint() - range1.upperEndpoint() <= 1;
-  }
-
-  private static Range<Long> nextRange(
-      ListIterator<Range<Long>> iterator1, ListIterator<Range<Long>> iterator2) {
-    Range<Long> range1 = null;
-    Range<Long> range2 = null;
-    if (iterator1.hasNext()) {
-      range1 = iterator1.next();
-    }
-    if (iterator2.hasNext()) {
-      range2 = iterator2.next();
-    }
-    if (range1 == null && range2 == null) {
-      return null;
-    }
-    if (range1 == null) {
-      return range2;
-    } else if (range2 == null) {
-      return range1;
-    } else if (range1.lowerEndpoint() < range2.lowerEndpoint()) {
-      iterator2.previous();
-      return range1;
-    } else {
-      iterator1.previous();
-      return range2;
-    }
   }
 
   private static int delta(Statement statement) {

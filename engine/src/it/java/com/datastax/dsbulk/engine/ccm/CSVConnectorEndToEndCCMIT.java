@@ -16,12 +16,12 @@ import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStreamExcludingHeaders;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
+import static com.datastax.dsbulk.engine.DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.numberToInstant;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.REJECT;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.TRUNCATE;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS;
-import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_HEADER;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_SKIP;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_WITH_SPACES;
@@ -31,16 +31,16 @@ import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createIpByCountryCaseSensitiveTable;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createIpByCountryTable;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createWithSpacesTable;
-import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateBadOps;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateExceptionsLog;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateNumberOfBadRecords;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validatePositionsFile;
 import static java.math.RoundingMode.FLOOR;
 import static java.math.RoundingMode.UNNECESSARY;
 import static java.nio.file.Files.createTempDirectory;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
-import static org.junit.jupiter.api.Assumptions.assumingThat;
 
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.ResultSet;
@@ -65,17 +65,17 @@ import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.commons.tests.utils.Version;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
-import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.dsbulk.engine.tests.MockConnector;
 import com.datastax.dsbulk.engine.tests.utils.RecordUtils;
 import com.google.common.base.Splitter;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -84,6 +84,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -104,6 +105,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   private static final Version V3 = Version.parse("3.0");
   private static final Version V2_2 = Version.parse("2.2");
   private static final Version V2_1 = Version.parse("2.1");
+  private static final Version V5_1 = Version.parse("5.1");
 
   private final LogInterceptor logs;
   private final StreamInterceptor stderr;
@@ -172,6 +174,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
+    validatePositionsFile(CSV_RECORDS_UNIQUE, 24);
     deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -220,6 +223,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
+    validatePositionsFile(CSV_RECORDS_UNIQUE, 24);
     deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -270,6 +274,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
+    validatePositionsFile(CSV_RECORDS_UNIQUE, 24);
     deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -326,12 +331,14 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             + "c_set set<varchar>,"
             + "c_udt frozen<contacts>)");
 
+    URL resource = getClass().getResource("/complex.csv");
+
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
     args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(quoteJson(getClass().getResource("/complex.csv")));
+    args.add(quoteJson(resource));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--codec.nullStrings");
@@ -345,7 +352,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-
+    validatePositionsFile(resource, 2);
     assertComplexRows(session);
 
     deleteDirectory(logDir);
@@ -392,7 +399,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-
+    validatePositionsFile(unloadDir.resolve("output-000001.csv"), 2);
     assertComplexRows(session);
   }
 
@@ -452,12 +459,14 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             + "c3 counter, "
             + "PRIMARY KEY (pk1, \"PK2\"))");
 
+    URL resource = getClass().getResource("/counters.csv");
+
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
     args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(quoteJson(getClass().getResource("/counters.csv")));
+    args.add(quoteJson(resource));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -469,6 +478,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
+    validatePositionsFile(resource, 1);
+
     Row row =
         session.execute("SELECT \"C1\", c2, c3 FROM counters WHERE pk1 = 1 AND \"PK2\" = 2").one();
     assertThat(row.getLong("\"C1\"")).isEqualTo(42L);
@@ -501,147 +512,138 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   @Test
-  void full_load_unload_counters_custom_query_positional() {
+  void full_load_unload_counters_custom_query_positional() throws IOException {
 
-    // the UPDATE SET += syntax is only supported in 5.1+
-    assumingThat(
-        ccm.getVersion().compareTo(Version.parse("5.1")) >= 0,
-        () -> {
-          session.execute("DROP TABLE IF EXISTS counters");
-          session.execute(
-              "CREATE TABLE counters ("
-                  + "pk1 int, "
-                  + "\"PK2\" int, "
-                  + "\"C1\" counter, "
-                  + "c2 counter, "
-                  + "c3 counter, "
-                  + "PRIMARY KEY (pk1, \"PK2\"))");
+    assumeTrue(
+        ccm.getVersion().compareTo(V5_1) >= 0, "UPDATE SET += syntax is only supported in 5.1+");
 
-          List<String> args = new ArrayList<>();
-          args.add("load");
-          args.add("--log.directory");
-          args.add(quoteJson(logDir));
-          args.add("--connector.csv.url");
-          args.add(quoteJson(getClass().getResource("/counters.csv")));
-          args.add("--connector.csv.header");
-          args.add("false");
-          args.add("--schema.keyspace");
-          args.add(session.getLoggedKeyspace());
-          args.add("--schema.query");
-          args.add(
-              quoteJson(
-                  "UPDATE counters SET \"C1\" += ?, c2 = c2 + ? WHERE pk1 = ? AND \"PK2\" = ?"));
-          args.add("--schema.mapping");
-          args.add("pk1,PK2,C1,c2");
+    session.execute("DROP TABLE IF EXISTS counters");
+    session.execute(
+        "CREATE TABLE counters ("
+            + "pk1 int, "
+            + "\"PK2\" int, "
+            + "\"C1\" counter, "
+            + "c2 counter, "
+            + "c3 counter, "
+            + "PRIMARY KEY (pk1, \"PK2\"))");
 
-          int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
-          assertThat(status).isZero();
-          Row row =
-              session
-                  .execute("SELECT \"C1\", c2, c3 FROM counters WHERE pk1 = 1 AND \"PK2\" = 2")
-                  .one();
-          assertThat(row.getLong("\"C1\"")).isEqualTo(42L);
-          assertThat(row.getLong("c2")).isZero(); // present in the file
-          assertThat(row.isNull("c3")).isTrue(); // not present in the file
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.csv.url");
+    args.add(quoteJson(getClass().getResource("/counters.csv")));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.query");
+    args.add(
+        quoteJson("UPDATE counters SET \"C1\" += ?, c2 = c2 + ? WHERE pk1 = ? AND \"PK2\" = ?"));
+    args.add("--schema.mapping");
+    args.add("pk1,PK2,C1,c2");
 
-          deleteDirectory(logDir);
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    Row row =
+        session.execute("SELECT \"C1\", c2, c3 FROM counters WHERE pk1 = 1 AND \"PK2\" = 2").one();
+    assertThat(row.getLong("\"C1\"")).isEqualTo(42L);
+    assertThat(row.getLong("c2")).isZero(); // present in the file
+    assertThat(row.isNull("c3")).isTrue(); // not present in the file
 
-          args = new ArrayList<>();
-          args.add("unload");
-          args.add("--log.directory");
-          args.add(quoteJson(logDir));
-          args.add("--connector.csv.url");
-          args.add(quoteJson(unloadDir));
-          args.add("--connector.csv.header");
-          args.add("true");
-          args.add("--connector.csv.maxConcurrentFiles");
-          args.add("1");
-          args.add("--schema.keyspace");
-          args.add(session.getLoggedKeyspace());
-          args.add("--schema.query");
-          // Exercise aliased selectors and a custom mapping
-          args.add(
-              quoteJson(
-                  "SELECT pk1 as \"Field A\", \"PK2\" AS \"Field B\", \"C1\" AS \"Field C\", "
-                      + "c2 AS \"Field D\", c3 AS \"Field E\" FROM counters"));
-          args.add("--schema.mapping");
-          args.add(quoteJson("\"Field D\",\"Field C\",\"Field B\",\"Field A\""));
+    deleteDirectory(logDir);
 
-          status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
-          assertThat(status).isZero();
-          validateOutputFiles(2, unloadDir);
-          assertThat(readAllLinesInDirectoryAsStream(unloadDir))
-              // the result set order wins over the mapping order
-              .containsExactly("Field A,Field B,Field C,Field D", "1,2,42,0");
-        });
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.csv.url");
+    args.add(quoteJson(unloadDir));
+    args.add("--connector.csv.header");
+    args.add("true");
+    args.add("--connector.csv.maxConcurrentFiles");
+    args.add("1");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.query");
+    // Exercise aliased selectors and a custom mapping
+    args.add(
+        quoteJson(
+            "SELECT pk1 as \"Field A\", \"PK2\" AS \"Field B\", \"C1\" AS \"Field C\", "
+                + "c2 AS \"Field D\", c3 AS \"Field E\" FROM counters"));
+    args.add("--schema.mapping");
+    args.add(quoteJson("\"Field D\",\"Field C\",\"Field B\",\"Field A\""));
+
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    validateOutputFiles(2, unloadDir);
+    assertThat(readAllLinesInDirectoryAsStream(unloadDir))
+        // the result set order wins over the mapping order
+        .containsExactly("Field A,Field B,Field C,Field D", "1,2,42,0");
   }
 
   @Test
-  void full_load_unload_counters_custom_query_named() {
+  void full_load_unload_counters_custom_query_named() throws IOException {
 
-    // the UPDATE SET += syntax is only supported in 5.1+
-    assumingThat(
-        ccm.getVersion().compareTo(Version.parse("5.1")) >= 0,
-        () -> {
-          session.execute("DROP TABLE IF EXISTS counters");
-          session.execute(
-              "CREATE TABLE counters ("
-                  + "pk1 int, "
-                  + "\"PK2\" int, "
-                  + "\"C1\" counter, "
-                  + "c2 counter, "
-                  + "c3 counter, "
-                  + "PRIMARY KEY (pk1, \"PK2\"))");
+    assumeTrue(
+        ccm.getVersion().compareTo(V5_1) >= 0, "UPDATE SET += syntax is only supported in 5.1+");
 
-          List<String> args = new ArrayList<>();
-          args.add("load");
-          args.add("--log.directory");
-          args.add(quoteJson(logDir));
-          args.add("--connector.csv.url");
-          args.add(quoteJson(getClass().getResource("/counters.csv")));
-          args.add("--connector.csv.header");
-          args.add("false");
-          args.add("--schema.keyspace");
-          args.add(session.getLoggedKeyspace());
-          args.add("--schema.query");
-          args.add(
-              quoteJson(
-                  "UPDATE counters SET \"C1\" += :\"fieldC\", c2 = c2 + :\"fieldD\" WHERE pk1 = :\"fieldA\" AND \"PK2\" = :\"fieldB\""));
-          args.add("--schema.mapping");
-          args.add("fieldA,fieldB,fieldC,fieldD");
+    session.execute("DROP TABLE IF EXISTS counters");
+    session.execute(
+        "CREATE TABLE counters ("
+            + "pk1 int, "
+            + "\"PK2\" int, "
+            + "\"C1\" counter, "
+            + "c2 counter, "
+            + "c3 counter, "
+            + "PRIMARY KEY (pk1, \"PK2\"))");
 
-          int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
-          assertThat(status).isZero();
-          Row row =
-              session
-                  .execute("SELECT \"C1\", c2, c3 FROM counters WHERE pk1 = 1 AND \"PK2\" = 2")
-                  .one();
-          assertThat(row.getLong("\"C1\"")).isEqualTo(42L);
-          assertThat(row.getLong("c2")).isZero(); // present in the file
-          assertThat(row.isNull("c3")).isTrue(); // not present in the file
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.csv.url");
+    args.add(quoteJson(getClass().getResource("/counters.csv")));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.query");
+    args.add(
+        quoteJson(
+            "UPDATE counters SET \"C1\" += :\"fieldC\", c2 = c2 + :\"fieldD\" WHERE pk1 = :\"fieldA\" AND \"PK2\" = :\"fieldB\""));
+    args.add("--schema.mapping");
+    args.add("fieldA,fieldB,fieldC,fieldD");
 
-          deleteDirectory(logDir);
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    Row row =
+        session.execute("SELECT \"C1\", c2, c3 FROM counters WHERE pk1 = 1 AND \"PK2\" = 2").one();
+    assertThat(row.getLong("\"C1\"")).isEqualTo(42L);
+    assertThat(row.getLong("c2")).isZero(); // present in the file
+    assertThat(row.isNull("c3")).isTrue(); // not present in the file
 
-          args = new ArrayList<>();
-          args.add("unload");
-          args.add("--log.directory");
-          args.add(quoteJson(logDir));
-          args.add("--connector.csv.url");
-          args.add(quoteJson(unloadDir));
-          args.add("--connector.csv.header");
-          args.add("false");
-          args.add("--connector.csv.maxConcurrentFiles");
-          args.add("1");
-          args.add("--schema.keyspace");
-          args.add(session.getLoggedKeyspace());
-          args.add("--schema.query");
-          args.add(quoteJson("SELECT pk1, \"PK2\", \"C1\", c2, c3 FROM counters"));
+    deleteDirectory(logDir);
 
-          status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
-          assertThat(status).isZero();
-          validateOutputFiles(1, unloadDir);
-          assertThat(readAllLinesInDirectoryAsStream(unloadDir)).containsExactly("1,2,42,0,");
-        });
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.csv.url");
+    args.add(quoteJson(unloadDir));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--connector.csv.maxConcurrentFiles");
+    args.add("1");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.query");
+    args.add(quoteJson("SELECT pk1, \"PK2\", \"C1\", c2, c3 FROM counters"));
+
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    validateOutputFiles(1, unloadDir);
+    assertThat(readAllLinesInDirectoryAsStream(unloadDir)).containsExactly("1,2,42,0,");
   }
 
   /** Attempts to load and unload a larger dataset which can be batched. */
@@ -666,6 +668,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(500, "SELECT * FROM ip_by_country");
+    validatePositionsFile(CSV_RECORDS, 500);
     deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -688,6 +691,38 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(500, unloadDir);
+  }
+
+  @Test
+  void full_load_multiple_files_with_errors() throws Exception {
+
+    ClassLoader loader = ClassLoader.getSystemClassLoader();
+    URL root = Objects.requireNonNull(loader.getResource("positions-test"));
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.csv.url");
+    args.add(quoteJson(root));
+    args.add("--connector.csv.header");
+    args.add("true");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("ip_by_country");
+    args.add("--schema.mapping");
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(STATUS_COMPLETED_WITH_ERRORS);
+    // 300 lines total with 6 invalid ones
+    validateNumberOfBadRecords(6);
+    validateResultSetSize(294, "SELECT * FROM ip_by_country");
+    URI file1 = loader.getResource("positions-test/positions-test1.csv").toURI();
+    URI file2 = loader.getResource("positions-test/positions-test2.csv").toURI();
+    URI file3 = loader.getResource("positions-test/positions-test3.csv").toURI();
+    validatePositionsFile(ImmutableMap.of(file1, 100L, file2, 100L, file3, 100L));
   }
 
   /**
@@ -716,6 +751,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(1, "SELECT * FROM \"MYKS\".\"WITH_SPACES\"");
+    validatePositionsFile(CSV_RECORDS_WITH_SPACES, 1);
     deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -766,11 +802,11 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("true");
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
-    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
+    assertThat(status).isEqualTo(STATUS_COMPLETED_WITH_ERRORS);
     validateResultSetSize(21, "SELECT * FROM ip_by_country");
-    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
-    validateBadOps(3, logPath);
-    validateExceptionsLog(3, "Source:", "mapping-errors.log", logPath);
+    validateNumberOfBadRecords(3);
+    validateExceptionsLog(3, "Source:", "mapping-errors.log");
+    validatePositionsFile(CSV_RECORDS_SKIP, 27);
     deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -1665,7 +1701,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--log.directory");
     args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(quoteJson(CSV_RECORDS_HEADER));
+    args.add(quoteJson(CSV_RECORDS_UNIQUE));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -1690,7 +1726,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--log.directory");
     args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(quoteJson(CSV_RECORDS_HEADER));
+    args.add(quoteJson(CSV_RECORDS_UNIQUE));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -1714,7 +1750,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--log.directory");
     args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(quoteJson(CSV_RECORDS_HEADER));
+    args.add(quoteJson(CSV_RECORDS_UNIQUE));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -1733,6 +1769,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   @Test
   void error_load_primary_key_cannot_be_null_case_sensitive() throws Exception {
 
+    URL resource = getClass().getResource("/ip-by-country-pk-null.csv");
+
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--log.directory");
@@ -1742,7 +1780,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--log.verbosity");
     args.add("2");
     args.add("--connector.csv.url");
-    args.add(quoteJson(getClass().getResource("/ip-by-country-pk-null.csv")));
+    args.add(quoteJson(resource));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -1760,13 +1798,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         .contains("aborted: Too many errors, the maximum allowed is 9")
         .contains("Records: total: 24, successful: 14, failed: 10");
     // the number of writes may vary due to the abortion
-    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
-    validateBadOps(10, logPath);
+    validateNumberOfBadRecords(10);
+    validatePositionsFile(resource, 24);
     validateExceptionsLog(
-        10,
-        "Primary key column \"COUNTRY CODE\" cannot be mapped to null",
-        "mapping-errors.log",
-        logPath);
+        10, "Primary key column \"COUNTRY CODE\" cannot be mapped to null", "mapping-errors.log");
   }
 
   @Test
@@ -1776,7 +1811,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--log.directory");
     args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(quoteJson(CSV_RECORDS_HEADER));
+    args.add(quoteJson(CSV_RECORDS_UNIQUE));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -1800,7 +1835,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--log.directory");
     args.add(quoteJson(logDir));
     args.add("--connector.csv.url");
-    args.add(quoteJson(CSV_RECORDS_HEADER));
+    args.add(quoteJson(CSV_RECORDS_UNIQUE));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");
@@ -1932,13 +1967,11 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("*=*");
 
     int loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
-    assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
-    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
+    assertThat(loadStatus).isEqualTo(STATUS_COMPLETED_WITH_ERRORS);
     validateExceptionsLog(
         1,
         "ArithmeticException: Cannot convert 0.12345678901234567890123456789 from BigDecimal to Double",
-        "mapping-errors.log",
-        logPath);
+        "mapping-errors.log");
     checkNumbersWritten(REJECT, UNNECESSARY, session);
     deleteDirectory(logDir);
 
@@ -2432,7 +2465,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("value,key");
 
     int loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
-    assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
+    assertThat(loadStatus).isEqualTo(STATUS_COMPLETED_WITH_ERRORS);
     assertThat(logs)
         .hasMessageContaining(
             "At least 1 record does not match the provided schema.mapping or schema.query");
@@ -2485,7 +2518,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("INSERT INTO mapping (value, key) VALUES (?, ?)");
 
     int loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
-    assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
+    assertThat(loadStatus).isEqualTo(STATUS_COMPLETED_WITH_ERRORS);
     assertThat(logs)
         .hasMessageContaining(
             "At least 1 record does not match the provided schema.mapping or schema.query");

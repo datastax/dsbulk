@@ -30,6 +30,7 @@ import com.datastax.dsbulk.engine.internal.settings.SchemaSettings;
 import com.datastax.dsbulk.engine.internal.settings.SettingsManager;
 import com.datastax.dsbulk.engine.internal.settings.StatsSettings;
 import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
+import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.datastax.dsbulk.executor.reactor.reader.ReactorBulkReader;
 import com.google.common.base.Stopwatch;
 import io.netty.util.concurrent.DefaultThreadFactory;
@@ -37,6 +38,7 @@ import java.io.IOException;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -60,6 +62,11 @@ public class CountWorkflow implements Workflow {
   private ReactorBulkReader executor;
   private List<? extends Statement> readStatements;
   private volatile boolean success;
+  private Function<Flux<ReadResult>, Flux<ReadResult>> totalItemsMonitor;
+  private Function<Flux<ReadResult>, Flux<ReadResult>> totalItemsCounter;
+  private Function<Flux<ReadResult>, Flux<ReadResult>> failedItemsMonitor;
+  private Function<Flux<ReadResult>, Flux<ReadResult>> failedReadsHandler;
+  private Function<Flux<Void>, Flux<Void>> terminationHandler;
 
   CountWorkflow(LoaderConfig config) {
     settingsManager = new SettingsManager(config, WorkflowType.COUNT);
@@ -124,6 +131,11 @@ public class CountWorkflow implements Workflow {
     readStatements = schemaSettings.createReadStatements(cluster);
     closed.set(false);
     success = false;
+    totalItemsMonitor = metricsManager.newTotalItemsMonitor();
+    failedItemsMonitor = metricsManager.newFailedItemsMonitor();
+    totalItemsCounter = logManager.newTotalItemsCounter();
+    failedReadsHandler = logManager.newFailedReadsHandler();
+    terminationHandler = logManager.newTerminationHandler();
   }
 
   @Override
@@ -136,10 +148,10 @@ public class CountWorkflow implements Workflow {
             statement ->
                 executor
                     .readReactive(statement)
-                    .transform(metricsManager.newTotalItemsMonitor())
-                    .transform(logManager.newTotalItemsCounter())
-                    .transform(metricsManager.newFailedItemsMonitor())
-                    .transform(logManager.newFailedReadsHandler())
+                    .transform(totalItemsMonitor)
+                    .transform(totalItemsCounter)
+                    .transform(failedItemsMonitor)
+                    .transform(failedReadsHandler)
                     // Important:
                     // 1) there must be one counting unit per thread / inner flow:
                     // this is guaranteed by instantiating a new counting unit below for each
@@ -150,7 +162,7 @@ public class CountWorkflow implements Workflow {
                     .then()
                     .subscribeOn(scheduler),
             Runtime.getRuntime().availableProcessors())
-        .transform(logManager.newTerminationHandler())
+        .transform(terminationHandler)
         .blockLast();
     timer.stop();
     metricsManager.stop();
