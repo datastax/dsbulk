@@ -33,6 +33,7 @@ import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.checkGraph
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 
+import com.datastax.driver.core.AbstractTableMetadata;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.ColumnDefinitions.Definition;
@@ -40,6 +41,7 @@ import com.datastax.driver.core.ColumnMetadata;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.EdgeMetadata;
 import com.datastax.driver.core.KeyspaceMetadata;
+import com.datastax.driver.core.MaterializedViewMetadata;
 import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.ProtocolVersion;
@@ -130,7 +132,7 @@ public class SchemaSettings {
   private MappingInspector mapping;
   private int ttlSeconds;
   private long timestampMicros;
-  private TableMetadata table;
+  private AbstractTableMetadata table;
   private KeyspaceMetadata keyspace;
   private String keyspaceName;
   private String tableName;
@@ -205,7 +207,7 @@ public class SchemaSettings {
 
       if (keyspace != null) {
         if (config.hasPath(TABLE)) {
-          table = locateTable(keyspace, config.getString(TABLE));
+          table = locateTable(keyspace, config.getString(TABLE), workflowType);
         } else if (config.hasPath(VERTEX)) {
           table = locateVertexTable(keyspace, config.getString(VERTEX));
         } else if (config.hasPath(EDGE)) {
@@ -264,10 +266,13 @@ public class SchemaSettings {
         CQLIdentifier tableName = queryInspector.getTableName();
         table = keyspace.getTable(tableName.render(VARIABLE));
         if (table == null) {
-          throw new BulkConfigurationException(
-              String.format(
-                  "Value for schema.query references a non-existent table: %s",
-                  tableName.render(VARIABLE)));
+          table = keyspace.getMaterializedView(tableName.render(VARIABLE));
+          if (table == null) {
+            throw new BulkConfigurationException(
+                String.format(
+                    "Value for schema.query references a non-existent table or materialized view: %s",
+                    tableName.render(VARIABLE)));
+          }
         }
 
         // If a query is provided, ttl and timestamp must not be.
@@ -522,9 +527,11 @@ public class SchemaSettings {
 
   @NotNull
   public RowType getRowType() {
-    if (table.getVertexMetadata() != null) {
+    boolean isTable = table instanceof TableMetadata;
+    TableMetadata mtable = (isTable ? (TableMetadata) table : null);
+    if (isTable && mtable.getVertexMetadata() != null) {
       return RowType.VERTEX;
-    } else if (table.getEdgeMetadata() != null) {
+    } else if (isTable && mtable.getEdgeMetadata() != null) {
       return RowType.EDGE;
     } else {
       return RowType.REGULAR;
@@ -735,24 +742,49 @@ public class SchemaSettings {
   }
 
   @NotNull
-  private TableMetadata locateTable(KeyspaceMetadata keyspace, String tableName) {
-    TableMetadata table = keyspace.getTable(quoteIfNecessary(tableName));
+  private AbstractTableMetadata locateTable(
+      KeyspaceMetadata keyspace, String tableName, WorkflowType workflowType) {
+    AbstractTableMetadata table = keyspace.getTable(quoteIfNecessary(tableName));
     if (table == null) {
-      Optional<TableMetadata> match =
-          keyspace
-              .getTables()
-              .stream()
-              .filter(t -> t.getName().equalsIgnoreCase(tableName))
-              .findFirst();
-      if (match.isPresent()) {
-        String similarName = quoteIfNecessary(match.get().getName());
-        throw new BulkConfigurationException(
-            String.format(
-                "Table %s does not exist, however a table %s was found. Did you mean to use -t %s?",
-                quoteIfNecessary(tableName), similarName, similarName));
+      if (workflowType == COUNT || workflowType == UNLOAD) {
+        table = keyspace.getMaterializedView(quoteIfNecessary(tableName));
+        if (table == null) {
+          Optional<MaterializedViewMetadata> match =
+              keyspace
+                  .getMaterializedViews()
+                  .stream()
+                  .filter(t -> t.getName().equalsIgnoreCase(tableName))
+                  .findFirst();
+          if (match.isPresent()) {
+            String similarName = quoteIfNecessary(match.get().getName());
+            throw new BulkConfigurationException(
+                String.format(
+                    "Table or materialized view %s does not exist, "
+                        + "however a materialized view %s was found. Did you mean to use -t %s?",
+                    quoteIfNecessary(tableName), similarName, similarName));
+          } else {
+            throw new BulkConfigurationException(
+                String.format(
+                    "Table or materialized view %s does not exist", quoteIfNecessary(tableName)));
+          }
+        }
       } else {
-        throw new BulkConfigurationException(
-            String.format("Table %s does not exist", quoteIfNecessary(tableName)));
+        Optional<TableMetadata> match =
+            keyspace
+                .getTables()
+                .stream()
+                .filter(t -> t.getName().equalsIgnoreCase(tableName))
+                .findFirst();
+        if (match.isPresent()) {
+          String similarName = quoteIfNecessary(match.get().getName());
+          throw new BulkConfigurationException(
+              String.format(
+                  "Table %s does not exist, however a table %s was found. Did you mean to use -t %s?",
+                  quoteIfNecessary(tableName), similarName, similarName));
+        } else {
+          throw new BulkConfigurationException(
+              String.format("Table %s does not exist", quoteIfNecessary(tableName)));
+        }
       }
     }
     return table;
