@@ -11,11 +11,13 @@ package com.datastax.dsbulk.engine.tests.utils;
 import static com.datastax.driver.core.DataType.bigint;
 import static com.datastax.driver.core.DataType.inet;
 import static com.datastax.driver.core.DataType.varchar;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.commons.tests.simulacron.SimulacronUtils;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
+import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.oss.simulacron.common.cluster.QueryLog;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
@@ -25,16 +27,21 @@ import com.datastax.oss.simulacron.common.result.Result;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
 import com.datastax.oss.simulacron.server.BoundCluster;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.assertj.core.api.Assertions;
@@ -167,8 +174,9 @@ public class EndToEndUtils {
     return new RequestPrime(when, then);
   }
 
-  public static void validateExceptionsLog(int size, String keyword, String fileName, Path logPath)
+  public static void validateExceptionsLog(int size, String keyword, String fileName)
       throws Exception {
+    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     Path exceptionFile = logPath.resolve(fileName);
     try (Stream<String> lines = Files.lines(exceptionFile)) {
       long numErrors = lines.filter(l -> l.contains(keyword)).count();
@@ -176,12 +184,42 @@ public class EndToEndUtils {
     }
   }
 
-  public static void validateBadOps(int size, Path logPath) throws Exception {
+  public static void validateNumberOfBadRecords(int size) throws Exception {
+    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     PathMatcher badFileMatcher = FileSystems.getDefault().getPathMatcher("glob:**/*.bad");
     try (Stream<Path> paths = Files.list(logPath)) {
       long numBadOps =
           paths.filter(badFileMatcher::matches).flatMap(FileUtils::readAllLines).count();
       assertThat(numBadOps).isEqualTo(size);
+    }
+  }
+
+  public static void validatePositionsFile(Path resource, long lastPosition)
+      throws IOException, URISyntaxException {
+    validatePositionsFile(resource.toUri().toURL(), lastPosition);
+  }
+
+  public static void validatePositionsFile(URL resource, long lastPosition)
+      throws IOException, URISyntaxException {
+    validatePositionsFile(resource.toURI(), lastPosition);
+  }
+
+  public static void validatePositionsFile(URI resource, long lastPosition) throws IOException {
+    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
+    Path positions = logPath.resolve("positions.txt");
+    assertThat(positions).exists();
+    List<String> lines = Files.readAllLines(positions, UTF_8);
+    assertThat(lines).hasSize(1).containsExactly(resource + ":" + lastPosition);
+  }
+
+  public static void validatePositionsFile(Map<URI, Long> lastPositions) throws IOException {
+    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
+    Path positions = logPath.resolve("positions.txt");
+    assertThat(positions).exists();
+    List<String> lines = Files.readAllLines(positions, UTF_8);
+    assertThat(lines).hasSize(lastPositions.size());
+    for (Entry<URI, Long> entry : lastPositions.entrySet()) {
+      assertThat(lines).contains(entry.getKey() + ":" + entry.getValue());
     }
   }
 

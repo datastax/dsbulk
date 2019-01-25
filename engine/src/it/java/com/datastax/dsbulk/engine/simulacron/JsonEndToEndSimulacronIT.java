@@ -25,8 +25,8 @@ import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createQueryWi
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createQueryWithResultSet;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createSimpleParameterizedQuery;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.primeIpByCountryTable;
-import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateBadOps;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateExceptionsLog;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateNumberOfBadRecords;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validatePrepare;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateQueryCount;
@@ -336,8 +336,8 @@ class JsonEndToEndSimulacronIT {
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
     validateQueryCount(simulacron, 21, "INSERT INTO ip_by_country", LOCAL_ONE);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
-    validateBadOps(2, logPath);
-    validateExceptionsLog(2, "Source:", "mapping-errors.log", logPath);
+    validateNumberOfBadRecords(2);
+    validateExceptionsLog(2, "Source:", "mapping-errors.log");
   }
 
   @Test
@@ -416,8 +416,8 @@ class JsonEndToEndSimulacronIT {
     // the unavailable.
     validateQueryCount(simulacron, 26, "INSERT INTO ip_by_country", LOCAL_ONE);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
-    validateBadOps(4, logPath);
-    validateExceptionsLog(4, "Source:", "load-errors.log", logPath);
+    validateNumberOfBadRecords(4);
+    validateExceptionsLog(4, "Source:", "load-errors.log");
   }
 
   @Test
@@ -461,8 +461,8 @@ class JsonEndToEndSimulacronIT {
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
     validateQueryCount(simulacron, 21, "INSERT INTO ip_by_country", LOCAL_ONE);
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
-    validateBadOps(3, logPath);
-    validateExceptionsLog(3, "Source:", "mapping-errors.log", logPath);
+    validateNumberOfBadRecords(3);
+    validateExceptionsLog(3, "Source:", "mapping-errors.log");
   }
 
   @Test
@@ -512,17 +512,11 @@ class JsonEndToEndSimulacronIT {
         .contains("aborted: Too many errors, the maximum allowed is 2")
         .contains("Records: total: 3, successful: 0, failed: 3");
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
-    validateBadOps(3, logPath);
+    validateNumberOfBadRecords(3);
     validateExceptionsLog(
-        2,
-        "Required field C (mapped to column c) was missing from record",
-        "mapping-errors.log",
-        logPath);
+        2, "Required field C (mapped to column c) was missing from record", "mapping-errors.log");
     validateExceptionsLog(
-        1,
-        "Required field D (mapped to column d) was missing from record",
-        "mapping-errors.log",
-        logPath);
+        1, "Required field D (mapped to column d) was missing from record", "mapping-errors.log");
   }
 
   @Test
@@ -566,11 +560,9 @@ class JsonEndToEndSimulacronIT {
         .contains("aborted: Too many errors, the maximum allowed is 1")
         .contains("Records: total: 3, successful: 1, failed: 2");
     Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
-    validateBadOps(2, logPath);
-    validateExceptionsLog(
-        1, "Extraneous field C was found in record", "mapping-errors.log", logPath);
-    validateExceptionsLog(
-        1, "Extraneous field D was found in record", "mapping-errors.log", logPath);
+    validateNumberOfBadRecords(2);
+    validateExceptionsLog(1, "Extraneous field C was found in record", "mapping-errors.log");
+    validateExceptionsLog(1, "Extraneous field D was found in record", "mapping-errors.log");
   }
 
   @Test

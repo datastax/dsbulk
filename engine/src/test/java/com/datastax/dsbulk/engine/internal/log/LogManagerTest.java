@@ -11,10 +11,6 @@ package com.datastax.dsbulk.engine.internal.log;
 import static com.datastax.driver.core.ConsistencyLevel.ONE;
 import static com.datastax.driver.core.DataType.cint;
 import static com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosity.EXTENDED;
-import static com.google.common.collect.Range.closed;
-import static com.google.common.collect.Range.singleton;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.emptyMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Fail.fail;
 import static org.mockito.Mockito.mock;
@@ -34,10 +30,8 @@ import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.exceptions.DriverInternalError;
 import com.datastax.driver.core.exceptions.OperationTimedOutException;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
-import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
-import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.row.RowFormatter;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatter;
@@ -48,18 +42,12 @@ import com.datastax.dsbulk.executor.api.internal.result.DefaultReadResult;
 import com.datastax.dsbulk.executor.api.internal.result.DefaultWriteResult;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
-import com.google.common.collect.Range;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.LongStream;
-import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
@@ -684,110 +672,6 @@ class LogManagerTest {
         .contains("SELECT 1")
         .containsOnlyOnce(
             "com.datastax.dsbulk.executor.api.exception.BulkExecutionException: Statement execution failed: SELECT 1 (error 1)");
-  }
-
-  @Test
-  void should_record_positions() throws Exception {
-    Path outputDir = Files.createTempDirectory("test");
-    LogManager logManager =
-        new LogManager(
-            WorkflowType.LOAD,
-            cluster,
-            outputDir,
-            1,
-            0,
-            statementFormatter,
-            EXTENDED,
-            rowFormatter);
-    logManager.init();
-    assertRanges(logManager, new long[] {1, 2, 3, 4}, closed(1L, 4L));
-    assertRanges(logManager, new long[] {1, 2, 3, 5}, closed(1L, 3L), singleton(5L));
-    assertRanges(logManager, new long[] {5, 3, 2, 1}, closed(1L, 3L), singleton(5L));
-    assertRanges(logManager, new long[] {1, 3, 5, 4, 2}, closed(1L, 5L));
-    assertRanges(logManager, new long[] {2, 4, 5, 3, 1}, closed(1L, 5L));
-    assertRanges(logManager, new long[] {4, 3, 2, 1}, closed(1L, 4L));
-    assertRanges(logManager, new long[] {4, 3, 2, 1}, closed(1L, 4L));
-    assertRanges(logManager, new long[] {3, 2}, closed(2L, 3L));
-    assertRanges(logManager, new long[] {3, 5, 4, 2}, closed(2L, 5L));
-    logManager.close();
-  }
-
-  @Test
-  void should_add_position() {
-    List<Range<Long>> positions = new ArrayList<>();
-    positions = LogManager.addPosition(positions, 3);
-    assertThat(positions).containsExactly(singleton(3L));
-    positions = LogManager.addPosition(positions, 1);
-    assertThat(positions).containsExactly(singleton(1L), singleton(3L));
-    positions = LogManager.addPosition(positions, 2);
-    assertThat(positions).containsExactly(closed(1L, 3L));
-    positions = LogManager.addPosition(positions, 2);
-    assertThat(positions).containsExactly(closed(1L, 3L));
-    positions = LogManager.addPosition(positions, 6);
-    assertThat(positions).containsExactly(closed(1L, 3L), singleton(6L));
-    positions = LogManager.addPosition(positions, 5);
-    assertThat(positions).containsExactly(closed(1L, 3L), closed(5L, 6L));
-    positions = LogManager.addPosition(positions, 4);
-    assertThat(positions).containsExactly(closed(1L, 6L));
-  }
-
-  @Test
-  void should_merge_positions() {
-    assertThat(LogManager.mergePositions(ranges(), ranges())).isEmpty();
-    assertThat(LogManager.mergePositions(ranges(), ranges(closed(1L, 3L))))
-        .isEqualTo(ranges(closed(1L, 3L)));
-    assertThat(LogManager.mergePositions(ranges(closed(1L, 3L)), ranges()))
-        .isEqualTo(ranges(closed(1L, 3L)));
-    assertThat(LogManager.mergePositions(ranges(), ranges())).isEmpty();
-    assertThat(LogManager.mergePositions(ranges(closed(1L, 3L)), ranges(closed(1L, 3L))))
-        .isEqualTo(ranges(closed(1L, 3L)));
-    assertThat(LogManager.mergePositions(ranges(closed(1L, 3L)), ranges(closed(2L, 4L))))
-        .isEqualTo(ranges(closed(1L, 4L)));
-    assertThat(LogManager.mergePositions(ranges(closed(1L, 3L)), ranges(closed(4L, 6L))))
-        .isEqualTo(ranges(closed(1L, 6L)));
-    assertThat(LogManager.mergePositions(ranges(closed(1L, 3L)), ranges(closed(5L, 7L))))
-        .isEqualTo(ranges(closed(1L, 3L), closed(5L, 7L)));
-    assertThat(LogManager.mergePositions(ranges(closed(2L, 4L)), ranges(closed(1L, 3L))))
-        .isEqualTo(ranges(closed(1L, 4L)));
-    assertThat(LogManager.mergePositions(ranges(closed(4L, 6L)), ranges(closed(1L, 3L))))
-        .isEqualTo(ranges(closed(1L, 6L)));
-    assertThat(LogManager.mergePositions(ranges(closed(5L, 7L)), ranges(closed(1L, 3L))))
-        .isEqualTo(ranges(closed(1L, 3L), closed(5L, 7L)));
-  }
-
-  @SafeVarargs
-  private static List<Range<Long>> ranges(Range<Long>... ranges) {
-    return ranges == null ? Lists.emptyList() : Lists.newArrayList(ranges);
-  }
-
-  @SafeVarargs
-  private static void assertRanges(LogManager logManager, long[] lines, Range<Long>... ranges)
-      throws URISyntaxException {
-    Flux.fromStream(LongStream.of(lines).boxed())
-        .map(
-            line -> {
-              try {
-                return result(line);
-              } catch (URISyntaxException e) {
-                throw new RuntimeException(e);
-              }
-            })
-        .transform(logManager.newResultPositionTracker())
-        .blockLast();
-    @SuppressWarnings("unchecked")
-    Map<URI, List<Range<Long>>> positions =
-        (Map<URI, List<Range<Long>>>) ReflectionUtils.getInternalState(logManager, "positions");
-    assertThat(positions)
-        .hasEntrySatisfying(new URI("file1"), l -> assertThat(l).containsExactly(ranges));
-    positions.clear();
-  }
-
-  private static WriteResult result(long position) throws URISyntaxException {
-    URI resource = new URI("file1");
-    return new DefaultWriteResult(
-        new BulkSimpleStatement<>(
-            DefaultRecord.indexed("irrelevant", () -> resource, position), "INSERT 1"),
-        new ExecutionInfo(0, 0, emptyList(), ONE, emptyMap()));
   }
 
   private static Row mockRow(int value) {

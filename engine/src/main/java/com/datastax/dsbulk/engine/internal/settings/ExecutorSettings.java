@@ -144,6 +144,10 @@ public class ExecutorSettings {
     return maxInFlight;
   }
 
+  public int getMaxConcurrentQueries() {
+    return maxConcurrentQueries;
+  }
+
   private boolean continuousPagingAvailable(Session session) {
     Configuration configuration = session.getCluster().getConfiguration();
     ProtocolVersion protocolVersion = configuration.getProtocolOptions().getProtocolVersion();

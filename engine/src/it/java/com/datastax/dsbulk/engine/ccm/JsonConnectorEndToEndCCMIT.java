@@ -20,8 +20,8 @@ import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.T
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createIpByCountryTable;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createWithSpacesTable;
-import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateBadOps;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateExceptionsLog;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateNumberOfBadRecords;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_SKIP;
@@ -40,10 +40,8 @@ import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.commons.tests.utils.Version;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
-import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -167,16 +165,13 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("true");
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isEqualTo(1);
-    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
-    validateBadOps(4, logPath);
+    validateNumberOfBadRecords(4);
     validateExceptionsLog(
-        1, "Primary key column pk cannot be mapped to null", "mapping-errors.log", logPath);
+        1, "Primary key column pk cannot be mapped to null", "mapping-errors.log");
     validateExceptionsLog(
-        1, "Primary key column cc cannot be mapped to null", "mapping-errors.log", logPath);
-    validateExceptionsLog(
-        1, "Primary key column pk cannot be left unmapped", "mapping-errors.log", logPath);
-    validateExceptionsLog(
-        1, "Primary key column cc cannot be left unmapped", "mapping-errors.log", logPath);
+        1, "Primary key column cc cannot be mapped to null", "mapping-errors.log");
+    validateExceptionsLog(1, "Primary key column pk cannot be left unmapped", "mapping-errors.log");
+    validateExceptionsLog(1, "Primary key column cc cannot be left unmapped", "mapping-errors.log");
     validateResultSetSize(0, "SELECT * FROM missing");
   }
 
@@ -210,16 +205,15 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("true");
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isEqualTo(1);
-    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
-    validateBadOps(4, logPath);
+    validateNumberOfBadRecords(4);
     validateExceptionsLog(
-        1, "Primary key column \"PK\" cannot be mapped to null", "mapping-errors.log", logPath);
+        1, "Primary key column \"PK\" cannot be mapped to null", "mapping-errors.log");
     validateExceptionsLog(
-        1, "Primary key column \"CC\" cannot be mapped to null", "mapping-errors.log", logPath);
+        1, "Primary key column \"CC\" cannot be mapped to null", "mapping-errors.log");
     validateExceptionsLog(
-        1, "Primary key column \"PK\" cannot be left unmapped", "mapping-errors.log", logPath);
+        1, "Primary key column \"PK\" cannot be left unmapped", "mapping-errors.log");
     validateExceptionsLog(
-        1, "Primary key column \"CC\" cannot be left unmapped", "mapping-errors.log", logPath);
+        1, "Primary key column \"CC\" cannot be left unmapped", "mapping-errors.log");
     validateResultSetSize(0, "SELECT * FROM missing");
   }
 
@@ -548,9 +542,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
     validateResultSetSize(21, "SELECT * FROM ip_by_country");
-    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
-    validateBadOps(3, logPath);
-    validateExceptionsLog(3, "Source:", "mapping-errors.log", logPath);
+    validateNumberOfBadRecords(3);
+    validateExceptionsLog(3, "Source:", "mapping-errors.log");
     deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -684,12 +677,10 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
-    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateExceptionsLog(
         1,
         "ArithmeticException: Cannot convert 0.12345678901234567890123456789 from BigDecimal to Double",
-        "mapping-errors.log",
-        logPath);
+        "mapping-errors.log");
     checkNumbersWritten(REJECT, UNNECESSARY, session);
     deleteDirectory(logDir);
 

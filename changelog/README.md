@@ -4,6 +4,8 @@
 
 - [improvement] DAT-385: Implement unload and count for materialized views.
 - [improvement] DAT-389: batch.bufferSize should be a multiple of batch.maxBatchStatements.
+- [improvement] DAT-310: Simplify computation of resource positions.
+- [improvement] DAT-388: Revisit "parallel" flows.
 
 
 ### 1.3.0
