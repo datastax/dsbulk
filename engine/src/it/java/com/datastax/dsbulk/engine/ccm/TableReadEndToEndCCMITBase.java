@@ -20,6 +20,9 @@ import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.Statist
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.ranges;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static java.nio.file.Files.createTempDirectory;
+import static org.awaitility.Awaitility.await;
+import static org.awaitility.Duration.ONE_MINUTE;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.datastax.driver.core.Host;
 import com.datastax.driver.core.Metadata;
@@ -31,6 +34,7 @@ import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
+import com.datastax.dsbulk.commons.tests.utils.Version;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode;
 import com.datastax.dsbulk.engine.tests.MockConnector;
@@ -63,6 +67,8 @@ import org.junit.jupiter.params.provider.CsvSource;
 @ExtendWith(LogInterceptingExtension.class)
 @ExtendWith(StreamInterceptingExtension.class)
 abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
+
+  private static final Version V3 = Version.parse("3.0");
 
   private final LogInterceptor logs;
   private final StreamInterceptor stdout;
@@ -102,6 +108,63 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add(keyspace);
     args.add("--schema.table");
     args.add(table);
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+
+    assertUnload();
+  }
+
+  @ParameterizedTest(name = "[{index}] unload keyspace {0} table {1}")
+  @CsvSource({
+    "RF_1,SINGLE_PK",
+    "RF_1,composite_pk",
+    "rf_2,SINGLE_PK",
+    "rf_2,composite_pk",
+    "rf_3,SINGLE_PK",
+    "rf_3,composite_pk",
+  })
+  void full_unload_materialized_view(String keyspace, String table) {
+
+    assumeTrue(ccm.getCassandraVersion().compareTo(V3) >= 0, "Materialized views require C* 3.0+");
+
+    if (table.toLowerCase().contains("single")) {
+      session.execute(
+          String.format(
+              "CREATE MATERIALIZED VIEW IF NOT EXISTS \"%1$s\".\"%2$s_mv\" AS "
+                  + "SELECT cc FROM \"%1$s\".\"%2$s\" WHERE cc IS NOT NULL "
+                  + "PRIMARY KEY (pk, cc)",
+              keyspace, table));
+    } else {
+      session.execute(
+          String.format(
+              "CREATE MATERIALIZED VIEW IF NOT EXISTS \"%1$s\".\"%2$s_mv\" AS "
+                  + "SELECT cc FROM \"%1$s\".\"%2$s\" WHERE cc IS NOT NULL AND \"PK1\" IS NOT NULL AND \"PK2\" IS NOT NULL "
+                  + "PRIMARY KEY ((\"PK1\", \"PK2\"), cc)",
+              keyspace, table));
+    }
+
+    await()
+        .atMost(ONE_MINUTE)
+        .until(
+            () ->
+                session
+                        .execute(
+                            String.format("SELECT * FROM \"%1$s\".\"%2$s_mv\"", keyspace, table))
+                        .all()
+                        .size()
+                    == expectedTotal);
+
+    List<String> args = new ArrayList<>();
+    args.add("unload");
+    args.add("--connector.name");
+    args.add("mock");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--schema.keyspace");
+    args.add(keyspace);
+    args.add("--schema.table");
+    args.add(table + "_mv");
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
