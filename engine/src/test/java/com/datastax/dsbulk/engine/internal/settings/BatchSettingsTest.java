@@ -50,7 +50,7 @@ class BatchSettingsTest {
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.batch"));
     BatchSettings settings = new BatchSettings(config);
     settings.init();
-    assertThat(settings.getBufferSize()).isEqualTo(32);
+    assertThat(settings.getBufferSize()).isEqualTo(128);
     ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
     assertThat(ReflectionUtils.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
     assertThat(ReflectionUtils.getInternalState(batcher, "maxBatchStatements")).isEqualTo(32);
@@ -111,7 +111,7 @@ class BatchSettingsTest {
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.batch")));
     BatchSettings settings = new BatchSettings(config);
     settings.init();
-    assertThat(settings.getBufferSize()).isEqualTo(32);
+    assertThat(settings.getBufferSize()).isEqualTo(128);
     ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
     assertThat(ReflectionUtils.getInternalState(batcher, "batchMode")).isEqualTo(REPLICA_SET);
     assertThat(ReflectionUtils.getInternalState(batcher, "maxBatchStatements")).isEqualTo(32);
@@ -142,7 +142,7 @@ class BatchSettingsTest {
     settings.init();
     // buffer size should implicitly be updated when max batch size is changed and it isn't
     // specified.
-    assertThat(settings.getBufferSize()).isEqualTo(10);
+    assertThat(settings.getBufferSize()).isEqualTo(40);
     ReactorStatementBatcher batcher = settings.newStatementBatcher(cluster);
     assertThat(ReflectionUtils.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
     assertThat(ReflectionUtils.getInternalState(batcher, "maxBatchStatements")).isEqualTo(10);

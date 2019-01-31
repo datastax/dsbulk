@@ -703,7 +703,7 @@ Only applicable for loading.
 
 #### --batch.bufferSize _&lt;number&gt;_
 
-The buffer size to use for flushing batching statements. Do not set higher than `maxBatchStatements` unless the loaded data is unsorted, when a higher value could improve performance. When set to a value lesser than or equal to zero, the buffer size is implicitly set to `maxBatchStatments`.
+The buffer size to use for flushing batching statements. Should be set to a multiple of `maxBatchStatements`, e.g. 2 or 4 times that value; higher values consume more memory and usually do not incur in any noticeable performance gain. When set to a value lesser than or equal to zero, the buffer size is implicitly set to 4 times `maxBatchStatments`.
 
 Default: **-1**.
 
