@@ -49,8 +49,6 @@ import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.ColumnMetadata;
 import com.datastax.driver.core.Configuration;
-import com.datastax.driver.core.EdgeMetadata;
-import com.datastax.driver.core.Host;
 import com.datastax.driver.core.KeyspaceMetadata;
 import com.datastax.driver.core.MaterializedViewMetadata;
 import com.datastax.driver.core.Metadata;
@@ -63,8 +61,6 @@ import com.datastax.driver.core.StatementWrapper;
 import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.core.Token;
 import com.datastax.driver.core.TokenRange;
-import com.datastax.driver.core.VersionNumber;
-import com.datastax.driver.core.VertexMetadata;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
@@ -1719,67 +1715,13 @@ class SchemaSettingsTest {
   }
 
   @Test
-  void should_error_when_graph_and_keyspace_both_present() {
-    LoaderConfig config = makeLoaderConfig("keyspace=ks, graph=graph1");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Settings schema.keyspace and schema.graph are mutually exclusive");
-  }
-
-  @Test
-  void should_error_when_table_and_vertex_both_present() {
-    LoaderConfig config = makeLoaderConfig("table=t1, vertex=v1");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Settings schema.table and schema.vertex are mutually exclusive");
-  }
-
-  @Test
-  void should_error_when_table_and_edge_both_present() {
-    LoaderConfig config = makeLoaderConfig("table=t1, edge=e1");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Settings schema.table and schema.edge are mutually exclusive");
-  }
-
-  @Test
-  void should_error_when_vertex_and_edge_both_present() {
-    LoaderConfig config = makeLoaderConfig("vertex=v1, edge=e1");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Settings schema.vertex and schema.edge are mutually exclusive");
-  }
-
-  @Test
-  void should_error_when_edge_without_from_vertex() {
-    LoaderConfig config = makeLoaderConfig("edge=e1");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Setting schema.from is required when schema.edge is specified");
-  }
-
-  @Test
-  void should_error_when_edge_without_to_vertex() {
-    LoaderConfig config = makeLoaderConfig("edge=e1, from=v1");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Setting schema.to is required when schema.edge is specified");
-  }
-
-  @Test
   void should_error_invalid_schema_settings() {
     LoaderConfig config = makeLoaderConfig("");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
-            "When schema.query is not defined, then either schema.keyspace or schema.graph must be defined, and either schema.table, schema.vertex or schema.edge must be defined");
+            "When schema.query is not defined, then schema.keyspace and schema.table must be defined");
   }
 
   @Test
@@ -1789,7 +1731,7 @@ class SchemaSettingsTest {
     assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
-            "When schema.query is not defined, then either schema.keyspace or schema.graph must be defined, and either schema.table, schema.vertex or schema.edge must be defined");
+            "When schema.query is not defined, then schema.keyspace and schema.table must be defined");
   }
 
   @Test
@@ -1877,8 +1819,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessageContaining(
-            "schema.query must not be defined if schema.table, schema.vertex or schema.edge are defined");
+        .hasMessageContaining("schema.query must not be defined if schema.table is defined");
   }
 
   @Test
@@ -1918,8 +1859,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessageContaining(
-            "schema.keyspace or schema.graph must be defined if schema.table, schema.vertex or schema.edge are defined");
+        .hasMessageContaining("schema.keyspace must be defined if schema.table is defined");
   }
 
   @Test
@@ -1958,96 +1898,6 @@ class SchemaSettingsTest {
     assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage("Invalid value for schema.nullToUnset: Expecting BOOLEAN, got STRING");
-  }
-
-  @Test
-  void should_error_when_vertex_non_existent() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("graph=ks, vertex=v1")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
-    SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Vertex label v1 does not exist");
-  }
-
-  @Test
-  void should_error_when_vertex_non_existent_but_lower_case_variant_exists() {
-    VertexMetadata vertexMetadata = mock(VertexMetadata.class);
-    when(table.getVertexMetadata()).thenReturn(vertexMetadata);
-    when(vertexMetadata.getLabelName()).thenReturn("v1");
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("graph=ks, vertex=\"V1\"")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
-    SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage(
-            "Vertex label \"V1\" does not exist, however a vertex label v1 was found. Did you mean to use -v v1?");
-  }
-
-  @Test
-  void should_error_when_edge_non_existent() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("graph=ks, edge=e1, from=v1, to=v2")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
-    SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Edge label e1 from v1 to v2 does not exist");
-  }
-
-  @Test
-  void should_error_when_edge_non_existent_but_lower_case_variant_exists() {
-    EdgeMetadata edgeMetadata = mock(EdgeMetadata.class);
-    when(table.getEdgeMetadata()).thenReturn(edgeMetadata);
-    when(edgeMetadata.getLabelName()).thenReturn("e1");
-    when(edgeMetadata.getFromLabel()).thenReturn("v1");
-    when(edgeMetadata.getToLabel()).thenReturn("V2");
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("graph=ks, edge=\"E1\", from=\"V1\", to=\"V2\"")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
-    SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage(
-            "Edge label \"E1\" from \"V1\" to \"V2\" does not exist, however an edge label e1 from v1 to \"V2\" was found. Did you mean to use -e e1 -from v1 -to \"V2\"?");
-  }
-
-  @Test
-  void should_locate_existing_vertex_label() {
-    VertexMetadata vertexMetadata = mock(VertexMetadata.class);
-    when(table.getVertexMetadata()).thenReturn(vertexMetadata);
-    when(vertexMetadata.getLabelName()).thenReturn("v1");
-    when(keyspace.getGraphEngine()).thenReturn("Native");
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("graph=ks, vertex=v1")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
-    SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(LOAD, cluster, true, false);
-    assertThat(getInternalState(schemaSettings, "table")).isSameAs(table);
-  }
-
-  @Test
-  void should_locate_existing_edge_label() {
-    EdgeMetadata edgeMetadata = mock(EdgeMetadata.class);
-    when(table.getEdgeMetadata()).thenReturn(edgeMetadata);
-    when(edgeMetadata.getLabelName()).thenReturn("e1");
-    when(edgeMetadata.getFromLabel()).thenReturn("v1");
-    when(edgeMetadata.getToLabel()).thenReturn("v2");
-    when(keyspace.getGraphEngine()).thenReturn("Native");
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("graph=ks, edge=e1, from=v1, to=v2")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
-    SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(LOAD, cluster, true, false);
-    assertThat(getInternalState(schemaSettings, "table")).isSameAs(table);
   }
 
   @Test
@@ -2110,85 +1960,6 @@ class SchemaSettingsTest {
                     session, codecRegistry, EnumSet.of(partitions), 10))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage("Cannot count partitions for table t1: it has no clustering column.");
-  }
-
-  @Test
-  void should_error_when_graph_options_provided_but_cluster_is_not_compatible() {
-    VertexMetadata vertexMetadata = mock(VertexMetadata.class);
-    when(table.getVertexMetadata()).thenReturn(vertexMetadata);
-    when(vertexMetadata.getLabelName()).thenReturn("v1");
-    Host host = mock(Host.class);
-    when(metadata.getAllHosts()).thenReturn(Collections.singleton(host));
-    when(host.getDseVersion()).thenReturn(VersionNumber.parse("6.0.0"));
-    when(host.toString()).thenReturn("host1");
-    LoaderConfig config = makeLoaderConfig("graph=ks, vertex=v1");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, false, true))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessage("Graph operations not available due to incompatible cluster");
-    assertThat(logs)
-        .hasMessageContaining(
-            "Incompatible cluster detected. Graph functionality is only compatible with")
-        .hasMessageContaining("The following nodes do not appear to be running DSE")
-        .hasMessageContaining("host1");
-  }
-
-  @Test
-  void should_error_when_graph_options_provided_but_keyspace_not_graph() {
-    VertexMetadata vertexMetadata = mock(VertexMetadata.class);
-    when(table.getVertexMetadata()).thenReturn(vertexMetadata);
-    when(vertexMetadata.getLabelName()).thenReturn("v1");
-    LoaderConfig config = makeLoaderConfig("graph=ks, vertex=v1");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, false, true))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessage("Graph operations requested but provided keyspace is not a graph: ks");
-  }
-
-  @Test
-  void should_error_when_graph_options_provided_but_keyspace_not_native_graph() {
-    VertexMetadata vertexMetadata = mock(VertexMetadata.class);
-    when(table.getVertexMetadata()).thenReturn(vertexMetadata);
-    when(vertexMetadata.getLabelName()).thenReturn("v1");
-    when(keyspace.getGraphEngine()).thenReturn("Legacy");
-    LoaderConfig config = makeLoaderConfig("graph=ks, vertex=v1");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
-    assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, false, true))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessage(
-            "Graph operations requested but provided graph ks was created with an unsupported graph engine: Legacy");
-  }
-
-  @Test
-  void should_warn_when_keyspace_is_native_graph_but_non_graph_options_provided() {
-    when(keyspace.getGraphEngine()).thenReturn("Native");
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("keyspace=ks, table=t1")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
-    SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(LOAD, cluster, true, false);
-    assertThat(logs)
-        .hasMessageContaining(
-            "Provided keyspace is a graph; "
-                + "instead of schema.keyspace and schema.table, please use graph-specific options "
-                + "such as schema.graph, schema.vertex, schema.edge, schema.from and schema.to.");
-  }
-
-  @Test
-  void should_warn_when_keyspace_is_legacy_graph_and_workflow_is_load() {
-    when(keyspace.getGraphEngine()).thenReturn("Legacy");
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("keyspace=ks, table=t1")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
-    SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(LOAD, cluster, true, false);
-    assertThat(logs)
-        .hasMessageContaining(
-            "Provided keyspace is a graph created with a legacy graph engine: "
-                + "Legacy; attempting to load data into such a keyspace is not supported and "
-                + "may put the graph in an inconsistent state.");
   }
 
   @ParameterizedTest
