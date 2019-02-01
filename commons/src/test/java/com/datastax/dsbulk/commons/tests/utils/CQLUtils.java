@@ -35,11 +35,4 @@ public abstract class CQLUtils {
     }
     return sb.append('}').toString();
   }
-
-  public static String truncateTable(String keyspace, String table) {
-    return "TRUNCATE "
-        + Metadata.quoteIfNecessary(keyspace)
-        + "."
-        + Metadata.quoteIfNecessary(table);
-  }
 }
