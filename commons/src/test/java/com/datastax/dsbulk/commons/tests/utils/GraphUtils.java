@@ -17,7 +17,7 @@ public class GraphUtils {
       "{'class': 'SimpleStrategy', 'replication_factor' :1}";
 
   private static final String CREATE_GRAPH_GREMLIN_QUERY =
-      "system.graph(name).ifNotExists().withReplication(replicationConfig).nativeEngine().create()";
+      "system.graph(name).ifNotExists().withReplication(replicationConfig).using(Native).create()";
 
   public static void createGraphKeyspace(DseSession session, String name) {
     session.executeGraph(
