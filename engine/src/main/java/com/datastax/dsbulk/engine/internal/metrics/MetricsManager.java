@@ -30,8 +30,6 @@ import com.datastax.dsbulk.commons.log.LogSink;
 import com.datastax.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
-import com.datastax.dsbulk.engine.internal.settings.LogSettings.Verbosity;
-import com.datastax.dsbulk.engine.internal.settings.RowType;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.datastax.dsbulk.executor.api.listener.AbstractMetricsReportingExecutionListenerBuilder;
 import com.datastax.dsbulk.executor.api.listener.MetricsCollectingExecutionListener;
@@ -78,7 +76,6 @@ public class MetricsManager implements AutoCloseable {
   private final Duration reportInterval;
   private final boolean batchingEnabled;
   private final LogSettings.Verbosity verbosity;
-  private final RowType rowType;
 
   private Counter totalRecords;
   private Counter failedRecords;
@@ -107,12 +104,11 @@ public class MetricsManager implements AutoCloseable {
       boolean jmx,
       boolean csv,
       Path executionDirectory,
-      Verbosity verbosity,
+      LogSettings.Verbosity verbosity,
       Duration reportInterval,
       boolean batchingEnabled,
       ProtocolVersion protocolVersion,
-      CodecRegistry codecRegistry,
-      RowType rowType) {
+      CodecRegistry codecRegistry) {
     this.registry = new MetricRegistry();
     driverRegistry
         .getMetrics()
@@ -132,7 +128,6 @@ public class MetricsManager implements AutoCloseable {
     this.verbosity = verbosity;
     this.reportInterval = reportInterval;
     this.batchingEnabled = batchingEnabled;
-    this.rowType = rowType;
   }
 
   public void init() {
@@ -375,8 +370,7 @@ public class MetricsManager implements AutoCloseable {
               SECONDS,
               MILLISECONDS,
               expectedWrites,
-              scheduler,
-              rowType);
+              scheduler);
     } else {
       consoleReporter =
           new ConsoleReporter(
@@ -390,8 +384,7 @@ public class MetricsManager implements AutoCloseable {
               SECONDS,
               MILLISECONDS,
               expectedReads,
-              scheduler,
-              rowType);
+              scheduler);
     }
     consoleReporter.start(reportInterval.getSeconds(), SECONDS);
   }
