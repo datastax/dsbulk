@@ -15,6 +15,7 @@ import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
+import com.datastax.dsbulk.engine.internal.settings.LogSettings.Verbosity;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.typesafe.config.ConfigException;
 import java.nio.file.Path;
@@ -66,7 +67,7 @@ public class MonitoringSettings {
       WorkflowType workflowType,
       boolean batchingEnabled,
       Path executionDirectory,
-      LogSettings.Verbosity verbosity,
+      Verbosity verbosity,
       MetricRegistry registry,
       ProtocolVersion protocolVersion,
       CodecRegistry codecRegistry) {
