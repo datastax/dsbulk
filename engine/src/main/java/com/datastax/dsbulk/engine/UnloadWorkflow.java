@@ -132,7 +132,8 @@ public class UnloadWorkflow implements Workflow {
             logSettings.getVerbosity(),
             cluster.getMetrics().getRegistry(),
             cluster.getConfiguration().getProtocolOptions().getProtocolVersion(),
-            cluster.getConfiguration().getCodecRegistry());
+            cluster.getConfiguration().getCodecRegistry(),
+            schemaSettings.getRowType());
     metricsManager.init();
     RecordMetadata recordMetadata = connector.getRecordMetadata();
     ExtendedCodecRegistry codecRegistry =

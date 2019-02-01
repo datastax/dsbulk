@@ -526,6 +526,19 @@ public class SchemaSettings {
     return statements;
   }
 
+  @NotNull
+  public RowType getRowType() {
+    boolean isTable = table instanceof TableMetadata;
+    TableMetadata mtable = (isTable ? (TableMetadata) table : null);
+    if (isTable && mtable.getVertexMetadata() != null) {
+      return RowType.VERTEX;
+    } else if (isTable && mtable.getEdgeMetadata() != null) {
+      return RowType.EDGE;
+    } else {
+      return RowType.REGULAR;
+    }
+  }
+
   public boolean isAllowExtraFields() {
     return allowExtraFields;
   }
