@@ -29,6 +29,7 @@ import static com.datastax.dsbulk.engine.internal.schema.QueryInspector.INTERNAL
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.hosts;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.partitions;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.ranges;
+import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.checkGraphCompatibility;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 
@@ -39,6 +40,7 @@ import com.datastax.driver.core.ColumnDefinitions.Definition;
 import com.datastax.driver.core.ColumnMetadata;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.DataType.Name;
+import com.datastax.driver.core.EdgeMetadata;
 import com.datastax.driver.core.IndexMetadata;
 import com.datastax.driver.core.KeyspaceMetadata;
 import com.datastax.driver.core.MaterializedViewMetadata;
@@ -48,6 +50,7 @@ import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.TableMetadata;
+import com.datastax.driver.core.VertexMetadata;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
@@ -94,6 +97,7 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -105,13 +109,19 @@ public class SchemaSettings {
 
   private static final String NULL_TO_UNSET = "nullToUnset";
   private static final String KEYSPACE = "keyspace";
+  private static final String GRAPH = "graph";
   private static final String TABLE = "table";
+  private static final String VERTEX = "vertex";
+  private static final String EDGE = "edge";
+  private static final String FROM = "from";
+  private static final String TO = "to";
   private static final String MAPPING = "mapping";
   private static final String ALLOW_EXTRA_FIELDS = "allowExtraFields";
   private static final String ALLOW_MISSING_FIELDS = "allowMissingFields";
   private static final String QUERY = "query";
   private static final String QUERY_TTL = "queryTtl";
   private static final String QUERY_TIMESTAMP = "queryTimestamp";
+  private static final String NATIVE = "Native";
   private static final String SPLITS = "splits";
 
   private final LoaderConfig config;
@@ -147,13 +157,41 @@ public class SchemaSettings {
 
       // Sanity Checks
 
-      if (config.hasPath(QUERY) && config.hasPath(TABLE)) {
+      if (config.hasPath(KEYSPACE) && config.hasPath(GRAPH)) {
         throw new BulkConfigurationException(
-            "Setting schema.query must not be defined if schema.table is defined");
+            "Settings schema.keyspace and schema.graph are mutually exclusive");
       }
-      if (!config.hasPath(KEYSPACE) && config.hasPath(TABLE)) {
+      if (config.hasPath(TABLE) && config.hasPath(VERTEX)) {
         throw new BulkConfigurationException(
-            "Setting schema.keyspace must be defined if schema.table is defined");
+            "Settings schema.table and schema.vertex are mutually exclusive");
+      }
+      if (config.hasPath(TABLE) && config.hasPath(EDGE)) {
+        throw new BulkConfigurationException(
+            "Settings schema.table and schema.edge are mutually exclusive");
+      }
+      if (config.hasPath(VERTEX) && config.hasPath(EDGE)) {
+        throw new BulkConfigurationException(
+            "Settings schema.vertex and schema.edge are mutually exclusive");
+      }
+      if (config.hasPath(EDGE)) {
+        if (!config.hasPath(FROM)) {
+          throw new BulkConfigurationException(
+              "Setting schema.from is required when schema.edge is specified");
+        }
+        if (!config.hasPath(TO)) {
+          throw new BulkConfigurationException(
+              "Setting schema.to is required when schema.edge is specified");
+        }
+      }
+      if (config.hasPath(QUERY)
+          && (config.hasPath(TABLE) || config.hasPath(VERTEX) || config.hasPath(EDGE))) {
+        throw new BulkConfigurationException(
+            "Setting schema.query must not be defined if schema.table, schema.vertex or schema.edge are defined");
+      }
+      if ((!config.hasPath(KEYSPACE) && !config.hasPath(GRAPH))
+          && (config.hasPath(TABLE) || config.hasPath(VERTEX) || config.hasPath(EDGE))) {
+        throw new BulkConfigurationException(
+            "Settings schema.keyspace or schema.graph must be defined if schema.table, schema.vertex or schema.edge are defined");
       }
 
       protocolVersion = cluster.getConfiguration().getProtocolOptions().getProtocolVersion();
@@ -162,6 +200,8 @@ public class SchemaSettings {
 
       if (config.hasPath(KEYSPACE)) {
         keyspace = locateKeyspace(cluster.getMetadata(), config.getString(KEYSPACE));
+      } else if (config.hasPath(GRAPH)) {
+        keyspace = locateKeyspace(cluster.getMetadata(), config.getString(GRAPH));
       }
 
       // Table
@@ -169,6 +209,12 @@ public class SchemaSettings {
       if (keyspace != null) {
         if (config.hasPath(TABLE)) {
           table = locateTable(keyspace, config.getString(TABLE), workflowType);
+        } else if (config.hasPath(VERTEX)) {
+          table = locateVertexTable(keyspace, config.getString(VERTEX));
+        } else if (config.hasPath(EDGE)) {
+          table =
+              locateEdgeTable(
+                  keyspace, config.getString(EDGE), config.getString(FROM), config.getString(TO));
         }
       }
 
@@ -252,7 +298,9 @@ public class SchemaSettings {
 
           // Either the keyspace and table must be present, or the query must be present.
           throw new BulkConfigurationException(
-              "When schema.query is not defined, then schema.keyspace and schema.table must be defined");
+              "When schema.query is not defined, "
+                  + "then either schema.keyspace or schema.graph must be defined, "
+                  + "and either schema.table, schema.vertex or schema.edge must be defined");
         }
       }
 
@@ -336,6 +384,42 @@ public class SchemaSettings {
       allowMissingFields = config.getBoolean(ALLOW_MISSING_FIELDS);
       splits = config.getThreads(SPLITS);
 
+      // Final checks related to graph operations
+
+      if (hasGraphOptions(config)) {
+
+        checkGraphCompatibility(cluster);
+
+        if (!isGraph(keyspace)) {
+          throw new IllegalStateException(
+              "Graph operations requested but provided keyspace is not a graph: " + keyspaceName);
+        }
+        if (!isSupportedGraph(keyspace)) {
+          throw new IllegalStateException(
+              String.format(
+                  "Graph operations requested but provided graph %s was created with an unsupported graph engine: %s",
+                  keyspaceName, keyspace.getGraphEngine()));
+        }
+
+      } else if (isGraph(keyspace)) {
+
+        if (isSupportedGraph(keyspace)) {
+          if (config.hasPath(KEYSPACE) || config.hasPath(TABLE)) {
+            LOGGER.warn(
+                "Provided keyspace is a graph; "
+                    + "instead of schema.keyspace and schema.table, please use graph-specific options "
+                    + "such as schema.graph, schema.vertex, schema.edge, schema.from and schema.to.");
+          }
+        } else {
+          if (workflowType == LOAD) {
+            LOGGER.warn(
+                "Provided keyspace is a graph created with a legacy graph engine: "
+                    + keyspace.getGraphEngine()
+                    + "; attempting to load data into such a keyspace is not supported and "
+                    + "may put the graph in an inconsistent state.");
+          }
+        }
+      }
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "schema");
     }
@@ -711,6 +795,81 @@ public class SchemaSettings {
       }
     }
     return table;
+  }
+
+  @NotNull
+  private TableMetadata locateVertexTable(KeyspaceMetadata keyspace, String vertexLabel) {
+    Optional<TableMetadata> vertex =
+        allVertexTables(keyspace)
+            .filter(table -> table.getVertexMetadata().getLabelName().equals(vertexLabel))
+            .findFirst();
+    if (!vertex.isPresent()) {
+      Optional<VertexMetadata> match =
+          allVertexTables(keyspace)
+              .filter(
+                  table -> table.getVertexMetadata().getLabelName().equalsIgnoreCase(vertexLabel))
+              .map(TableMetadata::getVertexMetadata)
+              .findFirst();
+      if (match.isPresent()) {
+        String similarName = quoteIfNecessary(match.get().getLabelName());
+        throw new BulkConfigurationException(
+            String.format(
+                "Vertex label %s does not exist, however a vertex label %s was found. Did you mean to use -v %s?",
+                quoteIfNecessary(vertexLabel), similarName, similarName));
+      } else {
+        throw new BulkConfigurationException(
+            String.format("Vertex label %s does not exist", quoteIfNecessary(vertexLabel)));
+      }
+    }
+    return vertex.get();
+  }
+
+  @NotNull
+  private TableMetadata locateEdgeTable(
+      KeyspaceMetadata keyspace, String edgeLabel, String fromVertex, String toVertex) {
+    Optional<TableMetadata> edge =
+        allEdgeTables(keyspace)
+            .filter(table -> table.getEdgeMetadata().getLabelName().equals(edgeLabel))
+            .filter(table -> table.getEdgeMetadata().getFromLabel().equals(fromVertex))
+            .filter(table -> table.getEdgeMetadata().getToLabel().equals(toVertex))
+            .findFirst();
+    if (!edge.isPresent()) {
+      Optional<EdgeMetadata> match =
+          allEdgeTables(keyspace)
+              .map(TableMetadata::getEdgeMetadata)
+              .filter(e -> e.getLabelName().equalsIgnoreCase(edgeLabel))
+              .filter(e -> e.getFromLabel().equalsIgnoreCase(fromVertex))
+              .filter(e -> e.getToLabel().equalsIgnoreCase(toVertex))
+              .findFirst();
+      if (match.isPresent()) {
+        EdgeMetadata edgeMetadata = match.get();
+        String similarLabel = quoteIfNecessary(edgeMetadata.getLabelName());
+        String similarFrom = quoteIfNecessary(edgeMetadata.getFromLabel());
+        String similarTo = quoteIfNecessary(edgeMetadata.getToLabel());
+        throw new BulkConfigurationException(
+            String.format(
+                "Edge label %s from %s to %s does not exist, "
+                    + "however an edge label %s from %s to %s was found. "
+                    + "Did you mean to use -e %s -from %s -to %s?",
+                quoteIfNecessary(edgeLabel),
+                quoteIfNecessary(fromVertex),
+                quoteIfNecessary(toVertex),
+                similarLabel,
+                similarFrom,
+                similarTo,
+                similarLabel,
+                similarFrom,
+                similarTo));
+      } else {
+        throw new BulkConfigurationException(
+            String.format(
+                "Edge label %s from %s to %s does not exist",
+                quoteIfNecessary(edgeLabel),
+                quoteIfNecessary(fromVertex),
+                quoteIfNecessary(toVertex)));
+      }
+    }
+    return edge.get();
   }
 
   private void validateAllFieldsPresent(
@@ -1105,7 +1264,39 @@ public class SchemaSettings {
     return builder.build();
   }
 
+  @NotNull
+  private static Stream<TableMetadata> allVertexTables(KeyspaceMetadata keyspace) {
+    return keyspace
+        .getTables()
+        .stream()
+        .filter(tableMetadata -> tableMetadata.getVertexMetadata() != null);
+  }
+
+  @NotNull
+  private static Stream<TableMetadata> allEdgeTables(KeyspaceMetadata keyspace) {
+    return keyspace
+        .getTables()
+        .stream()
+        .filter(tableMetadata -> tableMetadata.getEdgeMetadata() != null);
+  }
+
   private static boolean containsFunctionCalls(Collection<?> coll) {
     return coll.stream().anyMatch(FunctionCall.class::isInstance);
+  }
+
+  private static boolean hasGraphOptions(LoaderConfig config) {
+    return config.hasPath(GRAPH)
+        || config.hasPath(VERTEX)
+        || config.hasPath(EDGE)
+        || config.hasPath(FROM)
+        || config.hasPath(TO);
+  }
+
+  private static boolean isGraph(KeyspaceMetadata keyspace) {
+    return keyspace.getGraphEngine() != null && !keyspace.getGraphEngine().isEmpty();
+  }
+
+  private static boolean isSupportedGraph(KeyspaceMetadata keyspace) {
+    return NATIVE.equals(keyspace.getGraphEngine());
   }
 }

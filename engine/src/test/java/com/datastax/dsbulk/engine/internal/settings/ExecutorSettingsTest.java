@@ -44,7 +44,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 class ExecutorSettingsTest {
 
   private Session session;
-
   private ContinuousPagingSession dseSession;
   private QueryOptions queryOptions;
 

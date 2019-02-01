@@ -45,7 +45,7 @@
     When upgrading library versions make sure the resulting binary tarball contains only
     required jars, and that no jar has an offending license.
     -->
-    <driver.version>1.8.0-beta2-1071ef0c4-dsbulk</driver.version>
+    <driver.version>1.8.0-beta1</driver.version>
     <reactive-streams.version>1.0.2</reactive-streams.version>
     <rx-java.version>2.2.2</rx-java.version>
     <rx-java-extensions.version>0.20.5</rx-java-extensions.version>

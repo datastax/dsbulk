@@ -18,6 +18,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Host;
 import com.datastax.driver.core.Native;
+import com.datastax.driver.core.VersionNumber;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.google.common.base.Splitter;
@@ -54,6 +55,8 @@ public class WorkflowUtils {
 
   private static final DateTimeFormatter DEFAULT_TIMESTAMP_PATTERN =
       DateTimeFormatter.ofPattern("uuuuMMdd-HHmmss-SSSSSS");
+
+  private static final VersionNumber DSE_NATIVE_GRAPH_MIN_VERSION = VersionNumber.parse("6.8.0");
 
   public static String newExecutionId(WorkflowType workflowType) {
     return workflowType + "_" + DEFAULT_TIMESTAMP_PATTERN.format(now());
@@ -188,6 +191,30 @@ public class WorkflowUtils {
         LOGGER.error(host.toString());
       }
       throw new IllegalStateException("Unable to load data to non DSE cluster");
+    }
+  }
+
+  public static void checkGraphCompatibility(Cluster cluster) {
+    Set<Host> hosts = cluster.getMetadata().getAllHosts();
+    List<Host> nonGraphHosts =
+        hosts
+            .stream()
+            .filter(
+                host ->
+                    host.getDseVersion() == null
+                        || host.getDseVersion().compareTo(DSE_NATIVE_GRAPH_MIN_VERSION) < 0)
+            .collect(Collectors.toList());
+    if (!nonGraphHosts.isEmpty()) {
+      LOGGER.error(
+          "Incompatible cluster detected. Graph functionality is only compatible with DSE {} or higher.",
+          DSE_NATIVE_GRAPH_MIN_VERSION);
+      LOGGER.error(
+          "The following nodes do not appear to be running DSE {} or higher:",
+          DSE_NATIVE_GRAPH_MIN_VERSION);
+      for (Host host : nonGraphHosts) {
+        LOGGER.error(host.toString());
+      }
+      throw new IllegalStateException("Graph operations not available due to incompatible cluster");
     }
   }
 }
