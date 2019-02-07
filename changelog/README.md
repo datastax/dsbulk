@@ -1,5 +1,10 @@
 ## Changelog
 
+### 1.3.1 (in progress)
+
+- [improvement] DAT-385: Implement unload and count for materialized views.
+
+
 ### 1.3.0
 
 - [bug] DAT-334: Murmur3TokenRangeSplitter should allow long overflows when splitting ranges.
