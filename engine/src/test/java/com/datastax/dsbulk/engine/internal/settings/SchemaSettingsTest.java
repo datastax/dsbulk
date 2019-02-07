@@ -49,6 +49,7 @@ import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.ColumnMetadata;
 import com.datastax.driver.core.Configuration;
+import com.datastax.driver.core.IndexMetadata;
 import com.datastax.driver.core.KeyspaceMetadata;
 import com.datastax.driver.core.MaterializedViewMetadata;
 import com.datastax.driver.core.Metadata;
@@ -2211,6 +2212,9 @@ class SchemaSettingsTest {
     when(solrQueryCol.getName()).thenReturn("solr_query");
     when(solrQueryCol.getType()).thenReturn(varchar());
     when(table.getColumns()).thenReturn(newArrayList(col1, col2, col3, solrQueryCol));
+    IndexMetadata idx = mock(IndexMetadata.class);
+    when(table.getIndexes()).thenReturn(singletonList(idx));
+    when(idx.getIndexClassName()).thenReturn("com.datastax.bdp.search.solr.Cql3SolrSecondaryIndex");
     LoaderConfig config = makeLoaderConfig("keyspace = ks, table = t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(LOAD, cluster, false, true);
@@ -2231,6 +2235,9 @@ class SchemaSettingsTest {
     when(solrQueryCol.getName()).thenReturn("solr_query");
     when(solrQueryCol.getType()).thenReturn(varchar());
     when(table.getColumns()).thenReturn(newArrayList(col1, col2, col3, solrQueryCol));
+    IndexMetadata idx = mock(IndexMetadata.class);
+    when(table.getIndexes()).thenReturn(singletonList(idx));
+    when(idx.getIndexClassName()).thenReturn("com.datastax.bdp.search.solr.Cql3SolrSecondaryIndex");
     LoaderConfig config = makeLoaderConfig("keyspace = ks, table = t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(UNLOAD, cluster, false, true);
