@@ -93,7 +93,7 @@ public class BatchSettings {
       }
 
       int bufferConfig = config.getInt(BUFFER_SIZE);
-      bufferSize = bufferConfig > 0 ? bufferConfig : maxBatchStatements;
+      bufferSize = bufferConfig > 0 ? bufferConfig : 4 * maxBatchStatements;
 
       if (maxBatchStatements <= 0 && bufferSize <= 0) {
         throw new BulkConfigurationException(
