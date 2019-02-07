@@ -2205,6 +2205,47 @@ class SchemaSettingsTest {
         .hasMessageContaining("Connector must support at least one of indexed or mapped mappings");
   }
 
+  @Test
+  void should_infer_insert_query_without_solr_query_column() {
+    ColumnMetadata solrQueryCol = mock(ColumnMetadata.class);
+    when(solrQueryCol.getName()).thenReturn("solr_query");
+    when(solrQueryCol.getType()).thenReturn(varchar());
+    when(table.getColumns()).thenReturn(newArrayList(col1, col2, col3, solrQueryCol));
+    LoaderConfig config = makeLoaderConfig("keyspace = ks, table = t1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(LOAD, cluster, false, true);
+    RecordMapper mapper = schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue())
+        .isEqualTo(
+            String.format(
+                "INSERT INTO ks.t1 (%1$s, \"%2$s\", %3$s) VALUES (:%1$s, :\"%2$s\", :%3$s)",
+                C1, C2, C3));
+    assertMapping((DefaultMapping) getInternalState(mapper, "mapping"), C1, C1, C2, C2, C3, C3);
+  }
+
+  @Test
+  void should_infer_select_query_without_solr_query_column() {
+    ColumnMetadata solrQueryCol = mock(ColumnMetadata.class);
+    when(solrQueryCol.getName()).thenReturn("solr_query");
+    when(solrQueryCol.getType()).thenReturn(varchar());
+    when(table.getColumns()).thenReturn(newArrayList(col1, col2, col3, solrQueryCol));
+    LoaderConfig config = makeLoaderConfig("keyspace = ks, table = t1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(UNLOAD, cluster, false, true);
+    ReadResultMapper mapper =
+        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue())
+        .isEqualTo(
+            String.format(
+                "SELECT %1$s, \"%2$s\", %3$s FROM ks.t1 WHERE token(%1$s) > :start AND token(%1$s) <= :end",
+                C1, C2, C3));
+    assertMapping((DefaultMapping) getInternalState(mapper, "mapping"), C1, C1, C2, C2, C3, C3);
+  }
+
   @NotNull
   private static LoaderConfig makeLoaderConfig(String configString) {
     return new DefaultLoaderConfig(

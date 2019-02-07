@@ -27,6 +27,7 @@
 - [improvement] DAT-379: Allow fields to appear as function parameters on the left side of mapping entries.
 - [improvement] DAT-309: Improve handling of search queries.
 - [improvement] DAT-380: Ability to hard-limit the number of concurrent continuous paging sessions.
+- [improvement] DAT-365: Ability to skip unloading/loading solr_query column.
 
 
 ### 1.2.0

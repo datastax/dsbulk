@@ -38,6 +38,7 @@ import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.ColumnDefinitions.Definition;
 import com.datastax.driver.core.ColumnMetadata;
 import com.datastax.driver.core.DataType;
+import com.datastax.driver.core.DataType.Name;
 import com.datastax.driver.core.KeyspaceMetadata;
 import com.datastax.driver.core.MaterializedViewMetadata;
 import com.datastax.driver.core.Metadata;
@@ -468,6 +469,11 @@ public class SchemaSettings {
               table
                   .getColumns()
                   .stream()
+                  .filter(
+                      col ->
+                          !(col.getName().equals("solr_query")
+                              && (col.getType().getName() == Name.VARCHAR
+                                  || col.getType().getName() == Name.TEXT)))
                   .map(ColumnMetadata::getName)
                   .map(CQLIdentifier::fromInternal)
                   .collect(Collectors.toList()));
