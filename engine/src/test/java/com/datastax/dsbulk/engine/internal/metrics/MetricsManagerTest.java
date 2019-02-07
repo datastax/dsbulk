@@ -39,7 +39,6 @@ import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
-import com.datastax.dsbulk.engine.internal.settings.RowType;
 import com.datastax.dsbulk.engine.internal.statement.BulkSimpleStatement;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.datastax.dsbulk.engine.tests.utils.LogUtils;
@@ -112,8 +111,7 @@ class MetricsManagerTest {
             Duration.ofSeconds(5),
             false,
             protocolVersion,
-            codecRegistry,
-            RowType.REGULAR)) {
+            codecRegistry)) {
       manager.init();
       manager.start();
       Flux<Record> records = Flux.just(record1, record2, record3);
@@ -149,8 +147,7 @@ class MetricsManagerTest {
             Duration.ofSeconds(5),
             true,
             protocolVersion,
-            codecRegistry,
-            RowType.REGULAR)) {
+            codecRegistry)) {
       manager.init();
       manager.start();
       Flux<Statement> statements = Flux.just(batch, stmt3);
@@ -190,8 +187,7 @@ class MetricsManagerTest {
             Duration.ofSeconds(5),
             true,
             protocolVersion,
-            codecRegistry,
-            RowType.REGULAR);
+            codecRegistry);
     try {
       manager.init();
       manager.start();
@@ -244,8 +240,7 @@ class MetricsManagerTest {
             Duration.ofSeconds(5),
             true,
             protocolVersion,
-            codecRegistry,
-            RowType.REGULAR);
+            codecRegistry);
     try {
       manager.init();
       manager.start();
@@ -289,8 +284,7 @@ class MetricsManagerTest {
             Duration.ofSeconds(5),
             true,
             protocolVersion,
-            codecRegistry,
-            RowType.REGULAR);
+            codecRegistry);
     try {
       manager.init();
       manager.start();

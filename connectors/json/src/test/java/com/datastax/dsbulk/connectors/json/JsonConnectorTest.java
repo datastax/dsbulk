@@ -82,7 +82,7 @@ class JsonConnectorTest {
             ConfigFactory.parseString(
                     String.format(
                         "url = %s, parserFeatures = {ALLOW_COMMENTS:true}, "
-                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS: false}",
+                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}",
                         url("/multi_doc.json")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
@@ -100,7 +100,7 @@ class JsonConnectorTest {
             ConfigFactory.parseString(
                     String.format(
                         "url = %s, parserFeatures = {ALLOW_COMMENTS:true}, "
-                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS: false}, "
+                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}, "
                             + "mode = SINGLE_DOCUMENT",
                         url("/single_doc.json")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
@@ -155,7 +155,7 @@ class JsonConnectorTest {
             ConfigFactory.parseString(
                     String.format(
                         "url = %s, parserFeatures = {ALLOW_COMMENTS:true}, "
-                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS: false}",
+                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}",
                         url("/multi_doc.json")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
@@ -169,7 +169,7 @@ class JsonConnectorTest {
   void should_read_from_stdin_with_special_encoding() throws Exception {
     InputStream stdin = System.in;
     try {
-      String line = "{ \"fóô\": \"bàr\", \"qïx\": null }\n";
+      String line = "{ \"fóô\" : \"bàr\", \"qïx\" : null }\n";
       InputStream is = new ByteArrayInputStream(line.getBytes(ISO_8859_1));
       System.setIn(is);
       JsonConnector connector = new JsonConnector();
@@ -760,7 +760,7 @@ class JsonConnectorTest {
                           "url = \"http://localhost:%d/file.json\", "
                               + "mode = SINGLE_DOCUMENT, "
                               + "parserFeatures = {ALLOW_COMMENTS:true}, "
-                              + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS: false}",
+                              + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}",
                           server.getPort()))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);

@@ -49,8 +49,7 @@ class MonitoringSettingsTest {
             LogSettings.Verbosity.normal,
             new MetricRegistry(),
             protocolVersion,
-            codecRegistry,
-            RowType.REGULAR);
+            codecRegistry);
     assertThat(metricsManager).isNotNull();
     assertThat(ReflectionUtils.getInternalState(metricsManager, "rateUnit")).isEqualTo(SECONDS);
     assertThat(ReflectionUtils.getInternalState(metricsManager, "durationUnit"))
@@ -86,8 +85,7 @@ class MonitoringSettingsTest {
             LogSettings.Verbosity.normal,
             new MetricRegistry(),
             protocolVersion,
-            codecRegistry,
-            RowType.REGULAR);
+            codecRegistry);
     assertThat(metricsManager).isNotNull();
     assertThat(ReflectionUtils.getInternalState(metricsManager, "rateUnit")).isEqualTo(MINUTES);
     assertThat(ReflectionUtils.getInternalState(metricsManager, "durationUnit")).isEqualTo(SECONDS);
