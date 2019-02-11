@@ -163,8 +163,9 @@ public class UnloadWorkflow implements Workflow {
     // of cores, cap the concurrency at that number to reduce lock contention around the semaphore
     // that controls it.
     readConcurrency =
-        Math.min(
-            Runtime.getRuntime().availableProcessors(), executorSettings.getMaxConcurrentQueries());
+        executorSettings.getMaxConcurrentQueries().isPresent()
+            ? Math.min(numCores, executorSettings.getMaxConcurrentQueries().get())
+            : numCores;
   }
 
   @Override

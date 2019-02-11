@@ -6,6 +6,7 @@
 - [improvement] DAT-389: batch.bufferSize should be a multiple of batch.maxBatchStatements.
 - [improvement] DAT-310: Simplify computation of resource positions.
 - [improvement] DAT-388: Revisit "parallel" flows.
+- [bug] DAT-392: Setting executor.maxInFlight to a negative value triggers fatal error.
 
 
 ### 1.3.0

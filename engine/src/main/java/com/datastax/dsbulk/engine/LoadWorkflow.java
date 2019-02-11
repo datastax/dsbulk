@@ -88,6 +88,7 @@ public class LoadWorkflow implements Workflow {
   private Function<Flux<Void>, Flux<Void>> terminationHandler;
   private Function<Flux<WriteResult>, Flux<WriteResult>> failedWritesHandler;
   private Function<Flux<WriteResult>, Flux<Void>> resultPositionsHndler;
+  private int numCores;
 
   LoadWorkflow(LoaderConfig config) {
     settingsManager = new SettingsManager(config, WorkflowType.LOAD);
@@ -169,18 +170,17 @@ public class LoadWorkflow implements Workflow {
     failedWritesHandler = logManager.newFailedWritesHandler();
     resultPositionsHndler = logManager.newResultPositionsHandler();
     terminationHandler = logManager.newTerminationHandler();
-    scheduler =
-        Schedulers.newParallel(
-            Runtime.getRuntime().availableProcessors(), new DefaultThreadFactory("workflow"));
+    numCores = Runtime.getRuntime().availableProcessors();
+    scheduler = Schedulers.newParallel(numCores, new DefaultThreadFactory("workflow"));
     // In order to keep a global number of X in-flight requests maximum, and in order to reduce lock
     // contention around the semaphore that controls this number, and given that we have N threads
     // executing requests, then each thread should strive to maintain a maximum of X / N in-flight
     // requests. If the maximum number of in-flight requests is unbounded, then we use a standard
     // concurrency constant.
     writeConcurrency =
-        Math.max(
-            Queues.XS_BUFFER_SIZE,
-            executorSettings.getMaxInFlight() / Runtime.getRuntime().availableProcessors());
+        executorSettings.getMaxInFlight().isPresent()
+            ? Math.max(Queues.XS_BUFFER_SIZE, executorSettings.getMaxInFlight().get() / numCores)
+            : Queues.XS_BUFFER_SIZE;
     resourceCount = connector.estimatedResourceCount();
   }
 
@@ -230,7 +230,7 @@ public class LoadWorkflow implements Workflow {
                   .transform(resultPositionsHndler)
                   .subscribeOn(scheduler);
             },
-            Runtime.getRuntime().availableProcessors())
+            numCores)
         .transform(terminationHandler)
         .blockLast();
   }
@@ -257,7 +257,7 @@ public class LoadWorkflow implements Workflow {
                   .transform(resultPositionsHndler)
                   .subscribeOn(scheduler);
             },
-            Runtime.getRuntime().availableProcessors())
+            numCores)
         .transform(terminationHandler)
         .blockLast();
   }
