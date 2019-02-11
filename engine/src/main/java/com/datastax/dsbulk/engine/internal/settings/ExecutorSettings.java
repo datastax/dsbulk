@@ -29,6 +29,7 @@ import com.datastax.dsbulk.executor.reactor.reader.ReactorBulkReader;
 import com.datastax.dsbulk.executor.reactor.writer.ReactorBulkWriter;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,6 +83,14 @@ public class ExecutorSettings {
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "executor.continuousPaging");
     }
+  }
+
+  public Optional<Integer> getMaxInFlight() {
+    return maxInFlight > 0 ? Optional.of(maxInFlight) : Optional.empty();
+  }
+
+  public Optional<Integer> getMaxConcurrentQueries() {
+    return maxConcurrentQueries > 0 ? Optional.of(maxConcurrentQueries) : Optional.empty();
   }
 
   public ReactorBulkWriter newWriteExecutor(Session session, ExecutionListener executionListener) {
@@ -138,14 +147,6 @@ public class ExecutorSettings {
         .withContinuousPagingOptions(options)
         .withMaxInFlightQueries(maxConcurrentQueries)
         .build();
-  }
-
-  public int getMaxInFlight() {
-    return maxInFlight;
-  }
-
-  public int getMaxConcurrentQueries() {
-    return maxConcurrentQueries;
   }
 
   private boolean continuousPagingAvailable(Session session) {
