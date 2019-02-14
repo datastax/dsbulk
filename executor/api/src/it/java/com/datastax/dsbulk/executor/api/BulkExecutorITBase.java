@@ -62,7 +62,7 @@ public abstract class BulkExecutorITBase {
       WRITE_STATEMENTS.skipLast(1).concatWith(Flowable.just(FAILED_STATEMENT));
 
   protected final BulkExecutor failFastExecutor;
-  private final BulkExecutor failSafeExecutor;
+  protected final BulkExecutor failSafeExecutor;
 
   @Mock private Consumer<? super WriteResult> writeConsumer;
   @Mock private Consumer<? super ReadResult> readConsumer;

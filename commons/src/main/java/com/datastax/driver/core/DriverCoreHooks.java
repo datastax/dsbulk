@@ -39,7 +39,7 @@ public class DriverCoreHooks {
       } else {
         assert statement instanceof BoundStatement;
         BoundStatement st = (BoundStatement) statement;
-        count += st.wrapper.values.length;
+        count += st.preparedStatement().getVariables().size();
       }
     }
     return count;

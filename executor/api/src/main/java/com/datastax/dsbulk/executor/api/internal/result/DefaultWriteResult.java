@@ -8,20 +8,40 @@
  */
 package com.datastax.dsbulk.executor.api.internal.result;
 
-import com.datastax.driver.core.ExecutionInfo;
+import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public final class DefaultWriteResult extends DefaultResult implements WriteResult {
 
-  public DefaultWriteResult(@NotNull Statement statement, @NotNull ExecutionInfo executionInfo) {
-    super(statement, executionInfo);
+  @Nullable private final ResultSet rs;
+
+  public DefaultWriteResult(@NotNull Statement statement, @NotNull ResultSet rs) {
+    super(statement, rs.getExecutionInfo());
+    this.rs = rs;
   }
 
   public DefaultWriteResult(@NotNull BulkExecutionException error) {
     super(error);
+    this.rs = null;
+  }
+
+  @Override
+  public boolean wasApplied() {
+    return rs != null && rs.wasApplied();
+  }
+
+  @Override
+  public Stream<? extends Row> getFailedWrites() {
+    return rs == null || rs.wasApplied()
+        ? Stream.empty()
+        : StreamSupport.stream(rs.spliterator(), false);
   }
 
   @Override
@@ -33,6 +53,8 @@ public final class DefaultWriteResult extends DefaultResult implements WriteResu
         + getStatement()
         + ", executionInfo="
         + getExecutionInfo()
+        + ", wasApplied="
+        + wasApplied()
         + ']';
   }
 }

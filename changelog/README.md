@@ -7,6 +7,7 @@
 - [improvement] DAT-310: Simplify computation of resource positions.
 - [improvement] DAT-388: Revisit "parallel" flows.
 - [bug] DAT-392: Setting executor.maxInFlight to a negative value triggers fatal error.
+- [improvement] DAT-384: Improve support for lightweight transactions.
 
 
 ### 1.3.0

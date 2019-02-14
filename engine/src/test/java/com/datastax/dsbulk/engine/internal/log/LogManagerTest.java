@@ -10,6 +10,9 @@ package com.datastax.dsbulk.engine.internal.log;
 
 import static com.datastax.driver.core.ConsistencyLevel.ONE;
 import static com.datastax.driver.core.DataType.cint;
+import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newColumnDefinitions;
+import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newDefinition;
+import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosity.EXTENDED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Fail.fail;
@@ -17,24 +20,29 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.datastax.driver.core.BatchStatement;
+import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.Configuration;
 import com.datastax.driver.core.ExecutionInfo;
+import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.ProtocolOptions;
-import com.datastax.driver.core.ProtocolVersion;
+import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.Statement;
+import com.datastax.driver.core.TypeCodec;
 import com.datastax.driver.core.exceptions.DriverInternalError;
 import com.datastax.driver.core.exceptions.OperationTimedOutException;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
+import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.row.RowFormatter;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatter;
+import com.datastax.dsbulk.engine.internal.statement.BulkBoundStatement;
 import com.datastax.dsbulk.engine.internal.statement.BulkSimpleStatement;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
@@ -48,6 +56,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
+import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
@@ -102,7 +111,7 @@ class LogManagerTest {
     ProtocolOptions protocolOptions = mock(ProtocolOptions.class);
     when(cluster.getConfiguration()).thenReturn(configuration);
     when(configuration.getProtocolOptions()).thenReturn(protocolOptions);
-    when(protocolOptions.getProtocolVersion()).thenReturn(ProtocolVersion.V4);
+    when(protocolOptions.getProtocolVersion()).thenReturn(V4);
     when(configuration.getCodecRegistry()).thenReturn(CodecRegistry.DEFAULT_INSTANCE);
     resource1 = new URI("file:///file1.csv");
     resource2 = new URI("file:///file2.csv");
@@ -674,14 +683,90 @@ class LogManagerTest {
             "com.datastax.dsbulk.executor.api.exception.BulkExecutionException: Statement execution failed: SELECT 1 (error 1)");
   }
 
+  @Test
+  void should_stop_when_max_cas_errors_reached() throws Exception {
+    BatchStatement casBatch = new BatchStatement(BatchStatement.Type.UNLOGGED);
+    BoundStatement casStmt1 = mockBoundStatement(1, source1, resource1);
+    BoundStatement casStmt2 = mockBoundStatement(2, source2, resource2);
+    BoundStatement casStmt3 = mockBoundStatement(3, source3, resource3);
+    casBatch.add(casStmt1);
+    casBatch.add(casStmt2);
+    casBatch.add(casStmt3);
+    Row row1 = mockRow(1);
+    Row row2 = mockRow(2);
+    Row row3 = mockRow(3);
+    ResultSet rs = mock(ResultSet.class);
+    when(rs.wasApplied()).thenReturn(false);
+    when(rs.spliterator()).thenReturn(Lists.newArrayList(row1, row2, row3).spliterator());
+    ExecutionInfo executionInfo = mock(ExecutionInfo.class);
+    when(rs.getExecutionInfo()).thenReturn(executionInfo);
+    DefaultWriteResult casBatchWriteResult = new DefaultWriteResult(casBatch, rs);
+    Path outputDir = Files.createTempDirectory("test");
+    LogManager logManager =
+        new LogManager(
+            WorkflowType.LOAD,
+            cluster,
+            outputDir,
+            2,
+            0,
+            statementFormatter,
+            EXTENDED,
+            rowFormatter);
+    logManager.init();
+    Flux<WriteResult> stmts = Flux.just(casBatchWriteResult);
+    try {
+      stmts.transform(logManager.newFailedWritesHandler()).blockLast();
+      fail("Expecting TooManyErrorsException to be thrown");
+    } catch (TooManyErrorsException e) {
+      assertThat(e).hasMessage("Too many errors, the maximum allowed is 2.");
+      assertThat(e.getMaxErrors()).isEqualTo(2);
+    }
+    logManager.close();
+    Path bad = logManager.getExecutionDirectory().resolve("paxos.bad");
+    Path errors = logManager.getExecutionDirectory().resolve("paxos-errors.log");
+    Path positions = logManager.getExecutionDirectory().resolve("positions.txt");
+    assertThat(bad.toFile()).exists();
+    assertThat(errors.toFile()).exists();
+    assertThat(positions.toFile()).exists();
+    List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
+    assertThat(badLines).hasSize(3);
+    assertThat(badLines.get(0)).isEqualTo(source1.trim());
+    assertThat(badLines.get(1)).isEqualTo(source2.trim());
+    assertThat(badLines.get(2)).isEqualTo(source3.trim());
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getExecutionDirectory()))
+        .containsOnly(bad, errors, positions);
+    List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
+    String content = String.join("\n", lines);
+    assertThat(content)
+        .containsOnlyOnce("INSERT INTO 1")
+        .contains("c1: 1")
+        .containsOnlyOnce("INSERT INTO 2")
+        .contains("c1: 2")
+        .containsOnlyOnce("INSERT INTO 3")
+        .contains("c1: 3");
+  }
+
   private static Row mockRow(int value) {
     Row row = mock(Row.class);
-    ColumnDefinitions cd = mock(ColumnDefinitions.class);
+    ColumnDefinitions cd = newColumnDefinitions(newDefinition("c1", cint()));
     when(row.getColumnDefinitions()).thenReturn(cd);
-    when(cd.size()).thenReturn(1);
-    when(cd.getName(0)).thenReturn("c1");
-    when(cd.getType(0)).thenReturn(cint());
     when(row.getObject(0)).thenReturn(value);
+    when(row.getBytesUnsafe("c1")).thenReturn(TypeCodec.cint().serialize(value, V4));
     return row;
+  }
+
+  private static BulkBoundStatement<?> mockBoundStatement(int value, Object source, URI resource) {
+    @SuppressWarnings("unchecked")
+    BulkBoundStatement<Record> bs = mock(BulkBoundStatement.class);
+    PreparedStatement ps = mock(PreparedStatement.class);
+    when(ps.getQueryString()).thenReturn("INSERT INTO " + value);
+    ColumnDefinitions variables = newColumnDefinitions(newDefinition("c1", cint()));
+    when(ps.getVariables()).thenReturn(variables);
+    when(bs.preparedStatement()).thenReturn(ps);
+    when(bs.isSet(0)).thenReturn(true);
+    when(bs.getObject(0)).thenReturn(value);
+    when(bs.getBytesUnsafe("c1")).thenReturn(TypeCodec.cint().serialize(value, V4));
+    when(bs.getSource()).thenReturn(DefaultRecord.indexed(source, () -> resource, 1, 1));
+    return bs;
   }
 }

@@ -13,6 +13,7 @@ import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DDAC;
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLines;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStreamExcludingHeaders;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
@@ -31,6 +32,7 @@ import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createIpByCountryCaseSensitiveTable;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createIpByCountryTable;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createWithSpacesTable;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.getOperationDirectory;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateExceptionsLog;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateNumberOfBadRecords;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
@@ -63,6 +65,7 @@ import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
 import com.datastax.dsbulk.commons.tests.utils.CQLUtils;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.commons.tests.utils.Version;
+import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.tests.MockConnector;
@@ -3485,6 +3488,93 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(1, "SELECT * FROM custom_types_table");
+  }
+
+  /** Test for CAS failures (DAT-384). */
+  @Test
+  void cas_load_with_errors() {
+
+    session.execute("DROP TABLE IF EXISTS test_cas");
+    session.execute("CREATE TABLE test_cas (pk int, cc int, v int, PRIMARY KEY (pk, cc))");
+
+    // batch 1
+    Record record1 = RecordUtils.mappedCSV("pk", "1", "cc", "1", "v", "1");
+    Record record2 = RecordUtils.mappedCSV("pk", "1", "cc", "2", "v", "2");
+    Record record3 = RecordUtils.mappedCSV("pk", "1", "cc", "3", "v", "3");
+
+    // batch 2
+    Record record4 = RecordUtils.mappedCSV("pk", "1", "cc", "1", "v", "1"); // will fail
+    Record record5 = RecordUtils.mappedCSV("pk", "1", "cc", "2", "v", "2"); // will fail
+    Record record6 = RecordUtils.mappedCSV("pk", "1", "cc", "4", "v", "4"); // will not be applied
+
+    MockConnector.mockReads(record1, record2, record3, record4, record5, record6);
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.name");
+    args.add("mock");
+    args.add("--batch.maxBatchStatements");
+    args.add("3");
+    args.add("--executor.maxInFlight");
+    args.add("1"); // serialize statement execution to ensure deterministic results
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.query");
+    args.add("INSERT INTO test_cas (pk, cc, v) VALUES (:pk, :cc, :v) IF NOT EXISTS");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(STATUS_COMPLETED_WITH_ERRORS);
+
+    Path bad = getOperationDirectory().resolve("paxos.bad");
+    assertThat(bad).exists();
+    assertThat(readAllLines(bad))
+        .containsExactly(
+            record4.getSource().toString(),
+            record5.getSource().toString(),
+            record6.getSource().toString());
+
+    Path errors = getOperationDirectory().resolve("paxos-errors.log");
+    assertThat(errors).exists();
+    assertThat(readAllLines(errors).collect(Collectors.joining("\n")))
+        .contains(
+            String.format(
+                "Resource: %s\n"
+                    + "    Position: %d\n"
+                    + "    Source: %s\n"
+                    + "    INSERT INTO test_cas (pk, cc, v) VALUES (:pk, :cc, :v) IF NOT EXISTS\n"
+                    + "    pk: 1\n"
+                    + "    cc: 1\n"
+                    + "    v: 1",
+                record4.getResource(), record4.getPosition(), record4.getSource()),
+            String.format(
+                "Resource: %s\n"
+                    + "    Position: %d\n"
+                    + "    Source: %s\n"
+                    + "    INSERT INTO test_cas (pk, cc, v) VALUES (:pk, :cc, :v) IF NOT EXISTS\n"
+                    + "    pk: 1\n"
+                    + "    cc: 2\n"
+                    + "    v: 2",
+                record5.getResource(), record5.getPosition(), record5.getSource()),
+            String.format(
+                "Resource: %s\n"
+                    + "    Position: %d\n"
+                    + "    Source: %s\n"
+                    + "    INSERT INTO test_cas (pk, cc, v) VALUES (:pk, :cc, :v) IF NOT EXISTS\n"
+                    + "    pk: 1\n"
+                    + "    cc: 4\n"
+                    + "    v: 4",
+                record6.getResource(), record6.getPosition(), record6.getSource()),
+            "Failed writes:",
+            "[applied]: false\npk: 1\ncc: 1\nv: 1",
+            "[applied]: false\npk: 1\ncc: 2\nv: 2");
+
+    List<Row> rows = session.execute("SELECT v FROM test_cas WHERE pk = 1").all();
+    assertThat(rows).hasSize(3);
+    assertThat(rows.get(0).getInt(0)).isEqualTo(1);
+    assertThat(rows.get(1).getInt(0)).isEqualTo(2);
+    assertThat(rows.get(2).getInt(0)).isEqualTo(3);
   }
 
   static void checkTemporalsWritten(Session session) {

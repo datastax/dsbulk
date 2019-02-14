@@ -20,7 +20,7 @@ public class URIUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(URIUtils.class);
 
-  public static final URI UNKNOWN_ROW_RESOURCE = URI.create("cql://unknown");
+  private static final URI UNKNOWN_ROW_RESOURCE = URI.create("cql://unknown");
 
   /**
    * Returns the resource {@link URI} of a row in a read result.

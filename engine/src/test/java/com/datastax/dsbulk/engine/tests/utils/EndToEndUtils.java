@@ -174,9 +174,13 @@ public class EndToEndUtils {
     return new RequestPrime(when, then);
   }
 
+  public static Path getOperationDirectory() {
+    return Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
+  }
+
   public static void validateExceptionsLog(int size, String keyword, String fileName)
       throws Exception {
-    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
+    Path logPath = getOperationDirectory();
     Path exceptionFile = logPath.resolve(fileName);
     try (Stream<String> lines = Files.lines(exceptionFile)) {
       long numErrors = lines.filter(l -> l.contains(keyword)).count();
@@ -185,7 +189,7 @@ public class EndToEndUtils {
   }
 
   public static void validateNumberOfBadRecords(int size) throws Exception {
-    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
+    Path logPath = getOperationDirectory();
     PathMatcher badFileMatcher = FileSystems.getDefault().getPathMatcher("glob:**/*.bad");
     try (Stream<Path> paths = Files.list(logPath)) {
       long numBadOps =
@@ -205,7 +209,7 @@ public class EndToEndUtils {
   }
 
   public static void validatePositionsFile(URI resource, long lastPosition) throws IOException {
-    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
+    Path logPath = getOperationDirectory();
     Path positions = logPath.resolve("positions.txt");
     assertThat(positions).exists();
     List<String> lines = Files.readAllLines(positions, UTF_8);
@@ -213,7 +217,7 @@ public class EndToEndUtils {
   }
 
   public static void validatePositionsFile(Map<URI, Long> lastPositions) throws IOException {
-    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
+    Path logPath = getOperationDirectory();
     Path positions = logPath.resolve("positions.txt");
     assertThat(positions).exists();
     List<String> lines = Files.readAllLines(positions, UTF_8);
