@@ -36,13 +36,13 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import org.assertj.core.data.Index;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-// tests for DAT-309
 @ExtendWith(LogInterceptingExtension.class)
 @Tag("medium")
 @CCMConfig(workloads = @CCMWorkload(Workload.solr))
@@ -84,8 +84,9 @@ class SearchEndToEndCCMIT extends EndToEndCCMITBase {
     records = MockConnector.mockWrites();
   }
 
+  /** Test for DAT-309: unload of a Solr query */
   @Test
-  void full_unload_search() {
+  void full_unload_search_solr_query() {
 
     session.execute(
         "CREATE TABLE IF NOT EXISTS test_search (pk int, cc int, v varchar, PRIMARY KEY (pk, cc))");
@@ -126,5 +127,73 @@ class SearchEndToEndCCMIT extends EndToEndCCMITBase {
               assertThat(record.fields()).hasSize(1);
               assertThat(record.getFieldValue(new DefaultMappedField("v"))).isEqualTo("foo");
             });
+  }
+
+  /**
+   * Test for DAT-365: regular unload of a search-enabled table should not contain the solr_query
+   * column.
+   */
+  @Test
+  void normal_unload_of_search_enabled_table() {
+
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS test_search2 (pk int, cc int, v varchar, PRIMARY KEY (pk, cc))");
+    session.execute(
+        "CREATE SEARCH INDEX IF NOT EXISTS ON test_search2 WITH COLUMNS v { indexed:true };");
+
+    session.execute("INSERT INTO test_search2 (pk, cc, v) VALUES (0, 0, 'foo')");
+    session.execute("INSERT INTO test_search2 (pk, cc, v) VALUES (0, 1, 'bar')");
+    session.execute("INSERT INTO test_search2 (pk, cc, v) VALUES (0, 2, 'qix')");
+
+    // Wait until index is built
+    await()
+        .atMost(ONE_MINUTE)
+        .until(
+            () ->
+                !session
+                    .execute("SELECT v FROM test_search2 WHERE solr_query = '{\"q\": \"v:foo\"}'")
+                    .all()
+                    .isEmpty());
+
+    List<String> args = new ArrayList<>();
+    args.add("unload");
+    args.add("--connector.name");
+    args.add("mock");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("test_search2");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+
+    assertThat(records)
+        .hasSize(3)
+        .satisfies(
+            record -> {
+              assertThat(record.fields()).hasSize(3);
+              assertThat(record.getFieldValue(new DefaultMappedField("pk"))).isEqualTo("0");
+              assertThat(record.getFieldValue(new DefaultMappedField("cc"))).isEqualTo("0");
+              assertThat(record.getFieldValue(new DefaultMappedField("v"))).isEqualTo("foo");
+            },
+            Index.atIndex(0))
+        .satisfies(
+            record -> {
+              assertThat(record.fields()).hasSize(3);
+              assertThat(record.getFieldValue(new DefaultMappedField("pk"))).isEqualTo("0");
+              assertThat(record.getFieldValue(new DefaultMappedField("cc"))).isEqualTo("1");
+              assertThat(record.getFieldValue(new DefaultMappedField("v"))).isEqualTo("bar");
+            },
+            Index.atIndex(1))
+        .satisfies(
+            record -> {
+              assertThat(record.fields()).hasSize(3);
+              assertThat(record.getFieldValue(new DefaultMappedField("pk"))).isEqualTo("0");
+              assertThat(record.getFieldValue(new DefaultMappedField("cc"))).isEqualTo("2");
+              assertThat(record.getFieldValue(new DefaultMappedField("v"))).isEqualTo("qix");
+            },
+            Index.atIndex(2));
   }
 }

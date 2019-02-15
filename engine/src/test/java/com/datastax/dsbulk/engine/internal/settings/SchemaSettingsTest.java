@@ -49,6 +49,7 @@ import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.ColumnMetadata;
 import com.datastax.driver.core.Configuration;
+import com.datastax.driver.core.IndexMetadata;
 import com.datastax.driver.core.KeyspaceMetadata;
 import com.datastax.driver.core.MaterializedViewMetadata;
 import com.datastax.driver.core.Metadata;
@@ -2203,6 +2204,86 @@ class SchemaSettingsTest {
     assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, false, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining("Connector must support at least one of indexed or mapped mappings");
+  }
+
+  @Test
+  void should_infer_insert_query_without_solr_query_column() {
+    ColumnMetadata solrQueryCol = mock(ColumnMetadata.class);
+    when(solrQueryCol.getName()).thenReturn("solr_query");
+    when(solrQueryCol.getType()).thenReturn(varchar());
+    when(table.getColumns()).thenReturn(newArrayList(col1, col2, col3, solrQueryCol));
+    IndexMetadata idx = mock(IndexMetadata.class);
+    when(table.getIndexes()).thenReturn(singletonList(idx));
+    when(idx.getIndexClassName()).thenReturn("com.datastax.bdp.search.solr.Cql3SolrSecondaryIndex");
+    LoaderConfig config = makeLoaderConfig("keyspace = ks, table = t1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(LOAD, cluster, false, true);
+    RecordMapper mapper = schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue())
+        .isEqualTo(
+            String.format(
+                "INSERT INTO ks.t1 (%1$s, \"%2$s\", %3$s) VALUES (:%1$s, :\"%2$s\", :%3$s)",
+                C1, C2, C3));
+    assertMapping((DefaultMapping) getInternalState(mapper, "mapping"), C1, C1, C2, C2, C3, C3);
+  }
+
+  @Test
+  void should_infer_select_query_without_solr_query_column() {
+    ColumnMetadata solrQueryCol = mock(ColumnMetadata.class);
+    when(solrQueryCol.getName()).thenReturn("solr_query");
+    when(solrQueryCol.getType()).thenReturn(varchar());
+    when(table.getColumns()).thenReturn(newArrayList(col1, col2, col3, solrQueryCol));
+    IndexMetadata idx = mock(IndexMetadata.class);
+    when(table.getIndexes()).thenReturn(singletonList(idx));
+    when(idx.getIndexClassName()).thenReturn("com.datastax.bdp.search.solr.Cql3SolrSecondaryIndex");
+    LoaderConfig config = makeLoaderConfig("keyspace = ks, table = t1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(UNLOAD, cluster, false, true);
+    ReadResultMapper mapper =
+        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue())
+        .isEqualTo(
+            String.format(
+                "SELECT %1$s, \"%2$s\", %3$s FROM ks.t1 WHERE token(%1$s) > :start AND token(%1$s) <= :end",
+                C1, C2, C3));
+    assertMapping((DefaultMapping) getInternalState(mapper, "mapping"), C1, C1, C2, C2, C3, C3);
+  }
+
+  @Test
+  void should_infer_select_query_with_solr_query_column_if_index_is_not_search_index() {
+    ColumnMetadata solrQueryCol = mock(ColumnMetadata.class);
+    when(solrQueryCol.getName()).thenReturn("solr_query");
+    when(solrQueryCol.getType()).thenReturn(varchar());
+    when(table.getColumns()).thenReturn(newArrayList(col1, col2, col3, solrQueryCol));
+    IndexMetadata idx = mock(IndexMetadata.class);
+    when(table.getIndexes()).thenReturn(singletonList(idx));
+    when(idx.getIndexClassName()).thenReturn("not a search index");
+    LoaderConfig config = makeLoaderConfig("keyspace = ks, table = t1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(UNLOAD, cluster, false, true);
+    ReadResultMapper mapper =
+        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue())
+        .isEqualTo(
+            String.format(
+                "SELECT %1$s, \"%2$s\", %3$s, solr_query FROM ks.t1 WHERE token(%1$s) > :start AND token(%1$s) <= :end",
+                C1, C2, C3));
+    assertMapping(
+        (DefaultMapping) getInternalState(mapper, "mapping"),
+        C1,
+        C1,
+        C2,
+        C2,
+        C3,
+        C3,
+        "solr_query",
+        "solr_query");
   }
 
   @NotNull

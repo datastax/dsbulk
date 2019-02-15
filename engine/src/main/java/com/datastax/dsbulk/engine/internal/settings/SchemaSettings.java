@@ -38,6 +38,8 @@ import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.ColumnDefinitions.Definition;
 import com.datastax.driver.core.ColumnMetadata;
 import com.datastax.driver.core.DataType;
+import com.datastax.driver.core.DataType.Name;
+import com.datastax.driver.core.IndexMetadata;
 import com.datastax.driver.core.KeyspaceMetadata;
 import com.datastax.driver.core.MaterializedViewMetadata;
 import com.datastax.driver.core.Metadata;
@@ -468,6 +470,7 @@ public class SchemaSettings {
               table
                   .getColumns()
                   .stream()
+                  .filter(col -> !isDSESearchPseudoColumn(col))
                   .map(ColumnMetadata::getName)
                   .map(CQLIdentifier::fromInternal)
                   .collect(Collectors.toList()));
@@ -567,6 +570,24 @@ public class SchemaSettings {
         processFieldsToVariables(fieldsToVariables),
         codecRegistry,
         processWriteTimeVariables(writeTimeVariables));
+  }
+
+  private boolean isDSESearchPseudoColumn(ColumnMetadata col) {
+    return col.getName().equals("solr_query")
+        && (col.getType().getName() == Name.VARCHAR || col.getType().getName() == Name.TEXT)
+        && tableHasDSESearchIndex();
+  }
+
+  private boolean tableHasDSESearchIndex() {
+    if (table instanceof TableMetadata) {
+      for (IndexMetadata index : ((TableMetadata) table).getIndexes()) {
+        if ("com.datastax.bdp.search.solr.Cql3SolrSecondaryIndex"
+            .equals(index.getIndexClassName())) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   private boolean isCounterTable() {
