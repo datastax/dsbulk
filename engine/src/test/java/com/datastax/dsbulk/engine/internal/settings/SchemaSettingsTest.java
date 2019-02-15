@@ -2253,6 +2253,39 @@ class SchemaSettingsTest {
     assertMapping((DefaultMapping) getInternalState(mapper, "mapping"), C1, C1, C2, C2, C3, C3);
   }
 
+  @Test
+  void should_infer_select_query_with_solr_query_column_if_index_is_not_search_index() {
+    ColumnMetadata solrQueryCol = mock(ColumnMetadata.class);
+    when(solrQueryCol.getName()).thenReturn("solr_query");
+    when(solrQueryCol.getType()).thenReturn(varchar());
+    when(table.getColumns()).thenReturn(newArrayList(col1, col2, col3, solrQueryCol));
+    IndexMetadata idx = mock(IndexMetadata.class);
+    when(table.getIndexes()).thenReturn(singletonList(idx));
+    when(idx.getIndexClassName()).thenReturn("not a search index");
+    LoaderConfig config = makeLoaderConfig("keyspace = ks, table = t1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(UNLOAD, cluster, false, true);
+    ReadResultMapper mapper =
+        schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
+    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
+    verify(session).prepare(argument.capture());
+    assertThat(argument.getValue())
+        .isEqualTo(
+            String.format(
+                "SELECT %1$s, \"%2$s\", %3$s, solr_query FROM ks.t1 WHERE token(%1$s) > :start AND token(%1$s) <= :end",
+                C1, C2, C3));
+    assertMapping(
+        (DefaultMapping) getInternalState(mapper, "mapping"),
+        C1,
+        C1,
+        C2,
+        C2,
+        C3,
+        C3,
+        "solr_query",
+        "solr_query");
+  }
+
   @NotNull
   private static LoaderConfig makeLoaderConfig(String configString) {
     return new DefaultLoaderConfig(
