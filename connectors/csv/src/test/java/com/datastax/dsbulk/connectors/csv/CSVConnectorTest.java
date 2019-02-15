@@ -53,7 +53,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -70,7 +69,7 @@ class CSVConnectorTest {
   private static final Config CONNECTOR_DEFAULT_SETTINGS =
       ConfigFactory.defaultReference().getConfig("dsbulk.connector.csv");
 
-  private final Supplier<URI> resource = () -> URI.create("file://file1.csv");
+  private final URI resource = URI.create("file://file1.csv");
 
   @Test
   void should_read_single_file() throws Exception {
@@ -84,7 +83,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    List<Record> actual = Flux.defer(connector.read()).collectList().block();
+    List<Record> actual = Flux.from(connector.read()).collectList().block();
     assertRecords(actual);
     connector.close();
   }
@@ -101,7 +100,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    List<Record> actual = Flux.merge(connector.readByResource().get()).collectList().block();
+    List<Record> actual = Flux.merge(connector.readByResource()).collectList().block();
     assertRecords(actual);
     connector.close();
   }
@@ -184,7 +183,7 @@ class CSVConnectorTest {
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);
       connector.init();
-      List<Record> actual = Flux.defer(connector.read()).collectList().block();
+      List<Record> actual = Flux.from(connector.read()).collectList().block();
       assertThat(actual).hasSize(1);
       assertThat(actual.get(0).getSource()).isEqualTo(line);
       assertThat(actual.get(0).values()).containsExactly("fóô", "bàr", "qïx");
@@ -233,7 +232,7 @@ class CSVConnectorTest {
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);
       connector.init();
-      List<Record> actual = Flux.defer(connector.read()).collectList().block();
+      List<Record> actual = Flux.from(connector.read()).collectList().block();
       assertThat(actual).hasSize(1);
       assertThat(actual.get(0).getSource()).isEqualTo(line);
       assertThat(actual.get(0).values()).containsExactly("abc", "de\nf", "ghk");
@@ -276,7 +275,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.defer(connector.read()).count().block()).isEqualTo(300);
+    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(300);
     connector.close();
   }
 
@@ -289,7 +288,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.merge(connector.readByResource().get()).count().block()).isEqualTo(300);
+    assertThat(Flux.merge(connector.readByResource()).count().block()).isEqualTo(300);
     connector.close();
   }
 
@@ -304,7 +303,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.defer(connector.read()).count().block()).isEqualTo(300);
+    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(300);
     connector.close();
   }
 
@@ -317,7 +316,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.defer(connector.read()).count().block()).isEqualTo(500);
+    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(500);
     connector.close();
   }
 
@@ -330,7 +329,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.merge(connector.readByResource().get()).count().block()).isEqualTo(500);
+    assertThat(Flux.merge(connector.readByResource()).count().block()).isEqualTo(500);
     connector.close();
   }
 
@@ -346,7 +345,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.defer(connector.read()).count().block()).isEqualTo(500);
+    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(500);
     connector.close();
   }
 
@@ -517,7 +516,7 @@ class CSVConnectorTest {
               ConfigFactory.parseString("header = true").withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);
       connector.init();
-      List<Record> actual = Flux.defer(connector.read()).collectList().block();
+      List<Record> actual = Flux.from(connector.read()).collectList().block();
       assertThat(actual).hasSize(1);
       assertThat(actual.get(0)).isInstanceOf(ErrorRecord.class);
       assertThat(actual.get(0).getSource()).isEqualTo("value1,value2,value3");
@@ -540,7 +539,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.defer(connector.read()).count().block()).isEqualTo(450);
+    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(450);
     connector.close();
   }
 
@@ -554,7 +553,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.defer(connector.read()).count().block()).isEqualTo(0);
+    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(0);
     connector.close();
   }
 
@@ -568,7 +567,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.defer(connector.read()).count().block()).isEqualTo(50);
+    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(50);
     connector.close();
   }
 
@@ -582,7 +581,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.defer(connector.read()).count().block()).isEqualTo(5);
+    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(5);
     connector.close();
   }
 
@@ -598,7 +597,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.defer(connector.read()).count().block()).isEqualTo(25);
+    assertThat(Flux.from(connector.read()).count().block()).isEqualTo(25);
     connector.close();
   }
 
@@ -614,7 +613,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    List<Record> records = Flux.defer(connector.read()).collectList().block();
+    List<Record> records = Flux.from(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
     assertThat(records.get(0).getSource().toString().trim())
         .isEqualTo(
@@ -640,7 +639,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    List<Record> records = Flux.defer(connector.read()).collectList().block();
+    List<Record> records = Flux.from(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
     assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo(" foo ");
     connector.close();
@@ -664,7 +663,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    List<Record> records = Flux.defer(connector.read()).collectList().block();
+    List<Record> records = Flux.from(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
     assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo("foo");
     connector.close();
@@ -739,7 +738,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    List<Record> records = Flux.defer(connector.read()).collectList().block();
+    List<Record> records = Flux.from(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
     assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo(" foo ");
     connector.close();
@@ -763,7 +762,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    List<Record> records = Flux.defer(connector.read()).collectList().block();
+    List<Record> records = Flux.from(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
     assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo("foo");
     connector.close();
@@ -781,7 +780,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    List<Record> records = Flux.defer(connector.read()).collectList().block();
+    List<Record> records = Flux.from(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
     assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isNull();
     connector.close();
@@ -799,7 +798,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    List<Record> records = Flux.defer(connector.read()).collectList().block();
+    List<Record> records = Flux.from(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
     assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo("NULL");
     connector.close();
@@ -863,7 +862,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    List<Record> records = Flux.defer(connector.read()).collectList().block();
+    List<Record> records = Flux.from(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
     assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo("");
     connector.close();
@@ -881,7 +880,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    List<Record> records = Flux.defer(connector.read()).collectList().block();
+    List<Record> records = Flux.from(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
     assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo("EMPTY");
     connector.close();
@@ -1016,7 +1015,7 @@ class CSVConnectorTest {
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);
       connector.init();
-      List<Record> actual = Flux.defer(connector.read()).collectList().block();
+      List<Record> actual = Flux.from(connector.read()).collectList().block();
       assertRecords(actual);
       connector.close();
     } finally {
@@ -1058,7 +1057,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThatThrownBy(() -> Flux.defer(connector.read()).collectList().block())
+    assertThatThrownBy(() -> Flux.from(connector.read()).collectList().block())
         .satisfies(
             t ->
                 assertThat(t.getCause())
@@ -1084,7 +1083,7 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThatThrownBy(() -> Flux.defer(connector.read()).collectList().block())
+    assertThatThrownBy(() -> Flux.from(connector.read()).collectList().block())
         .satisfies(
             t ->
                 assertThat(t)

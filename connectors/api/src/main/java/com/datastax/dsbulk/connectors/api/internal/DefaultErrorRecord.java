@@ -10,6 +10,7 @@ package com.datastax.dsbulk.connectors.api.internal;
 
 import com.datastax.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.dsbulk.connectors.api.Field;
+import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import java.net.URI;
@@ -18,20 +19,42 @@ import java.util.Set;
 import java.util.function.Supplier;
 import org.jetbrains.annotations.NotNull;
 
+/** A record that could not be fully parsed from its source. */
 public class DefaultErrorRecord implements ErrorRecord {
 
-  private final Object source;
-  private final Supplier<URI> resource;
+  private final @NotNull Object source;
+  private final @NotNull Supplier<URI> resource;
   private final long position;
-  private final Throwable error;
+  private final @NotNull Throwable error;
 
+  /**
+   * Creates a new error record.
+   *
+   * @param source the record's source.
+   * @param resource the record's resource.
+   * @param position the record's position.
+   * @param error the error.
+   */
+  public DefaultErrorRecord(
+      @NotNull Object source, @NotNull URI resource, long position, @NotNull Throwable error) {
+    this(source, () -> resource, position, error);
+  }
+
+  /**
+   * Creates a new error record.
+   *
+   * @param source the record's source.
+   * @param resource the record's resource; will be memoized.
+   * @param position the record's position.
+   * @param error the error.
+   */
   public DefaultErrorRecord(
       @NotNull Object source,
       @NotNull Supplier<URI> resource,
       long position,
       @NotNull Throwable error) {
     this.source = source;
-    this.resource = resource;
+    this.resource = Suppliers.memoize(resource::get);
     this.position = position;
     this.error = error;
   }

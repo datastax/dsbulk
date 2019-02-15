@@ -24,7 +24,7 @@ public class RecordUtils {
     int counter = COUNTER.incrementAndGet();
     DefaultRecord record =
         DefaultRecord.indexed(
-            "source" + counter, () -> URI.create("file://file" + counter + ".csv"), counter - 1);
+            "source" + counter, URI.create("file://file" + counter + ".csv"), counter - 1);
     for (int i = 0; i < tokens.length; i += 2) {
       record.put(new DefaultMappedField(tokens[i]), tokens[i + 1]);
       record.put(new DefaultIndexedField(i % 2), tokens[i + 1]);
@@ -36,7 +36,7 @@ public class RecordUtils {
     int counter = COUNTER.incrementAndGet();
     DefaultRecord record =
         DefaultRecord.indexed(
-            "source" + counter, () -> URI.create("file://file" + counter + ".csv"), counter - 1);
+            "source" + counter, URI.create("file://file" + counter + ".csv"), counter - 1);
     for (int i = 0; i < values.length; i++) {
       record.put(new DefaultIndexedField(i), values[i]);
     }
@@ -47,7 +47,7 @@ public class RecordUtils {
     int counter = COUNTER.incrementAndGet();
     DefaultRecord record =
         DefaultRecord.indexed(
-            "source" + counter, () -> URI.create("file://file" + counter + ".json"), counter - 1);
+            "source" + counter, URI.create("file://file" + counter + ".json"), counter - 1);
     for (int i = 0; i < tokens.length; i += 2) {
       record.put(
           new DefaultMappedField(tokens[i]), JsonNodeFactory.instance.textNode(tokens[i + 1]));

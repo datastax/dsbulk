@@ -11,6 +11,7 @@ package com.datastax.dsbulk.connectors.api.internal;
 import com.datastax.dsbulk.connectors.api.Field;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.google.common.base.MoreObjects;
+import com.google.common.base.Suppliers;
 import com.google.common.collect.Streams;
 import java.net.URI;
 import java.util.Arrays;
@@ -34,7 +35,7 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
    * @return an indexed record.
    */
   public static DefaultRecord indexed(
-      @NotNull Object source, @NotNull Supplier<URI> resource, long position, Object... values) {
+      @NotNull Object source, @NotNull URI resource, long position, Object... values) {
     return new DefaultRecord(source, resource, position, values);
   }
 
@@ -50,7 +51,7 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
    */
   public static DefaultRecord mapped(
       @NotNull Object source,
-      @NotNull Supplier<URI> resource,
+      @NotNull URI resource,
       long position,
       Field[] keys,
       Object... values) {
@@ -68,7 +69,7 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
    */
   public static DefaultRecord mapped(
       @NotNull Object source,
-      @NotNull Supplier<URI> resource,
+      @NotNull URI resource,
       long position,
       Map<? extends Field, ?> values) {
     return new DefaultRecord(source, resource, position, values);
@@ -85,15 +86,29 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
    * @param resource the record resource (where it comes from: file, database, etc).
    * @param position the record position inside the resource (line number, etc.).
    */
-  public DefaultRecord(Object source, Supplier<URI> resource, long position) {
+  public DefaultRecord(Object source, URI resource, long position) {
     this.source = source;
-    this.resource = resource;
+    this.resource = () -> resource;
     this.position = position;
   }
 
-  private DefaultRecord(Object source, Supplier<URI> resource, long position, Object... values) {
+  /**
+   * Creates an empty record.
+   *
+   * @param source the record source (its original form).
+   * @param resource the record resource (where it comes from: file, database, etc); the supplier
+   *     will be memoized.
+   * @param position the record position inside the resource (line number, etc.).
+   */
+  public DefaultRecord(Object source, Supplier<URI> resource, long position) {
     this.source = source;
-    this.resource = resource;
+    this.resource = Suppliers.memoize(resource::get);
+    this.position = position;
+  }
+
+  private DefaultRecord(Object source, URI resource, long position, Object... values) {
+    this.source = source;
+    this.resource = () -> resource;
     this.position = position;
     Streams.forEachPair(
         IntStream.range(0, values.length).boxed().map(DefaultIndexedField::new),
@@ -102,8 +117,8 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
   }
 
   private DefaultRecord(
-      Object source, Supplier<URI> resource, long position, Field[] keys, Object... values) {
-    this.resource = resource;
+      Object source, URI resource, long position, Field[] keys, Object... values) {
+    this.resource = () -> resource;
     this.position = position;
     if (keys.length != values.length) {
       throw new IllegalArgumentException(
@@ -115,8 +130,8 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
   }
 
   private DefaultRecord(
-      Object source, Supplier<URI> resource, long position, Map<? extends Field, ?> values) {
-    this.resource = resource;
+      Object source, URI resource, long position, Map<? extends Field, ?> values) {
+    this.resource = () -> resource;
     this.position = position;
     this.source = source;
     putAll(values);

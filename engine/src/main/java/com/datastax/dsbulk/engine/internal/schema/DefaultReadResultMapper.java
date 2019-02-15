@@ -21,7 +21,6 @@ import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
-import com.google.common.base.Suppliers;
 import com.google.common.reflect.TypeToken;
 import java.net.URI;
 import java.util.Collection;
@@ -41,10 +40,9 @@ public class DefaultReadResultMapper implements ReadResultMapper {
   public Record map(ReadResult result) {
     Row row = result.getRow().orElseThrow(IllegalStateException::new);
     Supplier<URI> resource =
-        Suppliers.memoize(
-            () ->
-                URIUtils.getRowResource(
-                    row, result.getExecutionInfo().orElseThrow(IllegalStateException::new)));
+        () ->
+            URIUtils.getRowResource(
+                row, result.getExecutionInfo().orElseThrow(IllegalStateException::new));
     try {
       DefaultRecord record = new DefaultRecord(result, resource, -1);
       for (Definition def : row.getColumnDefinitions()) {

@@ -210,7 +210,7 @@ public class LoadWorkflow implements Workflow {
   }
 
   private void threadPerCoreFlux() {
-    Flux.defer(connector.readByResource())
+    Flux.defer(() -> connector.readByResource())
         .flatMap(
             records -> {
               Flux<Statement> stmts =
@@ -236,7 +236,7 @@ public class LoadWorkflow implements Workflow {
   }
 
   private void parallelFlux() {
-    Flux.defer(connector.read())
+    Flux.defer(() -> connector.read())
         .window(batchingEnabled ? batchBufferSize : Queues.SMALL_BUFFER_SIZE)
         .flatMap(
             records -> {

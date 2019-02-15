@@ -58,7 +58,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
@@ -278,21 +277,21 @@ public class CSVConnector implements Connector {
   }
 
   @Override
-  public Supplier<? extends Publisher<Record>> read() {
+  public Publisher<Record> read() {
     assert read;
     if (root != null) {
-      return () -> scanRootDirectory().flatMap(this::readURL);
+      return scanRootDirectory().flatMap(this::readURL);
     } else {
-      return () -> readURL(url);
+      return readURL(url);
     }
   }
 
   @Override
-  public Supplier<? extends Publisher<Publisher<Record>>> readByResource() {
+  public Publisher<Publisher<Record>> readByResource() {
     if (root != null) {
-      return () -> scanRootDirectory().map(this::readURL);
+      return scanRootDirectory().map(this::readURL);
     } else {
-      return () -> Flux.just(readURL(url));
+      return Flux.just(readURL(url));
     }
   }
 
@@ -399,7 +398,7 @@ public class CSVConnector implements Connector {
                       record =
                           DefaultRecord.mapped(
                               source,
-                              () -> resource,
+                              resource,
                               recordNumber++,
                               Arrays.stream(context.parsedHeaders())
                                   .map(DefaultMappedField::new)
@@ -414,10 +413,10 @@ public class CSVConnector implements Connector {
                     } else {
                       record =
                           DefaultRecord.indexed(
-                              source, () -> resource, recordNumber++, (Object[]) row.getValues());
+                              source, resource, recordNumber++, (Object[]) row.getValues());
                     }
                   } catch (Exception e) {
-                    record = new DefaultErrorRecord(source, () -> resource, recordNumber, e);
+                    record = new DefaultErrorRecord(source, resource, recordNumber, e);
                   }
                   LOGGER.trace("Emitting record {}", record);
                   controller.awaitRequested(1);
@@ -448,30 +447,26 @@ public class CSVConnector implements Connector {
   }
 
   private Flux<URL> scanRootDirectory() {
-    PathMatcher matcher = root.getFileSystem().getPathMatcher("glob:" + pattern);
-    return Flux.defer(
-            () -> {
-              try {
-                // this stream will be closed by the flux, do not add it to a try-with-resources
-                // block
-                @SuppressWarnings("StreamResourceLeak")
-                Stream<Path> files = Files.walk(root, recursive ? Integer.MAX_VALUE : 1);
-                return Flux.fromStream(files);
-              } catch (IOException e) {
-                throw new UncheckedIOException("Error scanning directory " + root, e);
-              }
-            })
-        .filter(Files::isReadable)
-        .filter(Files::isRegularFile)
-        .filter(matcher::matches)
-        .map(
-            file -> {
-              try {
-                return file.toUri().toURL();
-              } catch (MalformedURLException e) {
-                throw new UncheckedIOException(e);
-              }
-            });
+    try {
+      // this stream will be closed by the flux, do not add it to a try-with-resources block
+      @SuppressWarnings("StreamResourceLeak")
+      Stream<Path> files = Files.walk(root, recursive ? Integer.MAX_VALUE : 1);
+      PathMatcher matcher = root.getFileSystem().getPathMatcher("glob:" + pattern);
+      return Flux.fromStream(files)
+          .filter(Files::isReadable)
+          .filter(Files::isRegularFile)
+          .filter(matcher::matches)
+          .map(
+              file -> {
+                try {
+                  return file.toUri().toURL();
+                } catch (MalformedURLException e) {
+                  throw new UncheckedIOException(e);
+                }
+              });
+    } catch (IOException e) {
+      throw new UncheckedIOException("Error scanning directory " + root, e);
+    }
   }
 
   private Function<Flux<Record>, Flux<Record>> writeRecords(CSVWriter writer) {

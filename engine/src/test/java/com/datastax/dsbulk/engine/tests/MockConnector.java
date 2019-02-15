@@ -20,7 +20,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 
@@ -65,13 +64,13 @@ public final class MockConnector implements Connector {
           }
 
           @Override
-          public Supplier<? extends Publisher<Publisher<Record>>> readByResource() {
-            return () -> Flux.just(read().get());
+          public Publisher<Publisher<Record>> readByResource() {
+            return Flux.just(read());
           }
 
           @Override
-          public Supplier<? extends Publisher<Record>> read() {
-            return () -> Flux.just(records);
+          public Publisher<Record> read() {
+            return Flux.just(records);
           }
 
           @Override
@@ -114,12 +113,12 @@ public final class MockConnector implements Connector {
           }
 
           @Override
-          public Supplier<? extends Publisher<Publisher<Record>>> readByResource() {
+          public Publisher<Publisher<Record>> readByResource() {
             return Flux::just;
           }
 
           @Override
-          public Supplier<? extends Publisher<Record>> read() {
+          public Publisher<Record> read() {
             return Flux::just;
           }
 
@@ -165,12 +164,12 @@ public final class MockConnector implements Connector {
           }
 
           @Override
-          public Supplier<? extends Publisher<Publisher<Record>>> readByResource() {
+          public Publisher<Publisher<Record>> readByResource() {
             return Flux::just;
           }
 
           @Override
-          public Supplier<? extends Publisher<Record>> read() {
+          public Publisher<Record> read() {
             return Flux::just;
           }
 
@@ -183,12 +182,12 @@ public final class MockConnector implements Connector {
   }
 
   @Override
-  public Supplier<? extends Publisher<Record>> read() {
+  public Publisher<Record> read() {
     return delegate.read();
   }
 
   @Override
-  public Supplier<? extends Publisher<Publisher<Record>>> readByResource() {
+  public Publisher<Publisher<Record>> readByResource() {
     return delegate.readByResource();
   }
 

@@ -23,6 +23,7 @@ public class TestRecordMetadata implements RecordMetadata {
     this.fieldsToTypes = fieldsToTypes;
   }
 
+  @NotNull
   @Override
   public TypeToken<?> getFieldType(@NotNull Field field, @NotNull DataType cqlType) {
     return fieldsToTypes.get(field);

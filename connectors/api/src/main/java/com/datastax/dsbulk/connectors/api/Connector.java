@@ -11,7 +11,6 @@ package com.datastax.dsbulk.connectors.api;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import org.reactivestreams.Publisher;
 
 /**
@@ -41,10 +40,10 @@ import org.reactivestreams.Publisher;
  *
  * <p><strong>Read operations</strong>
  *
- * <p>Read operations return {@link Supplier}s of {@link Publisher}s.
+ * <p>Read operations return {@link Publisher}s.
  *
  * <p>All publishers are guaranteed to be subscribed only once; implementors are allowed to optimize
- * for single-subscriber use cases. Implementors are also allowed to memoize suppliers.
+ * for single-subscriber use cases.
  *
  * <p>Reading by resource: connectors that are able to distinguish natural boundaries when reading
  * (e.g. when reading from more than one file, or reading from more than one database table) should
@@ -55,8 +54,8 @@ import org.reactivestreams.Publisher;
  * method can be derived from the {@link #read()} method, for example (using Reactor Framework):
  *
  * <pre>
- * public Supplier&lt;? extends Publisher&lt;Publisher&lt;Record&gt;&gt;&gt; readByResource() {
- *  return () -&gt; Flux.just(read().get());
+ * public Publisher&lt;? extends Publisher&lt;? extends Record&gt;&gt;&gt; readByResource() {
+ *  return Flux.just(read());
  * }
  * </pre>
  *
@@ -95,7 +94,6 @@ import org.reactivestreams.Publisher;
  * This way, DSBulk is able to detect such errors and treat them accordingly (for example, by
  * redirecting them to a "bad file" or by updating a counter of errors).
  */
-@SuppressWarnings("RedundantThrows")
 public interface Connector extends AutoCloseable {
 
   /**
@@ -104,9 +102,9 @@ public interface Connector extends AutoCloseable {
    * <p>This method should only be called after the connector is properly {@link
    * #configure(LoaderConfig, boolean) configured} and {@link #init() initialized}.
    *
-   * @return a {@link Supplier} of {@link Publisher} of records read from the datasource.
+   * @return a {@link Publisher} of records read from the datasource.
    */
-  Supplier<? extends Publisher<Record>> read();
+  Publisher<Record> read();
 
   /**
    * Reads all records from the datasource in a flow of flows, grouped by resources.
@@ -121,10 +119,9 @@ public interface Connector extends AutoCloseable {
    * <p>This method should only be called after the connector is properly {@link
    * #configure(LoaderConfig, boolean) configured} and {@link #init() initialized}.
    *
-   * @return a a {@link Supplier} of {@link Publisher} of records read from the datasource, grouped
-   *     by resources.
+   * @return a {@link Publisher} of records read from the datasource, grouped by resources.
    */
-  Supplier<? extends Publisher<Publisher<Record>>> readByResource();
+  Publisher<Publisher<Record>> readByResource();
 
   /**
    * Writes records to the datasource.
