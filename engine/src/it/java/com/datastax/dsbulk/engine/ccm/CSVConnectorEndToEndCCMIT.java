@@ -8,6 +8,7 @@
  */
 package com.datastax.dsbulk.engine.ccm;
 
+import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DDAC;
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
@@ -44,7 +45,6 @@ import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
@@ -1110,7 +1110,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   void load_ttl_timestamp_now_in_mapping_and_unload_unset_values() throws IOException {
 
     assumeTrue(
-        protocolVersion.compareTo(ProtocolVersion.V4) > 0,
+        protocolVersion.compareTo(V4) > 0,
         "Unset values are not compatible with protocol version < 4");
 
     session.execute("DROP TABLE IF EXISTS table_ttl_timestamp");
@@ -1172,7 +1172,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   void load_ttl_timestamp_now_in_query_unset_values() {
 
     assumeTrue(
-        protocolVersion.compareTo(ProtocolVersion.V4) > 0,
+        protocolVersion.compareTo(V4) > 0,
         "Unset values are not compatible with protocol version < 4");
 
     session.execute("DROP TABLE IF EXISTS table_ttl_timestamp");
@@ -1208,7 +1208,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   void load_ttl_timestamp_now_in_query_and_mapping_positional_external_names_unset_values() {
 
     assumeTrue(
-        protocolVersion.compareTo(ProtocolVersion.V4) > 0,
+        protocolVersion.compareTo(V4) > 0,
         "Unset values are not compatible with protocol version < 4");
 
     session.execute("DROP TABLE IF EXISTS table_ttl_timestamp");
@@ -1244,7 +1244,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   void load_ttl_timestamp_now_in_query_and_mapping_positional_internal_names_unset_values() {
 
     assumeTrue(
-        protocolVersion.compareTo(ProtocolVersion.V4) > 0,
+        protocolVersion.compareTo(V4) > 0,
         "Unset values are not compatible with protocol version < 4");
 
     session.execute("DROP TABLE IF EXISTS table_ttl_timestamp");
@@ -1281,7 +1281,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   void load_ttl_timestamp_now_in_query_and_mapping_real_names_unset_values() {
 
     assumeTrue(
-        protocolVersion.compareTo(ProtocolVersion.V4) > 0,
+        protocolVersion.compareTo(V4) > 0,
         "Unset values are not compatible with protocol version < 4");
 
     session.execute("DROP TABLE IF EXISTS table_ttl_timestamp");
@@ -1317,7 +1317,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   void load_ttl_timestamp_now_in_query_and_mapping_external_names_unset_values() {
 
     assumeTrue(
-        protocolVersion.compareTo(ProtocolVersion.V4) > 0,
+        protocolVersion.compareTo(V4) > 0,
         "Unset values are not compatible with protocol version < 4");
 
     session.execute("DROP TABLE IF EXISTS table_ttl_timestamp");
@@ -1356,7 +1356,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
       load_ttl_timestamp_now_in_query_and_mapping_with_keyspace_provided_separately_unset_values() {
 
     assumeTrue(
-        protocolVersion.compareTo(ProtocolVersion.V4) > 0,
+        protocolVersion.compareTo(V4) > 0,
         "Unset values are not compatible with protocol version < 4");
 
     session.execute("DROP TABLE IF EXISTS table_ttl_timestamp");
@@ -3505,9 +3505,11 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     // batch 2: two failed CAS records will cause the entire batch to fail
     Record record4Failed = RecordUtils.mappedCSV("pk", "1", "cc", "1", "v", "1"); // will fail
     Record record5Failed = RecordUtils.mappedCSV("pk", "1", "cc", "2", "v", "2"); // will fail
-    Record record6NotApplied = RecordUtils.mappedCSV("pk", "1", "cc", "4", "v", "4"); // will not be applied
+    Record record6NotApplied =
+        RecordUtils.mappedCSV("pk", "1", "cc", "4", "v", "4"); // will not be applied
 
-    MockConnector.mockReads(record1Ok, record2Ok, record3Ok, record4Failed, record5Failed, record6NotApplied);
+    MockConnector.mockReads(
+        record1Ok, record2Ok, record3Ok, record4Failed, record5Failed, record6NotApplied);
 
     List<String> args = new ArrayList<>();
     args.add("load");
@@ -3547,7 +3549,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
                     + "    pk: 1\n"
                     + "    cc: 1\n"
                     + "    v: 1",
-                record4Failed.getResource(), record4Failed.getPosition(), record4Failed.getSource()),
+                record4Failed.getResource(),
+                record4Failed.getPosition(),
+                record4Failed.getSource()),
             String.format(
                 "Resource: %s\n"
                     + "    Position: %d\n"
@@ -3556,7 +3560,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
                     + "    pk: 1\n"
                     + "    cc: 2\n"
                     + "    v: 2",
-                record5Failed.getResource(), record5Failed.getPosition(), record5Failed.getSource()),
+                record5Failed.getResource(),
+                record5Failed.getPosition(),
+                record5Failed.getSource()),
             String.format(
                 "Resource: %s\n"
                     + "    Position: %d\n"
@@ -3565,7 +3571,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
                     + "    pk: 1\n"
                     + "    cc: 4\n"
                     + "    v: 4",
-                record6NotApplied.getResource(), record6NotApplied.getPosition(), record6NotApplied.getSource()),
+                record6NotApplied.getResource(),
+                record6NotApplied.getPosition(),
+                record6NotApplied.getSource()),
             "Failed writes:",
             "[applied]: false\npk: 1\ncc: 1\nv: 1",
             "[applied]: false\npk: 1\ncc: 2\nv: 2");
