@@ -3498,16 +3498,16 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     session.execute("CREATE TABLE test_cas (pk int, cc int, v int, PRIMARY KEY (pk, cc))");
 
     // batch 1
-    Record record1 = RecordUtils.mappedCSV("pk", "1", "cc", "1", "v", "1");
-    Record record2 = RecordUtils.mappedCSV("pk", "1", "cc", "2", "v", "2");
-    Record record3 = RecordUtils.mappedCSV("pk", "1", "cc", "3", "v", "3");
+    Record record1Ok = RecordUtils.mappedCSV("pk", "1", "cc", "1", "v", "1");
+    Record record2Ok = RecordUtils.mappedCSV("pk", "1", "cc", "2", "v", "2");
+    Record record3Ok = RecordUtils.mappedCSV("pk", "1", "cc", "3", "v", "3");
 
-    // batch 2
-    Record record4 = RecordUtils.mappedCSV("pk", "1", "cc", "1", "v", "1"); // will fail
-    Record record5 = RecordUtils.mappedCSV("pk", "1", "cc", "2", "v", "2"); // will fail
-    Record record6 = RecordUtils.mappedCSV("pk", "1", "cc", "4", "v", "4"); // will not be applied
+    // batch 2: two failed CAS records will cause the entire batch to fail
+    Record record4Failed = RecordUtils.mappedCSV("pk", "1", "cc", "1", "v", "1"); // will fail
+    Record record5Failed = RecordUtils.mappedCSV("pk", "1", "cc", "2", "v", "2"); // will fail
+    Record record6NotApplied = RecordUtils.mappedCSV("pk", "1", "cc", "4", "v", "4"); // will not be applied
 
-    MockConnector.mockReads(record1, record2, record3, record4, record5, record6);
+    MockConnector.mockReads(record1Ok, record2Ok, record3Ok, record4Failed, record5Failed, record6NotApplied);
 
     List<String> args = new ArrayList<>();
     args.add("load");
@@ -3531,9 +3531,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(bad).exists();
     assertThat(readAllLines(bad))
         .containsExactly(
-            record4.getSource().toString(),
-            record5.getSource().toString(),
-            record6.getSource().toString());
+            record4Failed.getSource().toString(),
+            record5Failed.getSource().toString(),
+            record6NotApplied.getSource().toString());
 
     Path errors = getOperationDirectory().resolve("paxos-errors.log");
     assertThat(errors).exists();
@@ -3547,7 +3547,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
                     + "    pk: 1\n"
                     + "    cc: 1\n"
                     + "    v: 1",
-                record4.getResource(), record4.getPosition(), record4.getSource()),
+                record4Failed.getResource(), record4Failed.getPosition(), record4Failed.getSource()),
             String.format(
                 "Resource: %s\n"
                     + "    Position: %d\n"
@@ -3556,7 +3556,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
                     + "    pk: 1\n"
                     + "    cc: 2\n"
                     + "    v: 2",
-                record5.getResource(), record5.getPosition(), record5.getSource()),
+                record5Failed.getResource(), record5Failed.getPosition(), record5Failed.getSource()),
             String.format(
                 "Resource: %s\n"
                     + "    Position: %d\n"
@@ -3565,7 +3565,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
                     + "    pk: 1\n"
                     + "    cc: 4\n"
                     + "    v: 4",
-                record6.getResource(), record6.getPosition(), record6.getSource()),
+                record6NotApplied.getResource(), record6NotApplied.getPosition(), record6NotApplied.getSource()),
             "Failed writes:",
             "[applied]: false\npk: 1\ncc: 1\nv: 1",
             "[applied]: false\npk: 1\ncc: 2\nv: 2");
