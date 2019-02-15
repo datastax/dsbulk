@@ -58,6 +58,8 @@ ctool run dsbulk-dse 0 "cqlsh -e \"CREATE TABLE IF NOT EXISTS test.transactions(
 #install maven && java
 ctool run --sudo dsbulk-client "sudo apt update --assume-yes; sudo apt install maven --assume-yes; sudo apt-get install unzip --assume-yes"
 
+# TODO tweak settings.xml
+
 #to build dsbulk on dsbulk-client (dsbulk should not have SNAPSHOT dependencies to build on ctool created instance)
 #github_username="username"
 #github_password="password"
@@ -74,6 +76,8 @@ cd dsbulk
 mvn clean package -DskipTests -P release
 ctool scp -R dsbulk-client 0 /tmp/dsbulk/dsbulk/dist/target/*.zip /mnt/data/
 ctool run --sudo dsbulk-client "cd /mnt/data/; unzip *.zip; mv dsbulk-${dsbulk_version} dsbulk"
+
+# TODO single file vs multiple files (> # cores)
 
 #LOAD - CSV-----------------------------------------------------------------------------------------------
 ctool run dsbulk-dse 'nodetool -h localhost disableautocompaction test'
@@ -124,7 +128,11 @@ ctool run dsbulk-dse 'nodetool -h localhost repair'
 
 #UNLOAD as CSV-----------------------------------------------------------------------------------------------
 ctool run dsbulk-dse 'nodetool -h localhost enableautocompaction test'
-#wait for compaction to finish - http://${dse_ip}:8888/opscenter/index.html todo automate blocking wait for compaction
+# blocks until finished - FIXME the command times out
+ctool run dsbulk-dse 'nodetool -h localhost compact test'
+
+#wait for compaction to finish -
+#ctool run dsbulk-dse 'nodetool -h localhost compactionstats'
 
 #run dsbulk step (random data-set) - UNLOAD
 
