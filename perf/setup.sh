@@ -18,8 +18,8 @@ ctool --provider=ironic launch -p devtools-ironic dsbulk-client 1
 ctool install dsbulk-dse -i tar -v 6.0.4 enterprise
 ctool run --sudo dsbulk-dse "mkdir /mnt/data; mkdir /mnt/data/data; mkdir /mnt/data/saved_caches; mkdir /mnt/commitlogs; chmod 777 /mnt/data; chmod 777 /mnt/data/data; chmod 777 /mnt/data/saved_caches; chmod 777 /mnt/commitlogs"
 ctool yaml -f cassandra.yaml -o set -k data_file_directories -v '["/mnt/data/data"]' dsbulk-dse all
-ctool yaml -f cassandra.yaml -o set -k commitlog_directory -v '["/mnt/commitlogs"]' dsbulk-dse all
-ctool yaml -f cassandra.yaml -o set -k saved_caches_directory -v '["/mnt/data/saved_caches"]' dsbulk-dse all
+ctool yaml -f cassandra.yaml -o set -k commitlog_directory -v '"/mnt/commitlogs"' dsbulk-dse all
+ctool yaml -f cassandra.yaml -o set -k saved_caches_directory -v '"/mnt/data/saved_caches"' dsbulk-dse all
 ctool start dsbulk-dse enterprise
 #to see logs tail -f /var/log/cassandra/system.log
 
