@@ -38,6 +38,7 @@ import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateExcep
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateNumberOfBadRecords;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validatePositionsFile;
+import static com.datastax.dsbulk.engine.tests.utils.RecordUtils.mappedCSV;
 import static java.math.RoundingMode.FLOOR;
 import static java.math.RoundingMode.UNNECESSARY;
 import static java.nio.file.Files.createTempDirectory;
@@ -2036,7 +2037,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     session.execute("INSERT INTO test_delete (pk, cc, value) VALUES (1,1,1)");
     session.execute("INSERT INTO test_delete (pk, cc, value) VALUES (1,2,2)");
 
-    MockConnector.mockReads(RecordUtils.mappedCSV("pk", "1", "cc", "1"));
+    MockConnector.mockReads(mappedCSV("pk", "1", "cc", "1"));
 
     List<String> args = new ArrayList<>();
     args.add("load");
@@ -2066,7 +2067,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     session.execute("INSERT INTO test_delete (\"PK\", \"CC\", value) VALUES (1,1,1)");
     session.execute("INSERT INTO test_delete (\"PK\", \"CC\", value) VALUES (1,2,2)");
 
-    MockConnector.mockReads(RecordUtils.mappedCSV("Field A", "1", "Field B", "1"));
+    MockConnector.mockReads(mappedCSV("Field A", "1", "Field B", "1"));
 
     List<String> args = new ArrayList<>();
     args.add("load");
@@ -2100,7 +2101,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     session.execute("INSERT INTO test_delete (pk, cc, value) VALUES (1,1,1)");
     session.execute("INSERT INTO test_delete (pk, cc, value) VALUES (1,2,2)");
 
-    MockConnector.mockReads(RecordUtils.mappedCSV("pk", "1", "cc", "1"));
+    MockConnector.mockReads(mappedCSV("pk", "1", "cc", "1"));
 
     List<String> args = new ArrayList<>();
     args.add("load");
@@ -2841,7 +2842,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     session.execute(
         "CREATE FUNCTION plus(s int, v int) RETURNS NULL ON NULL INPUT RETURNS int LANGUAGE java AS 'return s+v;';");
 
-    MockConnector.mockReads(RecordUtils.mappedCSV("pk", "0", "Value 1", "1", "Value 2", "2"));
+    MockConnector.mockReads(mappedCSV("pk", "0", "Value 1", "1", "Value 2", "2"));
 
     List<String> args =
         Lists.newArrayList(
@@ -2974,7 +2975,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     session.execute(
         "CREATE FUNCTION \"MyKs1\".plus(s int, v int) RETURNS NULL ON NULL INPUT RETURNS int LANGUAGE java AS 'return s+v;';");
 
-    MockConnector.mockReads(RecordUtils.mappedCSV("pk", "0", "Value 1", "1", "Value 2", "2"));
+    MockConnector.mockReads(mappedCSV("pk", "0", "Value 1", "1", "Value 2", "2"));
 
     List<String> args =
         Lists.newArrayList(
@@ -3070,7 +3071,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     session.execute(
         "CREATE FUNCTION \"MyKs1\".plus(s int, v int) RETURNS NULL ON NULL INPUT RETURNS int LANGUAGE java AS 'return s+v;';");
 
-    MockConnector.mockReads(RecordUtils.mappedCSV("pk", "0", "Value 1", "1", "Value 2", "2"));
+    MockConnector.mockReads(mappedCSV("pk", "0", "Value 1", "1", "Value 2", "2"));
 
     List<String> args =
         Lists.newArrayList(
@@ -3496,20 +3497,16 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     session.execute("DROP TABLE IF EXISTS test_cas");
     session.execute("CREATE TABLE test_cas (pk int, cc int, v int, PRIMARY KEY (pk, cc))");
+    session.execute("INSERT INTO test_cas (pk, cc, v) VALUES (1, 1, 1)");
+    session.execute("INSERT INTO test_cas (pk, cc, v) VALUES (1, 2, 2)");
+    session.execute("INSERT INTO test_cas (pk, cc, v) VALUES (1, 3, 3)");
 
-    // batch 1
-    Record record1Ok = RecordUtils.mappedCSV("pk", "1", "cc", "1", "v", "1");
-    Record record2Ok = RecordUtils.mappedCSV("pk", "1", "cc", "2", "v", "2");
-    Record record3Ok = RecordUtils.mappedCSV("pk", "1", "cc", "3", "v", "3");
+    // two failed CAS records will cause the entire batch to fail
+    Record record1Failed = mappedCSV("pk", "1", "cc", "1", "v", "1"); // will fail
+    Record record2Failed = mappedCSV("pk", "1", "cc", "2", "v", "2"); // will fail
+    Record record3NotApplied = mappedCSV("pk", "1", "cc", "4", "v", "4"); // will not be applied
 
-    // batch 2: two failed CAS records will cause the entire batch to fail
-    Record record4Failed = RecordUtils.mappedCSV("pk", "1", "cc", "1", "v", "1"); // will fail
-    Record record5Failed = RecordUtils.mappedCSV("pk", "1", "cc", "2", "v", "2"); // will fail
-    Record record6NotApplied =
-        RecordUtils.mappedCSV("pk", "1", "cc", "4", "v", "4"); // will not be applied
-
-    MockConnector.mockReads(
-        record1Ok, record2Ok, record3Ok, record4Failed, record5Failed, record6NotApplied);
+    MockConnector.mockReads(record1Failed, record2Failed, record3NotApplied);
 
     List<String> args = new ArrayList<>();
     args.add("load");
@@ -3517,10 +3514,6 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(quoteJson(logDir));
     args.add("--connector.name");
     args.add("mock");
-    args.add("--batch.maxBatchStatements");
-    args.add("3");
-    args.add("--executor.maxInFlight");
-    args.add("1"); // serialize statement execution to ensure deterministic results
     args.add("--schema.keyspace");
     args.add(session.getLoggedKeyspace());
     args.add("--schema.query");
@@ -3533,9 +3526,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(bad).exists();
     assertThat(readAllLines(bad))
         .containsExactly(
-            record4Failed.getSource().toString(),
-            record5Failed.getSource().toString(),
-            record6NotApplied.getSource().toString());
+            record1Failed.getSource().toString(),
+            record2Failed.getSource().toString(),
+            record3NotApplied.getSource().toString());
 
     Path errors = getOperationDirectory().resolve("paxos-errors.log");
     assertThat(errors).exists();
@@ -3549,9 +3542,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
                     + "    pk: 1\n"
                     + "    cc: 1\n"
                     + "    v: 1",
-                record4Failed.getResource(),
-                record4Failed.getPosition(),
-                record4Failed.getSource()),
+                record1Failed.getResource(),
+                record1Failed.getPosition(),
+                record1Failed.getSource()),
             String.format(
                 "Resource: %s\n"
                     + "    Position: %d\n"
@@ -3560,9 +3553,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
                     + "    pk: 1\n"
                     + "    cc: 2\n"
                     + "    v: 2",
-                record5Failed.getResource(),
-                record5Failed.getPosition(),
-                record5Failed.getSource()),
+                record2Failed.getResource(),
+                record2Failed.getPosition(),
+                record2Failed.getSource()),
             String.format(
                 "Resource: %s\n"
                     + "    Position: %d\n"
@@ -3571,9 +3564,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
                     + "    pk: 1\n"
                     + "    cc: 4\n"
                     + "    v: 4",
-                record6NotApplied.getResource(),
-                record6NotApplied.getPosition(),
-                record6NotApplied.getSource()),
+                record3NotApplied.getResource(),
+                record3NotApplied.getPosition(),
+                record3NotApplied.getSource()),
             "Failed writes:",
             "[applied]: false\npk: 1\ncc: 1\nv: 1",
             "[applied]: false\npk: 1\ncc: 2\nv: 2");
