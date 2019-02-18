@@ -36,6 +36,10 @@ curl "http://${dse_ip}:8888/opscenter/index.html" #verifying that ops-center sta
 ctool run --sudo dsbulk-client "mkdir /mnt/data; chmod 777 /mnt/data"
 ctool run --sudo dsbulk-client "cd /mnt/data; sudo su automaton; git clone https://github.com/brianmhess/DSEBulkLoadTest; cd DSEBulkLoadTest; make compile; make dirs; make data"
 
+#prepare data for parallel LOAD
+ctool run --sudo dsbulk-client "mkdir /mnt/data/DSEBulkLoadTest/in/data100B_one_file"
+ctool run --sudo dsbulk-client "cd /mnt/data/DSEBulkLoadTest/in/data100B; cat data100B_0.csv data100B_0.csv data100B_1.csv data100B_2.csv data100B_3.csv data100B_4.csv data100B_5.csv data100B_6.csv data100B_7.csv data100B_8.csv data100B_9.csv data100B_10.csv data100B_11.csv data100B_12.csv data100B_13.csv data100B_14.csv data100B_15.csv data100B_16.csv data100B_17.csv data100B_18.csv data100B_19.csv > ../data100B_one_file/data100B.csv"
+
 #setup data-set (multiple records per Partition Key)
 github_username="username"; github_password="password";
 ctool run --sudo dsbulk-client "cd /mnt/data; sudo su automaton; git clone https://${github_username}:${github_password}@github.com/riptano/data_faker.git; cd data_faker; mvn clean package"
@@ -67,7 +71,7 @@ ctool run --sudo dsbulk-client "sudo apt update --assume-yes; sudo apt install m
 #ctool run --sudo dsbulk-client "cd /mnt/data/dsbulk; sudo mvn clean package -DskipTests -P release"
 
 #to build locally and scp to dsbulk-client
-dsbulk_version=1.2.1-SNAPSHOT
+dsbulk_version=1.3.1-SNAPSHOT
 rm -rf /tmp/dsbulk
 mkdir /tmp/dsbulk
 cd /tmp/dsbulk
@@ -85,10 +89,16 @@ ctool run dsbulk-dse 'nodetool -h localhost disableautocompaction test'
 #run dsbulk step (random data-set) - LOAD
 dse_node_ips=`ctool info --public-ips dsbulk-dse`
 #100b
-ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -header false --batch.mode REPLICA_SET -url /mnt/data/DSEBulkLoadTest/in/data100B/ -h ${dse_node_ips} &> test100bLOAD_first"
+#tpc
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -header false --batch.mode DISABLED --driver.socket.readTimeout '5 minutes' -url /mnt/data/DSEBulkLoadTest/in/data100B/ -h ${dse_node_ips} &> test100bLOAD_first_tpc"
 ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.test100b;\""
 ctool run dsbulk-dse 'nodetool clearsnapshot --all'
-ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -header false --batch.mode REPLICA_SET -url /mnt/data/DSEBulkLoadTest/in/data100B/ -h ${dse_node_ips} &> test100bLOAD_second"
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -header false --batch.mode DISABLED --driver.socket.readTimeout '5 minutes' -url /mnt/data/DSEBulkLoadTest/in/data100B/ -h ${dse_node_ips} &> test100bLOAD_second_tpc"
+
+#parallel
+ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.test100b;\""
+ctool run dsbulk-dse 'nodetool clearsnapshot --all'
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -header false --batch.mode DISABLED --driver.socket.readTimeout '5 minutes' -url /mnt/data/DSEBulkLoadTest/in/data100B_one_file/ -h ${dse_node_ips} &> test100bLOAD_parallel"
 
 #1KB
 ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test1kb -header false --batch.mode REPLICA_SET -url /mnt/data/DSEBulkLoadTest/in/data1KB/ -h ${dse_node_ips} &> test1KBLOAD_first"
