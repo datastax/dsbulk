@@ -8,11 +8,13 @@
  */
 package com.datastax.dsbulk.engine.ccm;
 
+import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DDAC;
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLines;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStreamExcludingHeaders;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
@@ -31,10 +33,12 @@ import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createIpByCountryCaseSensitiveTable;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createIpByCountryTable;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createWithSpacesTable;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.getOperationDirectory;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateExceptionsLog;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateNumberOfBadRecords;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validatePositionsFile;
+import static com.datastax.dsbulk.engine.tests.utils.RecordUtils.mappedCSV;
 import static java.math.RoundingMode.FLOOR;
 import static java.math.RoundingMode.UNNECESSARY;
 import static java.nio.file.Files.createTempDirectory;
@@ -42,7 +46,6 @@ import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
@@ -63,6 +66,7 @@ import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
 import com.datastax.dsbulk.commons.tests.utils.CQLUtils;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.commons.tests.utils.Version;
+import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.engine.tests.MockConnector;
@@ -1107,7 +1111,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   void load_ttl_timestamp_now_in_mapping_and_unload_unset_values() throws IOException {
 
     assumeTrue(
-        protocolVersion.compareTo(ProtocolVersion.V4) > 0,
+        protocolVersion.compareTo(V4) > 0,
         "Unset values are not compatible with protocol version < 4");
 
     session.execute("DROP TABLE IF EXISTS table_ttl_timestamp");
@@ -1169,7 +1173,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   void load_ttl_timestamp_now_in_query_unset_values() {
 
     assumeTrue(
-        protocolVersion.compareTo(ProtocolVersion.V4) > 0,
+        protocolVersion.compareTo(V4) > 0,
         "Unset values are not compatible with protocol version < 4");
 
     session.execute("DROP TABLE IF EXISTS table_ttl_timestamp");
@@ -1205,7 +1209,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   void load_ttl_timestamp_now_in_query_and_mapping_positional_external_names_unset_values() {
 
     assumeTrue(
-        protocolVersion.compareTo(ProtocolVersion.V4) > 0,
+        protocolVersion.compareTo(V4) > 0,
         "Unset values are not compatible with protocol version < 4");
 
     session.execute("DROP TABLE IF EXISTS table_ttl_timestamp");
@@ -1241,7 +1245,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   void load_ttl_timestamp_now_in_query_and_mapping_positional_internal_names_unset_values() {
 
     assumeTrue(
-        protocolVersion.compareTo(ProtocolVersion.V4) > 0,
+        protocolVersion.compareTo(V4) > 0,
         "Unset values are not compatible with protocol version < 4");
 
     session.execute("DROP TABLE IF EXISTS table_ttl_timestamp");
@@ -1278,7 +1282,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   void load_ttl_timestamp_now_in_query_and_mapping_real_names_unset_values() {
 
     assumeTrue(
-        protocolVersion.compareTo(ProtocolVersion.V4) > 0,
+        protocolVersion.compareTo(V4) > 0,
         "Unset values are not compatible with protocol version < 4");
 
     session.execute("DROP TABLE IF EXISTS table_ttl_timestamp");
@@ -1314,7 +1318,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   void load_ttl_timestamp_now_in_query_and_mapping_external_names_unset_values() {
 
     assumeTrue(
-        protocolVersion.compareTo(ProtocolVersion.V4) > 0,
+        protocolVersion.compareTo(V4) > 0,
         "Unset values are not compatible with protocol version < 4");
 
     session.execute("DROP TABLE IF EXISTS table_ttl_timestamp");
@@ -1353,7 +1357,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
       load_ttl_timestamp_now_in_query_and_mapping_with_keyspace_provided_separately_unset_values() {
 
     assumeTrue(
-        protocolVersion.compareTo(ProtocolVersion.V4) > 0,
+        protocolVersion.compareTo(V4) > 0,
         "Unset values are not compatible with protocol version < 4");
 
     session.execute("DROP TABLE IF EXISTS table_ttl_timestamp");
@@ -2033,7 +2037,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     session.execute("INSERT INTO test_delete (pk, cc, value) VALUES (1,1,1)");
     session.execute("INSERT INTO test_delete (pk, cc, value) VALUES (1,2,2)");
 
-    MockConnector.mockReads(RecordUtils.mappedCSV("pk", "1", "cc", "1"));
+    MockConnector.mockReads(mappedCSV("pk", "1", "cc", "1"));
 
     List<String> args = new ArrayList<>();
     args.add("load");
@@ -2063,7 +2067,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     session.execute("INSERT INTO test_delete (\"PK\", \"CC\", value) VALUES (1,1,1)");
     session.execute("INSERT INTO test_delete (\"PK\", \"CC\", value) VALUES (1,2,2)");
 
-    MockConnector.mockReads(RecordUtils.mappedCSV("Field A", "1", "Field B", "1"));
+    MockConnector.mockReads(mappedCSV("Field A", "1", "Field B", "1"));
 
     List<String> args = new ArrayList<>();
     args.add("load");
@@ -2097,7 +2101,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     session.execute("INSERT INTO test_delete (pk, cc, value) VALUES (1,1,1)");
     session.execute("INSERT INTO test_delete (pk, cc, value) VALUES (1,2,2)");
 
-    MockConnector.mockReads(RecordUtils.mappedCSV("pk", "1", "cc", "1"));
+    MockConnector.mockReads(mappedCSV("pk", "1", "cc", "1"));
 
     List<String> args = new ArrayList<>();
     args.add("load");
@@ -2838,7 +2842,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     session.execute(
         "CREATE FUNCTION plus(s int, v int) RETURNS NULL ON NULL INPUT RETURNS int LANGUAGE java AS 'return s+v;';");
 
-    MockConnector.mockReads(RecordUtils.mappedCSV("pk", "0", "Value 1", "1", "Value 2", "2"));
+    MockConnector.mockReads(mappedCSV("pk", "0", "Value 1", "1", "Value 2", "2"));
 
     List<String> args =
         Lists.newArrayList(
@@ -2971,7 +2975,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     session.execute(
         "CREATE FUNCTION \"MyKs1\".plus(s int, v int) RETURNS NULL ON NULL INPUT RETURNS int LANGUAGE java AS 'return s+v;';");
 
-    MockConnector.mockReads(RecordUtils.mappedCSV("pk", "0", "Value 1", "1", "Value 2", "2"));
+    MockConnector.mockReads(mappedCSV("pk", "0", "Value 1", "1", "Value 2", "2"));
 
     List<String> args =
         Lists.newArrayList(
@@ -3067,7 +3071,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     session.execute(
         "CREATE FUNCTION \"MyKs1\".plus(s int, v int) RETURNS NULL ON NULL INPUT RETURNS int LANGUAGE java AS 'return s+v;';");
 
-    MockConnector.mockReads(RecordUtils.mappedCSV("pk", "0", "Value 1", "1", "Value 2", "2"));
+    MockConnector.mockReads(mappedCSV("pk", "0", "Value 1", "1", "Value 2", "2"));
 
     List<String> args =
         Lists.newArrayList(
@@ -3485,6 +3489,93 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(1, "SELECT * FROM custom_types_table");
+  }
+
+  /** Test for CAS failures (DAT-384). */
+  @Test
+  void cas_load_with_errors() {
+
+    session.execute("DROP TABLE IF EXISTS test_cas");
+    session.execute("CREATE TABLE test_cas (pk int, cc int, v int, PRIMARY KEY (pk, cc))");
+    session.execute("INSERT INTO test_cas (pk, cc, v) VALUES (1, 1, 1)");
+    session.execute("INSERT INTO test_cas (pk, cc, v) VALUES (1, 2, 2)");
+    session.execute("INSERT INTO test_cas (pk, cc, v) VALUES (1, 3, 3)");
+
+    // two failed CAS records will cause the entire batch to fail
+    Record record1Failed = mappedCSV("pk", "1", "cc", "1", "v", "1"); // will fail
+    Record record2Failed = mappedCSV("pk", "1", "cc", "2", "v", "2"); // will fail
+    Record record3NotApplied = mappedCSV("pk", "1", "cc", "4", "v", "4"); // will not be applied
+
+    MockConnector.mockReads(record1Failed, record2Failed, record3NotApplied);
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.name");
+    args.add("mock");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.query");
+    args.add("INSERT INTO test_cas (pk, cc, v) VALUES (:pk, :cc, :v) IF NOT EXISTS");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(STATUS_COMPLETED_WITH_ERRORS);
+
+    Path bad = getOperationDirectory().resolve("paxos.bad");
+    assertThat(bad).exists();
+    assertThat(readAllLines(bad))
+        .containsExactly(
+            record1Failed.getSource().toString(),
+            record2Failed.getSource().toString(),
+            record3NotApplied.getSource().toString());
+
+    Path errors = getOperationDirectory().resolve("paxos-errors.log");
+    assertThat(errors).exists();
+    assertThat(readAllLines(errors).collect(Collectors.joining("\n")))
+        .contains(
+            String.format(
+                "Resource: %s\n"
+                    + "    Position: %d\n"
+                    + "    Source: %s\n"
+                    + "    INSERT INTO test_cas (pk, cc, v) VALUES (:pk, :cc, :v) IF NOT EXISTS\n"
+                    + "    pk: 1\n"
+                    + "    cc: 1\n"
+                    + "    v: 1",
+                record1Failed.getResource(),
+                record1Failed.getPosition(),
+                record1Failed.getSource()),
+            String.format(
+                "Resource: %s\n"
+                    + "    Position: %d\n"
+                    + "    Source: %s\n"
+                    + "    INSERT INTO test_cas (pk, cc, v) VALUES (:pk, :cc, :v) IF NOT EXISTS\n"
+                    + "    pk: 1\n"
+                    + "    cc: 2\n"
+                    + "    v: 2",
+                record2Failed.getResource(),
+                record2Failed.getPosition(),
+                record2Failed.getSource()),
+            String.format(
+                "Resource: %s\n"
+                    + "    Position: %d\n"
+                    + "    Source: %s\n"
+                    + "    INSERT INTO test_cas (pk, cc, v) VALUES (:pk, :cc, :v) IF NOT EXISTS\n"
+                    + "    pk: 1\n"
+                    + "    cc: 4\n"
+                    + "    v: 4",
+                record3NotApplied.getResource(),
+                record3NotApplied.getPosition(),
+                record3NotApplied.getSource()),
+            "Failed writes:",
+            "[applied]: false\npk: 1\ncc: 1\nv: 1",
+            "[applied]: false\npk: 1\ncc: 2\nv: 2");
+
+    List<Row> rows = session.execute("SELECT v FROM test_cas WHERE pk = 1").all();
+    assertThat(rows).hasSize(3);
+    assertThat(rows.get(0).getInt(0)).isEqualTo(1);
+    assertThat(rows.get(1).getInt(0)).isEqualTo(2);
+    assertThat(rows.get(2).getInt(0)).isEqualTo(3);
   }
 
   static void checkTemporalsWritten(Session session) {

@@ -44,18 +44,16 @@ public class BoundStatementPrinter<T extends BoundStatement> extends StatementPr
       T statement, StatementWriter out, StatementFormatVerbosity verbosity) {
     if (statement.preparedStatement().getVariables().size() > 0) {
       ColumnDefinitions metadata = statement.preparedStatement().getVariables();
-      if (metadata.size() > 0) {
-        for (int i = 0; i < metadata.size(); i++) {
-          out.newLine();
-          out.indent();
-          if (statement.isSet(i)) {
-            out.appendBoundValue(metadata.getName(i), statement.getObject(i), metadata.getType(i));
-          } else {
-            out.appendUnsetBoundValue(metadata.getName(i));
-          }
-          if (out.maxAppendedBoundValuesExceeded()) {
-            break;
-          }
+      for (int i = 0; i < metadata.size(); i++) {
+        out.newLine();
+        out.indent();
+        if (statement.isSet(i)) {
+          out.appendBoundValue(metadata.getName(i), statement.getObject(i), metadata.getType(i));
+        } else {
+          out.appendUnsetBoundValue(metadata.getName(i));
+        }
+        if (out.maxAppendedBoundValuesExceeded()) {
+          break;
         }
       }
     }

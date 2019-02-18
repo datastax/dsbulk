@@ -76,7 +76,6 @@ public abstract class NonContinuousBulkExecutorTestBase extends BulkExecutorTest
     when(successFuture1a.isDone()).thenReturn(true);
     ArrayDeque<Row> queue1a = new ArrayDeque<>(page1a);
     when(successfulResultSet1a.one()).thenAnswer(invocation -> queue1a.poll());
-    when(successfulResultSet1a.isFullyFetched()).thenReturn(true); // only useful in write tests
     ExecutionInfo executionInfo1a = mock(ExecutionInfo.class);
     when(successfulResultSet1a.getExecutionInfo()).thenReturn(executionInfo1a);
     PagingState ps = mock(PagingState.class);
@@ -95,7 +94,6 @@ public abstract class NonContinuousBulkExecutorTestBase extends BulkExecutorTest
     when(successFuture1b.isDone()).thenReturn(true);
     ArrayDeque<Row> queue1b = new ArrayDeque<>(page1b);
     when(successfulResultSet1b.one()).thenAnswer(invocation -> queue1b.poll());
-    when(successfulResultSet1b.isFullyFetched()).thenReturn(true); // only useful in write tests
     ExecutionInfo executionInfo1b = mock(ExecutionInfo.class);
     when(successfulResultSet1b.getExecutionInfo()).thenReturn(executionInfo1b);
     when(executionInfo1b.getPagingState()).thenReturn(null);
@@ -112,7 +110,6 @@ public abstract class NonContinuousBulkExecutorTestBase extends BulkExecutorTest
     when(successFuture2a.isDone()).thenReturn(true);
     ArrayDeque<Row> queue2a = new ArrayDeque<>(page2a);
     when(successfulResultSet2a.one()).thenAnswer(invocation -> queue2a.poll());
-    when(successfulResultSet2a.isFullyFetched()).thenReturn(true); // only useful in write tests
     ExecutionInfo executionInfo2a = mock(ExecutionInfo.class);
     when(successfulResultSet2a.getExecutionInfo()).thenReturn(executionInfo2a);
     when(executionInfo2a.getPagingState()).thenReturn(null);

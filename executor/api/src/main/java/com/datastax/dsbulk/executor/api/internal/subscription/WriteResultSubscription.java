@@ -46,14 +46,8 @@ public class WriteResultSubscription extends ResultSubscription<WriteResult, Res
 
   @Override
   Page toPage(ResultSet rs, ExecutionContext local) {
-    if (!rs.isFullyFetched()) {
-      return toErrorPage(
-          new IllegalStateException(
-              "Got a non-empty result set, is this really a write statement?"));
-    }
     Iterator<WriteResult> iterator =
-        Collections.<WriteResult>singleton(new DefaultWriteResult(statement, rs.getExecutionInfo()))
-            .iterator();
+        Collections.<WriteResult>singleton(new DefaultWriteResult(statement, rs)).iterator();
     return new Page(iterator, null);
   }
 

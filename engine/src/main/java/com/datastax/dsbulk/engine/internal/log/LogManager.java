@@ -84,10 +84,12 @@ public class LogManager implements AutoCloseable {
   private static final String CONNECTOR_ERRORS_FILE = "connector-errors.log";
   private static final String UNLOAD_ERRORS_FILE = "unload-errors.log";
   private static final String LOAD_ERRORS_FILE = "load-errors.log";
+  private static final String CAS_ERRORS_FILE = "paxos-errors.log";
 
   private static final String CONNECTOR_BAD_FILE = "connector.bad";
   private static final String MAPPING_BAD_FILE = "mapping.bad";
   private static final String LOAD_BAD_FILE = "load.bad";
+  private static final String CAS_BAD_FILE = "paxos.bad";
 
   private static final String POSITIONS_FILE = "positions.txt";
 
@@ -121,8 +123,9 @@ public class LogManager implements AutoCloseable {
   private FluxSink<ErrorRecord> failedRecordSink;
   private FluxSink<ErrorRecord> unmappableRecordSink;
   private FluxSink<UnmappableStatement> unmappableStatementSink;
-  private FluxSink<WriteResult> writeResultSink;
-  private FluxSink<ReadResult> readResultSink;
+  private FluxSink<WriteResult> failedWriteSink;
+  private FluxSink<WriteResult> failedCASWriteSink;
+  private FluxSink<ReadResult> failedReadSink;
   private FluxSink<Record> positionsSink;
 
   private UnicastProcessor<Void> uncaughtExceptionProcessor;
@@ -163,8 +166,9 @@ public class LogManager implements AutoCloseable {
     failedRecordSink = newFailedRecordSink();
     unmappableRecordSink = newUnmappableRecordSink();
     unmappableStatementSink = newUnmappableStatementSink();
-    writeResultSink = newFailedWriteResultSink();
-    readResultSink = newFailedReadResultSink();
+    failedWriteSink = newFailedWriteResultSink();
+    failedCASWriteSink = newFailedCASWriteSink();
+    failedReadSink = newFailedReadResultSink();
     positionsSink = newPositionsSink();
     uncaughtExceptionProcessor = UnicastProcessor.create();
     uncaughtExceptionSink = uncaughtExceptionProcessor.sink();
@@ -191,8 +195,9 @@ public class LogManager implements AutoCloseable {
     failedRecordSink.complete();
     unmappableRecordSink.complete();
     unmappableStatementSink.complete();
-    writeResultSink.complete();
-    readResultSink.complete();
+    failedWriteSink.complete();
+    failedCASWriteSink.complete();
+    failedReadSink.complete();
     uncaughtExceptionSink.complete();
     stackTracePrinter.stop();
     MoreExecutors.shutdownAndAwaitTermination(executor, 1, MINUTES);
@@ -267,8 +272,9 @@ public class LogManager implements AutoCloseable {
             .doOnTerminate(failedRecordSink::complete)
             .doOnTerminate(unmappableRecordSink::complete)
             .doOnTerminate(unmappableStatementSink::complete)
-            .doOnTerminate(writeResultSink::complete)
-            .doOnTerminate(readResultSink::complete)
+            .doOnTerminate(failedWriteSink::complete)
+            .doOnTerminate(failedReadSink::complete)
+            .doOnTerminate(failedCASWriteSink::complete)
             .doOnTerminate(uncaughtExceptionSink::complete)
             // By merging the main workflow with the uncaught exceptions
             // workflow, we make the main workflow fail when an uncaught
@@ -401,27 +407,36 @@ public class LogManager implements AutoCloseable {
                 signal -> {
                   if (signal.isOnNext()) {
                     WriteResult r = signal.get();
-                    if (r != null && !r.isSuccess()) {
-                      try {
-                        writeResultSink.next(r);
-                        assert r.getError().isPresent();
-                        Throwable cause = r.getError().get().getCause();
-                        if (isUnrecoverable(cause)) {
-                          signal = Signal.error(cause);
-                        } else {
-                          signal =
-                              maybeTriggerOnError(
-                                  signal, errors.addAndGet(delta(r.getStatement())));
+                    if (r != null) {
+                      if (!r.isSuccess()) {
+                        try {
+                          failedWriteSink.next(r);
+                          assert r.getError().isPresent();
+                          Throwable cause = r.getError().get().getCause();
+                          if (isUnrecoverable(cause)) {
+                            signal = Signal.error(cause);
+                          } else {
+                            signal =
+                                maybeTriggerOnError(signal, errors.addAndGet(r.getBatchSize()));
+                          }
+                        } catch (Exception e) {
+                          signal = Signal.error(e);
                         }
-                      } catch (Exception e) {
-                        signal = Signal.error(e);
+                      } else if (!r.wasApplied()) {
+                        try {
+                          failedCASWriteSink.next(r);
+                          signal = maybeTriggerOnError(signal, errors.addAndGet(r.getBatchSize()));
+                        } catch (Exception e) {
+                          signal = Signal.error(e);
+                        }
                       }
                     }
                   }
                   return signal;
                 })
             .<WriteResult>dematerialize()
-            .filter(Result::isSuccess);
+            .filter(Result::isSuccess)
+            .filter(WriteResult::wasApplied);
   }
 
   /**
@@ -445,7 +460,7 @@ public class LogManager implements AutoCloseable {
                     ReadResult r = signal.get();
                     if (r != null && !r.isSuccess()) {
                       try {
-                        readResultSink.next(r);
+                        failedReadSink.next(r);
                         assert r.getError().isPresent();
                         Throwable cause = r.getError().get().getCause();
                         if (isUnrecoverable(cause)) {
@@ -611,6 +626,31 @@ public class LogManager implements AutoCloseable {
   }
 
   /**
+   * A processor for failed CAS write results.
+   *
+   * <p>Used only in the load workflow.
+   *
+   * <p>Appends the failed result to the debug file, then extracts its statement, then extracts its
+   * record, then appends it to the bad file, then forwards the record's position to the position
+   * tracker.
+   *
+   * @return A processor for failed CAS write results.
+   */
+  @NotNull
+  private FluxSink<WriteResult> newFailedCASWriteSink() {
+    UnicastProcessor<WriteResult> processor = UnicastProcessor.create();
+    processor
+        .publishOn(scheduler)
+        .doOnNext(this::appendFailedCASWriteResultToDebugFile)
+        .map(Result::getStatement)
+        .transform(newStatementToRecordMapper())
+        .doOnNext(record -> appendToBadFile(record, CAS_BAD_FILE))
+        .doOnNext(record -> positionsSink.next(record))
+        .subscribe();
+    return processor.sink();
+  }
+
+  /**
    * A processor for failed read results.
    *
    * <p>Used only in the unload workflow.
@@ -664,6 +704,11 @@ public class LogManager implements AutoCloseable {
     appendStatement(result, LOAD_ERRORS_FILE);
   }
 
+  // CAS write query failed
+  private void appendFailedCASWriteResultToDebugFile(WriteResult result) {
+    appendStatement(result, CAS_ERRORS_FILE);
+  }
+
   // read query failed
   private void appendFailedReadResultToDebugFile(ReadResult result) {
     appendStatement(result, UNLOAD_ERRORS_FILE);
@@ -678,9 +723,23 @@ public class LogManager implements AutoCloseable {
         statementFormatter.format(
             result.getStatement(), statementFormatVerbosity, protocolVersion, codecRegistry);
     printAndMaybeAddNewLine(format, writer);
+    if (result instanceof WriteResult) {
+      WriteResult writeResult = (WriteResult) result;
+      if (!writeResult.wasApplied()) {
+        writer.println("Failed writes: ");
+        writeResult
+            .getFailedWrites()
+            .forEach(
+                row -> {
+                  String failed = rowFormatter.format(row, protocolVersion, codecRegistry);
+                  printAndMaybeAddNewLine(failed, writer);
+                });
+      }
+    }
     if (result.getError().isPresent()) {
       stackTracePrinter.printStackTrace(result.getError().get(), writer);
     }
+    writer.println();
   }
 
   // Mapping errors (failed record -> statement or row -> record mappings)
@@ -695,9 +754,10 @@ public class LogManager implements AutoCloseable {
     writer.println("Position: " + record.getPosition());
     writer.println("Source: " + formatSource(record));
     stackTracePrinter.printStackTrace(statement.getError(), writer);
+    writer.println();
   }
 
-  // row -> record failed (unload workdlow)
+  // row -> record failed (unload workflow)
   private void appendUnmappableReadResultToDebugFile(ErrorRecord record) {
     Path logFile = executionDirectory.resolve(MAPPING_ERRORS_FILE);
     PrintWriter writer = openFiles.get(logFile);
@@ -716,6 +776,7 @@ public class LogManager implements AutoCloseable {
               });
     }
     stackTracePrinter.printStackTrace(record.getError(), writer);
+    writer.println();
   }
 
   // Connector errors
@@ -728,6 +789,7 @@ public class LogManager implements AutoCloseable {
     writer.println("Position: " + record.getPosition());
     writer.println("Source: " + formatSource(record));
     stackTracePrinter.printStackTrace(record.getError(), writer);
+    writer.println();
   }
 
   // Utility methods
@@ -738,14 +800,6 @@ public class LogManager implements AutoCloseable {
     positionsPrinter.print(':');
     positions.stream().findFirst().ifPresent(pos -> positionsPrinter.print(pos.upperEndpoint()));
     positionsPrinter.println();
-  }
-
-  private static int delta(Statement statement) {
-    if (statement instanceof BatchStatement) {
-      return ((BatchStatement) statement).size();
-    } else {
-      return 1;
-    }
   }
 
   private <T> Signal<T> maybeTriggerOnError(Signal<T> signal, int errorCount) {
@@ -809,7 +863,8 @@ public class LogManager implements AutoCloseable {
     }
 
     private void printStackTrace(Throwable t, PrintWriter writer) {
-      writer.println(throwableProxyToString(new ThrowableProxy(t)));
+      // throwableProxyToString already appends a line break at the end
+      writer.print(throwableProxyToString(new ThrowableProxy(t)));
       writer.flush();
     }
   }

@@ -8,13 +8,19 @@
  */
 package com.datastax.dsbulk.executor.api.ccm;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
+
 import com.datastax.driver.core.Session;
+import com.datastax.driver.core.exceptions.SyntaxError;
 import com.datastax.dsbulk.commons.tests.ccm.CCMExtension;
 import com.datastax.dsbulk.executor.api.BulkExecutor;
 import com.datastax.dsbulk.executor.api.BulkExecutorITBase;
+import com.datastax.dsbulk.executor.api.result.WriteResult;
 import io.reactivex.Flowable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -42,6 +48,56 @@ public abstract class BulkExecutorCCMITBase extends BulkExecutorITBase {
   @AfterEach
   void truncateWriteTable() {
     session.execute("TRUNCATE test_write");
+  }
+
+  @Test
+  void should_insert_CAS() {
+    // regular insert
+    WriteResult result = failSafeExecutor.writeSync("INSERT INTO test_write (pk, v) VALUES (0, 0)");
+    assertThat(result.wasApplied()).isTrue();
+    assertThat(result.getFailedWrites()).isEmpty();
+    assertThat(result.getError()).isEmpty();
+    // failed insert
+    result = failSafeExecutor.writeSync("not a valid query");
+    assertThat(result.wasApplied()).isFalse();
+    assertThat(result.getFailedWrites()).isEmpty();
+    assertThat(result.getError())
+        .isNotEmpty()
+        .hasValueSatisfying(error -> assertThat(error).hasRootCauseInstanceOf(SyntaxError.class));
+    // CAS insert (successful)
+    result =
+        failSafeExecutor.writeSync("INSERT INTO test_write (pk, v) VALUES (1, 1) IF NOT EXISTS");
+    assertThat(result.wasApplied()).isTrue();
+    assertThat(result.getFailedWrites()).isEmpty();
+    assertThat(result.getError()).isEmpty();
+    // CAS insert (unsuccessful)
+    result =
+        failSafeExecutor.writeSync("INSERT INTO test_write (pk, v) VALUES (1, 1) IF NOT EXISTS");
+    assertThat(result.wasApplied()).isFalse();
+    assertThat(result.getFailedWrites().map(row -> tuple(row.getInt("pk"), row.getInt("v"))))
+        .containsExactly(tuple(1, 1));
+    assertThat(result.getError()).isEmpty();
+    // batch CAS insert (successful)
+    result =
+        failSafeExecutor.writeSync(
+            "BEGIN UNLOGGED BATCH "
+                + "INSERT INTO test_write (pk, v) VALUES (2, 2) IF NOT EXISTS; "
+                + "INSERT INTO test_write (pk, v) VALUES (2, 3) IF NOT EXISTS; "
+                + "APPLY BATCH");
+    assertThat(result.wasApplied()).isTrue();
+    assertThat(result.getFailedWrites()).isEmpty();
+    assertThat(result.getError()).isEmpty();
+    // batch CAS insert (unsuccessful)
+    result =
+        failSafeExecutor.writeSync(
+            "BEGIN UNLOGGED BATCH "
+                + "INSERT INTO test_write (pk, v) VALUES (2, 3) IF NOT EXISTS; "
+                + "INSERT INTO test_write (pk, v) VALUES (2, 4) IF NOT EXISTS; "
+                + "APPLY BATCH");
+    assertThat(result.wasApplied()).isFalse();
+    assertThat(result.getFailedWrites().map(row -> tuple(row.getInt("pk"), row.getInt("v"))))
+        .containsExactly(tuple(2, 3));
+    assertThat(result.getError()).isEmpty();
   }
 
   @Override

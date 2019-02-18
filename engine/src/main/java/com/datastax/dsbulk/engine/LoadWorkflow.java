@@ -8,14 +8,12 @@
  */
 package com.datastax.dsbulk.engine;
 
-import static com.datastax.driver.core.ConsistencyLevel.ONE;
 import static com.datastax.dsbulk.connectors.api.CommonConnectorFeature.INDEXED_RECORDS;
 import static com.datastax.dsbulk.connectors.api.CommonConnectorFeature.MAPPED_RECORDS;
 import static com.datastax.dsbulk.engine.internal.utils.ClusterInformationUtils.printDebugInfoAboutCluster;
 import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.checkProductCompatibility;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
-import com.datastax.driver.core.ExecutionInfo;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.dse.DseCluster;
 import com.datastax.driver.dse.DseSession;
@@ -37,12 +35,11 @@ import com.datastax.dsbulk.engine.internal.settings.MonitoringSettings;
 import com.datastax.dsbulk.engine.internal.settings.SchemaSettings;
 import com.datastax.dsbulk.engine.internal.settings.SettingsManager;
 import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
-import com.datastax.dsbulk.executor.api.internal.result.DefaultWriteResult;
+import com.datastax.dsbulk.executor.api.internal.result.EmptyWriteResult;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
 import com.datastax.dsbulk.executor.reactor.writer.ReactorBulkWriter;
 import com.google.common.base.Stopwatch;
 import io.netty.util.concurrent.DefaultThreadFactory;
-import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import org.slf4j.Logger;
@@ -56,9 +53,6 @@ import reactor.util.concurrent.Queues;
 public class LoadWorkflow implements Workflow {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadWorkflow.class);
-
-  private static final ExecutionInfo EMPTY_EXECUTION_INFO =
-      new ExecutionInfo(0, 0, Collections.emptyList(), ONE, Collections.emptyMap());
 
   private final SettingsManager settingsManager;
   private final AtomicBoolean closed = new AtomicBoolean(false);
@@ -265,7 +259,7 @@ public class LoadWorkflow implements Workflow {
   private Flux<WriteResult> executeStatements(Flux<Statement> stmts) {
     Flux<WriteResult> results;
     if (dryRun) {
-      results = stmts.map(stmt -> new DefaultWriteResult(stmt, EMPTY_EXECUTION_INFO));
+      results = stmts.map(EmptyWriteResult::new);
     } else {
       results = stmts.flatMap(executor::writeReactive, writeConcurrency);
     }
