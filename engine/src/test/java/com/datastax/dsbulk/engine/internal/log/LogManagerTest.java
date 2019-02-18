@@ -766,7 +766,7 @@ class LogManagerTest {
     when(bs.isSet(0)).thenReturn(true);
     when(bs.getObject(0)).thenReturn(value);
     when(bs.getBytesUnsafe("c1")).thenReturn(TypeCodec.cint().serialize(value, V4));
-    when(bs.getSource()).thenReturn(DefaultRecord.indexed(source, () -> resource, 1, 1));
+    when(bs.getSource()).thenReturn(DefaultRecord.indexed(source, resource, 1, 1));
     return bs;
   }
 }
