@@ -16,7 +16,7 @@
   <parent>
     <artifactId>dsbulk-executor</artifactId>
     <groupId>com.datastax.dse</groupId>
-    <version>1.3.1-SNAPSHOT</version>
+    <version>1.3.1</version>
   </parent>
 
   <artifactId>dsbulk-executor-reactor</artifactId>
