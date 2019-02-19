@@ -1,6 +1,6 @@
 ## Changelog
 
-### 1.3.1 (in progress)
+### 1.3.1
 
 - [improvement] DAT-385: Implement unload and count for materialized views.
 - [improvement] DAT-389: batch.bufferSize should be a multiple of batch.maxBatchStatements.
