@@ -36,11 +36,19 @@ curl "http://${dse_ip}:8888/opscenter/index.html" #verifying that ops-center sta
 ctool run --sudo dsbulk-client "mkdir /mnt/data; chmod 777 /mnt/data"
 ctool run --sudo dsbulk-client "cd /mnt/data; sudo su automaton; git clone https://github.com/brianmhess/DSEBulkLoadTest; cd DSEBulkLoadTest; make compile; make dirs; make data"
 
+#prepare data for parallel LOAD
+ctool run --sudo dsbulk-client "mkdir /mnt/data/DSEBulkLoadTest/in/data100B_one_file"
+ctool run --sudo dsbulk-client "cd /mnt/data/DSEBulkLoadTest/in/data100B; cat data100B_0.csv data100B_1.csv data100B_2.csv data100B_3.csv data100B_4.csv data100B_5.csv data100B_6.csv data100B_7.csv data100B_8.csv data100B_9.csv data100B_10.csv data100B_11.csv data100B_12.csv data100B_13.csv data100B_14.csv data100B_15.csv data100B_16.csv data100B_17.csv data100B_18.csv data100B_19.csv > ../data100B_one_file/data100B.csv"
+
 #setup data-set (multiple records per Partition Key)
 github_username="username"; github_password="password";
 ctool run --sudo dsbulk-client "cd /mnt/data; sudo su automaton; git clone https://${github_username}:${github_password}@github.com/riptano/data_faker.git; cd data_faker; mvn clean package"
 #generate 1 million PKs. Every PK has >= 50 && <= 100 records.
 ctool run --sudo dsbulk-client "cd /mnt/data/data_faker; java -jar target/fake-data-generator-1.0.jar 32 1000000 50 100 false"
+
+#prepare data for parallel LOAD ordered
+ctool run --sudo dsbulk-client "mkdir /mnt/data/data_faker/generated_one_file"
+ctool run --sudo dsbulk-client "cd /mnt/data/data_faker/generated; cat purchases_1.csv purchases_2.csv purchases_3.csv purchases_4.csv purchases_5.csv purchases_6.csv purchases_7.csv purchases_8.csv purchases_9.csv purchases_10.csv purchases_11.csv purchases_12.csv purchases_13.csv purchases_14.csv purchases_15.csv purchases_16.csv purchases_17.csv purchases_18.csv purchases_19.csv purchases_20.csv purchases_21.csv purchases_22.csv purchases_23.csv purchases_24.csv purchases_25.csv purchases_26.csv purchases_27.csv purchases_28.csv purchases_29.csv purchases_30.csv purchases_31.csv purchases_32.csv > ../generated_one_file/purchases.csv"
 
 
 #setup DSE keyspaces/tables
@@ -67,7 +75,7 @@ ctool run --sudo dsbulk-client "sudo apt update --assume-yes; sudo apt install m
 #ctool run --sudo dsbulk-client "cd /mnt/data/dsbulk; sudo mvn clean package -DskipTests -P release"
 
 #to build locally and scp to dsbulk-client
-dsbulk_version=1.2.1-SNAPSHOT
+dsbulk_version=1.3.1-SNAPSHOT
 rm -rf /tmp/dsbulk
 mkdir /tmp/dsbulk
 cd /tmp/dsbulk
@@ -85,10 +93,16 @@ ctool run dsbulk-dse 'nodetool -h localhost disableautocompaction test'
 #run dsbulk step (random data-set) - LOAD
 dse_node_ips=`ctool info --public-ips dsbulk-dse`
 #100b
-ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -header false --batch.mode REPLICA_SET -url /mnt/data/DSEBulkLoadTest/in/data100B/ -h ${dse_node_ips} &> test100bLOAD_first"
+#tpc
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -header false --batch.mode DISABLED --driver.socket.readTimeout '5 minutes' -url /mnt/data/DSEBulkLoadTest/in/data100B/ -h ${dse_node_ips} &> test100bLOAD_first_tpc"
 ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.test100b;\""
 ctool run dsbulk-dse 'nodetool clearsnapshot --all'
-ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -header false --batch.mode REPLICA_SET -url /mnt/data/DSEBulkLoadTest/in/data100B/ -h ${dse_node_ips} &> test100bLOAD_second"
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -header false --batch.mode DISABLED --driver.socket.readTimeout '5 minutes' -url /mnt/data/DSEBulkLoadTest/in/data100B/ -h ${dse_node_ips} &> test100bLOAD_second_tpc"
+
+#parallel
+ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.test100b;\""
+ctool run dsbulk-dse 'nodetool clearsnapshot --all'
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -header false --batch.mode DISABLED --driver.socket.readTimeout '5 minutes' -url /mnt/data/DSEBulkLoadTest/in/data100B_one_file/ -h ${dse_node_ips} &> test100bLOAD_parallel"
 
 #1KB
 ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test1kb -header false --batch.mode REPLICA_SET -url /mnt/data/DSEBulkLoadTest/in/data1KB/ -h ${dse_node_ips} &> test1KBLOAD_first"
@@ -117,10 +131,15 @@ ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test
 
 #run dsbulk step (ordered data-set) - LOAD
 dse_node_ips=`ctool info --public-ips dsbulk-dse`
-ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -header false --batch.mode PARTITION_KEY -url /mnt/data/data_faker/generated -h ${dse_node_ips} -delim '|' -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' --codec.timestamp ISO_ZONED_DATE_TIME &> transactionsLOAD_first"
+#TPC
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -header false --batch.mode PARTITION_KEY -url /mnt/data/data_faker/generated -h ${dse_node_ips} -delim '|' -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' --codec.timestamp ISO_ZONED_DATE_TIME &> transactionsLOAD_tpc"
 ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.transactions;\""
 ctool run dsbulk-dse 'nodetool clearsnapshot --all'
-ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -header false --batch.mode PARTITION_KEY -url /mnt/data/data_faker/generated -h ${dse_node_ips} -delim '|' -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' --codec.timestamp ISO_ZONED_DATE_TIME &> transactionsLOAD_second"
+
+#parallel
+ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.transactions;\""
+ctool run dsbulk-dse 'nodetool clearsnapshot --all'
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -header false --batch.mode PARTITION_KEY -url /mnt/data/data_faker/generated_one_file -h ${dse_node_ips} -delim '|' -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' --codec.timestamp ISO_ZONED_DATE_TIME &> transactionsLOAD_parallel"
 
 #run repair to make COUNT and LOAD yield proper results
 ctool run dsbulk-dse 'nodetool -h localhost repair'
@@ -136,7 +155,11 @@ ctool run dsbulk-dse 'nodetool -h localhost compact test'
 
 #run dsbulk step (random data-set) - UNLOAD
 
-ctool run --sudo dsbulk-client "rm -Rf /mnt/data/DSEBulkLoadTest/out/data100B/; /mnt/data/dsbulk/bin/dsbulk unload -k test -t test100b -header false -url /mnt/data/DSEBulkLoadTest/out/data100B/ -h ${dse_node_ips} &> 100BUNLOAD"
+#100B TPC
+ctool run --sudo dsbulk-client "rm -Rf /mnt/data/DSEBulkLoadTest/out/data100B/; /mnt/data/dsbulk/bin/dsbulk unload -k test -t test100b -header false -url /mnt/data/DSEBulkLoadTest/out/data100B/ -h ${dse_node_ips} &> 100BUNLOAD_tpc"
+
+#100B parallel
+ctool run --sudo dsbulk-client "rm -Rf /mnt/data/DSEBulkLoadTest/out/data100B/; /mnt/data/dsbulk/bin/dsbulk unload -header false -url /mnt/data/DSEBulkLoadTest/out/data100B/ -h ${dse_node_ips} -query 'SELECT * FROM test.test100b WHERE token(pkey) > -9223372036854775807 and token (pkey) <= 3074457345618258602' &> 100BUNLOAD_parallel"
 
 ctool run --sudo dsbulk-client "rm -Rf /mnt/data/DSEBulkLoadTest/out/data1KB/; /mnt/data/dsbulk/bin/dsbulk unload -k test -t test1kb -header false -url /mnt/data/DSEBulkLoadTest/out/data1KB/ -h ${dse_node_ips} &> 1KBUNLOAD"
 
@@ -147,7 +170,11 @@ ctool run --sudo dsbulk-client "rm -Rf /mnt/data/DSEBulkLoadTest/out/data1MB/; /
 ctool run --sudo dsbulk-client "rm -Rf /mnt/data/DSEBulkLoadTest/out/data10/; /mnt/data/dsbulk/bin/dsbulk unload -k test -t test10 -header false -url /mnt/data/DSEBulkLoadTest/out/data10/ -h ${dse_node_ips} &> 10UNLOAD"
 
 #run dsbulk step (sorted data-set) - UNLOAD
-ctool run --sudo dsbulk-client "rm -Rf /mnt/data/data_faker/generated; /mnt/data/dsbulk/bin/dsbulk unload -k test -t transactions -header false -url /mnt/data/data_faker/generated -h ${dse_node_ips} -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' &> transactionsUNLOAD"
+#TPC
+ctool run --sudo dsbulk-client "rm -Rf /mnt/data/data_faker/generated; /mnt/data/dsbulk/bin/dsbulk unload -k test -t transactions -header false -url /mnt/data/data_faker/generated -h ${dse_node_ips} -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' &> transactions-UNLOAD_tpc"
+
+#parallel
+ctool run --sudo dsbulk-client "rm -Rf /mnt/data/data_faker/generated; /mnt/data/dsbulk/bin/dsbulk unload -header false -url /mnt/data/data_faker/generated -h ${dse_node_ips} -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact'  -query 'SELECT * FROM test.transactions WHERE token(user_id) > -9223372036854775807 and token (user_id) <= 3074457345618258602' &> transactions-UNLOAD_parallel"
 
 
 #UNLOAD as JSON-----------------------------------------------------------------------------------------------
