@@ -9,7 +9,9 @@
     https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
   <modelVersion>4.0.0</modelVersion>
 
@@ -61,13 +63,6 @@
     <dependency>
       <groupId>com.datastax.dse</groupId>
       <artifactId>dsbulk-engine</artifactId>
-      <exclusions>
-        <!-- used only during build to generate documentation -->
-        <exclusion>
-          <groupId>org.apache.commons</groupId>
-          <artifactId>commons-text</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
 
     <dependency>
@@ -78,16 +73,39 @@
     <dependency>
       <groupId>com.datastax.dse</groupId>
       <artifactId>dse-java-driver-extras</artifactId>
+      <!-- optional artifacts not needed in the final DSBulk archive -->
+      <exclusions>
+        <exclusion>
+          <groupId>joda-time</groupId>
+          <artifactId>joda-time</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>javax.json</groupId>
+          <artifactId>javax.json-api</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
+      <!-- artifacts not needed in the final DSBulk archive -->
       <exclusions>
-        <!-- artifacts not needed in the final DSBulk archive -->
+        <exclusion>
+          <groupId>com.google.code.findbugs</groupId>
+          <artifactId>jsr305</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.google.errorprone</groupId>
+          <artifactId>error_prone_annotations</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.google.j2objc</groupId>
+          <artifactId>j2objc-annotations</artifactId>
+        </exclusion>
         <exclusion>
           <groupId>org.checkerframework</groupId>
-          <artifactId>checker-compat-qual</artifactId>
+          <artifactId>checker-qual</artifactId>
         </exclusion>
         <exclusion>
           <groupId>org.codehaus.mojo</groupId>
@@ -99,6 +117,20 @@
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>javax.mail</groupId>
+          <artifactId>mail</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>javax.activation</groupId>
+          <artifactId>activation</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>javax.servlet</groupId>
+          <artifactId>javax.servlet-api</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
   </dependencies>
@@ -182,11 +214,16 @@
             <configuration>
               <excludedScopes>test</excludedScopes>
               <licenseMerges>
-                <licenseMerge>Apache License, Version 2.0|The Apache Software License, Version 2.0|Apache Public License 2.0|Apache License 2.0|Apache 2.0|Apache 2</licenseMerge>
+                <licenseMerge>Apache License, Version 2.0|The Apache Software License, Version
+                  2.0|Apache Public License 2.0|Apache License 2.0|Apache 2.0|Apache 2
+                </licenseMerge>
                 <licenseMerge>BSD License|The BSD License|BSD|BSD-2-Clause</licenseMerge>
                 <licenseMerge>MIT License|The MIT License|MIT license</licenseMerge>
-                <licenseMerge>Creative Commons CC0|Public Domain, per Creative Commons CC0|CC0</licenseMerge>
-                <licenseMerge>Eclipse Public License, Version 1.0|Eclipse Public License - v 1.0|Common Public License - v 1.0</licenseMerge>
+                <licenseMerge>Creative Commons CC0|Public Domain, per Creative Commons CC0|CC0
+                </licenseMerge>
+                <licenseMerge>Eclipse Public License, Version 1.0|Eclipse Public License - v
+                  1.0|Common Public License - v 1.0
+                </licenseMerge>
               </licenseMerges>
               <failOnMissing>true</failOnMissing>
             </configuration>

@@ -1,5 +1,10 @@
 ## Changelog
 
+### 1.3.2 (in progress)
+
+- [task] DAT-398: Remove unwanted dependencies or dependencies with offending licenses.
+
+
 ### 1.3.1
 
 - [improvement] DAT-385: Implement unload and count for materialized views.
