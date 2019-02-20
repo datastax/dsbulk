@@ -1,6 +1,6 @@
 ## Changelog
 
-### 1.3.2 (in progress)
+### 1.3.2
 
 - [task] DAT-398: Remove unwanted dependencies or dependencies with offending licenses.
 
