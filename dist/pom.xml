@@ -61,13 +61,6 @@
     <dependency>
       <groupId>com.datastax.dse</groupId>
       <artifactId>dsbulk-engine</artifactId>
-      <exclusions>
-        <!-- used only during build to generate documentation -->
-        <exclusion>
-          <groupId>org.apache.commons</groupId>
-          <artifactId>commons-text</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
 
     <dependency>
@@ -83,11 +76,23 @@
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
+      <!-- artifacts not needed in the final DSBulk archive -->
       <exclusions>
-        <!-- artifacts not needed in the final DSBulk archive -->
+        <exclusion>
+          <groupId>com.google.code.findbugs</groupId>
+          <artifactId>jsr305</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.google.errorprone</groupId>
+          <artifactId>error_prone_annotations</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.google.j2objc</groupId>
+          <artifactId>j2objc-annotations</artifactId>
+        </exclusion>
         <exclusion>
           <groupId>org.checkerframework</groupId>
-          <artifactId>checker-compat-qual</artifactId>
+          <artifactId>checker-qual</artifactId>
         </exclusion>
         <exclusion>
           <groupId>org.codehaus.mojo</groupId>
