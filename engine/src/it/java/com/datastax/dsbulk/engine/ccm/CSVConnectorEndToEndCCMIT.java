@@ -3578,6 +3578,81 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(rows.get(2).getInt(0)).isEqualTo(3);
   }
 
+  /** Test for DAT-400. */
+  @Test
+  void full_unload_text_truncation() throws Exception {
+
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS test_truncation ("
+            + "id text PRIMARY KEY,"
+            + "text_column text,"
+            + "set_text_column set<text>,"
+            + "list_text_column list<text>,"
+            + "map_text_column map<text, text>)");
+
+    session.execute(
+        "insert into test_truncation (id, text_column) values ('test1', 'this is text')");
+    session.execute(
+        "insert into test_truncation (id, text_column) values ('test2', '1234 this text started with a number')");
+    session.execute(
+        "insert into test_truncation (id, text_column) values ('test3', 'this text ended with a number 1234')");
+    session.execute(
+        "insert into test_truncation (id, text_column) values ('test4', 'this text is 1234 with a number')");
+    session.execute(
+        "insert into test_truncation (id, text_column) values ('test5', '1234startswithanumbernospaces')");
+    session.execute(
+        "update test_truncation set set_text_column = set_text_column + {'1234 test text'} where id='test6'");
+    session.execute(
+        "update test_truncation set set_text_column = set_text_column + {'1234 test text'} where id='test7'");
+    session.execute(
+        "update test_truncation set set_text_column = set_text_column + {'1234 test text', 'this starts with text'} where id='test7'");
+    session.execute(
+        "update test_truncation set set_text_column = set_text_column + {'this starts with text'} where id='test8'");
+    session.execute(
+        "update test_truncation set set_text_column = set_text_column + {'1234thisisnospaces'} where id='test9'");
+    session.execute(
+        "update test_truncation set set_text_column = set_text_column + {'122 more text'} where id='test9'");
+    session.execute(
+        "update test_truncation set set_text_column = set_text_column + {'122 more text'} where id='test10'");
+    session.execute(
+        "update test_truncation set set_text_column = set_text_column + {'8595 more text'} where id='test10'");
+    session.execute(
+        "update test_truncation set map_text_column = {'1234 test text': '789 value text'} where id='test11'");
+    session.execute(
+        "update test_truncation set list_text_column = ['1234 test text', '789 value text'] where id='test12'");
+
+    List<String> args = new ArrayList<>();
+    args.add("unload");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.csv.url");
+    args.add(quoteJson(unloadDir));
+    args.add("--connector.csv.maxConcurrentFiles");
+    args.add("1");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("test_truncation");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+
+    assertThat(readAllLinesInDirectoryAsStreamExcludingHeaders(unloadDir))
+        .containsExactlyInAnyOrder(
+            "test1,[],{},[],this is text",
+            "test2,[],{},[],1234 this text started with a number",
+            "test3,[],{},[],this text ended with a number 1234",
+            "test4,[],{},[],this text is 1234 with a number",
+            "test5,[],{},[],1234startswithanumbernospaces",
+            "test6,[],{},\"[\\\"1234 test text\\\"]\",",
+            "test7,[],{},\"[\\\"1234 test text\\\",\\\"this starts with text\\\"]\",",
+            "test8,[],{},\"[\\\"this starts with text\\\"]\",",
+            "test9,[],{},\"[\\\"122 more text\\\",\\\"1234thisisnospaces\\\"]\",",
+            "test10,[],{},\"[\\\"122 more text\\\",\\\"8595 more text\\\"]\",",
+            "test11,[],\"{\\\"1234 test text\\\":\\\"789 value text\\\"}\",[],",
+            "test12,\"[\\\"1234 test text\\\",\\\"789 value text\\\"]\",{},[],");
+  }
+
   static void checkTemporalsWritten(Session session) {
     Row row = session.execute("SELECT * FROM temporals WHERE key = 0").one();
     LocalDate date = row.get("vdate", LocalDateCodec.instance);

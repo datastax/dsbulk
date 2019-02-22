@@ -1,5 +1,10 @@
 ## Changelog
 
+### 1.3.3 (in progress)
+
+- [bug] DAT-400: Export of varchar column containing JSON may truncate data.
+
+
 ### 1.3.2
 
 - [task] DAT-398: Remove unwanted dependencies or dependencies with offending licenses.

@@ -8,8 +8,6 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
-import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
-
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -64,6 +62,6 @@ public class JsonNodeToStringCodec extends JsonNodeConvertingCodec<String> {
       // not a valid json at all
     }
     // As a last resort, return the value as a textual node
-    return JSON_NODE_FACTORY.textNode(value);
+    return objectMapper.getNodeFactory().textNode(value);
   }
 }
