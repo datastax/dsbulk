@@ -11,6 +11,7 @@ package com.datastax.dsbulk.engine.ccm;
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DDAC;
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static com.datastax.dsbulk.engine.ccm.CSVConnectorEndToEndCCMIT.assertComplexRows;
 import static com.datastax.dsbulk.engine.ccm.CSVConnectorEndToEndCCMIT.checkNumbersWritten;
@@ -36,7 +37,6 @@ import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
-import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.commons.tests.utils.Version;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
@@ -867,12 +867,88 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     validateResultSetSize(1, "SELECT * FROM numeric_fields");
   }
 
+  /** Test for DAT-400. */
+  @Test
+  void full_unload_text_truncation() throws Exception {
+
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS test_truncation ("
+            + "id text PRIMARY KEY,"
+            + "text_column text,"
+            + "set_text_column set<text>,"
+            + "list_text_column list<text>,"
+            + "map_text_column map<text, text>)");
+
+    session.execute(
+        "insert into test_truncation (id, text_column) values ('test1', 'this is text')");
+    session.execute(
+        "insert into test_truncation (id, text_column) values ('test2', '1234 this text started with a number')");
+    session.execute(
+        "insert into test_truncation (id, text_column) values ('test3', 'this text ended with a number 1234')");
+    session.execute(
+        "insert into test_truncation (id, text_column) values ('test4', 'this text is 1234 with a number')");
+    session.execute(
+        "insert into test_truncation (id, text_column) values ('test5', '1234startswithanumbernospaces')");
+    session.execute(
+        "update test_truncation set set_text_column = set_text_column + {'1234 test text'} where id='test6'");
+    session.execute(
+        "update test_truncation set set_text_column = set_text_column + {'1234 test text'} where id='test7'");
+    session.execute(
+        "update test_truncation set set_text_column = set_text_column + {'1234 test text', 'this starts with text'} where id='test7'");
+    session.execute(
+        "update test_truncation set set_text_column = set_text_column + {'this starts with text'} where id='test8'");
+    session.execute(
+        "update test_truncation set set_text_column = set_text_column + {'1234thisisnospaces'} where id='test9'");
+    session.execute(
+        "update test_truncation set set_text_column = set_text_column + {'122 more text'} where id='test9'");
+    session.execute(
+        "update test_truncation set set_text_column = set_text_column + {'122 more text'} where id='test10'");
+    session.execute(
+        "update test_truncation set set_text_column = set_text_column + {'8595 more text'} where id='test10'");
+    session.execute(
+        "update test_truncation set map_text_column = {'1234 test text': '789 value text'} where id='test11'");
+    session.execute(
+        "update test_truncation set list_text_column = ['1234 test text', '789 value text'] where id='test12'");
+
+    List<String> args = new ArrayList<>();
+    args.add("unload");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.name");
+    args.add("json");
+    args.add("--connector.json.url");
+    args.add(quoteJson(unloadDir));
+    args.add("--connector.json.maxConcurrentFiles");
+    args.add("1");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("test_truncation");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+
+    assertThat(readAllLinesInDirectoryAsStream(unloadDir))
+        .containsExactlyInAnyOrder(
+            "{\"id\":\"test1\",\"list_text_column\":[],\"map_text_column\":{},\"set_text_column\":[],\"text_column\":\"this is text\"}",
+            "{\"id\":\"test2\",\"list_text_column\":[],\"map_text_column\":{},\"set_text_column\":[],\"text_column\":\"1234 this text started with a number\"}",
+            "{\"id\":\"test3\",\"list_text_column\":[],\"map_text_column\":{},\"set_text_column\":[],\"text_column\":\"this text ended with a number 1234\"}",
+            "{\"id\":\"test4\",\"list_text_column\":[],\"map_text_column\":{},\"set_text_column\":[],\"text_column\":\"this text is 1234 with a number\"}",
+            "{\"id\":\"test5\",\"list_text_column\":[],\"map_text_column\":{},\"set_text_column\":[],\"text_column\":\"1234startswithanumbernospaces\"}",
+            "{\"id\":\"test6\",\"list_text_column\":[],\"map_text_column\":{},\"set_text_column\":[\"1234 test text\"],\"text_column\":null}",
+            "{\"id\":\"test7\",\"list_text_column\":[],\"map_text_column\":{},\"set_text_column\":[\"1234 test text\",\"this starts with text\"],\"text_column\":null}",
+            "{\"id\":\"test8\",\"list_text_column\":[],\"map_text_column\":{},\"set_text_column\":[\"this starts with text\"],\"text_column\":null}",
+            "{\"id\":\"test9\",\"list_text_column\":[],\"map_text_column\":{},\"set_text_column\":[\"122 more text\",\"1234thisisnospaces\"],\"text_column\":null}",
+            "{\"id\":\"test10\",\"list_text_column\":[],\"map_text_column\":{},\"set_text_column\":[\"122 more text\",\"8595 more text\"],\"text_column\":null}",
+            "{\"id\":\"test11\",\"list_text_column\":[],\"map_text_column\":{\"1234 test text\":\"789 value text\"},\"set_text_column\":[],\"text_column\":null}",
+            "{\"id\":\"test12\",\"list_text_column\":[\"1234 test text\",\"789 value text\"],\"map_text_column\":{},\"set_text_column\":[],\"text_column\":null}");
+  }
+
   private static void checkNumbersRead(OverflowStrategy overflowStrategy, Path unloadDir)
       throws IOException {
     Map<String, String> doubles = new HashMap<>();
     Map<String, String> bigdecimals = new HashMap<>();
-    List<String> lines =
-        FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
+    List<String> lines = readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
     Pattern pattern = Pattern.compile("\\{\"key\":\"(.+?)\",\"vdouble\":(.+?),\"vdecimal\":(.+?)}");
     for (String line : lines) {
       Matcher matcher = pattern.matcher(line);
@@ -937,8 +1013,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   private static void checkTemporalsRead(Path unloadDir) throws IOException {
-    String line =
-        FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList()).get(0);
+    String line = readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList()).get(0);
     Pattern pattern =
         Pattern.compile(
             "\\{\"key\":(.+?),\"vdate\":\"(.+?)\",\"vtime\":\"(.+?)\",\"vtimestamp\":\"(.+?)\"}");

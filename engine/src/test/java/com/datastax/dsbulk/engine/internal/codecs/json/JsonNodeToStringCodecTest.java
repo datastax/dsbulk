@@ -8,13 +8,13 @@
  */
 package com.datastax.dsbulk.engine.internal.codecs.json;
 
-import static com.datastax.dsbulk.engine.internal.settings.CodecSettings.JSON_NODE_FACTORY;
 import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static com.google.common.collect.Lists.newArrayList;
 
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.io.IOException;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -23,19 +23,20 @@ class JsonNodeToStringCodecTest {
 
   private List<String> nullStrings = newArrayList("NULL");
   private ObjectMapper objectMapper = CodecSettings.getObjectMapper();
+  private JsonNodeFactory nodeFactory = objectMapper.getNodeFactory();
 
   @Test
   void should_convert_from_valid_external() throws IOException {
     JsonNodeToStringCodec codec =
         new JsonNodeToStringCodec(TypeCodec.varchar(), objectMapper, nullStrings);
     assertThat(codec)
-        .convertsFromExternal(JSON_NODE_FACTORY.textNode("foo"))
+        .convertsFromExternal(nodeFactory.textNode("foo"))
         .toInternal("foo")
-        .convertsFromExternal(JSON_NODE_FACTORY.textNode("\"foo\""))
+        .convertsFromExternal(nodeFactory.textNode("\"foo\""))
         .toInternal("\"foo\"")
-        .convertsFromExternal(JSON_NODE_FACTORY.textNode("'foo'"))
+        .convertsFromExternal(nodeFactory.textNode("'foo'"))
         .toInternal("'foo'")
-        .convertsFromExternal(JSON_NODE_FACTORY.numberNode(42))
+        .convertsFromExternal(nodeFactory.numberNode(42))
         .toInternal("42")
         .convertsFromExternal(objectMapper.readTree("{\"foo\":42}"))
         .toInternal("{\"foo\":42}")
@@ -43,34 +44,38 @@ class JsonNodeToStringCodecTest {
         .toInternal("[1,2,3]")
         .convertsFromExternal(null)
         .toInternal(null)
-        .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
+        .convertsFromExternal(nodeFactory.textNode("NULL"))
         .toInternal(null)
-        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .convertsFromExternal(nodeFactory.textNode(""))
         .toInternal("") // empty string should nto be converted to null
         .convertsFromExternal(null)
         .toInternal(null);
   }
 
   @Test
-  void should_convert_from_valid_internal() throws IOException {
+  void should_convert_from_valid_internal() {
     JsonNodeToStringCodec codec =
         new JsonNodeToStringCodec(TypeCodec.varchar(), objectMapper, nullStrings);
     assertThat(codec)
         .convertsFromInternal("foo")
-        .toExternal(JSON_NODE_FACTORY.textNode("foo"))
+        .toExternal(nodeFactory.textNode("foo"))
         .convertsFromInternal("\"foo\"")
-        .toExternal(JSON_NODE_FACTORY.textNode("\"foo\""))
+        .toExternal(nodeFactory.textNode("\"foo\""))
         .convertsFromInternal("'foo'")
-        .toExternal(JSON_NODE_FACTORY.textNode("'foo'"))
+        .toExternal(nodeFactory.textNode("'foo'"))
         .convertsFromInternal("42")
-        .toExternal(JSON_NODE_FACTORY.numberNode(42))
+        .toExternal(nodeFactory.textNode("42"))
+        .convertsFromInternal("42 abc")
+        .toExternal(nodeFactory.textNode("42 abc"))
         .convertsFromInternal("{\"foo\":42}")
-        .toExternal(objectMapper.readTree("{\"foo\":42}"))
+        .toExternal(nodeFactory.textNode("{\"foo\":42}"))
         .convertsFromInternal("[1,2,3]")
-        .toExternal(objectMapper.readTree("[1,2,3]"))
+        .toExternal(nodeFactory.textNode("[1,2,3]"))
+        .convertsFromInternal("{\"foo\":42") // invalid json
+        .toExternal(nodeFactory.textNode("{\"foo\":42"))
         .convertsFromInternal(null)
         .toExternal(null)
         .convertsFromInternal("")
-        .toExternal(JSON_NODE_FACTORY.textNode(""));
+        .toExternal(nodeFactory.textNode(""));
   }
 }
