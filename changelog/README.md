@@ -1,6 +1,6 @@
 ## Changelog
 
-### 1.3.3 (in progress)
+### 1.3.3
 
 - [bug] DAT-400: Export of varchar column containing JSON may truncate data.
 
