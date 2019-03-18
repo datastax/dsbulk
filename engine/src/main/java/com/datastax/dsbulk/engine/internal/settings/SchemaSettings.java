@@ -524,6 +524,7 @@ public class SchemaSettings {
       queryInspector = new QueryInspector(query);
     }
     preparedStatement = session.prepare(query);
+    //    preparedStatement.setConsistencyLevel(ConsistencyLevel.QUORUM);
     if (config.hasPath(QUERY)) {
       // in the presence of user-provided queries, create the mapping *after* query preparation
       ProtocolVersion protocolVersion =

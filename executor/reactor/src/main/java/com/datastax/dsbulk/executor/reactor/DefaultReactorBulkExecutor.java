@@ -21,6 +21,7 @@ import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import org.reactivestreams.Publisher;
@@ -110,8 +111,22 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
     return future;
   }
 
+  private AtomicInteger i = new AtomicInteger();
+
   @Override
   public Mono<WriteResult> writeReactive(Statement statement) {
+    statement.getConsistencyLevel();
+    i.incrementAndGet();
+    if (i.get() == 2) {
+      try {
+        System.out.println("sleep after first insert");
+        Thread.sleep(10_000);
+        System.out.println("done sleep after first insert");
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+
     Objects.requireNonNull(statement);
     return Mono.from(
         new WriteResultPublisher(

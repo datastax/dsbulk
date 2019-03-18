@@ -38,6 +38,7 @@ import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validatePrepa
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateQueryCount;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.LOCAL_ONE;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.ONE;
+import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.QUORUM;
 import static java.nio.file.Files.createTempDirectory;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
@@ -56,6 +57,7 @@ import com.datastax.dsbulk.commons.tests.simulacron.SimulacronExtension;
 import com.datastax.dsbulk.commons.tests.simulacron.SimulacronUtils;
 import com.datastax.dsbulk.commons.tests.simulacron.SimulacronUtils.Column;
 import com.datastax.dsbulk.commons.tests.simulacron.SimulacronUtils.Table;
+import com.datastax.dsbulk.commons.tests.simulacron.annotations.SimulacronConfig;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.commons.tests.utils.StringUtils;
 import com.datastax.dsbulk.connectors.api.Record;
@@ -75,6 +77,7 @@ import com.datastax.oss.simulacron.common.result.WriteFailureResult;
 import com.datastax.oss.simulacron.common.result.WriteTimeoutResult;
 import com.datastax.oss.simulacron.common.stubbing.Prime;
 import com.datastax.oss.simulacron.server.BoundCluster;
+import com.datastax.oss.simulacron.server.BoundNode;
 import com.typesafe.config.ConfigFactory;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -97,14 +100,20 @@ import org.reactivestreams.Publisher;
 @ExtendWith(LogInterceptingExtension.class)
 @ExtendWith(StreamInterceptingExtension.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@SimulacronConfig(numberOfNodes = 3)
 class CSVEndToEndSimulacronIT {
 
   private final BoundCluster simulacron;
   private final LogInterceptor logs;
   private final StreamInterceptor stdOut;
   private final StreamInterceptor stdErr;
-  private final String hostname;
-  private final String port;
+  private final String hostname1;
+  private final String port1;
+  private final String hostname2;
+  private final String hostname3;
+  private final BoundNode nodeFirst;
+  private final BoundNode nodeSecond;
+  private final BoundNode nodeThird;
 
   private Path unloadDir;
   private Path logDir;
@@ -118,9 +127,19 @@ class CSVEndToEndSimulacronIT {
     this.logs = logs;
     this.stdOut = stdOut;
     this.stdErr = stdErr;
-    InetSocketAddress node = simulacron.dc(0).node(0).inetSocketAddress();
-    hostname = node.getHostName();
-    port = Integer.toString(node.getPort());
+    nodeFirst = simulacron.dc(0).node(0);
+    InetSocketAddress node = nodeFirst.inetSocketAddress();
+    nodeSecond = simulacron.dc(0).node(1);
+    InetSocketAddress node2 = nodeSecond.inetSocketAddress();
+    nodeThird = simulacron.dc(0).node(2);
+    InetSocketAddress node3 = nodeThird.inetSocketAddress();
+
+    System.out.println("nodeFirst: " + node);
+    hostname1 = node.getHostName();
+    port1 = Integer.toString(node.getPort());
+    System.out.println("nodeFirst: " + node + " hostname1: " + hostname1 + " port1: " + port1);
+    hostname2 = node2.getHostName();
+    hostname3 = node3.getHostName();
   }
 
   @BeforeEach
@@ -146,7 +165,7 @@ class CSVEndToEndSimulacronIT {
   }
 
   @Test
-  void full_load() {
+  void full_load() throws InterruptedException {
 
     primeIpByCountryTable(simulacron);
     RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
@@ -163,11 +182,11 @@ class CSVEndToEndSimulacronIT {
       "--connector.csv.url",
       quoteJson(CSV_RECORDS_UNIQUE),
       "--driver.query.consistency",
-      "ONE",
+      "QUORUM",
       "--driver.hosts",
-      hostname,
+      String.format("%s,%s,%s", hostname1, hostname2, hostname3),
       "--driver.port",
-      port,
+      port1,
       "--driver.pooling.local.connections",
       "1",
       "--schema.keyspace",
@@ -178,13 +197,27 @@ class CSVEndToEndSimulacronIT {
       IP_BY_COUNTRY_MAPPING_INDEXED
     };
 
+    nodeFirst.stop();
+//    new java.util.Timer()
+//        .schedule(
+//            new java.util.TimerTask() {
+//              @Override
+//              public void run() {
+//                System.out.println("Stop node");
+//                nodeSecond.stop();
+//              }
+//            },
+//            3000);
+    nodeSecond.stop();
+
     int status = new DataStaxBulkLoader(args).run();
+
     assertThat(status).isZero();
     assertThat(logs.getAllMessagesAsString())
         .contains("Records: total: 24, successful: 24, failed: 0")
         .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
         .contains("Writes: total: 24, successful: 24, failed: 0");
-    validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", ONE);
+    validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", QUORUM);
   }
 
   @Test
@@ -205,11 +238,11 @@ class CSVEndToEndSimulacronIT {
       "-dryRun",
       "true",
       "--driver.query.consistency",
-      "ONE",
+      "QUORUM",
       "--driver.hosts",
-      hostname,
-      "--driver.port",
-      port,
+      hostname1,
+      "--driver.port1",
+      port1,
       "--driver.pooling.local.connections",
       "1",
       "--schema.keyspace",
@@ -243,9 +276,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
-      hostname,
-      "--driver.port",
-      port,
+      hostname1,
+      "--driver.port1",
+      port1,
       "--driver.pooling.local.connections",
       "1",
       "--schema.keyspace",
@@ -277,11 +310,11 @@ class CSVEndToEndSimulacronIT {
       "--connector.csv.url",
       quoteJson(CSV_RECORDS_PARTIAL_BAD),
       "--driver.query.consistency",
-      "LOCAL_ONE",
+      "QUORUM",
       "--driver.hosts",
-      hostname,
-      "--driver.port",
-      port,
+      hostname1,
+      "--driver.port1",
+      port1,
       "--driver.pooling.local.connections",
       "1",
       "--schema.keyspace",
@@ -357,9 +390,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.policy.maxRetries",
       "1",
       "--driver.hosts",
-      hostname,
-      "--driver.port",
-      port,
+      hostname1,
+      "--driver.port1",
+      port1,
       "--driver.pooling.local.connections",
       "1",
       "--schema.keyspace",
@@ -398,9 +431,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.query.consistency",
       "LOCAL_ONE",
       "--driver.hosts",
-      hostname,
-      "--driver.port",
-      port,
+      hostname1,
+      "--driver.port1",
+      port1,
       "--driver.pooling.local.connections",
       "1",
       "--connector.csv.skipRecords",
@@ -445,9 +478,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.query.consistency",
       "LOCAL_ONE",
       "--driver.hosts",
-      hostname,
-      "--driver.port",
-      port,
+      hostname1,
+      "--driver.port1",
+      port1,
       "--driver.pooling.local.connections",
       "1",
       "--schema.keyspace",
@@ -483,9 +516,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
-      hostname,
-      "--driver.port",
-      port,
+      hostname1,
+      "--driver.port1",
+      port1,
       "--driver.pooling.local.connections",
       "1",
       "--schema.keyspace",
@@ -525,9 +558,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
-      hostname,
-      "--driver.port",
-      port,
+      hostname1,
+      "--driver.port1",
+      port1,
       "--driver.pooling.local.connections",
       "1",
       "--codec.nullStrings",
@@ -579,9 +612,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
-      hostname,
-      "--driver.port",
-      port,
+      hostname1,
+      "--driver.port1",
+      port1,
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",
@@ -625,9 +658,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
-      hostname,
-      "--driver.port",
-      port,
+      hostname1,
+      "--driver.port1",
+      port1,
       "--driver.pooling.local.connections",
       "1",
       "--schema.query",
@@ -669,9 +702,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
-      hostname,
-      "--driver.port",
-      port,
+      hostname1,
+      "--driver.port1",
+      port1,
       "--driver.pooling.local.connections",
       "1",
       "--schema.keyspace",
@@ -719,9 +752,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
-      hostname,
-      "--driver.port",
-      port,
+      hostname1,
+      "--driver.port1",
+      port1,
       "--driver.pooling.local.connections",
       "1",
       "--schema.keyspace",
@@ -761,9 +794,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.query.consistency",
       "LOCAL_ONE",
       "--driver.hosts",
-      hostname,
-      "--driver.port",
-      port,
+      hostname1,
+      "--driver.port1",
+      port1,
       "--driver.pooling.local.connections",
       "1",
       "--schema.keyspace",
@@ -802,9 +835,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
-      hostname,
-      "--driver.port",
-      port,
+      hostname1,
+      "--driver.port1",
+      port1,
       "--driver.pooling.local.connections",
       "1",
       "--schema.keyspace",
@@ -843,9 +876,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
-      hostname,
-      "--driver.port",
-      port,
+      hostname1,
+      "--driver.port1",
+      port1,
       "--driver.pooling.local.connections",
       "1",
       "--schema.keyspace",
@@ -913,9 +946,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
-      hostname,
-      "--driver.port",
-      port,
+      hostname1,
+      "--driver.port1",
+      port1,
       "--driver.pooling.local.connections",
       "1",
       "--schema.keyspace",
@@ -956,9 +989,9 @@ class CSVEndToEndSimulacronIT {
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
-      hostname,
-      "--driver.port",
-      port,
+      hostname1,
+      "--driver.port1",
+      port1,
       "--driver.pooling.local.connections",
       "1",
       "--schema.keyspace",
