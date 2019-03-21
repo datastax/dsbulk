@@ -1,0 +1,6 @@
+category,examples
+"Baseball Teams", "[\"Boston Red Sox\", \"Atlanta Braves\", \"San Diego Padres\", \"Washington Senators\"]"
+"Football Teams", "[\"New England Patriots\", \"Seattle Seahawks\", \"Detroit Lions\", \"Chicago Bears\"]"
+Soccer Teams, "[\"New England Revolution\", \"New York Red Bulls\", \"D. C. United\", \"Chicago Fire Soccer Club\"]"
+Basketball Teams, "[\"Boston Celtics\", \"Los Angeles Lakers\", \"Chicago Bulls\", \"Detroit Pistons\"]"
+Hockey Teams, "[\"Boston Bruins\", \"Philadelphia Flyers\", \"Washington Capitals\", \"Edmonton Oilers\"]"

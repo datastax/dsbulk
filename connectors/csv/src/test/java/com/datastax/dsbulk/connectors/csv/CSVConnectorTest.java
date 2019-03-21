@@ -89,6 +89,23 @@ class CSVConnectorTest {
   }
 
   @Test
+  void should_read_single_file_list() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                String.format(
+                    "url = %s, ignoreLeadingWhitespaces = true",
+                    url("/categories.csv")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    List<Record> actual =  Flux.from(connector.read()).collectList().block();
+    System.out.println(actual);
+    connector.close();
+  }
+
+  @Test
   void should_read_single_file_by_resource() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
