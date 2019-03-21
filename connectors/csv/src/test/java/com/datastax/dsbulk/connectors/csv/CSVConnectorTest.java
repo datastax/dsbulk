@@ -94,14 +94,13 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                String.format(
-                    "url = %s, ignoreLeadingWhitespaces = true",
-                    url("/categories.csv")))
+                    String.format(
+                        "url = %s, ignoreLeadingWhitespaces = true", url("/categories.csv")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    List<Record> actual =  Flux.from(connector.read()).collectList().block();
-    System.out.println(actual);
+    List<Record> actual = Flux.from(connector.read()).collectList().block();
+    assertCategoriesRecords(actual);
     connector.close();
   }
 
@@ -120,6 +119,40 @@ class CSVConnectorTest {
     List<Record> actual = Flux.merge(connector.readByResource()).collectList().block();
     assertRecords(actual);
     connector.close();
+  }
+
+  private static void assertCategoriesRecords(List<Record> actual) {
+    assertThat(actual).hasSize(5);
+    assertThat(actual.get(0).values())
+        .containsExactly(
+            "Baseball Teams",
+            "[\"Boston Red Sox\", \"Atlanta Braves\", \"San Diego Padres\", \"Washington Senators\"]",
+            "Baseball Teams",
+            "[\"Boston Red Sox\", \"Atlanta Braves\", \"San Diego Padres\", \"Washington Senators\"]");
+    assertThat(actual.get(1).values())
+        .containsExactly(
+            "Football Teams",
+            "[\"New England Patriots\", \"Seattle Seahawks\", \"Detroit Lions\", \"Chicago Bears\"]",
+            "Football Teams",
+            "[\"New England Patriots\", \"Seattle Seahawks\", \"Detroit Lions\", \"Chicago Bears\"]");
+    assertThat(actual.get(2).values())
+        .containsExactly(
+            "Soccer Teams",
+            "[\"New England Revolution\", \"New York Red Bulls\", \"D. C. United\", \"Chicago Fire Soccer Club\"]",
+            "Soccer Teams",
+            "[\"New England Revolution\", \"New York Red Bulls\", \"D. C. United\", \"Chicago Fire Soccer Club\"]");
+    assertThat(actual.get(3).values())
+        .containsExactly(
+            "Basketball Teams",
+            "[\"Boston Celtics\", \"Los Angeles Lakers\", \"Chicago Bulls\", \"Detroit Pistons\"]",
+            "Basketball Teams",
+            "[\"Boston Celtics\", \"Los Angeles Lakers\", \"Chicago Bulls\", \"Detroit Pistons\"]");
+    assertThat(actual.get(4).values())
+        .containsExactly(
+            "Hockey Teams",
+            "[\"Boston Bruins\", \"Philadelphia Flyers\", \"Washington Capitals\", \"Edmonton Oilers\"]",
+            "Hockey Teams",
+            "[\"Boston Bruins\", \"Philadelphia Flyers\", \"Washington Capitals\", \"Edmonton Oilers\"]");
   }
 
   private static void assertRecords(List<Record> actual) {
