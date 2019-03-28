@@ -61,7 +61,6 @@ import com.datastax.dsbulk.commons.tests.utils.StringUtils;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.csv.CSVConnector;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
-import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.dsbulk.engine.tests.MockConnector;
 import com.datastax.dsbulk.engine.tests.utils.LogUtils;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
@@ -81,7 +80,6 @@ import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
@@ -596,7 +594,6 @@ class CSVEndToEndSimulacronIT {
     assertThat(logs.getAllMessagesAsString())
         .contains("aborted: Too many errors, the maximum allowed is 2")
         .contains("Records: total: 3, successful: 0, failed: 3");
-    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateNumberOfBadRecords(3);
     validateExceptionsLog(
         3, "Required field D (mapped to column d) was missing from record", "mapping-errors.log");
@@ -642,7 +639,6 @@ class CSVEndToEndSimulacronIT {
     assertThat(logs.getAllMessagesAsString())
         .contains("aborted: Too many errors, the maximum allowed is 2")
         .contains("Records: total: 3, successful: 0, failed: 3");
-    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateNumberOfBadRecords(3);
     validateExceptionsLog(3, "Extraneous field C was found in record", "mapping-errors.log");
   }

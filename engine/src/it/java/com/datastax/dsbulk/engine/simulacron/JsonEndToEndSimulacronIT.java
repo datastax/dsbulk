@@ -61,7 +61,6 @@ import com.datastax.dsbulk.connectors.api.ConnectorFeature;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.json.JsonConnector;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
-import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.dsbulk.engine.tests.MockConnector;
 import com.datastax.dsbulk.engine.tests.utils.LogUtils;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
@@ -81,7 +80,6 @@ import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -335,7 +333,6 @@ class JsonEndToEndSimulacronIT {
     int status = new DataStaxBulkLoader(args).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
     validateQueryCount(simulacron, 21, "INSERT INTO ip_by_country", LOCAL_ONE);
-    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateNumberOfBadRecords(2);
     validateExceptionsLog(2, "Source:", "mapping-errors.log");
   }
@@ -415,7 +412,6 @@ class JsonEndToEndSimulacronIT {
     // There are 24 rows of data, but two extra queries due to the retry for the write timeout and
     // the unavailable.
     validateQueryCount(simulacron, 26, "INSERT INTO ip_by_country", LOCAL_ONE);
-    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateNumberOfBadRecords(4);
     validateExceptionsLog(4, "Source:", "load-errors.log");
   }
@@ -460,7 +456,6 @@ class JsonEndToEndSimulacronIT {
     int status = new DataStaxBulkLoader(args).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
     validateQueryCount(simulacron, 21, "INSERT INTO ip_by_country", LOCAL_ONE);
-    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateNumberOfBadRecords(3);
     validateExceptionsLog(3, "Source:", "mapping-errors.log");
   }
@@ -511,7 +506,6 @@ class JsonEndToEndSimulacronIT {
     assertThat(logs.getAllMessagesAsString())
         .contains("aborted: Too many errors, the maximum allowed is 2")
         .contains("Records: total: 3, successful: 0, failed: 3");
-    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateNumberOfBadRecords(3);
     validateExceptionsLog(
         2, "Required field C (mapped to column c) was missing from record", "mapping-errors.log");
@@ -559,7 +553,6 @@ class JsonEndToEndSimulacronIT {
     assertThat(logs.getAllMessagesAsString())
         .contains("aborted: Too many errors, the maximum allowed is 1")
         .contains("Records: total: 3, successful: 1, failed: 2");
-    Path logPath = Paths.get(System.getProperty(LogSettings.OPERATION_DIRECTORY_KEY));
     validateNumberOfBadRecords(2);
     validateExceptionsLog(1, "Extraneous field C was found in record", "mapping-errors.log");
     validateExceptionsLog(1, "Extraneous field D was found in record", "mapping-errors.log");
