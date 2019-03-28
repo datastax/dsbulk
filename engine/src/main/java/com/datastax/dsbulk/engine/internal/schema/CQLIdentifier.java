@@ -10,6 +10,7 @@ package com.datastax.dsbulk.engine.internal.schema;
 
 import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.google.common.base.Preconditions;
+import java.util.Objects;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -50,7 +51,7 @@ public class CQLIdentifier implements CQLFragment {
   /** Creates an identifier from its {@link CQLIdentifier CQL form}. */
   @NotNull
   public static CQLIdentifier fromCql(@NotNull String cql) {
-    Preconditions.checkNotNull(cql, "cql must not be null");
+    Objects.requireNonNull(cql, "cql must not be null");
     final String internal;
     if (StringUtils.isDoubleQuoted(cql)) {
       internal = StringUtils.unDoubleQuote(cql);
@@ -67,7 +68,7 @@ public class CQLIdentifier implements CQLFragment {
   /** Creates an identifier from its {@link CQLIdentifier internal form}. */
   @NotNull
   public static CQLIdentifier fromInternal(@NotNull String internal) {
-    Preconditions.checkNotNull(internal, "internal must not be null");
+    Objects.requireNonNull(internal, "internal must not be null");
     return new CQLIdentifier(internal);
   }
 
@@ -75,7 +76,7 @@ public class CQLIdentifier implements CQLFragment {
   private final String variable;
   private final String assignment;
 
-  private CQLIdentifier(String internal) {
+  private CQLIdentifier(@NotNull String internal) {
     this.internal = internal;
     variable =
         StringUtils.needsDoubleQuotes(internal) ? StringUtils.doubleQuote(internal) : internal;
