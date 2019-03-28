@@ -1,5 +1,10 @@
 ## Changelog
 
+### 1.3.4 (in progress)
+
+- [improvement] DAT-411: Improve error message when row fails to decode.
+
+
 ### 1.3.3
 
 - [bug] DAT-400: Export of varchar column containing JSON may truncate data.

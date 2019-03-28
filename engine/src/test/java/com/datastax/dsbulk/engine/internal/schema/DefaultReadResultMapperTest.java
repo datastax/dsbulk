@@ -26,6 +26,8 @@ import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.driver.core.exceptions.CodecNotFoundException;
+import com.datastax.driver.core.exceptions.InvalidTypeException;
+import com.datastax.driver.core.utils.Bytes;
 import com.datastax.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
@@ -55,6 +57,7 @@ class DefaultReadResultMapperTest {
   private Mapping mapping;
   private RecordMetadata recordMetadata;
   private ReadResult result;
+  private Row row;
 
   @BeforeEach
   @SuppressWarnings("unchecked")
@@ -69,7 +72,7 @@ class DefaultReadResultMapperTest {
                 F2,
                 TypeToken.of(String.class)));
     mapping = mock(Mapping.class);
-    Row row = mock(Row.class);
+    row = mock(Row.class);
     result = mock(ReadResult.class);
     when(result.getRow()).thenReturn(Optional.ofNullable(row));
     ColumnDefinitions.Definition c1 = newDefinition(C1, DataType.cint());
@@ -132,7 +135,32 @@ class DefaultReadResultMapperTest {
     when(mapping.codec(C3_ID, DataType.varchar(), TypeToken.of(String.class))).thenThrow(exception);
     DefaultReadResultMapper mapper = new DefaultReadResultMapper(mapping, recordMetadata);
     ErrorRecord record = (ErrorRecord) mapper.map(result);
-    assertThat(record.getError()).isSameAs(exception);
+    assertThat(record.getError())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(
+            "Could not deserialize column \"My Fancy Column Name\" of type varchar as java.lang.String (raw value was: null)")
+        .hasRootCauseInstanceOf(CodecNotFoundException.class);
+    assertThat(record.getSource()).isSameAs(result);
+    assertThat(record.getResource())
+        .hasScheme("cql")
+        .hasHost("127.0.0.1")
+        .hasPort(9042)
+        .hasPath("/ks/t")
+        .hasNoParameters();
+  }
+
+  @Test
+  void should_map_result_to_error_record_when_deser_fails() {
+    InvalidTypeException exception = new InvalidTypeException("could not deserialize this");
+    when(row.get(C3_ID.render(VARIABLE), TypeCodec.varchar())).thenThrow(exception);
+    when(row.getBytesUnsafe(C3_ID.render(VARIABLE))).thenReturn(Bytes.fromHexString("0xCAFEBABE"));
+    DefaultReadResultMapper mapper = new DefaultReadResultMapper(mapping, recordMetadata);
+    ErrorRecord record = (ErrorRecord) mapper.map(result);
+    assertThat(record.getError())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(
+            "Could not deserialize column \"My Fancy Column Name\" of type varchar as java.lang.String (raw value was: 0xcafebabe)")
+        .hasRootCauseInstanceOf(InvalidTypeException.class);
     assertThat(record.getSource()).isSameAs(result);
     assertThat(record.getResource())
         .hasScheme("cql")
