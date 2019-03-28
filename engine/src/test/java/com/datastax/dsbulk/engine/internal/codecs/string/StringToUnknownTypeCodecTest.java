@@ -70,7 +70,7 @@ public class StringToUnknownTypeCodecTest {
       if (this == o) {
         return true;
       }
-      if (o == null || getClass() != o.getClass()) {
+      if (!(o instanceof Fruit)) {
         return false;
       }
       Fruit fruit = (Fruit) o;

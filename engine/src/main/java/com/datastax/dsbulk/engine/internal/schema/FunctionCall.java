@@ -161,7 +161,7 @@ public class FunctionCall implements MappingField, CQLFragment {
     if (this == o) {
       return true;
     }
-    if (o == null || getClass() != o.getClass()) {
+    if (!(o instanceof FunctionCall)) {
       return false;
     }
     FunctionCall that = (FunctionCall) o;

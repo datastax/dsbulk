@@ -354,7 +354,7 @@ public class DefaultReadResultCounter implements ReadResultCounter {
       if (this == o) {
         return true;
       }
-      if (o == null || getClass() != o.getClass()) {
+      if (!(o instanceof PartitionKey)) {
         return false;
       }
       PartitionKey that = (PartitionKey) o;

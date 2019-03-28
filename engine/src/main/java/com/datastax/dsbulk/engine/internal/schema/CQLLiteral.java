@@ -33,7 +33,7 @@ public class CQLLiteral implements CQLFragment {
     if (this == o) {
       return true;
     }
-    if (o == null || getClass() != o.getClass()) {
+    if (!(o instanceof CQLLiteral)) {
       return false;
     }
     CQLLiteral that = (CQLLiteral) o;
