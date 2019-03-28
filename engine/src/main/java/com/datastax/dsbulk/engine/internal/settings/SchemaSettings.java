@@ -77,7 +77,6 @@ import com.datastax.dsbulk.engine.internal.schema.RecordMapper;
 import com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMultimap;
-import com.google.common.collect.ImmutableMultimap.Builder;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import com.typesafe.config.ConfigException;
@@ -1082,7 +1081,7 @@ public class SchemaSettings {
   @NotNull
   private static ImmutableMultimap<Field, CQLIdentifier> processFieldsToVariables(
       ImmutableMultimap<MappingField, CQLFragment> fieldsToVariables) {
-    Builder<Field, CQLIdentifier> builder = ImmutableMultimap.builder();
+    ImmutableMultimap.Builder<Field, CQLIdentifier> builder = ImmutableMultimap.builder();
     for (Entry<MappingField, CQLFragment> entry : fieldsToVariables.entries()) {
       // transform all CQL fragments into CQL identifiers since that's the way they will be searched
       // for in DefaultMapping
