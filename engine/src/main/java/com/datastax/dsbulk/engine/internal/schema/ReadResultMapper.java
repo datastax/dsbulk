@@ -10,8 +10,10 @@ package com.datastax.dsbulk.engine.internal.schema;
 
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
+import org.jetbrains.annotations.NotNull;
 
 public interface ReadResultMapper {
 
-  Record map(ReadResult result);
+  @NotNull
+  Record map(@NotNull ReadResult result);
 }

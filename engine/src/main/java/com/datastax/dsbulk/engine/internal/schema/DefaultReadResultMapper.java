@@ -25,6 +25,7 @@ import com.google.common.reflect.TypeToken;
 import java.net.URI;
 import java.util.Collection;
 import java.util.function.Supplier;
+import org.jetbrains.annotations.NotNull;
 
 public class DefaultReadResultMapper implements ReadResultMapper {
 
@@ -36,8 +37,9 @@ public class DefaultReadResultMapper implements ReadResultMapper {
     this.recordMetadata = recordMetadata;
   }
 
+  @NotNull
   @Override
-  public Record map(ReadResult result) {
+  public Record map(@NotNull ReadResult result) {
     Row row = result.getRow().orElseThrow(IllegalStateException::new);
     Supplier<URI> resource =
         () ->

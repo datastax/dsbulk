@@ -10,8 +10,10 @@ package com.datastax.dsbulk.engine.internal.schema;
 
 import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.connectors.api.Record;
+import org.jetbrains.annotations.NotNull;
 
 public interface RecordMapper {
 
-  Statement map(Record record);
+  @NotNull
+  Statement map(@NotNull Record record);
 }

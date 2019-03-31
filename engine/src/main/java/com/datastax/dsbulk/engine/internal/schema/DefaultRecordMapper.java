@@ -30,6 +30,7 @@ import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Set;
 import java.util.function.BiFunction;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class DefaultRecordMapper implements RecordMapper {
@@ -86,8 +87,9 @@ public class DefaultRecordMapper implements RecordMapper {
     this.boundStatementFactory = boundStatementFactory;
   }
 
+  @NotNull
   @Override
-  public Statement map(Record record) {
+  public Statement map(@NotNull Record record) {
     try {
       if (!allowMissingFields) {
         ensureAllFieldsPresent(record.fields());
