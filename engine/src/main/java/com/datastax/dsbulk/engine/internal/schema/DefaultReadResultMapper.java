@@ -66,7 +66,7 @@ public class DefaultReadResultMapper implements ReadResultMapper {
             TypeCodec<?> codec = mapping.codec(variable, cqlType, fieldType);
             Object value = row.get(name, codec);
             record.setFieldValue(field, value);
-          } catch (RuntimeException e) {
+          } catch (Exception e) {
             ByteBuffer bb = row.getBytesUnsafe(name);
             String bytes = Bytes.toHexString(bb);
             String msg =
