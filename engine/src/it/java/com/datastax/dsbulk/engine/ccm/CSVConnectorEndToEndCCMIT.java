@@ -2631,6 +2631,32 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(status).isZero();
   }
 
+  /** Test for DAT-326. */
+  @Test
+  void literal_mapped_to_primary_key_with_custom_query() {
+
+    session.execute("DROP TABLE IF EXISTS dat326d");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS dat326d (pk int, cc int, v int, PRIMARY KEY (pk, cc))");
+
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            quoteJson(logDir),
+            "-header",
+            "true",
+            "--connector.csv.url",
+            quoteJson(getClass().getResource("/function-pk.csv")),
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            "INSERT INTO dat326d (pk, cc, v) VALUES (:pk, 42, :v)");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+  }
+
   @Test
   void unload_with_custom_query_and_function_with_header() throws IOException {
 

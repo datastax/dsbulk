@@ -753,8 +753,8 @@ public class SchemaSettings {
                 + " from schema.mapping or schema.query");
       }
       // do not check if the mapping contains a PK
-      // if the PK is mapped to a function in the query (DAT-326)
-      if (!(queryVariable instanceof FunctionCall)) {
+      // if the PK is mapped to a function or a literal in the query (DAT-326)
+      if (queryVariable instanceof CQLIdentifier) {
         // the mapping did not contain such column
         if (!mappingVariables.contains(queryVariable)) {
           throw new BulkConfigurationException(
