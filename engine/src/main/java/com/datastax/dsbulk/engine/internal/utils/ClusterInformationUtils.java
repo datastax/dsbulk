@@ -51,8 +51,7 @@ public class ClusterInformationUtils {
     Set<String> dataCenters = getAllDataCenters(allHosts);
 
     List<String> hostsInfo =
-        allHosts
-            .stream()
+        allHosts.stream()
             .sorted(HOST_COMPARATOR)
             .limit(LIMIT_NODES_INFORMATION)
             .map(ClusterInformationUtils::getHostInfo)
@@ -70,8 +69,7 @@ public class ClusterInformationUtils {
   }
 
   private static Set<String> getAllDataCenters(Set<Host> allHosts) {
-    return allHosts
-        .stream()
+    return allHosts.stream()
         .collect(Collectors.groupingBy(Host::getDatacenter))
         .keySet()
         .stream()

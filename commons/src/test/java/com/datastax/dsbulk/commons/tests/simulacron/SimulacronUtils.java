@@ -205,8 +205,7 @@ public class SimulacronUtils {
     }
 
     private Map<String, String> allColumnTypes() {
-      return allColumns()
-          .stream()
+      return allColumns().stream()
           .map(col -> new SimpleEntry<>(col.name, col.type.toString()))
           .collect(Collectors.toMap(SimpleEntry::getKey, SimpleEntry::getValue));
     }
@@ -365,14 +364,10 @@ public class SimulacronUtils {
                     "INSERT INTO %s.%s (%s) VALUES (%s)",
                     quoteIfNecessary(keyspace.name),
                     quoteIfNecessary(table.name),
-                    table
-                        .allColumns()
-                        .stream()
+                    table.allColumns().stream()
                         .map(col -> quoteIfNecessary(col.name))
                         .collect(COMMA),
-                    table
-                        .allColumns()
-                        .stream()
+                    table.allColumns().stream()
                         .map(col -> ":" + quoteIfNecessary(col.name))
                         .collect(COMMA)),
                 emptyList(),
@@ -389,9 +384,7 @@ public class SimulacronUtils {
                     "UPDATE %s.%s SET %s",
                     quoteIfNecessary(keyspace.name),
                     quoteIfNecessary(table.name),
-                    table
-                        .allColumns()
-                        .stream()
+                    table.allColumns().stream()
                         .map(col -> quoteIfNecessary(col.name) + "=:" + quoteIfNecessary(col.name))
                         .collect(COMMA)),
                 emptyList(),
@@ -407,9 +400,7 @@ public class SimulacronUtils {
               new Query(
                   String.format(
                       "SELECT %s FROM %s.%s",
-                      table
-                          .allColumns()
-                          .stream()
+                      table.allColumns().stream()
                           .map(col -> quoteIfNecessary(col.name))
                           .collect(COMMA),
                       quoteIfNecessary(keyspace.name),
@@ -424,21 +415,15 @@ public class SimulacronUtils {
               new Query(
                   String.format(
                       "SELECT %s FROM %s.%s WHERE token(%s) > ? AND token(%s) <= ?",
-                      table
-                          .allColumns()
-                          .stream()
+                      table.allColumns().stream()
                           .map(col -> quoteIfNecessary(col.name))
                           .collect(COMMA),
                       quoteIfNecessary(keyspace.name),
                       quoteIfNecessary(table.name),
-                      table
-                          .partitionKey
-                          .stream()
+                      table.partitionKey.stream()
                           .map(col -> quoteIfNecessary(col.name))
                           .collect(COMMA),
-                      table
-                          .partitionKey
-                          .stream()
+                      table.partitionKey.stream()
                           .map(col -> quoteIfNecessary(col.name))
                           .collect(COMMA)));
           simulacron.prime(
@@ -450,21 +435,15 @@ public class SimulacronUtils {
               new Query(
                   String.format(
                       "SELECT %s FROM %s.%s WHERE token(%s) > :start AND token(%s) <= :end",
-                      table
-                          .allColumns()
-                          .stream()
+                      table.allColumns().stream()
                           .map(col -> quoteIfNecessary(col.name))
                           .collect(COMMA),
                       quoteIfNecessary(keyspace.name),
                       quoteIfNecessary(table.name),
-                      table
-                          .partitionKey
-                          .stream()
+                      table.partitionKey.stream()
                           .map(col -> quoteIfNecessary(col.name))
                           .collect(COMMA),
-                      table
-                          .partitionKey
-                          .stream()
+                      table.partitionKey.stream()
                           .map(col -> quoteIfNecessary(col.name))
                           .collect(COMMA)));
           simulacron.prime(

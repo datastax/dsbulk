@@ -241,8 +241,7 @@ public class LogManager implements AutoCloseable {
           Joiner.on(", ").join(badFiles));
     }
     List<Path> debugFiles =
-        files
-            .stream()
+        files.stream()
             .map(Path::getFileName)
             .filter(path -> !badFileMatcher.matches(path))
             .collect(toList());

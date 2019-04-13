@@ -73,9 +73,7 @@ public class SettingsUtils {
     visitConnectors(
         (config, connectorName) -> {
           if (config.hasPath("metaSettings.docHints.commonSettings")) {
-            config
-                .getStringList("metaSettings.docHints.commonSettings")
-                .stream()
+            config.getStringList("metaSettings.docHints.commonSettings").stream()
                 .map(s -> String.format("connector.%s.%s", connectorName, s))
                 .forEach(COMMON_SETTINGS::add);
           }
@@ -89,9 +87,7 @@ public class SettingsUtils {
     visitConnectors(
         (config, connectorName) -> {
           if (config.hasPath("metaSettings.docHints.preferredSettings")) {
-            config
-                .getStringList("metaSettings.docHints.preferredSettings")
-                .stream()
+            config.getStringList("metaSettings.docHints.preferredSettings").stream()
                 .map(s -> String.format("connector.%s.%s", connectorName, s))
                 .forEach(PREFERRED_SETTINGS::add);
           }

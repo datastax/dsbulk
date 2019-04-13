@@ -17,8 +17,7 @@ public interface LogInterceptor {
   List<ILoggingEvent> getLoggedEvents();
 
   default List<String> getLoggedMessages() {
-    return getLoggedEvents()
-        .stream()
+    return getLoggedEvents().stream()
         .map(ILoggingEvent::getFormattedMessage)
         .collect(Collectors.toList());
   }

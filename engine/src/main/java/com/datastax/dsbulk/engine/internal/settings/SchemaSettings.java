@@ -466,9 +466,7 @@ public class SchemaSettings {
       // preparation
       fieldsToVariables =
           createFieldsToVariablesMap(
-              table
-                  .getColumns()
-                  .stream()
+              table.getColumns().stream()
                   .filter(col -> !isDSESearchPseudoColumn(col))
                   .map(ColumnMetadata::getName)
                   .map(CQLIdentifier::fromInternal)
@@ -533,9 +531,7 @@ public class SchemaSettings {
         if (queryInspector.isSelectStar()) {
           fieldsToVariables =
               createFieldsToVariablesMap(
-                  table
-                      .getColumns()
-                      .stream()
+                  table.getColumns().stream()
                       .map(ColumnMetadata::getName)
                       .map(CQLIdentifier::fromInternal)
                       .collect(Collectors.toList()));
@@ -590,9 +586,7 @@ public class SchemaSettings {
   }
 
   private boolean isCounterTable() {
-    return table
-        .getColumns()
-        .stream()
+    return table.getColumns().stream()
         .anyMatch(c -> c.getType().getName() == DataType.Name.COUNTER);
   }
 
@@ -645,9 +639,7 @@ public class SchemaSettings {
     KeyspaceMetadata keyspace = metadata.getKeyspace(quoteIfNecessary(keyspaceName));
     if (keyspace == null) {
       Optional<KeyspaceMetadata> match =
-          metadata
-              .getKeyspaces()
-              .stream()
+          metadata.getKeyspaces().stream()
               .filter(k -> k.getName().equalsIgnoreCase(keyspaceName))
               .findFirst();
       if (match.isPresent()) {
@@ -673,9 +665,7 @@ public class SchemaSettings {
         table = keyspace.getMaterializedView(quoteIfNecessary(tableName));
         if (table == null) {
           Optional<MaterializedViewMetadata> match =
-              keyspace
-                  .getMaterializedViews()
-                  .stream()
+              keyspace.getMaterializedViews().stream()
                   .filter(t -> t.getName().equalsIgnoreCase(tableName))
                   .findFirst();
           if (match.isPresent()) {
@@ -693,9 +683,7 @@ public class SchemaSettings {
         }
       } else {
         Optional<TableMetadata> match =
-            keyspace
-                .getTables()
-                .stream()
+            keyspace.getTables().stream()
                 .filter(t -> t.getName().equalsIgnoreCase(tableName))
                 .findFirst();
         if (match.isPresent()) {
@@ -833,9 +821,7 @@ public class SchemaSettings {
     boolean isFirst = true;
     CQLRenderMode assignment = protocolVersion != V1 ? NAMED_ASSIGNMENT : POSITIONAL_ASSIGNMENT;
     List<CQLFragment> pks =
-        table
-            .getPrimaryKey()
-            .stream()
+        table.getPrimaryKey().stream()
             .map(ColumnMetadata::getName)
             .map(CQLIdentifier::fromInternal)
             .collect(Collectors.toList());

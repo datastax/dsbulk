@@ -65,9 +65,7 @@ public class PartitionGenerator<V extends Number, T extends Token<V>> {
     T startToken = tokenFactory.tokenFromString(range.getStart().getValue().toString());
     T endToken = tokenFactory.tokenFromString(range.getEnd().getValue().toString());
     Set<InetSocketAddress> replicas =
-        metadata
-            .getReplicas(Metadata.quoteIfNecessary(keyspace.getName()), range)
-            .stream()
+        metadata.getReplicas(Metadata.quoteIfNecessary(keyspace.getName()), range).stream()
             .map(Host::getSocketAddress)
             .collect(Collectors.toSet());
     return new TokenRange<>(startToken, endToken, replicas, tokenFactory);

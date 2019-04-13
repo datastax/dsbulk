@@ -38,9 +38,7 @@ public class LogInterceptorAssert
 
   public LogInterceptorAssert hasMessageMatching(String regex) {
     Optional<String> message =
-        actual
-            .getLoggedMessages()
-            .stream()
+        actual.getLoggedMessages().stream()
             .filter(s -> Pattern.compile(regex).matcher(s).find())
             .findAny();
     assertThat(message)

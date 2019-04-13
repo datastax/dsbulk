@@ -174,8 +174,7 @@ public class WorkflowUtils {
   public static void checkProductCompatibility(Cluster cluster) {
     Set<Host> hosts = cluster.getMetadata().getAllHosts();
     List<Host> nonDseHosts =
-        hosts
-            .stream()
+        hosts.stream()
             .filter(
                 host ->
                     host.getDseVersion() == null && host.getCassandraVersion().getDSEPatch() <= 0)

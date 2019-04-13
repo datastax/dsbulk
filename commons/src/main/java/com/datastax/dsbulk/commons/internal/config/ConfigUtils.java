@@ -252,10 +252,7 @@ public class ConfigUtils {
    */
   @NotNull
   public static Optional<String> getTypeHint(@NotNull ConfigValue value) {
-    return value
-        .origin()
-        .comments()
-        .stream()
+    return value.origin().comments().stream()
         .filter(line -> line.contains(TYPE_ANNOTATION))
         .map(line -> line.replace("@type", ""))
         .map(String::trim)
@@ -270,10 +267,7 @@ public class ConfigUtils {
    */
   @NotNull
   public static String getComments(@NotNull ConfigValue value) {
-    return value
-        .origin()
-        .comments()
-        .stream()
+    return value.origin().comments().stream()
         .filter(line -> !line.contains(TYPE_ANNOTATION))
         .map(String::trim)
         .collect(Collectors.joining("\n"));

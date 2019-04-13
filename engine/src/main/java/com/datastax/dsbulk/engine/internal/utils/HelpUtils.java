@@ -63,9 +63,7 @@ public class HelpUtils {
             GROUPS.get(sectionName).getSettings(),
             SettingsUtils.getLongToShortOptionsMap(connectorName));
     Set<String> subSections =
-        GROUPS
-            .keySet()
-            .stream()
+        GROUPS.keySet().stream()
             .filter(s -> s.startsWith(sectionName + "."))
             .collect(Collectors.toSet());
     String footer = null;
@@ -83,8 +81,7 @@ public class HelpUtils {
       // Filter common settings to exclude settings for connectors other than connectorName.
       String settingPrefix = "connector." + connectorName + ".";
       commonSettings =
-          commonSettings
-              .stream()
+          commonSettings.stream()
               .filter(
                   name ->
                       name.startsWith(settingPrefix)
