@@ -744,10 +744,8 @@ public class SchemaSettings {
   }
 
   private boolean mutatesOnlyStaticColumns() {
-    if (queryInspector.getAssignments().isEmpty()) {
-      // not a mutating query (i.e. a SELECT query)
-      return false;
-    }
+    // this method should only be called for mutating queries
+    assert !queryInspector.getAssignments().isEmpty();
     for (CQLIdentifier column : queryInspector.getAssignments().keySet()) {
       ColumnMetadata col = table.getColumn(column.render(VARIABLE));
       if (table.getPartitionKey().contains(col)) {
