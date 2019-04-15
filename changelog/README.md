@@ -1,5 +1,10 @@
 ## Changelog
 
+### 1.3.4 (in progress)
+
+- [bug] DAT-414: DSBulk should allow INSERT queries without clustering column when all columns are static.
+
+
 ### 1.3.3
 
 - [bug] DAT-400: Export of varchar column containing JSON may truncate data.
