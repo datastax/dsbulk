@@ -31,9 +31,8 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
 import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
 import com.datastax.oss.driver.api.core.config.DriverOption;
+import com.datastax.oss.driver.api.core.config.ProgrammaticDriverConfigLoaderBuilder;
 import com.datastax.oss.driver.api.testinfra.ccm.CcmBridge;
-import com.datastax.oss.driver.api.testinfra.session.SessionUtils;
-import com.datastax.oss.driver.internal.core.config.typesafe.DefaultDriverConfigLoaderBuilder;
 import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
@@ -117,8 +116,8 @@ public abstract class SessionFactory {
       useKeyspaceMode = config.useKeyspace();
       loggedKeyspaceName = config.loggedKeyspaceName();
       // init-query-timeout is 500ms by default, which sometimes triggers in CI builds.
-      DefaultDriverConfigLoaderBuilder loaderBuilder =
-          SessionUtils.configLoaderBuilder()
+      ProgrammaticDriverConfigLoaderBuilder loaderBuilder =
+          DriverConfigLoader.programmaticBuilder()
               .withString(DefaultDriverOption.LOAD_BALANCING_LOCAL_DATACENTER, dcName)
               .withDuration(
                   DefaultDriverOption.CONNECTION_INIT_QUERY_TIMEOUT, Duration.ofSeconds(3));

@@ -29,6 +29,7 @@ import com.datastax.oss.protocol.internal.response.result.ColumnSpec;
 import com.datastax.oss.protocol.internal.response.result.RawType;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.util.Optional;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,7 +48,8 @@ class URIUtilsTest {
     Node node = mock(Node.class);
     PreparedStatement ps = mock(PreparedStatement.class);
     when(executionInfo.getCoordinator()).thenReturn(node);
-    when(node.getConnectAddress()).thenReturn(new InetSocketAddress("127.0.0.1", 9042));
+    when(node.getBroadcastAddress())
+        .thenReturn(Optional.of(new InetSocketAddress("127.0.0.1", 9042)));
 
     ColumnDefinition c1 =
         new DefaultColumnDefinition(

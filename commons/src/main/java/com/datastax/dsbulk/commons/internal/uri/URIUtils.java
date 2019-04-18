@@ -16,14 +16,17 @@ import com.datastax.oss.driver.api.core.cql.ExecutionInfo;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.data.GettableById;
+import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.driver.api.core.type.DataType;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
+import com.google.common.base.Preconditions;
 import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.util.Objects;
 
 public class URIUtils {
 
@@ -84,7 +87,12 @@ public class URIUtils {
    * @return The read result row resource URI.
    */
   public static URI getRowResource(Row row, ExecutionInfo executionInfo) {
-    InetSocketAddress host = executionInfo.getCoordinator().getConnectAddress();
+    Node coordinator = executionInfo.getCoordinator();
+    Objects.requireNonNull(coordinator);
+    Preconditions.checkArgument(
+        coordinator.getBroadcastAddress().isPresent(),
+        "BroadcastAddress of coordinator is not present.");
+    InetSocketAddress host = coordinator.getBroadcastAddress().get();
     ColumnDefinitions resultVariables = row.getColumnDefinitions();
     // this might break if the statement has no result variables (unlikely)
     // or if the first variable is not associated to a keyspace and table (also unlikely)
@@ -122,7 +130,7 @@ public class URIUtils {
    * @return The read result row location URI.
    */
   public static URI getRowLocation(Row row, ExecutionInfo executionInfo, Statement statement) {
-    InetSocketAddress host = executionInfo.getCoordinator().getConnectAddress();
+    InetSocketAddress host = executionInfo.getCoordinator().getBroadcastAddress().get();
     ColumnDefinitions resultVariables = row.getColumnDefinitions();
     CodecRegistry codecRegistry = row.codecRegistry();
     // this might break if the statement has no result variables (unlikely)
