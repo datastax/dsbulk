@@ -46,7 +46,7 @@ public class ListToTupleCodec<E> extends ConvertingCodec<List<E>, TupleValue> {
     for (E item : external) {
       ConvertingCodec<E, Object> eltCodec = elementCodecs.get(idx);
       Object o = eltCodec.externalToInternal(item);
-      tuple.set(idx, o, eltCodec.getInternalJavaType());
+      tuple = tuple.set(idx, o, eltCodec.getInternalJavaType());
       idx++;
     }
     return tuple;

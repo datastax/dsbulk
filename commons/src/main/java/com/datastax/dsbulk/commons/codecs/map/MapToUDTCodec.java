@@ -57,7 +57,7 @@ public class MapToUDTCodec<EK, EV> extends ConvertingCodec<Map<EK, EV>, UdtValue
       }
       ConvertingCodec<EV, Object> fieldCodec = fieldCodecs.get(udtFieldName);
       Object o = fieldCodec.externalToInternal(external.get(mapKey));
-      value.set(udtFieldName, o, fieldCodec.getInternalJavaType());
+      value = value.set(udtFieldName, o, fieldCodec.getInternalJavaType());
     }
     return value;
   }

@@ -18,9 +18,6 @@ import java.lang.annotation.Target;
 @Target(PARAMETER)
 public @interface SessionConfig {
 
-  /** The session configuration; each entry is of the form setting=value. */
-  String[] settings() default {};
-
   /**
    * The credentials to use. If set, the returned array should contain 2 elements, the first one
    * being the username, the second one being the password.
