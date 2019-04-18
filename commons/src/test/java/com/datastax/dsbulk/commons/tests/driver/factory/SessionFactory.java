@@ -138,7 +138,7 @@ public abstract class SessionFactory {
 
       if (config.ssl()) {
         for (Map.Entry<DriverOption, String> entry : SSL_OPTIONS.entrySet()) {
-          loaderBuilder.with(entry.getKey(), entry.getValue());
+          loaderBuilder.withString(entry.getKey(), entry.getValue());
         }
       }
       configLoader = loaderBuilder.build();
