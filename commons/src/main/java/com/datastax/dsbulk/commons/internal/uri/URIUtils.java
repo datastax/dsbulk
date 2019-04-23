@@ -16,17 +16,14 @@ import com.datastax.oss.driver.api.core.cql.ExecutionInfo;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.data.GettableById;
-import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.driver.api.core.type.DataType;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
-import com.google.common.base.Preconditions;
 import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLEncoder;
-import java.util.Objects;
 
 public class URIUtils {
 
@@ -71,43 +68,6 @@ public class URIUtils {
       // swallow, this should never happen for UTF-8
     }
     return URI.create(sb.toString());
-  }
-
-  /**
-   * Returns the resource {@link URI} of a row in a read result.
-   *
-   * <p>URIs returned by this method are of the following form:
-   *
-   * <pre>{@code
-   * cql://host:port/keyspace/table
-   * }</pre>
-   *
-   * @param row The row of the result
-   * @param executionInfo The execution info of the result
-   * @return The read result row resource URI.
-   */
-  public static URI getRowResource(Row row, ExecutionInfo executionInfo) {
-    Node coordinator = executionInfo.getCoordinator();
-    Objects.requireNonNull(coordinator);
-    Preconditions.checkArgument(
-        coordinator.getBroadcastAddress().isPresent(),
-        "BroadcastAddress of coordinator is not present.");
-    InetSocketAddress host = coordinator.getBroadcastAddress().get();
-    ColumnDefinitions resultVariables = row.getColumnDefinitions();
-    // this might break if the statement has no result variables (unlikely)
-    // or if the first variable is not associated to a keyspace and table (also unlikely)
-    CqlIdentifier keyspace = resultVariables.get(0).getKeyspace();
-    CqlIdentifier table = resultVariables.get(0).getTable();
-    String sb =
-        "cql://"
-            + host.getAddress().getHostAddress()
-            + ':'
-            + host.getPort()
-            + '/'
-            + keyspace
-            + '/'
-            + table;
-    return URI.create(sb);
   }
 
   /**
