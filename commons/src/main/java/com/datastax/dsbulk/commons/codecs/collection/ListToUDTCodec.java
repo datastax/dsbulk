@@ -46,7 +46,7 @@ public class ListToUDTCodec<E> extends ConvertingCodec<List<E>, UdtValue> {
     for (E item : external) {
       ConvertingCodec<E, Object> eltCodec = elementCodecs.get(idx);
       Object o = eltCodec.externalToInternal(item);
-      value.set(idx, o, eltCodec.getInternalJavaType());
+      value = value.set(idx, o, eltCodec.getInternalJavaType());
       idx++;
     }
     return value;

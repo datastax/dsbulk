@@ -71,38 +71,6 @@ public class URIUtils {
   }
 
   /**
-   * Returns the resource {@link URI} of a row in a read result.
-   *
-   * <p>URIs returned by this method are of the following form:
-   *
-   * <pre>{@code
-   * cql://host:port/keyspace/table
-   * }</pre>
-   *
-   * @param row The row of the result
-   * @param executionInfo The execution info of the result
-   * @return The read result row resource URI.
-   */
-  public static URI getRowResource(Row row, ExecutionInfo executionInfo) {
-    InetSocketAddress host = executionInfo.getCoordinator().getConnectAddress();
-    ColumnDefinitions resultVariables = row.getColumnDefinitions();
-    // this might break if the statement has no result variables (unlikely)
-    // or if the first variable is not associated to a keyspace and table (also unlikely)
-    CqlIdentifier keyspace = resultVariables.get(0).getKeyspace();
-    CqlIdentifier table = resultVariables.get(0).getTable();
-    String sb =
-        "cql://"
-            + host.getAddress().getHostAddress()
-            + ':'
-            + host.getPort()
-            + '/'
-            + keyspace
-            + '/'
-            + table;
-    return URI.create(sb);
-  }
-
-  /**
    * Returns the location {@link URI} of a row in a read result.
    *
    * <p>URIs returned by this method are of the following form:
@@ -122,7 +90,7 @@ public class URIUtils {
    * @return The read result row location URI.
    */
   public static URI getRowLocation(Row row, ExecutionInfo executionInfo, Statement statement) {
-    InetSocketAddress host = executionInfo.getCoordinator().getConnectAddress();
+    InetSocketAddress host = executionInfo.getCoordinator().getBroadcastAddress().get();
     ColumnDefinitions resultVariables = row.getColumnDefinitions();
     CodecRegistry codecRegistry = row.codecRegistry();
     // this might break if the statement has no result variables (unlikely)

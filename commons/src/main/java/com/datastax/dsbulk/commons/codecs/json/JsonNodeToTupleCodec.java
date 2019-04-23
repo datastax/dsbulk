@@ -51,7 +51,7 @@ public class JsonNodeToTupleCodec extends JsonNodeConvertingCodec<TupleValue> {
     for (int i = 0; i < size; i++) {
       ConvertingCodec<JsonNode, Object> eltCodec = eltCodecs.get(i);
       Object o = eltCodec.externalToInternal(node.get(i));
-      tuple.set(i, o, eltCodec.getInternalJavaType());
+      tuple = tuple.set(i, o, eltCodec.getInternalJavaType());
     }
     return tuple;
   }

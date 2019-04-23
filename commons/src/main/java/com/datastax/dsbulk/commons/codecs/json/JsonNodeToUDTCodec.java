@@ -66,7 +66,7 @@ public class JsonNodeToUDTCodec extends JsonNodeConvertingCodec<UdtValue> {
       }
       ConvertingCodec<JsonNode, Object> fieldCodec = fieldCodecs.get(name);
       Object o = fieldCodec.externalToInternal(entry.getValue());
-      value.set(name, o, fieldCodec.getInternalJavaType());
+      value = value.set(name, o, fieldCodec.getInternalJavaType());
     }
     return value;
   }

@@ -157,8 +157,7 @@ public class CsvUtils {
             record.getValue("ending IP Address", InetAddress.class, INET_CONVERTER),
             record.getLong("beginning IP Number"),
             record.getLong("ending IP Number"));
-    statement.setIdempotent(true);
-    return statement;
+    return statement.setIdempotent(true);
   }
 
   private static SimpleStatement toSimpleStatement(Record record) {
@@ -171,8 +170,7 @@ public class CsvUtils {
             record.getValue("ending IP Address", InetAddress.class, INET_CONVERTER),
             record.getLong("beginning IP Number"),
             record.getLong("ending IP Number"));
-    statement.setIdempotent(true);
-    return statement;
+    return statement.setIdempotent(true);
   }
 
   private static String toQuery(Record record) {

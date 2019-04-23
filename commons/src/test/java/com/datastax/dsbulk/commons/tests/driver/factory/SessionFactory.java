@@ -31,12 +31,9 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
 import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
 import com.datastax.oss.driver.api.core.config.DriverOption;
+import com.datastax.oss.driver.api.core.config.ProgrammaticDriverConfigLoaderBuilder;
 import com.datastax.oss.driver.api.testinfra.ccm.CcmBridge;
-import com.datastax.oss.driver.api.testinfra.session.SessionUtils;
-import com.datastax.oss.driver.internal.core.config.typesafe.DefaultDriverConfigLoaderBuilder;
 import com.google.common.collect.ImmutableMap;
-import com.typesafe.config.Config;
-import com.typesafe.config.ConfigFactory;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -117,17 +114,11 @@ public abstract class SessionFactory {
       useKeyspaceMode = config.useKeyspace();
       loggedKeyspaceName = config.loggedKeyspaceName();
       // init-query-timeout is 500ms by default, which sometimes triggers in CI builds.
-      DefaultDriverConfigLoaderBuilder loaderBuilder =
-          SessionUtils.configLoaderBuilder()
+      ProgrammaticDriverConfigLoaderBuilder loaderBuilder =
+          DriverConfigLoader.programmaticBuilder()
               .withString(DefaultDriverOption.LOAD_BALANCING_LOCAL_DATACENTER, dcName)
               .withDuration(
                   DefaultDriverOption.CONNECTION_INIT_QUERY_TIMEOUT, Duration.ofSeconds(3));
-      for (String opt : config.settings()) {
-        Config keyAndVal = ConfigFactory.parseString(opt);
-        keyAndVal
-            .entrySet()
-            .forEach(entry -> loaderBuilder.with(entry.getKey(), entry.getValue().unwrapped()));
-      }
 
       String[] credentials = computeCredentials(config.credentials());
       if (credentials != null) {
@@ -139,7 +130,7 @@ public abstract class SessionFactory {
 
       if (config.ssl()) {
         for (Map.Entry<DriverOption, String> entry : SSL_OPTIONS.entrySet()) {
-          loaderBuilder.with(entry.getKey(), entry.getValue());
+          loaderBuilder.withString(entry.getKey(), entry.getValue());
         }
       }
       configLoader = loaderBuilder.build();
