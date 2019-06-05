@@ -63,7 +63,7 @@
     <lz4.version>1.5.1</lz4.version>
     <snappy.version>1.1.7.3</snappy.version>
     <hdr.version>2.1.11</hdr.version>
-    <jackson.version>2.9.8</jackson.version>
+    <jackson.version>2.9.9</jackson.version>
     <junit.version>5.4.1</junit.version>
     <univocity.version>2.7.6</univocity.version>
     <assertj.version>3.12.2</assertj.version>
