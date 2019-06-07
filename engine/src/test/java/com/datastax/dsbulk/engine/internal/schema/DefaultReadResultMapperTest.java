@@ -25,9 +25,7 @@ import com.datastax.driver.core.Host;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.TypeCodec;
-import com.datastax.driver.core.exceptions.CodecNotFoundException;
 import com.datastax.driver.core.exceptions.InvalidTypeException;
-import com.datastax.driver.core.utils.Bytes;
 import com.datastax.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
@@ -36,6 +34,7 @@ import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -58,9 +57,9 @@ class DefaultReadResultMapperTest {
   private RecordMetadata recordMetadata;
   private ReadResult result;
   private Row row;
+  private TypeCodec<Integer> codec1;
 
   @BeforeEach
-  @SuppressWarnings("unchecked")
   void setUp() {
     recordMetadata =
         new TestRecordMetadata(
@@ -87,8 +86,8 @@ class DefaultReadResultMapperTest {
     when(mapping.variableToFields(C1_ID)).thenReturn(singleton(F0));
     when(mapping.variableToFields(C2_ID)).thenReturn(singleton(F1));
     when(mapping.variableToFields(C3_ID)).thenReturn(singleton(F2));
-    TypeCodec codec1 = TypeCodec.cint();
-    TypeCodec codec2 = TypeCodec.varchar();
+    codec1 = TypeCodec.cint();
+    TypeCodec<String> codec2 = TypeCodec.varchar();
     when(mapping.codec(C1_ID, DataType.cint(), TypeToken.of(Integer.class))).thenReturn(codec1);
     when(mapping.codec(C2_ID, DataType.varchar(), TypeToken.of(String.class))).thenReturn(codec2);
     when(mapping.codec(C3_ID, DataType.varchar(), TypeToken.of(String.class))).thenReturn(codec2);
@@ -130,16 +129,19 @@ class DefaultReadResultMapperTest {
 
   @Test
   void should_map_result_to_error_record_when_mapping_fails() {
-    CodecNotFoundException exception =
-        new CodecNotFoundException("not really", DataType.varchar(), TypeToken.of(String.class));
-    when(mapping.codec(C3_ID, DataType.varchar(), TypeToken.of(String.class))).thenThrow(exception);
+    // emulate a bad mapping (bad writetime variable) - see DefaultMapping
+    String msg = "Cannot create a WriteTimeCodec for int";
+    IllegalArgumentException error = new IllegalArgumentException(msg);
+    when(mapping.codec(C1_ID, DataType.cint(), TypeToken.of(Integer.class))).thenThrow(error);
     DefaultReadResultMapper mapper = new DefaultReadResultMapper(mapping, recordMetadata);
     ErrorRecord record = (ErrorRecord) mapper.map(result);
     assertThat(record.getError())
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
-            "Could not deserialize column \"My Fancy Column Name\" of type varchar as java.lang.String (raw value was: null)")
-        .hasRootCauseInstanceOf(CodecNotFoundException.class);
+            "Could not deserialize column col1 of type int as java.lang.Integer (raw value was: NULL)")
+        .hasCauseInstanceOf(IllegalArgumentException.class);
+    Throwable cause = record.getError().getCause();
+    assertThat(cause).hasMessage(msg);
     assertThat(record.getSource()).isSameAs(result);
     assertThat(record.getResource())
         .hasScheme("cql")
@@ -151,16 +153,25 @@ class DefaultReadResultMapperTest {
 
   @Test
   void should_map_result_to_error_record_when_deser_fails() {
-    InvalidTypeException exception = new InvalidTypeException("could not deserialize this");
-    when(row.get(C3_ID.render(VARIABLE), TypeCodec.varchar())).thenThrow(exception);
-    when(row.getBytesUnsafe(C3_ID.render(VARIABLE))).thenReturn(Bytes.fromHexString("0xCAFEBABE"));
+    // emulate bad byte buffer contents when deserializing a 4-byte integer
+    String msg = "Invalid 32-bits integer value, expecting 4 bytes but got 21";
+    InvalidTypeException error = new InvalidTypeException(msg);
+    when(row.get(C1_ID.render(VARIABLE), codec1)).thenThrow(error);
+    // should be truncated to only 20 bytes (i.e., 0x15 should not appear in the message)
+    byte[] array = {
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15
+    };
+    when(row.getBytesUnsafe(C1_ID.render(VARIABLE))).thenReturn(ByteBuffer.wrap(array));
     DefaultReadResultMapper mapper = new DefaultReadResultMapper(mapping, recordMetadata);
     ErrorRecord record = (ErrorRecord) mapper.map(result);
     assertThat(record.getError())
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
-            "Could not deserialize column \"My Fancy Column Name\" of type varchar as java.lang.String (raw value was: 0xcafebabe)")
-        .hasRootCauseInstanceOf(InvalidTypeException.class);
+            "Could not deserialize column col1 of type int as java.lang.Integer (raw value was: "
+                + "0x0102030405060708090a0b0c0d0e0f1011121314...)")
+        .hasCauseInstanceOf(InvalidTypeException.class);
+    Throwable cause = record.getError().getCause();
+    assertThat(cause).hasMessage(msg);
     assertThat(record.getSource()).isSameAs(result);
     assertThat(record.getResource())
         .hasScheme("cql")

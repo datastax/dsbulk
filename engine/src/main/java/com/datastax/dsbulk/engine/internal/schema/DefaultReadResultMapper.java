@@ -37,6 +37,7 @@ public class DefaultReadResultMapper implements ReadResultMapper {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultReadResultMapper.class);
   private static final URI UNKNOWN_ROW_RESOURCE = URI.create("cql://unknown");
+  private static final int MAX_BUFFER_LENGTH = 20;
 
   private final Mapping mapping;
   private final RecordMetadata recordMetadata;
@@ -67,12 +68,10 @@ public class DefaultReadResultMapper implements ReadResultMapper {
             Object value = row.get(name, codec);
             record.setFieldValue(field, value);
           } catch (Exception e) {
-            ByteBuffer bb = row.getBytesUnsafe(name);
-            String bytes = Bytes.toHexString(bb);
             String msg =
                 String.format(
                     "Could not deserialize column %s of type %s as %s (raw value was: %s)",
-                    name, cqlType, fieldType, bytes);
+                    name, cqlType, fieldType, formatRawColumnBytes(row.getBytesUnsafe(name)));
             throw new IllegalArgumentException(msg, e);
           }
         }
@@ -81,6 +80,19 @@ public class DefaultReadResultMapper implements ReadResultMapper {
     } catch (Exception e) {
       return new DefaultErrorRecord(result, resource, -1, e);
     }
+  }
+
+  private static String formatRawColumnBytes(ByteBuffer bb) {
+    if (bb == null) {
+      return "NULL";
+    }
+    boolean tooLong = false;
+    if (bb.remaining() > MAX_BUFFER_LENGTH) {
+      tooLong = true;
+      bb = bb.duplicate();
+      bb.limit(bb.position() + MAX_BUFFER_LENGTH);
+    }
+    return Bytes.toHexString(bb) + (tooLong ? "..." : "");
   }
 
   /**
