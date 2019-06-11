@@ -14,6 +14,7 @@ import static com.datastax.dsbulk.engine.internal.log.row.RowFormatterSymbols.va
 
 import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.ColumnDefinitions;
+import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Row;
 import org.slf4j.Logger;
@@ -112,7 +113,23 @@ public final class RowFormatter {
         for (int i = 0; i < metadata.size(); i++) {
           out.newLine();
           out.indent();
-          out.appendValue(metadata.getName(i), row.getObject(i), metadata.getType(i));
+          String name = metadata.getName(i);
+          DataType type = metadata.getType(i);
+          Object value = null;
+          boolean malformed = false;
+          try {
+            value = row.getObject(i);
+          } catch (Exception e) {
+            // This means that the row contains a malformed buffer for column i
+            malformed = true;
+          }
+          if (malformed) {
+            // instead of failing, print the raw bytes.
+            out.appendValue(name, row.getBytesUnsafe(i), DataType.blob());
+            out.append(" (malformed buffer for type ").append(String.valueOf(type)).append(")");
+          } else {
+            out.appendValue(name, value, type);
+          }
           if (out.maxAppendedValuesExceeded()) {
             break;
           }

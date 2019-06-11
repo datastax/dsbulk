@@ -22,6 +22,7 @@ import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.TypeCodec;
+import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.driver.core.utils.Bytes;
 import com.datastax.dsbulk.engine.internal.log.DataTypesProvider;
 import org.jetbrains.annotations.NotNull;
@@ -105,6 +106,21 @@ class RowFormatterTest {
     when(row.getObject(0)).thenReturn(Bytes.fromHexString("0xCAFEBABE"));
     String s = formatter.format(row, version, codecRegistry);
     assertThat(s).contains("c1: 0xca...");
+  }
+
+  @Test
+  void should_format_malformed_byte_buffer() {
+    RowFormatter formatter = new RowFormatter();
+    Row row = mock(Row.class);
+    ColumnDefinitions cd = mock(ColumnDefinitions.class);
+    when(row.getColumnDefinitions()).thenReturn(cd);
+    when(cd.size()).thenReturn(1);
+    when(cd.getName(0)).thenReturn("c1");
+    when(cd.getType(0)).thenReturn(cint());
+    when(row.getObject(0)).thenThrow(new InvalidTypeException("Invalid 32-bits integer value, expecting 4 bytes but got 5"));
+    when(row.getBytesUnsafe(0)).thenReturn(Bytes.fromHexString("0x0102030405"));
+    String s = formatter.format(row, version, codecRegistry);
+    assertThat(s).contains("c1: 0x0102030405 (malformed buffer for type int)");
   }
 
   // Data types

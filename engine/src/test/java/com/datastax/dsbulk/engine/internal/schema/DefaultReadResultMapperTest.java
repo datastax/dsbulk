@@ -137,8 +137,7 @@ class DefaultReadResultMapperTest {
     ErrorRecord record = (ErrorRecord) mapper.map(result);
     assertThat(record.getError())
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage(
-            "Could not deserialize column col1 of type int as java.lang.Integer (raw value was: NULL)")
+        .hasMessage("Could not deserialize column col1 of type int as java.lang.Integer")
         .hasCauseInstanceOf(IllegalArgumentException.class);
     Throwable cause = record.getError().getCause();
     assertThat(cause).hasMessage(msg);
@@ -154,21 +153,16 @@ class DefaultReadResultMapperTest {
   @Test
   void should_map_result_to_error_record_when_deser_fails() {
     // emulate bad byte buffer contents when deserializing a 4-byte integer
-    String msg = "Invalid 32-bits integer value, expecting 4 bytes but got 21";
+    String msg = "Invalid 32-bits integer value, expecting 4 bytes but got 5";
     InvalidTypeException error = new InvalidTypeException(msg);
     when(row.get(C1_ID.render(VARIABLE), codec1)).thenThrow(error);
-    // should be truncated to only 20 bytes (i.e., 0x15 should not appear in the message)
-    byte[] array = {
-      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15
-    };
+    byte[] array = {1, 2, 3, 4, 5};
     when(row.getBytesUnsafe(C1_ID.render(VARIABLE))).thenReturn(ByteBuffer.wrap(array));
     DefaultReadResultMapper mapper = new DefaultReadResultMapper(mapping, recordMetadata);
     ErrorRecord record = (ErrorRecord) mapper.map(result);
     assertThat(record.getError())
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage(
-            "Could not deserialize column col1 of type int as java.lang.Integer (raw value was: "
-                + "0x0102030405060708090a0b0c0d0e0f1011121314...)")
+        .hasMessage("Could not deserialize column col1 of type int as java.lang.Integer")
         .hasCauseInstanceOf(InvalidTypeException.class);
     Throwable cause = record.getError().getCause();
     assertThat(cause).hasMessage(msg);
