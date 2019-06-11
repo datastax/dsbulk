@@ -543,11 +543,15 @@ class LogManagerTest {
             statementFormatter,
             EXTENDED,
             rowFormatter);
-    InvalidTypeException error =
+    // Emulate bad row with corrupted data, see DefaultReadResultMapper
+    InvalidTypeException ite =
         new InvalidTypeException("Invalid 32-bits integer value, expecting 4 bytes but got 5");
-    when(row1.getObject(0)).thenThrow(error);
+    IllegalArgumentException iae =
+        new IllegalArgumentException(
+            "Could not deserialize column c1 of type int as java.lang.Integer", ite);
+    when(row1.getObject(0)).thenThrow(ite);
     when(row1.getBytesUnsafe(0)).thenReturn(ByteBuffer.wrap(new byte[] {1, 2, 3, 4, 5}));
-    rowRecord1 = new DefaultErrorRecord(successfulReadResult1, () -> resource1, 1, error);
+    rowRecord1 = new DefaultErrorRecord(successfulReadResult1, () -> resource1, 1, iae);
     logManager.init();
     Flux<Record> stmts = Flux.just(rowRecord1);
     stmts.transform(logManager.newUnmappableRecordsHandler()).blockLast();
@@ -561,7 +565,8 @@ class LogManagerTest {
     assertThat(content)
         .contains("SELECT 1")
         .contains("c1: 0x0102030405 (malformed buffer for type int)")
-        .contains(error.getMessage());
+        .contains(iae.getMessage())
+        .contains(ite.getMessage());
   }
 
   @Test
