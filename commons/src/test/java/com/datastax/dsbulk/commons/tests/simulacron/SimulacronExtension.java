@@ -78,10 +78,7 @@ public class SimulacronExtension extends RemoteClusterExtension implements After
 
   @Override
   protected int getBinaryPort(ExtensionContext context) {
-    return getOrCreateBoundCluster(context)
-        .dc(0)
-        .getNodes()
-        .stream()
+    return getOrCreateBoundCluster(context).dc(0).getNodes().stream()
         .map(BoundNode::port)
         .findFirst()
         .orElse(9042);
@@ -89,10 +86,7 @@ public class SimulacronExtension extends RemoteClusterExtension implements After
 
   @Override
   protected List<InetAddress> getContactPoints(ExtensionContext context) {
-    return getOrCreateBoundCluster(context)
-        .dc(0)
-        .getNodes()
-        .stream()
+    return getOrCreateBoundCluster(context).dc(0).getNodes().stream()
         .map(BoundNode::inet)
         .collect(Collectors.toList());
   }

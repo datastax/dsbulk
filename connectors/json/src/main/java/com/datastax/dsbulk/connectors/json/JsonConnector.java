@@ -366,9 +366,7 @@ public class JsonConnector implements Connector {
                   JsonNode node = it.next();
                   Map<String, JsonNode> values = objectMapper.convertValue(node, jsonNodeMapType);
                   Map<MappedField, JsonNode> fields =
-                      values
-                          .entrySet()
-                          .stream()
+                      values.entrySet().stream()
                           .collect(
                               Collectors.toMap(
                                   e -> new DefaultMappedField(e.getKey()), Entry::getValue));

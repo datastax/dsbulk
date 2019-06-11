@@ -359,7 +359,7 @@ public class SchemaSettings {
     }
     return new DefaultRecordMapper(
         preparedStatement,
-        primaryKeyVariables(),
+        mutatesOnlyStaticColumns() ? partitionKeyVariables() : primaryKeyVariables(),
         mapping,
         recordMetadata,
         nullToUnset,
@@ -466,9 +466,7 @@ public class SchemaSettings {
       // preparation
       fieldsToVariables =
           createFieldsToVariablesMap(
-              table
-                  .getColumns()
-                  .stream()
+              table.getColumns().stream()
                   .filter(col -> !isDSESearchPseudoColumn(col))
                   .map(ColumnMetadata::getName)
                   .map(CQLIdentifier::fromInternal)
@@ -533,9 +531,7 @@ public class SchemaSettings {
         if (queryInspector.isSelectStar()) {
           fieldsToVariables =
               createFieldsToVariablesMap(
-                  table
-                      .getColumns()
-                      .stream()
+                  table.getColumns().stream()
                       .map(ColumnMetadata::getName)
                       .map(CQLIdentifier::fromInternal)
                       .collect(Collectors.toList()));
@@ -561,7 +557,13 @@ public class SchemaSettings {
       }
       // validate user-provided query
       if (workflowType == LOAD) {
-        validatePrimaryKeyPresent(fieldsToVariables);
+        if (mutatesOnlyStaticColumns()) {
+          // DAT-414: mutations that only affect static columns are allowed
+          // to skip the clustering columns, only the partition key should be present.
+          validatePartitionKeyPresent(fieldsToVariables);
+        } else {
+          validatePrimaryKeyPresent(fieldsToVariables);
+        }
       }
     }
     assert fieldsToVariables != null;
@@ -590,9 +592,7 @@ public class SchemaSettings {
   }
 
   private boolean isCounterTable() {
-    return table
-        .getColumns()
-        .stream()
+    return table.getColumns().stream()
         .anyMatch(c -> c.getType().getName() == DataType.Name.COUNTER);
   }
 
@@ -645,9 +645,7 @@ public class SchemaSettings {
     KeyspaceMetadata keyspace = metadata.getKeyspace(quoteIfNecessary(keyspaceName));
     if (keyspace == null) {
       Optional<KeyspaceMetadata> match =
-          metadata
-              .getKeyspaces()
-              .stream()
+          metadata.getKeyspaces().stream()
               .filter(k -> k.getName().equalsIgnoreCase(keyspaceName))
               .findFirst();
       if (match.isPresent()) {
@@ -673,9 +671,7 @@ public class SchemaSettings {
         table = keyspace.getMaterializedView(quoteIfNecessary(tableName));
         if (table == null) {
           Optional<MaterializedViewMetadata> match =
-              keyspace
-                  .getMaterializedViews()
-                  .stream()
+              keyspace.getMaterializedViews().stream()
                   .filter(t -> t.getName().equalsIgnoreCase(tableName))
                   .findFirst();
           if (match.isPresent()) {
@@ -693,9 +689,7 @@ public class SchemaSettings {
         }
       } else {
         Optional<TableMetadata> match =
-            keyspace
-                .getTables()
-                .stream()
+            keyspace.getTables().stream()
                 .filter(t -> t.getName().equalsIgnoreCase(tableName))
                 .findFirst();
         if (match.isPresent()) {
@@ -737,12 +731,38 @@ public class SchemaSettings {
         });
   }
 
+  private boolean mutatesOnlyStaticColumns() {
+    // this method should only be called for mutating queries
+    assert !queryInspector.getAssignments().isEmpty();
+    for (CQLIdentifier column : queryInspector.getAssignments().keySet()) {
+      ColumnMetadata col = table.getColumn(column.render(VARIABLE));
+      if (table.getPartitionKey().contains(col)) {
+        // partition key should always be present
+        continue;
+      }
+      if (!col.isStatic()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   private void validatePrimaryKeyPresent(
       ImmutableMultimap<MappingField, CQLFragment> fieldsToVariables) {
-    List<ColumnMetadata> partitionKey = table.getPrimaryKey();
+    validateKeyPresent(fieldsToVariables, table.getPrimaryKey());
+  }
+
+  private void validatePartitionKeyPresent(
+      ImmutableMultimap<MappingField, CQLFragment> fieldsToVariables) {
+    validateKeyPresent(fieldsToVariables, table.getPartitionKey());
+  }
+
+  private void validateKeyPresent(
+      ImmutableMultimap<MappingField, CQLFragment> fieldsToVariables,
+      List<ColumnMetadata> columns) {
     Collection<CQLFragment> mappingVariables = fieldsToVariables.values();
     Map<CQLIdentifier, CQLFragment> queryVariables = queryInspector.getAssignments();
-    for (ColumnMetadata pk : partitionKey) {
+    for (ColumnMetadata pk : columns) {
       CQLIdentifier pkVariable = CQLIdentifier.fromInternal(pk.getName());
       CQLFragment queryVariable = queryVariables.get(pkVariable);
       // the provided query did not contain such column
@@ -753,8 +773,8 @@ public class SchemaSettings {
                 + " from schema.mapping or schema.query");
       }
       // do not check if the mapping contains a PK
-      // if the PK is mapped to a function in the query (DAT-326)
-      if (!(queryVariable instanceof FunctionCall)) {
+      // if the PK is mapped to a function or a literal in the query (DAT-326)
+      if (queryVariable instanceof CQLIdentifier) {
         // the mapping did not contain such column
         if (!mappingVariables.contains(queryVariable)) {
           throw new BulkConfigurationException(
@@ -833,9 +853,7 @@ public class SchemaSettings {
     boolean isFirst = true;
     CQLRenderMode assignment = protocolVersion != V1 ? NAMED_ASSIGNMENT : POSITIONAL_ASSIGNMENT;
     List<CQLFragment> pks =
-        table
-            .getPrimaryKey()
-            .stream()
+        table.getPrimaryKey().stream()
             .map(ColumnMetadata::getName)
             .map(CQLIdentifier::fromInternal)
             .collect(Collectors.toList());
@@ -969,10 +987,17 @@ public class SchemaSettings {
   }
 
   private Set<CQLIdentifier> primaryKeyVariables() {
+    return columnsToVariables(table.getPrimaryKey());
+  }
+
+  private Set<CQLIdentifier> partitionKeyVariables() {
+    return columnsToVariables(table.getPartitionKey());
+  }
+
+  private Set<CQLIdentifier> columnsToVariables(List<ColumnMetadata> columns) {
     Map<CQLIdentifier, CQLFragment> boundVariables = queryInspector.getAssignments();
-    List<ColumnMetadata> primaryKeyColumns = table.getPrimaryKey();
-    Set<CQLIdentifier> variables = new HashSet<>(primaryKeyColumns.size());
-    for (ColumnMetadata column : primaryKeyColumns) {
+    Set<CQLIdentifier> variables = new HashSet<>(columns.size());
+    for (ColumnMetadata column : columns) {
       CQLFragment variable = boundVariables.get(CQLIdentifier.fromInternal(column.getName()));
       if (variable instanceof CQLIdentifier) {
         variables.add((CQLIdentifier) variable);

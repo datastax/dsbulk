@@ -136,9 +136,7 @@ public class CodecSettings {
 
       // boolean
       booleanNumbers =
-          config
-              .getStringList(BOOLEAN_NUMBERS)
-              .stream()
+          config.getStringList(BOOLEAN_NUMBERS).stream()
               .map(BigDecimal::new)
               .collect(Collectors.toList());
       if (booleanNumbers.size() != 2) {

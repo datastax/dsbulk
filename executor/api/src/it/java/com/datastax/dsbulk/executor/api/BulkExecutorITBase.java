@@ -1101,16 +1101,14 @@ public abstract class BulkExecutorITBase {
     List<WriteResult> values = captor.getAllValues();
     assertThat(values.stream().filter(Result::isSuccess).count()).isEqualTo(expectedSuccessful);
     assertThat(values.stream().filter(r -> !r.isSuccess()).count()).isEqualTo(expectedFailed);
-    values
-        .stream()
+    values.stream()
         .filter(Result::isSuccess)
         .forEach(
             r -> {
               assertThat(r.getError().isPresent()).isFalse();
               assertThat(r.getExecutionInfo().isPresent()).isTrue();
             });
-    values
-        .stream()
+    values.stream()
         .filter(r -> !r.isSuccess())
         .forEach(
             r -> {
@@ -1126,16 +1124,14 @@ public abstract class BulkExecutorITBase {
     List<ReadResult> values = captor.getAllValues();
     assertThat(values.stream().filter(Result::isSuccess).count()).isEqualTo(expectedSuccessful);
     assertThat(values.stream().filter(r -> !r.isSuccess()).count()).isEqualTo(expectedFailed);
-    values
-        .stream()
+    values.stream()
         .filter(Result::isSuccess)
         .forEach(
             r -> {
               assertThat(r.getError().isPresent()).isFalse();
               assertThat(r.getRow().isPresent()).isTrue();
             });
-    values
-        .stream()
+    values.stream()
         .filter(r -> !r.isSuccess())
         .forEach(
             r -> {

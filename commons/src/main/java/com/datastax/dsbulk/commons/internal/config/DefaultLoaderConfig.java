@@ -252,9 +252,7 @@ public class DefaultLoaderConfig implements LoaderConfig {
 
   @Override
   public List<? extends LoaderConfig> getConfigList(String path) {
-    return delegate
-        .getConfigList(path)
-        .stream()
+    return delegate.getConfigList(path).stream()
         .map(DefaultLoaderConfig::new)
         .collect(Collectors.toList());
   }

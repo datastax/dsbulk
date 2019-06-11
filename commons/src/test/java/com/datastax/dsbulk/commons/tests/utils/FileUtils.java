@@ -29,8 +29,7 @@ public class FileUtils {
   }
 
   public static String readFile(Path file, Charset charset) throws IOException {
-    return Files.readAllLines(file, charset)
-        .stream()
+    return Files.readAllLines(file, charset).stream()
         .collect(Collectors.joining(System.lineSeparator()));
   }
 
@@ -63,8 +62,7 @@ public class FileUtils {
 
   public static Stream<String> readAllLinesInDirectoryAsStreamExcludingHeaders(
       Path dir, Charset charset) throws IOException {
-    return listAllFilesInDirectory(dir)
-        .stream()
+    return listAllFilesInDirectory(dir).stream()
         .flatMap(file -> readAllLines(file, charset).skip(1));
   }
 

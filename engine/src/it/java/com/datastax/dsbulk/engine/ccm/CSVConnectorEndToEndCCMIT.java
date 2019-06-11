@@ -98,6 +98,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 @ExtendWith(LogInterceptingExtension.class)
 @ExtendWith(StreamInterceptingExtension.class)
@@ -2168,6 +2170,40 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(row2.isNull(0)).isFalse();
   }
 
+  /** Test for DAT-414 * */
+  @Test
+  void delete_static_column() {
+
+    session.execute("DROP TABLE IF EXISTS test_delete");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS test_delete (pk int, cc int, v int, s int static, PRIMARY KEY (pk, cc))");
+    session.execute("INSERT INTO test_delete (pk, cc, v, s) VALUES (1,1,1,1)");
+
+    MockConnector.mockReads(mappedCSV("pk", "1"));
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.name");
+    args.add("mock");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.query");
+    args.add("DELETE s FROM test_delete WHERE pk = ?");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_OK);
+
+    Row row = session.execute("SELECT * FROM test_delete WHERE pk = 1 AND cc = 1").one();
+    assertThat(row).isNotNull();
+    // should have deleted only the static column
+    assertThat(row.getInt("pk")).isEqualTo(1);
+    assertThat(row.getInt("cc")).isEqualTo(1);
+    assertThat(row.getInt("v")).isEqualTo(1);
+    assertThat(row.isNull("s")).isTrue();
+  }
+
   @Test
   void batch_with_custom_query() {
 
@@ -2629,6 +2665,162 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
+  }
+
+  /** Test for DAT-326. */
+  @Test
+  void literal_mapped_to_primary_key_with_custom_query() {
+
+    session.execute("DROP TABLE IF EXISTS dat326d");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS dat326d (pk int, cc int, v int, PRIMARY KEY (pk, cc))");
+
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            quoteJson(logDir),
+            "-header",
+            "true",
+            "--connector.csv.url",
+            quoteJson(getClass().getResource("/function-pk.csv")),
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            "INSERT INTO dat326d (pk, cc, v) VALUES (:pk, 42, :v)");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+  }
+
+  /** Test for DAT-414. */
+  @ParameterizedTest
+  @CsvSource(
+      value = {
+        "INSERT INTO dat414 (\"PK\", \"CC\", \"V\") VALUES (:\"PK\", :\"CC\", :\"V\")|INSERT INTO dat414 (\"PK\", \"S\") VALUES (:\"PK\", :\"S\")",
+        "UPDATE dat414 SET \"V\" = :\"V\" WHERE \"PK\" = :\"PK\" AND \"CC\" = :\"CC\"|UPDATE dat414 SET \"S\" = :\"S\" WHERE \"PK\" = :\"PK\""
+      },
+      delimiter = '|')
+  void static_columns_full_round_trip(String insertRegular, String insertStatic) throws Exception {
+
+    session.execute("DROP TABLE IF EXISTS dat414");
+    session.execute(
+        "CREATE TABLE dat414 (\"PK\" int, \"CC\" int, \"V\" int, \"S\" int static, PRIMARY KEY (\"PK\", \"CC\"))");
+    // row with static and regular columns set
+    session.execute("INSERT INTO dat414 (\"PK\", \"CC\", \"V\", \"S\") VALUES (1,1,1,1)");
+    // row with only regular columns set
+    session.execute("INSERT INTO dat414 (\"PK\", \"CC\", \"V\") VALUES (2,2,2)");
+    // row with only static columns set
+    session.execute("INSERT INTO dat414 (\"PK\", \"S\") VALUES (3,3)");
+
+    Path unloadRegular = createTempDirectory("unload-regular");
+    Path unloadStatic = createTempDirectory("unload-static");
+
+    // unload regular columns only
+    List<String> args =
+        Lists.newArrayList(
+            "unload",
+            "--log.directory",
+            quoteJson(logDir),
+            "-header",
+            "true",
+            "--connector.csv.url",
+            quoteJson(unloadRegular),
+            "--connector.csv.maxConcurrentFiles",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            quoteJson("SELECT \"PK\", \"CC\", \"V\" from dat414"));
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+
+    // unload static columns only
+    args =
+        Lists.newArrayList(
+            "unload",
+            "--log.directory",
+            quoteJson(logDir),
+            "-header",
+            "true",
+            "--connector.csv.url",
+            quoteJson(unloadStatic),
+            "--connector.csv.maxConcurrentFiles",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            quoteJson("SELECT \"PK\", \"S\" from dat414"));
+
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+
+    session.execute("TRUNCATE dat414");
+
+    // load regular columns only
+    args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            quoteJson(logDir),
+            "-header",
+            "true",
+            "--connector.csv.url",
+            quoteJson(unloadRegular),
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            quoteJson(insertRegular));
+
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isOne();
+    // should reject the line '3,null,null' as it has a null clustering column
+    validateNumberOfBadRecords(1);
+
+    // load static columns only
+    args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            quoteJson(logDir),
+            "-header",
+            "true",
+            "--connector.csv.url",
+            quoteJson(unloadStatic),
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            quoteJson(insertStatic));
+
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+
+    List<Row> rows = session.execute("SELECT * FROM dat414").all();
+    assertThat(rows)
+        .anySatisfy(
+            row -> {
+              assertThat(row.getInt("\"PK\"")).isEqualTo(1);
+              assertThat(row.getInt("\"CC\"")).isEqualTo(1);
+              assertThat(row.getInt("\"V\"")).isEqualTo(1);
+              assertThat(row.getInt("\"S\"")).isEqualTo(1);
+            });
+    assertThat(rows)
+        .anySatisfy(
+            row -> {
+              assertThat(row.getInt("\"PK\"")).isEqualTo(2);
+              assertThat(row.getInt("\"CC\"")).isEqualTo(2);
+              assertThat(row.getInt("\"V\"")).isEqualTo(2);
+              assertThat(row.isNull("\"S\"")).isTrue();
+            });
+    assertThat(rows)
+        .anySatisfy(
+            row -> {
+              assertThat(row.getInt("\"PK\"")).isEqualTo(3);
+              assertThat(row.isNull("\"CC\"")).isTrue();
+              assertThat(row.isNull("\"V\"")).isTrue();
+              assertThat(row.getInt("\"S\"")).isEqualTo(3);
+            });
   }
 
   @Test

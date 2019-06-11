@@ -45,36 +45,35 @@
     When upgrading library versions make sure the resulting binary tarball contains only
     required jars, and that no jar has an offending license.
     -->
-    <driver.version>1.8.0-beta2-1071ef0c4-dsbulk</driver.version>
+    <driver.version>1.8.1</driver.version>
     <reactive-streams.version>1.0.2</reactive-streams.version>
-    <rx-java.version>2.2.2</rx-java.version>
+    <rx-java.version>2.2.8</rx-java.version>
     <rx-java-extensions.version>0.20.5</rx-java-extensions.version>
     <reactor.version>Californium-RELEASE</reactor.version>
     <config.version>1.3.3</config.version>
     <guava.version>26.0-jre</guava.version>
-    <netty.version>4.1.30.Final</netty.version>
-    <caffeine.version>2.6.2</caffeine.version>
+    <netty.version>4.1.34.Final</netty.version>
+    <caffeine.version>2.7.0</caffeine.version>
     <jctools.version>2.1.2</jctools.version>
     <jnr-ffi.version>2.1.9</jnr-ffi.version>
-    <jnr-posix.version>3.0.46</jnr-posix.version>
-    <slf4j.version>1.7.25</slf4j.version>
+    <jnr-posix.version>3.0.49</jnr-posix.version>
+    <slf4j.version>1.7.26</slf4j.version>
     <logback.version>1.2.3</logback.version>
-    <metrics.version>4.0.3</metrics.version>
-    <lz4.version>1.5.0</lz4.version>
-    <snappy.version>1.1.7.2</snappy.version>
-    <hdr.version>2.1.10</hdr.version>
-    <jackson.version>2.9.8</jackson.version>
-    <junit.version>5.3.0-M1</junit.version>
-    <junit-platform.version>1.3.0-M1</junit-platform.version>
+    <metrics.version>4.0.5</metrics.version>
+    <lz4.version>1.5.1</lz4.version>
+    <snappy.version>1.1.7.3</snappy.version>
+    <hdr.version>2.1.11</hdr.version>
+    <jackson.version>2.9.9</jackson.version>
+    <junit.version>5.4.1</junit.version>
     <univocity.version>2.7.6</univocity.version>
-    <assertj.version>3.11.1</assertj.version>
-    <mockito.version>2.22.0</mockito.version>
+    <assertj.version>3.12.2</assertj.version>
+    <mockito.version>2.27.0</mockito.version>
     <commons-exec.version>1.3</commons-exec.version>
     <commons-cli.version>1.4</commons-cli.version>
-    <simulacron.version>0.8.7</simulacron.version>
-    <awaitility.version>3.1.0</awaitility.version>
-    <surefire.version>2.22.0</surefire.version>
-    <antlr4.version>4.7.1</antlr4.version>
+    <simulacron.version>0.8.8</simulacron.version>
+    <awaitility.version>3.1.6</awaitility.version>
+    <surefire.version>2.22.1</surefire.version>
+    <antlr4.version>4.7.2</antlr4.version>
     <max.simulacron.clusters>4</max.simulacron.clusters>
     <max.ccm.clusters>2</max.ccm.clusters>
   </properties>
@@ -372,7 +371,7 @@
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-tcnative-boringssl-static</artifactId>
-        <version>2.0.17.Final</version>
+        <version>2.0.25.Final</version>
       </dependency>
 
       <dependency>
@@ -424,7 +423,7 @@
         <plugin>
           <groupId>com.coveo</groupId>
           <artifactId>fmt-maven-plugin</artifactId>
-          <version>2.5.1</version>
+          <version>2.8</version>
           <executions>
             <execution>
               <goals>
@@ -569,7 +568,7 @@ https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
         <plugin>
           <groupId>org.jacoco</groupId>
           <artifactId>jacoco-maven-plugin</artifactId>
-          <version>0.8.2</version>
+          <version>0.8.3</version>
           <executions>
             <execution>
               <id>unit-tests-coverage</id>
@@ -687,7 +686,7 @@ https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
             <dependency>
               <groupId>org.codehaus.groovy</groupId>
               <artifactId>groovy-all</artifactId>
-              <version>2.5.2</version>
+              <version>2.5.6</version>
               <scope>runtime</scope>
             </dependency>
           </dependencies>

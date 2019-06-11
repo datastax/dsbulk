@@ -71,12 +71,7 @@ public class ConfigurationFileCreator {
           continue;
         }
         pw.println(indentedRowOfHashes);
-        config
-            .getConfig(section)
-            .root()
-            .origin()
-            .comments()
-            .stream()
+        config.getConfig(section).root().origin().comments().stream()
             .filter(line -> !SettingsUtils.isAnnotation(line))
             .forEach(
                 l -> {
@@ -89,10 +84,7 @@ public class ConfigurationFileCreator {
           ConfigValue value = ConfigUtils.getNullSafeValue(config, settingName);
 
           pw.println();
-          value
-              .origin()
-              .comments()
-              .stream()
+          value.origin().comments().stream()
               .filter(line -> !SettingsUtils.isAnnotation(line))
               .forEach(
                   l -> {

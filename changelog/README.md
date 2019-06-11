@@ -2,6 +2,7 @@
 
 ### 1.3.4 (in progress)
 
+- [bug] DAT-414: DSBulk should allow INSERT queries without clustering column when all columns are static.
 - [improvement] DAT-411: Improve error message when row fails to decode.
 
 
