@@ -117,7 +117,9 @@ class RowFormatterTest {
     when(cd.size()).thenReturn(1);
     when(cd.getName(0)).thenReturn("c1");
     when(cd.getType(0)).thenReturn(cint());
-    when(row.getObject(0)).thenThrow(new InvalidTypeException("Invalid 32-bits integer value, expecting 4 bytes but got 5"));
+    when(row.getObject(0))
+        .thenThrow(
+            new InvalidTypeException("Invalid 32-bits integer value, expecting 4 bytes but got 5"));
     when(row.getBytesUnsafe(0)).thenReturn(Bytes.fromHexString("0x0102030405"));
     String s = formatter.format(row, version, codecRegistry);
     assertThat(s).contains("c1: 0x0102030405 (malformed buffer for type int)");
