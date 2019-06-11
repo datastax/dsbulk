@@ -700,20 +700,20 @@ public class LogManager implements AutoCloseable {
 
   // write query failed
   private void appendFailedWriteResultToDebugFile(WriteResult result) {
-    appendStatement(result, LOAD_ERRORS_FILE);
+    appendStatement(result, LOAD_ERRORS_FILE, true);
   }
 
   // CAS write query failed
   private void appendFailedCASWriteResultToDebugFile(WriteResult result) {
-    appendStatement(result, CAS_ERRORS_FILE);
+    appendStatement(result, CAS_ERRORS_FILE, true);
   }
 
   // read query failed
   private void appendFailedReadResultToDebugFile(ReadResult result) {
-    appendStatement(result, UNLOAD_ERRORS_FILE);
+    appendStatement(result, UNLOAD_ERRORS_FILE, true);
   }
 
-  private void appendStatement(Result result, String logFileName) {
+  private void appendStatement(Result result, String logFileName, boolean appendNewLine) {
     Path logFile = executionDirectory.resolve(logFileName);
     PrintWriter writer = openFiles.get(logFile);
     assert writer != null;
@@ -738,7 +738,9 @@ public class LogManager implements AutoCloseable {
     if (result.getError().isPresent()) {
       stackTracePrinter.printStackTrace(result.getError().get(), writer);
     }
-    writer.println();
+    if (appendNewLine) {
+      writer.println();
+    }
   }
 
   // Mapping errors (failed record -> statement or row -> record mappings)
@@ -764,7 +766,7 @@ public class LogManager implements AutoCloseable {
     writer.println("Resource: " + record.getResource());
     if (record.getSource() instanceof ReadResult) {
       ReadResult source = (ReadResult) record.getSource();
-      appendStatement(source, MAPPING_ERRORS_FILE);
+      appendStatement(source, MAPPING_ERRORS_FILE, false);
       source
           .getRow()
           .ifPresent(
