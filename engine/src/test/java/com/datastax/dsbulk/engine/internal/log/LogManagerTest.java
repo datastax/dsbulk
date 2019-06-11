@@ -32,7 +32,6 @@ import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.Statement;
-import com.datastax.driver.core.TypeCodec;
 import com.datastax.driver.core.exceptions.DriverInternalError;
 import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.driver.core.exceptions.OperationTimedOutException;
@@ -796,7 +795,6 @@ class LogManagerTest {
     ColumnDefinitions cd = newColumnDefinitions(newDefinition("c1", cint()));
     when(row.getColumnDefinitions()).thenReturn(cd);
     when(row.getObject(0)).thenReturn(value);
-    when(row.getBytesUnsafe("c1")).thenReturn(TypeCodec.cint().serialize(value, V4));
     return row;
   }
 
@@ -810,7 +808,6 @@ class LogManagerTest {
     when(bs.preparedStatement()).thenReturn(ps);
     when(bs.isSet(0)).thenReturn(true);
     when(bs.getObject(0)).thenReturn(value);
-    when(bs.getBytesUnsafe("c1")).thenReturn(TypeCodec.cint().serialize(value, V4));
     when(bs.getSource()).thenReturn(DefaultRecord.indexed(source, resource, 1, 1));
     return bs;
   }
