@@ -59,8 +59,9 @@ public class DefaultReadResultMapper implements ReadResultMapper {
         DataType cqlType = def.getType();
         Collection<Field> fields = mapping.variableToFields(variable);
         for (Field field : fields) {
-          TypeToken<?> fieldType = recordMetadata.getFieldType(field, cqlType);
+          TypeToken<?> fieldType = null;
           try {
+            fieldType = recordMetadata.getFieldType(field, cqlType);
             TypeCodec<?> codec = mapping.codec(variable, cqlType, fieldType);
             Object value = row.get(name, codec);
             record.setFieldValue(field, value);
