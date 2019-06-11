@@ -34,6 +34,7 @@ import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.driver.core.exceptions.DriverInternalError;
+import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.driver.core.exceptions.OperationTimedOutException;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.connectors.api.Record;
@@ -51,6 +52,7 @@ import com.datastax.dsbulk.executor.api.internal.result.DefaultWriteResult;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
 import java.net.URI;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -91,6 +93,10 @@ class LogManagerTest {
   private ReadResult failedReadResult1;
   private ReadResult failedReadResult2;
   private ReadResult failedReadResult3;
+
+  private Row row1;
+
+  private ReadResult successfulReadResult1;
 
   private Cluster cluster;
 
@@ -161,13 +167,13 @@ class LogManagerTest {
             new BulkExecutionException(new OperationTimedOutException(null, "error batch"), batch));
     ExecutionInfo info =
         new ExecutionInfo(0, 0, Collections.emptyList(), ONE, Collections.emptyMap());
-    Row row1 = mockRow(1);
+    row1 = mockRow(1);
     Row row2 = mockRow(2);
     Row row3 = mockRow(3);
     Statement stmt1 = new SimpleStatement("SELECT 1");
     Statement stmt2 = new SimpleStatement("SELECT 2");
     Statement stmt3 = new SimpleStatement("SELECT 3");
-    ReadResult successfulReadResult1 = new DefaultReadResult(stmt1, info, row1);
+    successfulReadResult1 = new DefaultReadResult(stmt1, info, row1);
     ReadResult successfulReadResult2 = new DefaultReadResult(stmt2, info, row2);
     ReadResult successfulReadResult3 = new DefaultReadResult(stmt3, info, row3);
     rowRecord1 =
@@ -522,6 +528,45 @@ class LogManagerTest {
         .containsOnlyOnce("c1: 2")
         .containsOnlyOnce("java.lang.RuntimeException: error 2")
         .doesNotContain("c3: 3");
+  }
+
+  @Test
+  void should_print_raw_bytes_when_column_cannot_be_properly_deserialized() throws Exception {
+    Path outputDir = Files.createTempDirectory("test");
+    LogManager logManager =
+        new LogManager(
+            WorkflowType.UNLOAD,
+            cluster,
+            outputDir,
+            2,
+            0,
+            statementFormatter,
+            EXTENDED,
+            rowFormatter);
+    // Emulate bad row with corrupted data, see DefaultReadResultMapper
+    InvalidTypeException ite =
+        new InvalidTypeException("Invalid 32-bits integer value, expecting 4 bytes but got 5");
+    IllegalArgumentException iae =
+        new IllegalArgumentException(
+            "Could not deserialize column c1 of type int as java.lang.Integer", ite);
+    when(row1.getObject(0)).thenThrow(ite);
+    when(row1.getBytesUnsafe(0)).thenReturn(ByteBuffer.wrap(new byte[] {1, 2, 3, 4, 5}));
+    rowRecord1 = new DefaultErrorRecord(successfulReadResult1, () -> resource1, 1, iae);
+    logManager.init();
+    Flux<Record> stmts = Flux.just(rowRecord1);
+    stmts.transform(logManager.newUnmappableRecordsHandler()).blockLast();
+    logManager.close();
+    Path errors = logManager.getExecutionDirectory().resolve("mapping-errors.log");
+    assertThat(errors.toFile()).exists();
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getExecutionDirectory()))
+        .containsOnly(errors);
+    List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
+    String content = String.join("\n", lines);
+    assertThat(content)
+        .contains("SELECT 1")
+        .contains("c1: 0x0102030405 (malformed buffer for type int)")
+        .contains(iae.getMessage())
+        .contains(ite.getMessage());
   }
 
   @Test
