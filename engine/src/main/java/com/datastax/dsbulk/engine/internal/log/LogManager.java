@@ -817,11 +817,11 @@ public class LogManager implements AutoCloseable {
   }
 
   private boolean isPercentageBased() {
-    return maxErrorRatio != 0;
+    return maxErrorRatio > 0;
   }
 
   private TooManyErrorsException maxErrorCountExceeded(int errorCount) {
-    if (maxErrors > 0 && errorCount > maxErrors) {
+    if (maxErrors >= 0 && errorCount > maxErrors) {
       return new TooManyErrorsException(maxErrors);
     }
     return null;

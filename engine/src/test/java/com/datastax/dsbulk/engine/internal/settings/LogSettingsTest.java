@@ -95,6 +95,42 @@ class LogSettingsTest {
   }
 
   @Test()
+  void should_accept_maxErrors_as_absolute_number() throws IOException {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxErrors = 20")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LogSettings settings = new LogSettings(config, "test");
+    settings.init();
+    assertThat(settings.getMaxErrors()).isEqualTo(20);
+    assertThat(settings.getMaxErrorsRatio()).isEqualTo(-1);
+  }
+
+  @Test()
+  void should_accept_maxErrors_as_percentage() throws IOException {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxErrors = 20%")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LogSettings settings = new LogSettings(config, "test");
+    settings.init();
+    assertThat(settings.getMaxErrors()).isEqualTo(-1);
+    assertThat(settings.getMaxErrorsRatio()).isEqualTo(0.2f);
+  }
+
+  @Test()
+  void should_disable_maxErrors() throws IOException {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxErrors = -42")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LogSettings settings = new LogSettings(config, "test");
+    settings.init();
+    assertThat(settings.getMaxErrors()).isEqualTo(-42);
+    assertThat(settings.getMaxErrorsRatio()).isEqualTo(-1);
+  }
+
+  @Test()
   void should_error_when_percentage_is_out_of_bounds() {
     LoaderConfig config =
         new DefaultLoaderConfig(
@@ -107,11 +143,21 @@ class LogSettingsTest {
 
     config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxErrors = -1%")
+            ConfigFactory.parseString("maxErrors = 0%")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
 
     LogSettings settings2 = new LogSettings(config, "test");
     assertThatThrownBy(settings2::init)
+        .hasMessage(
+            "maxErrors must either be a number, or percentage between 0 and 100 exclusive.");
+
+    config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxErrors = -1%")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+
+    LogSettings settings3 = new LogSettings(config, "test");
+    assertThatThrownBy(settings3::init)
         .hasMessage(
             "maxErrors must either be a number, or percentage between 0 and 100 exclusive.");
   }

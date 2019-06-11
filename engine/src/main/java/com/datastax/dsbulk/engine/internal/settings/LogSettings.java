@@ -154,10 +154,10 @@ public class LogSettings {
       if (isPercent(maxErrorString)) {
         maxErrorsRatio = Float.parseFloat(maxErrorString.replaceAll("\\s*%", "")) / 100f;
         validatePercentageRange(maxErrorsRatio);
-        maxErrors = 0;
+        maxErrors = -1;
       } else {
         maxErrors = config.getInt(MAX_ERRORS);
-        maxErrorsRatio = 0;
+        maxErrorsRatio = -1;
       }
       Path mainLogFile =
           executionDirectory.resolve(MAIN_LOG_FILE_NAME).normalize().toAbsolutePath();
@@ -219,6 +219,14 @@ public class LogSettings {
 
   public Verbosity getVerbosity() {
     return verbosity;
+  }
+
+  int getMaxErrors() {
+    return maxErrors;
+  }
+
+  float getMaxErrorsRatio() {
+    return maxErrorsRatio;
   }
 
   private void checkExecutionDirectory() throws IOException {

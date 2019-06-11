@@ -195,7 +195,7 @@ class LogManagerTest {
             cluster,
             outputDir,
             2,
-            0,
+            -1,
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -233,7 +233,94 @@ class LogManagerTest {
         .containsOnlyOnce("java.lang.RuntimeException: error 2")
         .containsOnlyOnce("Resource: " + resource3)
         .containsOnlyOnce("Source: " + LogUtils.formatSingleLine(source3))
-        .containsOnlyOnce("java.lang.RuntimeException: error 2");
+        .containsOnlyOnce("java.lang.RuntimeException: error 3");
+  }
+
+  @Test
+  void should_stop_at_first_error_when_max_errors_is_zero() throws Exception {
+    Path outputDir = Files.createTempDirectory("test");
+    LogManager logManager =
+        new LogManager(
+            WorkflowType.LOAD,
+            cluster,
+            outputDir,
+            0,
+            -1,
+            statementFormatter,
+            EXTENDED,
+            rowFormatter);
+    logManager.init();
+    Flux<Statement> stmts = Flux.just(unmappableStmt1);
+    try {
+      stmts.transform(logManager.newUnmappableStatementsHandler()).blockLast();
+      fail("Expecting TooManyErrorsException to be thrown");
+    } catch (TooManyErrorsException e) {
+      assertThat(e).hasMessage("Too many errors, the maximum allowed is 0.");
+      assertThat(e.getMaxErrors()).isEqualTo(0);
+    }
+    logManager.close();
+    Path bad = logManager.getExecutionDirectory().resolve("mapping.bad");
+    Path errors = logManager.getExecutionDirectory().resolve("mapping-errors.log");
+    Path positions = logManager.getExecutionDirectory().resolve("positions.txt");
+    assertThat(bad.toFile()).exists();
+    assertThat(errors.toFile()).exists();
+    assertThat(positions.toFile()).exists();
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getExecutionDirectory()))
+        .containsOnly(bad, errors, positions);
+    List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
+    assertThat(badLines).hasSize(1);
+    assertThat(badLines.get(0)).isEqualTo(source1.trim());
+    List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
+    String content = String.join("\n", lines);
+    assertThat(content)
+        .containsOnlyOnce("Resource: " + resource1)
+        .containsOnlyOnce("Source: " + LogUtils.formatSingleLine(source1))
+        .containsOnlyOnce("java.lang.RuntimeException: error 1");
+  }
+
+  @Test
+  void should_not_stop_when_max_errors_is_disabled() throws Exception {
+    Path outputDir = Files.createTempDirectory("test");
+    LogManager logManager =
+        new LogManager(
+            WorkflowType.LOAD,
+            cluster,
+            outputDir,
+            Integer.MIN_VALUE, // any negative value is possible
+            Integer.MIN_VALUE, // any negative value is possible
+            statementFormatter,
+            EXTENDED,
+            rowFormatter);
+    logManager.init();
+    Flux<Statement> stmts = Flux.just(unmappableStmt1, unmappableStmt2, unmappableStmt3);
+    // should not throw TooManyErrorsException
+    stmts.transform(logManager.newUnmappableStatementsHandler()).blockLast();
+    logManager.close();
+    Path bad = logManager.getExecutionDirectory().resolve("mapping.bad");
+    Path errors = logManager.getExecutionDirectory().resolve("mapping-errors.log");
+    Path positions = logManager.getExecutionDirectory().resolve("positions.txt");
+    assertThat(bad.toFile()).exists();
+    assertThat(errors.toFile()).exists();
+    assertThat(positions.toFile()).exists();
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getExecutionDirectory()))
+        .containsOnly(bad, errors, positions);
+    List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
+    assertThat(badLines).hasSize(3);
+    assertThat(badLines.get(0)).isEqualTo(source1.trim());
+    assertThat(badLines.get(1)).isEqualTo(source2.trim());
+    assertThat(badLines.get(2)).isEqualTo(source3.trim());
+    List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
+    String content = String.join("\n", lines);
+    assertThat(content)
+        .containsOnlyOnce("Resource: " + resource1)
+        .containsOnlyOnce("Source: " + LogUtils.formatSingleLine(source1))
+        .containsOnlyOnce("java.lang.RuntimeException: error 1")
+        .containsOnlyOnce("Resource: " + resource2)
+        .containsOnlyOnce("Source: " + LogUtils.formatSingleLine(source2))
+        .containsOnlyOnce("java.lang.RuntimeException: error 2")
+        .containsOnlyOnce("Resource: " + resource3)
+        .containsOnlyOnce("Source: " + LogUtils.formatSingleLine(source3))
+        .containsOnlyOnce("java.lang.RuntimeException: error 3");
   }
 
   @Test
@@ -245,7 +332,7 @@ class LogManagerTest {
             cluster,
             outputDir,
             2,
-            0,
+            -1,
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -287,7 +374,7 @@ class LogManagerTest {
             cluster,
             outputDir,
             2,
-            0,
+            -1,
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -347,7 +434,7 @@ class LogManagerTest {
             WorkflowType.LOAD,
             cluster,
             outputDir,
-            0,
+            -1,
             2,
             statementFormatter,
             EXTENDED,
@@ -403,7 +490,7 @@ class LogManagerTest {
             cluster,
             outputDir,
             1,
-            0,
+            -1,
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -461,7 +548,7 @@ class LogManagerTest {
             cluster,
             outputDir,
             2,
-            0,
+            -1,
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -499,7 +586,7 @@ class LogManagerTest {
             cluster,
             outputDir,
             2,
-            0,
+            -1,
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -538,7 +625,7 @@ class LogManagerTest {
             cluster,
             outputDir,
             2,
-            0,
+            -1,
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -576,7 +663,7 @@ class LogManagerTest {
             WorkflowType.UNLOAD,
             cluster,
             outputDir,
-            0,
+            -1,
             0.01f,
             statementFormatter,
             EXTENDED,
@@ -611,7 +698,7 @@ class LogManagerTest {
             WorkflowType.UNLOAD,
             cluster,
             outputDir,
-            0,
+            -1,
             0.01f,
             statementFormatter,
             EXTENDED,
@@ -648,7 +735,7 @@ class LogManagerTest {
             cluster,
             outputDir,
             1000,
-            0,
+            -1,
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -698,7 +785,7 @@ class LogManagerTest {
             cluster,
             outputDir,
             2,
-            0,
+            -1,
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -752,7 +839,7 @@ class LogManagerTest {
             cluster,
             outputDir,
             2,
-            0,
+            -1,
             statementFormatter,
             EXTENDED,
             rowFormatter);

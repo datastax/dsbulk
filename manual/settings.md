@@ -226,7 +226,7 @@ Default: **-1**.
 
 #### -maxErrors,--log.maxErrors _&lt;number&gt;_
 
-The maximum number of errors to tolerate before aborting the entire operation. Set to either a number or a string of the form `N%` where `N` is a decimal number between 0 and 100. Setting this value to `-1` disables this feature (not recommended).
+The maximum number of errors to tolerate before aborting the entire operation. This can be expressed either as an absolute number of errors – in which case, set this to an integer greater than or equal to zero; or as a percentage of total rows processed so far – in which case, set this to a string of the form `N%`, where `N` is a decimal number between 0 and 100 exclusive (e.g. "20%"). Setting this value to any negative integer disables this feature (not recommended).
 
 Default: **100**.
 
@@ -1316,7 +1316,7 @@ Log and error management settings.
 
 #### -maxErrors,--log.maxErrors _&lt;number&gt;_
 
-The maximum number of errors to tolerate before aborting the entire operation. Set to either a number or a string of the form `N%` where `N` is a decimal number between 0 and 100. Setting this value to `-1` disables this feature (not recommended).
+The maximum number of errors to tolerate before aborting the entire operation. This can be expressed either as an absolute number of errors – in which case, set this to an integer greater than or equal to zero; or as a percentage of total rows processed so far – in which case, set this to a string of the form `N%`, where `N` is a decimal number between 0 and 100 exclusive (e.g. "20%"). Setting this value to any negative integer disables this feature (not recommended).
 
 Default: **100**.
 
