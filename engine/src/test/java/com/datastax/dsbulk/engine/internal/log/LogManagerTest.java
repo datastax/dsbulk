@@ -42,6 +42,9 @@ import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.row.RowFormatter;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatter;
+import com.datastax.dsbulk.engine.internal.log.threshold.AbsoluteErrorThreshold;
+import com.datastax.dsbulk.engine.internal.log.threshold.ErrorThreshold;
+import com.datastax.dsbulk.engine.internal.log.threshold.RatioErrorThreshold;
 import com.datastax.dsbulk.engine.internal.statement.BulkBoundStatement;
 import com.datastax.dsbulk.engine.internal.statement.BulkSimpleStatement;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
@@ -194,8 +197,7 @@ class LogManagerTest {
             WorkflowType.LOAD,
             cluster,
             outputDir,
-            2,
-            -1,
+            ErrorThreshold.forAbsoluteValue(2),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -206,7 +208,7 @@ class LogManagerTest {
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
       assertThat(e).hasMessage("Too many errors, the maximum allowed is 2.");
-      assertThat(e.getMaxErrors()).isEqualTo(2);
+      assertThat(((AbsoluteErrorThreshold) e.getThreshold()).getMaxErrors()).isEqualTo(2);
     }
     logManager.close();
     Path bad = logManager.getExecutionDirectory().resolve("mapping.bad");
@@ -244,8 +246,7 @@ class LogManagerTest {
             WorkflowType.LOAD,
             cluster,
             outputDir,
-            0,
-            -1,
+            ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -256,7 +257,7 @@ class LogManagerTest {
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
       assertThat(e).hasMessage("Too many errors, the maximum allowed is 0.");
-      assertThat(e.getMaxErrors()).isEqualTo(0);
+      assertThat(((AbsoluteErrorThreshold) e.getThreshold()).getMaxErrors()).isEqualTo(0);
     }
     logManager.close();
     Path bad = logManager.getExecutionDirectory().resolve("mapping.bad");
@@ -286,8 +287,7 @@ class LogManagerTest {
             WorkflowType.LOAD,
             cluster,
             outputDir,
-            Integer.MIN_VALUE, // any negative value is possible
-            Integer.MIN_VALUE, // any negative value is possible
+            ErrorThreshold.unlimited(),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -331,8 +331,7 @@ class LogManagerTest {
             WorkflowType.LOAD,
             cluster,
             outputDir,
-            2,
-            -1,
+            ErrorThreshold.forAbsoluteValue(2),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -343,7 +342,7 @@ class LogManagerTest {
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
       assertThat(e).hasMessage("Too many errors, the maximum allowed is 2.");
-      assertThat(e.getMaxErrors()).isEqualTo(2);
+      assertThat(((AbsoluteErrorThreshold) e.getThreshold()).getMaxErrors()).isEqualTo(2);
     }
     logManager.close();
     Path bad = logManager.getExecutionDirectory().resolve("connector.bad");
@@ -373,8 +372,7 @@ class LogManagerTest {
             WorkflowType.LOAD,
             cluster,
             outputDir,
-            2,
-            -1,
+            ErrorThreshold.forAbsoluteValue(2),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -385,7 +383,7 @@ class LogManagerTest {
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
       assertThat(e).hasMessage("Too many errors, the maximum allowed is 2.");
-      assertThat(e.getMaxErrors()).isEqualTo(2);
+      assertThat(((AbsoluteErrorThreshold) e.getThreshold()).getMaxErrors()).isEqualTo(2);
     }
     logManager.close();
     Path bad = logManager.getExecutionDirectory().resolve("load.bad");
@@ -434,8 +432,7 @@ class LogManagerTest {
             WorkflowType.LOAD,
             cluster,
             outputDir,
-            -1,
-            2,
+            ErrorThreshold.forRatio(0.2f, 100),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -489,8 +486,7 @@ class LogManagerTest {
             WorkflowType.LOAD,
             cluster,
             outputDir,
-            1,
-            -1,
+            ErrorThreshold.forAbsoluteValue(1),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -501,7 +497,7 @@ class LogManagerTest {
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
       assertThat(e).hasMessage("Too many errors, the maximum allowed is 1.");
-      assertThat(e.getMaxErrors()).isEqualTo(1);
+      assertThat(((AbsoluteErrorThreshold) e.getThreshold()).getMaxErrors()).isEqualTo(1);
     }
     logManager.close();
     Path bad = logManager.getExecutionDirectory().resolve("load.bad");
@@ -547,8 +543,7 @@ class LogManagerTest {
             WorkflowType.UNLOAD,
             cluster,
             outputDir,
-            2,
-            -1,
+            ErrorThreshold.forAbsoluteValue(2),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -559,7 +554,7 @@ class LogManagerTest {
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
       assertThat(e).hasMessage("Too many errors, the maximum allowed is 2.");
-      assertThat(e.getMaxErrors()).isEqualTo(2);
+      assertThat(((AbsoluteErrorThreshold) e.getThreshold()).getMaxErrors()).isEqualTo(2);
     }
     logManager.close();
     Path errors = logManager.getExecutionDirectory().resolve("unload-errors.log");
@@ -585,8 +580,7 @@ class LogManagerTest {
             WorkflowType.UNLOAD,
             cluster,
             outputDir,
-            2,
-            -1,
+            ErrorThreshold.forAbsoluteValue(2),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -597,7 +591,7 @@ class LogManagerTest {
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
       assertThat(e).hasMessage("Too many errors, the maximum allowed is 2.");
-      assertThat(e.getMaxErrors()).isEqualTo(2);
+      assertThat(((AbsoluteErrorThreshold) e.getThreshold()).getMaxErrors()).isEqualTo(2);
     }
     logManager.close();
     Path errors = logManager.getExecutionDirectory().resolve("mapping-errors.log");
@@ -624,8 +618,7 @@ class LogManagerTest {
             WorkflowType.UNLOAD,
             cluster,
             outputDir,
-            2,
-            -1,
+            ErrorThreshold.forAbsoluteValue(2),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -663,8 +656,7 @@ class LogManagerTest {
             WorkflowType.UNLOAD,
             cluster,
             outputDir,
-            -1,
-            0.01f,
+            ErrorThreshold.forRatio(0.01f, 100),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -698,8 +690,7 @@ class LogManagerTest {
             WorkflowType.UNLOAD,
             cluster,
             outputDir,
-            -1,
-            0.01f,
+            ErrorThreshold.forRatio(0.01f, 100),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -714,7 +705,7 @@ class LogManagerTest {
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
       assertThat(e).hasMessage("Too many errors, the maximum percentage allowed is 1.0%.");
-      assertThat(e.getMaxErrorRatio()).isEqualTo(0.01f);
+      assertThat(((RatioErrorThreshold) e.getThreshold()).getMaxErrorRatio()).isEqualTo(0.01f);
     }
     logManager.close();
     Path errors = logManager.getExecutionDirectory().resolve("unload-errors.log");
@@ -723,7 +714,7 @@ class LogManagerTest {
         .containsOnly(errors);
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     assertThat(lines.stream().filter(l -> l.contains("BulkExecutionException")).count())
-        .isEqualTo(101);
+        .isEqualTo(100);
   }
 
   @Test
@@ -734,8 +725,7 @@ class LogManagerTest {
             WorkflowType.LOAD,
             cluster,
             outputDir,
-            1000,
-            -1,
+            ErrorThreshold.forAbsoluteValue(1000),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -784,8 +774,7 @@ class LogManagerTest {
             WorkflowType.UNLOAD,
             cluster,
             outputDir,
-            2,
-            -1,
+            ErrorThreshold.forAbsoluteValue(2),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -838,8 +827,7 @@ class LogManagerTest {
             WorkflowType.LOAD,
             cluster,
             outputDir,
-            2,
-            -1,
+            ErrorThreshold.forAbsoluteValue(2),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -850,7 +838,7 @@ class LogManagerTest {
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
       assertThat(e).hasMessage("Too many errors, the maximum allowed is 2.");
-      assertThat(e.getMaxErrors()).isEqualTo(2);
+      assertThat(((AbsoluteErrorThreshold) e.getThreshold()).getMaxErrors()).isEqualTo(2);
     }
     logManager.close();
     Path bad = logManager.getExecutionDirectory().resolve("paxos.bad");

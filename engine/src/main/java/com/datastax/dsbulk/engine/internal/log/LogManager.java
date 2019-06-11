@@ -37,6 +37,7 @@ import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.row.RowFormatter;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosity;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatter;
+import com.datastax.dsbulk.engine.internal.log.threshold.ErrorThreshold;
 import com.datastax.dsbulk.engine.internal.schema.InvalidMappingException;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.dsbulk.engine.internal.statement.BulkStatement;
@@ -78,7 +79,6 @@ import reactor.core.scheduler.Schedulers;
 public class LogManager implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LogManager.class);
-  private static final int MIN_SAMPLE = 100;
 
   private static final String MAPPING_ERRORS_FILE = "mapping-errors.log";
   private static final String CONNECTOR_ERRORS_FILE = "connector-errors.log";
@@ -96,8 +96,7 @@ public class LogManager implements AutoCloseable {
   private final WorkflowType workflowType;
   private final Cluster cluster;
   private final Path executionDirectory;
-  private final int maxErrors;
-  private final float maxErrorRatio;
+  private final ErrorThreshold errorThreshold;
   private final StatementFormatter statementFormatter;
   private final StatementFormatVerbosity statementFormatVerbosity;
   private final RowFormatter rowFormatter;
@@ -137,16 +136,14 @@ public class LogManager implements AutoCloseable {
       WorkflowType workflowType,
       Cluster cluster,
       Path executionDirectory,
-      int maxErrors,
-      float maxErrorRatio,
+      ErrorThreshold errorThreshold,
       StatementFormatter statementFormatter,
       StatementFormatVerbosity statementFormatVerbosity,
       RowFormatter rowFormatter) {
     this.workflowType = workflowType;
     this.cluster = cluster;
     this.executionDirectory = executionDirectory;
-    this.maxErrors = maxErrors;
-    this.maxErrorRatio = maxErrorRatio;
+    this.errorThreshold = errorThreshold;
     this.statementFormatter = statementFormatter;
     this.statementFormatVerbosity = statementFormatVerbosity;
     this.rowFormatter = rowFormatter;
@@ -804,36 +801,10 @@ public class LogManager implements AutoCloseable {
   }
 
   private <T> Signal<T> maybeTriggerOnError(Signal<T> signal, int errorCount) {
-    TooManyErrorsException exception;
-    if (isPercentageBased()) {
-      exception = maxPercentageExceeded(errorCount);
-    } else {
-      exception = maxErrorCountExceeded(errorCount);
-    }
-    if (exception != null) {
-      return Signal.error(exception);
+    if (errorThreshold.checkThresholdExceeded(errorCount, totalItems)) {
+      return Signal.error(new TooManyErrorsException(errorThreshold));
     }
     return signal;
-  }
-
-  private boolean isPercentageBased() {
-    return maxErrorRatio > 0;
-  }
-
-  private TooManyErrorsException maxErrorCountExceeded(int errorCount) {
-    if (maxErrors >= 0 && errorCount > maxErrors) {
-      return new TooManyErrorsException(maxErrors);
-    }
-    return null;
-  }
-
-  private TooManyErrorsException maxPercentageExceeded(int errorCount) {
-    long attemptedTemp = totalItems.longValue();
-    float currentRatio = (float) errorCount / attemptedTemp;
-    if (attemptedTemp > MIN_SAMPLE && currentRatio > maxErrorRatio) {
-      return new TooManyErrorsException(maxErrorRatio);
-    }
-    return null;
   }
 
   private void maybeWarnInvalidMapping(UnmappableStatement stmt) {

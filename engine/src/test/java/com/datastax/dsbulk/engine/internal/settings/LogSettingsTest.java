@@ -30,6 +30,10 @@ import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
+import com.datastax.dsbulk.engine.internal.log.threshold.AbsoluteErrorThreshold;
+import com.datastax.dsbulk.engine.internal.log.threshold.ErrorThreshold;
+import com.datastax.dsbulk.engine.internal.log.threshold.RatioErrorThreshold;
+import com.datastax.dsbulk.engine.internal.log.threshold.UnlimitedErrorThreshold;
 import com.datastax.dsbulk.engine.tests.utils.LogUtils;
 import com.typesafe.config.ConfigFactory;
 import java.io.IOException;
@@ -102,8 +106,9 @@ class LogSettingsTest {
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "test");
     settings.init();
-    assertThat(settings.getMaxErrors()).isEqualTo(20);
-    assertThat(settings.getMaxErrorsRatio()).isEqualTo(-1);
+    ErrorThreshold threshold = settings.getErrorThreshold();
+    assertThat(threshold).isInstanceOf(AbsoluteErrorThreshold.class);
+    assertThat(((AbsoluteErrorThreshold) threshold).getMaxErrors()).isEqualTo(20);
   }
 
   @Test()
@@ -114,8 +119,11 @@ class LogSettingsTest {
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "test");
     settings.init();
-    assertThat(settings.getMaxErrors()).isEqualTo(-1);
-    assertThat(settings.getMaxErrorsRatio()).isEqualTo(0.2f);
+    ErrorThreshold threshold = settings.getErrorThreshold();
+    assertThat(threshold).isInstanceOf(RatioErrorThreshold.class);
+    assertThat(((RatioErrorThreshold) threshold).getMaxErrorRatio()).isEqualTo(0.2f);
+    // min sample is fixed and cannot be changed by the user currently
+    assertThat(((RatioErrorThreshold) threshold).getMinSample()).isEqualTo(100);
   }
 
   @Test()
@@ -126,8 +134,8 @@ class LogSettingsTest {
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "test");
     settings.init();
-    assertThat(settings.getMaxErrors()).isEqualTo(-42);
-    assertThat(settings.getMaxErrorsRatio()).isEqualTo(-1);
+    ErrorThreshold threshold = settings.getErrorThreshold();
+    assertThat(threshold).isInstanceOf(UnlimitedErrorThreshold.class);
   }
 
   @Test()

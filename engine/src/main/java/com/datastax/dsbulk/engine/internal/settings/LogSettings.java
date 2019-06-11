@@ -25,6 +25,7 @@ import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.log.row.RowFormatter;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosity;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatter;
+import com.datastax.dsbulk.engine.internal.log.threshold.ErrorThreshold;
 import com.datastax.dsbulk.engine.internal.utils.HelpUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
@@ -51,6 +52,7 @@ public class LogSettings {
 
   public static final String OPERATION_DIRECTORY_KEY = "com.datastax.dsbulk.OPERATION_DIRECTORY";
   private static final String CONSOLE_APPENDER = "CONSOLE";
+  private static final int MIN_SAMPLE = 100;
 
   public enum Verbosity {
     quiet,
@@ -128,8 +130,7 @@ public class LogSettings {
   private int maxResultSetValues;
   private int maxInnerStatements;
   private StatementFormatVerbosity level;
-  private int maxErrors;
-  private float maxErrorsRatio;
+  private ErrorThreshold errorThreshold;
   private Verbosity verbosity;
 
   LogSettings(LoaderConfig config, String executionId) {
@@ -152,12 +153,16 @@ public class LogSettings {
       maxResultSetValues = config.getInt(MAX_RESULT_SET_VALUES);
       String maxErrorString = config.getString(MAX_ERRORS);
       if (isPercent(maxErrorString)) {
-        maxErrorsRatio = Float.parseFloat(maxErrorString.replaceAll("\\s*%", "")) / 100f;
+        float maxErrorsRatio = Float.parseFloat(maxErrorString.replaceAll("\\s*%", "")) / 100f;
         validatePercentageRange(maxErrorsRatio);
-        maxErrors = -1;
+        errorThreshold = ErrorThreshold.forRatio(maxErrorsRatio, MIN_SAMPLE);
       } else {
-        maxErrors = config.getInt(MAX_ERRORS);
-        maxErrorsRatio = -1;
+        long maxErrors = config.getLong(MAX_ERRORS);
+        if (maxErrors < 0) {
+          errorThreshold = ErrorThreshold.unlimited();
+        } else {
+          errorThreshold = ErrorThreshold.forAbsoluteValue(maxErrors);
+        }
       }
       Path mainLogFile =
           executionDirectory.resolve(MAIN_LOG_FILE_NAME).normalize().toAbsolutePath();
@@ -210,8 +215,7 @@ public class LogSettings {
         workflowType,
         cluster,
         executionDirectory,
-        maxErrors,
-        maxErrorsRatio,
+        errorThreshold,
         statementFormatter,
         level,
         rowFormatter);
@@ -221,12 +225,8 @@ public class LogSettings {
     return verbosity;
   }
 
-  int getMaxErrors() {
-    return maxErrors;
-  }
-
-  float getMaxErrorsRatio() {
-    return maxErrorsRatio;
+  public ErrorThreshold getErrorThreshold() {
+    return errorThreshold;
   }
 
   private void checkExecutionDirectory() throws IOException {
