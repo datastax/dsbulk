@@ -35,7 +35,6 @@ public class DefaultReadResultMapper implements ReadResultMapper {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultReadResultMapper.class);
   private static final URI UNKNOWN_ROW_RESOURCE = URI.create("cql://unknown");
-  private static final int MAX_BUFFER_LENGTH = 20;
 
   private final Mapping mapping;
   private final RecordMetadata recordMetadata;
