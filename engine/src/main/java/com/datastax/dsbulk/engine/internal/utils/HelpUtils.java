@@ -195,6 +195,11 @@ public class HelpUtils {
         Ansi options = Ansi.ansi().a("Common options:").reset().newline();
         System.out.println(options);
 
+        Ansi version =
+            Ansi.ansi().fgCyan().a("-v").reset().a(", ").fgGreen().a("--version").reset().newline();
+        version = renderWrappedText(version, "Show program's version number and exit").newline();
+        System.out.print(version.toString());
+
       } else {
         Ansi header =
             Ansi.ansi()

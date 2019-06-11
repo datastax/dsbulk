@@ -991,7 +991,9 @@ class DataStaxBulkLoaderTest {
   private void assertGlobalHelp(boolean jsonOnly) {
     String out =
         new AnsiString(stdOut.getStreamAsString()).getPlain().toString().replaceAll("[\\s]+", " ");
+
     assertThat(out).contains(HelpUtils.getVersionMessage());
+    assertThat(out).contains("-v, --version Show program's version number and exit");
 
     for (WorkflowType workflowType : WorkflowType.values()) {
       assertThat(out).contains(workflowType.getTitle());
