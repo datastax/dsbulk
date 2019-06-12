@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.engine.internal.log.threshold;
 
 import java.util.concurrent.atomic.LongAdder;
+import org.jetbrains.annotations.NotNull;
 
 public interface ErrorThreshold {
 
@@ -41,5 +42,5 @@ public interface ErrorThreshold {
    * @param totalItems the total number of items processed so far.
    * @return {@code true} if the threshold was exceeded, or {@code false} otherwise.
    */
-  boolean checkThresholdExceeded(long errorCount, LongAdder totalItems);
+  boolean checkThresholdExceeded(long errorCount, @NotNull LongAdder totalItems);
 }
