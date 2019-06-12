@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.engine.internal.log.threshold;
 
-import java.util.concurrent.atomic.LongAdder;
 import org.jetbrains.annotations.NotNull;
 
 public interface ErrorThreshold {
@@ -39,11 +38,12 @@ public interface ErrorThreshold {
    * Checks whether the error threshold was exceeded.
    *
    * @param errorCount the current number of errors encountered.
-   * @param totalItems the total number of items processed so far. This is a LongAdder because
-   *     that's how {@link com.datastax.dsbulk.engine.internal.log.LogManager} stores the total
-   *     items count internally, and we don't want to force that component to convert that LongAdder
-   *     into something else each time we call this method.
+   * @param totalItems the total number of items processed so far. This is a Number because {@link
+   *     com.datastax.dsbulk.engine.internal.log.LogManager LogManager} stores the total items count
+   *     internally as a {@link java.util.concurrent.atomic.LongAdder LongAdder}, and we don't want
+   *     to force that component to convert that LongAdder into something else each time we call
+   *     this method.
    * @return {@code true} if the threshold was exceeded, or {@code false} otherwise.
    */
-  boolean checkThresholdExceeded(long errorCount, @NotNull LongAdder totalItems);
+  boolean checkThresholdExceeded(long errorCount, @NotNull Number totalItems);
 }

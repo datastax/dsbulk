@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.engine.internal.log.threshold;
 
-import java.util.concurrent.atomic.LongAdder;
 import org.jetbrains.annotations.NotNull;
 
 public class AbsoluteErrorThreshold implements ErrorThreshold {
@@ -23,7 +22,7 @@ public class AbsoluteErrorThreshold implements ErrorThreshold {
   }
 
   @Override
-  public boolean checkThresholdExceeded(long errorCount, @NotNull LongAdder totalItems) {
+  public boolean checkThresholdExceeded(long errorCount, @NotNull Number totalItems) {
     return errorCount > maxErrors;
   }
 

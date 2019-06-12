@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.engine.internal.log.threshold;
 
-import java.util.concurrent.atomic.LongAdder;
 import org.jetbrains.annotations.NotNull;
 
 public class RatioErrorThreshold implements ErrorThreshold {
@@ -28,8 +27,8 @@ public class RatioErrorThreshold implements ErrorThreshold {
   }
 
   @Override
-  public boolean checkThresholdExceeded(long errorCount, @NotNull LongAdder totalItems) {
-    long totalSoFar = totalItems.sum();
+  public boolean checkThresholdExceeded(long errorCount, @NotNull Number totalItems) {
+    long totalSoFar = totalItems.longValue();
     if (totalSoFar >= minSample) {
       float currentRatio = (float) errorCount / totalSoFar;
       return currentRatio > maxErrorRatio;
