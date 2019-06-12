@@ -30,6 +30,10 @@ import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
+import com.datastax.dsbulk.engine.internal.log.threshold.AbsoluteErrorThreshold;
+import com.datastax.dsbulk.engine.internal.log.threshold.ErrorThreshold;
+import com.datastax.dsbulk.engine.internal.log.threshold.RatioErrorThreshold;
+import com.datastax.dsbulk.engine.internal.log.threshold.UnlimitedErrorThreshold;
 import com.datastax.dsbulk.engine.tests.utils.LogUtils;
 import com.typesafe.config.ConfigFactory;
 import java.io.IOException;
@@ -95,6 +99,46 @@ class LogSettingsTest {
   }
 
   @Test()
+  void should_accept_maxErrors_as_absolute_number() throws IOException {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxErrors = 20")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LogSettings settings = new LogSettings(config, "test");
+    settings.init();
+    ErrorThreshold threshold = settings.getErrorThreshold();
+    assertThat(threshold).isInstanceOf(AbsoluteErrorThreshold.class);
+    assertThat(((AbsoluteErrorThreshold) threshold).getMaxErrors()).isEqualTo(20);
+  }
+
+  @Test()
+  void should_accept_maxErrors_as_percentage() throws IOException {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxErrors = 20%")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LogSettings settings = new LogSettings(config, "test");
+    settings.init();
+    ErrorThreshold threshold = settings.getErrorThreshold();
+    assertThat(threshold).isInstanceOf(RatioErrorThreshold.class);
+    assertThat(((RatioErrorThreshold) threshold).getMaxErrorRatio()).isEqualTo(0.2f);
+    // min sample is fixed and cannot be changed by the user currently
+    assertThat(((RatioErrorThreshold) threshold).getMinSample()).isEqualTo(100);
+  }
+
+  @Test()
+  void should_disable_maxErrors() throws IOException {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxErrors = -42")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LogSettings settings = new LogSettings(config, "test");
+    settings.init();
+    ErrorThreshold threshold = settings.getErrorThreshold();
+    assertThat(threshold).isInstanceOf(UnlimitedErrorThreshold.class);
+  }
+
+  @Test()
   void should_error_when_percentage_is_out_of_bounds() {
     LoaderConfig config =
         new DefaultLoaderConfig(
@@ -107,11 +151,21 @@ class LogSettingsTest {
 
     config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxErrors = -1%")
+            ConfigFactory.parseString("maxErrors = 0%")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
 
     LogSettings settings2 = new LogSettings(config, "test");
     assertThatThrownBy(settings2::init)
+        .hasMessage(
+            "maxErrors must either be a number, or percentage between 0 and 100 exclusive.");
+
+    config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxErrors = -1%")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+
+    LogSettings settings3 = new LogSettings(config, "test");
+    assertThatThrownBy(settings3::init)
         .hasMessage(
             "maxErrors must either be a number, or percentage between 0 and 100 exclusive.");
   }
