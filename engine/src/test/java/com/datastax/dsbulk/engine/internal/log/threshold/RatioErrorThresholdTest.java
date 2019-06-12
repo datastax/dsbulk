@@ -12,89 +12,76 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.concurrent.atomic.LongAdder;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class RatioErrorThresholdTest {
 
-  @Test
-  void should_return_false_when_errors_below_ratio() {
+  @ParameterizedTest(
+      name = "[{index}] maxErrorRatio {0} minSample {1} totalItems {2} errorCount {3} = {4}")
+  @CsvSource({
+    //  %   min   tot   err   exc
+    "0.1  ,   1 ,   1 ,   0 , false",
+    "0.1  ,   1 ,   1 ,   1 ,  true",
+    "0.1  , 100 ,  99 ,  99 , false", // minSample not met
+    "0.1  , 100 , 100 ,  10 , false",
+    "0.1  , 100 , 100 ,  11 ,  true",
+    "0.5  ,  10 ,  10 ,   4 , false",
+    "0.5  ,  10 ,  10 ,   5 , false",
+    "0.5  ,  10 ,  10 ,   6 ,  true",
+    "0.5  ,  11 ,  10 ,   6 , false", // minSample not met
+    "0.99 , 100 , 100 ,  98 , false",
+    "0.99 , 100 , 100 ,  99 , false",
+    "0.99 , 100 , 100 , 100 ,  true",
+  })
+  void should_check_threshold_exceeded(
+      float maxErrorRatio, long minSample, long totalItems, int errorCount, boolean expected) {
     // given
-    RatioErrorThreshold threshold = new RatioErrorThreshold(0.1f, 100);
+    RatioErrorThreshold threshold = new RatioErrorThreshold(maxErrorRatio, minSample);
     LongAdder total = new LongAdder();
-    total.add(100);
+    total.add(totalItems);
     // when
-    boolean exceeded = threshold.checkThresholdExceeded(10, total);
+    boolean exceeded = threshold.checkThresholdExceeded(errorCount, total);
     // then
-    assertThat(exceeded).isFalse();
+    assertThat(exceeded).isEqualTo(expected);
   }
 
-  @Test
-  void should_return_false_when_total_below_min_sample() {
-    // given
-    RatioErrorThreshold threshold = new RatioErrorThreshold(0.1f, 100);
-    LongAdder total = new LongAdder();
-    total.add(99);
-    // when
-    boolean exceeded = threshold.checkThresholdExceeded(99, total);
-    // then
-    assertThat(exceeded).isFalse();
-  }
-
-  @Test
-  void should_return_true_when_errors_above_ratio_and_total_above_min_sample() {
-    // given
-    RatioErrorThreshold threshold = new RatioErrorThreshold(0.1f, 100);
-    LongAdder total = new LongAdder();
-    total.add(100);
-    // when
-    boolean exceeded = threshold.checkThresholdExceeded(11, total);
-    // then
-    assertThat(exceeded).isTrue();
-  }
-
-  @Test
-  void should_error_out_when_max_error_ratio_invalid() {
-    assertThatThrownBy(() -> new RatioErrorThreshold(-1f, 100))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("maxErrorRatio must be > 0 and < 1");
-    assertThatThrownBy(() -> new RatioErrorThreshold(0f, 100))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("maxErrorRatio must be > 0 and < 1");
-    assertThatThrownBy(() -> new RatioErrorThreshold(1f, 100))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("maxErrorRatio must be > 0 and < 1");
-    assertThatThrownBy(() -> new RatioErrorThreshold(1000f, 100))
+  @ParameterizedTest(name = "[{index}] maxErrorRatio {0}")
+  @ValueSource(floats = {-1, 0, 1, 100})
+  void should_error_out_when_max_error_ratio_invalid(float maxErrorRatio) {
+    assertThatThrownBy(() -> new RatioErrorThreshold(maxErrorRatio, 100))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("maxErrorRatio must be > 0 and < 1");
   }
 
-  @Test
-  void should_error_out_when_min_sample_invalid() {
-    assertThatThrownBy(() -> new RatioErrorThreshold(0.1f, 0))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("minSample must be >= 1");
-    assertThatThrownBy(() -> new RatioErrorThreshold(0.1f, -1))
+  @ParameterizedTest(name = "[{index}] minSample {0}")
+  @ValueSource(longs = {Long.MIN_VALUE, -100, -1, 0})
+  void should_error_out_when_min_sample_invalid(long minSample) {
+    assertThatThrownBy(() -> new RatioErrorThreshold(0.1f, minSample))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("minSample must be >= 1");
   }
 
-  @Test
-  void should_report_max_error_ratio() {
+  @ParameterizedTest(name = "[{index}] maxErrorRatio {0}")
+  @ValueSource(floats = {0.001f, 0.1f, 0.5f, 0.9f, 0.999f})
+  void should_report_max_error_ratio(float maxErrorRatio) {
     // given
-    RatioErrorThreshold threshold = new RatioErrorThreshold(0.1f, 100);
+    RatioErrorThreshold threshold = new RatioErrorThreshold(maxErrorRatio, 100);
     // when
-    float ratio = threshold.getMaxErrorRatio();
+    float actual = threshold.getMaxErrorRatio();
     // then
-    assertThat(ratio).isEqualTo(0.1f);
+    assertThat(actual).isEqualTo(maxErrorRatio);
   }
 
-  @Test
-  void should_report_min_sample() {
+  @ParameterizedTest(name = "[{index}] minSample {0}")
+  @ValueSource(longs = {1, 2, 10, 100, Long.MAX_VALUE})
+  void should_report_min_sample(long minSample) {
     // given
-    RatioErrorThreshold threshold = new RatioErrorThreshold(0.1f, 100);
+    RatioErrorThreshold threshold = new RatioErrorThreshold(0.1f, minSample);
     // when
-    long minSample = threshold.getMinSample();
+    long actual = threshold.getMinSample();
     // then
-    assertThat(minSample).isEqualTo(100L);
+    assertThat(actual).isEqualTo(minSample);
   }
 }

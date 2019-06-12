@@ -12,46 +12,52 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.concurrent.atomic.LongAdder;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class AbsoluteErrorThresholdTest {
 
   private LongAdder irrelevant = new LongAdder();
 
-  @Test
-  void should_return_false_when_errors_below_threshold() {
+  @ParameterizedTest(name = "[{index}] maxErrors {0} errorCount {1} = {2}")
+  @CsvSource({
+    "0,0,false",
+    "0,1,true",
+    "1,0,false",
+    "1,1,false",
+    "1,2,true",
+    "100,99,false",
+    "100,100,false",
+    "100,101,true",
+    "100,1000,true",
+    "1000,100,false",
+  })
+  void should_check_threshold_exceeded(int maxErrors, int errorCount, boolean expected) {
     // given
-    AbsoluteErrorThreshold threshold = new AbsoluteErrorThreshold(100);
+    AbsoluteErrorThreshold threshold = new AbsoluteErrorThreshold(maxErrors);
     // when
-    boolean exceeded = threshold.checkThresholdExceeded(100, irrelevant);
+    boolean exceeded = threshold.checkThresholdExceeded(errorCount, irrelevant);
     // then
-    assertThat(exceeded).isFalse();
+    assertThat(exceeded).isEqualTo(expected);
   }
 
-  @Test
-  void should_return_true_when_errors_above_threshold() {
-    // given
-    AbsoluteErrorThreshold threshold = new AbsoluteErrorThreshold(100);
-    // when
-    boolean exceeded = threshold.checkThresholdExceeded(101, irrelevant);
-    // then
-    assertThat(exceeded).isTrue();
-  }
-
-  @Test
-  void should_error_out_when_max_errors_invalid() {
-    assertThatThrownBy(() -> new AbsoluteErrorThreshold(-1))
+  @ParameterizedTest(name = "[{index}] maxErrors {0}")
+  @ValueSource(ints = {-1, -2, -100, Integer.MIN_VALUE})
+  void should_error_out_when_max_errors_invalid(int maxErrors) {
+    assertThatThrownBy(() -> new AbsoluteErrorThreshold(maxErrors))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("maxErrors must be >= 0");
   }
 
-  @Test
-  void should_report_max_errors() {
+  @ParameterizedTest(name = "[{index}] maxErrors {0}")
+  @ValueSource(ints = {0, 1, 2, 100, Integer.MAX_VALUE})
+  void should_report_max_errors(int maxErrors) {
     // given
-    AbsoluteErrorThreshold threshold = new AbsoluteErrorThreshold(100);
+    AbsoluteErrorThreshold threshold = new AbsoluteErrorThreshold(maxErrors);
     // when
-    long maxErrors = threshold.getMaxErrors();
+    long actual = threshold.getMaxErrors();
     // then
-    assertThat(maxErrors).isEqualTo(100);
+    assertThat(actual).isEqualTo(maxErrors);
   }
 }
