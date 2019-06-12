@@ -39,7 +39,10 @@ public interface ErrorThreshold {
    * Checks whether the error threshold was exceeded.
    *
    * @param errorCount the current number of errors encountered.
-   * @param totalItems the total number of items processed so far.
+   * @param totalItems the total number of items processed so far. This is a LongAdder because
+   *     that's how {@link com.datastax.dsbulk.engine.internal.log.LogManager} stores the total
+   *     items count internally, and we don't want to force that component to convert that LongAdder
+   *     into something else each time we call this method.
    * @return {@code true} if the threshold was exceeded, or {@code false} otherwise.
    */
   boolean checkThresholdExceeded(long errorCount, @NotNull LongAdder totalItems);
