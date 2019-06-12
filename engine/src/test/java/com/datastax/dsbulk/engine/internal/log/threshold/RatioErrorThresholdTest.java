@@ -72,10 +72,10 @@ class RatioErrorThresholdTest {
   void should_error_out_when_min_sample_invalid() {
     assertThatThrownBy(() -> new RatioErrorThreshold(0.1f, 0))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("minSample must be > 1");
+        .hasMessage("minSample must be >= 1");
     assertThatThrownBy(() -> new RatioErrorThreshold(0.1f, -1))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("minSample must be > 1");
+        .hasMessage("minSample must be >= 1");
   }
 
   @Test

@@ -20,7 +20,7 @@ public class RatioErrorThreshold implements ErrorThreshold {
       throw new IllegalArgumentException("maxErrorRatio must be > 0 and < 1");
     }
     if (minSample < 1) {
-      throw new IllegalArgumentException("minSample must be > 1");
+      throw new IllegalArgumentException("minSample must be >= 1");
     }
     this.maxErrorRatio = maxErrorRatio;
     this.minSample = minSample;
