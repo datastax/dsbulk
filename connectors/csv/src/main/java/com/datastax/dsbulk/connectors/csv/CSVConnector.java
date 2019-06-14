@@ -30,7 +30,6 @@ import com.datastax.dsbulk.connectors.api.internal.DefaultIndexedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Streams;
 import com.google.common.reflect.TypeToken;
 import com.typesafe.config.ConfigException;
 import com.univocity.parsers.common.ParsingContext;
@@ -57,7 +56,6 @@ import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -65,7 +63,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
-import java.util.stream.IntStream;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 import org.reactivestreams.Publisher;
@@ -91,6 +89,7 @@ public class CSVConnector implements Connector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CSVConnector.class);
   private static final TypeToken<String> STRING_TYPE_TOKEN = TypeToken.of(String.class);
+  private static final Pattern WHITESPACE = Pattern.compile("\\s+");
 
   private static final String URL = "url";
   private static final String URLFILE = "urlfile";
@@ -493,35 +492,32 @@ public class CSVConnector implements Connector {
               URI resource = URI.create(url.toExternalForm());
               try (Reader r = IOUtils.newBufferedReader(url, encoding)) {
                 parser.beginParsing(r);
+                ParsingContext context = parser.getContext();
+                MappedField[] fieldNames = null;
+                if (header) {
+                  fieldNames = getFieldNames(url, context);
+                }
                 while (!sink.isCancelled()) {
                   com.univocity.parsers.common.record.Record row = parser.parseNextRecord();
-                  ParsingContext context = parser.getContext();
                   String source = context.currentParsedContent();
                   if (row == null) {
                     break;
                   }
                   Record record;
                   try {
+                    Object[] values = row.getValues();
                     if (header) {
                       record =
                           DefaultRecord.mapped(
-                              source,
-                              resource,
-                              recordNumber++,
-                              Arrays.stream(context.parsedHeaders())
-                                  .map(DefaultMappedField::new)
-                                  .toArray(MappedField[]::new),
-                              (Object[]) row.getValues());
+                              source, resource, recordNumber++, fieldNames, values);
                       // also emit indexed fields
-                      Streams.forEachPair(
-                          IntStream.range(0, row.getValues().length)
-                              .mapToObj(DefaultIndexedField::new),
-                          Arrays.stream(row.getValues()),
-                          ((DefaultRecord) record)::setFieldValue);
+                      for (int i = 0; i < values.length; i++) {
+                        DefaultIndexedField field = new DefaultIndexedField(i);
+                        Object value = values[i];
+                        ((DefaultRecord) record).setFieldValue(field, value);
+                      }
                     } else {
-                      record =
-                          DefaultRecord.indexed(
-                              source, resource, recordNumber++, (Object[]) row.getValues());
+                      record = DefaultRecord.indexed(source, resource, recordNumber++, values);
                     }
                   } catch (Exception e) {
                     record = new DefaultErrorRecord(source, resource, recordNumber, e);
@@ -552,6 +548,25 @@ public class CSVConnector implements Connector {
       records = records.take(maxRecords);
     }
     return records;
+  }
+
+  private MappedField[] getFieldNames(URL url, ParsingContext context) {
+    List<String> fieldNames = new ArrayList<>();
+    String[] parsedHeaders = context.parsedHeaders();
+    for (int i = 0; i < parsedHeaders.length; i++) {
+      String name = parsedHeaders[i];
+      // DAT-427: prevent empty names and duplicated names
+      if (name == null || name.isEmpty() || WHITESPACE.matcher(name).matches()) {
+        throw new IllegalStateException(
+            String.format("%s: found empty field name at index %d", url, i));
+      }
+      if (fieldNames.contains(name)) {
+        throw new IllegalStateException(
+            String.format("%s: found duplicate field name at index %d", url, i));
+      }
+      fieldNames.add(name);
+    }
+    return fieldNames.stream().map(DefaultMappedField::new).toArray(MappedField[]::new);
   }
 
   private Flux<URL> scanRootDirectory(Path root) {
