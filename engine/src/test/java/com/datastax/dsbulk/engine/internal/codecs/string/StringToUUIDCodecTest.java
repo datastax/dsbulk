@@ -45,7 +45,8 @@ class StringToUUIDCodecTest {
               US,
               MILLISECONDS,
               EPOCH.atZone(UTC),
-              numberFormat),
+              numberFormat,
+              true),
           UTC,
           EPOCH.atZone(UTC),
           nullStrings);
