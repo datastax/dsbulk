@@ -35,6 +35,8 @@ class StringToLineStringCodecTest {
         .toInternal(lineString)
         .convertsFromExternal(null)
         .toInternal(null)
+        .convertsFromExternal("")
+        .toInternal(null)
         .convertsFromExternal("NULL")
         .toInternal(null);
   }

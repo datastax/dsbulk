@@ -35,6 +35,8 @@ class JsonNodeToDateRangeCodecTest {
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
         .toInternal(null)
+        .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
+        .toInternal(null)
         .convertsFromExternal(null)
         .toInternal(null);
   }

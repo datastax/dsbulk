@@ -22,7 +22,7 @@ public class StringToLineStringCodec extends StringConvertingCodec<LineString> {
 
   @Override
   public LineString externalToInternal(String s) {
-    if (isNull(s)) {
+    if (isNullOrEmpty(s)) {
       return null;
     }
     return CodecUtils.parseLineString(s);

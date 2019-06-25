@@ -30,7 +30,7 @@ public class JsonNodeToPolygonCodec extends JsonNodeConvertingCodec<Polygon> {
 
   @Override
   public Polygon externalToInternal(JsonNode node) {
-    if (isNull(node)) {
+    if (isNullOrEmpty(node)) {
       return null;
     }
     try {

@@ -30,7 +30,7 @@ public class JsonNodeToPointCodec extends JsonNodeConvertingCodec<Point> {
 
   @Override
   public Point externalToInternal(JsonNode node) {
-    if (isNull(node)) {
+    if (isNullOrEmpty(node)) {
       return null;
     }
     try {

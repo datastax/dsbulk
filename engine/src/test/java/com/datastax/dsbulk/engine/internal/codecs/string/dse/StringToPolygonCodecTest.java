@@ -35,6 +35,8 @@ class StringToPolygonCodecTest {
         .toInternal(polygon)
         .convertsFromExternal(null)
         .toInternal(null)
+        .convertsFromExternal("")
+        .toInternal(null)
         .convertsFromExternal("NULL")
         .toInternal(null);
   }
