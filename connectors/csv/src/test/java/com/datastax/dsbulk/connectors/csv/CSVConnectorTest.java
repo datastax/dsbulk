@@ -44,7 +44,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
-import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.FileAlreadyExistsException;
@@ -56,6 +55,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.assertj.core.util.Throwables;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -1005,9 +1005,9 @@ class CSVConnectorTest {
           .satisfies(
               t ->
                   assertThat(
-                          t.getCause() instanceof FileAlreadyExistsException
+                          getRootCause(t) instanceof FileAlreadyExistsException
                               || Arrays.stream(t.getSuppressed())
-                                  .map(Throwable::getCause)
+                                  .map(Throwables::getRootCause)
                                   .anyMatch(FileAlreadyExistsException.class::isInstance))
                       .isTrue());
       connector.close();
@@ -1054,7 +1054,6 @@ class CSVConnectorTest {
     connector.init();
     assertThatThrownBy(
             () -> Flux.fromIterable(createRecords()).transform(connector.write()).blockLast())
-        .isInstanceOf(UncheckedIOException.class)
         .hasCauseInstanceOf(IOException.class)
         .hasRootCauseInstanceOf(IllegalArgumentException.class)
         .satisfies(
@@ -1254,6 +1253,30 @@ class CSVConnectorTest {
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage("Invalid value for connector.csv.comment: Expecting single char, got ''");
     connector.close();
+  }
+
+  @Test
+  void should_throw_exception_when_buffet_size_not_valid() {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(ConfigFactory.parseString("flushWindow = notANumber"))
+            .withFallback(CONNECTOR_DEFAULT_SETTINGS);
+    assertThatThrownBy(() -> connector.configure(settings, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining(
+            "Invalid value for connector.csv.flushWindow: Expecting NUMBER, got STRING");
+  }
+
+  @Test
+  void should_throw_exception_when_buffet_size_negative_or_zero() {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(ConfigFactory.parseString("flushWindow = 0"))
+            .withFallback(CONNECTOR_DEFAULT_SETTINGS);
+    assertThatThrownBy(() -> connector.configure(settings, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining(
+            "Invalid value for connector.csv.flushWindow: Expecting integer > 0, got: 0");
   }
 
   private List<Record> createRecords() {

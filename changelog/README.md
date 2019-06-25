@@ -8,6 +8,7 @@
 - [improvement] DAT-383: Show version option in DSBulk help.
 - [bug] DAT-333: Logging option "-maxErrors 0" doesn't abort the operation.
 - [improvement] DAT-431: Replace Guava's Range with a custom range implementation.
+- [improvement] DAT-430: Write records by batches.
 
 
 ### 1.3.3
