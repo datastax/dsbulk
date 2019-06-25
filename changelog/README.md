@@ -16,6 +16,7 @@
 - [improvement] DAT-432: Ability to disable bytes/sec metrics.
 - [bug] DAT-427: DSBulk should handle empty column names in CSV headers.
 - [bug] DAT-427: DSBulk should handle empty or duplicate column names in CSV headers.
+- [improvement] DAT-454: Revisit threading model for Unload workflow.
 
 
 ### 1.3.3

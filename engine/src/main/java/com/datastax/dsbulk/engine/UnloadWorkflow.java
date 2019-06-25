@@ -11,7 +11,6 @@ package com.datastax.dsbulk.engine;
 import static com.datastax.dsbulk.connectors.api.CommonConnectorFeature.INDEXED_RECORDS;
 import static com.datastax.dsbulk.connectors.api.CommonConnectorFeature.MAPPED_RECORDS;
 import static com.datastax.dsbulk.engine.internal.utils.ClusterInformationUtils.printDebugInfoAboutCluster;
-import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.TPC_THRESHOLD;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.driver.core.Statement;
@@ -20,7 +19,6 @@ import com.datastax.driver.dse.DseSession;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.connectors.api.Connector;
-import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
@@ -36,15 +34,11 @@ import com.datastax.dsbulk.engine.internal.settings.MonitoringSettings;
 import com.datastax.dsbulk.engine.internal.settings.SchemaSettings;
 import com.datastax.dsbulk.engine.internal.settings.SettingsManager;
 import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
-import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.datastax.dsbulk.executor.reactor.reader.ReactorBulkReader;
 import com.google.common.base.Stopwatch;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Function;
-import org.jetbrains.annotations.NotNull;
-import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -62,25 +56,15 @@ public class UnloadWorkflow implements Workflow {
 
   private String executionId;
   private Connector connector;
-  private Scheduler scheduler;
   private ReadResultMapper readResultMapper;
   private MetricsManager metricsManager;
   private LogManager logManager;
   private DseCluster cluster;
   private ReactorBulkReader executor;
   private List<? extends Statement> readStatements;
-  private Function<? super Publisher<Record>, ? extends Publisher<Record>> writer;
-  private Function<Flux<ReadResult>, Flux<ReadResult>> totalItemsMonitor;
-  private Function<Flux<Record>, Flux<Record>> failedRecordsMonitor;
-  private Function<Flux<ReadResult>, Flux<ReadResult>> failedReadResultsMonitor;
-  private Function<Flux<Record>, Flux<Record>> failedRecordsHandler;
-  private Function<Flux<ReadResult>, Flux<ReadResult>> totalItemsCounter;
-  private Function<Flux<ReadResult>, Flux<ReadResult>> failedReadsHandler;
-  private Function<Flux<ReadResult>, Flux<ReadResult>> queryWarningsHandler;
-  private Function<Flux<Record>, Flux<Record>> unmappableRecordsHandler;
-  private Function<Flux<Void>, Flux<Void>> terminationHandler;
   private int readConcurrency;
   private int numCores;
+  private Scheduler scheduler;
 
   UnloadWorkflow(LoaderConfig config) {
     settingsManager = new SettingsManager(config, WorkflowType.UNLOAD);
@@ -148,16 +132,6 @@ public class UnloadWorkflow implements Workflow {
         executorSettings.newReadExecutor(
             session, metricsManager.getExecutionListener(), schemaSettings.isSearchQuery());
     closed.set(false);
-    writer = connector.write();
-    totalItemsMonitor = metricsManager.newTotalItemsMonitor();
-    failedRecordsMonitor = metricsManager.newFailedItemsMonitor();
-    failedReadResultsMonitor = metricsManager.newFailedItemsMonitor();
-    failedRecordsHandler = logManager.newFailedRecordsHandler();
-    totalItemsCounter = logManager.newTotalItemsCounter();
-    failedReadsHandler = logManager.newFailedReadsHandler();
-    queryWarningsHandler = logManager.newQueryWarningsHandler();
-    unmappableRecordsHandler = logManager.newUnmappableRecordsHandler();
-    terminationHandler = logManager.newTerminationHandler();
     numCores = Runtime.getRuntime().availableProcessors();
     scheduler = Schedulers.newParallel(numCores, new DefaultThreadFactory("workflow"));
     // Set the concurrency to the number of cores to maximize parallelism, unless a maximum number
@@ -165,9 +139,7 @@ public class UnloadWorkflow implements Workflow {
     // of cores, cap the concurrency at that number to reduce lock contention around the semaphore
     // that controls it.
     readConcurrency =
-        executorSettings.getMaxConcurrentQueries().isPresent()
-            ? Math.min(numCores, executorSettings.getMaxConcurrentQueries().get())
-            : numCores;
+        Math.min(numCores, executorSettings.getMaxConcurrentQueries().orElse(Integer.MAX_VALUE));
   }
 
   @Override
@@ -175,18 +147,32 @@ public class UnloadWorkflow implements Workflow {
     LOGGER.debug("{} started.", this);
     metricsManager.start();
     Stopwatch timer = Stopwatch.createStarted();
-    Flux<Record> flux;
-    if (readStatements.size() >= TPC_THRESHOLD) {
-      flux = threadPerCoreFlux();
-    } else {
-      flux = parallelFlux();
-    }
-    flux.compose(writer)
-        .transform(failedRecordsMonitor)
-        .transform(failedRecordsHandler)
+    // executed on the workflow runner thread
+    Flux.fromIterable(readStatements)
+        .flatMap(statement -> executor.readReactive(statement), readConcurrency)
+        // executed on a driver IO thread
+        .window(Queues.SMALL_BUFFER_SIZE)
+        .flatMap(
+            window ->
+                window
+                    // executed on a workflow thread
+                    .transform(logManager.newQueryWarningsHandler())
+                    .transform(metricsManager.newTotalItemsMonitor())
+                    .transform(logManager.newTotalItemsCounter())
+                    .transform(metricsManager.newFailedItemsMonitor())
+                    .transform(logManager.newFailedReadsHandler())
+                    .map(readResultMapper::map)
+                    .transform(metricsManager.newFailedItemsMonitor())
+                    .transform(logManager.newUnmappableRecordsHandler())
+                    .transform(connector.write())
+                    // executed on a workflow thread, unless the connector creates a context switch
+                    .transform(metricsManager.newFailedItemsMonitor())
+                    .transform(logManager.newFailedRecordsHandler())
+                    .subscribeOn(scheduler),
+            numCores)
         .then()
         .flux()
-        .transform(terminationHandler)
+        .transform(logManager.newTerminationHandler())
         .blockLast();
     timer.stop();
     metricsManager.stop();
@@ -201,45 +187,6 @@ public class UnloadWorkflow implements Workflow {
           WorkflowUtils.formatElapsed(seconds));
     }
     return logManager.getTotalErrors() == 0;
-  }
-
-  @NotNull
-  private Flux<Record> threadPerCoreFlux() {
-    return Flux.fromIterable(readStatements)
-        .flatMap(
-            statement ->
-                executor
-                    .readReactive(statement)
-                    .transform(queryWarningsHandler)
-                    .transform(totalItemsMonitor)
-                    .transform(totalItemsCounter)
-                    .transform(failedReadResultsMonitor)
-                    .transform(failedReadsHandler)
-                    .map(readResultMapper::map)
-                    .transform(failedRecordsMonitor)
-                    .transform(unmappableRecordsHandler)
-                    .subscribeOn(scheduler),
-            readConcurrency);
-  }
-
-  @NotNull
-  private Flux<Record> parallelFlux() {
-    return Flux.fromIterable(readStatements)
-        .flatMap(executor::readReactive, readConcurrency)
-        .window(Queues.SMALL_BUFFER_SIZE)
-        .flatMap(
-            results ->
-                results
-                    .transform(queryWarningsHandler)
-                    .transform(totalItemsMonitor)
-                    .transform(totalItemsCounter)
-                    .transform(failedReadResultsMonitor)
-                    .transform(failedReadsHandler)
-                    .map(readResultMapper::map)
-                    .transform(failedRecordsMonitor)
-                    .transform(unmappableRecordsHandler)
-                    .subscribeOn(scheduler),
-            numCores);
   }
 
   @Override

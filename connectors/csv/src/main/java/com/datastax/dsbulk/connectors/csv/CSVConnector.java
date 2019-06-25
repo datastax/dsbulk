@@ -12,6 +12,7 @@ import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.getURLsFro
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isPathAbsentOrEmpty;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isPathPresentAndNotEmpty;
 import static com.datastax.dsbulk.commons.internal.io.IOUtils.countReadableFiles;
+import static reactor.util.concurrent.Queues.SMALL_BUFFER_SIZE;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
@@ -253,13 +254,11 @@ public class CSVConnector implements Connector {
       }
       counter = new AtomicInteger(0);
       writers = new CopyOnWriteArrayList<>();
-      if (writeConcurrency() > 1) {
-        ThreadFactory threadFactory = new DefaultThreadFactory("csv-connector");
-        scheduler =
-            maxConcurrentFiles == 1
-                ? Schedulers.newSingle(threadFactory)
-                : Schedulers.newParallel(maxConcurrentFiles, threadFactory);
-      }
+      ThreadFactory threadFactory = new DefaultThreadFactory("csv-connector");
+      scheduler =
+          maxConcurrentFiles == 1
+              ? Schedulers.newSingle(threadFactory)
+              : Schedulers.newParallel(maxConcurrentFiles, threadFactory);
       for (int i = 0; i < maxConcurrentFiles; i++) {
         writers.add(new CSVWriter());
       }
@@ -379,12 +378,15 @@ public class CSVConnector implements Connector {
     if (writeConcurrency() > 1) {
       return upstream ->
           Flux.from(upstream)
-              .parallel(maxConcurrentFiles)
+              .parallel(maxConcurrentFiles, SMALL_BUFFER_SIZE * 4)
               .runOn(scheduler)
               .groups()
               .flatMap(rail -> rail.transform(writeRecords(Objects.requireNonNull(rail.key()))));
     } else {
-      return upstream -> Flux.from(upstream).transform(writeRecords(0));
+      return upstream ->
+          Flux.from(upstream)
+              .publishOn(scheduler, SMALL_BUFFER_SIZE * 4)
+              .transform(writeRecords(0));
     }
   }
 
