@@ -58,24 +58,42 @@ public class NumericTemporalFormat implements TemporalFormat {
           text,
           pos.getIndex());
     }
-    try {
-      return CodecUtils.numberToInstant(n, timeUnit, epoch.toInstant());
-    } catch (Exception e) {
-      throw new DateTimeException("Could not parse temporal: " + text, e);
-    }
+    return numberToTemporal(n);
   }
 
   @Override
   public String format(TemporalAccessor temporal) throws DateTimeException {
+    Number n = temporalToNumber(temporal);
+    if (n == null) {
+      return null;
+    }
+    try {
+      return numberFormat.get().format(n);
+    } catch (Exception e) {
+      throw new DateTimeException("Could not format temporal: " + temporal, e);
+    }
+  }
+
+  public TemporalAccessor numberToTemporal(Number n) {
+    if (n == null) {
+      return null;
+    }
+    try {
+      return CodecUtils.numberToInstant(n, timeUnit, epoch.toInstant());
+    } catch (Exception e) {
+      throw new DateTimeException("Could not convert number to temporal: " + n, e);
+    }
+  }
+
+  public Number temporalToNumber(TemporalAccessor temporal) throws DateTimeException {
     if (temporal == null) {
       return null;
     }
     try {
       Instant i = CodecUtils.toInstant(temporal, timeZone, epoch.toLocalDate());
-      Number n = CodecUtils.instantToNumber(i, timeUnit, epoch.toInstant());
-      return numberFormat.get().format(n);
+      return CodecUtils.instantToNumber(i, timeUnit, epoch.toInstant());
     } catch (Exception e) {
-      throw new DateTimeException("Could not format temporal: " + temporal, e);
+      throw new DateTimeException("Could not convert temporal to number: " + temporal, e);
     }
   }
 }
