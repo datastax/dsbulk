@@ -21,7 +21,7 @@ public interface ErrorThreshold {
    * Creates an {@link ErrorThreshold} based on a ratio of errors over the total items processed so
    * far.
    *
-   * @param maxErrorRatio the maximum error ratio to tolerate, must be > 0 and < 1.
+   * @param maxErrorRatio the maximum error ratio to tolerate, must be &gt; 0 and &lt; 1.
    * @param minSample the minimum sample count to observe; as long as the total number of items
    *     processed is lesser than this number, the error ratio will not be tested.
    */
