@@ -49,7 +49,7 @@ class JsonNodeToLocalTimeCodecTest {
 
   @Test
   void should_convert_from_valid_external() {
-    JsonNodeToLocalTimeCodec codec = new JsonNodeToLocalTimeCodec(format1, nullStrings);
+    JsonNodeToLocalTimeCodec codec = new JsonNodeToLocalTimeCodec(format1, UTC, nullStrings);
     assertThat(codec)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("12:24:46"))
         .toInternal(LocalTime.parse("12:24:46"))
@@ -61,7 +61,7 @@ class JsonNodeToLocalTimeCodecTest {
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
         .toInternal(null);
-    codec = new JsonNodeToLocalTimeCodec(format2, nullStrings);
+    codec = new JsonNodeToLocalTimeCodec(format2, UTC, nullStrings);
     assertThat(codec)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("122446.999"))
         .toInternal(LocalTime.parse("12:24:46.999"))
@@ -75,13 +75,13 @@ class JsonNodeToLocalTimeCodecTest {
 
   @Test
   void should_convert_from_valid_internal() {
-    JsonNodeToLocalTimeCodec codec = new JsonNodeToLocalTimeCodec(format1, nullStrings);
+    JsonNodeToLocalTimeCodec codec = new JsonNodeToLocalTimeCodec(format1, UTC, nullStrings);
     assertThat(codec)
         .convertsFromInternal(LocalTime.parse("12:24:46.999"))
         .toExternal(JSON_NODE_FACTORY.textNode("12:24:46.999"))
         .convertsFromInternal(null)
         .toExternal(null);
-    codec = new JsonNodeToLocalTimeCodec(format2, nullStrings);
+    codec = new JsonNodeToLocalTimeCodec(format2, UTC, nullStrings);
     assertThat(codec)
         .convertsFromInternal(LocalTime.parse("12:24:46.999"))
         .toExternal(JSON_NODE_FACTORY.textNode("122446.999"))
@@ -92,7 +92,7 @@ class JsonNodeToLocalTimeCodecTest {
   @Test
   void should_not_convert_from_invalid_external() {
     JsonNodeToLocalTimeCodec codec =
-        new JsonNodeToLocalTimeCodec(new SimpleTemporalFormat(ISO_LOCAL_DATE), nullStrings);
+        new JsonNodeToLocalTimeCodec(new SimpleTemporalFormat(ISO_LOCAL_DATE), UTC, nullStrings);
     assertThat(codec)
         .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid date format"));
   }

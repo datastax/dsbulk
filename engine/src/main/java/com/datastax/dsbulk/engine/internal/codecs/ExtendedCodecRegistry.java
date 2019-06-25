@@ -661,9 +661,9 @@ public class ExtendedCodecRegistry {
             booleanNumbers,
             nullStrings);
       case DATE:
-        return new JsonNodeToLocalDateCodec(localDateFormat, nullStrings);
+        return new JsonNodeToLocalDateCodec(localDateFormat, timeZone, nullStrings);
       case TIME:
-        return new JsonNodeToLocalTimeCodec(localTimeFormat, nullStrings);
+        return new JsonNodeToLocalTimeCodec(localTimeFormat, timeZone, nullStrings);
       case TIMESTAMP:
         return new JsonNodeToInstantCodec(timestampFormat, timeZone, epoch, nullStrings);
       case INET:

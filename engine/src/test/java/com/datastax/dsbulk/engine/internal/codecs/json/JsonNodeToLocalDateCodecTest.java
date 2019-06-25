@@ -47,7 +47,7 @@ class JsonNodeToLocalDateCodecTest {
 
   @Test
   void should_convert_from_valid_external() {
-    JsonNodeToLocalDateCodec codec = new JsonNodeToLocalDateCodec(format1, nullStrings);
+    JsonNodeToLocalDateCodec codec = new JsonNodeToLocalDateCodec(format1, UTC, nullStrings);
     assertThat(codec)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("2016-07-24"))
         .toInternal(LocalDate.parse("2016-07-24"))
@@ -57,7 +57,7 @@ class JsonNodeToLocalDateCodecTest {
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
         .toInternal(null);
-    codec = new JsonNodeToLocalDateCodec(format2, nullStrings);
+    codec = new JsonNodeToLocalDateCodec(format2, UTC, nullStrings);
     assertThat(codec)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("20160724"))
         .toInternal(LocalDate.parse("2016-07-24"))
@@ -71,13 +71,13 @@ class JsonNodeToLocalDateCodecTest {
 
   @Test
   void should_convert_from_valid_internal() {
-    JsonNodeToLocalDateCodec codec = new JsonNodeToLocalDateCodec(format1, nullStrings);
+    JsonNodeToLocalDateCodec codec = new JsonNodeToLocalDateCodec(format1, UTC, nullStrings);
     assertThat(codec)
         .convertsFromInternal(LocalDate.parse("2016-07-24"))
         .toExternal(JSON_NODE_FACTORY.textNode("2016-07-24"))
         .convertsFromInternal(null)
         .toExternal(null);
-    codec = new JsonNodeToLocalDateCodec(format2, nullStrings);
+    codec = new JsonNodeToLocalDateCodec(format2, UTC, nullStrings);
     assertThat(codec)
         .convertsFromInternal(LocalDate.parse("2016-07-24"))
         .toExternal(JSON_NODE_FACTORY.textNode("20160724"))
@@ -87,7 +87,7 @@ class JsonNodeToLocalDateCodecTest {
 
   @Test
   void should_not_convert_from_invalid_external() {
-    JsonNodeToLocalDateCodec codec = new JsonNodeToLocalDateCodec(format1, nullStrings);
+    JsonNodeToLocalDateCodec codec = new JsonNodeToLocalDateCodec(format1, UTC, nullStrings);
     assertThat(codec)
         .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid date format"));
   }
