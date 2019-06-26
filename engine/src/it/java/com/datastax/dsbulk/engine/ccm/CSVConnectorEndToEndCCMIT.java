@@ -19,6 +19,7 @@ import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDi
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStreamExcludingHeaders;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static com.datastax.dsbulk.engine.DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS;
+import static com.datastax.dsbulk.engine.DataStaxBulkLoader.STATUS_OK;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.numberToInstant;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.REJECT;
@@ -2774,9 +2775,13 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             quoteJson(insertRegular));
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
-    assertThat(status).isOne();
-    // should reject the line '3,null,null' as it has a null clustering column
-    validateNumberOfBadRecords(1);
+    // Some versions of C* export a spurious row for partition key 3 containing only nulls apart
+    // from the partition key itself.
+    // In such cases DSBulk should reject the line '3,null,null' as it has a null clustering column
+    assertThat(status).isIn(STATUS_OK, STATUS_COMPLETED_WITH_ERRORS);
+    if (status == STATUS_COMPLETED_WITH_ERRORS) {
+      validateNumberOfBadRecords(1);
+    }
 
     // load static columns only
     args =
