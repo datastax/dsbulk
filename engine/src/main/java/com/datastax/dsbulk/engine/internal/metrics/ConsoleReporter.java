@@ -33,6 +33,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import org.fusesource.jansi.Ansi;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * An {@link ScheduledReporter} that reports useful metrics about ongoing operations to the standard
@@ -52,7 +53,7 @@ public class ConsoleReporter extends ScheduledReporter {
   private final Supplier<Long> total;
   private final Supplier<Long> failed;
   private final Timer timer;
-  private final Meter bytes;
+  @Nullable private final Meter bytes;
   private final Histogram batchSizes;
   private final InterceptingPrintStream stderr;
   private final String rateUnit;
@@ -64,7 +65,7 @@ public class ConsoleReporter extends ScheduledReporter {
       Supplier<Long> total,
       Supplier<Long> failed,
       Timer timer,
-      Meter bytes,
+      @Nullable Meter bytes,
       Histogram batchSizes,
       TimeUnit rateUnit,
       TimeUnit durationUnit,
@@ -132,41 +133,43 @@ public class ConsoleReporter extends ScheduledReporter {
 
     // throughput
     if (header.toString().length() < LINE_LENGTH) {
+
+      // rows per time unit
       double throughput = timer.getMeanRate();
       double rowsPerUnit = convertRate(throughput);
-      double bytes = this.bytes.getMeanRate();
-      double mbPerUnit = convertRate(bytes / BYTES_PER_MB);
-      double kbPerRow = throughput == 0 ? 0 : (bytes / BYTES_PER_KB) / throughput;
       String rowsPerUnitStr = format("%,.0f", rowsPerUnit);
-      String mbPerUnitStr = format("%,.2f", mbPerUnit);
-      String kbPerRowStr = format("%,.2f", kbPerRow);
       String rowsPerUnitLabel = "rows/" + rateUnit;
-      String mbPerRateUnitLabel = "mb/" + rateUnit;
       int rowsPerUnitLength = max(rowsPerUnitLabel.length(), rowsPerUnitStr.length());
-      int mbPerUnitLength = max(mbPerRateUnitLabel.length(), mbPerUnitStr.length());
-      int kbPerRowLength = max("kb/row".length(), kbPerRowStr.length());
-      header =
-          header
-              .a(" | ")
-              .a(leftPad(rowsPerUnitLabel, rowsPerUnitLength))
-              .a(" | ")
-              .a(leftPad(mbPerRateUnitLabel, mbPerUnitLength))
-              .a(" | ")
-              .a(leftPad("kb/row", kbPerRowLength));
-      message =
-          message
-              .reset()
-              .a(" | ")
-              .fgGreen()
-              .a(leftPad(rowsPerUnitStr, rowsPerUnitLength))
-              .reset()
-              .a(" | ")
-              .fgGreen()
-              .a(leftPad(mbPerUnitStr, mbPerUnitLength))
-              .reset()
-              .a(" | ")
-              .fgGreen()
-              .a(leftPad(kbPerRowStr, kbPerRowLength));
+      header = header.a(" | ").a(leftPad(rowsPerUnitLabel, rowsPerUnitLength));
+      message = message.reset().a(" | ").fgGreen().a(leftPad(rowsPerUnitStr, rowsPerUnitLength));
+
+      // megabytes per time unit and kilobytes per row
+      if (bytes != null) {
+        double bytes = this.bytes.getMeanRate();
+        double mbPerUnit = convertRate(bytes / BYTES_PER_MB);
+        double kbPerRow = throughput == 0 ? 0 : (bytes / BYTES_PER_KB) / throughput;
+        String mbPerUnitStr = format("%,.2f", mbPerUnit);
+        String kbPerRowStr = format("%,.2f", kbPerRow);
+        String mbPerRateUnitLabel = "mb/" + rateUnit;
+        int mbPerUnitLength = max(mbPerRateUnitLabel.length(), mbPerUnitStr.length());
+        int kbPerRowLength = max("kb/row".length(), kbPerRowStr.length());
+        header =
+            header
+                .a(" | ")
+                .a(leftPad(mbPerRateUnitLabel, mbPerUnitLength))
+                .a(" | ")
+                .a(leftPad("kb/row", kbPerRowLength));
+        message =
+            message
+                .reset()
+                .a(" | ")
+                .fgGreen()
+                .a(leftPad(mbPerUnitStr, mbPerUnitLength))
+                .reset()
+                .a(" | ")
+                .fgGreen()
+                .a(leftPad(kbPerRowStr, kbPerRowLength));
+      }
     }
 
     // latencies
@@ -209,7 +212,7 @@ public class ConsoleReporter extends ScheduledReporter {
     }
 
     // batches
-    if (header.toString().length() < LINE_LENGTH && batchSizes != null) {
+    if (batchSizes != null && header.toString().length() < LINE_LENGTH) {
       Snapshot snapshot = batchSizes.getSnapshot();
       double avgBatch = snapshot.getMean();
       String avgBatchStr = format("%,.2f", avgBatch);
