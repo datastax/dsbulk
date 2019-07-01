@@ -114,7 +114,7 @@ public class JsonConnector implements Connector {
       new TypeReference<Map<String, JsonNode>>() {};
 
   private boolean read;
-  private URL url;
+  private List<URL> url;
   private DocumentMode mode;
   private Path root;
   private String pattern;
@@ -140,13 +140,19 @@ public class JsonConnector implements Connector {
   @Override
   public void configure(LoaderConfig settings, boolean read) {
     try {
-      if (!settings.hasPath(URL) || settings.getString(URL).isEmpty()) {
+      if (!settings.hasPath(URL) || settings.getUrlsList(URL).isEmpty()) {
         throw new BulkConfigurationException(
             "An URL is mandatory when using the json connector. Please set connector.json.url "
                 + "and try again. See settings.md or help for more information.");
       }
       this.read = read;
-      url = settings.getURL(URL);
+
+      // for UNLOAD we are not supporting multiple URLs
+      if(!read && settings.getUrlsList(URL).size() > 1){
+        throw new BulkConfigurationException("You cannot pass multiple URLs for UNLOAD.");
+      }
+      url = settings.getUrlsList(URL);
+
       mode = settings.getEnum(DocumentMode.class, MODE);
       pattern = settings.getString(FILE_NAME_PATTERN);
       encoding = settings.getCharset(ENCODING);
@@ -172,6 +178,7 @@ public class JsonConnector implements Connector {
   @Override
   public void init() throws URISyntaxException, IOException {
     if (read) {
+      //todo here
       tryReadFromDirectory();
     } else {
       tryWriteToDirectory();
@@ -284,6 +291,7 @@ public class JsonConnector implements Connector {
     }
   }
 
+  //todo
   private void tryReadFromDirectory() throws URISyntaxException, IOException {
     try {
       resourceCount = 1;
@@ -313,7 +321,7 @@ public class JsonConnector implements Connector {
   private void tryWriteToDirectory() throws URISyntaxException, IOException {
     try {
       resourceCount = -1;
-      Path root = Paths.get(url.toURI());
+      Path root = Paths.get(url.get(0).toURI()); // for UNLOAD always one URL
       if (!Files.exists(root)) {
         root = Files.createDirectories(root);
       }
@@ -533,7 +541,7 @@ public class JsonConnector implements Connector {
       }
     }
     // assume we are writing to a single URL and ignore fileNameFormat
-    return url;
+    return url.get(0); // for UNLOAD always one URL
   }
 
   private static <T extends Enum<T>> Map<T, Boolean> getFeatureMap(

@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.commons.tests.utils;
 
 import com.google.common.base.CharMatcher;
+
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,8 +23,8 @@ public class StringUtils {
   /**
    * Generates a unique CQL identifier with the given prefix.
    *
-   * @return a unique CQL identifier.
    * @param prefix the prefix to use.
+   * @return a unique CQL identifier.
    */
   public static String uniqueIdentifier(String prefix) {
     return prefix + SEQS.computeIfAbsent(prefix, s -> new AtomicInteger(0)).incrementAndGet();
@@ -53,6 +54,25 @@ public class StringUtils {
    */
   public static String quoteJson(URL value) {
     return quoteJson(value.toExternalForm());
+  }
+
+  /**
+   * Quotes the given URLs as a Json string coma delimited.
+   *
+   * @param values the list of values that will be concatenated with coma as delimiter to quote.
+   * @return the quoted value.
+   * @see #quoteJson(String)
+   */
+  public static String quoteJson(URL... values) {
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < values.length; i++) {
+      sb.append(values[i].toExternalForm());
+      if (i != values.length - 1) {
+        sb.append(",");
+      }
+    }
+
+    return quoteJson(sb.toString());
   }
 
   /**

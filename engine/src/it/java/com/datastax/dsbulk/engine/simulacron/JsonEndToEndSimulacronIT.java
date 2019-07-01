@@ -35,6 +35,8 @@ import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_ERRO
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_PARTIAL_BAD;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_SKIP;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQUE;
+import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQUE_PART_1;
+import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQUE_PART_2;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_WITH_COMMENTS;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.LOCAL_ONE;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.ONE;
@@ -174,6 +176,46 @@ class JsonEndToEndSimulacronIT {
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
       IP_BY_COUNTRY_MAPPING_NAMED
+    };
+
+    int status = new DataStaxBulkLoader(args).run();
+    assertThat(status).isZero();
+    assertThat(logs.getAllMessagesAsString())
+        .contains("Records: total: 24, successful: 24, failed: 0")
+        .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
+        .contains("Writes: total: 24, successful: 24, failed: 0");
+    validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", ONE);
+  }
+
+  @Test
+  void full_load_multiple_files() {
+
+    primeIpByCountryTable(simulacron);
+    RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
+    simulacron.prime(new Prime(insert));
+
+    String[] args = {
+        "load",
+        "-c",
+        "json",
+        "--log.directory",
+        quoteJson(logDir),
+        "--connector.json.url",
+        quoteJson(JSON_RECORDS_UNIQUE_PART_1, JSON_RECORDS_UNIQUE_PART_2),
+        "--driver.query.consistency",
+        "ONE",
+        "--driver.hosts",
+        hostname,
+        "--driver.port",
+        port,
+        "--driver.pooling.local.connections",
+        "1",
+        "--schema.keyspace",
+        "ks1",
+        "--schema.query",
+        INSERT_INTO_IP_BY_COUNTRY,
+        "--schema.mapping",
+        IP_BY_COUNTRY_MAPPING_NAMED
     };
 
     int status = new DataStaxBulkLoader(args).run();
