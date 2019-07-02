@@ -159,14 +159,18 @@ public class CSVConnector implements Connector {
       pattern = settings.getString(FILE_NAME_PATTERN);
       encoding = settings.getCharset(ENCODING);
       compression = settings.getString(COMPRESSION);
-      if (compression.equalsIgnoreCase(IOUtils.AUTO_COMPRESSION)) {
+      if (!read && IOUtils.isAutoCompression(compression)) {
         compression = IOUtils.detectCompression(url.toString());
       }
-      if (!IOUtils.isSupportedCompression(compression)) {
+      if (!IOUtils.isSupportedCompression(compression, read)) {
         // TODO: add fetching of a list of supported compressors
         throw new BulkConfigurationException(
             String.format(
                 "Invalid value for connector.csv.%s, got: '%s'", COMPRESSION, compression));
+      }
+      // TODO: think about it - should we adjust pattern based on the specific file type?
+      if (read && !IOUtils.isNoneCompression(compression)) {
+        pattern = pattern + "*";
       }
       delimiter = settings.getChar(DELIMITER);
       quote = settings.getChar(QUOTE);
@@ -395,7 +399,7 @@ public class CSVConnector implements Connector {
               long recordNumber = 1;
               LOGGER.debug("Reading {}", url);
               URI resource = URI.create(url.toExternalForm());
-              try (Reader r = IOUtils.newBufferedReader(url, encoding)) {
+              try (Reader r = IOUtils.newBufferedReader(url, encoding, compression)) {
                 parser.beginParsing(r);
                 while (!sink.isCancelled()) {
                   com.univocity.parsers.common.record.Record row = parser.parseNextRecord();

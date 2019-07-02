@@ -33,24 +33,32 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
+import org.apache.commons.compress.compressors.CompressorInputStream;
 import org.apache.commons.compress.compressors.CompressorOutputStream;
+import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream;
 import org.apache.commons.compress.compressors.bzip2.BZip2Utils;
+import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
 import org.apache.commons.compress.compressors.gzip.GzipUtils;
+import org.apache.commons.compress.compressors.lz4.FramedLZ4CompressorInputStream;
 import org.apache.commons.compress.compressors.lz4.FramedLZ4CompressorOutputStream;
+import org.apache.commons.compress.compressors.lzma.LZMACompressorInputStream;
 import org.apache.commons.compress.compressors.lzma.LZMACompressorOutputStream;
 import org.apache.commons.compress.compressors.lzma.LZMAUtils;
+import org.apache.commons.compress.compressors.snappy.FramedSnappyCompressorInputStream;
 import org.apache.commons.compress.compressors.snappy.FramedSnappyCompressorOutputStream;
+import org.apache.commons.compress.compressors.xz.XZCompressorInputStream;
 import org.apache.commons.compress.compressors.xz.XZCompressorOutputStream;
 import org.apache.commons.compress.compressors.xz.XZUtils;
+import org.apache.commons.compress.compressors.zstandard.ZstdCompressorInputStream;
 import org.apache.commons.compress.compressors.zstandard.ZstdCompressorOutputStream;
 
 public final class IOUtils {
 
   private static final int BUFFER_SIZE = 8192 * 2;
   public static final String NONE_COMPRESSION = "none";
-  public static final String AUTO_COMPRESSION = "auto";
+  private static final String AUTO_COMPRESSION = "auto";
   public static final String XZ_COMPRESSION = "xz";
   public static final String GZIP_COMPRESSION = "gzip";
   public static final String ZSTD_COMPRESSION = "zstd";
@@ -62,6 +70,7 @@ public final class IOUtils {
   private static final String SNAPPY_FILE_EXTENSION = ".snappy";
   private static final String LZ4_FILE_EXTENSION = ".lz4";
 
+  // we may have different supported compressions for input & output
   private static final Map<String, Class> OUTPUT_COMPRESSORS =
       new HashMap<String, Class>() {
         {
@@ -72,6 +81,20 @@ public final class IOUtils {
           put(SNAPPY_COMPRESSION, FramedSnappyCompressorOutputStream.class);
           put(LZ4_COMPRESSION, FramedLZ4CompressorOutputStream.class);
           put(LZMA_COMPRESSION, LZMACompressorOutputStream.class);
+        }
+      };
+
+  // TODO: add more input compressors, like, Z, ...
+  private static final Map<String, Class> INPUT_COMPRESSORS =
+      new HashMap<String, Class>() {
+        {
+          put(XZ_COMPRESSION, XZCompressorInputStream.class);
+          put(GZIP_COMPRESSION, GzipCompressorInputStream.class);
+          put(ZSTD_COMPRESSION, ZstdCompressorInputStream.class);
+          put(BZIP2_COMPRESSION, BZip2CompressorInputStream.class);
+          put(SNAPPY_COMPRESSION, FramedSnappyCompressorInputStream.class);
+          put(LZ4_COMPRESSION, FramedLZ4CompressorInputStream.class);
+          put(LZMA_COMPRESSION, LZMACompressorInputStream.class);
         }
       };
 
@@ -123,6 +146,37 @@ public final class IOUtils {
         new InputStreamReader(newBufferedInputStream(url), charset), BUFFER_SIZE);
   }
 
+  public static LineNumberReader newBufferedReader(
+      final URL url, final Charset charset, final String compression) throws IOException {
+    final LineNumberReader reader;
+    if (compression == null || compression.equalsIgnoreCase(NONE_COMPRESSION))
+      reader = newBufferedReader(url, charset);
+    else {
+      String compMethod = compression;
+      if (isAutoCompression(compression)) {
+        compMethod = detectCompression(url.toString());
+      }
+      Class compressorClass = INPUT_COMPRESSORS.get(compMethod.toLowerCase());
+      if (compressorClass == null) {
+        throw new IOException("Unsupported compression format: " + compMethod);
+      }
+      InputStream in = newBufferedInputStream(url);
+      try {
+        CompressorInputStream cin =
+            (CompressorInputStream)
+                compressorClass.getDeclaredConstructor(InputStream.class).newInstance(in);
+        reader = new LineNumberReader(new InputStreamReader(cin, charset), BUFFER_SIZE);
+      } catch (NoSuchMethodException
+          | IllegalAccessException
+          | InstantiationException
+          | InvocationTargetException ex) {
+        // ex.printStackTrace();
+        throw new IOException("Can't instantiate class for compression: " + compression, ex);
+      }
+    }
+    return reader;
+  }
+
   public static BufferedWriter newBufferedWriter(URL url, Charset charset) throws IOException {
     return new BufferedWriter(
         new OutputStreamWriter(newBufferedOutputStream(url), charset), BUFFER_SIZE);
@@ -156,16 +210,24 @@ public final class IOUtils {
   }
 
   public static String getCompressionSuffix(final String compression) {
-    if (compression == null || compression.equalsIgnoreCase(NONE_COMPRESSION)) return "";
+    if (compression == null || compression.equalsIgnoreCase(NONE_COMPRESSION)) {
+      return "";
+    }
     return COMPRESSION_EXTENSIONS.get(compression).get();
   }
 
-  public static Boolean isSupportedCompression(final String compression) {
+  public static Boolean isSupportedCompression(final String compression, boolean isRead) {
     if (compression == null) return false;
+    if (isRead) {
+      return INPUT_COMPRESSORS.containsKey(compression)
+          || compression.equalsIgnoreCase(NONE_COMPRESSION)
+          || compression.equalsIgnoreCase(AUTO_COMPRESSION);
+    }
     return OUTPUT_COMPRESSORS.containsKey(compression)
         || compression.equalsIgnoreCase(NONE_COMPRESSION);
   }
 
+  // TODO: should be also dependent on the type of operation - read or write
   public static String detectCompression(final String url) {
     String name = url;
     if (name.endsWith(File.separator)) {
@@ -188,6 +250,14 @@ public final class IOUtils {
     }
 
     return NONE_COMPRESSION;
+  }
+
+  public static boolean isAutoCompression(final String compression) {
+    return AUTO_COMPRESSION.equalsIgnoreCase(compression);
+  }
+
+  public static boolean isNoneCompression(final String compression) {
+    return NONE_COMPRESSION.equalsIgnoreCase(compression);
   }
 
   public static boolean isDirectoryNonEmpty(Path path) {

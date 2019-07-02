@@ -73,8 +73,6 @@
     <commons-compress.version>1.18</commons-compress.version>
     <compress.zstd.version>1.4.0-1</compress.zstd.version>
     <compress.xz.version>1.8</compress.xz.version>
-    <compress.lz4.version>1.6.0</compress.lz4.version>
-    <compress.snappy.version>1.1.7.3</compress.snappy.version>
     <simulacron.version>0.8.9</simulacron.version>
     <awaitility.version>3.1.6</awaitility.version>
     <surefire.version>2.22.1</surefire.version>
@@ -401,18 +399,6 @@
         <groupId>org.tukaani</groupId>
         <artifactId>xz</artifactId>
         <version>${compress.xz.version}</version>
-      </dependency>
-      
-      <dependency>
-        <groupId>org.lz4</groupId>
-        <artifactId>lz4-java</artifactId>
-        <version>${compress.lz4.version}</version>
-      </dependency>
-
-      <dependency>
-        <groupId>org.xerial.snappy</groupId>
-        <artifactId>snappy-java</artifactId>
-        <version>${compress.snappy.version}</version>
       </dependency>
       
       <dependency>
