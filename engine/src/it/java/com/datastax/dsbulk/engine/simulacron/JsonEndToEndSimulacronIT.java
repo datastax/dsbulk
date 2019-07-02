@@ -195,27 +195,27 @@ class JsonEndToEndSimulacronIT {
     simulacron.prime(new Prime(insert));
 
     String[] args = {
-        "load",
-        "-c",
-        "json",
-        "--log.directory",
-        quoteJson(logDir),
-        "--connector.json.url",
-        quoteJson(JSON_RECORDS_UNIQUE_PART_1, JSON_RECORDS_UNIQUE_PART_2),
-        "--driver.query.consistency",
-        "ONE",
-        "--driver.hosts",
-        hostname,
-        "--driver.port",
-        port,
-        "--driver.pooling.local.connections",
-        "1",
-        "--schema.keyspace",
-        "ks1",
-        "--schema.query",
-        INSERT_INTO_IP_BY_COUNTRY,
-        "--schema.mapping",
-        IP_BY_COUNTRY_MAPPING_NAMED
+      "load",
+      "-c",
+      "json",
+      "--log.directory",
+      quoteJson(logDir),
+      "--connector.json.url",
+      String.format("%s,%s", JSON_RECORDS_UNIQUE_PART_1, JSON_RECORDS_UNIQUE_PART_2),
+      "--driver.query.consistency",
+      "ONE",
+      "--driver.hosts",
+      hostname,
+      "--driver.port",
+      port,
+      "--driver.pooling.local.connections",
+      "1",
+      "--schema.keyspace",
+      "ks1",
+      "--schema.query",
+      INSERT_INTO_IP_BY_COUNTRY,
+      "--schema.mapping",
+      IP_BY_COUNTRY_MAPPING_NAMED
     };
 
     int status = new DataStaxBulkLoader(args).run();

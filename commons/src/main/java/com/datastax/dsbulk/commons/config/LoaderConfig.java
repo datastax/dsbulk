@@ -20,7 +20,7 @@ import java.nio.charset.Charset;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.Arrays;
 import java.util.List;
 
 public interface LoaderConfig extends Config {
@@ -213,17 +213,16 @@ public interface LoaderConfig extends Config {
     }
   }
 
-  default List<URL> getUrlsList(String path){
-    List<String> urls = getStringList(path);
+  default List<URL> getUrlsList(String path) {
+    List<String> urls =
+        Arrays.asList(getString(path).split(",")); // todo can we make it work using getStringList?
     List<URL> result = new ArrayList<>(urls.size());
-    for(String url : urls) {
+    for (String url : urls) {
       try {
         result.add(ConfigUtils.resolveURL(url));
       } catch (Exception e) {
         throw new ConfigException.WrongType(
-            origin(),
-            String.format("%s: Expecting valid filepath or URL, got '%s'", path, url),
-            e);
+            origin(), String.format("%s: Expecting valid filepath or URL, got '%s'", path, url), e);
       }
     }
     return result;
