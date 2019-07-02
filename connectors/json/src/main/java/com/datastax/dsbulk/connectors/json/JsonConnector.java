@@ -182,7 +182,6 @@ public class JsonConnector implements Connector {
   @Override
   public void init() throws URISyntaxException, IOException {
     if (read) {
-      // todo here
       tryReadFromDirectory();
     } else {
       tryWriteToDirectory();
@@ -288,7 +287,6 @@ public class JsonConnector implements Connector {
     }
   }
 
-  // todo
   private void tryReadFromDirectory() throws URISyntaxException, IOException {
     for (URL u : url) {
       try {
