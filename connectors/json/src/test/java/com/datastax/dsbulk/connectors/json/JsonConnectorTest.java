@@ -627,6 +627,35 @@ class JsonConnectorTest {
   }
 
   @Test
+  void should_throw_if_passing_multiple_urls_for_write() {
+    JsonConnector connector = new JsonConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(String.format("url = %s", urls("/root", "/root-custom")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+
+    assertThatThrownBy(() -> connector.configure(settings, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining("You cannot pass multiple URLs for UNLOAD.");
+  }
+
+  @Test
+  void should_accept_multiple_urls() throws IOException, URISyntaxException {
+    JsonConnector connector = new JsonConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = %s, recursive = false, fileNamePattern = \"**/part-*\"",
+                        urls("/part_1", "/part_2", "/root-custom/child/part-0003")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    assertThat(Flux.merge(connector.readByResource()).count().block()).isEqualTo(400);
+    connector.close();
+  }
+
+  @Test
   void should_error_when_directory_is_not_empty() throws Exception {
     JsonConnector connector = new JsonConnector();
     Path out = Files.createTempDirectory("test");
@@ -979,6 +1008,19 @@ class JsonConnectorTest {
 
   private static String url(String resource) {
     return quoteJson(JsonConnectorTest.class.getResource(resource));
+  }
+
+  private static String urls(String resource, String resource2) {
+    return quoteJson(
+        JsonConnectorTest.class.getResource(resource),
+        JsonConnectorTest.class.getResource(resource2));
+  }
+
+  private static String urls(String resource, String resource2, String resource3) {
+    return quoteJson(
+        JsonConnectorTest.class.getResource(resource),
+        JsonConnectorTest.class.getResource(resource2),
+        JsonConnectorTest.class.getResource(resource3));
   }
 
   private static Path path(@SuppressWarnings("SameParameterValue") String resource)

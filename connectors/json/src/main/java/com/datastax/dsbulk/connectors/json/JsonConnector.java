@@ -60,6 +60,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -86,7 +87,6 @@ import reactor.core.scheduler.Schedulers;
  * jar archive, for detailed information.
  */
 public class JsonConnector implements Connector {
-
   enum DocumentMode {
     MULTI_DOCUMENT,
     SINGLE_DOCUMENT
@@ -118,6 +118,7 @@ public class JsonConnector implements Connector {
   private List<URL> url;
   private DocumentMode mode;
   private List<Path> root;
+  private List<URL> files;
   private String pattern;
   private Charset encoding;
   private long skipRecords;
@@ -155,6 +156,7 @@ public class JsonConnector implements Connector {
       url = settings.getUrlsList(URL);
 
       root = new ArrayList<>();
+      files = new ArrayList<>();
       mode = settings.getEnum(DocumentMode.class, MODE);
       pattern = settings.getString(FILE_NAME_PATTERN);
       encoding = settings.getCharset(ENCODING);
@@ -249,12 +251,13 @@ public class JsonConnector implements Connector {
   @Override
   public Publisher<Record> read() {
     assert read;
-    return Flux.concat(scanRootDirectories().flatMap(this::readURL), readURLs(url));
+    return Flux.concat(scanRootDirectories().flatMap(this::readURL), readURLs(files));
   }
 
   @Override
   public Publisher<Publisher<Record>> readByResource() {
-    return Flux.concat(scanRootDirectories().map(this::readURL), Flux.just(readURLs(url)));
+    assert read;
+    return Flux.concat(scanRootDirectories().map(this::readURL), Flux.just(readURLs(files)));
   }
 
   @Override
@@ -297,7 +300,8 @@ public class JsonConnector implements Connector {
                 String.format("Directory is not readable: %s.", root));
           }
           this.root.add(root);
-          resourceCount = scanRootDirectories().take(100).count().block().intValue();
+          resourceCount =
+              Objects.requireNonNull(scanRootDirectories().take(100).count().block()).intValue();
           if (resourceCount == 0) {
             if (IOUtils.countReadableFiles(root, recursive) == 0) {
               LOGGER.warn("Directory {} has no readable files.", root);
@@ -308,8 +312,11 @@ public class JsonConnector implements Connector {
                   pattern);
             }
           }
+        } else {
+          files.add(u);
         }
       } catch (FileSystemNotFoundException ignored) {
+        files.add(u);
         // not a path on a known filesystem, fall back to reading from URL directly
       }
     }

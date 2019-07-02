@@ -21,6 +21,7 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public interface LoaderConfig extends Config {
@@ -214,6 +215,10 @@ public interface LoaderConfig extends Config {
   }
 
   default List<URL> getUrlsList(String path) {
+    String urlParam = getString(path);
+    if (urlParam.isEmpty()) {
+      return Collections.emptyList();
+    }
     List<String> urls =
         Arrays.asList(getString(path).split(",")); // todo can we make it work using getStringList?
     List<URL> result = new ArrayList<>(urls.size());

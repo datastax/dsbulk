@@ -36,7 +36,9 @@ import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_PART
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_SKIP;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQUE;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQUE_PART_1;
+import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQUE_PART_1_DIR;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQUE_PART_2;
+import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQUE_PART_2_DIR;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_WITH_COMMENTS;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.LOCAL_ONE;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.ONE;
@@ -45,6 +47,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import ch.qos.logback.core.joran.spi.JoranException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
@@ -76,6 +79,7 @@ import com.datastax.oss.simulacron.common.result.WriteFailureResult;
 import com.datastax.oss.simulacron.common.result.WriteTimeoutResult;
 import com.datastax.oss.simulacron.common.stubbing.Prime;
 import com.datastax.oss.simulacron.server.BoundCluster;
+import com.google.common.collect.Lists;
 import com.typesafe.config.ConfigFactory;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -93,6 +97,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.reactivestreams.Publisher;
 
 @ExtendWith(SimulacronExtension.class)
@@ -187,8 +194,9 @@ class JsonEndToEndSimulacronIT {
     validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", ONE);
   }
 
-  @Test
-  void full_load_multiple_files() {
+  @ParameterizedTest
+  @MethodSource("multipleUrlsProvider")
+  void full_load_multiple_urls(String url) {
 
     primeIpByCountryTable(simulacron);
     RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
@@ -201,7 +209,7 @@ class JsonEndToEndSimulacronIT {
       "--log.directory",
       quoteJson(logDir),
       "--connector.json.url",
-      String.format("%s,%s", JSON_RECORDS_UNIQUE_PART_1, JSON_RECORDS_UNIQUE_PART_2),
+      url,
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
@@ -225,6 +233,13 @@ class JsonEndToEndSimulacronIT {
         .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
         .contains("Writes: total: 24, successful: 24, failed: 0");
     validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", ONE);
+  }
+
+  static List<Arguments> multipleUrlsProvider() {
+    return Lists.newArrayList(
+        arguments(quoteJson(JSON_RECORDS_UNIQUE_PART_1, JSON_RECORDS_UNIQUE_PART_2)),
+        arguments(quoteJson(JSON_RECORDS_UNIQUE_PART_1_DIR, JSON_RECORDS_UNIQUE_PART_2)),
+        arguments(quoteJson(JSON_RECORDS_UNIQUE_PART_1_DIR, JSON_RECORDS_UNIQUE_PART_2_DIR)));
   }
 
   @Test
