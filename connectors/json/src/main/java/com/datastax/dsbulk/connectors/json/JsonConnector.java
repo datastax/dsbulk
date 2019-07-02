@@ -98,6 +98,7 @@ public class JsonConnector implements Connector {
   private static final String MODE = "mode";
   private static final String FILE_NAME_PATTERN = "fileNamePattern";
   private static final String ENCODING = "encoding";
+  private static final String COMPRESSION = "compression";
   private static final String SKIP_RECORDS = "skipRecords";
   private static final String MAX_RECORDS = "maxRecords";
   private static final String MAX_CONCURRENT_FILES = "maxConcurrentFiles";
@@ -119,6 +120,7 @@ public class JsonConnector implements Connector {
   private Path root;
   private String pattern;
   private Charset encoding;
+  private String compression;
   private long skipRecords;
   private long maxRecords;
   private int maxConcurrentFiles;
@@ -150,6 +152,16 @@ public class JsonConnector implements Connector {
       mode = settings.getEnum(DocumentMode.class, MODE);
       pattern = settings.getString(FILE_NAME_PATTERN);
       encoding = settings.getCharset(ENCODING);
+      compression = settings.getString(COMPRESSION);
+      if (compression.equalsIgnoreCase(IOUtils.AUTO_COMPRESSION)) {
+        compression = IOUtils.detectCompression(url.toString());
+      }
+      if (!IOUtils.isSupportedCompression(compression)) {
+        // TODO: add fetching of a list of supported compressors
+        throw new BulkConfigurationException(
+            String.format(
+                "Invalid value for connector.json.%s, got: '%s'", COMPRESSION, compression));
+      }
       skipRecords = settings.getLong(SKIP_RECORDS);
       maxRecords = settings.getLong(MAX_RECORDS);
       maxConcurrentFiles = settings.getThreads(MAX_CONCURRENT_FILES);
@@ -517,7 +529,8 @@ public class JsonConnector implements Connector {
 
   private JsonGenerator createJsonWriter(URL url) throws IOException {
     JsonFactory factory = objectMapper.getFactory();
-    JsonGenerator writer = factory.createGenerator(IOUtils.newBufferedWriter(url, encoding));
+    JsonGenerator writer =
+        factory.createGenerator(IOUtils.newBufferedWriter(url, encoding, compression));
     writer.setRootValueSeparator(new SerializedString(System.lineSeparator()));
     return writer;
   }
@@ -525,7 +538,9 @@ public class JsonConnector implements Connector {
   private URL getOrCreateDestinationURL() {
     if (root != null) {
       try {
-        String next = String.format(fileNameFormat, counter.incrementAndGet());
+        String next =
+            String.format(fileNameFormat, counter.incrementAndGet())
+                + IOUtils.getCompressionSuffix(compression);
         return root.resolve(next).toUri().toURL();
       } catch (MalformedURLException e) {
         throw new UncheckedIOException(

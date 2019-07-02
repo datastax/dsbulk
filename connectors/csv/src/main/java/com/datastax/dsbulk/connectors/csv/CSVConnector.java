@@ -88,6 +88,7 @@ public class CSVConnector implements Connector {
   private static final String URL = "url";
   private static final String FILE_NAME_PATTERN = "fileNamePattern";
   private static final String ENCODING = "encoding";
+  private static final String COMPRESSION = "compression";
   private static final String DELIMITER = "delimiter";
   private static final String QUOTE = "quote";
   private static final String ESCAPE = "escape";
@@ -117,6 +118,7 @@ public class CSVConnector implements Connector {
   private Path root;
   private String pattern;
   private Charset encoding;
+  private String compression;
   private char delimiter;
   private char quote;
   private char escape;
@@ -156,6 +158,16 @@ public class CSVConnector implements Connector {
       url = settings.getURL(URL);
       pattern = settings.getString(FILE_NAME_PATTERN);
       encoding = settings.getCharset(ENCODING);
+      compression = settings.getString(COMPRESSION);
+      if (compression.equalsIgnoreCase(IOUtils.AUTO_COMPRESSION)) {
+        compression = IOUtils.detectCompression(url.toString());
+      }
+      if (!IOUtils.isSupportedCompression(compression)) {
+        // TODO: add fetching of a list of supported compressors
+        throw new BulkConfigurationException(
+            String.format(
+                "Invalid value for connector.csv.%s, got: '%s'", COMPRESSION, compression));
+      }
       delimiter = settings.getChar(DELIMITER);
       quote = settings.getChar(QUOTE);
       escape = settings.getChar(ESCAPE);
@@ -533,7 +545,8 @@ public class CSVConnector implements Connector {
     private void open() {
       url = getOrCreateDestinationURL();
       try {
-        writer = new CsvWriter(IOUtils.newBufferedWriter(url, encoding), writerSettings);
+        writer =
+            new CsvWriter(IOUtils.newBufferedWriter(url, encoding, compression), writerSettings);
       } catch (ClosedChannelException e) {
         // OK, happens when the channel was closed due to interruption
         LOGGER.warn(String.format("Could not open %s", url), e);
@@ -565,7 +578,9 @@ public class CSVConnector implements Connector {
   private URL getOrCreateDestinationURL() {
     if (root != null) {
       try {
-        String next = String.format(fileNameFormat, counter.incrementAndGet());
+        String next =
+            String.format(fileNameFormat, counter.incrementAndGet())
+                + IOUtils.getCompressionSuffix(compression);
         return root.resolve(next).toUri().toURL();
       } catch (MalformedURLException e) {
         throw new UncheckedIOException(

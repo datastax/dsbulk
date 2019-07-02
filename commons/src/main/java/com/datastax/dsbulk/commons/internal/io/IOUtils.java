@@ -13,12 +13,14 @@ import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.LineNumberReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
@@ -27,11 +29,64 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
+import org.apache.commons.compress.compressors.CompressorOutputStream;
+import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream;
+import org.apache.commons.compress.compressors.bzip2.BZip2Utils;
+import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
+import org.apache.commons.compress.compressors.gzip.GzipUtils;
+import org.apache.commons.compress.compressors.lz4.FramedLZ4CompressorOutputStream;
+import org.apache.commons.compress.compressors.lzma.LZMACompressorOutputStream;
+import org.apache.commons.compress.compressors.lzma.LZMAUtils;
+import org.apache.commons.compress.compressors.snappy.FramedSnappyCompressorOutputStream;
+import org.apache.commons.compress.compressors.xz.XZCompressorOutputStream;
+import org.apache.commons.compress.compressors.xz.XZUtils;
+import org.apache.commons.compress.compressors.zstandard.ZstdCompressorOutputStream;
 
 public final class IOUtils {
 
   private static final int BUFFER_SIZE = 8192 * 2;
+  public static final String NONE_COMPRESSION = "none";
+  public static final String AUTO_COMPRESSION = "auto";
+  public static final String XZ_COMPRESSION = "xz";
+  public static final String GZIP_COMPRESSION = "gzip";
+  public static final String ZSTD_COMPRESSION = "zstd";
+  public static final String BZIP2_COMPRESSION = "bzip2";
+  public static final String SNAPPY_COMPRESSION = "snappy";
+  public static final String LZ4_COMPRESSION = "lz4";
+  public static final String LZMA_COMPRESSION = "lzma";
+  private static final String ZSTD_FILE_EXTENSION = ".zstd";
+  private static final String SNAPPY_FILE_EXTENSION = ".snappy";
+  private static final String LZ4_FILE_EXTENSION = ".lz4";
+
+  private static final Map<String, Class> OUTPUT_COMPRESSORS =
+      new HashMap<String, Class>() {
+        {
+          put(XZ_COMPRESSION, XZCompressorOutputStream.class);
+          put(GZIP_COMPRESSION, GzipCompressorOutputStream.class);
+          put(ZSTD_COMPRESSION, ZstdCompressorOutputStream.class);
+          put(BZIP2_COMPRESSION, BZip2CompressorOutputStream.class);
+          put(SNAPPY_COMPRESSION, FramedSnappyCompressorOutputStream.class);
+          put(LZ4_COMPRESSION, FramedLZ4CompressorOutputStream.class);
+          put(LZMA_COMPRESSION, LZMACompressorOutputStream.class);
+        }
+      };
+
+  private static final Map<String, Supplier<String>> COMPRESSION_EXTENSIONS =
+      new HashMap<String, Supplier<String>>() {
+        {
+          put(XZ_COMPRESSION, () -> XZUtils.getCompressedFilename(""));
+          put(GZIP_COMPRESSION, () -> GzipUtils.getCompressedFilename(""));
+          put(ZSTD_COMPRESSION, () -> ZSTD_FILE_EXTENSION);
+          put(BZIP2_COMPRESSION, () -> BZip2Utils.getCompressedFilename(""));
+          put(SNAPPY_COMPRESSION, () -> SNAPPY_FILE_EXTENSION);
+          put(LZ4_COMPRESSION, () -> LZ4_FILE_EXTENSION);
+          put(LZMA_COMPRESSION, () -> LZMAUtils.getCompressedFilename(""));
+        }
+      };
 
   public static BufferedInputStream newBufferedInputStream(URL url) throws IOException {
     InputStream in = url.openStream();
@@ -71,6 +126,68 @@ public final class IOUtils {
   public static BufferedWriter newBufferedWriter(URL url, Charset charset) throws IOException {
     return new BufferedWriter(
         new OutputStreamWriter(newBufferedOutputStream(url), charset), BUFFER_SIZE);
+  }
+
+  public static BufferedWriter newBufferedWriter(
+      final URL url, final Charset charset, final String compression) throws IOException {
+    final BufferedWriter writer;
+    if (compression == null || compression.equalsIgnoreCase(NONE_COMPRESSION))
+      writer = newBufferedWriter(url, charset);
+    else {
+      Class compressorClass = OUTPUT_COMPRESSORS.get(compression.toLowerCase());
+      if (compressorClass == null) {
+        throw new IOException("Unsupported compression format: " + compression);
+      }
+      OutputStream os = newBufferedOutputStream(url);
+      try {
+        CompressorOutputStream cos =
+            (CompressorOutputStream)
+                compressorClass.getDeclaredConstructor(OutputStream.class).newInstance(os);
+        writer = new BufferedWriter(new OutputStreamWriter(cos, charset), BUFFER_SIZE);
+      } catch (NoSuchMethodException
+          | IllegalAccessException
+          | InstantiationException
+          | InvocationTargetException ex) {
+        // ex.printStackTrace();
+        throw new IOException("Can't instantiate class for compression: " + compression, ex);
+      }
+    }
+    return writer;
+  }
+
+  public static String getCompressionSuffix(final String compression) {
+    if (compression == null || compression.equalsIgnoreCase(NONE_COMPRESSION)) return "";
+    return COMPRESSION_EXTENSIONS.get(compression).get();
+  }
+
+  public static Boolean isSupportedCompression(final String compression) {
+    if (compression == null) return false;
+    return OUTPUT_COMPRESSORS.containsKey(compression)
+        || compression.equalsIgnoreCase(NONE_COMPRESSION);
+  }
+
+  public static String detectCompression(final String url) {
+    String name = url;
+    if (name.endsWith(File.separator)) {
+      name = name.substring(0, name.length() - 1);
+    }
+    if (XZUtils.isCompressedFilename(name)) {
+      return XZ_COMPRESSION;
+    } else if (GzipUtils.isCompressedFilename(name)) {
+      return GZIP_COMPRESSION;
+    } else if (BZip2Utils.isCompressedFilename(name)) {
+      return BZIP2_COMPRESSION;
+    } else if (LZMAUtils.isCompressedFilename(name)) {
+      return LZMA_COMPRESSION;
+    } else if (name.endsWith(ZSTD_FILE_EXTENSION)) {
+      return ZSTD_COMPRESSION;
+    } else if (name.endsWith(SNAPPY_FILE_EXTENSION)) {
+      return SNAPPY_COMPRESSION;
+    } else if (name.endsWith(LZ4_FILE_EXTENSION)) {
+      return LZ4_COMPRESSION;
+    }
+
+    return NONE_COMPRESSION;
   }
 
   public static boolean isDirectoryNonEmpty(Path path) {

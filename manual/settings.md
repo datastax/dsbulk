@@ -338,6 +338,12 @@ The character that represents a line comment when found in the beginning of a li
 
 Default: **"\u0000"**.
 
+#### --connector.csv.compression _&lt;string&gt;_
+
+The compression that will be used for writing or reading files. Supported values are: `none`, `xz`, `gzip`, `bzip2`, `zstd`, `lz4`, `lzma`, `snappy`. With `auto` it will try to guess compression from name of the output folder, or input files.
+
+Default: **"auto"**.
+
 #### --connector.csv.emptyValue _&lt;string&gt;_
 
 Sets the String representation of an empty value. When reading, if the parser does not read any character from the input, and the input is within quotes, this value will be used instead. This setting is ignored when writing. The default is `""` (empty string).
@@ -489,6 +495,12 @@ The mode for loading and unloading JSON documents. Valid values are:
 * SINGLE_DOCUMENT: Each resource contains a root array whose elements are JSON documents to be mapped to records. For example, the format of the JSON document is an array with embedded JSON documents: `[ {doc1}, {doc2}, {doc3} ]`.
 
 Default: **"MULTI_DOCUMENT"**.
+
+#### --connector.json.compression _&lt;string&gt;_
+
+The compression that will be used for writing or reading files. Supported values are: `none`, `xz`, `gzip`, `bzip2`, `zstd`, `lz4`, `lzma`, `snappy`. With `auto` it will try to guess compression from name of the output folder, or input files.
+
+Default: **"auto"**.
 
 #### --connector.json.deserializationFeatures _&lt;map&lt;string,boolean&gt;&gt;_
 
