@@ -73,6 +73,7 @@
     <commons-compress.version>1.18</commons-compress.version>
     <compress.zstd.version>1.4.0-1</compress.zstd.version>
     <compress.xz.version>1.8</compress.xz.version>
+    <compress.brotli.version>0.1.2</compress.brotli.version>
     <simulacron.version>0.8.9</simulacron.version>
     <awaitility.version>3.1.6</awaitility.version>
     <surefire.version>2.22.1</surefire.version>
@@ -399,6 +400,12 @@
         <groupId>org.tukaani</groupId>
         <artifactId>xz</artifactId>
         <version>${compress.xz.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.brotli</groupId>
+        <artifactId>dec</artifactId>
+        <version>${compress.brotli.version}</version>
       </dependency>
       
       <dependency>

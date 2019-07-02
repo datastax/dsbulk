@@ -154,13 +154,16 @@ public class JsonConnector implements Connector {
       encoding = settings.getCharset(ENCODING);
       compression = settings.getString(COMPRESSION);
       if (!read && IOUtils.isAutoCompression(compression)) {
-        compression = IOUtils.detectCompression(url.toString());
+        compression = IOUtils.detectCompression(url.toString(), false);
       }
       if (!IOUtils.isSupportedCompression(compression, read)) {
         // TODO: add fetching of a list of supported compressors
         throw new BulkConfigurationException(
             String.format(
-                "Invalid value for connector.json.%s, got: '%s'", COMPRESSION, compression));
+                "Invalid value for connector.json.%s, valid values: %s, got: '%s'",
+                COMPRESSION,
+                String.join(",", IOUtils.getSupportedCompressions(read)),
+                compression));
       }
       // TODO: think about it - should we adjust pattern based on the specific file type?
       if (read && !IOUtils.isNoneCompression(compression)) {

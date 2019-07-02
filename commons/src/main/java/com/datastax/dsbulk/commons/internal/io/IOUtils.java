@@ -29,15 +29,20 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 import org.apache.commons.compress.compressors.CompressorInputStream;
 import org.apache.commons.compress.compressors.CompressorOutputStream;
+import org.apache.commons.compress.compressors.brotli.BrotliCompressorInputStream;
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream;
 import org.apache.commons.compress.compressors.bzip2.BZip2Utils;
+import org.apache.commons.compress.compressors.deflate.DeflateCompressorOutputStream;
+import org.apache.commons.compress.compressors.deflate64.Deflate64CompressorInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
 import org.apache.commons.compress.compressors.gzip.GzipUtils;
@@ -51,6 +56,7 @@ import org.apache.commons.compress.compressors.snappy.FramedSnappyCompressorOutp
 import org.apache.commons.compress.compressors.xz.XZCompressorInputStream;
 import org.apache.commons.compress.compressors.xz.XZCompressorOutputStream;
 import org.apache.commons.compress.compressors.xz.XZUtils;
+import org.apache.commons.compress.compressors.z.ZCompressorInputStream;
 import org.apache.commons.compress.compressors.zstandard.ZstdCompressorInputStream;
 import org.apache.commons.compress.compressors.zstandard.ZstdCompressorOutputStream;
 
@@ -66,9 +72,16 @@ public final class IOUtils {
   public static final String SNAPPY_COMPRESSION = "snappy";
   public static final String LZ4_COMPRESSION = "lz4";
   public static final String LZMA_COMPRESSION = "lzma";
+  public static final String BROTLI_COMPRESSION = "brotli";
+  public static final String DEFLATE_COMPRESSION = "deflate";
+  public static final String DEFLATE64_COMPRESSION = "deflate64";
+  public static final String Z_COMPRESSION = "z";
   private static final String ZSTD_FILE_EXTENSION = ".zstd";
   private static final String SNAPPY_FILE_EXTENSION = ".snappy";
   private static final String LZ4_FILE_EXTENSION = ".lz4";
+  private static final String BROTLI_FILE_EXTENSION = ".br";
+  private static final String DEFLATE_FILE_EXTENSION = ".deflate";
+  private static final String Z_FILE_EXTENSION = ".z";
 
   // we may have different supported compressions for input & output
   private static final Map<String, Class> OUTPUT_COMPRESSORS =
@@ -81,6 +94,7 @@ public final class IOUtils {
           put(SNAPPY_COMPRESSION, FramedSnappyCompressorOutputStream.class);
           put(LZ4_COMPRESSION, FramedLZ4CompressorOutputStream.class);
           put(LZMA_COMPRESSION, LZMACompressorOutputStream.class);
+          put(DEFLATE_COMPRESSION, DeflateCompressorOutputStream.class);
         }
       };
 
@@ -95,6 +109,10 @@ public final class IOUtils {
           put(SNAPPY_COMPRESSION, FramedSnappyCompressorInputStream.class);
           put(LZ4_COMPRESSION, FramedLZ4CompressorInputStream.class);
           put(LZMA_COMPRESSION, LZMACompressorInputStream.class);
+          put(BROTLI_COMPRESSION, BrotliCompressorInputStream.class);
+          put(DEFLATE_COMPRESSION, DeflateCompressorOutputStream.class);
+          put(DEFLATE64_COMPRESSION, Deflate64CompressorInputStream.class);
+          put(Z_COMPRESSION, ZCompressorInputStream.class);
         }
       };
 
@@ -108,6 +126,7 @@ public final class IOUtils {
           put(SNAPPY_COMPRESSION, () -> SNAPPY_FILE_EXTENSION);
           put(LZ4_COMPRESSION, () -> LZ4_FILE_EXTENSION);
           put(LZMA_COMPRESSION, () -> LZMAUtils.getCompressedFilename(""));
+          put(DEFLATE_COMPRESSION, () -> DEFLATE_FILE_EXTENSION);
         }
       };
 
@@ -154,7 +173,7 @@ public final class IOUtils {
     else {
       String compMethod = compression;
       if (isAutoCompression(compression)) {
-        compMethod = detectCompression(url.toString());
+        compMethod = detectCompression(url.toString(), true);
       }
       Class compressorClass = INPUT_COMPRESSORS.get(compMethod.toLowerCase());
       if (compressorClass == null) {
@@ -216,8 +235,22 @@ public final class IOUtils {
     return COMPRESSION_EXTENSIONS.get(compression).get();
   }
 
+  public static List<String> getSupportedCompressions(boolean isRead) {
+    List<String> lst = new ArrayList<>();
+    lst.add("none");
+    lst.add("auto");
+    if (isRead) {
+      lst.addAll(INPUT_COMPRESSORS.keySet());
+    } else {
+      lst.addAll(OUTPUT_COMPRESSORS.keySet());
+    }
+    return lst;
+  }
+
   public static Boolean isSupportedCompression(final String compression, boolean isRead) {
-    if (compression == null) return false;
+    if (compression == null) {
+      return false;
+    }
     if (isRead) {
       return INPUT_COMPRESSORS.containsKey(compression)
           || compression.equalsIgnoreCase(NONE_COMPRESSION)
@@ -227,12 +260,12 @@ public final class IOUtils {
         || compression.equalsIgnoreCase(NONE_COMPRESSION);
   }
 
-  // TODO: should be also dependent on the type of operation - read or write
-  public static String detectCompression(final String url) {
+  public static String detectCompression(final String url, boolean isRead) {
     String name = url;
     if (name.endsWith(File.separator)) {
       name = name.substring(0, name.length() - 1);
     }
+    name = name.toLowerCase();
     if (XZUtils.isCompressedFilename(name)) {
       return XZ_COMPRESSION;
     } else if (GzipUtils.isCompressedFilename(name)) {
@@ -247,6 +280,12 @@ public final class IOUtils {
       return SNAPPY_COMPRESSION;
     } else if (name.endsWith(LZ4_FILE_EXTENSION)) {
       return LZ4_COMPRESSION;
+    } else if (name.endsWith(DEFLATE_FILE_EXTENSION)) {
+      return DEFLATE_COMPRESSION;
+    } else if (isRead && name.endsWith(BROTLI_FILE_EXTENSION)) {
+      return BROTLI_COMPRESSION;
+    } else if (isRead && name.endsWith(Z_FILE_EXTENSION)) {
+      return Z_COMPRESSION;
     }
 
     return NONE_COMPRESSION;
