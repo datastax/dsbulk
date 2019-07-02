@@ -1128,7 +1128,8 @@ Default: **"LOCAL_ONE"**.
 
 #### --driver.query.fetchSize _&lt;number&gt;_
 
-The page size, or how many rows will be retrieved simultaneously in a single network round trip. This setting will limit the number of results loaded into memory simultaneously during unloading or counting. Setting this value to any negative value will disable paging, i.e., the entire result set will be retrieved in one pass (not recommended). Not applicable for loading. When connecting with a positive page size to legacy clusters with protocol version 1, which does not support paging, paging will be automatically disabled and a warning will be logged. Note that this setting controls paging for regular queries; to customize the page size for continuous queries, use the `executor.continuousPaging.pageSize` setting instead.
+The page size, or how many rows will be retrieved simultaneously in a single network round trip. The ideal page size depends on the size of the rows being unloaded: larger page sizes may have a positive impact on throughput for small rows, and vice versa.
+This setting will limit the number of results loaded into memory simultaneously during unloading or counting. Setting this value to any negative value will disable paging, i.e., the entire result set will be retrieved in one pass (not recommended). Not applicable for loading. When connecting with a positive page size to legacy clusters with protocol version 1, which does not support paging, paging will be automatically disabled and a warning will be logged. Note that this setting controls paging for regular queries; to customize the page size for continuous queries, use the `executor.continuousPaging.pageSize` setting instead.
 
 Default: **5000**.
 
@@ -1293,7 +1294,7 @@ Default: **0**.
 
 #### --executor.continuousPaging.pageSize _&lt;number&gt;_
 
-The size of the page. The unit to use is determined by the `pageUnit` setting.
+The size of the page. The unit to use is determined by the `pageUnit` setting. The ideal page size depends on the size of the rows being unloaded: larger page sizes may have a positive impact on throughput for small rows, and vice versa.
 
 Default: **5000**.
 
