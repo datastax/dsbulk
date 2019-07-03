@@ -35,12 +35,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
+
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.compress.compressors.CompressorInputStream;
 import org.apache.commons.compress.compressors.CompressorOutputStream;
 import org.apache.commons.compress.compressors.brotli.BrotliCompressorInputStream;
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream;
 import org.apache.commons.compress.compressors.bzip2.BZip2Utils;
+import org.apache.commons.compress.compressors.deflate.DeflateCompressorInputStream;
 import org.apache.commons.compress.compressors.deflate.DeflateCompressorOutputStream;
 import org.apache.commons.compress.compressors.deflate64.Deflate64CompressorInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
@@ -64,7 +67,7 @@ public final class IOUtils {
 
   private static final int BUFFER_SIZE = 8192 * 2;
   public static final String NONE_COMPRESSION = "none";
-  private static final String AUTO_COMPRESSION = "auto";
+  public static final String AUTO_COMPRESSION = "auto";
   public static final String XZ_COMPRESSION = "xz";
   public static final String GZIP_COMPRESSION = "gzip";
   public static final String ZSTD_COMPRESSION = "zstd";
@@ -76,11 +79,17 @@ public final class IOUtils {
   public static final String DEFLATE_COMPRESSION = "deflate";
   public static final String DEFLATE64_COMPRESSION = "deflate64";
   public static final String Z_COMPRESSION = "z";
+  @VisibleForTesting
   private static final String ZSTD_FILE_EXTENSION = ".zstd";
+  @VisibleForTesting
   private static final String SNAPPY_FILE_EXTENSION = ".snappy";
+  @VisibleForTesting
   private static final String LZ4_FILE_EXTENSION = ".lz4";
+  @VisibleForTesting
   private static final String BROTLI_FILE_EXTENSION = ".br";
+  @VisibleForTesting
   private static final String DEFLATE_FILE_EXTENSION = ".deflate";
+  @VisibleForTesting
   private static final String Z_FILE_EXTENSION = ".z";
 
   // we may have different supported compressions for input & output
@@ -98,7 +107,6 @@ public final class IOUtils {
         }
       };
 
-  // TODO: add more input compressors, like, Z, ...
   private static final Map<String, Class> INPUT_COMPRESSORS =
       new HashMap<String, Class>() {
         {
@@ -110,7 +118,7 @@ public final class IOUtils {
           put(LZ4_COMPRESSION, FramedLZ4CompressorInputStream.class);
           put(LZMA_COMPRESSION, LZMACompressorInputStream.class);
           put(BROTLI_COMPRESSION, BrotliCompressorInputStream.class);
-          put(DEFLATE_COMPRESSION, DeflateCompressorOutputStream.class);
+          put(DEFLATE_COMPRESSION, DeflateCompressorInputStream.class);
           put(DEFLATE64_COMPRESSION, Deflate64CompressorInputStream.class);
           put(Z_COMPRESSION, ZCompressorInputStream.class);
         }
@@ -168,9 +176,9 @@ public final class IOUtils {
   public static LineNumberReader newBufferedReader(
       final URL url, final Charset charset, final String compression) throws IOException {
     final LineNumberReader reader;
-    if (compression == null || compression.equalsIgnoreCase(NONE_COMPRESSION))
-      reader = newBufferedReader(url, charset);
-    else {
+    if (compression == null || isNoneCompression(compression)) {
+        reader = newBufferedReader(url, charset);
+    } else {
       String compMethod = compression;
       if (isAutoCompression(compression)) {
         compMethod = detectCompression(url.toString(), true);
@@ -190,7 +198,7 @@ public final class IOUtils {
           | InstantiationException
           | InvocationTargetException ex) {
         // ex.printStackTrace();
-        throw new IOException("Can't instantiate class for compression: " + compression, ex);
+        throw new IOException("Can't instantiate class for compression: " + compMethod, ex);
       }
     }
     return reader;
@@ -232,13 +240,14 @@ public final class IOUtils {
     if (compression == null || compression.equalsIgnoreCase(NONE_COMPRESSION)) {
       return "";
     }
-    return COMPRESSION_EXTENSIONS.get(compression).get();
+    Supplier<String> func = COMPRESSION_EXTENSIONS.get(compression);
+    return func == null ? "" : func.get();
   }
 
   public static List<String> getSupportedCompressions(boolean isRead) {
     List<String> lst = new ArrayList<>();
-    lst.add("none");
-    lst.add("auto");
+    lst.add(AUTO_COMPRESSION);
+    lst.add(NONE_COMPRESSION);
     if (isRead) {
       lst.addAll(INPUT_COMPRESSORS.keySet());
     } else {
@@ -260,6 +269,13 @@ public final class IOUtils {
         || compression.equalsIgnoreCase(NONE_COMPRESSION);
   }
 
+  /**
+   * Tries to detect compression type based on the file name. Only the file extension is used for detection.
+   *
+   * @param url - URL
+   * @param isRead - true if the read operation performed, as the list of compressors is different for load & unload operations
+   * @return type of detected compression
+   */
   public static String detectCompression(final String url, boolean isRead) {
     String name = url;
     if (name.endsWith(File.separator)) {
@@ -268,6 +284,8 @@ public final class IOUtils {
     name = name.toLowerCase();
     if (XZUtils.isCompressedFilename(name)) {
       return XZ_COMPRESSION;
+    } else if (isRead && name.endsWith(Z_FILE_EXTENSION)) {
+        return Z_COMPRESSION;
     } else if (GzipUtils.isCompressedFilename(name)) {
       return GZIP_COMPRESSION;
     } else if (BZip2Utils.isCompressedFilename(name)) {
@@ -284,8 +302,6 @@ public final class IOUtils {
       return DEFLATE_COMPRESSION;
     } else if (isRead && name.endsWith(BROTLI_FILE_EXTENSION)) {
       return BROTLI_COMPRESSION;
-    } else if (isRead && name.endsWith(Z_FILE_EXTENSION)) {
-      return Z_COMPRESSION;
     }
 
     return NONE_COMPRESSION;
