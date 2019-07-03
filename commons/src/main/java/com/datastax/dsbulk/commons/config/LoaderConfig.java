@@ -220,7 +220,9 @@ public interface LoaderConfig extends Config {
     List<String> paths = Files.readAllLines(new File(urlfile).toPath(), encoding);
     for (String path : paths) {
       try {
-        result.add(ConfigUtils.resolveURL(path));
+        if (!path.startsWith("#")) {
+          result.add(ConfigUtils.resolveURL(path.trim()));
+        }
       } catch (Exception e) {
         throw new ConfigException.WrongType(
             origin(),
