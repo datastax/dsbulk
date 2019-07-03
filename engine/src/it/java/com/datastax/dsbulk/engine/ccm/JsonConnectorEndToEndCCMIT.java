@@ -27,6 +27,8 @@ import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutpu
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_SKIP;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQUE;
+import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQUE_PART_1;
+import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQUE_PART_2;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_WITH_SPACES;
 import static java.math.RoundingMode.UNNECESSARY;
 import static java.nio.file.Files.createTempDirectory;
@@ -41,7 +43,9 @@ import com.datastax.dsbulk.commons.tests.utils.Version;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -49,6 +53,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -62,6 +67,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   private static final Version V3 = Version.parse("3.0");
   private static final Version V2_1 = Version.parse("2.1");
+  private static String URLFILE;
 
   private Path unloadDir;
   private Path logDir;
@@ -93,6 +99,16 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     deleteDirectory(unloadDir);
   }
 
+  @BeforeAll
+  static void setup() throws IOException {
+    URLFILE = createUrlFile(JSON_RECORDS_UNIQUE_PART_1, JSON_RECORDS_UNIQUE_PART_2);
+  }
+
+  @AfterAll
+  static void cleanup() throws IOException {
+    Files.delete(Paths.get(URLFILE));
+  }
+
   /** Simple test case which attempts to load and unload data using ccm. */
   @Test
   void full_load_unload() throws Exception {
@@ -105,6 +121,51 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("json");
     args.add("--connector.json.url");
     args.add(quoteJson(JSON_RECORDS_UNIQUE));
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("ip_by_country");
+    args.add("--schema.mapping");
+    args.add(IP_BY_COUNTRY_MAPPING_NAMED);
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    validateResultSetSize(24, "SELECT * FROM ip_by_country");
+    deleteDirectory(logDir);
+
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.name");
+    args.add("json");
+    args.add("--connector.json.url");
+    args.add(quoteJson(unloadDir));
+    args.add("--connector.json.maxConcurrentFiles");
+    args.add("1");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("ip_by_country");
+    args.add("--schema.mapping");
+    args.add(IP_BY_COUNTRY_MAPPING_NAMED);
+
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    validateOutputFiles(24, unloadDir);
+  }
+
+  @Test
+  void full_load_unload_using_urlfile() throws Exception {
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.name");
+    args.add("json");
+    args.add("--connector.json.urlfile");
+    args.add(URLFILE);
     args.add("--schema.keyspace");
     args.add(session.getLoggedKeyspace());
     args.add("--schema.table");
