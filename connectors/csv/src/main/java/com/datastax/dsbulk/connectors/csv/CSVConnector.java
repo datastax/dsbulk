@@ -171,8 +171,9 @@ public class CSVConnector implements Connector {
                 compression));
       }
       // TODO: think about it - should we adjust pattern based on the specific compression type, but
-      // there could be differences in the extensions of some compression types, so it's hard to unify it
-      if (read && !IOUtils.isNoneCompression(compression)) {
+      // there could be differences in the extensions of some compression types, so it's hard to
+      // unify it
+      if (read && !IOUtils.isNoneCompression(compression) && !pattern.endsWith("*")) {
         pattern = pattern + "*";
       }
       delimiter = settings.getChar(DELIMITER);

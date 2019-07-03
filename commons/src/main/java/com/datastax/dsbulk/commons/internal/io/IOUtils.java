@@ -10,6 +10,7 @@ package com.datastax.dsbulk.commons.internal.io;
 
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
@@ -35,8 +36,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
-
-import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.compress.compressors.CompressorInputStream;
 import org.apache.commons.compress.compressors.CompressorOutputStream;
 import org.apache.commons.compress.compressors.brotli.BrotliCompressorInputStream;
@@ -79,18 +78,12 @@ public final class IOUtils {
   public static final String DEFLATE_COMPRESSION = "deflate";
   public static final String DEFLATE64_COMPRESSION = "deflate64";
   public static final String Z_COMPRESSION = "z";
-  @VisibleForTesting
-  private static final String ZSTD_FILE_EXTENSION = ".zstd";
-  @VisibleForTesting
-  private static final String SNAPPY_FILE_EXTENSION = ".snappy";
-  @VisibleForTesting
-  private static final String LZ4_FILE_EXTENSION = ".lz4";
-  @VisibleForTesting
-  private static final String BROTLI_FILE_EXTENSION = ".br";
-  @VisibleForTesting
-  private static final String DEFLATE_FILE_EXTENSION = ".deflate";
-  @VisibleForTesting
-  private static final String Z_FILE_EXTENSION = ".z";
+  @VisibleForTesting private static final String ZSTD_FILE_EXTENSION = ".zstd";
+  @VisibleForTesting private static final String SNAPPY_FILE_EXTENSION = ".snappy";
+  @VisibleForTesting private static final String LZ4_FILE_EXTENSION = ".lz4";
+  @VisibleForTesting private static final String BROTLI_FILE_EXTENSION = ".br";
+  @VisibleForTesting private static final String DEFLATE_FILE_EXTENSION = ".deflate";
+  @VisibleForTesting private static final String Z_FILE_EXTENSION = ".z";
 
   // we may have different supported compressions for input & output
   private static final Map<String, Class> OUTPUT_COMPRESSORS =
@@ -177,12 +170,16 @@ public final class IOUtils {
       final URL url, final Charset charset, final String compression) throws IOException {
     final LineNumberReader reader;
     if (compression == null || isNoneCompression(compression)) {
-        reader = newBufferedReader(url, charset);
+      reader = newBufferedReader(url, charset);
     } else {
       String compMethod = compression;
       if (isAutoCompression(compression)) {
         compMethod = detectCompression(url.toString(), true);
+        if (isNoneCompression(compMethod)) {
+          return newBufferedReader(url, charset);
+        }
       }
+
       Class compressorClass = INPUT_COMPRESSORS.get(compMethod.toLowerCase());
       if (compressorClass == null) {
         throw new IOException("Unsupported compression format: " + compMethod);
@@ -270,10 +267,12 @@ public final class IOUtils {
   }
 
   /**
-   * Tries to detect compression type based on the file name. Only the file extension is used for detection.
+   * Tries to detect compression type based on the file name. Only the file extension is used for
+   * detection.
    *
    * @param url - URL
-   * @param isRead - true if the read operation performed, as the list of compressors is different for load & unload operations
+   * @param isRead - true if the read operation performed, as the list of compressors is different
+   *     for load & unload operations
    * @return type of detected compression
    */
   public static String detectCompression(final String url, boolean isRead) {
@@ -285,7 +284,7 @@ public final class IOUtils {
     if (XZUtils.isCompressedFilename(name)) {
       return XZ_COMPRESSION;
     } else if (isRead && name.endsWith(Z_FILE_EXTENSION)) {
-        return Z_COMPRESSION;
+      return Z_COMPRESSION;
     } else if (GzipUtils.isCompressedFilename(name)) {
       return GZIP_COMPRESSION;
     } else if (BZip2Utils.isCompressedFilename(name)) {

@@ -33,11 +33,11 @@ import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultIndexedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
+import com.google.common.base.Charsets;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.univocity.parsers.common.TextParsingException;
 import io.undertow.util.Headers;
-
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -45,7 +45,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
-import java.io.Reader;
 import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -59,7 +58,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import reactor.core.publisher.Flux;
@@ -98,28 +96,12 @@ class CSVConnectorTest {
   void should_read_single_file_compressed_auto() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-            new DefaultLoaderConfig(
-                    ConfigFactory.parseString(
-                            String.format(
-                                    "url = %s, normalizeLineEndingsInQuotes = true, escape = \"\\\"\", comment = \"#\"",
-                                    url("/sample.csv.gz")))
-                            .withFallback(CONNECTOR_DEFAULT_SETTINGS));
-    connector.configure(settings, true);
-    connector.init();
-    List<Record> actual = Flux.from(connector.read()).collectList().block();
-    assertRecords(actual);
-    connector.close();
-  }
-  @Test
-  void should_read_single_file_compressed_gzip() throws Exception {
-    CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
-            new DefaultLoaderConfig(
-                    ConfigFactory.parseString(
-                            String.format(
-                                    "url = %s, normalizeLineEndingsInQuotes = true, escape = \"\\\"\", comment = \"#\", compression = \"gzip\"",
-                                    url("/sample.csv.gz")))
-                            .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = %s, normalizeLineEndingsInQuotes = true, escape = \"\\\"\", comment = \"#\"",
+                        url("/sample.csv.gz")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
     List<Record> actual = Flux.from(connector.read()).collectList().block();
@@ -127,6 +109,22 @@ class CSVConnectorTest {
     connector.close();
   }
 
+  @Test
+  void should_read_single_file_compressed_gzip() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = %s, normalizeLineEndingsInQuotes = true, escape = \"\\\"\", comment = \"#\", compression = \"gzip\"",
+                        url("/sample.csv.gz")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    List<Record> actual = Flux.from(connector.read()).collectList().block();
+    assertRecords(actual);
+    connector.close();
+  }
 
   @Test
   void should_read_single_file_by_resource() throws Exception {
@@ -478,30 +476,33 @@ class CSVConnectorTest {
     Path out = dir.resolve("nonexistent");
     try {
       LoaderConfig settings =
-              new DefaultLoaderConfig(
-                      ConfigFactory.parseString(
-                              String.format(
-                                      "url = %s, escape = \"\\\"\", maxConcurrentFiles = 1, compression = \"gzip\"",
-                                      quoteJson(out)))
-                              .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = %s, escape = \"\\\"\", maxConcurrentFiles = 1, compression = \"gzip\"",
+                          quoteJson(out)))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
       connector.close();
       Path outPath = out.resolve("output-000001.csv.gz");
-      BufferedReader reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(Files.newInputStream(outPath))));
+      BufferedReader reader =
+          new BufferedReader(
+              new InputStreamReader(
+                  new GZIPInputStream(Files.newInputStream(outPath)), Charsets.UTF_8));
       List<String> actual = reader.lines().collect(Collectors.toList());
       reader.close();
       assertThat(actual).hasSize(7);
       assertThat(actual)
-              .containsExactly(
-                      "Year,Make,Model,Description,Price",
-                      "1997,Ford,E350,\"  ac, abs, moon  \",3000.00",
-                      "1999,Chevy,\"Venture \"\"Extended Edition\"\"\",,4900.00",
-                      "1996,Jeep,Grand Cherokee,\"MUST SELL!",
-                      "air, moon roof, loaded\",4799.00",
-                      "1999,Chevy,\"Venture \"\"Extended Edition, Very Large\"\"\",,5000.00",
-                      ",,\"Venture \"\"Extended Edition\"\"\",,4900.00");
+          .containsExactly(
+              "Year,Make,Model,Description,Price",
+              "1997,Ford,E350,\"  ac, abs, moon  \",3000.00",
+              "1999,Chevy,\"Venture \"\"Extended Edition\"\"\",,4900.00",
+              "1996,Jeep,Grand Cherokee,\"MUST SELL!",
+              "air, moon roof, loaded\",4799.00",
+              "1999,Chevy,\"Venture \"\"Extended Edition, Very Large\"\"\",,5000.00",
+              ",,\"Venture \"\"Extended Edition\"\"\",,4900.00");
     } finally {
       deleteDirectory(dir);
     }
@@ -515,30 +516,33 @@ class CSVConnectorTest {
     Path out = dir.resolve("nonexistent.gz");
     try {
       LoaderConfig settings =
-              new DefaultLoaderConfig(
-                      ConfigFactory.parseString(
-                              String.format(
-                                      "url = %s, escape = \"\\\"\", maxConcurrentFiles = 1, compression = \"auto\"",
-                                      quoteJson(out)))
-                              .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = %s, escape = \"\\\"\", maxConcurrentFiles = 1, compression = \"auto\"",
+                          quoteJson(out)))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
       connector.close();
       Path outPath = out.resolve("output-000001.csv.gz");
-      BufferedReader reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(Files.newInputStream(outPath))));
+      BufferedReader reader =
+          new BufferedReader(
+              new InputStreamReader(
+                  new GZIPInputStream(Files.newInputStream(outPath)), Charsets.UTF_8));
       List<String> actual = reader.lines().collect(Collectors.toList());
       reader.close();
       assertThat(actual).hasSize(7);
       assertThat(actual)
-              .containsExactly(
-                      "Year,Make,Model,Description,Price",
-                      "1997,Ford,E350,\"  ac, abs, moon  \",3000.00",
-                      "1999,Chevy,\"Venture \"\"Extended Edition\"\"\",,4900.00",
-                      "1996,Jeep,Grand Cherokee,\"MUST SELL!",
-                      "air, moon roof, loaded\",4799.00",
-                      "1999,Chevy,\"Venture \"\"Extended Edition, Very Large\"\"\",,5000.00",
-                      ",,\"Venture \"\"Extended Edition\"\"\",,4900.00");
+          .containsExactly(
+              "Year,Make,Model,Description,Price",
+              "1997,Ford,E350,\"  ac, abs, moon  \",3000.00",
+              "1999,Chevy,\"Venture \"\"Extended Edition\"\"\",,4900.00",
+              "1996,Jeep,Grand Cherokee,\"MUST SELL!",
+              "air, moon roof, loaded\",4799.00",
+              "1999,Chevy,\"Venture \"\"Extended Edition, Very Large\"\"\",,5000.00",
+              ",,\"Venture \"\"Extended Edition\"\"\",,4900.00");
     } finally {
       deleteDirectory(dir);
     }
