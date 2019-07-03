@@ -56,25 +56,6 @@ public class StringUtils {
   }
 
   /**
-   * Quotes the given URLs as a Json string coma delimited.
-   *
-   * @param values the list of values that will be concatenated with coma as delimiter to quote.
-   * @return the quoted value.
-   * @see #quoteJson(String)
-   */
-  public static String quoteJson(URL... values) {
-    StringBuilder sb = new StringBuilder();
-    for (int i = 0; i < values.length; i++) {
-      sb.append(values[i].toExternalForm());
-      if (i != values.length - 1) {
-        sb.append(",");
-      }
-    }
-
-    return quoteJson(sb.toString());
-  }
-
-  /**
    * Quotes the given string as a Json string.
    *
    * @param value the value to escape.
