@@ -81,18 +81,26 @@ import com.datastax.oss.simulacron.common.stubbing.Prime;
 import com.datastax.oss.simulacron.server.BoundCluster;
 import com.google.common.collect.Lists;
 import com.typesafe.config.ConfigFactory;
+import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
+import java.net.URL;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.stream.Collectors;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -117,6 +125,10 @@ class JsonEndToEndSimulacronIT {
 
   private Path unloadDir;
   private Path logDir;
+
+  private static String URL_FILE_TWO_FILES;
+  private static String URL_FILE_ONE_FILE_ONE_DIR;
+  private static String URL_FILE_TWO_DIRS;
 
   JsonEndToEndSimulacronIT(
       BoundCluster simulacron,
@@ -152,6 +164,22 @@ class JsonEndToEndSimulacronIT {
   @AfterEach
   void resetLogbackConfiguration() throws JoranException {
     LogUtils.resetLogbackConfiguration();
+  }
+
+  @BeforeAll
+  static void setup() throws IOException {
+    URL_FILE_TWO_FILES = createUrlFile(JSON_RECORDS_UNIQUE_PART_1, JSON_RECORDS_UNIQUE_PART_2);
+    URL_FILE_ONE_FILE_ONE_DIR =
+        createUrlFile(JSON_RECORDS_UNIQUE_PART_1_DIR, JSON_RECORDS_UNIQUE_PART_2);
+    URL_FILE_TWO_DIRS =
+        createUrlFile(JSON_RECORDS_UNIQUE_PART_1_DIR, JSON_RECORDS_UNIQUE_PART_2_DIR);
+  }
+
+  @AfterAll
+  static void cleanup() throws IOException {
+    Files.delete(Paths.get(URL_FILE_TWO_FILES));
+    Files.delete(Paths.get(URL_FILE_ONE_FILE_ONE_DIR));
+    Files.delete(Paths.get(URL_FILE_TWO_DIRS));
   }
 
   @Test
@@ -196,7 +224,7 @@ class JsonEndToEndSimulacronIT {
 
   @ParameterizedTest
   @MethodSource("multipleUrlsProvider")
-  void full_load_multiple_urls(String url) {
+  void full_load_multiple_urls(String urlfile) {
 
     primeIpByCountryTable(simulacron);
     RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
@@ -208,8 +236,8 @@ class JsonEndToEndSimulacronIT {
       "json",
       "--log.directory",
       quoteJson(logDir),
-      "--connector.json.url",
-      url,
+      "--connector.json.urlfile",
+      urlfile,
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
@@ -237,9 +265,9 @@ class JsonEndToEndSimulacronIT {
 
   static List<Arguments> multipleUrlsProvider() {
     return Lists.newArrayList(
-        arguments(quoteJson(JSON_RECORDS_UNIQUE_PART_1, JSON_RECORDS_UNIQUE_PART_2)),
-        arguments(quoteJson(JSON_RECORDS_UNIQUE_PART_1_DIR, JSON_RECORDS_UNIQUE_PART_2)),
-        arguments(quoteJson(JSON_RECORDS_UNIQUE_PART_1_DIR, JSON_RECORDS_UNIQUE_PART_2_DIR)));
+        arguments(URL_FILE_TWO_FILES),
+        arguments(URL_FILE_ONE_FILE_ONE_DIR),
+        arguments(URL_FILE_TWO_DIRS));
   }
 
   @Test
@@ -951,5 +979,14 @@ class JsonEndToEndSimulacronIT {
     assertThat(status).isZero();
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ONE);
     assertThat(stdOut.getStreamLines().size()).isEqualTo(24);
+  }
+
+  private static String createUrlFile(URL... urls) throws IOException {
+    File file = File.createTempFile("urlfile", null);
+    Files.write(
+        file.toPath(),
+        Arrays.stream(urls).map(URL::toExternalForm).collect(Collectors.toList()),
+        Charset.defaultCharset());
+    return file.getAbsolutePath();
   }
 }

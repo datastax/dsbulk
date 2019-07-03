@@ -15,13 +15,14 @@ import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigMergeable;
 import com.typesafe.config.ConfigResolveOptions;
 import com.typesafe.config.ConfigValue;
+import java.io.File;
+import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 public interface LoaderConfig extends Config {
@@ -214,20 +215,17 @@ public interface LoaderConfig extends Config {
     }
   }
 
-  default List<URL> getUrlsList(String path) {
-    String urlParam = getString(path);
-    if (urlParam.isEmpty()) {
-      return Collections.emptyList();
-    }
-    List<String> urls =
-        Arrays.asList(getString(path).split(",")); // todo can we make it work using getStringList?
-    List<URL> result = new ArrayList<>(urls.size());
-    for (String url : urls) {
+  default List<URL> getUrlsFromFile(String urlfile, Charset encoding) throws IOException {
+    List<URL> result = new ArrayList<>();
+    List<String> paths = Files.readAllLines(new File(urlfile).toPath(), encoding);
+    for (String path : paths) {
       try {
-        result.add(ConfigUtils.resolveURL(url));
+        result.add(ConfigUtils.resolveURL(path));
       } catch (Exception e) {
         throw new ConfigException.WrongType(
-            origin(), String.format("%s: Expecting valid filepath or URL, got '%s'", path, url), e);
+            origin(),
+            String.format("%s: Expecting valid filepath or URL, got '%s'", urlfile, path),
+            e);
       }
     }
     return result;

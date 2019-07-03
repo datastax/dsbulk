@@ -56,6 +56,7 @@ import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,6 +68,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.jetbrains.annotations.NotNull;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -96,6 +98,7 @@ public class JsonConnector implements Connector {
   private static final TypeToken<JsonNode> JSON_NODE_TYPE_TOKEN = TypeToken.of(JsonNode.class);
 
   private static final String URL = "url";
+  private static final String URLFILE = "urlfile";
   private static final String MODE = "mode";
   private static final String FILE_NAME_PATTERN = "fileNamePattern";
   private static final String ENCODING = "encoding";
@@ -142,24 +145,16 @@ public class JsonConnector implements Connector {
   @Override
   public void configure(LoaderConfig settings, boolean read) {
     try {
-      if (!settings.hasPath(URL) || settings.getUrlsList(URL).isEmpty()) {
-        throw new BulkConfigurationException(
-            "An URL is mandatory when using the json connector. Please set connector.json.url "
-                + "and try again. See settings.md or help for more information.");
-      }
+      validateUrlAndUrlfileParameters(settings, read);
+
       this.read = read;
-
-      // for UNLOAD we are not supporting multiple URLs
-      if (!read && settings.getUrlsList(URL).size() > 1) {
-        throw new BulkConfigurationException("You cannot pass multiple URLs for UNLOAD.");
-      }
-      url = settings.getUrlsList(URL);
-
       root = new ArrayList<>();
       files = new ArrayList<>();
       mode = settings.getEnum(DocumentMode.class, MODE);
       pattern = settings.getString(FILE_NAME_PATTERN);
       encoding = settings.getCharset(ENCODING);
+      url = loadUrls(settings, encoding); // todo can we rely on this encoding?
+
       skipRecords = settings.getLong(SKIP_RECORDS);
       maxRecords = settings.getLong(MAX_RECORDS);
       maxConcurrentFiles = settings.getThreads(MAX_CONCURRENT_FILES);
@@ -176,6 +171,48 @@ public class JsonConnector implements Connector {
       prettyPrint = settings.getBoolean(PRETTY_PRINT);
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "connector.json");
+    }
+  }
+
+  @NotNull
+  private List<URL> loadUrls(LoaderConfig settings, Charset encoding) {
+    if (settings.hasPath(URLFILE)) {
+      // suppress URL option
+      try {
+        return settings.getUrlsFromFile(settings.getString(URLFILE), encoding);
+      } catch (IOException e) {
+        throw new BulkConfigurationException(
+            "Problem when retrieving urls from file specified by the URLFILE parameter", e);
+      }
+    } else {
+      return Collections.singletonList(settings.getURL(URL));
+    }
+  }
+
+  private void validateUrlAndUrlfileParameters(LoaderConfig settings, boolean read) {
+    if (read) {
+      // for LOAD
+      if (!settings.hasPath(URL) || settings.getString(URL).isEmpty()) {
+        if (!settings.hasPath(URLFILE) || settings.getString(URLFILE).isEmpty()) {
+          throw new BulkConfigurationException(
+              "An URL or URLFILE is mandatory when using the json connector for LOAD. Please set connector.json.url or connector.json.urlfile "
+                  + "and try again. See settings.md or help for more information.");
+        }
+      }
+      if (settings.hasPath(URL) && settings.hasPath(URLFILE)) {
+        LOGGER.debug("You specified both URL and URLFILE. The URLFILE will take precedence.");
+      }
+    }
+    if (!read) {
+      // for UNLOAD we are not supporting urlfile parameter
+      if (settings.hasPath(URLFILE)) {
+        throw new BulkConfigurationException("The urlfile parameter is not supported for LOAD");
+      }
+      if (!settings.hasPath(URL) || settings.getString(URL).isEmpty()) {
+        throw new BulkConfigurationException(
+            "An URL is mandatory when using the json connector for UNLOAD. Please set connector.json.url "
+                + "and try again. See settings.md or help for more information.");
+      }
     }
   }
 
