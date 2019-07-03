@@ -36,10 +36,13 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import io.undertow.util.Headers;
+
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.UncheckedIOException;
 import java.net.URI;
@@ -52,6 +55,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.zip.GZIPInputStream;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import reactor.core.publisher.Flux;
@@ -90,6 +95,43 @@ class JsonConnectorTest {
     verifyRecords(actual);
     connector.close();
   }
+
+  @Test
+  void should_read_single_file_multi_doc_compressed_gzip() throws Exception {
+    JsonConnector connector = new JsonConnector();
+    LoaderConfig settings =
+            new DefaultLoaderConfig(
+                    ConfigFactory.parseString(
+                            String.format(
+                                    "url = %s, compression = \"gzip\", parserFeatures = {ALLOW_COMMENTS:true}, "
+                                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}",
+                                    url("/multi_doc.json.gz")))
+                            .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    List<Record> actual = Flux.from(connector.read()).collectList().block();
+    verifyRecords(actual);
+    connector.close();
+  }
+
+  @Test
+  void should_read_single_file_multi_doc_compressed_auto() throws Exception {
+    JsonConnector connector = new JsonConnector();
+    LoaderConfig settings =
+            new DefaultLoaderConfig(
+                    ConfigFactory.parseString(
+                            String.format(
+                                    "url = %s, parserFeatures = {ALLOW_COMMENTS:true}, "
+                                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}",
+                                    url("/multi_doc.json.gz")))
+                            .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    List<Record> actual = Flux.from(connector.read()).collectList().block();
+    verifyRecords(actual);
+    connector.close();
+  }
+
 
   @Test
   void should_read_single_file_single_doc() throws Exception {
@@ -414,6 +456,80 @@ class JsonConnectorTest {
               "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition, Very Large\\\"\",\"Description\":null,\"Price\":5000.0},",
               "{\"Year\":null,\"Make\":null,\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}",
               "]");
+    } finally {
+      deleteDirectory(dir);
+    }
+  }
+
+  @Test
+  void should_write_single_file_single_doc_compressed_gzip() throws Exception {
+    JsonConnector connector = new JsonConnector();
+    // test directory creation
+    Path dir = Files.createTempDirectory("test");
+    Path out = dir.resolve("nonexistent");
+    try {
+      LoaderConfig settings =
+              new DefaultLoaderConfig(
+                      ConfigFactory.parseString(
+                              String.format(
+                                      "url = %s, escape = \"\\\"\", compression = \"gzip\", maxConcurrentFiles = 1, mode = SINGLE_DOCUMENT",
+                                      quoteJson(out)))
+                              .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, false);
+      connector.init();
+      Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
+      connector.close();
+      Path outPath = out.resolve("output-000001.json.gz");
+      BufferedReader reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(Files.newInputStream(outPath))));
+      List<String> actual = reader.lines().collect(Collectors.toList());
+      reader.close();
+      assertThat(actual).hasSize(7);
+      assertThat(actual)
+              .containsExactly(
+                      "[",
+                      "{\"Year\":1997,\"Make\":\"Ford\",\"Model\":\"E350\",\"Description\":\"ac, abs, moon\",\"Price\":3000.0},",
+                      "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0},",
+                      "{\"Year\":1996,\"Make\":\"Jeep\",\"Model\":\"Grand Cherokee\",\"Description\":\"MUST SELL!\\nair, moon roof, loaded\",\"Price\":4799.0},",
+                      "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition, Very Large\\\"\",\"Description\":null,\"Price\":5000.0},",
+                      "{\"Year\":null,\"Make\":null,\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}",
+                      "]");
+    } finally {
+      deleteDirectory(dir);
+    }
+  }
+
+  @Test
+  void should_write_single_file_single_doc_compressed_auto() throws Exception {
+    JsonConnector connector = new JsonConnector();
+    // test directory creation
+    Path dir = Files.createTempDirectory("test");
+    Path out = dir.resolve("nonexistent.gz");
+    try {
+      LoaderConfig settings =
+              new DefaultLoaderConfig(
+                      ConfigFactory.parseString(
+                              String.format(
+                                      "url = %s, escape = \"\\\"\", maxConcurrentFiles = 1, mode = SINGLE_DOCUMENT",
+                                      quoteJson(out)))
+                              .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, false);
+      connector.init();
+      Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
+      connector.close();
+      Path outPath = out.resolve("output-000001.json.gz");
+      BufferedReader reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(Files.newInputStream(outPath))));
+      List<String> actual = reader.lines().collect(Collectors.toList());
+      reader.close();
+      assertThat(actual).hasSize(7);
+      assertThat(actual)
+              .containsExactly(
+                      "[",
+                      "{\"Year\":1997,\"Make\":\"Ford\",\"Model\":\"E350\",\"Description\":\"ac, abs, moon\",\"Price\":3000.0},",
+                      "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0},",
+                      "{\"Year\":1996,\"Make\":\"Jeep\",\"Model\":\"Grand Cherokee\",\"Description\":\"MUST SELL!\\nair, moon roof, loaded\",\"Price\":4799.0},",
+                      "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition, Very Large\\\"\",\"Description\":null,\"Price\":5000.0},",
+                      "{\"Year\":null,\"Make\":null,\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}",
+                      "]");
     } finally {
       deleteDirectory(dir);
     }
