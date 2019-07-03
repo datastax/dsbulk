@@ -16,6 +16,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.util.Throwables.getRootCause;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
@@ -39,12 +40,14 @@ import com.univocity.parsers.common.TextParsingException;
 import io.undertow.util.Headers;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.Charset;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -54,6 +57,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import reactor.core.publisher.Flux;
@@ -66,10 +71,23 @@ class CSVConnectorTest {
     Thread.setDefaultUncaughtExceptionHandler((thread, t) -> {});
   }
 
+  private static String MULTIPLE_URLS_FILE;
+
   private static final Config CONNECTOR_DEFAULT_SETTINGS =
       ConfigFactory.defaultReference().getConfig("dsbulk.connector.csv");
 
   private final URI resource = URI.create("file://file1.csv");
+
+  @BeforeAll
+  static void setup() throws IOException {
+    MULTIPLE_URLS_FILE =
+        createUrlFile(rawUrl("/part_1"), rawUrl("/part_2"), rawUrl("/root-custom/child/part-0003"));
+  }
+
+  @AfterAll
+  static void cleanup() throws IOException {
+    Files.delete(Paths.get(MULTIPLE_URLS_FILE));
+  }
 
   @Test
   void should_read_single_file() throws Exception {
@@ -1104,7 +1122,7 @@ class CSVConnectorTest {
     assertThatThrownBy(() -> connector.configure(settings, true))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
-            "An URL is mandatory when using the csv connector. Please set connector.csv.url and "
+            "An URL or URLFILE is mandatory when using the csv connector for LOAD. Please set connector.csv.url or connector.csv.urlfile and "
                 + "try again. See settings.md or help for more information.");
   }
 
@@ -1300,6 +1318,49 @@ class CSVConnectorTest {
     return records;
   }
 
+  @Test
+  void should_throw_if_passing_urlfile_parameter_for_write() {
+    CSVConnector connector = new CSVConnector();
+
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(String.format("urlfile = %s", MULTIPLE_URLS_FILE))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+
+    assertThatThrownBy(() -> connector.configure(settings, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining("The urlfile parameter is not supported for LOAD");
+  }
+
+  @Test
+  void should_not_throw_if_passing_both_url_and_urlfile_parameter() {
+    CSVConnector connector = new CSVConnector();
+
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format("urlfile = %s, url = %s", MULTIPLE_URLS_FILE, MULTIPLE_URLS_FILE))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+
+    assertDoesNotThrow(() -> connector.configure(settings, true));
+  }
+
+  @Test
+  void should_accept_multiple_urls() throws IOException, URISyntaxException {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "urlfile = %s, recursive = false, fileNamePattern = \"**/part-*\"",
+                        MULTIPLE_URLS_FILE))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    assertThat(Flux.merge(connector.readByResource()).count().block()).isEqualTo(400);
+    connector.close();
+  }
+
   private static String url(String resource) {
     return quoteJson(CSVConnectorTest.class.getResource(resource));
   }
@@ -1307,5 +1368,15 @@ class CSVConnectorTest {
   private static Path path(@SuppressWarnings("SameParameterValue") String resource)
       throws URISyntaxException {
     return Paths.get(CSVConnectorTest.class.getResource(resource).toURI());
+  }
+
+  private static String createUrlFile(String... urls) throws IOException {
+    File file = File.createTempFile("urlfile", null);
+    Files.write(file.toPath(), Arrays.asList(urls), Charset.defaultCharset());
+    return file.getAbsolutePath();
+  }
+
+  private static String rawUrl(String resource) {
+    return CSVConnectorTest.class.getResource(resource).toExternalForm();
   }
 }

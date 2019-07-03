@@ -22,6 +22,10 @@ import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_PARTIA
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_PARTIAL_BAD_LONG;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_SKIP;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
+import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE_PART_1;
+import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE_PART_1_DIR;
+import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE_PART_2;
+import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE_PART_2_DIR;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.INSERT_INTO_IP_BY_COUNTRY;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.SELECT_FROM_IP_BY_COUNTRY;
@@ -42,6 +46,7 @@ import static java.nio.file.Files.createTempDirectory;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import ch.qos.logback.core.joran.spi.JoranException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
@@ -74,21 +79,33 @@ import com.datastax.oss.simulacron.common.result.WriteFailureResult;
 import com.datastax.oss.simulacron.common.result.WriteTimeoutResult;
 import com.datastax.oss.simulacron.common.stubbing.Prime;
 import com.datastax.oss.simulacron.server.BoundCluster;
+import com.google.common.collect.Lists;
 import com.typesafe.config.ConfigFactory;
+import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
+import java.net.URL;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.reactivestreams.Publisher;
 
 @ExtendWith(SimulacronExtension.class)
@@ -106,6 +123,10 @@ class CSVEndToEndSimulacronIT {
 
   private Path unloadDir;
   private Path logDir;
+
+  private static String URL_FILE_TWO_FILES;
+  private static String URL_FILE_ONE_FILE_ONE_DIR;
+  private static String URL_FILE_TWO_DIRS;
 
   CSVEndToEndSimulacronIT(
       BoundCluster simulacron,
@@ -141,6 +162,21 @@ class CSVEndToEndSimulacronIT {
   @AfterEach
   void resetLogbackConfiguration() throws JoranException {
     LogUtils.resetLogbackConfiguration();
+  }
+
+  @BeforeAll
+  static void setup() throws IOException {
+    URL_FILE_TWO_FILES = createUrlFile(CSV_RECORDS_UNIQUE_PART_1, CSV_RECORDS_UNIQUE_PART_2);
+    URL_FILE_ONE_FILE_ONE_DIR =
+        createUrlFile(CSV_RECORDS_UNIQUE_PART_1_DIR, CSV_RECORDS_UNIQUE_PART_2);
+    URL_FILE_TWO_DIRS = createUrlFile(CSV_RECORDS_UNIQUE_PART_1_DIR, CSV_RECORDS_UNIQUE_PART_2_DIR);
+  }
+
+  @AfterAll
+  static void cleanup() throws IOException {
+    Files.delete(Paths.get(URL_FILE_TWO_FILES));
+    Files.delete(Paths.get(URL_FILE_ONE_FILE_ONE_DIR));
+    Files.delete(Paths.get(URL_FILE_TWO_DIRS));
   }
 
   @Test
@@ -183,6 +219,56 @@ class CSVEndToEndSimulacronIT {
         .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
         .contains("Writes: total: 24, successful: 24, failed: 0");
     validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", ONE);
+  }
+
+  @ParameterizedTest
+  @MethodSource("multipleUrlsProvider")
+  void full_load_multiple_urls(String urlfile) {
+
+    primeIpByCountryTable(simulacron);
+    RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
+    simulacron.prime(new Prime(insert));
+
+    String[] args = {
+      "load",
+      "--log.directory",
+      quoteJson(logDir),
+      "--log.verbosity",
+      "2",
+      "-header",
+      "false",
+      "--connector.csv.urlfile",
+      urlfile,
+      "--driver.query.consistency",
+      "ONE",
+      "--driver.hosts",
+      hostname,
+      "--driver.port",
+      port,
+      "--driver.pooling.local.connections",
+      "1",
+      "--schema.keyspace",
+      "ks1",
+      "--schema.query",
+      INSERT_INTO_IP_BY_COUNTRY,
+      "--schema.mapping",
+      IP_BY_COUNTRY_MAPPING_INDEXED
+    };
+
+    int status = new DataStaxBulkLoader(args).run();
+    assertThat(status).isZero();
+    assertThat(logs.getAllMessagesAsString())
+        .contains("Records: total: 24, successful: 24, failed: 0")
+        .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
+        .contains("Writes: total: 24, successful: 24, failed: 0");
+    validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", ONE);
+  }
+
+  static List<Arguments> multipleUrlsProvider() {
+    return Lists.newArrayList(
+        arguments(URL_FILE_TWO_FILES),
+        arguments(URL_FILE_ONE_FILE_ONE_DIR),
+        arguments(URL_FILE_TWO_DIRS));
   }
 
   @Test
@@ -976,5 +1062,14 @@ class CSVEndToEndSimulacronIT {
     String contents =
         FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.joining("\n"));
     assertThat(StringUtils.countOccurrences(delimiter, contents)).isEqualTo(expected);
+  }
+
+  private static String createUrlFile(URL... urls) throws IOException {
+    File file = File.createTempFile("urlfile", null);
+    Files.write(
+        file.toPath(),
+        Arrays.stream(urls).map(URL::toExternalForm).collect(Collectors.toList()),
+        Charset.defaultCharset());
+    return file.getAbsolutePath();
   }
 }
