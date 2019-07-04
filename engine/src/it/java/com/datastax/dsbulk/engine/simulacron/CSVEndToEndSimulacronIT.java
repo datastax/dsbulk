@@ -257,11 +257,11 @@ class CSVEndToEndSimulacronIT {
 
     int status = new DataStaxBulkLoader(args).run();
     System.out.println("logs: " + logs.getAllMessagesAsString());
-    assertThat(status).isZero();
     assertThat(logs.getAllMessagesAsString())
         .contains("Records: total: 24, successful: 24, failed: 0")
         .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
         .contains("Writes: total: 24, successful: 24, failed: 0");
+    assertThat(status).isZero();
     validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", ONE);
   }
 
