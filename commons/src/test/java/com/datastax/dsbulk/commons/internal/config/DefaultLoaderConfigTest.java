@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.commons.internal.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assumptions.assumingThat;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.datastax.driver.core.AtomicMonotonicTimestampGenerator;
@@ -16,6 +17,7 @@ import com.datastax.driver.core.TimestampGenerator;
 import com.datastax.driver.core.policies.DefaultRetryPolicy;
 import com.datastax.driver.core.policies.RetryPolicy;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.utils.URLUtils;
 import com.google.common.collect.Lists;
 import com.typesafe.config.ConfigFactory;
@@ -160,7 +162,9 @@ class DefaultLoaderConfigTest {
 
   @ParameterizedTest
   @MethodSource("urlsProvider")
-  void should_get_urls_from_file(List<String> input, List<URL> expected) throws IOException {
+  void should_get_urls_from_file(
+      List<String> input, List<URL> expectedNonWindows, List<URL> expectedWindows)
+      throws IOException {
     // given
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.parseString(""));
     String urlFile = createUrlFile(input);
@@ -169,7 +173,10 @@ class DefaultLoaderConfigTest {
     List<URL> urlsFromFile = config.getUrlsFromFile(urlFile, Charset.defaultCharset());
 
     // then
-    assertThat(urlsFromFile).isEqualTo(expected);
+    assumingThat(
+        !PlatformUtils.isWindows(), () -> assertThat(urlsFromFile).isEqualTo(expectedNonWindows));
+    assumingThat(
+        PlatformUtils.isWindows(), () -> assertThat(urlsFromFile).isEqualTo(expectedWindows));
     Files.delete(Paths.get(urlFile));
   }
 
@@ -177,13 +184,16 @@ class DefaultLoaderConfigTest {
     return Lists.newArrayList(
         arguments(
             Arrays.asList("/a-first-file", "/second-file"),
-            Arrays.asList(new URL("file:/a-first-file"), new URL("file:/second-file"))),
+            Arrays.asList(new URL("file:/a-first-file"), new URL("file:/second-file")),
+            Arrays.asList(new URL("file:/C:/a-first-file"), new URL("file:/C:/second-file"))),
         arguments(
             Arrays.asList("/a-first-file", "#/second-file"),
-            Collections.singletonList(new URL("file:/a-first-file"))),
+            Collections.singletonList(new URL("file:/a-first-file")),
+            Collections.singletonList(new URL("file:/C:/a-first-file"))),
         arguments(
             Arrays.asList("/a-first-file", "/second-file "),
-            Arrays.asList(new URL("file:/a-first-file"), new URL("file:/second-file"))));
+            Arrays.asList(new URL("file:/a-first-file"), new URL("file:/second-file")),
+            Arrays.asList(new URL("file:/C:/a-first-file"), new URL("file:/C:/second-file"))));
   }
 
   private static String createUrlFile(List<String> urls) throws IOException {
