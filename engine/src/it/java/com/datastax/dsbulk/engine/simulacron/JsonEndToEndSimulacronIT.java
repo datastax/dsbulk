@@ -168,11 +168,11 @@ class JsonEndToEndSimulacronIT {
 
   @BeforeAll
   static void setup() throws IOException {
-    URL_FILE_TWO_FILES = createUrlFile(JSON_RECORDS_UNIQUE_PART_1, JSON_RECORDS_UNIQUE_PART_2);
+    URL_FILE_TWO_FILES = createURLFile(JSON_RECORDS_UNIQUE_PART_1, JSON_RECORDS_UNIQUE_PART_2);
     URL_FILE_ONE_FILE_ONE_DIR =
-        createUrlFile(JSON_RECORDS_UNIQUE_PART_1_DIR, JSON_RECORDS_UNIQUE_PART_2);
+        createURLFile(JSON_RECORDS_UNIQUE_PART_1_DIR, JSON_RECORDS_UNIQUE_PART_2);
     URL_FILE_TWO_DIRS =
-        createUrlFile(JSON_RECORDS_UNIQUE_PART_1_DIR, JSON_RECORDS_UNIQUE_PART_2_DIR);
+        createURLFile(JSON_RECORDS_UNIQUE_PART_1_DIR, JSON_RECORDS_UNIQUE_PART_2_DIR);
   }
 
   @AfterAll
@@ -981,7 +981,7 @@ class JsonEndToEndSimulacronIT {
     assertThat(stdOut.getStreamLines().size()).isEqualTo(24);
   }
 
-  private static String createUrlFile(URL... urls) throws IOException {
+  private static String createURLFile(URL... urls) throws IOException {
     File file = File.createTempFile("urlfile", null);
     Files.write(
         file.toPath(),

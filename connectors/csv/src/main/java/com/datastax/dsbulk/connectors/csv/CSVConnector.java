@@ -153,7 +153,7 @@ public class CSVConnector implements Connector {
   @Override
   public void configure(LoaderConfig settings, boolean read) {
     try {
-      validateUrlAndUrlfileParameters(settings, read);
+      validateURLAndUrlfileParameters(settings, read);
 
       this.read = read;
       root = new ArrayList<>();
@@ -264,7 +264,7 @@ public class CSVConnector implements Connector {
     return settings.hasPath(URLFILE) && !settings.getString(URLFILE).isEmpty();
   }
 
-  private void validateUrlAndUrlfileParameters(LoaderConfig settings, boolean read) {
+  private void validateURLAndUrlfileParameters(LoaderConfig settings, boolean read) {
     if (read) {
       // for LOAD
       if (!settings.hasPath(URL) || settings.getString(URL).isEmpty()) {

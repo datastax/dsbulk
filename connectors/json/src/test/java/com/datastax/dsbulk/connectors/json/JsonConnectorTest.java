@@ -83,7 +83,7 @@ class JsonConnectorTest {
   @BeforeAll
   static void setup() throws IOException {
     MULTIPLE_URLS_FILE =
-        createUrlFile(rawUrl("/part_1"), rawUrl("/part_2"), rawUrl("/root-custom/child/part-0003"));
+        createURLFile(rawURL("/part_1"), rawURL("/part_2"), rawURL("/root-custom/child/part-0003"));
   }
 
   @AfterAll
@@ -689,7 +689,7 @@ class JsonConnectorTest {
     connector.close();
   }
 
-  private static String createUrlFile(String... urls) throws IOException {
+  private static String createURLFile(String... urls) throws IOException {
     File file = File.createTempFile("urlfile", null);
     Files.write(file.toPath(), Arrays.asList(urls), Charset.forName("UTF-8"));
     return file.getAbsolutePath();
@@ -1050,7 +1050,7 @@ class JsonConnectorTest {
     return quoteJson(JsonConnectorTest.class.getResource(resource));
   }
 
-  private static String rawUrl(String resource) {
+  private static String rawURL(String resource) {
     return JsonConnectorTest.class.getResource(resource).toExternalForm();
   }
 

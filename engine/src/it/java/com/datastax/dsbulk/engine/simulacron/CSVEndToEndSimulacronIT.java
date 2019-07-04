@@ -166,10 +166,10 @@ class CSVEndToEndSimulacronIT {
 
   @BeforeAll
   static void setup() throws IOException {
-    URL_FILE_TWO_FILES = createUrlFile(CSV_RECORDS_UNIQUE_PART_1, CSV_RECORDS_UNIQUE_PART_2);
+    URL_FILE_TWO_FILES = createURLFile(CSV_RECORDS_UNIQUE_PART_1, CSV_RECORDS_UNIQUE_PART_2);
     URL_FILE_ONE_FILE_ONE_DIR =
-        createUrlFile(CSV_RECORDS_UNIQUE_PART_1_DIR, CSV_RECORDS_UNIQUE_PART_2);
-    URL_FILE_TWO_DIRS = createUrlFile(CSV_RECORDS_UNIQUE_PART_1_DIR, CSV_RECORDS_UNIQUE_PART_2_DIR);
+        createURLFile(CSV_RECORDS_UNIQUE_PART_1_DIR, CSV_RECORDS_UNIQUE_PART_2);
+    URL_FILE_TWO_DIRS = createURLFile(CSV_RECORDS_UNIQUE_PART_1_DIR, CSV_RECORDS_UNIQUE_PART_2_DIR);
   }
 
   @AfterAll
@@ -1064,7 +1064,7 @@ class CSVEndToEndSimulacronIT {
     assertThat(StringUtils.countOccurrences(delimiter, contents)).isEqualTo(expected);
   }
 
-  private static String createUrlFile(URL... urls) throws IOException {
+  private static String createURLFile(URL... urls) throws IOException {
     File file = File.createTempFile("urlfile", null);
     Files.write(
         file.toPath(),

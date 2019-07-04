@@ -15,13 +15,13 @@ import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigMergeable;
 import com.typesafe.config.ConfigResolveOptions;
 import com.typesafe.config.ConfigValue;
-import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -217,7 +217,7 @@ public interface LoaderConfig extends Config {
 
   default List<URL> getUrlsFromFile(String urlfile, Charset encoding) throws IOException {
     List<URL> result = new ArrayList<>();
-    List<String> paths = Files.readAllLines(new File(urlfile).toPath(), encoding);
+    List<String> paths = Files.readAllLines(Paths.get(urlfile), encoding);
     for (String path : paths) {
       try {
         if (!path.startsWith("#")) {

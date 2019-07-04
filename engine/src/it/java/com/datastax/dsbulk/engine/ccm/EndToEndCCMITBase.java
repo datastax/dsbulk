@@ -65,7 +65,7 @@ public abstract class EndToEndCCMITBase {
     return args.toArray(new String[0]);
   }
 
-  public static String createUrlFile(URL... urls) throws IOException {
+  public static String createURLFile(URL... urls) throws IOException {
     File file = File.createTempFile("urlfile", null);
     Files.write(
         file.toPath(),

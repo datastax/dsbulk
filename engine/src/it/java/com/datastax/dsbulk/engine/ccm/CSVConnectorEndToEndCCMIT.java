@@ -167,7 +167,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   @BeforeAll
   static void setup() throws IOException {
-    URLFILE = createUrlFile(CSV_RECORDS_UNIQUE_PART_1, CSV_RECORDS_UNIQUE_PART_2);
+    URLFILE = createURLFile(CSV_RECORDS_UNIQUE_PART_1, CSV_RECORDS_UNIQUE_PART_2);
   }
 
   @AfterAll

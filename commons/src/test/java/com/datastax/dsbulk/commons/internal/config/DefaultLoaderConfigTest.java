@@ -167,7 +167,7 @@ class DefaultLoaderConfigTest {
       throws IOException {
     // given
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.parseString(""));
-    String urlFile = createUrlFile(input);
+    String urlFile = createURLFile(input);
 
     // when
     List<URL> urlsFromFile = config.getUrlsFromFile(urlFile, Charset.forName("UTF-8"));
@@ -196,7 +196,7 @@ class DefaultLoaderConfigTest {
             Arrays.asList(new URL("file:/C:/a-first-file"), new URL("file:/C:/second-file"))));
   }
 
-  private static String createUrlFile(List<String> urls) throws IOException {
+  private static String createURLFile(List<String> urls) throws IOException {
     File file = File.createTempFile("urlfile", null);
     Files.write(file.toPath(), urls, Charset.forName("UTF-8"));
     return file.getAbsolutePath();

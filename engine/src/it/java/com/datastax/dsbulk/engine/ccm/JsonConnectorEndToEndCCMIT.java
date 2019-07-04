@@ -101,7 +101,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   @BeforeAll
   static void setup() throws IOException {
-    URLFILE = createUrlFile(JSON_RECORDS_UNIQUE_PART_1, JSON_RECORDS_UNIQUE_PART_2);
+    URLFILE = createURLFile(JSON_RECORDS_UNIQUE_PART_1, JSON_RECORDS_UNIQUE_PART_2);
   }
 
   @AfterAll
