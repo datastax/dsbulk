@@ -170,7 +170,7 @@ class DefaultLoaderConfigTest {
     String urlFile = createUrlFile(input);
 
     // when
-    List<URL> urlsFromFile = config.getUrlsFromFile(urlFile, Charset.defaultCharset());
+    List<URL> urlsFromFile = config.getUrlsFromFile(urlFile, Charset.forName("UTF-8"));
 
     // then
     assumingThat(
@@ -198,7 +198,7 @@ class DefaultLoaderConfigTest {
 
   private static String createUrlFile(List<String> urls) throws IOException {
     File file = File.createTempFile("urlfile", null);
-    Files.write(file.toPath(), urls, Charset.defaultCharset());
+    Files.write(file.toPath(), urls, Charset.forName("UTF-8"));
     return file.getAbsolutePath();
   }
 }

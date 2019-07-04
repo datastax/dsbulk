@@ -70,7 +70,7 @@ public abstract class EndToEndCCMITBase {
     Files.write(
         file.toPath(),
         Arrays.stream(urls).map(URL::toExternalForm).collect(Collectors.toList()),
-        Charset.defaultCharset());
+        Charset.forName("UTF-8"));
     return file.getAbsolutePath();
   }
 }
