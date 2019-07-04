@@ -1354,6 +1354,38 @@ class CSVConnectorTest {
     connector.close();
   }
 
+  @Test()
+  void should_error_when_compression_is_wrong() {
+    CSVConnector connector = new CSVConnector();
+    // empty string test
+    LoaderConfig settings1 =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("compression = \"abc\"")
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    assertThrows(BulkConfigurationException.class, () -> connector.configure(settings1, false));
+  }
+
+  @Test
+  void should_throw_IOE_when_read_wrong_compression() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = %s, escape = \"\\\"\", comment = \"#\", compression = \"bzip2\"",
+                        url("/sample.csv.gz")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    assertThatThrownBy(() -> Flux.from(connector.read()).collectList().block())
+        .hasRootCauseExactlyInstanceOf(IOException.class)
+        .satisfies(
+            t ->
+                assertThat(getRootCause(t))
+                    .hasMessageContaining("Stream is not in the BZip2 format"));
+    connector.close();
+  }
+
   private List<Record> createRecords() {
     ArrayList<Record> records = new ArrayList<>();
     Field[] fields =

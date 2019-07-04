@@ -994,6 +994,40 @@ class JsonConnectorTest {
     connector.close();
   }
 
+  @Test()
+  void should_throw_exception_when_compression_is_wrong() {
+    JsonConnector connector = new JsonConnector();
+    // empty string test
+    LoaderConfig settings1 =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("compression = \"abc\"")
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    assertThrows(BulkConfigurationException.class, () -> connector.configure(settings1, false));
+  }
+
+  @Test
+  void should_throw_exception_when_doc_compression_is_wrong() throws Exception {
+    JsonConnector connector = new JsonConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = %s, compression = \"gzip\", parserFeatures = {ALLOW_COMMENTS:true}, "
+                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}"
+                            + ", compression = \"bzip2\"",
+                        url("/multi_doc.json.gz")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    assertThatThrownBy(() -> Flux.from(connector.read()).collectList().block())
+        .hasRootCauseExactlyInstanceOf(IOException.class)
+        .satisfies(
+            t ->
+                assertThat(getRootCause(t))
+                    .hasMessageContaining("Stream is not in the BZip2 format"));
+    connector.close();
+  }
+
   private void verifyRecords(List<Record> actual) {
     assertThat(actual).hasSize(5);
     assertThat(actual.get(0).values())
