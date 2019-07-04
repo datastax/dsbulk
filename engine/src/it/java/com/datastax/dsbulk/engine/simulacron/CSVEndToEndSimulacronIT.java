@@ -238,7 +238,7 @@ class CSVEndToEndSimulacronIT {
       "-header",
       "false",
       "--connector.csv.urlfile",
-      urlfile,
+      quoteJson(urlfile),
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",

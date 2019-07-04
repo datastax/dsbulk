@@ -165,7 +165,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--connector.name");
     args.add("json");
     args.add("--connector.json.urlfile");
-    args.add(URLFILE);
+    args.add(quoteJson(URLFILE));
     args.add("--schema.keyspace");
     args.add(session.getLoggedKeyspace());
     args.add("--schema.table");

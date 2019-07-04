@@ -230,7 +230,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--log.directory");
     args.add(quoteJson(logDir));
     args.add("--connector.csv.urlfile");
-    args.add(URLFILE);
+    args.add(quoteJson(URLFILE));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");

@@ -237,7 +237,7 @@ class JsonEndToEndSimulacronIT {
       "--log.directory",
       quoteJson(logDir),
       "--connector.json.urlfile",
-      urlfile,
+      quoteJson(urlfile),
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",

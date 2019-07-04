@@ -1375,8 +1375,6 @@ class CSVConnectorTest {
   private static String createUrlFile(String... urls) throws IOException {
     File file = File.createTempFile("urlfile", null);
     Files.write(file.toPath(), Arrays.asList(urls), Charset.forName("UTF-8"));
-    System.out.println(
-        "created url file: " + Files.readAllLines(file.toPath(), Charset.forName("UTF-8")));
     return file.getAbsolutePath();
   }
 
