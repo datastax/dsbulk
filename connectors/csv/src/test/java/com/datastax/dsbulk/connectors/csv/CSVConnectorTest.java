@@ -485,6 +485,23 @@ class CSVConnectorTest {
     }
   }
 
+  // Test for DAT-443
+  @Test
+  void should_generate_file_name() throws Exception {
+    Path out = Files.createTempDirectory("test");
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("url = " + quoteJson(out))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, false);
+    connector.init();
+    for (int i = 0; i < 1000; i++) {
+      connector.getOrCreateDestinationURL();
+    }
+    assertThat(connector.getOrCreateDestinationURL().getPath()).endsWith("output-001001.csv");
+  }
+
   @Test
   void should_roll_file_when_max_lines_reached() throws Exception {
     CSVConnector connector = new CSVConnector();

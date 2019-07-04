@@ -506,6 +506,23 @@ class JsonConnectorTest {
     }
   }
 
+  // Test for DAT-443
+  @Test
+  void should_generate_file_name() throws Exception {
+    Path out = Files.createTempDirectory("test");
+    JsonConnector connector = new JsonConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("url = " + quoteJson(out))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, false);
+    connector.init();
+    for (int i = 0; i < 1000; i++) {
+      connector.getOrCreateDestinationURL();
+    }
+    assertThat(connector.getOrCreateDestinationURL().getPath()).endsWith("output-001001.json");
+  }
+
   @Test
   void should_roll_file_when_max_records_reached() throws Exception {
     JsonConnector connector = new JsonConnector();
