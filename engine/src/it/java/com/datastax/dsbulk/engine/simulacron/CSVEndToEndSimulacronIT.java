@@ -256,7 +256,6 @@ class CSVEndToEndSimulacronIT {
     };
 
     int status = new DataStaxBulkLoader(args).run();
-    System.out.println("logs: " + logs.getAllMessagesAsString());
     assertThat(logs.getAllMessagesAsString())
         .contains("Records: total: 24, successful: 24, failed: 0")
         .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")

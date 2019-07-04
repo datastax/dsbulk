@@ -247,7 +247,7 @@ public class CSVConnector implements Connector {
 
   @NotNull
   private List<URL> loadUrls(LoaderConfig settings, Charset encoding) {
-    if (settings.hasPath(URLFILE)) {
+    if (hasUrlfilePathNotEmpty(settings)) {
       // suppress URL option
       try {
         return settings.getUrlsFromFile(settings.getString(URLFILE), encoding);
@@ -260,6 +260,10 @@ public class CSVConnector implements Connector {
     }
   }
 
+  private boolean hasUrlfilePathNotEmpty(LoaderConfig settings) {
+    return settings.hasPath(URLFILE) && !settings.getString(URLFILE).isEmpty();
+  }
+
   private void validateUrlAndUrlfileParameters(LoaderConfig settings, boolean read) {
     if (read) {
       // for LOAD
@@ -270,13 +274,13 @@ public class CSVConnector implements Connector {
                   + "and try again. See settings.md or help for more information.");
         }
       }
-      if (settings.hasPath(URL) && settings.hasPath(URLFILE)) {
+      if (settings.hasPath(URL) && hasUrlfilePathNotEmpty(settings)) {
         LOGGER.debug("You specified both URL and URLFILE. The URLFILE will take precedence.");
       }
     }
     if (!read) {
       // for UNLOAD we are not supporting urlfile parameter
-      if (settings.hasPath(URLFILE)) {
+      if (hasUrlfilePathNotEmpty(settings)) {
         throw new BulkConfigurationException("The urlfile parameter is not supported for LOAD");
       }
       if (!settings.hasPath(URL) || settings.getString(URL).isEmpty()) {
