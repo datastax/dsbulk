@@ -215,6 +215,14 @@ public interface LoaderConfig extends Config {
     }
   }
 
+  /**
+   * Loads list of URLs from a file given as the urlfile argument using encoding.
+   *
+   * @param urlfile - path to file passed as the --urlfile argument to dsbulk
+   * @param encoding - encoding to use when reading the list of URLs from given file
+   * @return list of urls resolved from urlfile line by line
+   * @throws IOException if unable to load a file from urlfile path
+   */
   default List<URL> getUrlsFromFile(String urlfile, Charset encoding) throws IOException {
     List<URL> result = new ArrayList<>();
     List<String> paths = Files.readAllLines(Paths.get(urlfile), encoding);
