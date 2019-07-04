@@ -29,41 +29,40 @@ class PositionsTrackerTest {
   void should_update_position() {
     PositionsTracker tracker = new PositionsTracker();
     tracker.update(RESOURCE, 3);
-    assertThat(tracker.getPositions().get(RESOURCE)).containsExactly(new ClosedRange(3L));
+    assertThat(tracker.getPositions().get(RESOURCE)).containsExactly(new Range(3L));
     tracker.update(RESOURCE, 1);
-    assertThat(tracker.getPositions().get(RESOURCE))
-        .containsExactly(new ClosedRange(1L), new ClosedRange(3L));
+    assertThat(tracker.getPositions().get(RESOURCE)).containsExactly(new Range(1L), new Range(3L));
     tracker.update(RESOURCE, 2);
-    assertThat(tracker.getPositions().get(RESOURCE)).containsExactly(new ClosedRange(1L, 3L));
+    assertThat(tracker.getPositions().get(RESOURCE)).containsExactly(new Range(1L, 3L));
     tracker.update(RESOURCE, 2);
-    assertThat(tracker.getPositions().get(RESOURCE)).containsExactly(new ClosedRange(1L, 3L));
+    assertThat(tracker.getPositions().get(RESOURCE)).containsExactly(new Range(1L, 3L));
     tracker.update(RESOURCE, 6);
     assertThat(tracker.getPositions().get(RESOURCE))
-        .containsExactly(new ClosedRange(1L, 3L), new ClosedRange(6L));
+        .containsExactly(new Range(1L, 3L), new Range(6L));
     tracker.update(RESOURCE, 5);
     assertThat(tracker.getPositions().get(RESOURCE))
-        .containsExactly(new ClosedRange(1L, 3L), new ClosedRange(5L, 6L));
+        .containsExactly(new Range(1L, 3L), new Range(5L, 6L));
     tracker.update(RESOURCE, 4);
-    assertThat(tracker.getPositions().get(RESOURCE)).containsExactly(new ClosedRange(1L, 6L));
+    assertThat(tracker.getPositions().get(RESOURCE)).containsExactly(new Range(1L, 6L));
   }
 
   @SuppressWarnings("unused")
   static List<Arguments> should_update_positions() {
     return Lists.newArrayList(
-        arguments(new long[] {1, 2, 3, 4}, ranges(new ClosedRange(1L, 4L))),
-        arguments(new long[] {1, 2, 3, 5}, ranges(new ClosedRange(1L, 3L), new ClosedRange(5L))),
-        arguments(new long[] {5, 3, 2, 1}, ranges(new ClosedRange(1L, 3L), new ClosedRange(5L))),
-        arguments(new long[] {1, 3, 5, 4, 2}, ranges(new ClosedRange(1L, 5L))),
-        arguments(new long[] {2, 4, 5, 3, 1}, ranges(new ClosedRange(1L, 5L))),
-        arguments(new long[] {4, 3, 2, 1}, ranges(new ClosedRange(1L, 4L))),
-        arguments(new long[] {4, 3, 2, 1}, ranges(new ClosedRange(1L, 4L))),
-        arguments(new long[] {3, 2}, ranges(new ClosedRange(2L, 3L))),
-        arguments(new long[] {3, 5, 4, 2}, ranges(new ClosedRange(2L, 5L))));
+        arguments(new long[] {1, 2, 3, 4}, ranges(new Range(1L, 4L))),
+        arguments(new long[] {1, 2, 3, 5}, ranges(new Range(1L, 3L), new Range(5L))),
+        arguments(new long[] {5, 3, 2, 1}, ranges(new Range(1L, 3L), new Range(5L))),
+        arguments(new long[] {1, 3, 5, 4, 2}, ranges(new Range(1L, 5L))),
+        arguments(new long[] {2, 4, 5, 3, 1}, ranges(new Range(1L, 5L))),
+        arguments(new long[] {4, 3, 2, 1}, ranges(new Range(1L, 4L))),
+        arguments(new long[] {4, 3, 2, 1}, ranges(new Range(1L, 4L))),
+        arguments(new long[] {3, 2}, ranges(new Range(2L, 3L))),
+        arguments(new long[] {3, 5, 4, 2}, ranges(new Range(2L, 5L))));
   }
 
   @ParameterizedTest
   @MethodSource
-  final void should_update_positions(long[] positions, List<ClosedRange> expected) {
+  final void should_update_positions(long[] positions, List<Range> expected) {
     PositionsTracker positionsTracker = new PositionsTracker();
     for (long position : positions) {
       positionsTracker.update(RESOURCE, position);
@@ -71,7 +70,7 @@ class PositionsTrackerTest {
     assertThat(positionsTracker.getPositions()).hasSize(1).containsEntry(RESOURCE, expected);
   }
 
-  static List<ClosedRange> ranges(ClosedRange... ranges) {
+  static List<Range> ranges(Range... ranges) {
     return ranges == null ? emptyList() : newArrayList(ranges);
   }
 }

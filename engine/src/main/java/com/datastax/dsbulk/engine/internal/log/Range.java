@@ -1,18 +1,32 @@
+/*
+ * Copyright DataStax, Inc.
+ *
+ * This software is subject to the below license agreement.
+ * DataStax may make changes to the agreement from time to time,
+ * and will post the amended terms at
+ * https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
+ */
 package com.datastax.dsbulk.engine.internal.log;
 
 import java.util.Objects;
 
-public final class ClosedRange {
+/**
+ * A closed range, that is, an interval defined by two inclusive bounds.
+ *
+ * <p>This class is a simplified, mutable version of Guava's {@link com.google.common.collect.Range
+ * Range} designed to reduce the allocation rate of Range instances in the {@link PositionsTracker}.
+ */
+public final class Range {
 
   private long lower;
   private long upper;
 
-  public ClosedRange(long lower, long upper) {
+  public Range(long lower, long upper) {
     this.lower = lower;
     this.upper = upper;
   }
 
-  public ClosedRange(long singleton) {
+  public Range(long singleton) {
     this(singleton, singleton);
   }
 
@@ -44,7 +58,7 @@ public final class ClosedRange {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    ClosedRange that = (ClosedRange) o;
+    Range that = (Range) o;
     return lower == that.lower && upper == that.upper;
   }
 

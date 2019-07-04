@@ -792,7 +792,7 @@ public class LogManager implements AutoCloseable {
   // Utility methods
 
   private static void appendToPositionsFile(
-      URI resource, List<ClosedRange> positions, PrintWriter positionsPrinter) {
+      URI resource, List<Range> positions, PrintWriter positionsPrinter) {
     positionsPrinter.print(resource);
     positionsPrinter.print(':');
     positions.stream().findFirst().ifPresent(pos -> positionsPrinter.print(pos.getUpper()));

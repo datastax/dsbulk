@@ -18,9 +18,9 @@ import org.jetbrains.annotations.NotNull;
 
 public class PositionsTracker {
 
-  private final Map<URI, List<ClosedRange>> positions = new HashMap<>();
+  private final Map<URI, List<Range>> positions = new HashMap<>();
 
-  public Map<URI, List<ClosedRange>> getPositions() {
+  public Map<URI, List<Range>> getPositions() {
     return positions;
   }
 
@@ -35,7 +35,7 @@ public class PositionsTracker {
           (res, positions) -> {
             if (positions == null) {
               positions = new ArrayList<>();
-              positions.add(new ClosedRange(position));
+              positions.add(new Range(position));
               return positions;
             } else {
               return addPosition(positions, position);
@@ -45,17 +45,16 @@ public class PositionsTracker {
   }
 
   @NotNull
-  private static List<ClosedRange> addPosition(
-      @NotNull List<ClosedRange> positions, long position) {
-    ListIterator<ClosedRange> iterator = positions.listIterator();
+  private static List<Range> addPosition(@NotNull List<Range> positions, long position) {
+    ListIterator<Range> iterator = positions.listIterator();
     while (iterator.hasNext()) {
-      ClosedRange range = iterator.next();
+      Range range = iterator.next();
       if (range.contains(position)) {
         return positions;
       } else if (range.getUpper() + 1L == position) {
         range.setUpper(position);
         if (iterator.hasNext()) {
-          ClosedRange next = iterator.next();
+          Range next = iterator.next();
           if (range.getUpper() == next.getLower() - 1) {
             iterator.remove();
             range = iterator.previous();
@@ -68,11 +67,11 @@ public class PositionsTracker {
         return positions;
       } else if (position < range.getLower()) {
         iterator.previous();
-        iterator.add(new ClosedRange(position));
+        iterator.add(new Range(position));
         return positions;
       }
     }
-    iterator.add(new ClosedRange(position));
+    iterator.add(new Range(position));
     return positions;
   }
 }
