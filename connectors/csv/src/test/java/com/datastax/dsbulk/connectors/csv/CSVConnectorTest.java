@@ -1324,7 +1324,7 @@ class CSVConnectorTest {
 
     LoaderConfig settings =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString(String.format("urlfile = %s", MULTIPLE_URLS_FILE))
+            ConfigFactory.parseString(String.format("urlfile = %s", quoteJson(MULTIPLE_URLS_FILE)))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
 
     assertThatThrownBy(() -> connector.configure(settings, false))
@@ -1339,7 +1339,9 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format("urlfile = %s, url = %s", MULTIPLE_URLS_FILE, MULTIPLE_URLS_FILE))
+                    String.format(
+                        "urlfile = %s, url = %s",
+                        quoteJson(MULTIPLE_URLS_FILE), quoteJson(MULTIPLE_URLS_FILE)))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
 
     assertDoesNotThrow(() -> connector.configure(settings, true));
@@ -1353,7 +1355,7 @@ class CSVConnectorTest {
             ConfigFactory.parseString(
                     String.format(
                         "urlfile = %s, recursive = false, fileNamePattern = \"**/part-*\"",
-                        MULTIPLE_URLS_FILE))
+                        quoteJson(MULTIPLE_URLS_FILE)))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
