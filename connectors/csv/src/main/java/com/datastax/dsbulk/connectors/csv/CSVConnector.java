@@ -149,7 +149,7 @@ public class CSVConnector implements Connector {
   private int resourceCount;
   private CsvParserSettings parserSettings;
   private CsvWriterSettings writerSettings;
-  private AtomicInteger counter;
+  @VisibleForTesting AtomicInteger counter;
   private Scheduler scheduler;
   private List<CSVWriter> writers;
 

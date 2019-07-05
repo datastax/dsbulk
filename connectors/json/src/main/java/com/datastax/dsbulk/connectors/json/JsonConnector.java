@@ -135,7 +135,7 @@ public class JsonConnector implements Connector {
   private boolean recursive;
   private String fileNameFormat;
   private int resourceCount;
-  private AtomicInteger counter;
+  @VisibleForTesting AtomicInteger counter;
   private ObjectMapper objectMapper;
   private JavaType jsonNodeMapType;
   private Map<JsonParser.Feature, Boolean> parserFeatures;

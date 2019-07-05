@@ -496,10 +496,10 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
-    for (int i = 0; i < 1000; i++) {
-      connector.getOrCreateDestinationURL();
-    }
-    assertThat(connector.getOrCreateDestinationURL().getPath()).endsWith("output-001001.csv");
+    connector.counter.set(999);
+    assertThat(connector.getOrCreateDestinationURL().getPath()).endsWith("output-001000.csv");
+    connector.counter.set(999_999);
+    assertThat(connector.getOrCreateDestinationURL().getPath()).endsWith("output-1000000.csv");
   }
 
   @Test
