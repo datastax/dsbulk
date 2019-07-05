@@ -10,6 +10,7 @@ package com.datastax.dsbulk.engine.ccm;
 
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DDAC;
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.createURLFile;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
@@ -45,7 +46,6 @@ import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -67,7 +67,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   private static final Version V3 = Version.parse("3.0");
   private static final Version V2_1 = Version.parse("2.1");
-  private static String URLFILE;
+  private static Path URLFILE;
 
   private Path unloadDir;
   private Path logDir;
@@ -106,7 +106,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   @AfterAll
   static void cleanup() throws IOException {
-    Files.delete(Paths.get(URLFILE));
+    Files.delete(URLFILE);
   }
 
   /** Simple test case which attempts to load and unload data using ccm. */
@@ -165,7 +165,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--connector.name");
     args.add("json");
     args.add("--connector.json.urlfile");
-    args.add(quoteJson(URLFILE));
+    args.add(quoteJson(URLFILE.toAbsolutePath()));
     args.add("--schema.keyspace");
     args.add(session.getLoggedKeyspace());
     args.add("--schema.table");

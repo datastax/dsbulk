@@ -154,7 +154,7 @@ public class JsonConnector implements Connector {
       mode = settings.getEnum(DocumentMode.class, MODE);
       pattern = settings.getString(FILE_NAME_PATTERN);
       encoding = settings.getCharset(ENCODING);
-      urls = loadUrls(settings, encoding); // todo can we rely on this encoding?
+      urls = loadUrls(settings);
 
       skipRecords = settings.getLong(SKIP_RECORDS);
       maxRecords = settings.getLong(MAX_RECORDS);
@@ -176,11 +176,11 @@ public class JsonConnector implements Connector {
   }
 
   @NotNull
-  private List<URL> loadUrls(LoaderConfig settings, Charset encoding) {
+  private List<URL> loadUrls(LoaderConfig settings) {
     if (hasUrlfilePathNotEmpty(settings)) {
       // suppress URL option
       try {
-        return URLsFromFileLoader.getURLs(settings.getPath(URLFILE), encoding);
+        return URLsFromFileLoader.getURLs(settings.getPath(URLFILE));
       } catch (IOException e) {
         throw new BulkConfigurationException(
             "Problem when retrieving urls from file specified by the URLFILE parameter", e);

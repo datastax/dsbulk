@@ -8,6 +8,7 @@
  */
 package com.datastax.dsbulk.commons.config;
 
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.createURLFile;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumingThat;
@@ -15,11 +16,9 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.google.common.collect.Lists;
-import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -42,7 +41,7 @@ class URLsFromFileLoaderTest {
     Path urlFile = createURLFile(input);
 
     // when
-    List<URL> urlsFromFile = URLsFromFileLoader.getURLs(urlFile, Charset.forName("UTF-8"));
+    List<URL> urlsFromFile = URLsFromFileLoader.getURLs(urlFile);
 
     // then
     assumingThat(
@@ -58,7 +57,7 @@ class URLsFromFileLoaderTest {
     Path urlFile = Paths.get("/non-existing");
 
     // when
-    assertThatThrownBy(() -> URLsFromFileLoader.getURLs(urlFile, Charset.forName("UTF-8")))
+    assertThatThrownBy(() -> URLsFromFileLoader.getURLs(urlFile))
         .isInstanceOf(NoSuchFileException.class);
   }
 
@@ -76,11 +75,5 @@ class URLsFromFileLoaderTest {
             Arrays.asList("/a-first-file", "/second-file "),
             Arrays.asList(new URL("file:/a-first-file"), new URL("file:/second-file")),
             Arrays.asList(new URL("file:/C:/a-first-file"), new URL("file:/C:/second-file"))));
-  }
-
-  private static Path createURLFile(List<String> urls) throws IOException {
-    File file = File.createTempFile("urlfile", null);
-    Files.write(file.toPath(), urls, Charset.forName("UTF-8"));
-    return file.toPath();
   }
 }

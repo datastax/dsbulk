@@ -161,7 +161,7 @@ public class CSVConnector implements Connector {
       files = new ArrayList<>();
       pattern = settings.getString(FILE_NAME_PATTERN);
       encoding = settings.getCharset(ENCODING);
-      urls = loadUrls(settings, encoding); // todo can we rely on this encoding?
+      urls = loadUrls(settings);
       delimiter = settings.getChar(DELIMITER);
       quote = settings.getChar(QUOTE);
       escape = settings.getChar(ESCAPE);
@@ -247,11 +247,11 @@ public class CSVConnector implements Connector {
   }
 
   @NotNull
-  private List<URL> loadUrls(LoaderConfig settings, Charset encoding) {
+  private List<URL> loadUrls(LoaderConfig settings) {
     if (hasUrlfilePathNotEmpty(settings)) {
       // suppress URL option
       try {
-        return URLsFromFileLoader.getURLs(settings.getPath(URLFILE), encoding);
+        return URLsFromFileLoader.getURLs(settings.getPath(URLFILE));
       } catch (IOException e) {
         throw new BulkConfigurationException(
             "Problem when retrieving urls from file specified by the URLFILE parameter", e);

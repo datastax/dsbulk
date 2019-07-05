@@ -8,6 +8,7 @@
  */
 package com.datastax.dsbulk.connectors.csv;
 
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.createURLFile;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readFile;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
@@ -40,14 +41,12 @@ import com.univocity.parsers.common.TextParsingException;
 import io.undertow.util.Headers;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.charset.Charset;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -71,7 +70,7 @@ class CSVConnectorTest {
     Thread.setDefaultUncaughtExceptionHandler((thread, t) -> {});
   }
 
-  private static String MULTIPLE_URLS_FILE;
+  private static Path MULTIPLE_URLS_FILE;
 
   private static final Config CONNECTOR_DEFAULT_SETTINGS =
       ConfigFactory.defaultReference().getConfig("dsbulk.connector.csv");
@@ -81,12 +80,14 @@ class CSVConnectorTest {
   @BeforeAll
   static void setup() throws IOException {
     MULTIPLE_URLS_FILE =
-        createURLFile(rawURL("/part_1"), rawURL("/part_2"), rawURL("/root-custom/child/part-0003"));
+        createURLFile(
+            Arrays.asList(
+                rawURL("/part_1"), rawURL("/part_2"), rawURL("/root-custom/child/part-0003")));
   }
 
   @AfterAll
   static void cleanup() throws IOException {
-    Files.delete(Paths.get(MULTIPLE_URLS_FILE));
+    Files.delete(MULTIPLE_URLS_FILE);
   }
 
   @Test
@@ -1324,7 +1325,8 @@ class CSVConnectorTest {
 
     LoaderConfig settings =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString(String.format("urlfile = %s", quoteJson(MULTIPLE_URLS_FILE)))
+            ConfigFactory.parseString(
+                    String.format("urlfile = %s", quoteJson(MULTIPLE_URLS_FILE.toAbsolutePath())))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
 
     assertThatThrownBy(() -> connector.configure(settings, false))
@@ -1370,12 +1372,6 @@ class CSVConnectorTest {
   private static Path path(@SuppressWarnings("SameParameterValue") String resource)
       throws URISyntaxException {
     return Paths.get(CSVConnectorTest.class.getResource(resource).toURI());
-  }
-
-  private static String createURLFile(String... urls) throws IOException {
-    File file = File.createTempFile("urlfile", null);
-    Files.write(file.toPath(), Arrays.asList(urls), Charset.forName("UTF-8"));
-    return file.getAbsolutePath();
   }
 
   private static String rawURL(String resource) {

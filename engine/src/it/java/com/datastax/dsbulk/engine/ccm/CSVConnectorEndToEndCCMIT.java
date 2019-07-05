@@ -13,6 +13,7 @@ import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.ass
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DDAC;
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.createURLFile;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLines;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
@@ -84,7 +85,6 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -118,7 +118,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   private static final Version V2_2 = Version.parse("2.2");
   private static final Version V2_1 = Version.parse("2.1");
   private static final Version V5_1 = Version.parse("5.1");
-  private static String URLFILE;
+  private static Path URLFILE;
 
   private final LogInterceptor logs;
   private final StreamInterceptor stderr;
@@ -172,7 +172,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   @AfterAll
   static void cleanup() throws IOException {
-    Files.delete(Paths.get(URLFILE));
+    Files.delete(URLFILE);
   }
 
   /** Simple test case which attempts to load and unload data using ccm. */
@@ -230,7 +230,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--log.directory");
     args.add(quoteJson(logDir));
     args.add("--connector.csv.urlfile");
-    args.add(quoteJson(URLFILE));
+    args.add(quoteJson(URLFILE.toAbsolutePath()));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");

@@ -9,8 +9,10 @@
 package com.datastax.dsbulk.commons.tests.utils;
 
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
+import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
@@ -18,6 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -105,5 +108,20 @@ public class FileUtils {
           });
     } catch (IOException ignored) {
     }
+  }
+
+  public static Path createURLFile(URL... urls) throws IOException {
+    File file = File.createTempFile("urlfile", null);
+    Files.write(
+        file.toPath(),
+        Arrays.stream(urls).map(URL::toExternalForm).collect(Collectors.toList()),
+        StandardCharsets.US_ASCII);
+    return file.toPath();
+  }
+
+  public static Path createURLFile(List<String> urls) throws IOException {
+    File file = File.createTempFile("urlfile", null);
+    Files.write(file.toPath(), urls, StandardCharsets.US_ASCII);
+    return file.toPath();
   }
 }

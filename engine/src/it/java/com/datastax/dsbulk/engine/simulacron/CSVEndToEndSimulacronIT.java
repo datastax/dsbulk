@@ -13,6 +13,7 @@ import static com.datastax.driver.core.DataType.cint;
 import static com.datastax.driver.core.DataType.varchar;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDOUT;
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.createURLFile;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_CRLF;
@@ -81,16 +82,11 @@ import com.datastax.oss.simulacron.common.stubbing.Prime;
 import com.datastax.oss.simulacron.server.BoundCluster;
 import com.google.common.collect.Lists;
 import com.typesafe.config.ConfigFactory;
-import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
-import java.net.URL;
-import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -124,9 +120,9 @@ class CSVEndToEndSimulacronIT {
   private Path unloadDir;
   private Path logDir;
 
-  private static String URL_FILE_TWO_FILES;
-  private static String URL_FILE_ONE_FILE_ONE_DIR;
-  private static String URL_FILE_TWO_DIRS;
+  private static Path URL_FILE_TWO_FILES;
+  private static Path URL_FILE_ONE_FILE_ONE_DIR;
+  private static Path URL_FILE_TWO_DIRS;
 
   CSVEndToEndSimulacronIT(
       BoundCluster simulacron,
@@ -174,9 +170,9 @@ class CSVEndToEndSimulacronIT {
 
   @AfterAll
   static void cleanup() throws IOException {
-    Files.delete(Paths.get(URL_FILE_TWO_FILES));
-    Files.delete(Paths.get(URL_FILE_ONE_FILE_ONE_DIR));
-    Files.delete(Paths.get(URL_FILE_TWO_DIRS));
+    Files.delete(URL_FILE_TWO_FILES);
+    Files.delete(URL_FILE_ONE_FILE_ONE_DIR);
+    Files.delete(URL_FILE_TWO_DIRS);
   }
 
   @Test
@@ -223,7 +219,7 @@ class CSVEndToEndSimulacronIT {
 
   @ParameterizedTest
   @MethodSource("multipleUrlsProvider")
-  void full_load_multiple_urls(String urlfile) {
+  void full_load_multiple_urls(Path urlfile) {
 
     primeIpByCountryTable(simulacron);
     RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
@@ -238,7 +234,7 @@ class CSVEndToEndSimulacronIT {
       "-header",
       "false",
       "--connector.csv.urlfile",
-      quoteJson(urlfile),
+      quoteJson(urlfile.toAbsolutePath()),
       "--driver.query.consistency",
       "ONE",
       "--driver.hosts",
@@ -1062,14 +1058,5 @@ class CSVEndToEndSimulacronIT {
     String contents =
         FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.joining("\n"));
     assertThat(StringUtils.countOccurrences(delimiter, contents)).isEqualTo(expected);
-  }
-
-  private static String createURLFile(URL... urls) throws IOException {
-    File file = File.createTempFile("urlfile", null);
-    Files.write(
-        file.toPath(),
-        Arrays.stream(urls).map(URL::toExternalForm).collect(Collectors.toList()),
-        Charset.forName("UTF-8"));
-    return file.getAbsolutePath();
   }
 }

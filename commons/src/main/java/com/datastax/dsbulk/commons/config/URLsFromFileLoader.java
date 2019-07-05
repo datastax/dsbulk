@@ -11,7 +11,6 @@ package com.datastax.dsbulk.commons.config;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import java.io.IOException;
 import java.net.URL;
-import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -19,16 +18,16 @@ import java.util.List;
 
 public class URLsFromFileLoader {
   /**
-   * Loads list of URLs from a file given as the urlfile argument using encoding.
+   * Loads list of URLs from a file given as the urlfile argument using encoding. The given file
+   * should be encoded in ASCII.
    *
    * @param urlfile - path to file passed as the --urlfile argument to dsbulk
-   * @param encoding - encoding to use when reading the list of URLs from given file
    * @return list of urls resolved from urlfile line by line
    * @throws IOException if unable to load a file from urlfile path
    */
-  public static List<URL> getURLs(Path urlfile, Charset encoding) throws IOException {
+  public static List<URL> getURLs(Path urlfile) throws IOException {
     List<URL> result = new ArrayList<>();
-    List<String> paths = Files.readAllLines(urlfile, encoding);
+    List<String> paths = Files.readAllLines(urlfile);
     for (String path : paths) {
       try {
         if (!path.startsWith("#")) {

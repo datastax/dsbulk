@@ -16,14 +16,7 @@ import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.CCMExtension;
 import com.datastax.dsbulk.engine.tests.utils.LogUtils;
-import java.io.File;
-import java.io.IOException;
-import java.net.URL;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.TestInstance;
@@ -63,14 +56,5 @@ public abstract class EndToEndCCMITBase {
     args.add("--driver.port");
     args.add(Integer.toString(ccm.getBinaryPort()));
     return args.toArray(new String[0]);
-  }
-
-  public static String createURLFile(URL... urls) throws IOException {
-    File file = File.createTempFile("urlfile", null);
-    Files.write(
-        file.toPath(),
-        Arrays.stream(urls).map(URL::toExternalForm).collect(Collectors.toList()),
-        Charset.forName("UTF-8"));
-    return file.getAbsolutePath();
   }
 }
