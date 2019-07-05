@@ -1331,7 +1331,7 @@ class CSVConnectorTest {
 
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessageContaining("The urlfile parameter is not supported for LOAD");
+        .hasMessageContaining("The urlfile parameter is not supported for UNLOAD");
   }
 
   @Test

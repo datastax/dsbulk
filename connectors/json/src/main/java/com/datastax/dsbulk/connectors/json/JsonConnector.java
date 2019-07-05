@@ -206,7 +206,7 @@ public class JsonConnector implements Connector {
     } else {
       // for UNLOAD we are not supporting urlfile parameter
       if (hasUrlfilePathNotEmpty(settings)) {
-        throw new BulkConfigurationException("The urlfile parameter is not supported for LOAD");
+        throw new BulkConfigurationException("The urlfile parameter is not supported for UNLOAD");
       }
       if (doesNotExistsOrIsEmtpy(settings, URL)) {
         throw new BulkConfigurationException(
@@ -452,9 +452,7 @@ public class JsonConnector implements Connector {
   }
 
   private Flux<URL> scanRootDirectories() {
-    List<Flux<URL>> collect =
-        roots.stream().map(this::scanRootDirectory).collect(Collectors.toList());
-    return Flux.fromIterable(collect).flatMap(Function.identity());
+    return Flux.fromIterable(roots).flatMap(this::scanRootDirectory);
   }
 
   private Flux<URL> scanRootDirectory(Path root) {

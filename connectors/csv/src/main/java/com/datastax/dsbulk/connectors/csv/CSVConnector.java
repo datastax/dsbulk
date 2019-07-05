@@ -62,7 +62,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
@@ -277,7 +276,7 @@ public class CSVConnector implements Connector {
     } else {
       // for UNLOAD we are not supporting urlfile parameter
       if (hasUrlfilePathNotEmpty(settings)) {
-        throw new BulkConfigurationException("The urlfile parameter is not supported for LOAD");
+        throw new BulkConfigurationException("The urlfile parameter is not supported for UNLOAD");
       }
       if (doesNotExistsOrIsEmpty(settings, URL)) {
         throw new BulkConfigurationException(
@@ -507,9 +506,7 @@ public class CSVConnector implements Connector {
   }
 
   private Flux<URL> scanRootDirectories() {
-    List<Flux<URL>> collect =
-        roots.stream().map(this::scanRootDirectory).collect(Collectors.toList());
-    return Flux.fromIterable(collect).flatMap(Function.identity());
+    return Flux.fromIterable(roots).flatMap(this::scanRootDirectory);
   }
 
   private Flux<URL> scanRootDirectory(Path root) {
