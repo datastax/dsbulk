@@ -120,9 +120,9 @@ class CSVEndToEndSimulacronIT {
   private Path unloadDir;
   private Path logDir;
 
-  private static Path URL_FILE_TWO_FILES;
-  private static Path URL_FILE_ONE_FILE_ONE_DIR;
-  private static Path URL_FILE_TWO_DIRS;
+  private Path urlFileTwoFiles;
+  private Path urlFileOneFileOneDir;
+  private Path urlFileTwoDirs;
 
   CSVEndToEndSimulacronIT(
       BoundCluster simulacron,
@@ -161,18 +161,17 @@ class CSVEndToEndSimulacronIT {
   }
 
   @BeforeAll
-  static void setup() throws IOException {
-    URL_FILE_TWO_FILES = createURLFile(CSV_RECORDS_UNIQUE_PART_1, CSV_RECORDS_UNIQUE_PART_2);
-    URL_FILE_ONE_FILE_ONE_DIR =
-        createURLFile(CSV_RECORDS_UNIQUE_PART_1_DIR, CSV_RECORDS_UNIQUE_PART_2);
-    URL_FILE_TWO_DIRS = createURLFile(CSV_RECORDS_UNIQUE_PART_1_DIR, CSV_RECORDS_UNIQUE_PART_2_DIR);
+  void setupURLFiles() throws IOException {
+    urlFileTwoFiles = createURLFile(CSV_RECORDS_UNIQUE_PART_1, CSV_RECORDS_UNIQUE_PART_2);
+    urlFileOneFileOneDir = createURLFile(CSV_RECORDS_UNIQUE_PART_1_DIR, CSV_RECORDS_UNIQUE_PART_2);
+    urlFileTwoDirs = createURLFile(CSV_RECORDS_UNIQUE_PART_1_DIR, CSV_RECORDS_UNIQUE_PART_2_DIR);
   }
 
   @AfterAll
-  static void cleanup() throws IOException {
-    Files.delete(URL_FILE_TWO_FILES);
-    Files.delete(URL_FILE_ONE_FILE_ONE_DIR);
-    Files.delete(URL_FILE_TWO_DIRS);
+  void cleanupURLFiles() throws IOException {
+    Files.delete(urlFileTwoFiles);
+    Files.delete(urlFileOneFileOneDir);
+    Files.delete(urlFileTwoDirs);
   }
 
   @Test
@@ -260,11 +259,9 @@ class CSVEndToEndSimulacronIT {
     validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", ONE);
   }
 
-  static List<Arguments> multipleUrlsProvider() {
+  private List<Arguments> multipleUrlsProvider() {
     return Lists.newArrayList(
-        arguments(URL_FILE_TWO_FILES),
-        arguments(URL_FILE_ONE_FILE_ONE_DIR),
-        arguments(URL_FILE_TWO_DIRS));
+        arguments(urlFileTwoFiles), arguments(urlFileOneFileOneDir), arguments(urlFileTwoDirs));
   }
 
   @Test

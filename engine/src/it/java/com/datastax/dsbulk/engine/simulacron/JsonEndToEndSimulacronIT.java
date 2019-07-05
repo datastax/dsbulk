@@ -121,9 +121,9 @@ class JsonEndToEndSimulacronIT {
   private Path unloadDir;
   private Path logDir;
 
-  private static Path URL_FILE_TWO_FILES;
-  private static Path URL_FILE_ONE_FILE_ONE_DIR;
-  private static Path URL_FILE_TWO_DIRS;
+  private Path urlFileTwoFiles;
+  private Path urlFileOneFileOneDir;
+  private Path urlFileTwoDirs;
 
   JsonEndToEndSimulacronIT(
       BoundCluster simulacron,
@@ -162,19 +162,18 @@ class JsonEndToEndSimulacronIT {
   }
 
   @BeforeAll
-  static void setup() throws IOException {
-    URL_FILE_TWO_FILES = createURLFile(JSON_RECORDS_UNIQUE_PART_1, JSON_RECORDS_UNIQUE_PART_2);
-    URL_FILE_ONE_FILE_ONE_DIR =
+  void setupURLFiles() throws IOException {
+    urlFileTwoFiles = createURLFile(JSON_RECORDS_UNIQUE_PART_1, JSON_RECORDS_UNIQUE_PART_2);
+    urlFileOneFileOneDir =
         createURLFile(JSON_RECORDS_UNIQUE_PART_1_DIR, JSON_RECORDS_UNIQUE_PART_2);
-    URL_FILE_TWO_DIRS =
-        createURLFile(JSON_RECORDS_UNIQUE_PART_1_DIR, JSON_RECORDS_UNIQUE_PART_2_DIR);
+    urlFileTwoDirs = createURLFile(JSON_RECORDS_UNIQUE_PART_1_DIR, JSON_RECORDS_UNIQUE_PART_2_DIR);
   }
 
   @AfterAll
-  static void cleanup() throws IOException {
-    Files.delete(URL_FILE_TWO_FILES);
-    Files.delete(URL_FILE_ONE_FILE_ONE_DIR);
-    Files.delete(URL_FILE_TWO_DIRS);
+  void cleanupURLFiles() throws IOException {
+    Files.delete(urlFileTwoFiles);
+    Files.delete(urlFileOneFileOneDir);
+    Files.delete(urlFileTwoDirs);
   }
 
   @Test
@@ -258,11 +257,9 @@ class JsonEndToEndSimulacronIT {
     validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", ONE);
   }
 
-  static List<Arguments> multipleUrlsProvider() {
+  private List<Arguments> multipleUrlsProvider() {
     return Lists.newArrayList(
-        arguments(URL_FILE_TWO_FILES),
-        arguments(URL_FILE_ONE_FILE_ONE_DIR),
-        arguments(URL_FILE_TWO_DIRS));
+        arguments(urlFileTwoFiles), arguments(urlFileOneFileOneDir), arguments(urlFileTwoDirs));
   }
 
   @Test
