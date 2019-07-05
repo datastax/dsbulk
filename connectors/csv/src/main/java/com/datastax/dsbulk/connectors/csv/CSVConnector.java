@@ -477,11 +477,11 @@ public class CSVConnector implements Connector {
                 LOGGER.debug("Done reading {}", url);
                 sink.complete();
               } catch (TextParsingException e) {
-                IOException ioe = launderTextParsingException(e);
+                IOException ioe = launderTextParsingException(e, url);
                 sink.error(ioe);
               } catch (Exception e) {
                 if (e.getCause() instanceof TextParsingException) {
-                  e = launderTextParsingException(((TextParsingException) e.getCause()));
+                  e = launderTextParsingException(((TextParsingException) e.getCause()), url);
                 }
                 sink.error(
                     new IOException(
@@ -632,8 +632,7 @@ public class CSVConnector implements Connector {
     return urls.get(0); // for UNLOAD always one URL
   }
 
-  @NotNull
-  private IOException launderTextParsingException(TextParsingException e) {
+  private IOException launderTextParsingException(TextParsingException e, URL url) {
     // TextParsingException messages are very verbose, so we wrap these exceptions
     // in an IOE that only keeps the first sentence.
     String message = e.getMessage();
@@ -657,6 +656,6 @@ public class CSVConnector implements Connector {
       }
     }
     return new IOException(
-        String.format("Error reading from %s at line %d: %s", urls, e.getLineIndex(), message), e);
+        String.format("Error reading from %s at line %d: %s", url, e.getLineIndex(), message), e);
   }
 }
