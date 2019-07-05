@@ -640,7 +640,7 @@ class JsonConnectorTest {
     assertThatThrownBy(() -> connector.configure(settings, true))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
-            "An URL or URLFILE is mandatory when using the json connector for LOAD. Please set connector.json.url or connector.json.urlfile and "
+            "A URL or URL file is mandatory when using the json connector for LOAD. Please set connector.json.url or connector.json.urlfile and "
                 + "try again. See settings.md or help for more information.");
   }
 

@@ -146,7 +146,7 @@ public class JsonConnector implements Connector {
   @Override
   public void configure(LoaderConfig settings, boolean read) {
     try {
-      validateURLAndUrlfileParameters(settings, read);
+      validateURL(settings, read);
 
       this.read = read;
       roots = new ArrayList<>();
@@ -190,35 +190,38 @@ public class JsonConnector implements Connector {
     }
   }
 
-  private boolean hasUrlfilePathNotEmpty(LoaderConfig settings) {
-    return settings.hasPath(URLFILE) && !settings.getString(URLFILE).isEmpty();
-  }
-
-  private void validateURLAndUrlfileParameters(LoaderConfig settings, boolean read) {
+  private void validateURL(LoaderConfig settings, boolean read) {
     if (read) {
       // for LOAD
-      if (!settings.hasPath(URL) || settings.getString(URL).isEmpty()) {
-        if (!settings.hasPath(URLFILE) || settings.getString(URLFILE).isEmpty()) {
+      if (doesNotExistsOrIsEmtpy(settings, URL)) {
+        if (doesNotExistsOrIsEmtpy(settings, URLFILE)) {
           throw new BulkConfigurationException(
-              "An URL or URLFILE is mandatory when using the json connector for LOAD. Please set connector.json.url or connector.json.urlfile "
+              "A URL or URL file is mandatory when using the json connector for LOAD. Please set connector.json.url or connector.json.urlfile "
                   + "and try again. See settings.md or help for more information.");
         }
       }
       if (settings.hasPath(URL) && hasUrlfilePathNotEmpty(settings)) {
         LOGGER.debug("You specified both URL and URLFILE. The URLFILE will take precedence.");
       }
-    }
-    if (!read) {
+    } else {
       // for UNLOAD we are not supporting urlfile parameter
       if (hasUrlfilePathNotEmpty(settings)) {
         throw new BulkConfigurationException("The urlfile parameter is not supported for LOAD");
       }
-      if (!settings.hasPath(URL) || settings.getString(URL).isEmpty()) {
+      if (doesNotExistsOrIsEmtpy(settings, URL)) {
         throw new BulkConfigurationException(
-            "An URL is mandatory when using the json connector for UNLOAD. Please set connector.json.url "
+            "A URL is mandatory when using the json connector for UNLOAD. Please set connector.json.url "
                 + "and try again. See settings.md or help for more information.");
       }
     }
+  }
+
+  private boolean hasUrlfilePathNotEmpty(LoaderConfig settings) {
+    return settings.hasPath(URLFILE) && !settings.getString(URLFILE).isEmpty();
+  }
+
+  private boolean doesNotExistsOrIsEmtpy(LoaderConfig settings, String url) {
+    return !settings.hasPath(url) || settings.getString(url).isEmpty();
   }
 
   @Override

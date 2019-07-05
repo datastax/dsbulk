@@ -1122,7 +1122,7 @@ class CSVConnectorTest {
     assertThatThrownBy(() -> connector.configure(settings, true))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
-            "An URL or URLFILE is mandatory when using the csv connector for LOAD. Please set connector.csv.url or connector.csv.urlfile and "
+            "A URL or URL file is mandatory when using the csv connector for LOAD. Please set connector.csv.url or connector.csv.urlfile and "
                 + "try again. See settings.md or help for more information.");
   }
 
