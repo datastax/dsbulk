@@ -333,7 +333,6 @@ public class JsonConnector implements Connector {
   }
 
   private void tryReadFromDirectory() throws URISyntaxException, IOException {
-    resourceCount = 1;
     for (URL u : urls) {
       try {
         Path root = Paths.get(u.toURI());
@@ -343,9 +342,9 @@ public class JsonConnector implements Connector {
                 String.format("Directory is not readable: %s.", root));
           }
           this.roots.add(root);
-          resourceCount =
+          int localResourceCount =
               Objects.requireNonNull(scanRootDirectories().take(100).count().block()).intValue();
-          if (resourceCount == 0) {
+          if (localResourceCount == 0) {
             if (IOUtils.countReadableFiles(root, recursive) == 0) {
               LOGGER.warn("Directory {} has no readable files.", root);
             } else {
@@ -355,7 +354,9 @@ public class JsonConnector implements Connector {
                   pattern);
             }
           }
+          resourceCount += localResourceCount;
         } else {
+          resourceCount += 1;
           files.add(u);
         }
       } catch (FileSystemNotFoundException ignored) {
