@@ -24,6 +24,8 @@ import com.typesafe.config.ConfigValueType;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
@@ -360,7 +362,9 @@ public class ConfigUtils {
     for (String path : paths) {
       try {
         if (!path.startsWith("#")) {
-          result.add(ConfigUtils.resolveURL(path.trim()));
+          result.add(
+              ConfigUtils.resolveURL(
+                  URLDecoder.decode(path.trim(), StandardCharsets.UTF_8.name())));
         }
       } catch (Exception e) {
         throw new BulkConfigurationException(

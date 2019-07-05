@@ -239,6 +239,22 @@ class ConfigUtilsTest {
         .isInstanceOf(NoSuchFileException.class);
   }
 
+  @Test
+  void should_handle_file_with_non_ascii_url_decoded() throws IOException {
+    // given
+    Path urlFile =
+        createURLFile(
+            new URL("http://foo.com/bar?param=%CE%BA%CE%B1%CE%BB%CE%B7%CE%BC%CE%AD%CF%81%CE%B1"));
+
+    // when
+    List<URL> urlsFromFile = ConfigUtils.getURLsFromFile(urlFile);
+
+    // then
+    assertThat(urlsFromFile).containsExactly(new URL("http://foo.com/bar?param=καλημέρα"));
+
+    Files.delete(urlFile);
+  }
+
   static List<Arguments> urlsProvider() throws MalformedURLException {
     return Lists.newArrayList(
         arguments(
