@@ -428,8 +428,7 @@ public class CSVConnector implements Connector {
   }
 
   private Flux<Record> readURLs(List<URL> urls) {
-    List<Flux<Record>> collect = urls.stream().map(this::readURL).collect(Collectors.toList());
-    return Flux.fromIterable(collect).flatMap(Function.identity());
+    return Flux.fromIterable(urls).flatMap(this::readURL);
   }
 
   private Flux<Record> readURL(URL url) {
