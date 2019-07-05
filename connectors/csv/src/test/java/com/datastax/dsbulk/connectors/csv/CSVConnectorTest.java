@@ -1326,8 +1326,7 @@ class CSVConnectorTest {
 
     LoaderConfig settings =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format("urlfile = %s", quoteJson(MULTIPLE_URLS_FILE.toAbsolutePath())))
+            ConfigFactory.parseString(String.format("urlfile = %s", quoteJson(MULTIPLE_URLS_FILE)))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
 
     assertThatThrownBy(() -> connector.configure(settings, false))

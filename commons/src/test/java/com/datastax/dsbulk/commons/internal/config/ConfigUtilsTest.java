@@ -240,7 +240,7 @@ class ConfigUtilsTest {
   }
 
   @Test
-  void should_handle_file_with_non_ascii_url_decoded() throws IOException {
+  void should_handle_file_with_non_ascii_url() throws IOException {
     // given
     Path urlFile = createURLFile(new URL("http://foo.com/bar?param=καλημέρα"));
 

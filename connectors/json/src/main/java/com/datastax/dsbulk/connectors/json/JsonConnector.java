@@ -8,8 +8,9 @@
  */
 package com.datastax.dsbulk.connectors.json;
 
-import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.doesNotExistOrIsEmpty;
-import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.hasNotEmptyPath;
+import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.getURLsFromFile;
+import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isPathAbsentOrEmpty;
+import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isPathPresentAndNotEmpty;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
@@ -149,15 +150,13 @@ public class JsonConnector implements Connector {
   public void configure(LoaderConfig settings, boolean read) {
     try {
       validateURL(settings, read);
-
       this.read = read;
+      urls = loadURLs(settings);
       roots = new ArrayList<>();
       files = new ArrayList<>();
       mode = settings.getEnum(DocumentMode.class, MODE);
       pattern = settings.getString(FILE_NAME_PATTERN);
       encoding = settings.getCharset(ENCODING);
-      urls = loadURLs(settings);
-
       skipRecords = settings.getLong(SKIP_RECORDS);
       maxRecords = settings.getLong(MAX_RECORDS);
       maxConcurrentFiles = settings.getThreads(MAX_CONCURRENT_FILES);
@@ -179,10 +178,10 @@ public class JsonConnector implements Connector {
 
   @NotNull
   private List<URL> loadURLs(LoaderConfig settings) {
-    if (hasNotEmptyPath(settings, URLFILE)) {
+    if (isPathPresentAndNotEmpty(settings, URLFILE)) {
       // suppress URL option
       try {
-        return ConfigUtils.getURLsFromFile(settings.getPath(URLFILE));
+        return getURLsFromFile(settings.getPath(URLFILE));
       } catch (IOException e) {
         throw new BulkConfigurationException(
             "Problem when retrieving urls from file specified by the URL file parameter", e);
@@ -195,22 +194,22 @@ public class JsonConnector implements Connector {
   private void validateURL(LoaderConfig settings, boolean read) {
     if (read) {
       // for LOAD
-      if (doesNotExistOrIsEmpty(settings, URL)) {
-        if (doesNotExistOrIsEmpty(settings, URLFILE)) {
+      if (isPathAbsentOrEmpty(settings, URL)) {
+        if (isPathAbsentOrEmpty(settings, URLFILE)) {
           throw new BulkConfigurationException(
               "A URL or URL file is mandatory when using the json connector for LOAD. Please set connector.json.url or connector.json.urlfile "
                   + "and try again. See settings.md or help for more information.");
         }
       }
-      if (settings.hasPath(URL) && hasNotEmptyPath(settings, URLFILE)) {
+      if (isPathPresentAndNotEmpty(settings, URL) && isPathPresentAndNotEmpty(settings, URLFILE)) {
         LOGGER.debug("You specified both URL and URL file. The URL file will take precedence.");
       }
     } else {
       // for UNLOAD we are not supporting urlfile parameter
-      if (hasNotEmptyPath(settings, URLFILE)) {
+      if (isPathPresentAndNotEmpty(settings, URLFILE)) {
         throw new BulkConfigurationException("The urlfile parameter is not supported for UNLOAD");
       }
-      if (doesNotExistOrIsEmpty(settings, URL)) {
+      if (isPathAbsentOrEmpty(settings, URL)) {
         throw new BulkConfigurationException(
             "A URL is mandatory when using the json connector for UNLOAD. Please set connector.json.url "
                 + "and try again. See settings.md or help for more information.");
@@ -221,7 +220,7 @@ public class JsonConnector implements Connector {
   @Override
   public void init() throws URISyntaxException, IOException {
     if (read) {
-      tryReadFromDirectory();
+      tryReadFromDirectories();
     } else {
       tryWriteToDirectory();
     }
@@ -289,13 +288,17 @@ public class JsonConnector implements Connector {
   @Override
   public Publisher<Record> read() {
     assert read;
-    return Flux.concat(scanRootDirectories().flatMap(this::readURL), readURLs(files));
+    return Flux.concat(
+        Flux.fromIterable(roots).flatMap(this::scanRootDirectory).flatMap(this::readURL),
+        Flux.fromIterable(files).flatMap(this::readURL));
   }
 
   @Override
   public Publisher<Publisher<Record>> readByResource() {
     assert read;
-    return Flux.concat(scanRootDirectories().map(this::readURL), Flux.just(readURLs(files)));
+    return Flux.concat(
+        Flux.fromIterable(roots).flatMap(this::scanRootDirectory).map(this::readURL),
+        Flux.fromIterable(files).map(this::readURL));
   }
 
   @Override
@@ -326,7 +329,8 @@ public class JsonConnector implements Connector {
     }
   }
 
-  private void tryReadFromDirectory() throws URISyntaxException, IOException {
+  private void tryReadFromDirectories() throws URISyntaxException, IOException {
+    resourceCount = 0;
     for (URL u : urls) {
       try {
         Path root = Paths.get(u.toURI());
@@ -335,9 +339,9 @@ public class JsonConnector implements Connector {
             throw new IllegalArgumentException(
                 String.format("Directory is not readable: %s.", root));
           }
-          this.roots.add(root);
+          roots.add(root);
           int inDirectoryResourceCount =
-              Objects.requireNonNull(scanRootDirectories().take(100).count().block()).intValue();
+              Objects.requireNonNull(scanRootDirectory(root).take(100).count().block()).intValue();
           if (inDirectoryResourceCount == 0) {
             if (IOUtils.countReadableFiles(root, recursive) == 0) {
               LOGGER.warn("Directory {} has no readable files.", root);
@@ -380,10 +384,6 @@ public class JsonConnector implements Connector {
     } catch (FileSystemNotFoundException ignored) {
       // not a path on a known filesystem, fall back to writing to URL directly
     }
-  }
-
-  private Flux<Record> readURLs(List<URL> urls) {
-    return Flux.fromIterable(urls).flatMap(this::readURL);
   }
 
   private Flux<Record> readURL(URL url) {
@@ -443,10 +443,6 @@ public class JsonConnector implements Connector {
       records = records.take(maxRecords);
     }
     return records;
-  }
-
-  private Flux<URL> scanRootDirectories() {
-    return Flux.fromIterable(roots).flatMap(this::scanRootDirectory);
   }
 
   private Flux<URL> scanRootDirectory(Path root) {

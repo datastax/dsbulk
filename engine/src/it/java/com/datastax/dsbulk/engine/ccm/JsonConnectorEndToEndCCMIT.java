@@ -67,10 +67,10 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   private static final Version V3 = Version.parse("3.0");
   private static final Version V2_1 = Version.parse("2.1");
-  private static Path URLFILE;
 
   private Path unloadDir;
   private Path logDir;
+  private Path urlFile;
 
   JsonConnectorEndToEndCCMIT(CCMCluster ccm, Session session) {
     super(ccm, session);
@@ -100,13 +100,13 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   @BeforeAll
-  static void setup() throws IOException {
-    URLFILE = createURLFile(JSON_RECORDS_UNIQUE_PART_1, JSON_RECORDS_UNIQUE_PART_2);
+  void setupURLFile() throws IOException {
+    urlFile = createURLFile(JSON_RECORDS_UNIQUE_PART_1, JSON_RECORDS_UNIQUE_PART_2);
   }
 
   @AfterAll
-  static void cleanup() throws IOException {
-    Files.delete(URLFILE);
+  void cleanupURLFile() throws IOException {
+    Files.delete(urlFile);
   }
 
   /** Simple test case which attempts to load and unload data using ccm. */
@@ -165,7 +165,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--connector.name");
     args.add("json");
     args.add("--connector.json.urlfile");
-    args.add(quoteJson(URLFILE.toAbsolutePath()));
+    args.add(quoteJson(urlFile));
     args.add("--schema.keyspace");
     args.add(session.getLoggedKeyspace());
     args.add("--schema.table");

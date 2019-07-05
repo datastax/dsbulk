@@ -8,8 +8,9 @@
  */
 package com.datastax.dsbulk.connectors.csv;
 
-import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.doesNotExistOrIsEmpty;
-import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.hasNotEmptyPath;
+import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.getURLsFromFile;
+import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isPathAbsentOrEmpty;
+import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isPathPresentAndNotEmpty;
 import static com.datastax.dsbulk.commons.internal.io.IOUtils.countReadableFiles;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
@@ -155,13 +156,12 @@ public class CSVConnector implements Connector {
   public void configure(LoaderConfig settings, boolean read) {
     try {
       validateURL(settings, read);
-
       this.read = read;
+      urls = loadURLs(settings);
       roots = new ArrayList<>();
       files = new ArrayList<>();
       pattern = settings.getString(FILE_NAME_PATTERN);
       encoding = settings.getCharset(ENCODING);
-      urls = loadURLs(settings);
       delimiter = settings.getChar(DELIMITER);
       quote = settings.getChar(QUOTE);
       escape = settings.getChar(ESCAPE);
@@ -196,7 +196,7 @@ public class CSVConnector implements Connector {
   @Override
   public void init() throws URISyntaxException, IOException {
     if (read) {
-      tryReadFromDirectory();
+      tryReadFromDirectories();
     } else {
       tryWriteToDirectory();
     }
@@ -248,10 +248,10 @@ public class CSVConnector implements Connector {
 
   @NotNull
   private List<URL> loadURLs(LoaderConfig settings) {
-    if (hasNotEmptyPath(settings, URLFILE)) {
+    if (isPathPresentAndNotEmpty(settings, URLFILE)) {
       // suppress URL option
       try {
-        return ConfigUtils.getURLsFromFile(settings.getPath(URLFILE));
+        return getURLsFromFile(settings.getPath(URLFILE));
       } catch (IOException e) {
         throw new BulkConfigurationException(
             "Problem when retrieving urls from file specified by the URL file parameter", e);
@@ -264,22 +264,22 @@ public class CSVConnector implements Connector {
   private void validateURL(LoaderConfig settings, boolean read) {
     if (read) {
       // for LOAD
-      if (doesNotExistOrIsEmpty(settings, URL)) {
-        if (doesNotExistOrIsEmpty(settings, URLFILE)) {
+      if (isPathAbsentOrEmpty(settings, URL)) {
+        if (isPathAbsentOrEmpty(settings, URLFILE)) {
           throw new BulkConfigurationException(
               "A URL or URL file is mandatory when using the csv connector for LOAD. Please set connector.csv.url or connector.csv.urlfile "
                   + "and try again. See settings.md or help for more information.");
         }
       }
-      if (settings.hasPath(URL) && hasNotEmptyPath(settings, URLFILE)) {
+      if (isPathPresentAndNotEmpty(settings, URL) && isPathPresentAndNotEmpty(settings, URLFILE)) {
         LOGGER.debug("You specified both URL and URL file. The URL file will take precedence.");
       }
     } else {
       // for UNLOAD we are not supporting urlfile parameter
-      if (hasNotEmptyPath(settings, URLFILE)) {
+      if (isPathPresentAndNotEmpty(settings, URLFILE)) {
         throw new BulkConfigurationException("The urlfile parameter is not supported for UNLOAD");
       }
-      if (doesNotExistOrIsEmpty(settings, URL)) {
+      if (isPathAbsentOrEmpty(settings, URL)) {
         throw new BulkConfigurationException(
             "A URL is mandatory when using the json connector for UNLOAD. Please set connector.csv.url "
                 + "and try again. See settings.md or help for more information.");
@@ -326,13 +326,17 @@ public class CSVConnector implements Connector {
   @Override
   public Publisher<Record> read() {
     assert read;
-    return Flux.concat(scanRootDirectories().flatMap(this::readURL), readURLs(files));
+    return Flux.concat(
+        Flux.fromIterable(roots).flatMap(this::scanRootDirectory).flatMap(this::readURL),
+        Flux.fromIterable(files).flatMap(this::readURL));
   }
 
   @Override
   public Publisher<Publisher<Record>> readByResource() {
     assert read;
-    return Flux.concat(scanRootDirectories().map(this::readURL), Flux.just(readURLs(files)));
+    return Flux.concat(
+        Flux.fromIterable(roots).flatMap(this::scanRootDirectory).map(this::readURL),
+        Flux.fromIterable(files).map(this::readURL));
   }
 
   @Override
@@ -363,7 +367,8 @@ public class CSVConnector implements Connector {
     }
   }
 
-  private void tryReadFromDirectory() throws URISyntaxException, IOException {
+  private void tryReadFromDirectories() throws URISyntaxException, IOException {
+    resourceCount = 0;
     for (URL u : urls) {
       try {
         Path root = Paths.get(u.toURI());
@@ -372,9 +377,9 @@ public class CSVConnector implements Connector {
             throw new IllegalArgumentException(
                 String.format("Directory is not readable: %s.", root));
           }
-          this.roots.add(root);
+          roots.add(root);
           int inDirectoryResourceCount =
-              Objects.requireNonNull(scanRootDirectories().take(100).count().block()).intValue();
+              Objects.requireNonNull(scanRootDirectory(root).take(100).count().block()).intValue();
           if (inDirectoryResourceCount == 0) {
             if (countReadableFiles(root, recursive) == 0) {
               LOGGER.warn("Directory {} has no readable files.", root);
@@ -417,10 +422,6 @@ public class CSVConnector implements Connector {
     } catch (FileSystemNotFoundException ignored) {
       // not a path on a known filesystem, fall back to writing to URL directly
     }
-  }
-
-  private Flux<Record> readURLs(List<URL> urls) {
-    return Flux.fromIterable(urls).flatMap(this::readURL);
   }
 
   private Flux<Record> readURL(URL url) {
@@ -496,10 +497,6 @@ public class CSVConnector implements Connector {
       records = records.take(maxRecords);
     }
     return records;
-  }
-
-  private Flux<URL> scanRootDirectories() {
-    return Flux.fromIterable(roots).flatMap(this::scanRootDirectory);
   }
 
   private Flux<URL> scanRootDirectory(Path root) {

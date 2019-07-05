@@ -118,10 +118,11 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   private static final Version V2_2 = Version.parse("2.2");
   private static final Version V2_1 = Version.parse("2.1");
   private static final Version V5_1 = Version.parse("5.1");
-  private static Path URLFILE;
 
   private final LogInterceptor logs;
   private final StreamInterceptor stderr;
+
+  private Path urlFile;
   private Path logDir;
   private Path unloadDir;
 
@@ -166,13 +167,13 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   @BeforeAll
-  static void setup() throws IOException {
-    URLFILE = createURLFile(CSV_RECORDS_UNIQUE_PART_1, CSV_RECORDS_UNIQUE_PART_2);
+  void setupURLFile() throws IOException {
+    urlFile = createURLFile(CSV_RECORDS_UNIQUE_PART_1, CSV_RECORDS_UNIQUE_PART_2);
   }
 
   @AfterAll
-  static void cleanup() throws IOException {
-    Files.delete(URLFILE);
+  void cleanupURLFile() throws IOException {
+    Files.delete(urlFile);
   }
 
   /** Simple test case which attempts to load and unload data using ccm. */
@@ -230,7 +231,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--log.directory");
     args.add(quoteJson(logDir));
     args.add("--connector.csv.urlfile");
-    args.add(quoteJson(URLFILE.toAbsolutePath()));
+    args.add(quoteJson(urlFile));
     args.add("--connector.csv.header");
     args.add("false");
     args.add("--schema.keyspace");

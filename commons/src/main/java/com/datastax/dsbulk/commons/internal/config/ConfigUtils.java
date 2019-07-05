@@ -12,7 +12,6 @@ import static com.datastax.dsbulk.commons.config.LoaderConfig.LEAF_ANNOTATION;
 import static com.datastax.dsbulk.commons.config.LoaderConfig.TYPE_ANNOTATION;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
@@ -350,9 +349,9 @@ public class ConfigUtils {
    * Loads list of URLs from a file given as the urlfile argument using encoding. The given file
    * should be encoded in UTF_8.
    *
-   * @param urlfile - path to file passed as the --urlfile argument to dsbulk
-   * @return list of urls resolved from urlfile line by line
-   * @throws IOException if unable to load a file from urlfile path
+   * @param urlfile The path to file passed as the --urlfile argument to dsbulk.
+   * @return The list of urls resolved from urlfile line by line.
+   * @throws IOException If unable to load a file from urlfile path.
    */
   public static List<URL> getURLsFromFile(Path urlfile) throws IOException {
     List<URL> result = new ArrayList<>();
@@ -370,11 +369,28 @@ public class ConfigUtils {
     return result;
   }
 
-  public static boolean doesNotExistOrIsEmpty(LoaderConfig settings, String settingName) {
-    return !settings.hasPath(settingName) || settings.getString(settingName).isEmpty();
+  /**
+   * Checks if the given path is absent (i.e., it does not exist or has an explicit {@code null}
+   * value), or if the path value is an empty string.
+   *
+   * @param config The config.
+   * @param path The path expression.
+   * @return {@code true} if the given path is absent or if its value is an empty string, {@code
+   *     false} otherwise.
+   */
+  public static boolean isPathAbsentOrEmpty(Config config, String path) {
+    return !config.hasPath(path) || config.getString(path).isEmpty();
   }
 
-  public static boolean hasNotEmptyPath(LoaderConfig settings, String settingName) {
-    return settings.hasPath(settingName) && !settings.getString(settingName).isEmpty();
+  /**
+   * Checks if the given path is present and its value is a non-empty string.
+   *
+   * @param config The config.
+   * @param path The path expression.
+   * @return {@code true} if the given path is present and its value is a non-empty string, {@code
+   *     false} otherwise.
+   */
+  public static boolean isPathPresentAndNotEmpty(Config config, String path) {
+    return config.hasPath(path) && !config.getString(path).isEmpty();
   }
 }

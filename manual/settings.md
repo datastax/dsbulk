@@ -434,6 +434,43 @@ Enable or disable scanning for files in the root's subdirectories. Only applicab
 
 Default: **false**.
 
+#### --connector.csv.urlfile _&lt;string&gt;_
+
+The URL or path of the file that contains the list of resources to read from.
+
+The file specified here should be located on the local filesystem.
+
+This setting and `connector.csv.url` are mutually exclusive. If both are defined and non empty, this setting takes precedence over `connector.csv.url`.
+
+This setting applies only when loading. When unloading, this setting should be left empty or set to null; any non-empty value will trigger a fatal error.
+
+The file with URLs should follow this format:
+
+```
+/path/to/file/file.csv
+/path/to.dir/
+```
+
+Every line should contain one path. You don't need to escape paths in this file.
+
+All the remarks for `connector.csv.url` apply for each line in the file, and especially, settings like `fileNamePattern`, `recursive`, and `fileNameFormat` all apply to each line individually.
+
+You can comment out a line in the URL file by making it start with a # sign:
+
+```
+#/path/that/will/be/ignored
+```
+
+Such a line will be ignored.
+
+For your convenience, every line in the urlfile will be trimmed - that is, any leading and trailing white space will be removed.
+
+The file should be encoded in UTF-8, and each line should be a valid URL to load.
+
+The default value is "" - which means that this property is ignored.
+
+Default: **&lt;unspecified&gt;**.
+
 <a name="connector.json"></a>
 ### Connector Json Settings
 
@@ -557,6 +594,43 @@ Note that some Jackson features might not be supported, in particular features t
 The strategy to use for filtering out entries when formatting output. Valid values are enum constants defined in `com.fasterxml.jackson.annotation.JsonInclude.Include` (but beware that the `CUSTOM` strategy cannot be honored). Used for unloading only.
 
 Default: **"ALWAYS"**.
+
+#### --connector.json.urlfile _&lt;string&gt;_
+
+The URL or path of the file that contains the list of resources to read from.
+
+The file specified here should be located on the local filesystem.
+
+This setting and `connector.json.url` are mutually exclusive. If both are defined and non empty, this setting takes precedence over `connector.json.url`.
+
+This setting applies only when loading. When unloading, this setting should be left empty or set to null; any non-empty value will trigger a fatal error.
+
+The file with URLs should follow this format:
+
+```
+/path/to/file/file.json
+/path/to.dir/
+```
+
+Every line should contain one path. You don't need to escape paths in this file.
+
+All the remarks for `connector.csv.json` apply for each line in the file, and especially, settings like `fileNamePattern`, `recursive`, and `fileNameFormat` all apply to each line individually.
+
+You can comment out a line in the URL file by making it start with a # sign:
+
+```
+#/path/that/will/be/ignored
+```
+
+Such a line will be ignored.
+
+For your convenience, every line in the urlfile will be trimmed - that is, any leading and trailing white space will be removed.
+
+The file should be encoded in UTF-8, and each line should be a valid URL to load.
+
+The default value is "" - which means that this property is ignored.
+
+Default: **&lt;unspecified&gt;**.
 
 <a name="schema"></a>
 ## Schema Settings
