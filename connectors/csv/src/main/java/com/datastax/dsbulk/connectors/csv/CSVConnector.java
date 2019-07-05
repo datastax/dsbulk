@@ -381,9 +381,9 @@ public class CSVConnector implements Connector {
                 String.format("Directory is not readable: %s.", root));
           }
           this.roots.add(root);
-          int localResourceCount =
+          int inDirectoryResourceCount =
               Objects.requireNonNull(scanRootDirectories().take(100).count().block()).intValue();
-          if (localResourceCount == 0) {
+          if (inDirectoryResourceCount == 0) {
             if (countReadableFiles(root, recursive) == 0) {
               LOGGER.warn("Directory {} has no readable files.", root);
             } else {
@@ -393,7 +393,7 @@ public class CSVConnector implements Connector {
                   pattern);
             }
           }
-          resourceCount += localResourceCount;
+          resourceCount += inDirectoryResourceCount;
         } else {
           resourceCount += 1;
           files.add(u);
