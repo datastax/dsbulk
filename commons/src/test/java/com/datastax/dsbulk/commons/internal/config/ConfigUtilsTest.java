@@ -242,9 +242,7 @@ class ConfigUtilsTest {
   @Test
   void should_handle_file_with_non_ascii_url_decoded() throws IOException {
     // given
-    Path urlFile =
-        createURLFile(
-            new URL("http://foo.com/bar?param=%CE%BA%CE%B1%CE%BB%CE%B7%CE%BC%CE%AD%CF%81%CE%B1"));
+    Path urlFile = createURLFile(new URL("http://foo.com/bar?param=καλημέρα"));
 
     // when
     List<URL> urlsFromFile = ConfigUtils.getURLsFromFile(urlFile);

@@ -114,13 +114,13 @@ public class FileUtils {
     Files.write(
         file,
         Arrays.stream(urls).map(URL::toExternalForm).collect(Collectors.toList()),
-        StandardCharsets.US_ASCII);
+        StandardCharsets.UTF_8);
     return file;
   }
 
   public static Path createURLFile(List<String> urls) throws IOException {
     Path file = Files.createTempFile("urlfile", null);
-    Files.write(file, urls, StandardCharsets.US_ASCII);
+    Files.write(file, urls, StandardCharsets.UTF_8);
     return file;
   }
 }

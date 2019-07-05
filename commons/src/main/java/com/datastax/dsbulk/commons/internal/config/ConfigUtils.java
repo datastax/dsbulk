@@ -24,8 +24,6 @@ import com.typesafe.config.ConfigValueType;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
@@ -350,7 +348,7 @@ public class ConfigUtils {
 
   /**
    * Loads list of URLs from a file given as the urlfile argument using encoding. The given file
-   * should be encoded in ASCII.
+   * should be encoded in UTF_8.
    *
    * @param urlfile - path to file passed as the --urlfile argument to dsbulk
    * @return list of urls resolved from urlfile line by line
@@ -362,9 +360,7 @@ public class ConfigUtils {
     for (String path : paths) {
       try {
         if (!path.startsWith("#")) {
-          result.add(
-              ConfigUtils.resolveURL(
-                  URLDecoder.decode(path.trim(), StandardCharsets.UTF_8.name())));
+          result.add(ConfigUtils.resolveURL(path.trim()));
         }
       } catch (Exception e) {
         throw new BulkConfigurationException(
