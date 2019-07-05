@@ -333,9 +333,9 @@ public class JsonConnector implements Connector {
   }
 
   private void tryReadFromDirectory() throws URISyntaxException, IOException {
+    resourceCount = 1;
     for (URL u : urls) {
       try {
-        resourceCount = 1;
         Path root = Paths.get(u.toURI());
         if (Files.isDirectory(root)) {
           if (!Files.isReadable(root)) {
