@@ -9,7 +9,6 @@
 package com.datastax.dsbulk.commons.tests.utils;
 
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
-import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URL;
@@ -111,17 +110,17 @@ public class FileUtils {
   }
 
   public static Path createURLFile(URL... urls) throws IOException {
-    File file = File.createTempFile("urlfile", null);
+    Path file = Files.createTempFile("urlfile", null);
     Files.write(
-        file.toPath(),
+        file,
         Arrays.stream(urls).map(URL::toExternalForm).collect(Collectors.toList()),
         StandardCharsets.US_ASCII);
-    return file.toPath();
+    return file;
   }
 
   public static Path createURLFile(List<String> urls) throws IOException {
-    File file = File.createTempFile("urlfile", null);
-    Files.write(file.toPath(), urls, StandardCharsets.US_ASCII);
-    return file.toPath();
+    Path file = Files.createTempFile("urlfile", null);
+    Files.write(file, urls, StandardCharsets.US_ASCII);
+    return file;
   }
 }

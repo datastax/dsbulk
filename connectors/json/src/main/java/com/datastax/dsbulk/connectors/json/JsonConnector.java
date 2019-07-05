@@ -8,9 +8,11 @@
  */
 package com.datastax.dsbulk.connectors.json;
 
+import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.doesNotExistOrIsEmpty;
+import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.hasNotEmptyPath;
+
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.config.URLsFromFileLoader;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.io.IOUtils;
 import com.datastax.dsbulk.commons.internal.reactive.SimpleBackpressureController;
@@ -154,7 +156,7 @@ public class JsonConnector implements Connector {
       mode = settings.getEnum(DocumentMode.class, MODE);
       pattern = settings.getString(FILE_NAME_PATTERN);
       encoding = settings.getCharset(ENCODING);
-      urls = loadUrls(settings);
+      urls = loadURLs(settings);
 
       skipRecords = settings.getLong(SKIP_RECORDS);
       maxRecords = settings.getLong(MAX_RECORDS);
@@ -176,11 +178,11 @@ public class JsonConnector implements Connector {
   }
 
   @NotNull
-  private List<URL> loadUrls(LoaderConfig settings) {
-    if (hasUrlfilePathNotEmpty(settings)) {
+  private List<URL> loadURLs(LoaderConfig settings) {
+    if (hasNotEmptyPath(settings, URLFILE)) {
       // suppress URL option
       try {
-        return URLsFromFileLoader.getURLs(settings.getPath(URLFILE));
+        return ConfigUtils.getURLsFromFile(settings.getPath(URLFILE));
       } catch (IOException e) {
         throw new BulkConfigurationException(
             "Problem when retrieving urls from file specified by the URL file parameter", e);
@@ -193,35 +195,27 @@ public class JsonConnector implements Connector {
   private void validateURL(LoaderConfig settings, boolean read) {
     if (read) {
       // for LOAD
-      if (doesNotExistsOrIsEmtpy(settings, URL)) {
-        if (doesNotExistsOrIsEmtpy(settings, URLFILE)) {
+      if (doesNotExistOrIsEmpty(settings, URL)) {
+        if (doesNotExistOrIsEmpty(settings, URLFILE)) {
           throw new BulkConfigurationException(
               "A URL or URL file is mandatory when using the json connector for LOAD. Please set connector.json.url or connector.json.urlfile "
                   + "and try again. See settings.md or help for more information.");
         }
       }
-      if (settings.hasPath(URL) && hasUrlfilePathNotEmpty(settings)) {
+      if (settings.hasPath(URL) && hasNotEmptyPath(settings, URLFILE)) {
         LOGGER.debug("You specified both URL and URL file. The URL file will take precedence.");
       }
     } else {
       // for UNLOAD we are not supporting urlfile parameter
-      if (hasUrlfilePathNotEmpty(settings)) {
+      if (hasNotEmptyPath(settings, URLFILE)) {
         throw new BulkConfigurationException("The urlfile parameter is not supported for UNLOAD");
       }
-      if (doesNotExistsOrIsEmtpy(settings, URL)) {
+      if (doesNotExistOrIsEmpty(settings, URL)) {
         throw new BulkConfigurationException(
             "A URL is mandatory when using the json connector for UNLOAD. Please set connector.json.url "
                 + "and try again. See settings.md or help for more information.");
       }
     }
-  }
-
-  private boolean hasUrlfilePathNotEmpty(LoaderConfig settings) {
-    return settings.hasPath(URLFILE) && !settings.getString(URLFILE).isEmpty();
-  }
-
-  private boolean doesNotExistsOrIsEmtpy(LoaderConfig settings, String url) {
-    return !settings.hasPath(url) || settings.getString(url).isEmpty();
   }
 
   @Override

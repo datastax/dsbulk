@@ -12,6 +12,7 @@ import static com.datastax.dsbulk.commons.config.LoaderConfig.LEAF_ANNOTATION;
 import static com.datastax.dsbulk.commons.config.LoaderConfig.TYPE_ANNOTATION;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
+import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
@@ -20,11 +21,15 @@ import com.typesafe.config.ConfigList;
 import com.typesafe.config.ConfigObject;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -339,5 +344,37 @@ public class ConfigUtils {
         throw new Missing(path);
       }
     }
+  }
+
+  /**
+   * Loads list of URLs from a file given as the urlfile argument using encoding. The given file
+   * should be encoded in ASCII.
+   *
+   * @param urlfile - path to file passed as the --urlfile argument to dsbulk
+   * @return list of urls resolved from urlfile line by line
+   * @throws IOException if unable to load a file from urlfile path
+   */
+  public static List<URL> getURLsFromFile(Path urlfile) throws IOException {
+    List<URL> result = new ArrayList<>();
+    List<String> paths = Files.readAllLines(urlfile);
+    for (String path : paths) {
+      try {
+        if (!path.startsWith("#")) {
+          result.add(ConfigUtils.resolveURL(path.trim()));
+        }
+      } catch (Exception e) {
+        throw new BulkConfigurationException(
+            String.format("%s: Expecting valid filepath or URL, got '%s'", urlfile, path), e);
+      }
+    }
+    return result;
+  }
+
+  public static boolean doesNotExistOrIsEmpty(LoaderConfig settings, String settingName) {
+    return !settings.hasPath(settingName) || settings.getString(settingName).isEmpty();
+  }
+
+  public static boolean hasNotEmptyPath(LoaderConfig settings, String settingName) {
+    return settings.hasPath(settingName) && !settings.getString(settingName).isEmpty();
   }
 }
