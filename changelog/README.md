@@ -6,6 +6,7 @@
 - [improvement] DAT-411: Improve error message when row fails to decode.
 - [improvement] DAT-383: Show version option in DSBulk help.
 - [bug] DAT-333: Logging option "-maxErrors 0" doesn't abort the operation.
+- [improvement] DAT-431: Replace Guava's Range with a custom range implementation.
 
 
 ### 1.3.3

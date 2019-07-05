@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.engine.internal.log;
 
-import com.google.common.collect.Range;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -19,9 +18,9 @@ import org.jetbrains.annotations.NotNull;
 
 public class PositionsTracker {
 
-  private final Map<URI, List<Range<Long>>> positions = new HashMap<>();
+  private final Map<URI, List<Range>> positions = new HashMap<>();
 
-  public Map<URI, List<Range<Long>>> getPositions() {
+  public Map<URI, List<Range>> getPositions() {
     return positions;
   }
 
@@ -36,7 +35,7 @@ public class PositionsTracker {
           (res, positions) -> {
             if (positions == null) {
               positions = new ArrayList<>();
-              positions.add(Range.singleton(position));
+              positions.add(new Range(position));
               return positions;
             } else {
               return addPosition(positions, position);
@@ -46,36 +45,33 @@ public class PositionsTracker {
   }
 
   @NotNull
-  private static List<Range<Long>> addPosition(
-      @NotNull List<Range<Long>> positions, long position) {
-    ListIterator<Range<Long>> iterator = positions.listIterator();
+  private static List<Range> addPosition(@NotNull List<Range> positions, long position) {
+    ListIterator<Range> iterator = positions.listIterator();
     while (iterator.hasNext()) {
-      Range<Long> range = iterator.next();
+      Range range = iterator.next();
       if (range.contains(position)) {
         return positions;
-      } else if (range.upperEndpoint() + 1L == position) {
-        range = Range.closed(range.lowerEndpoint(), position);
-        iterator.set(range);
+      } else if (range.getUpper() + 1L == position) {
+        range.setUpper(position);
         if (iterator.hasNext()) {
-          Range<Long> next = iterator.next();
-          if (range.upperEndpoint() == next.lowerEndpoint() - 1) {
+          Range next = iterator.next();
+          if (range.getUpper() == next.getLower() - 1) {
             iterator.remove();
-            iterator.previous();
-            iterator.set(Range.closed(range.lowerEndpoint(), next.upperEndpoint()));
+            range = iterator.previous();
+            range.setUpper(next.getUpper());
           }
         }
         return positions;
-      } else if (range.lowerEndpoint() - 1L == position) {
-        range = Range.closed(position, range.upperEndpoint());
-        iterator.set(range);
+      } else if (range.getLower() - 1L == position) {
+        range.setLower(position);
         return positions;
-      } else if (position < range.lowerEndpoint()) {
+      } else if (position < range.getLower()) {
         iterator.previous();
-        iterator.add(Range.singleton(position));
+        iterator.add(new Range(position));
         return positions;
       }
     }
-    iterator.add(Range.singleton(position));
+    iterator.add(new Range(position));
     return positions;
   }
 }
