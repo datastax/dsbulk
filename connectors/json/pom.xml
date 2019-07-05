@@ -34,6 +34,11 @@
     </dependency>
 
     <dependency>
+      <groupId>com.datastax.dse</groupId>
+      <artifactId>dsbulk-connectors-commons</artifactId>
+    </dependency>
+
+    <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-core</artifactId>
     </dependency>

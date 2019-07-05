@@ -34,6 +34,11 @@
     </dependency>
     
     <dependency>
+      <groupId>com.datastax.dse</groupId>
+      <artifactId>dsbulk-connectors-commons</artifactId>
+    </dependency>
+    
+    <dependency>
       <groupId>com.univocity</groupId>
       <artifactId>univocity-parsers</artifactId>
     </dependency>

@@ -26,6 +26,7 @@ import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultIndexedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
+import com.datastax.dsbulk.connectors.commons.internal.CompressedIOUtils;
 import com.google.common.collect.Streams;
 import com.google.common.reflect.TypeToken;
 import com.typesafe.config.ConfigException;
@@ -159,21 +160,21 @@ public class CSVConnector implements Connector {
       pattern = settings.getString(FILE_NAME_PATTERN);
       encoding = settings.getCharset(ENCODING);
       compression = settings.getString(COMPRESSION);
-      if (!read && IOUtils.isAutoCompression(compression)) {
-        compression = IOUtils.detectCompression(url.toString(), false);
+      if (!read && CompressedIOUtils.isAutoCompression(compression)) {
+        compression = CompressedIOUtils.detectCompression(url.toString(), false);
       }
-      if (!IOUtils.isSupportedCompression(compression, read)) {
+      if (!CompressedIOUtils.isSupportedCompression(compression, read)) {
         throw new BulkConfigurationException(
             String.format(
                 "Invalid value for connector.csv.%s, valid values: %s, got: '%s'",
                 COMPRESSION,
-                String.join(",", IOUtils.getSupportedCompressions(read)),
+                String.join(",", CompressedIOUtils.getSupportedCompressions(read)),
                 compression));
       }
       // TODO: think about it - should we adjust pattern based on the specific compression type, but
       // there could be differences in the extensions of some compression types, so it's hard to
       // unify it
-      if (read && !IOUtils.isNoneCompression(compression) && !pattern.endsWith("*")) {
+      if (read && !CompressedIOUtils.isNoneCompression(compression) && !pattern.endsWith("*")) {
         pattern = pattern + "*";
       }
       delimiter = settings.getChar(DELIMITER);
@@ -403,7 +404,7 @@ public class CSVConnector implements Connector {
               long recordNumber = 1;
               LOGGER.debug("Reading {}", url);
               URI resource = URI.create(url.toExternalForm());
-              try (Reader r = IOUtils.newBufferedReader(url, encoding, compression)) {
+              try (Reader r = CompressedIOUtils.newBufferedReader(url, encoding, compression)) {
                 parser.beginParsing(r);
                 while (!sink.isCancelled()) {
                   com.univocity.parsers.common.record.Record row = parser.parseNextRecord();
@@ -554,7 +555,8 @@ public class CSVConnector implements Connector {
       url = getOrCreateDestinationURL();
       try {
         writer =
-            new CsvWriter(IOUtils.newBufferedWriter(url, encoding, compression), writerSettings);
+            new CsvWriter(
+                CompressedIOUtils.newBufferedWriter(url, encoding, compression), writerSettings);
       } catch (ClosedChannelException e) {
         // OK, happens when the channel was closed due to interruption
         LOGGER.warn(String.format("Could not open %s", url), e);
@@ -588,7 +590,7 @@ public class CSVConnector implements Connector {
       try {
         String next =
             String.format(fileNameFormat, counter.incrementAndGet())
-                + IOUtils.getCompressionSuffix(compression);
+                + CompressedIOUtils.getCompressionSuffix(compression);
         return root.resolve(next).toUri().toURL();
       } catch (MalformedURLException e) {
         throw new UncheckedIOException(

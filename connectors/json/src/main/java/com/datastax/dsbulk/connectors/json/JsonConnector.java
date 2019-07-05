@@ -21,6 +21,7 @@ import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
+import com.datastax.dsbulk.connectors.commons.internal.CompressedIOUtils;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
@@ -153,22 +154,22 @@ public class JsonConnector implements Connector {
       pattern = settings.getString(FILE_NAME_PATTERN);
       encoding = settings.getCharset(ENCODING);
       compression = settings.getString(COMPRESSION);
-      if (!read && IOUtils.isAutoCompression(compression)) {
-        compression = IOUtils.detectCompression(url.toString(), false);
+      if (!read && CompressedIOUtils.isAutoCompression(compression)) {
+        compression = CompressedIOUtils.detectCompression(url.toString(), false);
       }
-      if (!IOUtils.isSupportedCompression(compression, read)) {
+      if (!CompressedIOUtils.isSupportedCompression(compression, read)) {
         // TODO: add fetching of a list of supported compressors
         throw new BulkConfigurationException(
             String.format(
                 "Invalid value for connector.json.%s, valid values: %s, got: '%s'",
                 COMPRESSION,
-                String.join(",", IOUtils.getSupportedCompressions(read)),
+                String.join(",", CompressedIOUtils.getSupportedCompressions(read)),
                 compression));
       }
       // TODO: think about it - should we adjust pattern based on the specific compression type, but
       // there could be differences in the extensions of some compression types, so it's hard to
       // unify it
-      if (read && !IOUtils.isNoneCompression(compression) && !pattern.endsWith("*")) {
+      if (read && !CompressedIOUtils.isNoneCompression(compression) && !pattern.endsWith("*")) {
         pattern = pattern + "*";
       }
       skipRecords = settings.getLong(SKIP_RECORDS);
@@ -364,7 +365,8 @@ public class JsonConnector implements Connector {
               // DAT-177: Do not call sink.onDispose nor sink.onCancel,
               // as doing so seems to prevent the flow from completing in rare occasions.
               JsonFactory factory = objectMapper.getFactory();
-              try (BufferedReader r = IOUtils.newBufferedReader(url, encoding, compression);
+              try (BufferedReader r =
+                      CompressedIOUtils.newBufferedReader(url, encoding, compression);
                   JsonParser parser = factory.createParser(r)) {
                 if (mode == DocumentMode.SINGLE_DOCUMENT) {
                   do {
@@ -539,7 +541,7 @@ public class JsonConnector implements Connector {
   private JsonGenerator createJsonWriter(URL url) throws IOException {
     JsonFactory factory = objectMapper.getFactory();
     JsonGenerator writer =
-        factory.createGenerator(IOUtils.newBufferedWriter(url, encoding, compression));
+        factory.createGenerator(CompressedIOUtils.newBufferedWriter(url, encoding, compression));
     writer.setRootValueSeparator(new SerializedString(System.lineSeparator()));
     return writer;
   }
@@ -549,7 +551,7 @@ public class JsonConnector implements Connector {
       try {
         String next =
             String.format(fileNameFormat, counter.incrementAndGet())
-                + IOUtils.getCompressionSuffix(compression);
+                + CompressedIOUtils.getCompressionSuffix(compression);
         return root.resolve(next).toUri().toURL();
       } catch (MalformedURLException e) {
         throw new UncheckedIOException(

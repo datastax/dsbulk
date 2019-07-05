@@ -12,5 +12,3 @@ target/
 dependency-reduced-pom.xml
 
 logs/
-/dsbulk-*-SNAPSHOT/
-/dsbulk-1.2.0/
