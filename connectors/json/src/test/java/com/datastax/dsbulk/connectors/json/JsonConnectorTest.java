@@ -58,6 +58,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.slf4j.event.Level;
 import reactor.core.publisher.Flux;
 
 @ExtendWith(LogInterceptingExtension.class)
@@ -661,7 +662,8 @@ class JsonConnectorTest {
   }
 
   @Test
-  void should_not_throw_if_passing_both_url_and_urlfile_parameter() {
+  void should_not_throw_and_log_if_passing_both_url_and_urlfile_parameter(
+      @LogCapture(level = Level.DEBUG) LogInterceptor logs) {
     JsonConnector connector = new JsonConnector();
 
     LoaderConfig settings =
@@ -673,6 +675,9 @@ class JsonConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
 
     assertDoesNotThrow(() -> connector.configure(settings, true));
+
+    assertThat(logs.getLoggedMessages())
+        .contains("You specified both URL and URL file. The URL file will take precedence.");
   }
 
   @Test

@@ -183,7 +183,7 @@ public class JsonConnector implements Connector {
         return URLsFromFileLoader.getURLs(settings.getPath(URLFILE));
       } catch (IOException e) {
         throw new BulkConfigurationException(
-            "Problem when retrieving urls from file specified by the URLFILE parameter", e);
+            "Problem when retrieving urls from file specified by the URL file parameter", e);
       }
     } else {
       return Collections.singletonList(settings.getURL(URL));
@@ -201,7 +201,7 @@ public class JsonConnector implements Connector {
         }
       }
       if (settings.hasPath(URL) && hasUrlfilePathNotEmpty(settings)) {
-        LOGGER.debug("You specified both URL and URLFILE. The URLFILE will take precedence.");
+        LOGGER.debug("You specified both URL and URL file. The URL file will take precedence.");
       }
     } else {
       // for UNLOAD we are not supporting urlfile parameter
