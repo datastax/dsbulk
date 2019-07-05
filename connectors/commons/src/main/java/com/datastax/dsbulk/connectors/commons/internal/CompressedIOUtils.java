@@ -19,36 +19,18 @@ import java.io.InputStreamReader;
 import java.io.LineNumberReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.commons.compress.compressors.CompressorException;
 import org.apache.commons.compress.compressors.CompressorInputStream;
 import org.apache.commons.compress.compressors.CompressorOutputStream;
-import org.apache.commons.compress.compressors.brotli.BrotliCompressorInputStream;
-import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
-import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream;
+import org.apache.commons.compress.compressors.CompressorStreamFactory;
 import org.apache.commons.compress.compressors.bzip2.BZip2Utils;
-import org.apache.commons.compress.compressors.deflate.DeflateCompressorInputStream;
-import org.apache.commons.compress.compressors.deflate.DeflateCompressorOutputStream;
-import org.apache.commons.compress.compressors.deflate64.Deflate64CompressorInputStream;
-import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
-import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
 import org.apache.commons.compress.compressors.gzip.GzipUtils;
-import org.apache.commons.compress.compressors.lz4.FramedLZ4CompressorInputStream;
-import org.apache.commons.compress.compressors.lz4.FramedLZ4CompressorOutputStream;
-import org.apache.commons.compress.compressors.lzma.LZMACompressorInputStream;
-import org.apache.commons.compress.compressors.lzma.LZMACompressorOutputStream;
 import org.apache.commons.compress.compressors.lzma.LZMAUtils;
-import org.apache.commons.compress.compressors.snappy.FramedSnappyCompressorInputStream;
-import org.apache.commons.compress.compressors.snappy.FramedSnappyCompressorOutputStream;
-import org.apache.commons.compress.compressors.xz.XZCompressorInputStream;
-import org.apache.commons.compress.compressors.xz.XZCompressorOutputStream;
 import org.apache.commons.compress.compressors.xz.XZUtils;
-import org.apache.commons.compress.compressors.z.ZCompressorInputStream;
-import org.apache.commons.compress.compressors.zstandard.ZstdCompressorInputStream;
-import org.apache.commons.compress.compressors.zstandard.ZstdCompressorOutputStream;
 
 public final class CompressedIOUtils {
 
@@ -74,31 +56,31 @@ public final class CompressedIOUtils {
   @VisibleForTesting private static final String Z_FILE_EXTENSION = ".z";
 
   // we may have different supported compressions for input & output
-  private static final ImmutableMap<String, Class> OUTPUT_COMPRESSORS =
-      ImmutableMap.<String, Class>builder()
-          .put(XZ_COMPRESSION, XZCompressorOutputStream.class)
-          .put(GZIP_COMPRESSION, GzipCompressorOutputStream.class)
-          .put(ZSTD_COMPRESSION, ZstdCompressorOutputStream.class)
-          .put(BZIP2_COMPRESSION, BZip2CompressorOutputStream.class)
-          .put(SNAPPY_COMPRESSION, FramedSnappyCompressorOutputStream.class)
-          .put(LZ4_COMPRESSION, FramedLZ4CompressorOutputStream.class)
-          .put(LZMA_COMPRESSION, LZMACompressorOutputStream.class)
-          .put(DEFLATE_COMPRESSION, DeflateCompressorOutputStream.class)
+  private static final ImmutableMap<String, String> OUTPUT_COMPRESSORS =
+      ImmutableMap.<String, String>builder()
+          .put(XZ_COMPRESSION, CompressorStreamFactory.XZ)
+          .put(GZIP_COMPRESSION, CompressorStreamFactory.GZIP)
+          .put(ZSTD_COMPRESSION, CompressorStreamFactory.ZSTANDARD)
+          .put(BZIP2_COMPRESSION, CompressorStreamFactory.BZIP2)
+          .put(SNAPPY_COMPRESSION, CompressorStreamFactory.SNAPPY_FRAMED)
+          .put(LZ4_COMPRESSION, CompressorStreamFactory.LZ4_FRAMED)
+          .put(LZMA_COMPRESSION, CompressorStreamFactory.LZMA)
+          .put(DEFLATE_COMPRESSION, CompressorStreamFactory.DEFLATE)
           .build();
 
-  private static final ImmutableMap<String, Class> INPUT_COMPRESSORS =
-      ImmutableMap.<String, Class>builder()
-          .put(XZ_COMPRESSION, XZCompressorInputStream.class)
-          .put(GZIP_COMPRESSION, GzipCompressorInputStream.class)
-          .put(ZSTD_COMPRESSION, ZstdCompressorInputStream.class)
-          .put(BZIP2_COMPRESSION, BZip2CompressorInputStream.class)
-          .put(SNAPPY_COMPRESSION, FramedSnappyCompressorInputStream.class)
-          .put(LZ4_COMPRESSION, FramedLZ4CompressorInputStream.class)
-          .put(LZMA_COMPRESSION, LZMACompressorInputStream.class)
-          .put(BROTLI_COMPRESSION, BrotliCompressorInputStream.class)
-          .put(DEFLATE_COMPRESSION, DeflateCompressorInputStream.class)
-          .put(DEFLATE64_COMPRESSION, Deflate64CompressorInputStream.class)
-          .put(Z_COMPRESSION, ZCompressorInputStream.class)
+  private static final ImmutableMap<String, String> INPUT_COMPRESSORS =
+      ImmutableMap.<String, String>builder()
+          .put(XZ_COMPRESSION, CompressorStreamFactory.XZ)
+          .put(GZIP_COMPRESSION, CompressorStreamFactory.GZIP)
+          .put(ZSTD_COMPRESSION, CompressorStreamFactory.ZSTANDARD)
+          .put(BZIP2_COMPRESSION, CompressorStreamFactory.BZIP2)
+          .put(SNAPPY_COMPRESSION, CompressorStreamFactory.SNAPPY_FRAMED)
+          .put(LZ4_COMPRESSION, CompressorStreamFactory.LZ4_FRAMED)
+          .put(LZMA_COMPRESSION, CompressorStreamFactory.LZMA)
+          .put(BROTLI_COMPRESSION, CompressorStreamFactory.BROTLI)
+          .put(DEFLATE_COMPRESSION, CompressorStreamFactory.DEFLATE)
+          .put(DEFLATE64_COMPRESSION, CompressorStreamFactory.DEFLATE64)
+          .put(Z_COMPRESSION, CompressorStreamFactory.Z)
           .build();
 
   private static final ImmutableMap<String, String> COMPRESSION_EXTENSIONS =
@@ -127,20 +109,16 @@ public final class CompressedIOUtils {
         }
       }
 
-      Class compressorClass = INPUT_COMPRESSORS.get(compMethod.toLowerCase());
-      if (compressorClass == null) {
+      String compressor = INPUT_COMPRESSORS.get(compMethod.toLowerCase());
+      if (compressor == null) {
         throw new IOException("Unsupported compression format: " + compMethod);
       }
       InputStream in = IOUtils.newBufferedInputStream(url);
       try {
         CompressorInputStream cin =
-            (CompressorInputStream)
-                compressorClass.getDeclaredConstructor(InputStream.class).newInstance(in);
+            new CompressorStreamFactory().createCompressorInputStream(compressor, in);
         reader = new LineNumberReader(new InputStreamReader(cin, charset), BUFFER_SIZE);
-      } catch (NoSuchMethodException
-          | IllegalAccessException
-          | InstantiationException
-          | InvocationTargetException ex) {
+      } catch (CompressorException ex) {
         // ex.printStackTrace();
         throw new IOException("Can't instantiate class for compression: " + compMethod, ex);
       }
@@ -154,20 +132,16 @@ public final class CompressedIOUtils {
     if (compression == null || compression.equalsIgnoreCase(NONE_COMPRESSION))
       writer = IOUtils.newBufferedWriter(url, charset);
     else {
-      Class compressorClass = OUTPUT_COMPRESSORS.get(compression.toLowerCase());
-      if (compressorClass == null) {
+      String compressor = OUTPUT_COMPRESSORS.get(compression.toLowerCase());
+      if (compressor == null) {
         throw new IOException("Unsupported compression format: " + compression);
       }
       OutputStream os = IOUtils.newBufferedOutputStream(url);
       try {
         CompressorOutputStream cos =
-            (CompressorOutputStream)
-                compressorClass.getDeclaredConstructor(OutputStream.class).newInstance(os);
+            new CompressorStreamFactory().createCompressorOutputStream(compressor, os);
         writer = new BufferedWriter(new OutputStreamWriter(cos, charset), BUFFER_SIZE);
-      } catch (NoSuchMethodException
-          | IllegalAccessException
-          | InstantiationException
-          | InvocationTargetException ex) {
+      } catch (CompressorException ex) {
         // ex.printStackTrace();
         throw new IOException("Can't instantiate class for compression: " + compression, ex);
       }
@@ -210,7 +184,7 @@ public final class CompressedIOUtils {
    *
    * @param url - URL
    * @param isRead - true if the read operation performed, as the list of compressors is different
-   *     for load & unload operations
+   *     for load &amp; unload operations
    * @return type of detected compression
    */
   public static String detectCompression(final String url, boolean isRead) {
