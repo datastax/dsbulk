@@ -15,15 +15,10 @@ import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigMergeable;
 import com.typesafe.config.ConfigResolveOptions;
 import com.typesafe.config.ConfigValue;
-import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.Charset;
-import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
 
 public interface LoaderConfig extends Config {
 
@@ -213,32 +208,6 @@ public interface LoaderConfig extends Config {
       throw new ConfigException.WrongType(
           origin(), String.format("%s: Expecting valid charset name, got '%s'", path, setting), e);
     }
-  }
-
-  /**
-   * Loads list of URLs from a file given as the urlfile argument using encoding.
-   *
-   * @param urlfile - path to file passed as the --urlfile argument to dsbulk
-   * @param encoding - encoding to use when reading the list of URLs from given file
-   * @return list of urls resolved from urlfile line by line
-   * @throws IOException if unable to load a file from urlfile path
-   */
-  default List<URL> getUrlsFromFile(String urlfile, Charset encoding) throws IOException {
-    List<URL> result = new ArrayList<>();
-    List<String> paths = Files.readAllLines(Paths.get(urlfile), encoding);
-    for (String path : paths) {
-      try {
-        if (!path.startsWith("#")) {
-          result.add(ConfigUtils.resolveURL(path.trim()));
-        }
-      } catch (Exception e) {
-        throw new ConfigException.WrongType(
-            origin(),
-            String.format("%s: Expecting valid filepath or URL, got '%s'", urlfile, path),
-            e);
-      }
-    }
-    return result;
   }
 
   @Override

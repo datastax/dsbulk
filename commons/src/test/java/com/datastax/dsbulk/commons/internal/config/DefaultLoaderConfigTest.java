@@ -9,33 +9,19 @@
 package com.datastax.dsbulk.commons.internal.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assumptions.assumingThat;
-import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.datastax.driver.core.AtomicMonotonicTimestampGenerator;
 import com.datastax.driver.core.TimestampGenerator;
 import com.datastax.driver.core.policies.DefaultRetryPolicy;
 import com.datastax.driver.core.policies.RetryPolicy;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.utils.URLUtils;
-import com.google.common.collect.Lists;
 import com.typesafe.config.ConfigFactory;
-import java.io.File;
-import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.Charset;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 
 class DefaultLoaderConfigTest {
 
@@ -158,47 +144,5 @@ class DefaultLoaderConfigTest {
     assertThat(o1).isInstanceOf(String.class);
     Object o2 = config.getInstance("class2", TimestampGenerator.class);
     assertThat(o2).isInstanceOf(AtomicMonotonicTimestampGenerator.class);
-  }
-
-  @ParameterizedTest
-  @MethodSource("urlsProvider")
-  void should_get_urls_from_file(
-      List<String> input, List<URL> expectedNonWindows, List<URL> expectedWindows)
-      throws IOException {
-    // given
-    LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.parseString(""));
-    String urlFile = createURLFile(input);
-
-    // when
-    List<URL> urlsFromFile = config.getUrlsFromFile(urlFile, Charset.forName("UTF-8"));
-
-    // then
-    assumingThat(
-        !PlatformUtils.isWindows(), () -> assertThat(urlsFromFile).isEqualTo(expectedNonWindows));
-    assumingThat(
-        PlatformUtils.isWindows(), () -> assertThat(urlsFromFile).isEqualTo(expectedWindows));
-    Files.delete(Paths.get(urlFile));
-  }
-
-  static List<Arguments> urlsProvider() throws MalformedURLException {
-    return Lists.newArrayList(
-        arguments(
-            Arrays.asList("/a-first-file", "/second-file"),
-            Arrays.asList(new URL("file:/a-first-file"), new URL("file:/second-file")),
-            Arrays.asList(new URL("file:/C:/a-first-file"), new URL("file:/C:/second-file"))),
-        arguments(
-            Arrays.asList("/a-first-file", "#/second-file"),
-            Collections.singletonList(new URL("file:/a-first-file")),
-            Collections.singletonList(new URL("file:/C:/a-first-file"))),
-        arguments(
-            Arrays.asList("/a-first-file", "/second-file "),
-            Arrays.asList(new URL("file:/a-first-file"), new URL("file:/second-file")),
-            Arrays.asList(new URL("file:/C:/a-first-file"), new URL("file:/C:/second-file"))));
-  }
-
-  private static String createURLFile(List<String> urls) throws IOException {
-    File file = File.createTempFile("urlfile", null);
-    Files.write(file.toPath(), urls, Charset.forName("UTF-8"));
-    return file.getAbsolutePath();
   }
 }

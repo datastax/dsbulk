@@ -10,6 +10,7 @@ package com.datastax.dsbulk.connectors.json;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.config.URLsFromFileLoader;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.io.IOUtils;
 import com.datastax.dsbulk.commons.internal.reactive.SimpleBackpressureController;
@@ -179,7 +180,7 @@ public class JsonConnector implements Connector {
     if (hasUrlfilePathNotEmpty(settings)) {
       // suppress URL option
       try {
-        return settings.getUrlsFromFile(settings.getString(URLFILE), encoding);
+        return URLsFromFileLoader.getURLs(settings.getPath(URLFILE), encoding);
       } catch (IOException e) {
         throw new BulkConfigurationException(
             "Problem when retrieving urls from file specified by the URLFILE parameter", e);
