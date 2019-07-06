@@ -26,6 +26,11 @@ public class AbsoluteErrorThreshold implements ErrorThreshold {
     return errorCount > maxErrors;
   }
 
+  @Override
+  public String thresholdAsString() {
+    return Long.toString(maxErrors);
+  }
+
   public long getMaxErrors() {
     return maxErrors;
   }

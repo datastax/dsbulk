@@ -8,9 +8,7 @@
  */
 package com.datastax.dsbulk.engine.internal.log;
 
-import com.datastax.dsbulk.engine.internal.log.threshold.AbsoluteErrorThreshold;
 import com.datastax.dsbulk.engine.internal.log.threshold.ErrorThreshold;
-import com.datastax.dsbulk.engine.internal.log.threshold.RatioErrorThreshold;
 
 /**
  * Thrown when the engine encounters too many errors. This exception triggers the operation
@@ -26,16 +24,7 @@ public class TooManyErrorsException extends RuntimeException {
   }
 
   private static String createErrorMessage(ErrorThreshold threshold) {
-    if (threshold instanceof AbsoluteErrorThreshold) {
-      return "Too many errors, the maximum allowed is "
-          + ((AbsoluteErrorThreshold) threshold).getMaxErrors()
-          + ".";
-    } else {
-      assert threshold instanceof RatioErrorThreshold;
-      return "Too many errors, the maximum percentage allowed is "
-          + (((RatioErrorThreshold) threshold).getMaxErrorRatio() * 100f)
-          + "%.";
-    }
+    return "Too many errors, the maximum allowed is " + threshold.thresholdAsString() + ".";
   }
 
   public ErrorThreshold getThreshold() {

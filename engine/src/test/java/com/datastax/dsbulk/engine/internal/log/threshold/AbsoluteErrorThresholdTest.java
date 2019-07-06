@@ -60,4 +60,15 @@ class AbsoluteErrorThresholdTest {
     // then
     assertThat(actual).isEqualTo(maxErrors);
   }
+
+  @ParameterizedTest(name = "[{index}] maxErrorRatio {0} expected {1}")
+  @ValueSource(ints = {0, 1, 2, 100, Integer.MAX_VALUE})
+  void should_report_threshold_as_string(int maxErrors) {
+    // given
+    AbsoluteErrorThreshold threshold = new AbsoluteErrorThreshold(maxErrors);
+    // when
+    String actual = threshold.thresholdAsString();
+    // then
+    assertThat(actual).isEqualTo(Integer.toString(maxErrors));
+  }
 }

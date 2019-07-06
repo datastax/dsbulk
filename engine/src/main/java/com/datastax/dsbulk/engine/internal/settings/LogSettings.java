@@ -54,6 +54,11 @@ public class LogSettings {
   private static final String CONSOLE_APPENDER = "CONSOLE";
   private static final int MIN_SAMPLE = 100;
 
+  static {
+    // DAT-451: disable driver query warnings logging, we will handle them in LogManager
+    System.setProperty("com.datastax.driver.DISABLE_QUERY_WARNING_LOGS", "true");
+  }
+
   public enum Verbosity {
     quiet,
     normal,
@@ -117,6 +122,7 @@ public class LogSettings {
   private static final String MAX_RESULT_SET_VALUES = ROW + '.' + "maxResultSetValues";
   private static final String LEVEL = STMT + '.' + "level";
   private static final String MAX_ERRORS = "maxErrors";
+  private static final String MAX_QUERY_WARNINGS = "maxQueryWarnings";
   private static final String VERBOSITY = "verbosity";
 
   private final LoaderConfig config;
@@ -130,7 +136,8 @@ public class LogSettings {
   private int maxResultSetValues;
   private int maxInnerStatements;
   private StatementFormatVerbosity level;
-  private ErrorThreshold errorThreshold;
+  @VisibleForTesting ErrorThreshold errorThreshold;
+  @VisibleForTesting ErrorThreshold queryWarningsThreshold;
   private Verbosity verbosity;
 
   LogSettings(LoaderConfig config, String executionId) {
@@ -163,6 +170,12 @@ public class LogSettings {
         } else {
           errorThreshold = ErrorThreshold.forAbsoluteValue(maxErrors);
         }
+      }
+      long maxQueryWarnings = config.getLong(MAX_QUERY_WARNINGS);
+      if (maxQueryWarnings < 0) {
+        queryWarningsThreshold = ErrorThreshold.unlimited();
+      } else {
+        queryWarningsThreshold = ErrorThreshold.forAbsoluteValue(maxQueryWarnings);
       }
       Path mainLogFile =
           executionDirectory.resolve(MAIN_LOG_FILE_NAME).normalize().toAbsolutePath();
@@ -216,6 +229,7 @@ public class LogSettings {
         cluster,
         executionDirectory,
         errorThreshold,
+        queryWarningsThreshold,
         statementFormatter,
         level,
         rowFormatter);
@@ -223,10 +237,6 @@ public class LogSettings {
 
   public Verbosity getVerbosity() {
     return verbosity;
-  }
-
-  public ErrorThreshold getErrorThreshold() {
-    return errorThreshold;
   }
 
   private void checkExecutionDirectory() throws IOException {
