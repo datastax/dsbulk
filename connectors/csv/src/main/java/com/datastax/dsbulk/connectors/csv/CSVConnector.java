@@ -8,6 +8,9 @@
  */
 package com.datastax.dsbulk.connectors.csv;
 
+import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.getURLsFromFile;
+import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isPathAbsentOrEmpty;
+import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isPathPresentAndNotEmpty;
 import static com.datastax.dsbulk.commons.internal.io.IOUtils.countReadableFiles;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
@@ -52,8 +55,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -86,6 +92,7 @@ public class CSVConnector implements Connector {
   private static final TypeToken<String> STRING_TYPE_TOKEN = TypeToken.of(String.class);
 
   private static final String URL = "url";
+  private static final String URLFILE = "urlfile";
   private static final String FILE_NAME_PATTERN = "fileNamePattern";
   private static final String ENCODING = "encoding";
   private static final String DELIMITER = "delimiter";
@@ -113,8 +120,9 @@ public class CSVConnector implements Connector {
   private static final String EMPTY_VALUE = "emptyValue";
 
   private boolean read;
-  private URL url;
-  private Path root;
+  private List<URL> urls;
+  private List<Path> roots;
+  private List<URL> files;
   private String pattern;
   private Charset encoding;
   private char delimiter;
@@ -147,13 +155,11 @@ public class CSVConnector implements Connector {
   @Override
   public void configure(LoaderConfig settings, boolean read) {
     try {
-      if (!settings.hasPath(URL) || settings.getString(URL).isEmpty()) {
-        throw new BulkConfigurationException(
-            "An URL is mandatory when using the csv connector. Please set connector.csv.url "
-                + "and try again. See settings.md or help for more information.");
-      }
+      validateURL(settings, read);
       this.read = read;
-      url = settings.getURL(URL);
+      urls = loadURLs(settings);
+      roots = new ArrayList<>();
+      files = new ArrayList<>();
       pattern = settings.getString(FILE_NAME_PATTERN);
       encoding = settings.getCharset(ENCODING);
       delimiter = settings.getChar(DELIMITER);
@@ -190,7 +196,7 @@ public class CSVConnector implements Connector {
   @Override
   public void init() throws URISyntaxException, IOException {
     if (read) {
-      tryReadFromDirectory();
+      tryReadFromDirectories();
     } else {
       tryWriteToDirectory();
     }
@@ -240,6 +246,47 @@ public class CSVConnector implements Connector {
     }
   }
 
+  @NotNull
+  private List<URL> loadURLs(LoaderConfig settings) {
+    if (isPathPresentAndNotEmpty(settings, URLFILE)) {
+      // suppress URL option
+      try {
+        return getURLsFromFile(settings.getPath(URLFILE));
+      } catch (IOException e) {
+        throw new BulkConfigurationException(
+            "Problem when retrieving urls from file specified by the URL file parameter", e);
+      }
+    } else {
+      return Collections.singletonList(settings.getURL(URL));
+    }
+  }
+
+  private void validateURL(LoaderConfig settings, boolean read) {
+    if (read) {
+      // for LOAD
+      if (isPathAbsentOrEmpty(settings, URL)) {
+        if (isPathAbsentOrEmpty(settings, URLFILE)) {
+          throw new BulkConfigurationException(
+              "A URL or URL file is mandatory when using the csv connector for LOAD. Please set connector.csv.url or connector.csv.urlfile "
+                  + "and try again. See settings.md or help for more information.");
+        }
+      }
+      if (isPathPresentAndNotEmpty(settings, URL) && isPathPresentAndNotEmpty(settings, URLFILE)) {
+        LOGGER.debug("You specified both URL and URL file. The URL file will take precedence.");
+      }
+    } else {
+      // for UNLOAD we are not supporting urlfile parameter
+      if (isPathPresentAndNotEmpty(settings, URLFILE)) {
+        throw new BulkConfigurationException("The urlfile parameter is not supported for UNLOAD");
+      }
+      if (isPathAbsentOrEmpty(settings, URL)) {
+        throw new BulkConfigurationException(
+            "A URL is mandatory when using the json connector for UNLOAD. Please set connector.csv.url "
+                + "and try again. See settings.md or help for more information.");
+      }
+    }
+  }
+
   @Override
   public RecordMetadata getRecordMetadata() {
     return (field, cqlType) -> STRING_TYPE_TOKEN;
@@ -279,27 +326,24 @@ public class CSVConnector implements Connector {
   @Override
   public Publisher<Record> read() {
     assert read;
-    if (root != null) {
-      return scanRootDirectory().flatMap(this::readURL);
-    } else {
-      return readURL(url);
-    }
+    return Flux.concat(
+        Flux.fromIterable(roots).flatMap(this::scanRootDirectory).flatMap(this::readURL),
+        Flux.fromIterable(files).flatMap(this::readURL));
   }
 
   @Override
   public Publisher<Publisher<Record>> readByResource() {
-    if (root != null) {
-      return scanRootDirectory().map(this::readURL);
-    } else {
-      return Flux.just(readURL(url));
-    }
+    assert read;
+    return Flux.concat(
+        Flux.fromIterable(roots).flatMap(this::scanRootDirectory).map(this::readURL),
+        Flux.fromIterable(files).map(this::readURL));
   }
 
   @Override
   public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
     assert !read;
     writers = new CopyOnWriteArrayList<>();
-    if (root != null && maxConcurrentFiles > 1) {
+    if (!roots.isEmpty() && maxConcurrentFiles > 1) {
       return upstream -> {
         ThreadFactory threadFactory = new DefaultThreadFactory("csv-connector");
         scheduler = Schedulers.newParallel(maxConcurrentFiles, threadFactory);
@@ -323,36 +367,45 @@ public class CSVConnector implements Connector {
     }
   }
 
-  private void tryReadFromDirectory() throws URISyntaxException, IOException {
-    try {
-      resourceCount = 1;
-      Path root = Paths.get(url.toURI());
-      if (Files.isDirectory(root)) {
-        if (!Files.isReadable(root)) {
-          throw new IllegalArgumentException(String.format("Directory is not readable: %s.", root));
-        }
-        this.root = root;
-        resourceCount = scanRootDirectory().take(100).count().block().intValue();
-        if (resourceCount == 0) {
-          if (countReadableFiles(root, recursive) == 0) {
-            LOGGER.warn("Directory {} has no readable files.", root);
-          } else {
-            LOGGER.warn(
-                "No files in directory {} matched the connector.csv.fileNamePattern of \"{}\".",
-                root,
-                pattern);
+  private void tryReadFromDirectories() throws URISyntaxException, IOException {
+    resourceCount = 0;
+    for (URL u : urls) {
+      try {
+        Path root = Paths.get(u.toURI());
+        if (Files.isDirectory(root)) {
+          if (!Files.isReadable(root)) {
+            throw new IllegalArgumentException(
+                String.format("Directory is not readable: %s.", root));
           }
+          roots.add(root);
+          int inDirectoryResourceCount =
+              Objects.requireNonNull(scanRootDirectory(root).take(100).count().block()).intValue();
+          if (inDirectoryResourceCount == 0) {
+            if (countReadableFiles(root, recursive) == 0) {
+              LOGGER.warn("Directory {} has no readable files.", root);
+            } else {
+              LOGGER.warn(
+                  "No files in directory {} matched the connector.csv.fileNamePattern of \"{}\".",
+                  root,
+                  pattern);
+            }
+          }
+          resourceCount += inDirectoryResourceCount;
+        } else {
+          resourceCount += 1;
+          files.add(u);
         }
+      } catch (FileSystemNotFoundException ignored) {
+        files.add(u);
+        // not a path on a known filesystem, fall back to reading from URL directly
       }
-    } catch (FileSystemNotFoundException ignored) {
-      // not a path on a known filesystem, fall back to reading from URL directly
     }
   }
 
   private void tryWriteToDirectory() throws URISyntaxException, IOException {
     try {
       resourceCount = -1;
-      Path root = Paths.get(url.toURI());
+      Path root = Paths.get(urls.get(0).toURI()); // for UNLOAD always one URL
       if (!Files.exists(root)) {
         root = Files.createDirectories(root);
       }
@@ -364,7 +417,7 @@ public class CSVConnector implements Connector {
           throw new IllegalArgumentException(
               "Invalid value for connector.csv.url: target directory " + root + " must be empty.");
         }
-        this.root = root;
+        this.roots.add(root);
       }
     } catch (FileSystemNotFoundException ignored) {
       // not a path on a known filesystem, fall back to writing to URL directly
@@ -425,11 +478,11 @@ public class CSVConnector implements Connector {
                 LOGGER.debug("Done reading {}", url);
                 sink.complete();
               } catch (TextParsingException e) {
-                IOException ioe = launderTextParsingException(e);
+                IOException ioe = launderTextParsingException(e, url);
                 sink.error(ioe);
               } catch (Exception e) {
                 if (e.getCause() instanceof TextParsingException) {
-                  e = launderTextParsingException(((TextParsingException) e.getCause()));
+                  e = launderTextParsingException(((TextParsingException) e.getCause()), url);
                 }
                 sink.error(
                     new IOException(
@@ -446,7 +499,7 @@ public class CSVConnector implements Connector {
     return records;
   }
 
-  private Flux<URL> scanRootDirectory() {
+  private Flux<URL> scanRootDirectory(Path root) {
     try {
       // this stream will be closed by the flux, do not add it to a try-with-resources block
       @SuppressWarnings("StreamResourceLeak")
@@ -527,7 +580,7 @@ public class CSVConnector implements Connector {
     }
 
     private boolean shouldRoll() {
-      return root != null && writer.getRecordCount() == maxRecords;
+      return !roots.isEmpty() && writer.getRecordCount() == maxRecords;
     }
 
     private void open() {
@@ -563,21 +616,20 @@ public class CSVConnector implements Connector {
   }
 
   private URL getOrCreateDestinationURL() {
-    if (root != null) {
+    if (!roots.isEmpty()) {
       try {
         String next = String.format(fileNameFormat, counter.incrementAndGet());
-        return root.resolve(next).toUri().toURL();
+        return roots.get(0).resolve(next).toUri().toURL(); // for UNLOAD always one URL
       } catch (MalformedURLException e) {
         throw new UncheckedIOException(
             String.format("Could not create file URL with format %s", fileNameFormat), e);
       }
     }
     // assume we are writing to a single URL and ignore fileNameFormat
-    return url;
+    return urls.get(0); // for UNLOAD always one URL
   }
 
-  @NotNull
-  private IOException launderTextParsingException(TextParsingException e) {
+  private IOException launderTextParsingException(TextParsingException e, URL url) {
     // TextParsingException messages are very verbose, so we wrap these exceptions
     // in an IOE that only keeps the first sentence.
     String message = e.getMessage();

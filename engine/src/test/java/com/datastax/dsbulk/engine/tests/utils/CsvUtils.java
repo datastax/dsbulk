@@ -15,6 +15,14 @@ public class CsvUtils {
   public static final URL CSV_RECORDS = ClassLoader.getSystemResource("ip-by-country-sample.csv");
   public static final URL CSV_RECORDS_UNIQUE =
       ClassLoader.getSystemResource("ip-by-country-unique.csv");
+  public static final URL CSV_RECORDS_UNIQUE_PART_1_DIR =
+      ClassLoader.getSystemResource("part_1_csv/");
+  public static final URL CSV_RECORDS_UNIQUE_PART_2_DIR =
+      ClassLoader.getSystemResource("part_2_csv/");
+  public static final URL CSV_RECORDS_UNIQUE_PART_1 =
+      ClassLoader.getSystemResource("ip-by-country-unique-part-1.csv");
+  public static final URL CSV_RECORDS_UNIQUE_PART_2 =
+      ClassLoader.getSystemResource("ip-by-country-unique-part-2.csv");
   public static final URL CSV_RECORDS_CRLF =
       ClassLoader.getSystemResource("ip-by-country-crlf.csv");
   public static final URL CSV_RECORDS_PARTIAL_BAD =
