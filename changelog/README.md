@@ -10,6 +10,7 @@
 - [improvement] DAT-435: Make connectors accept a list of URLs when loading.
 - [improvement] DAT-443: Default output file name format should not include thousands separator.
 - [improvement] DAT-428: Add support for UNITS_SINCE_EPOCH to CQL date and time.
+- [improvement] DAT-447: Do not consider IOException as fatal when loading
 
 
 ### 1.3.3
