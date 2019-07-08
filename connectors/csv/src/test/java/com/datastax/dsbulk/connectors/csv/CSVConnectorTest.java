@@ -113,30 +113,14 @@ class CSVConnectorTest {
   }
 
   @Test
-  void should_read_single_file_compressed_auto() throws Exception {
-    CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, normalizeLineEndingsInQuotes = true, escape = \"\\\"\", comment = \"#\"",
-                        url("/sample.csv.gz")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
-    connector.configure(settings, true);
-    connector.init();
-    List<Record> actual = Flux.from(connector.read()).collectList().block();
-    assertRecords(actual);
-    connector.close();
-  }
-
-  @Test
   void should_read_single_file_compressed_gzip() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "url = %s, normalizeLineEndingsInQuotes = true, escape = \"\\\"\", comment = \"#\", compression = \"gzip\"",
+                        "url = %s, normalizeLineEndingsInQuotes = true, escape = \"\\\"\", comment = \"#\", compression = \"gzip\""
+                            + ", fileNamePattern = \"**/*.csv.gz\"",
                         url("/sample.csv.gz")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
@@ -447,7 +431,7 @@ class CSVConnectorTest {
       assertThat(logs.getLoggedMessages())
           .contains(
               String.format(
-                  "No files in directory %s matched the connector.csv.fileNamePattern of \"**/part-*\".",
+                  "No files in directory %s matched the connector.csv.fileNamePattern of \"**/part-*\". Adjust it if connector.csv.compression is specified!",
                   rootPath));
       connector.close();
     } finally {
@@ -499,47 +483,8 @@ class CSVConnectorTest {
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
                       String.format(
-                          "url = %s, escape = \"\\\"\", maxConcurrentFiles = 1, compression = \"gzip\"",
-                          quoteJson(out)))
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
-      connector.configure(settings, false);
-      connector.init();
-      Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
-      connector.close();
-      Path outPath = out.resolve("output-000001.csv.gz");
-      BufferedReader reader =
-          new BufferedReader(
-              new InputStreamReader(
-                  new GZIPInputStream(Files.newInputStream(outPath)), Charsets.UTF_8));
-      List<String> actual = reader.lines().collect(Collectors.toList());
-      reader.close();
-      assertThat(actual).hasSize(7);
-      assertThat(actual)
-          .containsExactly(
-              "Year,Make,Model,Description,Price",
-              "1997,Ford,E350,\"  ac, abs, moon  \",3000.00",
-              "1999,Chevy,\"Venture \"\"Extended Edition\"\"\",,4900.00",
-              "1996,Jeep,Grand Cherokee,\"MUST SELL!",
-              "air, moon roof, loaded\",4799.00",
-              "1999,Chevy,\"Venture \"\"Extended Edition, Very Large\"\"\",,5000.00",
-              ",,\"Venture \"\"Extended Edition\"\"\",,4900.00");
-    } finally {
-      deleteDirectory(dir);
-    }
-  }
-
-  @Test
-  void should_write_single_file_compressed_auto() throws Exception {
-    CSVConnector connector = new CSVConnector();
-    // test directory creation
-    Path dir = Files.createTempDirectory("test");
-    Path out = dir.resolve("nonexistent.gz");
-    try {
-      LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString(
-                      String.format(
-                          "url = %s, escape = \"\\\"\", maxConcurrentFiles = 1, compression = \"auto\"",
+                          "url = %s, escape = \"\\\"\", maxConcurrentFiles = 1, compression = \"gzip\""
+                              + ", fileNamePattern = \"**/*.csv.gz\"",
                           quoteJson(out)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);

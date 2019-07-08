@@ -340,9 +340,9 @@ Default: **"\u0000"**.
 
 #### --connector.csv.compression _&lt;string&gt;_
 
-The compression that will be used for writing or reading files. Supported values are: `none`, `xz`, `gzip`, `bzip2`, `zstd`, `lz4`, `lzma`, `snappy`. With `auto` it will try to guess compression from name of the output folder, or input files.
+The compression that will be used for writing or reading files. Supported values are (for both reading and writing): `none`, `xz`, `gzip`, `bzip2`, `zstd`, `lz4`, `lzma`, `snappy`, `deflate`.  For reading only, supported values are: `brotli`, `z`, `deflate64`.
 
-Default: **"auto"**.
+Default: **"none"**.
 
 #### --connector.csv.emptyValue _&lt;string&gt;_
 
@@ -535,9 +535,9 @@ Default: **"MULTI_DOCUMENT"**.
 
 #### --connector.json.compression _&lt;string&gt;_
 
-The compression that will be used for writing or reading files. Supported values are: `none`, `xz`, `gzip`, `bzip2`, `zstd`, `lz4`, `lzma`, `snappy`. With `auto` it will try to guess compression from name of the output folder, or input files.
+The compression that will be used for writing or reading files. Supported values are (for both reading and writing): `none`, `xz`, `gzip`, `bzip2`, `zstd`, `lz4`, `lzma`, `snappy`, `deflate`.  For reading only, supported values are: `brotli`, `z`, `deflate64`.
 
-Default: **"auto"**.
+Default: **"none"**.
 
 #### --connector.json.deserializationFeatures _&lt;map&lt;string,boolean&gt;&gt;_
 

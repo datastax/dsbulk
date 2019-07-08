@@ -24,9 +24,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
@@ -54,43 +52,7 @@ class CompresssedCompressedIOUtilsTest {
         arguments(CompressedIOUtils.LZ4_COMPRESSION, ".lz4"),
         arguments(CompressedIOUtils.SNAPPY_COMPRESSION, ".snappy"),
         arguments(CompressedIOUtils.DEFLATE_COMPRESSION, ".deflate"),
-        arguments(CompressedIOUtils.AUTO_COMPRESSION, ""),
         arguments("", ""));
-  }
-
-  @Test
-  void getSupportedCompressions() {
-    Set<String> s = new HashSet<>(CompressedIOUtils.getSupportedCompressions(true));
-    assertTrue(s.contains(CompressedIOUtils.AUTO_COMPRESSION));
-    assertTrue(s.contains(CompressedIOUtils.NONE_COMPRESSION));
-    assertTrue(s.contains(CompressedIOUtils.XZ_COMPRESSION));
-    assertTrue(s.contains(CompressedIOUtils.GZIP_COMPRESSION));
-    assertTrue(s.contains(CompressedIOUtils.ZSTD_COMPRESSION));
-    assertTrue(s.contains(CompressedIOUtils.BZIP2_COMPRESSION));
-    assertTrue(s.contains(CompressedIOUtils.SNAPPY_COMPRESSION));
-    assertTrue(s.contains(CompressedIOUtils.LZ4_COMPRESSION));
-    assertTrue(s.contains(CompressedIOUtils.LZMA_COMPRESSION));
-    assertTrue(s.contains(CompressedIOUtils.BROTLI_COMPRESSION));
-    assertTrue(s.contains(CompressedIOUtils.DEFLATE_COMPRESSION));
-    assertTrue(s.contains(CompressedIOUtils.DEFLATE64_COMPRESSION));
-    assertTrue(s.contains(CompressedIOUtils.Z_COMPRESSION));
-
-    //
-    s.clear();
-    s.addAll(CompressedIOUtils.getSupportedCompressions(false));
-    assertTrue(s.contains(CompressedIOUtils.AUTO_COMPRESSION));
-    assertTrue(s.contains(CompressedIOUtils.NONE_COMPRESSION));
-    assertTrue(s.contains(CompressedIOUtils.XZ_COMPRESSION));
-    assertTrue(s.contains(CompressedIOUtils.GZIP_COMPRESSION));
-    assertTrue(s.contains(CompressedIOUtils.ZSTD_COMPRESSION));
-    assertTrue(s.contains(CompressedIOUtils.BZIP2_COMPRESSION));
-    assertTrue(s.contains(CompressedIOUtils.SNAPPY_COMPRESSION));
-    assertTrue(s.contains(CompressedIOUtils.LZ4_COMPRESSION));
-    assertTrue(s.contains(CompressedIOUtils.LZMA_COMPRESSION));
-    assertFalse(s.contains(CompressedIOUtils.BROTLI_COMPRESSION));
-    assertTrue(s.contains(CompressedIOUtils.DEFLATE_COMPRESSION));
-    assertFalse(s.contains(CompressedIOUtils.DEFLATE64_COMPRESSION));
-    assertFalse(s.contains(CompressedIOUtils.Z_COMPRESSION));
   }
 
   @ParameterizedTest(name = "[{index}] Is Compression {0} supported for write? {1}")
@@ -141,54 +103,6 @@ class CompresssedCompressedIOUtilsTest {
         arguments("abc", false));
   }
 
-  @ParameterizedTest(name = "[{index}] Compression for reading {1} should be {0}")
-  @MethodSource
-  @DisplayName("Compression should be detected for reads")
-  void detectReadCompression(final String compType, final String filename) {
-    assertEquals(compType, CompressedIOUtils.detectCompression(filename, true));
-  }
-
-  private static Stream<Arguments> detectReadCompression() {
-    return Stream.of(
-        arguments(CompressedIOUtils.GZIP_COMPRESSION, "124.gz"),
-        arguments(CompressedIOUtils.ZSTD_COMPRESSION, "124.zstd"),
-        arguments(CompressedIOUtils.BROTLI_COMPRESSION, "124.br"),
-        arguments(CompressedIOUtils.BZIP2_COMPRESSION, "124.bz2"),
-        arguments(CompressedIOUtils.DEFLATE_COMPRESSION, "124.deflate"),
-        arguments(CompressedIOUtils.SNAPPY_COMPRESSION, "124.snappy"),
-        arguments(CompressedIOUtils.XZ_COMPRESSION, "124.xz"),
-        arguments(CompressedIOUtils.LZ4_COMPRESSION, "124.lz4"),
-        arguments(CompressedIOUtils.LZMA_COMPRESSION, "124.lzma"),
-        arguments(CompressedIOUtils.Z_COMPRESSION, "124.z"),
-        arguments(CompressedIOUtils.NONE_COMPRESSION, "124.csv"));
-  }
-
-  @ParameterizedTest(name = "[{index}] Compression for reading {1} should be {0}")
-  @MethodSource
-  @DisplayName("Compression should be detected for writes")
-  void detectWriteCompression(final String compType, final String filename) {
-    assertEquals(compType, CompressedIOUtils.detectCompression(filename, false));
-  }
-
-  private static Stream<Arguments> detectWriteCompression() {
-    return Stream.of(
-        arguments(CompressedIOUtils.GZIP_COMPRESSION, "124.gz"),
-        arguments(CompressedIOUtils.ZSTD_COMPRESSION, "124.zstd"),
-        arguments(CompressedIOUtils.BZIP2_COMPRESSION, "124.bz2"),
-        arguments(CompressedIOUtils.DEFLATE_COMPRESSION, "124.deflate"),
-        arguments(CompressedIOUtils.SNAPPY_COMPRESSION, "124.snappy"),
-        arguments(CompressedIOUtils.XZ_COMPRESSION, "124.xz"),
-        arguments(CompressedIOUtils.LZ4_COMPRESSION, "124.lz4"),
-        arguments(CompressedIOUtils.LZMA_COMPRESSION, "124.lzma"),
-        arguments(CompressedIOUtils.NONE_COMPRESSION, "124.br"),
-        arguments(CompressedIOUtils.NONE_COMPRESSION, "124.csv"));
-  }
-
-  @Test
-  void isAutoCompression() {
-    assertTrue(CompressedIOUtils.isAutoCompression("auto"));
-  }
-
   @Test
   void isNoneCompression() {
     assertTrue(CompressedIOUtils.isNoneCompression("none"));
@@ -229,17 +143,16 @@ class CompresssedCompressedIOUtilsTest {
 
   private static Stream<Arguments> testReaderSupported() {
     return Stream.of(
-        arguments("test-file", "none"),
-        arguments("test.gz", "auto"),
-        arguments("test.bz2", "auto"),
-        arguments("test.lz4", "auto"),
-        arguments("test.snappy", "auto"),
-        arguments("test.z", "auto"),
-        arguments("test.br", "auto"),
-        arguments("test.lzma", "auto"),
-        arguments("test.xz", "auto"),
-        arguments("test.zstd", "auto"),
-        arguments("test.gz", "gzip"));
+        arguments("test-file", CompressedIOUtils.NONE_COMPRESSION),
+        arguments("test.gz", CompressedIOUtils.GZIP_COMPRESSION),
+        arguments("test.bz2", CompressedIOUtils.BZIP2_COMPRESSION),
+        arguments("test.lz4", CompressedIOUtils.LZ4_COMPRESSION),
+        arguments("test.snappy", CompressedIOUtils.SNAPPY_COMPRESSION),
+        arguments("test.z", CompressedIOUtils.Z_COMPRESSION),
+        arguments("test.br", CompressedIOUtils.BROTLI_COMPRESSION),
+        arguments("test.lzma", CompressedIOUtils.LZMA_COMPRESSION),
+        arguments("test.xz", CompressedIOUtils.XZ_COMPRESSION),
+        arguments("test.zstd", CompressedIOUtils.ZSTD_COMPRESSION));
   }
 
   @ParameterizedTest(

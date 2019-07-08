@@ -162,23 +162,13 @@ public class JsonConnector implements Connector {
       pattern = settings.getString(FILE_NAME_PATTERN);
       encoding = settings.getCharset(ENCODING);
       compression = settings.getString(COMPRESSION);
-      if (!read && CompressedIOUtils.isAutoCompression(compression)) {
-        compression = CompressedIOUtils.detectCompression(url.toString(), false);
-      }
       if (!CompressedIOUtils.isSupportedCompression(compression, read)) {
-        // TODO: add fetching of a list of supported compressors
         throw new BulkConfigurationException(
             String.format(
                 "Invalid value for connector.json.%s, valid values: %s, got: '%s'",
                 COMPRESSION,
                 String.join(",", CompressedIOUtils.getSupportedCompressions(read)),
                 compression));
-      }
-      // TODO: think about it - should we adjust pattern based on the specific compression type, but
-      // there could be differences in the extensions of some compression types, so it's hard to
-      // unify it
-      if (read && !CompressedIOUtils.isNoneCompression(compression) && !pattern.endsWith("*")) {
-        pattern = pattern + "*";
       }
       skipRecords = settings.getLong(SKIP_RECORDS);
       maxRecords = settings.getLong(MAX_RECORDS);
@@ -370,7 +360,8 @@ public class JsonConnector implements Connector {
               LOGGER.warn("Directory {} has no readable files.", root);
             } else {
               LOGGER.warn(
-                  "No files in directory {} matched the connector.json.fileNamePattern of \"{}\".",
+                  "No files in directory {} matched the connector.json.fileNamePattern of \"{}\"."
+                      + " Adjust it if connector.json.compression is specified!",
                   root,
                   pattern);
             }
@@ -605,8 +596,9 @@ public class JsonConnector implements Connector {
   URL getOrCreateDestinationURL() {
     if (!roots.isEmpty()) {
       try {
-        String next = String.format(fileNameFormat, counter.incrementAndGet())
-            + CompressedIOUtils.getCompressionSuffix(compression);
+        String next =
+            String.format(fileNameFormat, counter.incrementAndGet())
+                + CompressedIOUtils.getCompressionSuffix(compression);
         return roots.get(0).resolve(next).toUri().toURL(); // for UNLOAD always one URL
       } catch (MalformedURLException e) {
         throw new UncheckedIOException(
