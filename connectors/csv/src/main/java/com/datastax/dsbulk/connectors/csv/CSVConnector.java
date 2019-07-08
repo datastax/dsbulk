@@ -483,6 +483,7 @@ public class CSVConnector implements Connector {
                 sink.error(ioe);
               } catch (IOException e) {
                 sink.next(new DefaultErrorRecord(url, resource, recordNumber, e));
+                sink.complete();
               } catch (Exception e) {
                 if (e.getCause() instanceof TextParsingException) {
                   e = launderTextParsingException(((TextParsingException) e.getCause()), url);

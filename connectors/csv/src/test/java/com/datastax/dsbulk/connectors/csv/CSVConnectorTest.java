@@ -32,6 +32,7 @@ import com.datastax.dsbulk.commons.tests.utils.URLUtils;
 import com.datastax.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.dsbulk.connectors.api.Field;
 import com.datastax.dsbulk.connectors.api.Record;
+import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultIndexedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
@@ -45,8 +46,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.io.UncheckedIOException;
+import java.net.ConnectException;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -1068,7 +1072,10 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString(String.format("urlfile = %s", quoteJson(urlFile)))
+            ConfigFactory.parseString(
+                    String.format(
+                        "urlfile = %s, normalizeLineEndingsInQuotes = true, escape = \"\\\"\", comment = \"#\"",
+                        quoteJson(urlFile)))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
 
@@ -1077,10 +1084,25 @@ class CSVConnectorTest {
 
     // then
     List<Record> actual = Flux.from(connector.read()).collectList().block();
-    assertRecords(actual);
+    assert actual != null;
+    hasOneFailedRecord(actual);
+    assertRecords(
+        actual.stream().filter(r -> r instanceof DefaultRecord).collect(Collectors.toList()));
     connector.close();
 
     Files.delete(urlFile);
+  }
+
+  private void hasOneFailedRecord(List<Record> actual)
+      throws URISyntaxException, MalformedURLException {
+    List<Record> failedRecords =
+        actual.stream().filter(v -> v instanceof DefaultErrorRecord).collect(Collectors.toList());
+    assertThat(failedRecords).hasSize(1);
+    DefaultErrorRecord failedRecord = (DefaultErrorRecord) failedRecords.get(0);
+    assertThat(failedRecord.getSource()).isEqualTo(new URL("http://localhost:1234/file.csv"));
+    assertThat(failedRecord.getResource()).isEqualTo(new URI("http://localhost:1234/file.csv"));
+    assertThat(failedRecord.getPosition()).isEqualTo(1);
+    assertThat(failedRecord.getError()).isInstanceOf(ConnectException.class);
   }
 
   @Test

@@ -91,7 +91,6 @@ import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -295,8 +294,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
-    assertThat(logs.getLoggedMessages()).isEqualTo(Collections.emptyList());
-    assertThat(status).isZero();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
     validateResultSetSize(10, "SELECT * FROM ip_by_country");
     deleteDirectory(logDir);
 
