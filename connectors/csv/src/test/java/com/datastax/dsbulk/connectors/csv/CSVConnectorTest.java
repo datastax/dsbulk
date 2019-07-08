@@ -1131,6 +1131,7 @@ class CSVConnectorTest {
     connector.close();
 
     Files.delete(urlFile);
+    ftpServer.close();
   }
 
   private void hasOneFailedRecord(List<Record> actual, String expectedUrl, Class instanceT)
