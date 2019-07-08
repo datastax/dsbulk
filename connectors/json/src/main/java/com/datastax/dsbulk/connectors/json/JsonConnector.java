@@ -433,6 +433,8 @@ public class JsonConnector implements Connector {
                 }
                 LOGGER.debug("Done reading {}", url);
                 sink.complete();
+              } catch (JsonParseException e) {
+                sink.error(new IOException(String.format("Error reading from %s", url), e));
               } catch (IOException e) {
                 sink.next(new DefaultErrorRecord(url, resource, 1, e));
                 sink.complete();
