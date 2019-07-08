@@ -1061,6 +1061,29 @@ class CSVConnectorTest {
   }
 
   @Test
+  void should_read_only_from_file_when_http_url_is_not_working() throws Exception {
+    // given
+    Path urlFile =
+        createURLFile(Arrays.asList("http://localhost:1234/file.csv", rawURL("/sample.csv")));
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(String.format("urlfile = %s", quoteJson(urlFile)))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+
+    // when
+    connector.init();
+
+    // then
+    List<Record> actual = Flux.from(connector.read()).collectList().block();
+    assertRecords(actual);
+    connector.close();
+
+    Files.delete(urlFile);
+  }
+
+  @Test
   void should_not_write_to_http_url() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =

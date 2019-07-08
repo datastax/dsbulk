@@ -481,6 +481,8 @@ public class CSVConnector implements Connector {
               } catch (TextParsingException e) {
                 IOException ioe = launderTextParsingException(e, url);
                 sink.error(ioe);
+              } catch (IOException e) {
+                sink.next(new DefaultErrorRecord(url, resource, recordNumber, e));
               } catch (Exception e) {
                 if (e.getCause() instanceof TextParsingException) {
                   e = launderTextParsingException(((TextParsingException) e.getCause()), url);
