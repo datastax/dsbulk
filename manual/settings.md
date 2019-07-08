@@ -360,7 +360,7 @@ Default: **"\\"**.
 
 The file name format to use when writing. This setting is ignored when reading and for non-file URLs. The file name must comply with the formatting rules of `String.format()`, and must contain a `%d` format specifier that will be used to increment file name counters.
 
-Default: **"output-%0,6d.csv"**.
+Default: **"output-%06d.csv"**.
 
 #### --connector.csv.fileNamePattern _&lt;string&gt;_
 
@@ -543,7 +543,7 @@ Default: **"UTF-8"**.
 
 The file name format to use when writing. This setting is ignored when reading and for non-file URLs. The file name must comply with the formatting rules of `String.format()`, and must contain a `%d` format specifier that will be used to increment file name counters.
 
-Default: **"output-%0,6d.json"**.
+Default: **"output-%06d.json"**.
 
 #### --connector.json.fileNamePattern _&lt;string&gt;_
 
