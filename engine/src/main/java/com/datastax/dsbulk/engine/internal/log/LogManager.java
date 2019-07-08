@@ -408,7 +408,7 @@ public class LogManager implements AutoCloseable {
                           failedWriteSink.next(r);
                           assert r.getError().isPresent();
                           Throwable cause = r.getError().get().getCause();
-                          if (isUnrecoverable(cause)) { // todo is it propagated here?
+                          if (isUnrecoverable(cause)) {
                             signal = Signal.error(cause);
                           } else {
                             signal =
@@ -458,7 +458,7 @@ public class LogManager implements AutoCloseable {
                         failedReadSink.next(r);
                         assert r.getError().isPresent();
                         Throwable cause = r.getError().get().getCause();
-                        if (isUnrecoverable(cause)) { // todo is it propagated here?
+                        if (isUnrecoverable(cause)) {
                           signal = Signal.error(cause);
                         } else {
                           signal = maybeTriggerOnError(signal, errors.incrementAndGet());
