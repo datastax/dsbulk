@@ -14,6 +14,7 @@ import static com.datastax.driver.core.DataType.cint;
 import static com.datastax.driver.core.DataType.varchar;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDOUT;
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.createURLFile;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
@@ -35,6 +36,10 @@ import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_ERRO
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_PARTIAL_BAD;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_SKIP;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQUE;
+import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQUE_PART_1;
+import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQUE_PART_1_DIR;
+import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQUE_PART_2;
+import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQUE_PART_2_DIR;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_WITH_COMMENTS;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.LOCAL_ONE;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.ONE;
@@ -43,6 +48,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import ch.qos.logback.core.joran.spi.JoranException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
@@ -74,6 +80,7 @@ import com.datastax.oss.simulacron.common.result.WriteFailureResult;
 import com.datastax.oss.simulacron.common.result.WriteTimeoutResult;
 import com.datastax.oss.simulacron.common.stubbing.Prime;
 import com.datastax.oss.simulacron.server.BoundCluster;
+import com.google.common.collect.Lists;
 import com.typesafe.config.ConfigFactory;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -86,11 +93,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.reactivestreams.Publisher;
 
 @ExtendWith(SimulacronExtension.class)
@@ -108,6 +120,10 @@ class JsonEndToEndSimulacronIT {
 
   private Path unloadDir;
   private Path logDir;
+
+  private Path urlFileTwoFiles;
+  private Path urlFileOneFileOneDir;
+  private Path urlFileTwoDirs;
 
   JsonEndToEndSimulacronIT(
       BoundCluster simulacron,
@@ -143,6 +159,21 @@ class JsonEndToEndSimulacronIT {
   @AfterEach
   void resetLogbackConfiguration() throws JoranException {
     LogUtils.resetLogbackConfiguration();
+  }
+
+  @BeforeAll
+  void setupURLFiles() throws IOException {
+    urlFileTwoFiles = createURLFile(JSON_RECORDS_UNIQUE_PART_1, JSON_RECORDS_UNIQUE_PART_2);
+    urlFileOneFileOneDir =
+        createURLFile(JSON_RECORDS_UNIQUE_PART_1_DIR, JSON_RECORDS_UNIQUE_PART_2);
+    urlFileTwoDirs = createURLFile(JSON_RECORDS_UNIQUE_PART_1_DIR, JSON_RECORDS_UNIQUE_PART_2_DIR);
+  }
+
+  @AfterAll
+  void cleanupURLFiles() throws IOException {
+    Files.delete(urlFileTwoFiles);
+    Files.delete(urlFileOneFileOneDir);
+    Files.delete(urlFileTwoDirs);
   }
 
   @Test
@@ -183,6 +214,52 @@ class JsonEndToEndSimulacronIT {
         .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
         .contains("Writes: total: 24, successful: 24, failed: 0");
     validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", ONE);
+  }
+
+  @ParameterizedTest
+  @MethodSource("multipleUrlsProvider")
+  void full_load_multiple_urls(Path urlfile) {
+
+    primeIpByCountryTable(simulacron);
+    RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
+    simulacron.prime(new Prime(insert));
+
+    String[] args = {
+      "load",
+      "-c",
+      "json",
+      "--log.directory",
+      quoteJson(logDir),
+      "--connector.json.urlfile",
+      quoteJson(urlfile.toAbsolutePath()),
+      "--driver.query.consistency",
+      "ONE",
+      "--driver.hosts",
+      hostname,
+      "--driver.port",
+      port,
+      "--driver.pooling.local.connections",
+      "1",
+      "--schema.keyspace",
+      "ks1",
+      "--schema.query",
+      INSERT_INTO_IP_BY_COUNTRY,
+      "--schema.mapping",
+      IP_BY_COUNTRY_MAPPING_NAMED
+    };
+
+    int status = new DataStaxBulkLoader(args).run();
+    assertThat(status).isZero();
+    assertThat(logs.getAllMessagesAsString())
+        .contains("Records: total: 24, successful: 24, failed: 0")
+        .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
+        .contains("Writes: total: 24, successful: 24, failed: 0");
+    validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", ONE);
+  }
+
+  private List<Arguments> multipleUrlsProvider() {
+    return Lists.newArrayList(
+        arguments(urlFileTwoFiles), arguments(urlFileOneFileOneDir), arguments(urlFileTwoDirs));
   }
 
   @Test

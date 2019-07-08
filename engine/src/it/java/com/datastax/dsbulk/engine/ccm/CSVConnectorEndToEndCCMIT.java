@@ -13,12 +13,14 @@ import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.ass
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DDAC;
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.createURLFile;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLines;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStreamExcludingHeaders;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static com.datastax.dsbulk.engine.DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS;
+import static com.datastax.dsbulk.engine.DataStaxBulkLoader.STATUS_OK;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.numberToInstant;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.REJECT;
@@ -26,6 +28,8 @@ import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.T
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_SKIP;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
+import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE_PART_1;
+import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE_PART_2;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_WITH_SPACES;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.INSERT_INTO_IP_BY_COUNTRY;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY_MAPPING_CASE_SENSITIVE;
@@ -79,6 +83,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.net.URI;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -92,6 +97,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -115,6 +121,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   private final LogInterceptor logs;
   private final StreamInterceptor stderr;
+
+  private Path urlFile;
   private Path logDir;
   private Path unloadDir;
 
@@ -158,6 +166,16 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     stderr.clear();
   }
 
+  @BeforeAll
+  void setupURLFile() throws IOException {
+    urlFile = createURLFile(CSV_RECORDS_UNIQUE_PART_1, CSV_RECORDS_UNIQUE_PART_2);
+  }
+
+  @AfterAll
+  void cleanupURLFile() throws IOException {
+    Files.delete(urlFile);
+  }
+
   /** Simple test case which attempts to load and unload data using ccm. */
   @Test
   void full_load_unload() throws Exception {
@@ -181,6 +199,51 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(status).isZero();
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
     validatePositionsFile(CSV_RECORDS_UNIQUE, 24);
+    deleteDirectory(logDir);
+
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.csv.url");
+    args.add(quoteJson(unloadDir));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--connector.csv.maxConcurrentFiles");
+    args.add("1");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("ip_by_country");
+    args.add("--schema.mapping");
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
+
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    validateOutputFiles(24, unloadDir);
+  }
+
+  @Test
+  void full_load_unload_using_urlfile() throws Exception {
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.csv.urlfile");
+    args.add(quoteJson(urlFile));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("ip_by_country");
+    args.add("--schema.mapping");
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    validateResultSetSize(24, "SELECT * FROM ip_by_country");
     deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -2774,9 +2837,13 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             quoteJson(insertRegular));
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
-    assertThat(status).isOne();
-    // should reject the line '3,null,null' as it has a null clustering column
-    validateNumberOfBadRecords(1);
+    // Some versions of C* export a spurious row for partition key 3 containing only nulls apart
+    // from the partition key itself.
+    // In such cases DSBulk should reject the line '3,null,null' as it has a null clustering column
+    assertThat(status).isIn(STATUS_OK, STATUS_COMPLETED_WITH_ERRORS);
+    if (status == STATUS_COMPLETED_WITH_ERRORS) {
+      validateNumberOfBadRecords(1);
+    }
 
     // load static columns only
     args =

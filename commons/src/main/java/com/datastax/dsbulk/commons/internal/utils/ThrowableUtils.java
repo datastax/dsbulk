@@ -148,21 +148,30 @@ public class ThrowableUtils {
       sb.append("Channel is not readable.");
     } else if (t instanceof NonWritableChannelException) {
       sb.append("Channel is not writable.");
+    } else if (t.getMessage() == null
+        || t.getMessage().isEmpty()
+        || t.getMessage().equals("null")) {
+      sb.append(t.getClass().getSimpleName()).append(" (no message).");
+    } else if (t.getMessage().matches("\\d+") || t.getMessage().length() < 10) {
+      // Message contains only numbers (e.g. for ArrayIndexOutOfBoundsException) or
+      // message is too short: append the class name as well for clarity.
+      sb.append(t.getClass().getSimpleName()).append(": ");
+      appendMessage(t, sb);
     } else {
-      if (t.getMessage() == null || t.getMessage().isEmpty() || t.getMessage().equals("null")) {
-        sb.append(t.getClass().getSimpleName()).append(" (no message).");
-      } else {
-        String msg = t.getMessage();
-        sb.append(msg.substring(0, 1).toUpperCase());
-        if (msg.length() > 1) {
-          sb.append(msg.substring(1));
-        }
-        if (!msg.endsWith(".")) {
-          sb.append('.');
-        }
-      }
+      appendMessage(t, sb);
     }
     return sb.toString();
+  }
+
+  private static void appendMessage(Throwable t, StringBuilder sb) {
+    String msg = t.getMessage();
+    sb.append(msg.substring(0, 1).toUpperCase());
+    if (msg.length() > 1) {
+      sb.append(msg.substring(1));
+    }
+    if (!msg.endsWith(".")) {
+      sb.append('.');
+    }
   }
 
   private static void newLineAndIndent(PrintWriter pw, int spaces) {
