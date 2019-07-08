@@ -10,6 +10,7 @@ package com.datastax.dsbulk.commons.internal.utils;
 
 import com.google.common.collect.ImmutableSet;
 import java.util.Collections;
+import java.util.regex.Pattern;
 import javax.management.ObjectName;
 import org.jetbrains.annotations.NotNull;
 
@@ -388,20 +389,23 @@ public class StringUtils {
 
   /**
    * Returns the given string quoted with {@link javax.management.ObjectName#quote(String)} if it
-   * has forbidden characters in a value associated with a key in an JMX object name; otherwise,
-   * returns the original string.
+   * contains illegal characters; otherwise, returns the original string.
+   *
+   * <p>The <a
+   * href="https://www.oracle.com/technetwork/java/javase/tech/best-practices-jsp-136021.html#mozTocId434075">Object
+   * Name Syntax</a> does not define which characters are legal or not in a property value;
+   * therefore this method adopts a conservative approach and quotes all values that do not match
+   * the regex {@code [a-zA-Z0-9_]+}.
    *
    * @param value The value to quote if necessary.
    * @return The value quoted if necessary, or the original value if quoting isn't required.
    */
-  public static @NotNull String quoteJMXIfNecessary(@NotNull String value) {
-    if (value.contains("\"")
-        || value.contains("*")
-        || value.contains("?")
-        || value.contains("\\")
-        || value.contains("\n")) {
-      return ObjectName.quote(value);
+  @NotNull
+  public static String quoteJMXIfNecessary(@NotNull String value) {
+    Pattern pattern = Pattern.compile("[a-zA-Z0-9\\-_]+");
+    if (pattern.matcher(value).matches()) {
+      return value;
     }
-    return value;
+    return ObjectName.quote(value);
   }
 }

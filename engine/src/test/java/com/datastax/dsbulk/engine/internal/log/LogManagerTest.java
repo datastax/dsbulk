@@ -219,13 +219,13 @@ class LogManagerTest {
       assertThat(((AbsoluteErrorThreshold) e.getThreshold()).getMaxErrors()).isEqualTo(2);
     }
     logManager.close();
-    Path bad = logManager.getExecutionDirectory().resolve("mapping.bad");
-    Path errors = logManager.getExecutionDirectory().resolve("mapping-errors.log");
-    Path positions = logManager.getExecutionDirectory().resolve("positions.txt");
+    Path bad = logManager.getOperationDirectory().resolve("mapping.bad");
+    Path errors = logManager.getOperationDirectory().resolve("mapping-errors.log");
+    Path positions = logManager.getOperationDirectory().resolve("positions.txt");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
     assertThat(positions.toFile()).exists();
-    assertThat(FileUtils.listAllFilesInDirectory(logManager.getExecutionDirectory()))
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(bad, errors, positions);
     List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
     assertThat(badLines).hasSize(3);
@@ -269,13 +269,13 @@ class LogManagerTest {
       assertThat(((AbsoluteErrorThreshold) e.getThreshold()).getMaxErrors()).isEqualTo(0);
     }
     logManager.close();
-    Path bad = logManager.getExecutionDirectory().resolve("mapping.bad");
-    Path errors = logManager.getExecutionDirectory().resolve("mapping-errors.log");
-    Path positions = logManager.getExecutionDirectory().resolve("positions.txt");
+    Path bad = logManager.getOperationDirectory().resolve("mapping.bad");
+    Path errors = logManager.getOperationDirectory().resolve("mapping-errors.log");
+    Path positions = logManager.getOperationDirectory().resolve("positions.txt");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
     assertThat(positions.toFile()).exists();
-    assertThat(FileUtils.listAllFilesInDirectory(logManager.getExecutionDirectory()))
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(bad, errors, positions);
     List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
     assertThat(badLines).hasSize(1);
@@ -306,13 +306,13 @@ class LogManagerTest {
     // should not throw TooManyErrorsException
     stmts.transform(logManager.newUnmappableStatementsHandler()).blockLast();
     logManager.close();
-    Path bad = logManager.getExecutionDirectory().resolve("mapping.bad");
-    Path errors = logManager.getExecutionDirectory().resolve("mapping-errors.log");
-    Path positions = logManager.getExecutionDirectory().resolve("positions.txt");
+    Path bad = logManager.getOperationDirectory().resolve("mapping.bad");
+    Path errors = logManager.getOperationDirectory().resolve("mapping-errors.log");
+    Path positions = logManager.getOperationDirectory().resolve("positions.txt");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
     assertThat(positions.toFile()).exists();
-    assertThat(FileUtils.listAllFilesInDirectory(logManager.getExecutionDirectory()))
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(bad, errors, positions);
     List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
     assertThat(badLines).hasSize(3);
@@ -356,13 +356,13 @@ class LogManagerTest {
       assertThat(((AbsoluteErrorThreshold) e.getThreshold()).getMaxErrors()).isEqualTo(2);
     }
     logManager.close();
-    Path bad = logManager.getExecutionDirectory().resolve("connector.bad");
-    Path errors = logManager.getExecutionDirectory().resolve("connector-errors.log");
-    Path positions = logManager.getExecutionDirectory().resolve("positions.txt");
+    Path bad = logManager.getOperationDirectory().resolve("connector.bad");
+    Path errors = logManager.getOperationDirectory().resolve("connector-errors.log");
+    Path positions = logManager.getOperationDirectory().resolve("positions.txt");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
     assertThat(positions.toFile()).exists();
-    assertThat(FileUtils.listAllFilesInDirectory(logManager.getExecutionDirectory()))
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(bad, errors, positions);
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
@@ -398,9 +398,9 @@ class LogManagerTest {
       assertThat(((AbsoluteErrorThreshold) e.getThreshold()).getMaxErrors()).isEqualTo(2);
     }
     logManager.close();
-    Path bad = logManager.getExecutionDirectory().resolve("load.bad");
-    Path errors = logManager.getExecutionDirectory().resolve("load-errors.log");
-    Path positions = logManager.getExecutionDirectory().resolve("positions.txt");
+    Path bad = logManager.getOperationDirectory().resolve("load.bad");
+    Path errors = logManager.getOperationDirectory().resolve("load-errors.log");
+    Path positions = logManager.getOperationDirectory().resolve("positions.txt");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
     assertThat(positions.toFile()).exists();
@@ -409,7 +409,7 @@ class LogManagerTest {
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
     assertThat(badLines.get(1)).isEqualTo(source2.trim());
     assertThat(badLines.get(2)).isEqualTo(source3.trim());
-    assertThat(FileUtils.listAllFilesInDirectory(logManager.getExecutionDirectory()))
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(bad, errors, positions);
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
@@ -453,9 +453,9 @@ class LogManagerTest {
     Flux<WriteResult> stmts = Flux.just(failedWriteResult1, failedWriteResult2, failedWriteResult3);
     stmts.transform(logManager.newFailedWritesHandler()).blockLast();
     logManager.close();
-    Path bad = logManager.getExecutionDirectory().resolve("load.bad");
-    Path errors = logManager.getExecutionDirectory().resolve("load-errors.log");
-    Path positions = logManager.getExecutionDirectory().resolve("positions.txt");
+    Path bad = logManager.getOperationDirectory().resolve("load.bad");
+    Path errors = logManager.getOperationDirectory().resolve("load-errors.log");
+    Path positions = logManager.getOperationDirectory().resolve("positions.txt");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
     assertThat(positions.toFile()).exists();
@@ -464,7 +464,7 @@ class LogManagerTest {
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
     assertThat(badLines.get(1)).isEqualTo(source2.trim());
     assertThat(badLines.get(2)).isEqualTo(source3.trim());
-    assertThat(FileUtils.listAllFilesInDirectory(logManager.getExecutionDirectory()))
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(bad, errors, positions);
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
@@ -514,9 +514,9 @@ class LogManagerTest {
       assertThat(((AbsoluteErrorThreshold) e.getThreshold()).getMaxErrors()).isEqualTo(1);
     }
     logManager.close();
-    Path bad = logManager.getExecutionDirectory().resolve("load.bad");
-    Path errors = logManager.getExecutionDirectory().resolve("load-errors.log");
-    Path positions = logManager.getExecutionDirectory().resolve("positions.txt");
+    Path bad = logManager.getOperationDirectory().resolve("load.bad");
+    Path errors = logManager.getOperationDirectory().resolve("load-errors.log");
+    Path positions = logManager.getOperationDirectory().resolve("positions.txt");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
     assertThat(positions.toFile()).exists();
@@ -525,7 +525,7 @@ class LogManagerTest {
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
     assertThat(badLines.get(1)).isEqualTo(source2.trim());
     assertThat(badLines.get(2)).isEqualTo(source3.trim());
-    assertThat(FileUtils.listAllFilesInDirectory(logManager.getExecutionDirectory()))
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(bad, errors, positions);
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
@@ -572,9 +572,9 @@ class LogManagerTest {
       assertThat(((AbsoluteErrorThreshold) e.getThreshold()).getMaxErrors()).isEqualTo(2);
     }
     logManager.close();
-    Path errors = logManager.getExecutionDirectory().resolve("unload-errors.log");
+    Path errors = logManager.getOperationDirectory().resolve("unload-errors.log");
     assertThat(errors.toFile()).exists();
-    assertThat(FileUtils.listAllFilesInDirectory(logManager.getExecutionDirectory()))
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(errors);
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
@@ -610,9 +610,9 @@ class LogManagerTest {
       assertThat(((AbsoluteErrorThreshold) e.getThreshold()).getMaxErrors()).isEqualTo(2);
     }
     logManager.close();
-    Path errors = logManager.getExecutionDirectory().resolve("mapping-errors.log");
+    Path errors = logManager.getOperationDirectory().resolve("mapping-errors.log");
     assertThat(errors.toFile()).exists();
-    assertThat(FileUtils.listAllFilesInDirectory(logManager.getExecutionDirectory()))
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(errors);
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
@@ -652,9 +652,9 @@ class LogManagerTest {
     Flux<Record> stmts = Flux.just(rowRecord1);
     stmts.transform(logManager.newUnmappableRecordsHandler()).blockLast();
     logManager.close();
-    Path errors = logManager.getExecutionDirectory().resolve("mapping-errors.log");
+    Path errors = logManager.getOperationDirectory().resolve("mapping-errors.log");
     assertThat(errors.toFile()).exists();
-    assertThat(FileUtils.listAllFilesInDirectory(logManager.getExecutionDirectory()))
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(errors);
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
@@ -685,9 +685,9 @@ class LogManagerTest {
         .transform(logManager.newFailedReadsHandler())
         .blockLast();
     logManager.close();
-    Path errors = logManager.getExecutionDirectory().resolve("unload-errors.log");
+    Path errors = logManager.getOperationDirectory().resolve("unload-errors.log");
     assertThat(errors.toFile()).exists();
-    assertThat(FileUtils.listAllFilesInDirectory(logManager.getExecutionDirectory()))
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(errors);
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
@@ -727,9 +727,9 @@ class LogManagerTest {
       assertThat(((RatioErrorThreshold) e.getThreshold()).getMaxErrorRatio()).isEqualTo(0.01f);
     }
     logManager.close();
-    Path errors = logManager.getExecutionDirectory().resolve("unload-errors.log");
+    Path errors = logManager.getOperationDirectory().resolve("unload-errors.log");
     assertThat(errors.toFile()).exists();
-    assertThat(FileUtils.listAllFilesInDirectory(logManager.getExecutionDirectory()))
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(errors);
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     assertThat(lines.stream().filter(l -> l.contains("BulkExecutionException")).count())
@@ -763,16 +763,16 @@ class LogManagerTest {
       assertThat(e).hasMessage("error 1");
     }
     logManager.close();
-    Path bad = logManager.getExecutionDirectory().resolve("load.bad");
-    Path errors = logManager.getExecutionDirectory().resolve("load-errors.log");
-    Path positions = logManager.getExecutionDirectory().resolve("positions.txt");
+    Path bad = logManager.getOperationDirectory().resolve("load.bad");
+    Path errors = logManager.getOperationDirectory().resolve("load-errors.log");
+    Path positions = logManager.getOperationDirectory().resolve("positions.txt");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
     assertThat(positions.toFile()).exists();
     List<String> badLines = Files.readAllLines(bad, Charset.forName("UTF-8"));
     assertThat(badLines).hasSize(1);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
-    assertThat(FileUtils.listAllFilesInDirectory(logManager.getExecutionDirectory()))
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(bad, errors, positions);
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
@@ -812,9 +812,9 @@ class LogManagerTest {
       assertThat(e).hasMessage("error 1");
     }
     logManager.close();
-    Path errors = logManager.getExecutionDirectory().resolve("unload-errors.log");
+    Path errors = logManager.getOperationDirectory().resolve("unload-errors.log");
     assertThat(errors.toFile()).exists();
-    assertThat(FileUtils.listAllFilesInDirectory(logManager.getExecutionDirectory()))
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(errors);
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);
@@ -863,9 +863,9 @@ class LogManagerTest {
       assertThat(((AbsoluteErrorThreshold) e.getThreshold()).getMaxErrors()).isEqualTo(2);
     }
     logManager.close();
-    Path bad = logManager.getExecutionDirectory().resolve("paxos.bad");
-    Path errors = logManager.getExecutionDirectory().resolve("paxos-errors.log");
-    Path positions = logManager.getExecutionDirectory().resolve("positions.txt");
+    Path bad = logManager.getOperationDirectory().resolve("paxos.bad");
+    Path errors = logManager.getOperationDirectory().resolve("paxos-errors.log");
+    Path positions = logManager.getOperationDirectory().resolve("positions.txt");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
     assertThat(positions.toFile()).exists();
@@ -874,7 +874,7 @@ class LogManagerTest {
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
     assertThat(badLines.get(1)).isEqualTo(source2.trim());
     assertThat(badLines.get(2)).isEqualTo(source3.trim());
-    assertThat(FileUtils.listAllFilesInDirectory(logManager.getExecutionDirectory()))
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(bad, errors, positions);
     List<String> lines = Files.readAllLines(errors, Charset.forName("UTF-8"));
     String content = String.join("\n", lines);

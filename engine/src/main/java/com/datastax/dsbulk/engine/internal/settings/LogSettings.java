@@ -37,6 +37,7 @@ import com.typesafe.config.ConfigValue;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
@@ -128,7 +129,7 @@ public class LogSettings {
   private final LoaderConfig config;
   private final String executionId;
 
-  private Path executionDirectory;
+  private Path operationDirectory;
   private int maxQueryStringLength;
   private int maxBoundValueLength;
   private int maxBoundValues;
@@ -148,9 +149,9 @@ public class LogSettings {
   public void init() throws IOException {
     try {
       // Note: log.ansiMode is handled upstream by com.datastax.dsbulk.engine.DataStaxBulkLoader
-      executionDirectory = config.getPath("directory").resolve(executionId);
-      checkExecutionDirectory();
-      System.setProperty(OPERATION_DIRECTORY_KEY, executionDirectory.toFile().getAbsolutePath());
+      resolveOperationDirectory();
+      checkOperationDirectory();
+      System.setProperty(OPERATION_DIRECTORY_KEY, operationDirectory.toFile().getAbsolutePath());
       maxQueryStringLength = config.getInt(MAX_QUERY_STRING_LENGTH);
       maxBoundValueLength = config.getInt(MAX_BOUND_VALUE_LENGTH);
       maxBoundValues = config.getInt(MAX_BOUND_VALUES);
@@ -178,7 +179,7 @@ public class LogSettings {
         queryWarningsThreshold = ErrorThreshold.forAbsoluteValue(maxQueryWarnings);
       }
       Path mainLogFile =
-          executionDirectory.resolve(MAIN_LOG_FILE_NAME).normalize().toAbsolutePath();
+          operationDirectory.resolve(MAIN_LOG_FILE_NAME).normalize().toAbsolutePath();
       createMainLogFileAppender(mainLogFile);
       installJavaLoggingToSLF4JBridge();
       int verbosity = config.getInt(VERBOSITY);
@@ -197,7 +198,7 @@ public class LogSettings {
   public void logEffectiveSettings(Config global) {
     LOGGER.debug("{} starting.", HelpUtils.getVersionMessage());
     LOGGER.debug("Available processors: {}.", Runtime.getRuntime().availableProcessors());
-    LOGGER.info("Operation directory: {}", executionDirectory);
+    LOGGER.info("Operation directory: {}", operationDirectory);
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("Effective settings:");
       Set<Map.Entry<String, ConfigValue>> entries =
@@ -227,7 +228,7 @@ public class LogSettings {
     return new LogManager(
         workflowType,
         cluster,
-        executionDirectory,
+        operationDirectory,
         errorThreshold,
         queryWarningsThreshold,
         statementFormatter,
@@ -239,26 +240,38 @@ public class LogSettings {
     return verbosity;
   }
 
-  private void checkExecutionDirectory() throws IOException {
-    if (Files.exists(executionDirectory)) {
-      if (Files.isDirectory(executionDirectory)) {
-        if (Files.isWritable(executionDirectory)) {
+  private void resolveOperationDirectory() {
+    Path logDirectory = config.getPath("directory");
+    try {
+      operationDirectory = logDirectory.resolve(executionId);
+    } catch (InvalidPathException e) {
+      throw new BulkConfigurationException(
+          String.format(
+              "Execution ID '%s' is not a valid path name on the local filesytem", executionId),
+          e);
+    }
+  }
+
+  private void checkOperationDirectory() throws IOException {
+    if (Files.exists(operationDirectory)) {
+      if (Files.isDirectory(operationDirectory)) {
+        if (Files.isWritable(operationDirectory)) {
           @SuppressWarnings("StreamResourceLeak")
-          long count = Files.list(executionDirectory).count();
+          long count = Files.list(operationDirectory).count();
           if (count > 0) {
             throw new IllegalArgumentException(
-                "Execution directory exists but is not empty: " + executionDirectory);
+                "Execution directory exists but is not empty: " + operationDirectory);
           }
         } else {
           throw new IllegalArgumentException(
-              "Execution directory exists but is not writable: " + executionDirectory);
+              "Execution directory exists but is not writable: " + operationDirectory);
         }
       } else {
         throw new IllegalArgumentException(
-            "Execution directory exists but is not a directory: " + executionDirectory);
+            "Execution directory exists but is not a directory: " + operationDirectory);
       }
     } else {
-      Files.createDirectories(executionDirectory);
+      Files.createDirectories(operationDirectory);
     }
   }
 

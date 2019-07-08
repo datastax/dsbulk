@@ -42,11 +42,16 @@ class StringUtilsTest {
 
   @Test
   void should_quote_jmx_if_necessary() {
-    assertThat(StringUtils.quoteJMXIfNecessary("")).isEqualTo("");
+    assertThat(StringUtils.quoteJMXIfNecessary("")).isEqualTo("\"\"");
     assertThat(StringUtils.quoteJMXIfNecessary("foo")).isEqualTo("foo");
+    assertThat(StringUtils.quoteJMXIfNecessary("foo-bar")).isEqualTo("foo-bar");
+    assertThat(StringUtils.quoteJMXIfNecessary("foo_bar")).isEqualTo("foo_bar");
     assertThat(StringUtils.quoteJMXIfNecessary("foo?")).isEqualTo("\"foo\\?\"");
     assertThat(StringUtils.quoteJMXIfNecessary("foo*")).isEqualTo("\"foo\\*\"");
     assertThat(StringUtils.quoteJMXIfNecessary("foo\\")).isEqualTo("\"foo\\\\\"");
     assertThat(StringUtils.quoteJMXIfNecessary("foo\n")).isEqualTo("\"foo\\n\"");
+    assertThat(StringUtils.quoteJMXIfNecessary("foo bar")).isEqualTo("\"foo bar\"");
+    assertThat(StringUtils.quoteJMXIfNecessary("foo|bar")).isEqualTo("\"foo|bar\"");
+    assertThat(StringUtils.quoteJMXIfNecessary("foo,bar")).isEqualTo("\"foo,bar\"");
   }
 }

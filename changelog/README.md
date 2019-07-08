@@ -14,6 +14,7 @@
 - [improvement] DAT-430: Write records by batches.
 - [task] DAT-455: Update jackson-databind to 2.9.9.1 to fix CVE-2019-12814.
 - [improvement] DAT-432: Ability to disable bytes/sec metrics.
+- [bug] DAT-441: Quote execution IDs when they generate invalid MBean names.
 
 
 ### 1.3.3
