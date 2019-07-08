@@ -9,10 +9,11 @@ import org.mockftpserver.fake.filesystem.FileSystem;
 import org.mockftpserver.fake.filesystem.UnixFakeFileSystem;
 
 public class FtpUtils {
+  private static final int ANY_FRE_PORT = 0;
 
   public static FtpTestServer createFtpServer(Map<String, String> filePathAndContent) {
     FakeFtpServer fakeFtpServer = new FakeFtpServer();
-    fakeFtpServer.setServerControlPort(43121);
+    fakeFtpServer.setServerControlPort(ANY_FRE_PORT);
     String user = "testUser";
     String password = "test";
     fakeFtpServer.addUserAccount(new UserAccount(user, password, "/"));
