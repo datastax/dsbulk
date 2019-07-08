@@ -27,6 +27,7 @@ import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
+import com.datastax.dsbulk.commons.tests.utils.FtpUtils;
 import com.datastax.dsbulk.commons.tests.utils.URLUtils;
 import com.datastax.dsbulk.connectors.api.Field;
 import com.datastax.dsbulk.connectors.api.Record;
@@ -36,11 +37,13 @@ import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import io.undertow.util.Headers;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
@@ -886,7 +889,7 @@ class JsonConnectorTest {
     // then
     List<Record> actual = Flux.from(connector.read()).collectList().block();
     assert actual != null;
-    hasOneFailedRecord(actual);
+    hasOneFailedRecord(actual, "http://localhost:1234/file.json", ConnectException.class);
     verifyRecords(
         actual.stream().filter(r -> r instanceof DefaultRecord).collect(Collectors.toList()));
     connector.close();
@@ -894,16 +897,58 @@ class JsonConnectorTest {
     Files.delete(urlFile);
   }
 
-  private void hasOneFailedRecord(List<Record> actual)
+  @Test
+  void should_read_from_one_ftp_when_other_not_working() throws URISyntaxException, IOException {
+    // given
+    FtpUtils.FtpTestServer ftpServer =
+        FtpUtils.createFtpServer(
+            ImmutableMap.of(
+                "/file1.json", new String(Files.readAllBytes(path("/single_doc.json")))));
+
+    String notExistingFtpFile = String.format("%s/file2.json", ftpServer.createConnectionString());
+    Path urlFile =
+        createURLFile(
+            Arrays.asList(
+                String.format("%s/file1.json", ftpServer.createConnectionString()),
+                notExistingFtpFile));
+
+    JsonConnector connector = new JsonConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "urlfile = %s, "
+                            + "mode = SINGLE_DOCUMENT, "
+                            + "parserFeatures = {ALLOW_COMMENTS:true}, "
+                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}",
+                        quoteJson(urlFile)))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+
+    // when
+    connector.init();
+
+    // then
+    List<Record> actual = Flux.from(connector.read()).collectList().block();
+    assert actual != null;
+    hasOneFailedRecord(actual, notExistingFtpFile, FileNotFoundException.class);
+    verifyRecords(
+        actual.stream().filter(r -> r instanceof DefaultRecord).collect(Collectors.toList()));
+    connector.close();
+    Files.delete(urlFile);
+    ftpServer.close();
+  }
+
+  private void hasOneFailedRecord(List<Record> actual, String expectedUrl, Class instanceT)
       throws URISyntaxException, MalformedURLException {
     List<Record> failedRecords =
         actual.stream().filter(v -> v instanceof DefaultErrorRecord).collect(Collectors.toList());
     assertThat(failedRecords).hasSize(1);
     DefaultErrorRecord failedRecord = (DefaultErrorRecord) failedRecords.get(0);
-    assertThat(failedRecord.getSource()).isEqualTo(new URL("http://localhost:1234/file.json"));
-    assertThat(failedRecord.getResource()).isEqualTo(new URI("http://localhost:1234/file.json"));
+    assertThat(failedRecord.getSource()).isEqualTo(new URL(expectedUrl));
+    assertThat(failedRecord.getResource()).isEqualTo(new URI(expectedUrl));
     assertThat(failedRecord.getPosition()).isEqualTo(1);
-    assertThat(failedRecord.getError()).isInstanceOf(ConnectException.class);
+    assertThat(failedRecord.getError()).isInstanceOf(instanceT);
   }
 
   @Test
