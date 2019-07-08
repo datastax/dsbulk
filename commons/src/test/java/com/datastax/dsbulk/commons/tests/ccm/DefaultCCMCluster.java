@@ -98,6 +98,7 @@ public class DefaultCCMCluster implements CCMCluster {
 
   // mapped C* versions from DSE versions
   private static final Version V4_0_0 = Version.parse("4.0.0");
+  private static final Version V3_11_2 = Version.parse("3.11.2");
   private static final Version V3_10 = Version.parse("3.10");
   private static final Version V3_0_15 = Version.parse("3.0.15");
   private static final Version V2_2_0 = Version.parse("2.2.0");
@@ -915,6 +916,9 @@ public class DefaultCCMCluster implements CCMCluster {
         } else {
           return V2_0_14;
         }
+      }
+      if (CCM_TYPE == DDAC) {
+        return V3_11_2;
       }
       return CCM_VERSION;
     }

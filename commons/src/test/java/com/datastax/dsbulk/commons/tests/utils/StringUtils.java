@@ -22,8 +22,8 @@ public class StringUtils {
   /**
    * Generates a unique CQL identifier with the given prefix.
    *
-   * @return a unique CQL identifier.
    * @param prefix the prefix to use.
+   * @return a unique CQL identifier.
    */
   public static String uniqueIdentifier(String prefix) {
     return prefix + SEQS.computeIfAbsent(prefix, s -> new AtomicInteger(0)).incrementAndGet();

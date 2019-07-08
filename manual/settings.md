@@ -366,7 +366,7 @@ Default: **"\\"**.
 
 The file name format to use when writing. This setting is ignored when reading and for non-file URLs. The file name must comply with the formatting rules of `String.format()`, and must contain a `%d` format specifier that will be used to increment file name counters.
 
-Default: **"output-%0,6d.csv"**.
+Default: **"output-%06d.csv"**.
 
 #### --connector.csv.fileNamePattern _&lt;string&gt;_
 
@@ -439,6 +439,43 @@ Default: **null**.
 Enable or disable scanning for files in the root's subdirectories. Only applicable when *url* is set to a directory on a known filesystem. Used for loading only.
 
 Default: **false**.
+
+#### --connector.csv.urlfile _&lt;string&gt;_
+
+The URL or path of the file that contains the list of resources to read from.
+
+The file specified here should be located on the local filesystem.
+
+This setting and `connector.csv.url` are mutually exclusive. If both are defined and non empty, this setting takes precedence over `connector.csv.url`.
+
+This setting applies only when loading. When unloading, this setting should be left empty or set to null; any non-empty value will trigger a fatal error.
+
+The file with URLs should follow this format:
+
+```
+/path/to/file/file.csv
+/path/to.dir/
+```
+
+Every line should contain one path. You don't need to escape paths in this file.
+
+All the remarks for `connector.csv.url` apply for each line in the file, and especially, settings like `fileNamePattern`, `recursive`, and `fileNameFormat` all apply to each line individually.
+
+You can comment out a line in the URL file by making it start with a # sign:
+
+```
+#/path/that/will/be/ignored
+```
+
+Such a line will be ignored.
+
+For your convenience, every line in the urlfile will be trimmed - that is, any leading and trailing white space will be removed.
+
+The file should be encoded in UTF-8, and each line should be a valid URL to load.
+
+The default value is "" - which means that this property is ignored.
+
+Default: **&lt;unspecified&gt;**.
 
 <a name="connector.json"></a>
 ### Connector Json Settings
@@ -518,7 +555,7 @@ Default: **"UTF-8"**.
 
 The file name format to use when writing. This setting is ignored when reading and for non-file URLs. The file name must comply with the formatting rules of `String.format()`, and must contain a `%d` format specifier that will be used to increment file name counters.
 
-Default: **"output-%0,6d.json"**.
+Default: **"output-%06d.json"**.
 
 #### --connector.json.fileNamePattern _&lt;string&gt;_
 
@@ -569,6 +606,43 @@ Note that some Jackson features might not be supported, in particular features t
 The strategy to use for filtering out entries when formatting output. Valid values are enum constants defined in `com.fasterxml.jackson.annotation.JsonInclude.Include` (but beware that the `CUSTOM` strategy cannot be honored). Used for unloading only.
 
 Default: **"ALWAYS"**.
+
+#### --connector.json.urlfile _&lt;string&gt;_
+
+The URL or path of the file that contains the list of resources to read from.
+
+The file specified here should be located on the local filesystem.
+
+This setting and `connector.json.url` are mutually exclusive. If both are defined and non empty, this setting takes precedence over `connector.json.url`.
+
+This setting applies only when loading. When unloading, this setting should be left empty or set to null; any non-empty value will trigger a fatal error.
+
+The file with URLs should follow this format:
+
+```
+/path/to/file/file.json
+/path/to.dir/
+```
+
+Every line should contain one path. You don't need to escape paths in this file.
+
+All the remarks for `connector.csv.json` apply for each line in the file, and especially, settings like `fileNamePattern`, `recursive`, and `fileNameFormat` all apply to each line individually.
+
+You can comment out a line in the URL file by making it start with a # sign:
+
+```
+#/path/that/will/be/ignored
+```
+
+Such a line will be ignored.
+
+For your convenience, every line in the urlfile will be trimmed - that is, any leading and trailing white space will be removed.
+
+The file should be encoded in UTF-8, and each line should be a valid URL to load.
+
+The default value is "" - which means that this property is ignored.
+
+Default: **&lt;unspecified&gt;**.
 
 <a name="schema"></a>
 ## Schema Settings
@@ -752,6 +826,7 @@ The temporal pattern to use for `String` to CQL `date` conversion. Valid choices
 
 - A date-time pattern such as `yyyy-MM-dd`.
 - A pre-defined formatter such as `ISO_LOCAL_DATE`. Any public static field in `java.time.format.DateTimeFormatter` can be used.
+- The special formatter `UNITS_SINCE_EPOCH`, which is a special parser that reads and writes local dates as numbers representing time units since a given epoch; the unit and the epoch to use can be specified with `codec.unit` and `codec.timestamp`.
 
 For more information on patterns and pre-defined formatters, see [Patterns for Formatting and Parsing](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns) in Oracle Java documentation.
 
@@ -844,6 +919,7 @@ The temporal pattern to use for `String` to CQL `time` conversion. Valid choices
 
 - A date-time pattern, such as `HH:mm:ss`.
 - A pre-defined formatter, such as `ISO_LOCAL_TIME`. Any public static field in `java.time.format.DateTimeFormatter` can be used.
+- The special formatter `UNITS_SINCE_EPOCH`, which is a special parser that reads and writes local times as numbers representing time units since a given epoch; the unit and the epoch to use can be specified with `codec.unit` and `codec.timestamp`.
 
 For more information on patterns and pre-defined formatters, see [Patterns for formatting and Parsing](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns) in Oracle Java documentation.
 

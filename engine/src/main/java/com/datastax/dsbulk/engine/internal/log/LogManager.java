@@ -48,7 +48,6 @@ import com.datastax.dsbulk.executor.api.result.WriteResult;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.google.common.base.Joiner;
-import com.google.common.collect.Range;
 import com.google.common.util.concurrent.MoreExecutors;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -793,10 +792,10 @@ public class LogManager implements AutoCloseable {
   // Utility methods
 
   private static void appendToPositionsFile(
-      URI resource, List<Range<Long>> positions, PrintWriter positionsPrinter) {
+      URI resource, List<Range> positions, PrintWriter positionsPrinter) {
     positionsPrinter.print(resource);
     positionsPrinter.print(':');
-    positions.stream().findFirst().ifPresent(pos -> positionsPrinter.print(pos.upperEndpoint()));
+    positions.stream().findFirst().ifPresent(pos -> positionsPrinter.print(pos.getUpper()));
     positionsPrinter.println();
   }
 
