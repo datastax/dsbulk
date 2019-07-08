@@ -16,7 +16,6 @@ import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDOUT;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.createURLFile;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
-import static com.datastax.dsbulk.engine.DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_CRLF;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_ERROR;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_LONG;
@@ -264,6 +263,7 @@ class CSVEndToEndSimulacronIT {
         .contains("Writes: total: 10, successful: 10, failed: 0");
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
     validateQueryCount(simulacron, 10, "INSERT INTO ip_by_country", ONE);
+    Files.delete(urlFile);
   }
 
   @ParameterizedTest
@@ -498,7 +498,7 @@ class CSVEndToEndSimulacronIT {
     };
 
     int status = new DataStaxBulkLoader(args).run();
-    assertThat(status).isEqualTo(STATUS_COMPLETED_WITH_ERRORS);
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
 
     // There are 24 rows of data, but two extra queries due to the retry for the write timeout and
     // the unavailable.
@@ -545,7 +545,7 @@ class CSVEndToEndSimulacronIT {
     };
 
     int status = new DataStaxBulkLoader(args).run();
-    assertThat(status).isEqualTo(STATUS_COMPLETED_WITH_ERRORS);
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
     validateQueryCount(simulacron, 21, "INSERT INTO ip_by_country", LOCAL_ONE);
     validateNumberOfBadRecords(3);
     validateExceptionsLog(3, "Source:", "mapping-errors.log");

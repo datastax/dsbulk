@@ -318,6 +318,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(10, unloadDir);
+    Files.delete(urlFile);
   }
 
   /** Simple test case which attempts to load and unload data using ccm and compression (LZ4). */

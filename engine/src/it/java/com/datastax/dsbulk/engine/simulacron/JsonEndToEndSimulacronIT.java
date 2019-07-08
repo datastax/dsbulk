@@ -88,6 +88,7 @@ import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -214,6 +215,53 @@ class JsonEndToEndSimulacronIT {
         .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
         .contains("Writes: total: 24, successful: 24, failed: 0");
     validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", ONE);
+  }
+
+  @Test
+  void full_load_using_urlfile_when_one_http_url_is_not_working() throws IOException {
+
+    Path urlFile =
+        createURLFile(
+            Arrays.asList(
+                "http://localhost:1234/non-existing.json", JSON_RECORDS_UNIQUE.toExternalForm()));
+
+    primeIpByCountryTable(simulacron);
+    RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
+    simulacron.prime(new Prime(insert));
+
+    String[] args = {
+      "load",
+      "-c",
+      "json",
+      "--log.directory",
+      quoteJson(logDir),
+      "--connector.json.urlfile",
+      quoteJson(urlFile),
+      "--driver.query.consistency",
+      "ONE",
+      "--driver.hosts",
+      hostname,
+      "--driver.port",
+      port,
+      "--driver.pooling.local.connections",
+      "1",
+      "--schema.keyspace",
+      "ks1",
+      "--schema.query",
+      INSERT_INTO_IP_BY_COUNTRY,
+      "--schema.mapping",
+      IP_BY_COUNTRY_MAPPING_NAMED
+    };
+
+    int status = new DataStaxBulkLoader(args).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
+    assertThat(logs.getAllMessagesAsString())
+        .contains("Records: total: 25, successful: 24, failed: 1")
+        .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
+        .contains("Writes: total: 24, successful: 24, failed: 0");
+    validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", ONE);
+
+    Files.delete(urlFile);
   }
 
   @ParameterizedTest

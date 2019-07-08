@@ -30,6 +30,7 @@ import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.commons.tests.utils.URLUtils;
 import com.datastax.dsbulk.connectors.api.Field;
 import com.datastax.dsbulk.connectors.api.Record;
+import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.fasterxml.jackson.core.JsonParseException;
@@ -44,8 +45,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.io.UncheckedIOException;
+import java.net.ConnectException;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -856,6 +860,50 @@ class JsonConnectorTest {
     } finally {
       server.stop();
     }
+  }
+
+  @Test
+  void should_read_only_from_file_when_http_url_is_not_working() throws Exception {
+    // given
+    Path urlFile =
+        createURLFile(Arrays.asList("http://localhost:1234/file.json", rawURL("/single_doc.json")));
+    JsonConnector connector = new JsonConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "urlfile = %s, "
+                            + "mode = SINGLE_DOCUMENT, "
+                            + "parserFeatures = {ALLOW_COMMENTS:true}, "
+                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}",
+                        quoteJson(urlFile)))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+
+    // when
+    connector.init();
+
+    // then
+    List<Record> actual = Flux.from(connector.read()).collectList().block();
+    assert actual != null;
+    hasOneFailedRecord(actual);
+    verifyRecords(
+        actual.stream().filter(r -> r instanceof DefaultRecord).collect(Collectors.toList()));
+    connector.close();
+
+    Files.delete(urlFile);
+  }
+
+  private void hasOneFailedRecord(List<Record> actual)
+      throws URISyntaxException, MalformedURLException {
+    List<Record> failedRecords =
+        actual.stream().filter(v -> v instanceof DefaultErrorRecord).collect(Collectors.toList());
+    assertThat(failedRecords).hasSize(1);
+    DefaultErrorRecord failedRecord = (DefaultErrorRecord) failedRecords.get(0);
+    assertThat(failedRecord.getSource()).isEqualTo(new URL("http://localhost:1234/file.json"));
+    assertThat(failedRecord.getResource()).isEqualTo(new URI("http://localhost:1234/file.json"));
+    assertThat(failedRecord.getPosition()).isEqualTo(1);
+    assertThat(failedRecord.getError()).isInstanceOf(ConnectException.class);
   }
 
   @Test

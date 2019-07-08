@@ -23,6 +23,7 @@ import com.datastax.dsbulk.connectors.api.ConnectorFeature;
 import com.datastax.dsbulk.connectors.api.MappedField;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
+import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -431,6 +432,9 @@ public class JsonConnector implements Connector {
                   sink.next(record);
                 }
                 LOGGER.debug("Done reading {}", url);
+                sink.complete();
+              } catch (IOException e) {
+                sink.next(new DefaultErrorRecord(url, resource, 1, e));
                 sink.complete();
               } catch (Exception e) {
                 sink.error(new IOException(String.format("Error reading from %s", url), e));
