@@ -28,6 +28,7 @@ import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
+import com.datastax.dsbulk.commons.tests.utils.FtpUtils;
 import com.datastax.dsbulk.commons.tests.utils.URLUtils;
 import com.datastax.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.dsbulk.connectors.api.Field;
@@ -36,12 +37,14 @@ import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultIndexedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
+import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.univocity.parsers.common.TextParsingException;
 import io.undertow.util.Headers;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
@@ -1085,7 +1088,7 @@ class CSVConnectorTest {
     // then
     List<Record> actual = Flux.from(connector.read()).collectList().block();
     assert actual != null;
-    hasOneFailedRecord(actual);
+    hasOneFailedRecord(actual, "http://localhost:1234/file.csv", ConnectException.class);
     assertRecords(
         actual.stream().filter(r -> r instanceof DefaultRecord).collect(Collectors.toList()));
     connector.close();
@@ -1093,16 +1096,53 @@ class CSVConnectorTest {
     Files.delete(urlFile);
   }
 
-  private void hasOneFailedRecord(List<Record> actual)
+  @Test
+  void should_read_from_one_ftp_when_other_not_working() throws Exception {
+    // given
+    FtpUtils.FtpTestServer ftpServer =
+        FtpUtils.createFtpServer(
+            ImmutableMap.of("/file1.csv", new String(Files.readAllBytes(path("/sample.csv")))));
+
+    String notExistingFtpFile = String.format("%s/file2.csv", ftpServer.createConnectionString());
+    Path urlFile =
+        createURLFile(
+            Arrays.asList(
+                String.format("%s/file1.csv", ftpServer.createConnectionString()),
+                notExistingFtpFile));
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "urlfile = %s, normalizeLineEndingsInQuotes = true, escape = \"\\\"\", comment = \"#\"",
+                        quoteJson(urlFile)))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+
+    // when
+    connector.init();
+
+    // then
+    List<Record> actual = Flux.from(connector.read()).collectList().block();
+    assert actual != null;
+    hasOneFailedRecord(actual, notExistingFtpFile, FileNotFoundException.class);
+    assertRecords(
+        actual.stream().filter(r -> r instanceof DefaultRecord).collect(Collectors.toList()));
+    connector.close();
+
+    Files.delete(urlFile);
+  }
+
+  private void hasOneFailedRecord(List<Record> actual, String expectedUrl, Class instanceT)
       throws URISyntaxException, MalformedURLException {
     List<Record> failedRecords =
         actual.stream().filter(v -> v instanceof DefaultErrorRecord).collect(Collectors.toList());
     assertThat(failedRecords).hasSize(1);
     DefaultErrorRecord failedRecord = (DefaultErrorRecord) failedRecords.get(0);
-    assertThat(failedRecord.getSource()).isEqualTo(new URL("http://localhost:1234/file.csv"));
-    assertThat(failedRecord.getResource()).isEqualTo(new URI("http://localhost:1234/file.csv"));
+    assertThat(failedRecord.getSource()).isEqualTo(new URL(expectedUrl));
+    assertThat(failedRecord.getResource()).isEqualTo(new URI(expectedUrl));
     assertThat(failedRecord.getPosition()).isEqualTo(1);
-    assertThat(failedRecord.getError()).isInstanceOf(ConnectException.class);
+    assertThat(failedRecord.getError()).isInstanceOf(instanceT);
   }
 
   @Test
