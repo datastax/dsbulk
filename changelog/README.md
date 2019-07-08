@@ -2,13 +2,14 @@
 
 ### 1.3.4 (in progress)
 
-- [improvement] DAT-435: Make connectors accept a list of URLs when loading
 - [bug] DAT-414: DSBulk should allow INSERT queries without clustering column when all columns are static.
 - [improvement] DAT-411: Improve error message when row fails to decode.
 - [improvement] DAT-383: Show version option in DSBulk help.
 - [bug] DAT-333: Logging option "-maxErrors 0" doesn't abort the operation.
 - [improvement] DAT-431: Replace Guava's Range with a custom range implementation.
+- [improvement] DAT-435: Make connectors accept a list of URLs when loading.
 - [improvement] DAT-443: Default output file name format should not include thousands separator.
+- [improvement] DAT-428: Add support for UNITS_SINCE_EPOCH to CQL date and time.
 
 
 ### 1.3.3

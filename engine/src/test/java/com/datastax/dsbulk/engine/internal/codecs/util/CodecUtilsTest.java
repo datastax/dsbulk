@@ -111,7 +111,8 @@ class CodecUtilsTest {
             protected NumberFormat initialValue() {
               return numberFormat1;
             }
-          });
+          },
+          true);
 
   private final Map<String, Boolean> booleanInputWords =
       ImmutableMap.of("true", true, "false", false);
@@ -957,7 +958,8 @@ class CodecUtilsTest {
                   protected NumberFormat initialValue() {
                     return numberFormat1;
                   }
-                }),
+                },
+                true),
             UTC,
             EPOCH.atZone(UTC),
             newArrayList("NULL"));
