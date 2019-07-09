@@ -29,6 +29,7 @@ import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultIndexedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Streams;
 import com.google.common.reflect.TypeToken;
 import com.typesafe.config.ConfigException;
@@ -150,7 +151,7 @@ public class CSVConnector implements Connector {
   private int resourceCount;
   private CsvParserSettings parserSettings;
   private CsvWriterSettings writerSettings;
-  private AtomicInteger counter;
+  @VisibleForTesting AtomicInteger counter;
   private Scheduler scheduler;
   private List<CSVWriter> writers;
 
@@ -631,7 +632,8 @@ public class CSVConnector implements Connector {
     }
   }
 
-  private URL getOrCreateDestinationURL() {
+  @VisibleForTesting
+  URL getOrCreateDestinationURL() {
     if (!roots.isEmpty()) {
       try {
         String next = String.format(fileNameFormat, counter.incrementAndGet());

@@ -14,11 +14,13 @@ import static java.math.RoundingMode.HALF_EVEN;
 import static java.time.Instant.EPOCH;
 import static java.time.ZoneOffset.UTC;
 import static java.util.Locale.US;
+import static java.util.concurrent.TimeUnit.DAYS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import java.time.LocalDate;
+import java.time.ZonedDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -27,20 +29,32 @@ class StringToLocalDateCodecTest {
   private TemporalFormat format1 =
       CodecSettings.getTemporalFormat(
           "ISO_LOCAL_DATE",
-          null,
+          UTC,
           US,
           MILLISECONDS,
           EPOCH.atZone(UTC),
-          CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true));
+          CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true),
+          false);
 
   private TemporalFormat format2 =
       CodecSettings.getTemporalFormat(
           "yyyyMMdd",
-          null,
+          UTC,
           US,
           MILLISECONDS,
           EPOCH.atZone(UTC),
-          CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true));
+          CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true),
+          false);
+
+  private TemporalFormat format3 =
+      CodecSettings.getTemporalFormat(
+          "UNITS_SINCE_EPOCH",
+          UTC,
+          US,
+          DAYS,
+          ZonedDateTime.parse("2000-01-01T00:00:00Z"),
+          CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true),
+          false);
 
   private final List<String> nullStrings = newArrayList("NULL");
 
@@ -58,6 +72,9 @@ class StringToLocalDateCodecTest {
         .toInternal(null);
     codec = new StringToLocalDateCodec(format2, UTC, nullStrings);
     assertThat(codec).convertsFromExternal("20160724").toInternal(LocalDate.parse("2016-07-24"));
+    codec = new StringToLocalDateCodec(format3, UTC, nullStrings);
+    // 12 full days after year 2000 = 2000-01-13 (at midnight)
+    assertThat(codec).convertsFromExternal("12").toInternal(LocalDate.parse("2000-01-13"));
   }
 
   @Test
@@ -66,6 +83,8 @@ class StringToLocalDateCodecTest {
     assertThat(codec).convertsFromInternal(LocalDate.parse("2016-07-24")).toExternal("2016-07-24");
     codec = new StringToLocalDateCodec(format2, UTC, nullStrings);
     assertThat(codec).convertsFromInternal(LocalDate.parse("2016-07-24")).toExternal("20160724");
+    codec = new StringToLocalDateCodec(format3, UTC, nullStrings);
+    assertThat(codec).convertsFromInternal(LocalDate.parse("2000-01-13")).toExternal("12");
   }
 
   @Test

@@ -43,6 +43,7 @@ import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.reflect.TypeToken;
 import com.typesafe.config.ConfigException;
 import io.netty.util.concurrent.DefaultThreadFactory;
@@ -136,7 +137,7 @@ public class JsonConnector implements Connector {
   private boolean recursive;
   private String fileNameFormat;
   private int resourceCount;
-  private AtomicInteger counter;
+  @VisibleForTesting AtomicInteger counter;
   private ObjectMapper objectMapper;
   private JavaType jsonNodeMapType;
   private Map<JsonParser.Feature, Boolean> parserFeatures;
@@ -595,7 +596,8 @@ public class JsonConnector implements Connector {
     return writer;
   }
 
-  private URL getOrCreateDestinationURL() {
+  @VisibleForTesting
+  URL getOrCreateDestinationURL() {
     if (!roots.isEmpty()) {
       try {
         String next = String.format(fileNameFormat, counter.incrementAndGet());
