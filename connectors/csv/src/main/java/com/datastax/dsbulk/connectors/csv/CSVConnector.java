@@ -550,32 +550,25 @@ public class CSVConnector implements Connector {
     return records;
   }
 
-  private MappedField[] getFieldNames(URL url, ParsingContext context) {
+  private MappedField[] getFieldNames(URL url, ParsingContext context) throws IOException {
     List<String> fieldNames = new ArrayList<>();
     String[] parsedHeaders = context.parsedHeaders();
-    List<IllegalStateException> errors = new ArrayList<>();
+    List<String> errors = new ArrayList<>();
     for (int i = 0; i < parsedHeaders.length; i++) {
       String name = parsedHeaders[i];
       // DAT-427: prevent empty names and duplicated names
       if (name == null || name.isEmpty() || WHITESPACE.matcher(name).matches()) {
-        errors.add(
-            new IllegalStateException(
-                String.format("%s: found empty field name at index %d", url, i)));
+        errors.add(String.format("found empty field name at index %d", i));
       } else if (fieldNames.contains(name)) {
-        errors.add(
-            new IllegalStateException(
-                String.format("%s: found duplicate field name at index %d", url, i)));
+        errors.add(String.format("found duplicate field name at index %d", i));
       }
       fieldNames.add(name);
     }
     if (errors.isEmpty()) {
       return fieldNames.stream().map(DefaultMappedField::new).toArray(MappedField[]::new);
     } else {
-      IllegalStateException e = errors.remove(0);
-      for (IllegalStateException suppressed : errors) {
-        e.addSuppressed(suppressed);
-      }
-      throw e;
+      String msg = url + " has invalid header: " + String.join("; ", errors) + ".";
+      throw new IOException(msg);
     }
   }
 

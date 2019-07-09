@@ -1287,11 +1287,11 @@ class CSVConnectorTest {
             t -> {
               Throwable root = getRootCause(t.getCause());
               assertThat(root)
-                  .isInstanceOf(IllegalStateException.class)
-                  .hasMessageContaining("bad_header_empty.csv: found empty field name at index 1");
-              assertThat(root.getSuppressed()[0])
-                  .isInstanceOf(IllegalStateException.class)
-                  .hasMessageContaining("bad_header_empty.csv: found empty field name at index 2");
+                  .isInstanceOf(IOException.class)
+                  .hasMessageContaining(
+                      "bad_header_empty.csv has invalid header: "
+                          + "found empty field name at index 1; "
+                          + "found empty field name at index 2");
             });
     connector.close();
   }
@@ -1311,13 +1311,11 @@ class CSVConnectorTest {
             t -> {
               Throwable root = getRootCause(t.getCause());
               assertThat(root)
-                  .isInstanceOf(IllegalStateException.class)
+                  .isInstanceOf(IOException.class)
                   .hasMessageContaining(
-                      "bad_header_duplicate.csv: found duplicate field name at index 1");
-              assertThat(root.getSuppressed()[0])
-                  .isInstanceOf(IllegalStateException.class)
-                  .hasMessageContaining(
-                      "bad_header_duplicate.csv: found duplicate field name at index 2");
+                      "bad_header_duplicate.csv has invalid header: "
+                          + "found duplicate field name at index 1; "
+                          + "found duplicate field name at index 2");
             });
     connector.close();
   }
