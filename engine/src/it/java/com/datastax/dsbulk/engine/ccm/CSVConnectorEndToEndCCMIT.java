@@ -762,6 +762,47 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     validateOutputFiles(500, unloadDir);
   }
 
+  /** Test for DAT-451. */
+  @Test
+  void full_load_query_warnings() throws Exception {
+
+    assumeTrue(
+        ccm.getCassandraVersion().compareTo(V3) >= 0,
+        "Query warnings are only present in C* >= 3.0");
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--log.maxQueryWarnings");
+    args.add("1");
+    args.add("--connector.csv.url");
+    args.add(quoteJson(CSV_RECORDS));
+    args.add("--connector.csv.header");
+    args.add("true");
+    args.add("--batch.mode");
+    args.add("REPLICA_SET");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("ip_by_country");
+    args.add("--schema.mapping");
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    validateResultSetSize(500, "SELECT * FROM ip_by_country");
+    validatePositionsFile(CSV_RECORDS, 500);
+    assertThat(logs)
+        .hasMessageMatching(
+            "Query generated server-side warning: "
+                + "Unlogged batch covering \\d+ partitions detected against "
+                + "table \\[ks1.ip_by_country\\]")
+        .hasMessageContaining(
+            "The maximum number of logged query warnings has been exceeded (1); "
+                + "subsequent warnings will not be logged.");
+  }
+
   @Test
   void full_load_multiple_files_with_errors() throws Exception {
 

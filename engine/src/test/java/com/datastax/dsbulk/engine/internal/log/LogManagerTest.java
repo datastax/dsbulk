@@ -14,10 +14,11 @@ import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newColumnDefin
 import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newDefinition;
 import static com.datastax.driver.core.ProtocolVersion.V4;
 import static com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosity.EXTENDED;
-import static org.assertj.core.api.Assertions.assertThat;
+import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static org.assertj.core.api.Fail.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.slf4j.event.Level.WARN;
 
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.BoundStatement;
@@ -35,6 +36,9 @@ import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.exceptions.DriverInternalError;
 import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.driver.core.exceptions.OperationTimedOutException;
+import com.datastax.dsbulk.commons.tests.logging.LogCapture;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
@@ -53,6 +57,7 @@ import com.datastax.dsbulk.executor.api.internal.result.DefaultReadResult;
 import com.datastax.dsbulk.executor.api.internal.result.DefaultWriteResult;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
+import com.google.common.collect.ImmutableList;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
@@ -63,8 +68,10 @@ import java.util.List;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import reactor.core.publisher.Flux;
 
+@ExtendWith(LogInterceptingExtension.class)
 class LogManagerTest {
 
   private final String source1 = "line1\n";
@@ -198,6 +205,7 @@ class LogManagerTest {
             cluster,
             outputDir,
             ErrorThreshold.forAbsoluteValue(2),
+            ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -247,6 +255,7 @@ class LogManagerTest {
             cluster,
             outputDir,
             ErrorThreshold.forAbsoluteValue(0),
+            ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -288,6 +297,7 @@ class LogManagerTest {
             cluster,
             outputDir,
             ErrorThreshold.unlimited(),
+            ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -332,6 +342,7 @@ class LogManagerTest {
             cluster,
             outputDir,
             ErrorThreshold.forAbsoluteValue(2),
+            ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -373,6 +384,7 @@ class LogManagerTest {
             cluster,
             outputDir,
             ErrorThreshold.forAbsoluteValue(2),
+            ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -433,6 +445,7 @@ class LogManagerTest {
             cluster,
             outputDir,
             ErrorThreshold.forRatio(0.2f, 100),
+            ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -487,6 +500,7 @@ class LogManagerTest {
             cluster,
             outputDir,
             ErrorThreshold.forAbsoluteValue(1),
+            ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -544,6 +558,7 @@ class LogManagerTest {
             cluster,
             outputDir,
             ErrorThreshold.forAbsoluteValue(2),
+            ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -581,6 +596,7 @@ class LogManagerTest {
             cluster,
             outputDir,
             ErrorThreshold.forAbsoluteValue(2),
+            ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -619,6 +635,7 @@ class LogManagerTest {
             cluster,
             outputDir,
             ErrorThreshold.forAbsoluteValue(2),
+            ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -657,6 +674,7 @@ class LogManagerTest {
             cluster,
             outputDir,
             ErrorThreshold.forRatio(0.01f, 100),
+            ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -691,6 +709,7 @@ class LogManagerTest {
             cluster,
             outputDir,
             ErrorThreshold.forRatio(0.01f, 100),
+            ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -704,7 +723,7 @@ class LogManagerTest {
           .blockLast();
       fail("Expecting TooManyErrorsException to be thrown");
     } catch (TooManyErrorsException e) {
-      assertThat(e).hasMessage("Too many errors, the maximum percentage allowed is 1.0%.");
+      assertThat(e).hasMessage("Too many errors, the maximum allowed is 1%.");
       assertThat(((RatioErrorThreshold) e.getThreshold()).getMaxErrorRatio()).isEqualTo(0.01f);
     }
     logManager.close();
@@ -726,6 +745,7 @@ class LogManagerTest {
             cluster,
             outputDir,
             ErrorThreshold.forAbsoluteValue(1000),
+            ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -775,6 +795,7 @@ class LogManagerTest {
             cluster,
             outputDir,
             ErrorThreshold.forAbsoluteValue(2),
+            ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -828,6 +849,7 @@ class LogManagerTest {
             cluster,
             outputDir,
             ErrorThreshold.forAbsoluteValue(2),
+            ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -863,6 +885,78 @@ class LogManagerTest {
         .contains("c1: 2")
         .containsOnlyOnce("INSERT INTO 3")
         .contains("c1: 3");
+  }
+
+  @Test
+  void should_log_query_warnings_when_reading(
+      @LogCapture(value = LogManager.class, level = WARN) LogInterceptor logs) throws Exception {
+    Path outputDir = Files.createTempDirectory("test");
+    LogManager logManager =
+        new LogManager(
+            WorkflowType.UNLOAD,
+            cluster,
+            outputDir,
+            ErrorThreshold.forAbsoluteValue(100),
+            ErrorThreshold.forAbsoluteValue(1),
+            statementFormatter,
+            EXTENDED,
+            rowFormatter);
+    logManager.init();
+    ExecutionInfo info1 = mock(ExecutionInfo.class);
+    when(info1.getWarnings()).thenReturn(ImmutableList.of("warning1", "warning2"));
+    ExecutionInfo info2 = mock(ExecutionInfo.class);
+    when(info2.getWarnings()).thenReturn(ImmutableList.of("warning3"));
+    Flux.just(
+            new DefaultReadResult(new SimpleStatement("SELECT 1"), info1, mockRow(1)),
+            new DefaultReadResult(new SimpleStatement("SELECT 2"), info2, mockRow(2)))
+        .transform(logManager.newQueryWarningsHandler())
+        .blockLast();
+    logManager.close();
+    assertThat(logs)
+        .hasMessageContaining("Query generated server-side warning: warning1")
+        .doesNotHaveMessageContaining("warning2")
+        .doesNotHaveMessageContaining("warning3")
+        .hasMessageContaining(
+            "The maximum number of logged query warnings has been exceeded (1); "
+                + "subsequent warnings will not be logged.");
+  }
+
+  @Test
+  void should_log_query_warnings_when_writing(
+      @LogCapture(value = LogManager.class, level = WARN) LogInterceptor logs) throws Exception {
+    Path outputDir = Files.createTempDirectory("test");
+    LogManager logManager =
+        new LogManager(
+            WorkflowType.UNLOAD,
+            cluster,
+            outputDir,
+            ErrorThreshold.forAbsoluteValue(100),
+            ErrorThreshold.forAbsoluteValue(1),
+            statementFormatter,
+            EXTENDED,
+            rowFormatter);
+    logManager.init();
+    ExecutionInfo info1 = mock(ExecutionInfo.class);
+    when(info1.getWarnings()).thenReturn(ImmutableList.of("warning1", "warning2"));
+    ResultSet rs1 = mock(ResultSet.class);
+    when(rs1.getExecutionInfo()).thenReturn(info1);
+    ExecutionInfo info2 = mock(ExecutionInfo.class);
+    when(info2.getWarnings()).thenReturn(ImmutableList.of("warning3"));
+    ResultSet rs2 = mock(ResultSet.class);
+    when(rs2.getExecutionInfo()).thenReturn(info2);
+    Flux.just(
+            new DefaultWriteResult(new SimpleStatement("SELECT 1"), rs1),
+            new DefaultWriteResult(new SimpleStatement("SELECT 2"), rs2))
+        .transform(logManager.newQueryWarningsHandler())
+        .blockLast();
+    logManager.close();
+    assertThat(logs)
+        .hasMessageContaining("Query generated server-side warning: warning1")
+        .doesNotHaveMessageContaining("warning2")
+        .doesNotHaveMessageContaining("warning3")
+        .hasMessageContaining(
+            "The maximum number of logged query warnings has been exceeded (1); "
+                + "subsequent warnings will not be logged.");
   }
 
   private static Row mockRow(int value) {

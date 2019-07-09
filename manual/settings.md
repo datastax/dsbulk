@@ -771,7 +771,7 @@ Default: **null**.
 
 The maximum number of statements that a batch can contain. The ideal value depends on two factors:
 - The data being loaded: the larger the data, the smaller the batches should be.
-- The batch mode: when `PARTITION_KEY` is used, larger batches are acceptable, whereas when `REPLICA_SET` is used, smaller batches usually perform better.
+- The batch mode: when `PARTITION_KEY` is used, larger batches are acceptable, whereas when `REPLICA_SET` is used, smaller batches usually perform better. Also, when using `REPLICA_SET`, it is preferrable to keep this number below the threshold configured server-side for the setting `unlogged_batch_across_partitions_warn_threshold` (the default is 10); failing to do so is likely to trigger query warnings (see `log.maxQueryWarnings` for more information).
 When set to a value lesser than or equal to zero, the maximum number of statements is considered unlimited. At least one of `maxBatchStatements` or `maxSizeInBytes` must be set to a positive value when batching is enabled.
 
 Default: **32**.
@@ -1438,6 +1438,12 @@ Whether or not to use ANSI colors and other escape sequences in log messages pri
 Note to Windows users: ANSI support on Windows works best when the Microsoft Visual C++ 2008 SP1 Redistributable Package is installed; you can download it [here](https://www.microsoft.com/en-us/download/details.aspx?displaylang=en&id=5582).
 
 Default: **"normal"**.
+
+#### --log.maxQueryWarnings _&lt;number&gt;_
+
+The maximum number of query warnings to log before muting them. Query warnings are sent by the server (for example, if the number of statements in a batch is greater than the warning threshold configured on the server). They are useful to diagnose suboptimal configurations but tend to be too invasive, which is why DSBulk by default will only log the 50 first query warnings; any subsequent warnings will be muted and won't be logged at all. Setting this value to any negative integer disables this feature (not recommended).
+
+Default: **50**.
 
 #### --log.row.maxResultSetValueLength _&lt;number&gt;_
 
