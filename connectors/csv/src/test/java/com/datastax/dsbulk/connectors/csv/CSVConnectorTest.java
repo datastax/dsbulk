@@ -1270,6 +1270,19 @@ class CSVConnectorTest {
   }
 
   @Test
+  void should_throw_exception_when_maxRecords_not_number() {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxRecords = NotANumber")
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    assertThatThrownBy(() -> connector.configure(settings, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("Invalid value for connector.csv.maxRecords: Expecting NUMBER, got STRING");
+    connector.close();
+  }
+
+  @Test
   void should_throw_exception_when_buffer_size_not_valid() {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
@@ -1291,19 +1304,6 @@ class CSVConnectorTest {
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
             "Invalid value for connector.csv.flushWindow: Expecting integer > 0, got: 0");
-  }
-
-  @Test
-  void should_throw_exception_when_maxRecords_not_number() {
-    CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxRecords = NotANumber")
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
-    assertThatThrownBy(() -> connector.configure(settings, false))
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for connector.csv.maxRecords: Expecting NUMBER, got STRING");
-    connector.close();
   }
 
   @Test
