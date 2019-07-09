@@ -1284,11 +1284,15 @@ class CSVConnectorTest {
     connector.init();
     assertThatThrownBy(() -> Flux.from(connector.read()).collectList().block())
         .satisfies(
-            t ->
-                assertThat(getRootCause(t.getCause()))
-                    .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining(
-                        "bad_header_empty.csv: found empty field name at index 1"));
+            t -> {
+              Throwable root = getRootCause(t.getCause());
+              assertThat(root)
+                  .isInstanceOf(IllegalStateException.class)
+                  .hasMessageContaining("bad_header_empty.csv: found empty field name at index 1");
+              assertThat(root.getSuppressed()[0])
+                  .isInstanceOf(IllegalStateException.class)
+                  .hasMessageContaining("bad_header_empty.csv: found empty field name at index 2");
+            });
     connector.close();
   }
 
@@ -1304,11 +1308,17 @@ class CSVConnectorTest {
     connector.init();
     assertThatThrownBy(() -> Flux.from(connector.read()).collectList().block())
         .satisfies(
-            t ->
-                assertThat(getRootCause(t.getCause()))
-                    .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining(
-                        "bad_header_duplicate.csv: found duplicate field name at index 1"));
+            t -> {
+              Throwable root = getRootCause(t.getCause());
+              assertThat(root)
+                  .isInstanceOf(IllegalStateException.class)
+                  .hasMessageContaining(
+                      "bad_header_duplicate.csv: found duplicate field name at index 1");
+              assertThat(root.getSuppressed()[0])
+                  .isInstanceOf(IllegalStateException.class)
+                  .hasMessageContaining(
+                      "bad_header_duplicate.csv: found duplicate field name at index 2");
+            });
     connector.close();
   }
 

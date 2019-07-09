@@ -553,20 +553,30 @@ public class CSVConnector implements Connector {
   private MappedField[] getFieldNames(URL url, ParsingContext context) {
     List<String> fieldNames = new ArrayList<>();
     String[] parsedHeaders = context.parsedHeaders();
+    List<IllegalStateException> errors = new ArrayList<>();
     for (int i = 0; i < parsedHeaders.length; i++) {
       String name = parsedHeaders[i];
       // DAT-427: prevent empty names and duplicated names
       if (name == null || name.isEmpty() || WHITESPACE.matcher(name).matches()) {
-        throw new IllegalStateException(
-            String.format("%s: found empty field name at index %d", url, i));
-      }
-      if (fieldNames.contains(name)) {
-        throw new IllegalStateException(
-            String.format("%s: found duplicate field name at index %d", url, i));
+        errors.add(
+            new IllegalStateException(
+                String.format("%s: found empty field name at index %d", url, i)));
+      } else if (fieldNames.contains(name)) {
+        errors.add(
+            new IllegalStateException(
+                String.format("%s: found duplicate field name at index %d", url, i)));
       }
       fieldNames.add(name);
     }
-    return fieldNames.stream().map(DefaultMappedField::new).toArray(MappedField[]::new);
+    if (errors.isEmpty()) {
+      return fieldNames.stream().map(DefaultMappedField::new).toArray(MappedField[]::new);
+    } else {
+      IllegalStateException e = errors.remove(0);
+      for (IllegalStateException suppressed : errors) {
+        e.addSuppressed(suppressed);
+      }
+      throw e;
+    }
   }
 
   private Flux<URL> scanRootDirectory(Path root) {
