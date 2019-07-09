@@ -106,7 +106,7 @@ class LogSettingsTest {
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "test");
     settings.init();
-    ErrorThreshold threshold = settings.getErrorThreshold();
+    ErrorThreshold threshold = settings.errorThreshold;
     assertThat(threshold).isInstanceOf(AbsoluteErrorThreshold.class);
     assertThat(((AbsoluteErrorThreshold) threshold).getMaxErrors()).isEqualTo(20);
   }
@@ -119,7 +119,7 @@ class LogSettingsTest {
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "test");
     settings.init();
-    ErrorThreshold threshold = settings.getErrorThreshold();
+    ErrorThreshold threshold = settings.errorThreshold;
     assertThat(threshold).isInstanceOf(RatioErrorThreshold.class);
     assertThat(((RatioErrorThreshold) threshold).getMaxErrorRatio()).isEqualTo(0.2f);
     // min sample is fixed and cannot be changed by the user currently
@@ -134,7 +134,7 @@ class LogSettingsTest {
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "test");
     settings.init();
-    ErrorThreshold threshold = settings.getErrorThreshold();
+    ErrorThreshold threshold = settings.errorThreshold;
     assertThat(threshold).isInstanceOf(UnlimitedErrorThreshold.class);
   }
 
@@ -416,5 +416,42 @@ class LogSettingsTest {
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
             "Invalid value at 'stmt.level': Expecting one of ABRIDGED, NORMAL, EXTENDED, got 'NotALevel'");
+  }
+
+  @Test()
+  void should_accept_maxQueryWarnings_as_absolute_number() throws IOException {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxQueryWarnings = 20")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LogSettings settings = new LogSettings(config, "test");
+    settings.init();
+    ErrorThreshold threshold = settings.queryWarningsThreshold;
+    assertThat(threshold).isInstanceOf(AbsoluteErrorThreshold.class);
+    assertThat(((AbsoluteErrorThreshold) threshold).getMaxErrors()).isEqualTo(20);
+  }
+
+  @Test()
+  void should_not_accept_maxQueryWarnings_as_percentage() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxQueryWarnings = 20%")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LogSettings settings = new LogSettings(config, "test");
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("Invalid value for log.maxQueryWarnings: Expecting NUMBER, got STRING");
+  }
+
+  @Test()
+  void should_disable_maxQueryWarnings() throws IOException {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxQueryWarnings = -42")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LogSettings settings = new LogSettings(config, "test");
+    settings.init();
+    ErrorThreshold threshold = settings.queryWarningsThreshold;
+    assertThat(threshold).isInstanceOf(UnlimitedErrorThreshold.class);
   }
 }

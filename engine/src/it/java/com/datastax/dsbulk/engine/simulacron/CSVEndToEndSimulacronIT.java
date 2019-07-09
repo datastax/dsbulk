@@ -577,7 +577,7 @@ class CSVEndToEndSimulacronIT {
     int status = new DataStaxBulkLoader(args).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_TOO_MANY_ERRORS);
     assertThat(logs.getAllMessagesAsString())
-        .contains("aborted: Too many errors, the maximum percentage allowed is 1.0%");
+        .contains("aborted: Too many errors, the maximum allowed is 1%");
   }
 
   @Test

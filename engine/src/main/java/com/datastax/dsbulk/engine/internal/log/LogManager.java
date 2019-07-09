@@ -23,6 +23,7 @@ import ch.qos.logback.classic.spi.ThrowableProxy;
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.CodecRegistry;
+import com.datastax.driver.core.ExecutionInfo;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.exceptions.BusyConnectionException;
@@ -96,12 +97,16 @@ public class LogManager implements AutoCloseable {
   private final Cluster cluster;
   private final Path executionDirectory;
   private final ErrorThreshold errorThreshold;
+  private final ErrorThreshold queryWarningsThreshold;
   private final StatementFormatter statementFormatter;
   private final StatementFormatVerbosity statementFormatVerbosity;
   private final RowFormatter rowFormatter;
 
   private final AtomicInteger errors = new AtomicInteger(0);
   private final LongAdder totalItems = new LongAdder();
+
+  private final AtomicInteger queryWarnings = new AtomicInteger(0);
+  private final AtomicBoolean queryWarningsEnabled = new AtomicBoolean(true);
 
   private final LoadingCache<Path, PrintWriter> openFiles =
       Caffeine.newBuilder()
@@ -136,6 +141,7 @@ public class LogManager implements AutoCloseable {
       Cluster cluster,
       Path executionDirectory,
       ErrorThreshold errorThreshold,
+      ErrorThreshold queryWarningsThreshold,
       StatementFormatter statementFormatter,
       StatementFormatVerbosity statementFormatVerbosity,
       RowFormatter rowFormatter) {
@@ -143,6 +149,7 @@ public class LogManager implements AutoCloseable {
     this.cluster = cluster;
     this.executionDirectory = executionDirectory;
     this.errorThreshold = errorThreshold;
+    this.queryWarningsThreshold = queryWarningsThreshold;
     this.statementFormatter = statementFormatter;
     this.statementFormatVerbosity = statementFormatVerbosity;
     this.rowFormatter = rowFormatter;
@@ -472,6 +479,25 @@ public class LogManager implements AutoCloseable {
                 })
             .<ReadResult>dematerialize()
             .filter(Result::isSuccess);
+  }
+  /**
+   * Handler for query warnings.
+   *
+   * <p>Used by all workflows.
+   *
+   * <p>Increments the number of query warnings; if the threshold is exceeded, logs one last warning
+   * than mutes subsequent query warnings.
+   *
+   * @return a handler for for query warnings.
+   */
+  public <T extends Result> Function<Flux<T>, Flux<T>> newQueryWarningsHandler() {
+    return upstream ->
+        upstream.doOnNext(
+            result -> {
+              if (queryWarningsEnabled.get()) {
+                result.getExecutionInfo().ifPresent(this::maybeLogQueryWarnings);
+              }
+            });
   }
 
   /**
@@ -812,6 +838,24 @@ public class LogManager implements AutoCloseable {
         LOGGER.warn(
             "At least 1 record does not match the provided schema.mapping or schema.query. "
                 + "Please check that the connector configuration and the schema configuration are correct.");
+      }
+    }
+  }
+
+  private void maybeLogQueryWarnings(ExecutionInfo info) {
+    if (info.getWarnings() != null) {
+      for (String warning : info.getWarnings()) {
+        if (queryWarningsThreshold.checkThresholdExceeded(
+            queryWarnings.incrementAndGet(), totalItems)) {
+          queryWarningsEnabled.set(false);
+          LOGGER.warn(
+              "The maximum number of logged query warnings has been exceeded ({}); "
+                  + "subsequent warnings will not be logged.",
+              queryWarningsThreshold.thresholdAsString());
+          break;
+        } else {
+          LOGGER.warn("Query generated server-side warning: " + warning);
+        }
       }
     }
   }
