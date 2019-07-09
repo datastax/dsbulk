@@ -360,7 +360,7 @@ Default: **"\\"**.
 
 The file name format to use when writing. This setting is ignored when reading and for non-file URLs. The file name must comply with the formatting rules of `String.format()`, and must contain a `%d` format specifier that will be used to increment file name counters.
 
-Default: **"output-%0,6d.csv"**.
+Default: **"output-%06d.csv"**.
 
 #### --connector.csv.fileNamePattern _&lt;string&gt;_
 
@@ -543,7 +543,7 @@ Default: **"UTF-8"**.
 
 The file name format to use when writing. This setting is ignored when reading and for non-file URLs. The file name must comply with the formatting rules of `String.format()`, and must contain a `%d` format specifier that will be used to increment file name counters.
 
-Default: **"output-%0,6d.json"**.
+Default: **"output-%06d.json"**.
 
 #### --connector.json.fileNamePattern _&lt;string&gt;_
 
@@ -814,6 +814,7 @@ The temporal pattern to use for `String` to CQL `date` conversion. Valid choices
 
 - A date-time pattern such as `yyyy-MM-dd`.
 - A pre-defined formatter such as `ISO_LOCAL_DATE`. Any public static field in `java.time.format.DateTimeFormatter` can be used.
+- The special formatter `UNITS_SINCE_EPOCH`, which is a special parser that reads and writes local dates as numbers representing time units since a given epoch; the unit and the epoch to use can be specified with `codec.unit` and `codec.timestamp`.
 
 For more information on patterns and pre-defined formatters, see [Patterns for Formatting and Parsing](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns) in Oracle Java documentation.
 
@@ -906,6 +907,7 @@ The temporal pattern to use for `String` to CQL `time` conversion. Valid choices
 
 - A date-time pattern, such as `HH:mm:ss`.
 - A pre-defined formatter, such as `ISO_LOCAL_TIME`. Any public static field in `java.time.format.DateTimeFormatter` can be used.
+- The special formatter `UNITS_SINCE_EPOCH`, which is a special parser that reads and writes local times as numbers representing time units since a given epoch; the unit and the epoch to use can be specified with `codec.unit` and `codec.timestamp`.
 
 For more information on patterns and pre-defined formatters, see [Patterns for formatting and Parsing](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns) in Oracle Java documentation.
 
