@@ -20,4 +20,9 @@ public class UnlimitedErrorThreshold implements ErrorThreshold {
   public boolean checkThresholdExceeded(long errorCount, @NotNull Number totalItems) {
     return false;
   }
+
+  @Override
+  public String thresholdAsString() {
+    return "unlimited";
+  }
 }
