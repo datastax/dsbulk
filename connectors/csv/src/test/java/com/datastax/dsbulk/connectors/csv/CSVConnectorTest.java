@@ -48,7 +48,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
-import java.io.UncheckedIOException;
 import java.net.ConnectException;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -1158,7 +1157,6 @@ class CSVConnectorTest {
     connector.init();
     assertThatThrownBy(
             () -> Flux.fromIterable(createRecords()).transform(connector.write()).blockLast())
-        .isInstanceOf(UncheckedIOException.class)
         .hasCauseInstanceOf(IOException.class)
         .hasRootCauseInstanceOf(IllegalArgumentException.class)
         .satisfies(
@@ -1269,6 +1267,30 @@ class CSVConnectorTest {
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage("Invalid value for connector.csv.skipRecords: Expecting NUMBER, got STRING");
     connector.close();
+  }
+
+  @Test
+  void should_throw_exception_when_buffer_size_not_valid() {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(ConfigFactory.parseString("flushWindow = notANumber"))
+            .withFallback(CONNECTOR_DEFAULT_SETTINGS);
+    assertThatThrownBy(() -> connector.configure(settings, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining(
+            "Invalid value for connector.csv.flushWindow: Expecting NUMBER, got STRING");
+  }
+
+  @Test
+  void should_throw_exception_when_buffer_size_negative_or_zero() {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(ConfigFactory.parseString("flushWindow = 0"))
+            .withFallback(CONNECTOR_DEFAULT_SETTINGS);
+    assertThatThrownBy(() -> connector.configure(settings, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining(
+            "Invalid value for connector.csv.flushWindow: Expecting integer > 0, got: 0");
   }
 
   @Test
