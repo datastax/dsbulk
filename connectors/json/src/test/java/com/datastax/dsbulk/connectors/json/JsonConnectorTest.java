@@ -47,7 +47,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
-import java.io.UncheckedIOException;
 import java.net.ConnectException;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -61,6 +60,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.assertj.core.util.Throwables;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -802,9 +802,9 @@ class JsonConnectorTest {
           .satisfies(
               t ->
                   assertThat(
-                          t.getCause() instanceof FileAlreadyExistsException
+                          getRootCause(t) instanceof FileAlreadyExistsException
                               || Arrays.stream(t.getSuppressed())
-                                  .map(Throwable::getCause)
+                                  .map(Throwables::getRootCause)
                                   .anyMatch(FileAlreadyExistsException.class::isInstance))
                       .isTrue());
       connector.close();
@@ -962,7 +962,6 @@ class JsonConnectorTest {
     connector.init();
     assertThatThrownBy(
             () -> Flux.fromIterable(createRecords()).transform(connector.write()).blockLast())
-        .isInstanceOf(UncheckedIOException.class)
         .hasCauseInstanceOf(IOException.class)
         .hasRootCauseInstanceOf(IllegalArgumentException.class)
         .satisfies(

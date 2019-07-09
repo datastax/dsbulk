@@ -63,6 +63,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.assertj.core.util.Throwables;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -1029,9 +1030,9 @@ class CSVConnectorTest {
           .satisfies(
               t ->
                   assertThat(
-                          t.getCause() instanceof FileAlreadyExistsException
+                          getRootCause(t) instanceof FileAlreadyExistsException
                               || Arrays.stream(t.getSuppressed())
-                                  .map(Throwable::getCause)
+                                  .map(Throwables::getRootCause)
                                   .anyMatch(FileAlreadyExistsException.class::isInstance))
                       .isTrue());
       connector.close();

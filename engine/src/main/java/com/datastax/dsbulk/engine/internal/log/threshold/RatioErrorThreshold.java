@@ -8,6 +8,7 @@
  */
 package com.datastax.dsbulk.engine.internal.log.threshold;
 
+import java.text.DecimalFormat;
 import org.jetbrains.annotations.NotNull;
 
 public class RatioErrorThreshold implements ErrorThreshold {
@@ -34,6 +35,11 @@ public class RatioErrorThreshold implements ErrorThreshold {
       return currentRatio > maxErrorRatio;
     }
     return false;
+  }
+
+  @Override
+  public String thresholdAsString() {
+    return new DecimalFormat("#.##%").format(maxErrorRatio);
   }
 
   public float getMaxErrorRatio() {
