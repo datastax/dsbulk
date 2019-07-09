@@ -11,6 +11,7 @@
 - [improvement] DAT-443: Default output file name format should not include thousands separator.
 - [improvement] DAT-428: Add support for UNITS_SINCE_EPOCH to CQL date and time.
 - [improvement] DAT-451: Driver query warnings should not spam the console.
+- [improvement] DAT-430: Write records by batches.
 
 
 ### 1.3.3

@@ -368,6 +368,12 @@ The glob pattern to use when searching for files to read. The syntax to use is t
 
 Default: **"\*\*/\*.csv"**.
 
+#### --connector.csv.flushWindow _&lt;number&gt;_
+
+The flush window size, that is, the number of records to flush to disk or network in a single pass. Only applicable when unloading. The ideal buffer size depends on the size of the rows being unloaded: larger buffer sizes may have a positive impact on throughput for small rows, and vice versa.
+
+Default: **32**.
+
 #### --connector.csv.ignoreLeadingWhitespaces _&lt;boolean&gt;_
 
 Defines whether or not leading whitespaces from values being read/written should be skipped. This setting is honored when reading and writing. Default value is false.
@@ -550,6 +556,12 @@ Default: **"output-%06d.json"**.
 The glob pattern to use when searching for files to read. The syntax to use is the glob syntax, as described in `java.nio.file.FileSystem.getPathMatcher()`. This setting is ignored when writing and for non-file URLs. Only applicable when the *url* setting points to a directory on a known filesystem, ignored otherwise.
 
 Default: **"\*\*/\*.json"**.
+
+#### --connector.json.flushWindow _&lt;number&gt;_
+
+The flush window size, that is, the number of records to flush to disk or network in a single pass. Only applicable when unloading. The ideal buffer size depends on the size of the rows being unloaded: larger buffer sizes may have a positive impact on throughput for small rows, and vice versa.
+
+Default: **32**.
 
 #### --connector.json.generatorFeatures _&lt;map&lt;string,boolean&gt;&gt;_
 
