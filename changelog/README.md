@@ -1,5 +1,10 @@
 ## Changelog
 
+### 1.2.1 (in progress)
+
+- [task] DAT-456: Update jackson-databind to 2.9.9.1 to fix CVE-2019-12814.
+
+
 ### 1.2.0
 
 - [bug] DAT-302: CsvWriter trims leading/trailing spaces in values.
