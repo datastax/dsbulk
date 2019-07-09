@@ -54,7 +54,7 @@ public class ConsoleReporter extends ScheduledReporter {
   private final Supplier<Long> failed;
   private final Timer timer;
   @Nullable private final Meter bytes;
-  private final Histogram batchSizes;
+  @Nullable private final Histogram batchSizes;
   private final InterceptingPrintStream stderr;
   private final String rateUnit;
   private final String durationUnit;
@@ -66,7 +66,7 @@ public class ConsoleReporter extends ScheduledReporter {
       Supplier<Long> failed,
       Timer timer,
       @Nullable Meter bytes,
-      Histogram batchSizes,
+      @Nullable Histogram batchSizes,
       TimeUnit rateUnit,
       TimeUnit durationUnit,
       long expectedTotal,
