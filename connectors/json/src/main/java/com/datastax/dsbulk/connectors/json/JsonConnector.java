@@ -12,8 +12,6 @@ import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.getURLsFro
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isPathAbsentOrEmpty;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isPathPresentAndNotEmpty;
 
-import static com.datastax.dsbulk.commons.internal.io.IOUtils.countReadableFiles;
-
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
