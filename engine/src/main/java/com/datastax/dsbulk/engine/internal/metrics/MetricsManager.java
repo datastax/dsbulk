@@ -101,6 +101,7 @@ public class MetricsManager implements AutoCloseable {
       TimeUnit durationUnit,
       long expectedWrites,
       long expectedReads,
+      boolean trackBytes,
       boolean jmx,
       boolean csv,
       Path executionDirectory,
@@ -114,7 +115,8 @@ public class MetricsManager implements AutoCloseable {
         .getMetrics()
         .forEach((name, metric) -> this.registry.register("driver/" + name, metric));
     this.listener =
-        new MetricsCollectingExecutionListener(registry, protocolVersion, codecRegistry);
+        new MetricsCollectingExecutionListener(
+            registry, protocolVersion, codecRegistry, trackBytes);
     this.workflowType = workflowType;
     this.executionId = executionId;
     this.scheduler = scheduler;
@@ -365,7 +367,7 @@ public class MetricsManager implements AutoCloseable {
               () -> totalRecords.getCount(),
               () -> failedRecords.getCount() + listener.getFailedWritesCounter().getCount(),
               listener.getTotalWritesTimer(),
-              listener.getBytesSentMeter(),
+              listener.getBytesSentMeter().orElse(null),
               batchingEnabled ? registry.histogram("batches/size") : null,
               SECONDS,
               MILLISECONDS,
@@ -379,7 +381,7 @@ public class MetricsManager implements AutoCloseable {
               () -> listener.getTotalReadsTimer().getCount(),
               () -> failedRecords.getCount() + listener.getFailedReadsCounter().getCount(),
               listener.getTotalReadsTimer(),
-              listener.getBytesReceivedMeter(),
+              listener.getBytesReceivedMeter().orElse(null),
               null,
               SECONDS,
               MILLISECONDS,

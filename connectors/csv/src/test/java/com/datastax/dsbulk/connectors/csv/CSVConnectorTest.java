@@ -8,13 +8,13 @@
  */
 package com.datastax.dsbulk.connectors.csv;
 
+import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.createURLFile;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readFile;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static java.nio.charset.StandardCharsets.ISO_8859_1;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.util.Throwables.getRootCause;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -1364,6 +1364,54 @@ class CSVConnectorTest {
             t ->
                 assertThat(getRootCause(t))
                     .hasMessageContaining("Stream is not in the BZip2 format"));
+    connector.close();
+  }
+
+  /** Test for DAT-427. */
+  @Test
+  void should_reject_header_with_empty_field() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("url = " + url("/bad_header_empty.csv"))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    assertThatThrownBy(() -> Flux.from(connector.read()).collectList().block())
+        .satisfies(
+            t -> {
+              Throwable root = getRootCause(t.getCause());
+              assertThat(root)
+                  .isInstanceOf(IOException.class)
+                  .hasMessageContaining(
+                      "bad_header_empty.csv has invalid header: "
+                          + "found empty field name at index 1; "
+                          + "found empty field name at index 2");
+            });
+    connector.close();
+  }
+
+  /** Test for DAT-427. */
+  @Test
+  void should_reject_header_with_duplicate_field() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("url = " + url("/bad_header_duplicate.csv"))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    assertThatThrownBy(() -> Flux.from(connector.read()).collectList().block())
+        .satisfies(
+            t -> {
+              Throwable root = getRootCause(t.getCause());
+              assertThat(root)
+                  .isInstanceOf(IOException.class)
+                  .hasMessageContaining(
+                      "bad_header_duplicate.csv has invalid header: "
+                          + "found duplicate field name at index 1; "
+                          + "found duplicate field name at index 2");
+            });
     connector.close();
   }
 
