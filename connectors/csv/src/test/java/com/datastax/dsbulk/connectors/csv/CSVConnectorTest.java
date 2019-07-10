@@ -1136,6 +1136,18 @@ class CSVConnectorTest {
     ftpServer.close();
   }
 
+  private void hasOneFailedRecordWithExceptionMessage(
+      List<Record> actual, String expectedMessage, Class throwableClass) {
+    List<ErrorRecord> failedRecords =
+        actual.stream()
+            .filter(ErrorRecord.class::isInstance)
+            .map(ErrorRecord.class::cast)
+            .collect(Collectors.toList());
+
+    assertThat(failedRecords.get(0).getError()).isInstanceOf(throwableClass);
+    assertThat(failedRecords.get(0).getError().getMessage().contains(expectedMessage));
+  }
+
   private void hasOneFailedRecord(List<Record> actual, String expectedUrl, Class instanceT)
       throws URISyntaxException, MalformedURLException {
     List<ErrorRecord> failedRecords =
@@ -1373,17 +1385,14 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThatThrownBy(() -> Flux.from(connector.read()).collectList().block())
-        .satisfies(
-            t -> {
-              Throwable root = getRootCause(t.getCause());
-              assertThat(root)
-                  .isInstanceOf(IOException.class)
-                  .hasMessageContaining(
-                      "bad_header_empty.csv has invalid header: "
-                          + "found empty field name at index 1; "
-                          + "found empty field name at index 2");
-            });
+    List<Record> records = Flux.from(connector.read()).collectList().block();
+    assert records != null;
+    hasOneFailedRecordWithExceptionMessage(
+        records,
+        "bad_header_empty.csv has invalid header: "
+            + "found empty field name at index 1; "
+            + "found empty field name at index 2",
+        IOException.class);
     connector.close();
   }
 
@@ -1397,17 +1406,14 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThatThrownBy(() -> Flux.from(connector.read()).collectList().block())
-        .satisfies(
-            t -> {
-              Throwable root = getRootCause(t.getCause());
-              assertThat(root)
-                  .isInstanceOf(IOException.class)
-                  .hasMessageContaining(
-                      "bad_header_duplicate.csv has invalid header: "
-                          + "found duplicate field name at index 1; "
-                          + "found duplicate field name at index 2");
-            });
+    List<Record> records = Flux.from(connector.read()).collectList().block();
+    assert records != null;
+    hasOneFailedRecordWithExceptionMessage(
+        records,
+        "bad_header_duplicate.csv has invalid header: "
+            + "found duplicate field name at index 1; "
+            + "found duplicate field name at index 2",
+        IOException.class);
     connector.close();
   }
 
