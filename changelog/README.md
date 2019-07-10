@@ -12,6 +12,10 @@
 - [improvement] DAT-428: Add support for UNITS_SINCE_EPOCH to CQL date and time.
 - [improvement] DAT-451: Driver query warnings should not spam the console.
 - [improvement] DAT-430: Write records by batches.
+- [task] DAT-455: Update jackson-databind to 2.9.9.1 to fix CVE-2019-12814.
+- [improvement] DAT-432: Ability to disable bytes/sec metrics.
+- [bug] DAT-427: DSBulk should handle empty column names in CSV headers.
+- [bug] DAT-427: DSBulk should handle empty or duplicate column names in CSV headers.
 - [improvement] DAT-447: Do not consider IOException as fatal when loading
 
 

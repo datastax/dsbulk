@@ -11,149 +11,108 @@ package com.datastax.dsbulk.executor.api.listener;
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.mockito.Mockito.when;
 import static org.slf4j.event.Level.DEBUG;
 
-import ch.qos.logback.classic.Level;
-import com.codahale.metrics.Counter;
-import com.codahale.metrics.Timer;
 import com.datastax.dsbulk.commons.log.LogSink;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
-import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
-import org.junit.jupiter.api.Test;
+import java.util.Optional;
+import java.util.stream.Stream;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@ExtendWith(MockitoExtension.class)
 @ExtendWith(LogInterceptingExtension.class)
-class ReadsAndWritesReportingExecutionListenerTest {
+class ReadsAndWritesReportingExecutionListenerTest extends AbstractReportingExecutionListenerTest {
 
-  private final LogInterceptor interceptor;
-  private final MetricsCollectingExecutionListener delegate;
-
-  public ReadsAndWritesReportingExecutionListenerTest(
+  ReadsAndWritesReportingExecutionListenerTest(
       @LogCapture(value = ReadsAndWritesReportingExecutionListener.class, level = DEBUG)
           LogInterceptor interceptor) {
-    this.interceptor = interceptor;
-    delegate = new MetricsCollectingExecutionListener();
+    super(interceptor);
   }
 
-  @Test
-  void should_report_reads_and_writes() {
+  @BeforeEach
+  void setUpCounters() {
+    when(delegate.getTotalReadsWritesTimer()).thenReturn(total);
+    when(delegate.getSuccessfulReadsWritesCounter()).thenReturn(successful);
+    when(delegate.getFailedReadsWritesCounter()).thenReturn(failed);
+  }
+
+  static Stream<Arguments> expectedMessages() {
+    return Stream.of(
+        Arguments.of(
+            false,
+            false,
+            new String[] {
+              "Reads/Writes: total: 100,000, successful: 99,999, failed: 1, in-flight: 500",
+              "Throughput: 1,000 reads-writes/second",
+              "Latencies: mean 50.00, 75p 0.00, 99p 100.00, 999p 250.00 milliseconds"
+            }),
+        Arguments.of(
+            false,
+            true,
+            new String[] {
+              "Reads/Writes: total: 100,000, successful:  99,999, failed: 1, in-flight: 500, progression: 100%",
+              "Throughput: 1,000 reads-writes/second",
+              "Latencies: mean 50.00, 75p 0.00, 99p 100.00, 999p 250.00 milliseconds"
+            }),
+        Arguments.of(
+            true,
+            false,
+            new String[] {
+              "Reads/Writes: total: 100,000, successful: 99,999, failed: 1, in-flight: 500",
+              "Throughput: 1,000 reads-writes/second, 1.00 mb/second sent, 1.00 mb/second received (1.02 kb/write, 1.02 kb/read)",
+              "Latencies: mean 50.00, 75p 0.00, 99p 100.00, 999p 250.00 milliseconds"
+            }),
+        Arguments.of(
+            true,
+            true,
+            new String[] {
+              "Reads/Writes: total: 100,000, successful:  99,999, failed: 1, in-flight: 500, progression: 100%",
+              "Throughput: 1,000 reads-writes/second, 1.00 mb/second sent, 1.00 mb/second received (1.02 kb/write, 1.02 kb/read)",
+              "Latencies: mean 50.00, 75p 0.00, 99p 100.00, 999p 250.00 milliseconds"
+            }));
+  }
+
+  @ParameterizedTest(name = "[{index}] trackThroughput = {0} expectedTotal = {1}")
+  @MethodSource("expectedMessages")
+  void should_report_reads_and_writes(
+      boolean trackThroughput, boolean expectedTotal, String... expectedLines) {
     Logger logger = LoggerFactory.getLogger(ReadsAndWritesReportingExecutionListener.class);
-    ReadsAndWritesReportingExecutionListener listener =
-        ReadsAndWritesReportingExecutionListener.builder()
-            .convertDurationsTo(MILLISECONDS)
-            .convertRatesTo(SECONDS)
-            .extractingMetricsFrom(delegate)
-            .withLogSink(LogSink.buildFrom(logger::isDebugEnabled, logger::debug))
-            .build();
+
+    if (trackThroughput) {
+      when(delegate.getBytesSentMeter()).thenReturn(Optional.of(bytesSent));
+      when(delegate.getBytesReceivedMeter()).thenReturn(Optional.of(bytesReceived));
+      when(bytesSent.getMeanRate()).thenReturn(1024d * 1024d); // 1Mb per second
+      when(bytesReceived.getMeanRate()).thenReturn(1024d * 1024d); // 1Mb per second
+    }
+
+    AbstractMetricsReportingExecutionListenerBuilder<ReadsAndWritesReportingExecutionListener>
+        builder =
+            ReadsAndWritesReportingExecutionListener.builder()
+                .convertDurationsTo(MILLISECONDS)
+                .convertRatesTo(SECONDS)
+                .extractingMetricsFrom(delegate)
+                .withLogSink(LogSink.buildFrom(logger::isDebugEnabled, logger::debug));
+
+    if (expectedTotal) {
+      builder = builder.expectingTotalEvents(100_000);
+    }
+
+    ReadsAndWritesReportingExecutionListener listener = builder.build();
 
     listener.report();
 
-    assertThat(interceptor)
-        .hasMessageContaining("Reads/Writes: total: 0, successful: 0, failed: 0, in-flight: 0")
-        .hasMessageContaining(
-            "Throughput: 0 reads-writes/second, 0.00 mb/second sent, 0.00 mb/second received (0.00 kb/write, 0.00 kb/read)")
-        .hasMessageContaining("Latencies: mean 0.00, 75p 0.00, 99p 0.00, 999p 0.00 milliseconds")
-        .hasEventSatisfying(
-            event ->
-                event.getLevel() == Level.DEBUG
-                    && event
-                        .getLoggerName()
-                        .equals(ReadsAndWritesReportingExecutionListener.class.getName()));
-
-    // simulate 3 reads/writes, 2 successful and 1 failed
-    Timer total = delegate.getTotalReadsWritesTimer();
-    total.update(10, MILLISECONDS);
-    total.update(10, MILLISECONDS);
-    total.update(10, MILLISECONDS);
-    Counter successful = delegate.getSuccessfulReadsWritesCounter();
-    successful.inc(2);
-    Counter failed = delegate.getFailedReadsWritesCounter();
-    failed.inc();
-    delegate.getInFlightRequestsCounter().inc(42);
-
-    listener.report();
-
-    assertThat(interceptor)
-        .hasMessageContaining("Reads/Writes: total: 3, successful: 2, failed: 1, in-flight: 42")
-        // cannot assert throughput in reads-writes/second as it may vary
-        .hasMessageContaining(
-            "Latencies: mean 9.99, 75p 10.03, 99p 10.03, 999p 10.03 milliseconds");
-  }
-
-  @Test
-  void should_report_reads_and_writes_with_default_constructor() {
-    ReadsAndWritesReportingExecutionListener listener =
-        new ReadsAndWritesReportingExecutionListener();
-
-    listener.report();
-
-    assertThat(interceptor)
-        .hasMessageContaining("Reads/Writes: total: 0, successful: 0, failed: 0, in-flight: 0")
-        .hasMessageContaining(
-            "Throughput: 0 reads-writes/second, 0.00 mb/second sent, 0.00 mb/second received (0.00 kb/write, 0.00 kb/read)")
-        .hasMessageContaining("Latencies: mean 0.00, 75p 0.00, 99p 0.00, 999p 0.00 milliseconds");
-
-    MetricsCollectingExecutionListener delegate =
-        (MetricsCollectingExecutionListener) ReflectionUtils.getInternalState(listener, "delegate");
-    // simulate 3 reads/writes, 2 successful and 1 failed
-    Timer total = delegate.getTotalReadsWritesTimer();
-    total.update(10, MILLISECONDS);
-    total.update(10, MILLISECONDS);
-    total.update(10, MILLISECONDS);
-    Counter successful = delegate.getSuccessfulReadsWritesCounter();
-    successful.inc(2);
-    Counter failed = delegate.getFailedReadsWritesCounter();
-    failed.inc();
-    delegate.getInFlightRequestsCounter().inc(42);
-
-    listener.report();
-
-    assertThat(interceptor)
-        .hasMessageContaining("Reads/Writes: total: 3, successful: 2, failed: 1, in-flight: 42")
-        // cannot assert throughput in reads-writes/second as it may vary
-        .hasMessageContaining(
-            "Latencies: mean 9.99, 75p 10.03, 99p 10.03, 999p 10.03 milliseconds");
-  }
-
-  @Test
-  void should_report_reads_and_writes_with_expected_total() {
-    ReadsAndWritesReportingExecutionListener listener =
-        ReadsAndWritesReportingExecutionListener.builder()
-            .convertDurationsTo(MILLISECONDS)
-            .convertRatesTo(SECONDS)
-            .extractingMetricsFrom(delegate)
-            .expectingTotalEvents(3)
-            .build();
-
-    listener.report();
-
-    assertThat(interceptor)
-        .hasMessageContaining("Reads/Writes: total: 0, successful: 0, failed: 0, in-flight: 0")
-        .hasMessageContaining(
-            "Throughput: 0 reads-writes/second, 0.00 mb/second sent, 0.00 mb/second received (0.00 kb/write, 0.00 kb/read)")
-        .hasMessageContaining("Latencies: mean 0.00, 75p 0.00, 99p 0.00, 999p 0.00 milliseconds");
-
-    // simulate 3 reads/writes, 2 successful and 1 failed
-    Timer total = delegate.getTotalReadsWritesTimer();
-    total.update(10, MILLISECONDS);
-    total.update(10, MILLISECONDS);
-    total.update(10, MILLISECONDS);
-    Counter successful = delegate.getSuccessfulReadsWritesCounter();
-    successful.inc(2);
-    Counter failed = delegate.getFailedReadsWritesCounter();
-    failed.inc();
-    delegate.getInFlightRequestsCounter().inc(42);
-
-    listener.report();
-
-    assertThat(interceptor)
-        .hasMessageContaining("Reads/Writes: total: 3, successful: 2, failed: 1, in-flight: 42")
-        // cannot assert throughput in reads-writes/second as it may vary
-        .hasMessageContaining(
-            "Latencies: mean 9.99, 75p 10.03, 99p 10.03, 999p 10.03 milliseconds");
+    for (String line : expectedLines) {
+      assertThat(interceptor).hasMessageContaining(line);
+    }
   }
 }

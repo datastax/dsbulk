@@ -19,6 +19,7 @@ import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLines;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStreamExcludingHeaders;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
+import static com.datastax.dsbulk.engine.DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR;
 import static com.datastax.dsbulk.engine.DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS;
 import static com.datastax.dsbulk.engine.DataStaxBulkLoader.STATUS_OK;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
@@ -4004,6 +4005,60 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             "test10,[],{},\"[\\\"122 more text\\\",\\\"8595 more text\\\"]\",",
             "test11,[],\"{\\\"1234 test text\\\":\\\"789 value text\\\"}\",[],",
             "test12,\"[\\\"1234 test text\\\",\\\"789 value text\\\"]\",{},[],");
+  }
+
+  /** Test for empty headers (DAT-427). */
+  @Test
+  void load_empty_headers() {
+
+    session.execute("DROP TABLE IF EXISTS test_empty_headers");
+    session.execute(
+        "CREATE TABLE test_empty_headers (pk int, cc int, v int, PRIMARY KEY (pk, cc))");
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.csv.url");
+    args.add(ClassLoader.getSystemResource("bad_header_empty.csv").toExternalForm());
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("test_empty_headers");
+    args.add("--schema.mapping");
+    args.add("*=*");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(STATUS_ABORTED_FATAL_ERROR);
+
+    assertThat(logs).hasMessageContaining("found empty field name at index 1");
+  }
+
+  /** Test for duplicate headers (DAT-427). */
+  @Test
+  void load_duplicate_headers() {
+
+    session.execute("DROP TABLE IF EXISTS test_duplicate_headers");
+    session.execute(
+        "CREATE TABLE test_duplicate_headers (pk int, cc int, v int, PRIMARY KEY (pk, cc))");
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.csv.url");
+    args.add(ClassLoader.getSystemResource("bad_header_duplicate.csv").toExternalForm());
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("test_duplicate_headers");
+    args.add("--schema.mapping");
+    args.add("*=*");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(STATUS_ABORTED_FATAL_ERROR);
+
+    assertThat(logs).hasMessageContaining("found duplicate field name at index 1");
   }
 
   static void checkTemporalsWritten(Session session) {

@@ -22,6 +22,8 @@ import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.commons.internal.utils.StatementUtils;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.internal.histogram.HdrHistogramReservoir;
+import java.util.Optional;
+import org.jetbrains.annotations.Nullable;
 
 /** A {@link ExecutionListener} that records useful metrics about the ongoing bulk operations. */
 public class MetricsCollectingExecutionListener implements ExecutionListener {
@@ -46,15 +48,19 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
 
   private final Counter inFlightRequestsCounter;
 
-  private final Meter bytesReceivedMeter;
-  private final Meter bytesSentMeter;
+  @Nullable private final Meter bytesReceivedMeter;
+  @Nullable private final Meter bytesSentMeter;
 
   private final ProtocolVersion protocolVersion;
   private final CodecRegistry codecRegistry;
 
   /** Creates a new instance using a newly-allocated {@link MetricRegistry}. */
   public MetricsCollectingExecutionListener() {
-    this(new MetricRegistry(), ProtocolVersion.NEWEST_SUPPORTED, CodecRegistry.DEFAULT_INSTANCE);
+    this(
+        new MetricRegistry(),
+        ProtocolVersion.NEWEST_SUPPORTED,
+        CodecRegistry.DEFAULT_INSTANCE,
+        true);
   }
 
   /**
@@ -63,9 +69,13 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
    * @param registry The {@link MetricRegistry} to use.
    * @param protocolVersion the {@link ProtocolVersion} to use.
    * @param codecRegistry the {@link CodecRegistry} to use.
+   * @param trackThroughputInBytes Whether to track throughput in bytes or not.
    */
   public MetricsCollectingExecutionListener(
-      MetricRegistry registry, ProtocolVersion protocolVersion, CodecRegistry codecRegistry) {
+      MetricRegistry registry,
+      ProtocolVersion protocolVersion,
+      CodecRegistry codecRegistry,
+      boolean trackThroughputInBytes) {
     this.registry = registry;
     this.protocolVersion = protocolVersion;
     this.codecRegistry = codecRegistry;
@@ -92,8 +102,13 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
 
     inFlightRequestsCounter = registry.counter("executor/in-flight");
 
-    bytesSentMeter = registry.meter("executor/bytes/sent");
-    bytesReceivedMeter = registry.meter("executor/bytes/received");
+    if (trackThroughputInBytes) {
+      bytesSentMeter = registry.meter("executor/bytes/sent");
+      bytesReceivedMeter = registry.meter("executor/bytes/received");
+    } else {
+      bytesSentMeter = null;
+      bytesReceivedMeter = null;
+    }
   }
 
   /**
@@ -258,8 +273,8 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
    *
    * @return a {@link Meter} that evaluates the total number of bytes sent so far.
    */
-  public Meter getBytesSentMeter() {
-    return bytesSentMeter;
+  public Optional<Meter> getBytesSentMeter() {
+    return Optional.ofNullable(bytesSentMeter);
   }
 
   /**
@@ -270,14 +285,16 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
    *
    * @return a {@link Meter} that evaluates the total number of bytes received so far.
    */
-  public Meter getBytesReceivedMeter() {
-    return bytesReceivedMeter;
+  public Optional<Meter> getBytesReceivedMeter() {
+    return Optional.ofNullable(bytesReceivedMeter);
   }
 
   @Override
   public void onWriteRequestStarted(Statement statement, ExecutionContext context) {
-    long size = StatementUtils.getDataSize(statement, protocolVersion, codecRegistry);
-    bytesSentMeter.mark(size);
+    if (bytesSentMeter != null) {
+      long size = StatementUtils.getDataSize(statement, protocolVersion, codecRegistry);
+      bytesSentMeter.mark(size);
+    }
     inFlightRequestsCounter.inc();
   }
 
@@ -317,8 +334,10 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
     stop(context, totalReadsWritesTimer, 1);
     successfulReadsCounter.inc(1);
     successfulReadsWritesCounter.inc(1);
-    long size = StatementUtils.getDataSize(row);
-    bytesReceivedMeter.mark(size);
+    if (bytesReceivedMeter != null) {
+      long size = StatementUtils.getDataSize(row);
+      bytesReceivedMeter.mark(size);
+    }
   }
 
   @Override

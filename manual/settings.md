@@ -1556,6 +1556,12 @@ The time unit used when printing throughput rates. Valid values: all `TimeUnit` 
 
 Default: **"SECONDS"**.
 
+#### --monitoring.trackBytes _&lt;boolean&gt;_
+
+Whether or not to track the throughput in bytes. When enabled, DSBulk will track and display the number of bytes sent or received per second. While useful to evaluate how much data is actually being transferred, computing such metrics is CPU-intensive and may slow down the operation. This is why it is disabled by default. Also note that the heuristic used to compute data sizes is not 100% accurate and sometimes underestimates the actual size.
+
+Default: **false**.
+
 <a name="stats"></a>
 ## Stats Settings
 
