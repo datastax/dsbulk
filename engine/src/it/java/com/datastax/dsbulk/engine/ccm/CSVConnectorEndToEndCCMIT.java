@@ -19,7 +19,6 @@ import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLines;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStreamExcludingHeaders;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
-import static com.datastax.dsbulk.engine.DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR;
 import static com.datastax.dsbulk.engine.DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS;
 import static com.datastax.dsbulk.engine.DataStaxBulkLoader.STATUS_OK;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
@@ -4029,7 +4028,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("*=*");
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
-    assertThat(status).isEqualTo(STATUS_ABORTED_FATAL_ERROR);
+    assertThat(status).isEqualTo(STATUS_COMPLETED_WITH_ERRORS);
 
     assertThat(logs).hasMessageContaining("found empty field name at index 1");
   }
@@ -4056,7 +4055,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("*=*");
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
-    assertThat(status).isEqualTo(STATUS_ABORTED_FATAL_ERROR);
+    assertThat(status).isEqualTo(STATUS_COMPLETED_WITH_ERRORS);
 
     assertThat(logs).hasMessageContaining("found duplicate field name at index 1");
   }
