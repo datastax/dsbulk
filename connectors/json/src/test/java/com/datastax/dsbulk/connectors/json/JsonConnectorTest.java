@@ -26,12 +26,12 @@ import com.datastax.dsbulk.commons.tests.HttpTestServer;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
+import com.datastax.dsbulk.commons.tests.utils.FTPUtils;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
-import com.datastax.dsbulk.commons.tests.utils.FtpUtils;
 import com.datastax.dsbulk.commons.tests.utils.URLUtils;
+import com.datastax.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.dsbulk.connectors.api.Field;
 import com.datastax.dsbulk.connectors.api.Record;
-import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.fasterxml.jackson.core.JsonParseException;
@@ -52,6 +52,7 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -891,7 +892,7 @@ class JsonConnectorTest {
     assert actual != null;
     hasOneFailedRecord(actual, "http://localhost:1234/file.json", ConnectException.class);
     verifyRecords(
-        actual.stream().filter(r -> r instanceof DefaultRecord).collect(Collectors.toList()));
+        actual.stream().filter(DefaultRecord.class::isInstance).collect(Collectors.toList()));
     connector.close();
 
     Files.delete(urlFile);
@@ -900,10 +901,11 @@ class JsonConnectorTest {
   @Test
   void should_read_from_one_ftp_when_other_not_working() throws URISyntaxException, IOException {
     // given
-    FtpUtils.FtpTestServer ftpServer =
-        FtpUtils.createFtpServer(
+    FTPUtils.FTPTestServer ftpServer =
+        FTPUtils.createFTPServer(
             ImmutableMap.of(
-                "/file1.json", new String(Files.readAllBytes(path("/single_doc.json")))));
+                "/file1.json",
+                new String(Files.readAllBytes(path("/single_doc.json")), StandardCharsets.UTF_8)));
 
     String notExistingFtpFile = String.format("%s/file2.json", ftpServer.createConnectionString());
     Path urlFile =
@@ -933,7 +935,7 @@ class JsonConnectorTest {
     assert actual != null;
     hasOneFailedRecord(actual, notExistingFtpFile, FileNotFoundException.class);
     verifyRecords(
-        actual.stream().filter(r -> r instanceof DefaultRecord).collect(Collectors.toList()));
+        actual.stream().filter(DefaultRecord.class::isInstance).collect(Collectors.toList()));
     connector.close();
     Files.delete(urlFile);
     ftpServer.close();
@@ -941,10 +943,13 @@ class JsonConnectorTest {
 
   private void hasOneFailedRecord(List<Record> actual, String expectedUrl, Class instanceT)
       throws URISyntaxException, MalformedURLException {
-    List<Record> failedRecords =
-        actual.stream().filter(v -> v instanceof DefaultErrorRecord).collect(Collectors.toList());
+    List<ErrorRecord> failedRecords =
+        actual.stream()
+            .filter(ErrorRecord.class::isInstance)
+            .map(ErrorRecord.class::cast)
+            .collect(Collectors.toList());
     assertThat(failedRecords).hasSize(1);
-    DefaultErrorRecord failedRecord = (DefaultErrorRecord) failedRecords.get(0);
+    ErrorRecord failedRecord = failedRecords.get(0);
     assertThat(failedRecord.getSource()).isEqualTo(new URL(expectedUrl));
     assertThat(failedRecord.getResource()).isEqualTo(new URI(expectedUrl));
     assertThat(failedRecord.getPosition()).isEqualTo(1);

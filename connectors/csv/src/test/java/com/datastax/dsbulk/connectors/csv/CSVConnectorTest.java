@@ -27,13 +27,12 @@ import com.datastax.dsbulk.commons.tests.HttpTestServer;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
+import com.datastax.dsbulk.commons.tests.utils.FTPUtils;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
-import com.datastax.dsbulk.commons.tests.utils.FtpUtils;
 import com.datastax.dsbulk.commons.tests.utils.URLUtils;
 import com.datastax.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.dsbulk.connectors.api.Field;
 import com.datastax.dsbulk.connectors.api.Record;
-import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultIndexedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
@@ -53,6 +52,7 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -1090,7 +1090,7 @@ class CSVConnectorTest {
     assert actual != null;
     hasOneFailedRecord(actual, "http://localhost:1234/file.csv", ConnectException.class);
     assertRecords(
-        actual.stream().filter(r -> r instanceof DefaultRecord).collect(Collectors.toList()));
+        actual.stream().filter(DefaultRecord.class::isInstance).collect(Collectors.toList()));
     connector.close();
 
     Files.delete(urlFile);
@@ -1099,9 +1099,9 @@ class CSVConnectorTest {
   @Test
   void should_read_from_one_ftp_when_other_not_working() throws Exception {
     // given
-    FtpUtils.FtpTestServer ftpServer =
-        FtpUtils.createFtpServer(
-            ImmutableMap.of("/file1.csv", new String(Files.readAllBytes(path("/sample.csv")))));
+    FTPUtils.FTPTestServer ftpServer =
+        FTPUtils.createFTPServer(
+            ImmutableMap.of("/file1.csv", new String(Files.readAllBytes(path("/sample.csv")), StandardCharsets.UTF_8)));
 
     String notExistingFtpFile = String.format("%s/file2.csv", ftpServer.createConnectionString());
     Path urlFile =
@@ -1127,7 +1127,7 @@ class CSVConnectorTest {
     assert actual != null;
     hasOneFailedRecord(actual, notExistingFtpFile, FileNotFoundException.class);
     assertRecords(
-        actual.stream().filter(r -> r instanceof DefaultRecord).collect(Collectors.toList()));
+        actual.stream().filter(DefaultRecord.class::isInstance).collect(Collectors.toList()));
     connector.close();
 
     Files.delete(urlFile);
@@ -1136,10 +1136,13 @@ class CSVConnectorTest {
 
   private void hasOneFailedRecord(List<Record> actual, String expectedUrl, Class instanceT)
       throws URISyntaxException, MalformedURLException {
-    List<Record> failedRecords =
-        actual.stream().filter(v -> v instanceof DefaultErrorRecord).collect(Collectors.toList());
+    List<ErrorRecord> failedRecords =
+        actual.stream()
+            .filter(ErrorRecord.class::isInstance)
+            .map(ErrorRecord.class::cast)
+            .collect(Collectors.toList());
     assertThat(failedRecords).hasSize(1);
-    DefaultErrorRecord failedRecord = (DefaultErrorRecord) failedRecords.get(0);
+    ErrorRecord failedRecord = failedRecords.get(0);
     assertThat(failedRecord.getSource()).isEqualTo(new URL(expectedUrl));
     assertThat(failedRecord.getResource()).isEqualTo(new URI(expectedUrl));
     assertThat(failedRecord.getPosition()).isEqualTo(1);

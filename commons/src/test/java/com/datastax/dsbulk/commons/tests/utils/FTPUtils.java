@@ -1,3 +1,11 @@
+/*
+ * Copyright DataStax, Inc.
+ *
+ * This software is subject to the below license agreement.
+ * DataStax may make changes to the agreement from time to time,
+ * and will post the amended terms at
+ * https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
+ */
 package com.datastax.dsbulk.commons.tests.utils;
 
 import java.io.Closeable;
@@ -8,12 +16,12 @@ import org.mockftpserver.fake.filesystem.FileEntry;
 import org.mockftpserver.fake.filesystem.FileSystem;
 import org.mockftpserver.fake.filesystem.UnixFakeFileSystem;
 
-public class FtpUtils {
-  private static final int ANY_FRE_PORT = 0;
+public class FTPUtils {
+  private static final int ANY_FREE_PORT = 0;
 
-  public static FtpTestServer createFtpServer(Map<String, String> filePathAndContent) {
+  public static FTPTestServer createFTPServer(Map<String, String> filePathAndContent) {
     FakeFtpServer fakeFtpServer = new FakeFtpServer();
-    fakeFtpServer.setServerControlPort(ANY_FRE_PORT);
+    fakeFtpServer.setServerControlPort(ANY_FREE_PORT);
     String user = "testUser";
     String password = "test";
     fakeFtpServer.addUserAccount(new UserAccount(user, password, "/"));
@@ -24,15 +32,15 @@ public class FtpUtils {
     fakeFtpServer.setFileSystem(fileSystem);
 
     fakeFtpServer.start();
-    return new FtpTestServer(fakeFtpServer, user, password);
+    return new FTPTestServer(fakeFtpServer, user, password);
   }
 
-  public static class FtpTestServer implements Closeable {
+  public static class FTPTestServer implements Closeable {
     private final FakeFtpServer fakeFtpServer;
     private final String user;
     private final String password;
 
-    FtpTestServer(FakeFtpServer fakeFtpServer, String user, String password) {
+    FTPTestServer(FakeFtpServer fakeFtpServer, String user, String password) {
       this.fakeFtpServer = fakeFtpServer;
       this.user = user;
       this.password = password;
