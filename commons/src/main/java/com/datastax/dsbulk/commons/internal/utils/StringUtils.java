@@ -16,6 +16,8 @@ import org.jetbrains.annotations.NotNull;
 
 public class StringUtils {
 
+  private static final Pattern MBEAN_VALID_CHARS_PATTERN = Pattern.compile("[a-zA-Z0-9\\-_]+");
+
   /**
    * Return {@code true} if the given string is surrounded by single quotes, and {@code false}
    * otherwise.
@@ -402,8 +404,7 @@ public class StringUtils {
    */
   @NotNull
   public static String quoteJMXIfNecessary(@NotNull String value) {
-    Pattern pattern = Pattern.compile("[a-zA-Z0-9\\-_]+");
-    if (pattern.matcher(value).matches()) {
+    if (MBEAN_VALID_CHARS_PATTERN.matcher(value).matches()) {
       return value;
     }
     return ObjectName.quote(value);
