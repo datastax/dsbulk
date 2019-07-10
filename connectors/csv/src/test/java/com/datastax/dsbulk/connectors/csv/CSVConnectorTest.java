@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.util.Throwables.getRootCause;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
@@ -35,6 +36,7 @@ import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultIndexedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
+import com.datastax.dsbulk.connectors.commons.internal.CompressedIOUtils;
 import com.google.common.base.Charsets;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
@@ -58,12 +60,17 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
 import org.assertj.core.util.Throwables;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.event.Level;
 import reactor.core.publisher.Flux;
 
@@ -413,8 +420,12 @@ class CSVConnectorTest {
     }
   }
 
-  @Test
-  void should_warn_when_no_files_matched(@LogCapture LogInterceptor logs) throws Exception {
+  @ParameterizedTest(name = "[{index}] Should get correct message when compression {0} is used")
+  @MethodSource
+  @DisplayName("Should get correct exception message when there are no matching files")
+  void should_warn_when_no_files_matched(
+      final String compMethod, final String addText, @LogCapture LogInterceptor logs)
+      throws Exception {
     CSVConnector connector = new CSVConnector();
     Path rootPath = Files.createTempDirectory("empty");
     Files.createTempFile(rootPath, "test", ".txt");
@@ -423,20 +434,30 @@ class CSVConnectorTest {
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
                       String.format(
-                          "url = %s, recursive = true, fileNamePattern = \"**/part-*\"",
-                          quoteJson(rootPath)))
+                          "url = %s, recursive = true, fileNamePattern = \"**/part-*\""
+                              + ", compression = \"%s\"",
+                          quoteJson(rootPath), compMethod))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);
       connector.init();
       assertThat(logs.getLoggedMessages())
           .contains(
               String.format(
-                  "No files in directory %s matched the connector.csv.fileNamePattern of \"**/part-*\". Adjust it if connector.csv.compression is specified!",
+                  "No files in directory %s matched the connector.csv.fileNamePattern of \"**/part-*\"."
+                      + addText,
                   rootPath));
       connector.close();
     } finally {
       deleteDirectory(rootPath);
     }
+  }
+
+  private static Stream<Arguments> should_warn_when_no_files_matched() {
+    return Stream.of(
+        arguments(
+            CompressedIOUtils.GZIP_COMPRESSION,
+            " Adjust it if connector.csv.compression is specified!"),
+        arguments(CompressedIOUtils.NONE_COMPRESSION, ""));
   }
 
   @Test
