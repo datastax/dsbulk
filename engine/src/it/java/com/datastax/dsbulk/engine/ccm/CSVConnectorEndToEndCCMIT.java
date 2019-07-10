@@ -4008,7 +4008,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   /** Test for empty headers (DAT-427). */
   @Test
-  void load_empty_headers() {
+  void load_empty_headers() throws Exception {
 
     session.execute("DROP TABLE IF EXISTS test_empty_headers");
     session.execute(
@@ -4030,12 +4030,12 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isEqualTo(STATUS_COMPLETED_WITH_ERRORS);
 
-    assertThat(logs).hasMessageContaining("found empty field name at index 1");
+    validateExceptionsLog(1, "found empty field name at index 1", "connector-errors.log");
   }
 
   /** Test for duplicate headers (DAT-427). */
   @Test
-  void load_duplicate_headers() {
+  void load_duplicate_headers() throws Exception {
 
     session.execute("DROP TABLE IF EXISTS test_duplicate_headers");
     session.execute(
@@ -4057,7 +4057,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isEqualTo(STATUS_COMPLETED_WITH_ERRORS);
 
-    assertThat(logs).hasMessageContaining("found duplicate field name at index 1");
+    validateExceptionsLog(1, "found duplicate field name at index 1", "connector-errors.log");
   }
 
   static void checkTemporalsWritten(Session session) {
