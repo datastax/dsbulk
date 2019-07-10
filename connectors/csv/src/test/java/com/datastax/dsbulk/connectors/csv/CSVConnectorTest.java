@@ -1101,7 +1101,9 @@ class CSVConnectorTest {
     // given
     FTPUtils.FTPTestServer ftpServer =
         FTPUtils.createFTPServer(
-            ImmutableMap.of("/file1.csv", new String(Files.readAllBytes(path("/sample.csv")), StandardCharsets.UTF_8)));
+            ImmutableMap.of(
+                "/file1.csv",
+                new String(Files.readAllBytes(path("/sample.csv")), StandardCharsets.UTF_8)));
 
     String notExistingFtpFile = String.format("%s/file2.csv", ftpServer.createConnectionString());
     Path urlFile =

@@ -121,7 +121,7 @@ Examples:
 
 For other URLs: the URL will be read or written directly; settings like *fileNamePattern*, *recursive*, and *fileNameFormat* will have no effect.
 
-If there will be a problem with opening one of the provided URLs and the IOException will be thrown it is considered as a recoverable exception. It means that the failure will be recorded but processing will continue for other URLs. See log.maxErrors setting for more information.
+If there is an error opening or reading one of the provided URLs, it will be considered recoverable and processing will continue for other URLs. See log.maxErrors setting for more information.
 
 The default value is `-` (read from `stdin` / write to `stdout`).
 
@@ -475,7 +475,7 @@ For your convenience, every line in the urlfile will be trimmed - that is, any l
 
 The file should be encoded in UTF-8, and each line should be a valid URL to load.
 
-If there will be a problem with opening one of the provided URLs and the IOException will be thrown it is considered as a recoverable exception. It means that the failure will be recorded but processing will continue for other URLs. See log.maxErrors setting for more information.
+If there is an error opening or reading one of the provided URLs, it will be considered recoverable and processing will continue for other URLs. See log.maxErrors setting for more information.
 
 The default value is "" - which means that this property is ignored.
 
@@ -512,7 +512,7 @@ Examples:
 
 For other URLs: the URL will be read or written directly; settings like *fileNamePattern*, *recursive*, and *fileNameFormat* will have no effect.
 
-If there will be a problem with opening one of the provided URLs and the IOException will be thrown it is considered as a recoverable exception. It means that the failure will be recorded but processing will continue for other URLs. See log.maxErrors setting for more information.
+If there is an error opening or reading one of the provided URLs, it will be considered recoverable and processing will continue for other URLs. See log.maxErrors setting for more information.
 
 The default value is `-` (read from `stdin` / write to `stdout`).
 
