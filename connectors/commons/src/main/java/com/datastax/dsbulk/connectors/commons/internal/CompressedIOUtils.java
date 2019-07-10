@@ -98,7 +98,6 @@ public final class CompressedIOUtils {
             new CompressorStreamFactory().createCompressorInputStream(compressor, in);
         reader = new LineNumberReader(new InputStreamReader(cin, charset), BUFFER_SIZE);
       } catch (CompressorException ex) {
-        // ex.printStackTrace();
         throw new IOException("Can't instantiate class for compression: " + compression, ex);
       }
     }
@@ -121,7 +120,6 @@ public final class CompressedIOUtils {
             new CompressorStreamFactory().createCompressorOutputStream(compressor, os);
         writer = new BufferedWriter(new OutputStreamWriter(cos, charset), BUFFER_SIZE);
       } catch (CompressorException ex) {
-        // ex.printStackTrace();
         throw new IOException("Can't instantiate class for compression: " + compression, ex);
       }
     }

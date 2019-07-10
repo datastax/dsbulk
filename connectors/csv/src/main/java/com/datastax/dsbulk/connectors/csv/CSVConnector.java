@@ -186,6 +186,10 @@ public class CSVConnector implements Connector {
       recursive = settings.getBoolean(RECURSIVE);
       header = settings.getBoolean(HEADER);
       fileNameFormat = settings.getString(FILE_NAME_FORMAT);
+      if (!CompressedIOUtils.isNoneCompression(compression)
+          && fileNameFormat.toLowerCase().endsWith(".csv")) {
+        fileNameFormat = fileNameFormat + CompressedIOUtils.getCompressionSuffix(compression);
+      }
       maxCharsPerColumn = settings.getInt(MAX_CHARS_PER_COLUMN);
       maxColumns = settings.getInt(MAX_COLUMNS);
       newline = settings.getString(NEWLINE);
@@ -450,11 +454,13 @@ public class CSVConnector implements Connector {
             if (countReadableFiles(root, recursive) == 0) {
               LOGGER.warn("Directory {} has no readable files.", root);
             } else {
-              LOGGER.warn(
-                  "No files in directory {} matched the connector.csv.fileNamePattern of \"{}\"."
-                      + " Adjust it if connector.csv.compression is specified!",
-                  root,
-                  pattern);
+              String formatString =
+                  "No files in directory {} matched the connector.csv.fileNamePattern of \"{}\".";
+              if (!CompressedIOUtils.isNoneCompression(compression)) {
+                formatString =
+                    formatString + " Adjust it if connector.csv.compression is specified!";
+              }
+              LOGGER.warn(formatString, root, pattern);
             }
           }
           resourceCount += inDirectoryResourceCount;
@@ -669,9 +675,7 @@ public class CSVConnector implements Connector {
   URL getOrCreateDestinationURL() {
     if (!roots.isEmpty()) {
       try {
-        String next =
-            String.format(fileNameFormat, counter.incrementAndGet())
-                + CompressedIOUtils.getCompressionSuffix(compression);
+        String next = String.format(fileNameFormat, counter.incrementAndGet());
         return roots.get(0).resolve(next).toUri().toURL(); // for UNLOAD always one URL
       } catch (MalformedURLException e) {
         throw new UncheckedIOException(

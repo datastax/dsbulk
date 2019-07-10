@@ -20,6 +20,4 @@
     <appender-ref ref="STDOUT"/>
   </root>
 
-  <logger name="com.datastax.dsbulk.commons.tests.ccm" level="ERROR"/>
-
 </configuration>

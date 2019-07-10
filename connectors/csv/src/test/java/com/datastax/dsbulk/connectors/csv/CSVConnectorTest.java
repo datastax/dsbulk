@@ -483,8 +483,7 @@ class CSVConnectorTest {
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
                       String.format(
-                          "url = %s, escape = \"\\\"\", maxConcurrentFiles = 1, compression = \"gzip\""
-                              + ", fileNamePattern = \"**/*.csv.gz\"",
+                          "url = %s, escape = \"\\\"\", maxConcurrentFiles = 1, compression = \"gzip\"",
                           quoteJson(out)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);

@@ -176,6 +176,10 @@ public class JsonConnector implements Connector {
       maxConcurrentFiles = settings.getThreads(MAX_CONCURRENT_FILES);
       recursive = settings.getBoolean(RECURSIVE);
       fileNameFormat = settings.getString(FILE_NAME_FORMAT);
+      if (!CompressedIOUtils.isNoneCompression(compression)
+          && fileNameFormat.toLowerCase().endsWith(".json")) {
+        fileNameFormat = fileNameFormat + CompressedIOUtils.getCompressionSuffix(compression);
+      }
       parserFeatures = getFeatureMap(settings.getConfig(PARSER_FEATURES), JsonParser.Feature.class);
       generatorFeatures =
           getFeatureMap(settings.getConfig(GENERATOR_FEATURES), JsonGenerator.Feature.class);
@@ -412,11 +416,13 @@ public class JsonConnector implements Connector {
             if (IOUtils.countReadableFiles(root, recursive) == 0) {
               LOGGER.warn("Directory {} has no readable files.", root);
             } else {
-              LOGGER.warn(
-                  "No files in directory {} matched the connector.json.fileNamePattern of \"{}\"."
-                      + " Adjust it if connector.json.compression is specified!",
-                  root,
-                  pattern);
+              String formatString =
+                  "No files in directory {} matched the connector.json.fileNamePattern of \"{}\".";
+              if (!CompressedIOUtils.isNoneCompression(compression)) {
+                formatString =
+                    formatString + " Adjust it if connector.json.compression is specified!";
+              }
+              LOGGER.warn(formatString, root, pattern);
             }
           }
           resourceCount += inDirectoryResourceCount;
@@ -613,9 +619,7 @@ public class JsonConnector implements Connector {
   URL getOrCreateDestinationURL() {
     if (!roots.isEmpty()) {
       try {
-        String next =
-            String.format(fileNameFormat, counter.incrementAndGet())
-                + CompressedIOUtils.getCompressionSuffix(compression);
+        String next = String.format(fileNameFormat, counter.incrementAndGet());
         return roots.get(0).resolve(next).toUri().toURL(); // for UNLOAD always one URL
       } catch (MalformedURLException e) {
         throw new UncheckedIOException(

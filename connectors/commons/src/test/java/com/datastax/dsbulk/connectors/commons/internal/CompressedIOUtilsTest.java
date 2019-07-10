@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.google.common.base.Charsets;
+import com.google.common.collect.ImmutableList;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.LineNumberReader;
@@ -23,7 +24,6 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -33,7 +33,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-class CompresssedCompressedIOUtilsTest {
+class CompressedIOUtilsTest {
 
   @ParameterizedTest(name = "[{index}] Compression {0} has correct file extension: {1}")
   @MethodSource
@@ -108,14 +108,7 @@ class CompresssedCompressedIOUtilsTest {
     assertTrue(CompressedIOUtils.isNoneCompression("none"));
   }
 
-  private static final List<String> CONTENT =
-      new ArrayList<String>() {
-        {
-          add("this is");
-          add("a");
-          add("test file");
-        }
-      };
+  private static final List<String> CONTENT = ImmutableList.of("this is", "a", "test file");
 
   boolean canReadContent(final String name, final String compression) throws IOException {
     Path path = Paths.get("src/test/resources/compression").resolve(name);
