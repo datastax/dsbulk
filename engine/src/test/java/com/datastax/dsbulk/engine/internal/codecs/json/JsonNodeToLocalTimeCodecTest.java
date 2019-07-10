@@ -17,11 +17,13 @@ import static java.time.ZoneOffset.UTC;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 import static java.util.Locale.US;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.MINUTES;
 
 import com.datastax.dsbulk.engine.internal.codecs.util.SimpleTemporalFormat;
 import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
 import com.datastax.dsbulk.engine.internal.settings.CodecSettings;
 import java.time.LocalTime;
+import java.time.ZonedDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -30,20 +32,32 @@ class JsonNodeToLocalTimeCodecTest {
   private TemporalFormat format1 =
       CodecSettings.getTemporalFormat(
           "ISO_LOCAL_TIME",
-          null,
+          UTC,
           US,
           MILLISECONDS,
           EPOCH.atZone(UTC),
-          CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true));
+          CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true),
+          false);
 
   private TemporalFormat format2 =
       CodecSettings.getTemporalFormat(
           "HHmmss.SSS",
-          null,
+          UTC,
           US,
           MILLISECONDS,
           EPOCH.atZone(UTC),
-          CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true));
+          CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true),
+          false);
+
+  private TemporalFormat format3 =
+      CodecSettings.getTemporalFormat(
+          "UNITS_SINCE_EPOCH",
+          UTC,
+          US,
+          MINUTES,
+          ZonedDateTime.parse("2000-01-01T00:00:00Z"),
+          CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true),
+          false);
 
   private final List<String> nullStrings = newArrayList("NULL");
 
@@ -71,6 +85,10 @@ class JsonNodeToLocalTimeCodecTest {
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
         .toInternal(null);
+    codec = new JsonNodeToLocalTimeCodec(format3, UTC, nullStrings);
+    assertThat(codec)
+        .convertsFromExternal(JSON_NODE_FACTORY.numberNode(123))
+        .toInternal(LocalTime.parse("02:03:00"));
   }
 
   @Test
@@ -87,6 +105,10 @@ class JsonNodeToLocalTimeCodecTest {
         .toExternal(JSON_NODE_FACTORY.textNode("122446.999"))
         .convertsFromInternal(null)
         .toExternal(null);
+    codec = new JsonNodeToLocalTimeCodec(format3, UTC, nullStrings);
+    assertThat(codec)
+        .convertsFromInternal(LocalTime.parse("02:03:00"))
+        .toExternal(JSON_NODE_FACTORY.numberNode(123L));
   }
 
   @Test

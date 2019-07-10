@@ -74,6 +74,17 @@ class RatioErrorThresholdTest {
     assertThat(actual).isEqualTo(maxErrorRatio);
   }
 
+  @ParameterizedTest(name = "[{index}] maxErrorRatio {0} expected {1}")
+  @CsvSource({"0.001,0.1%", "0.1,10%", "0.5,50%", "0.9f,90%", "0.999,99.9%"})
+  void should_report_threshold_as_string(float maxErrorRatio, String expected) {
+    // given
+    RatioErrorThreshold threshold = new RatioErrorThreshold(maxErrorRatio, 100);
+    // when
+    String actual = threshold.thresholdAsString();
+    // then
+    assertThat(actual).isEqualTo(expected);
+  }
+
   @ParameterizedTest(name = "[{index}] minSample {0}")
   @ValueSource(longs = {1, 2, 10, 100, Long.MAX_VALUE})
   void should_report_min_sample(long minSample) {

@@ -13,6 +13,7 @@ import static com.datastax.driver.core.DataType.cint;
 import static com.datastax.driver.core.DataType.varchar;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDOUT;
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.createURLFile;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_CRLF;
@@ -22,6 +23,10 @@ import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_PARTIA
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_PARTIAL_BAD_LONG;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_SKIP;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
+import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE_PART_1;
+import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE_PART_1_DIR;
+import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE_PART_2;
+import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE_PART_2_DIR;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.INSERT_INTO_IP_BY_COUNTRY;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.SELECT_FROM_IP_BY_COUNTRY;
@@ -42,6 +47,7 @@ import static java.nio.file.Files.createTempDirectory;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import ch.qos.logback.core.joran.spi.JoranException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
@@ -74,6 +80,7 @@ import com.datastax.oss.simulacron.common.result.WriteFailureResult;
 import com.datastax.oss.simulacron.common.result.WriteTimeoutResult;
 import com.datastax.oss.simulacron.common.stubbing.Prime;
 import com.datastax.oss.simulacron.server.BoundCluster;
+import com.google.common.collect.Lists;
 import com.typesafe.config.ConfigFactory;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -81,14 +88,20 @@ import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.reactivestreams.Publisher;
 
 @ExtendWith(SimulacronExtension.class)
@@ -106,6 +119,10 @@ class CSVEndToEndSimulacronIT {
 
   private Path unloadDir;
   private Path logDir;
+
+  private Path urlFileTwoFiles;
+  private Path urlFileOneFileOneDir;
+  private Path urlFileTwoDirs;
 
   CSVEndToEndSimulacronIT(
       BoundCluster simulacron,
@@ -141,6 +158,20 @@ class CSVEndToEndSimulacronIT {
   @AfterEach
   void resetLogbackConfiguration() throws JoranException {
     LogUtils.resetLogbackConfiguration();
+  }
+
+  @BeforeAll
+  void setupURLFiles() throws IOException {
+    urlFileTwoFiles = createURLFile(CSV_RECORDS_UNIQUE_PART_1, CSV_RECORDS_UNIQUE_PART_2);
+    urlFileOneFileOneDir = createURLFile(CSV_RECORDS_UNIQUE_PART_1_DIR, CSV_RECORDS_UNIQUE_PART_2);
+    urlFileTwoDirs = createURLFile(CSV_RECORDS_UNIQUE_PART_1_DIR, CSV_RECORDS_UNIQUE_PART_2_DIR);
+  }
+
+  @AfterAll
+  void cleanupURLFiles() throws IOException {
+    Files.delete(urlFileTwoFiles);
+    Files.delete(urlFileOneFileOneDir);
+    Files.delete(urlFileTwoDirs);
   }
 
   @Test
@@ -183,6 +214,54 @@ class CSVEndToEndSimulacronIT {
         .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
         .contains("Writes: total: 24, successful: 24, failed: 0");
     validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", ONE);
+  }
+
+  @ParameterizedTest
+  @MethodSource("multipleUrlsProvider")
+  void full_load_multiple_urls(Path urlfile) {
+
+    primeIpByCountryTable(simulacron);
+    RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
+    simulacron.prime(new Prime(insert));
+
+    String[] args = {
+      "load",
+      "--log.directory",
+      quoteJson(logDir),
+      "--log.verbosity",
+      "2",
+      "-header",
+      "false",
+      "--connector.csv.urlfile",
+      quoteJson(urlfile.toAbsolutePath()),
+      "--driver.query.consistency",
+      "ONE",
+      "--driver.hosts",
+      hostname,
+      "--driver.port",
+      port,
+      "--driver.pooling.local.connections",
+      "1",
+      "--schema.keyspace",
+      "ks1",
+      "--schema.query",
+      INSERT_INTO_IP_BY_COUNTRY,
+      "--schema.mapping",
+      IP_BY_COUNTRY_MAPPING_INDEXED
+    };
+
+    int status = new DataStaxBulkLoader(args).run();
+    assertThat(logs.getAllMessagesAsString())
+        .contains("Records: total: 24, successful: 24, failed: 0")
+        .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
+        .contains("Writes: total: 24, successful: 24, failed: 0");
+    assertThat(status).isZero();
+    validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", ONE);
+  }
+
+  private List<Arguments> multipleUrlsProvider() {
+    return Lists.newArrayList(
+        arguments(urlFileTwoFiles), arguments(urlFileOneFileOneDir), arguments(urlFileTwoDirs));
   }
 
   @Test
@@ -498,7 +577,7 @@ class CSVEndToEndSimulacronIT {
     int status = new DataStaxBulkLoader(args).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_TOO_MANY_ERRORS);
     assertThat(logs.getAllMessagesAsString())
-        .contains("aborted: Too many errors, the maximum percentage allowed is 1.0%");
+        .contains("aborted: Too many errors, the maximum allowed is 1%");
   }
 
   @Test

@@ -8,6 +8,10 @@
  */
 package com.datastax.dsbulk.connectors.json;
 
+import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.getURLsFromFile;
+import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isPathAbsentOrEmpty;
+import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isPathPresentAndNotEmpty;
+
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
@@ -37,6 +41,7 @@ import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.reflect.TypeToken;
 import com.typesafe.config.ConfigException;
 import io.netty.util.concurrent.DefaultThreadFactory;
@@ -48,23 +53,26 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLStreamHandler;
-import java.nio.channels.ClosedChannelException;
 import java.nio.charset.Charset;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.jetbrains.annotations.NotNull;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,7 +93,6 @@ import reactor.core.scheduler.Schedulers;
  * jar archive, for detailed information.
  */
 public class JsonConnector implements Connector {
-
   enum DocumentMode {
     MULTI_DOCUMENT,
     SINGLE_DOCUMENT
@@ -95,6 +102,7 @@ public class JsonConnector implements Connector {
   private static final TypeToken<JsonNode> JSON_NODE_TYPE_TOKEN = TypeToken.of(JsonNode.class);
 
   private static final String URL = "url";
+  private static final String URLFILE = "urlfile";
   private static final String MODE = "mode";
   private static final String FILE_NAME_PATTERN = "fileNamePattern";
   private static final String ENCODING = "encoding";
@@ -109,14 +117,16 @@ public class JsonConnector implements Connector {
   private static final String DESERIALIZATION_FEATURES = "deserializationFeatures";
   private static final String SERIALIZATION_STRATEGY = "serializationStrategy";
   private static final String PRETTY_PRINT = "prettyPrint";
+  private static final String FLUSH_WINDOW = "flushWindow";
 
   private static final TypeReference<Map<String, JsonNode>> JSON_NODE_MAP_TYPE_REFERENCE =
       new TypeReference<Map<String, JsonNode>>() {};
 
   private boolean read;
-  private URL url;
+  private List<URL> urls;
   private DocumentMode mode;
-  private Path root;
+  private List<Path> roots;
+  private List<URL> files;
   private String pattern;
   private Charset encoding;
   private long skipRecords;
@@ -125,7 +135,7 @@ public class JsonConnector implements Connector {
   private boolean recursive;
   private String fileNameFormat;
   private int resourceCount;
-  private AtomicInteger counter;
+  @VisibleForTesting AtomicInteger counter;
   private ObjectMapper objectMapper;
   private JavaType jsonNodeMapType;
   private Map<JsonParser.Feature, Boolean> parserFeatures;
@@ -134,19 +144,18 @@ public class JsonConnector implements Connector {
   private Map<DeserializationFeature, Boolean> deserializationFeatures;
   private JsonInclude.Include serializationStrategy;
   private boolean prettyPrint;
+  private int flushWindow;
   private Scheduler scheduler;
   private List<JsonWriter> writers;
 
   @Override
   public void configure(LoaderConfig settings, boolean read) {
     try {
-      if (!settings.hasPath(URL) || settings.getString(URL).isEmpty()) {
-        throw new BulkConfigurationException(
-            "An URL is mandatory when using the json connector. Please set connector.json.url "
-                + "and try again. See settings.md or help for more information.");
-      }
+      validateURL(settings, read);
       this.read = read;
-      url = settings.getURL(URL);
+      urls = loadURLs(settings);
+      roots = new ArrayList<>();
+      files = new ArrayList<>();
       mode = settings.getEnum(DocumentMode.class, MODE);
       pattern = settings.getString(FILE_NAME_PATTERN);
       encoding = settings.getCharset(ENCODING);
@@ -164,15 +173,63 @@ public class JsonConnector implements Connector {
           getFeatureMap(settings.getConfig(DESERIALIZATION_FEATURES), DeserializationFeature.class);
       serializationStrategy = settings.getEnum(JsonInclude.Include.class, SERIALIZATION_STRATEGY);
       prettyPrint = settings.getBoolean(PRETTY_PRINT);
+      flushWindow = settings.getInt(FLUSH_WINDOW);
+      if (flushWindow < 1) {
+        throw new BulkConfigurationException(
+            String.format(
+                "Invalid value for connector.json.%s: Expecting integer > 0, got: %d",
+                FLUSH_WINDOW, flushWindow));
+      }
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "connector.json");
+    }
+  }
+
+  @NotNull
+  private List<URL> loadURLs(LoaderConfig settings) {
+    if (isPathPresentAndNotEmpty(settings, URLFILE)) {
+      // suppress URL option
+      try {
+        return getURLsFromFile(settings.getPath(URLFILE));
+      } catch (IOException e) {
+        throw new BulkConfigurationException(
+            "Problem when retrieving urls from file specified by the URL file parameter", e);
+      }
+    } else {
+      return Collections.singletonList(settings.getURL(URL));
+    }
+  }
+
+  private void validateURL(LoaderConfig settings, boolean read) {
+    if (read) {
+      // for LOAD
+      if (isPathAbsentOrEmpty(settings, URL)) {
+        if (isPathAbsentOrEmpty(settings, URLFILE)) {
+          throw new BulkConfigurationException(
+              "A URL or URL file is mandatory when using the json connector for LOAD. Please set connector.json.url or connector.json.urlfile "
+                  + "and try again. See settings.md or help for more information.");
+        }
+      }
+      if (isPathPresentAndNotEmpty(settings, URL) && isPathPresentAndNotEmpty(settings, URLFILE)) {
+        LOGGER.debug("You specified both URL and URL file. The URL file will take precedence.");
+      }
+    } else {
+      // for UNLOAD we are not supporting urlfile parameter
+      if (isPathPresentAndNotEmpty(settings, URLFILE)) {
+        throw new BulkConfigurationException("The urlfile parameter is not supported for UNLOAD");
+      }
+      if (isPathAbsentOrEmpty(settings, URL)) {
+        throw new BulkConfigurationException(
+            "A URL is mandatory when using the json connector for UNLOAD. Please set connector.json.url "
+                + "and try again. See settings.md or help for more information.");
+      }
     }
   }
 
   @Override
   public void init() throws URISyntaxException, IOException {
     if (read) {
-      tryReadFromDirectory();
+      tryReadFromDirectories();
     } else {
       tryWriteToDirectory();
     }
@@ -200,6 +257,17 @@ public class JsonConnector implements Connector {
         objectMapper.setDefaultPrettyPrinter(new DefaultPrettyPrinter(System.lineSeparator()));
       }
       objectMapper.setSerializationInclusion(serializationStrategy);
+      writers = new CopyOnWriteArrayList<>();
+      if (writeConcurrency() > 1) {
+        ThreadFactory threadFactory = new DefaultThreadFactory("csv-connector");
+        scheduler =
+            maxConcurrentFiles == 1
+                ? Schedulers.newSingle(threadFactory)
+                : Schedulers.newParallel(maxConcurrentFiles, threadFactory);
+      }
+      for (int i = 0; i < maxConcurrentFiles; i++) {
+        writers.add(new JsonWriter());
+      }
     }
   }
 
@@ -228,7 +296,21 @@ public class JsonConnector implements Connector {
       scheduler.dispose();
     }
     if (writers != null) {
-      writers.forEach(JsonWriter::close);
+      IOException e = null;
+      for (JsonWriter writer : writers) {
+        try {
+          writer.close();
+        } catch (IOException e1) {
+          if (e == null) {
+            e = e1;
+          } else {
+            e.addSuppressed(e1);
+          }
+        }
+      }
+      if (e != null) {
+        throw new UncheckedIOException(e);
+      }
     }
   }
 
@@ -240,80 +322,106 @@ public class JsonConnector implements Connector {
   @Override
   public Publisher<Record> read() {
     assert read;
-    if (root != null) {
-      return scanRootDirectory().flatMap(this::readURL);
-    } else {
-      return readURL(url);
-    }
+    return Flux.concat(
+        Flux.fromIterable(roots).flatMap(this::scanRootDirectory).flatMap(this::readURL),
+        Flux.fromIterable(files).flatMap(this::readURL));
   }
 
   @Override
   public Publisher<Publisher<Record>> readByResource() {
-    if (root != null) {
-      return scanRootDirectory().map(this::readURL);
-    } else {
-      return Flux.just(readURL(url));
-    }
+    assert read;
+    return Flux.concat(
+        Flux.fromIterable(roots).flatMap(this::scanRootDirectory).map(this::readURL),
+        Flux.fromIterable(files).map(this::readURL));
   }
 
   @Override
   public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
     assert !read;
-    writers = new CopyOnWriteArrayList<>();
-    if (root != null && maxConcurrentFiles > 1) {
-      return upstream -> {
-        ThreadFactory threadFactory = new DefaultThreadFactory("json-connector");
-        scheduler = Schedulers.newParallel(maxConcurrentFiles, threadFactory);
-        for (int i = 0; i < maxConcurrentFiles; i++) {
-          writers.add(new JsonWriter());
-        }
-        return Flux.from(upstream)
-            .parallel(maxConcurrentFiles)
-            .runOn(scheduler)
-            .groups()
-            .flatMap(
-                records -> records.transform(writeRecords(writers.get(records.key()))),
-                maxConcurrentFiles);
-      };
+    if (writeConcurrency() > 1) {
+      return upstream ->
+          Flux.from(upstream)
+              .parallel(maxConcurrentFiles)
+              .runOn(scheduler)
+              .groups()
+              .flatMap(rail -> rail.transform(writeRecords(Objects.requireNonNull(rail.key()))));
     } else {
-      return upstream -> {
-        JsonWriter writer = new JsonWriter();
-        writers.add(writer);
-        return Flux.from(upstream).transform(writeRecords(writer));
-      };
+      return upstream -> Flux.from(upstream).transform(writeRecords(0));
     }
   }
 
-  private void tryReadFromDirectory() throws URISyntaxException, IOException {
-    try {
-      resourceCount = 1;
-      Path root = Paths.get(url.toURI());
-      if (Files.isDirectory(root)) {
-        if (!Files.isReadable(root)) {
-          throw new IllegalArgumentException(String.format("Directory is not readable: %s.", root));
-        }
-        this.root = root;
-        resourceCount = scanRootDirectory().take(100).count().block().intValue();
-        if (resourceCount == 0) {
-          if (IOUtils.countReadableFiles(root, recursive) == 0) {
-            LOGGER.warn("Directory {} has no readable files.", root);
-          } else {
-            LOGGER.warn(
-                "No files in directory {} matched the connector.json.fileNamePattern of \"{}\".",
-                root,
-                pattern);
+  private Function<Flux<Record>, Flux<Record>> writeRecords(int key) {
+    JsonWriter writer = writers.get(key);
+    return records ->
+        records
+            .window(flushWindow)
+            .flatMap(
+                window -> {
+                  return window
+                      .materialize()
+                      .map(
+                          signal -> {
+                            if (signal.isOnNext()) {
+                              Record record = signal.get();
+                              assert record != null;
+                              try {
+                                writer.write(record);
+                              } catch (Exception e) {
+                                signal = Signal.error(e);
+                              }
+                            }
+                            return signal;
+                          })
+                      .dematerialize();
+                });
+  }
+
+  private int writeConcurrency() {
+    // when unloading, roots can only be empty or contain one element; if it's empty, we are writing
+    // to a single file and the write concurrency is necessarily 1; if it is not empty, we are
+    // writing to a directory and the write concurrency is maxConcurrentFiles.
+    return roots.isEmpty() ? 1 : maxConcurrentFiles;
+  }
+
+  private void tryReadFromDirectories() throws URISyntaxException, IOException {
+    resourceCount = 0;
+    for (URL u : urls) {
+      try {
+        Path root = Paths.get(u.toURI());
+        if (Files.isDirectory(root)) {
+          if (!Files.isReadable(root)) {
+            throw new IllegalArgumentException(
+                String.format("Directory is not readable: %s.", root));
           }
+          roots.add(root);
+          int inDirectoryResourceCount =
+              Objects.requireNonNull(scanRootDirectory(root).take(100).count().block()).intValue();
+          if (inDirectoryResourceCount == 0) {
+            if (IOUtils.countReadableFiles(root, recursive) == 0) {
+              LOGGER.warn("Directory {} has no readable files.", root);
+            } else {
+              LOGGER.warn(
+                  "No files in directory {} matched the connector.json.fileNamePattern of \"{}\".",
+                  root,
+                  pattern);
+            }
+          }
+          resourceCount += inDirectoryResourceCount;
+        } else {
+          resourceCount += 1;
+          files.add(u);
         }
+      } catch (FileSystemNotFoundException ignored) {
+        files.add(u);
+        // not a path on a known filesystem, fall back to reading from URL directly
       }
-    } catch (FileSystemNotFoundException ignored) {
-      // not a path on a known filesystem, fall back to reading from URL directly
     }
   }
 
   private void tryWriteToDirectory() throws URISyntaxException, IOException {
     try {
       resourceCount = -1;
-      Path root = Paths.get(url.toURI());
+      Path root = Paths.get(urls.get(0).toURI()); // for UNLOAD always one URL
       if (!Files.exists(root)) {
         root = Files.createDirectories(root);
       }
@@ -325,7 +433,7 @@ public class JsonConnector implements Connector {
           throw new IllegalArgumentException(
               "Invalid value for connector.json.url: target directory " + root + " must be empty.");
         }
-        this.root = root;
+        this.roots.add(root);
       }
     } catch (FileSystemNotFoundException ignored) {
       // not a path on a known filesystem, fall back to writing to URL directly
@@ -391,7 +499,7 @@ public class JsonConnector implements Connector {
     return records;
   }
 
-  private Flux<URL> scanRootDirectory() {
+  private Flux<URL> scanRootDirectory(Path root) {
     try {
       // this stream will be closed by the flux, do not add it to a try-with-resources block
       @SuppressWarnings("StreamResourceLeak")
@@ -414,35 +522,13 @@ public class JsonConnector implements Connector {
     }
   }
 
-  private Function<Flux<Record>, Flux<Record>> writeRecords(JsonWriter writer) {
-    return upstream ->
-        upstream
-            .materialize()
-            .map(
-                signal -> {
-                  if (signal.isOnNext()) {
-                    try {
-                      writer.write(signal.get());
-                    } catch (Exception e) {
-                      // Note that we may be are inside a parallel flux;
-                      // sending more than one onError signal to downstream will result
-                      // in all onError signals but the first to be dropped.
-                      // The framework is expected to deal with that.
-                      signal = Signal.error(e);
-                    }
-                  }
-                  return signal;
-                })
-            .dematerialize();
-  }
-
   private class JsonWriter {
 
     private URL url;
     private JsonGenerator writer;
     private long currentLine;
 
-    private void write(Record record) {
+    private void write(Record record) throws IOException {
       try {
         if (writer == null) {
           open();
@@ -450,50 +536,39 @@ public class JsonConnector implements Connector {
           close();
           open();
         }
-        LOGGER.trace("Writing record {}", record);
+        LOGGER.trace("Writing record {} to {}", record, url);
         if (mode == DocumentMode.SINGLE_DOCUMENT && currentLine > 0) {
           writer.writeRaw(',');
         }
         writer.writeObject(record);
         currentLine++;
-      } catch (UncheckedIOException e) {
-        throw e;
-      } catch (ClosedChannelException e) {
-        // OK, happens when the channel was closed due to interruption
-        LOGGER.warn(String.format("Error writing to %s", url), e);
-      } catch (IOException e) {
-        throw new UncheckedIOException(String.format("Error writing to %s", url), e);
+      } catch (RuntimeException e) {
+        throw new IOException(String.format("Error writing to %s", url), e);
       }
     }
 
     private boolean shouldRoll() {
-      return root != null && currentLine == maxRecords;
+      return !roots.isEmpty() && currentLine == maxRecords;
     }
 
-    private void open() {
+    private void open() throws IOException {
       url = getOrCreateDestinationURL();
       try {
         writer = createJsonWriter(url);
         if (mode == DocumentMode.SINGLE_DOCUMENT) {
           // do not use writer.writeStartArray(): we need to fool the parser into thinking it's on
-          // multi doc mode,
-          // to get a better-looking result
+          // multi doc mode, to get a better-looking result
           writer.writeRaw('[');
           writer.writeRaw(System.lineSeparator());
         }
         currentLine = 0;
         LOGGER.debug("Writing " + url);
-      } catch (ClosedChannelException e) {
-        // OK, happens when the channel was closed due to interruption
-        LOGGER.warn(String.format("Could not open %s", url), e);
-      } catch (IOException e) {
-        throw new UncheckedIOException(String.format("Error opening %s", url), e);
-      } catch (Exception e) {
-        throw new UncheckedIOException(new IOException(String.format("Error opening %s", url), e));
+      } catch (RuntimeException | IOException e) {
+        throw new IOException(String.format("Error opening %s", url), e);
       }
     }
 
-    private void close() {
+    private void close() throws IOException {
       if (writer != null) {
         try {
           // add one last EOL before closing; the writer doesn't do it by default
@@ -505,11 +580,8 @@ public class JsonConnector implements Connector {
           writer.close();
           LOGGER.debug("Done writing {}", url);
           writer = null;
-        } catch (ClosedChannelException e) {
-          // OK, happens when the channel was closed due to interruption
-          LOGGER.warn(String.format("Could not close %s", url), e);
-        } catch (IOException e) {
-          throw new UncheckedIOException(String.format("Error closing %s", url), e);
+        } catch (RuntimeException | IOException e) {
+          throw new IOException(String.format("Error closing %s", url), e);
         }
       }
     }
@@ -522,18 +594,19 @@ public class JsonConnector implements Connector {
     return writer;
   }
 
-  private URL getOrCreateDestinationURL() {
-    if (root != null) {
+  @VisibleForTesting
+  URL getOrCreateDestinationURL() {
+    if (!roots.isEmpty()) {
       try {
         String next = String.format(fileNameFormat, counter.incrementAndGet());
-        return root.resolve(next).toUri().toURL();
+        return roots.get(0).resolve(next).toUri().toURL(); // for UNLOAD always one URL
       } catch (MalformedURLException e) {
         throw new UncheckedIOException(
             String.format("Could not create file URL with format %s", fileNameFormat), e);
       }
     }
     // assume we are writing to a single URL and ignore fileNameFormat
-    return url;
+    return urls.get(0); // for UNLOAD always one URL
   }
 
   private static <T extends Enum<T>> Map<T, Boolean> getFeatureMap(

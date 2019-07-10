@@ -46,4 +46,12 @@ public interface ErrorThreshold {
    * @return {@code true} if the threshold was exceeded, or {@code false} otherwise.
    */
   boolean checkThresholdExceeded(long errorCount, @NotNull Number totalItems);
+
+  /**
+   * Returns a textual description of this threshold, mainly for informational purposes, e.g. when
+   * creating error messages.
+   *
+   * @return textual description of this threshold.
+   */
+  String thresholdAsString();
 }

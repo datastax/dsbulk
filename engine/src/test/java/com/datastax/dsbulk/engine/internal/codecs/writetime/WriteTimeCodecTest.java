@@ -43,7 +43,7 @@ class WriteTimeCodecTest {
       CodecSettings.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
   private final TemporalFormat temporalFormat =
-      CodecSettings.getTemporalFormat("CQL_TIMESTAMP", UTC, US, unit, epoch, numberFormat);
+      CodecSettings.getTemporalFormat("CQL_TIMESTAMP", UTC, US, unit, epoch, numberFormat, true);
 
   private final List<String> nullStrings = newArrayList("NULL");
 
