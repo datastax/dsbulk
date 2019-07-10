@@ -22,6 +22,7 @@ import com.datastax.dsbulk.commons.log.LogSink;
 import java.util.SortedMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,8 +77,8 @@ public class ReadsAndWritesReportingExecutionListener
   private final Counter failed;
   private final Counter successful;
   private final Counter inFlight;
-  private final Meter sent;
-  private final Meter received;
+  @Nullable private final Meter sent;
+  @Nullable private final Meter received;
   private final LogSink sink;
 
   /**
@@ -111,14 +112,17 @@ public class ReadsAndWritesReportingExecutionListener
     this.expectedTotal = expectedTotal;
     this.sink = sink;
     countMessage = createCountMessageTemplate(expectedTotal);
-    throughputMessage = createThroughputMessageTemplate();
+    throughputMessage =
+        createThroughputMessageTemplate(
+            delegate.getBytesSentMeter().isPresent()
+                && delegate.getBytesReceivedMeter().isPresent());
     latencyMessage = createLatencyMessageTemplate();
     timer = delegate.getTotalReadsWritesTimer();
     successful = delegate.getSuccessfulReadsWritesCounter();
     failed = delegate.getFailedReadsWritesCounter();
     inFlight = delegate.getInFlightRequestsCounter();
-    sent = delegate.getBytesSentMeter();
-    received = delegate.getBytesReceivedMeter();
+    sent = delegate.getBytesSentMeter().orElse(null);
+    received = delegate.getBytesReceivedMeter().orElse(null);
   }
 
   private ReadsAndWritesReportingExecutionListener(
@@ -132,14 +136,17 @@ public class ReadsAndWritesReportingExecutionListener
     this.expectedTotal = expectedTotal;
     this.sink = sink;
     countMessage = createCountMessageTemplate(expectedTotal);
-    throughputMessage = createThroughputMessageTemplate();
+    throughputMessage =
+        createThroughputMessageTemplate(
+            delegate.getBytesSentMeter().isPresent()
+                && delegate.getBytesReceivedMeter().isPresent());
     latencyMessage = createLatencyMessageTemplate();
     timer = delegate.getTotalReadsWritesTimer();
     successful = delegate.getSuccessfulReadsWritesCounter();
     failed = delegate.getFailedReadsWritesCounter();
     inFlight = delegate.getInFlightRequestsCounter();
-    sent = delegate.getBytesSentMeter();
-    received = delegate.getBytesReceivedMeter();
+    sent = delegate.getBytesSentMeter().orElse(null);
+    received = delegate.getBytesReceivedMeter().orElse(null);
   }
 
   @Override
@@ -172,19 +179,23 @@ public class ReadsAndWritesReportingExecutionListener
               achieved));
     }
     double throughput = timer.getMeanRate();
-    double sizeSent = sent.getMeanRate();
-    double sizeReceived = received.getMeanRate();
-    sink.accept(
-        String.format(
-            throughputMessage,
-            convertRate(throughput),
-            rateUnit,
-            convertRate(sizeSent / BYTES_PER_MB),
-            rateUnit,
-            convertRate(sizeReceived / BYTES_PER_MB),
-            rateUnit,
-            throughput == 0 ? 0 : (sizeSent / BYTES_PER_KB) / throughput,
-            throughput == 0 ? 0 : (sizeReceived / BYTES_PER_KB) / throughput));
+    if (sent != null && received != null) {
+      double sizeSent = sent.getMeanRate();
+      double sizeReceived = received.getMeanRate();
+      sink.accept(
+          String.format(
+              throughputMessage,
+              convertRate(throughput),
+              rateUnit,
+              convertRate(sizeSent / BYTES_PER_MB),
+              rateUnit,
+              convertRate(sizeReceived / BYTES_PER_MB),
+              rateUnit,
+              throughput == 0 ? 0 : (sizeSent / BYTES_PER_KB) / throughput,
+              throughput == 0 ? 0 : (sizeReceived / BYTES_PER_KB) / throughput));
+    } else {
+      sink.accept(String.format(throughputMessage, convertRate(throughput), rateUnit));
+    }
     sink.accept(
         String.format(
             latencyMessage,
@@ -217,13 +228,17 @@ public class ReadsAndWritesReportingExecutionListener
     }
   }
 
-  private static String createThroughputMessageTemplate() {
-    return "Throughput: "
-        + "%,.0f reads-writes/%s, "
-        + "%,.2f mb/%s sent, "
-        + "%,.2f mb/%s received ("
-        + "%,.2f kb/write, "
-        + "%,.2f kb/read)";
+  private static String createThroughputMessageTemplate(boolean trackThroughputInBytes) {
+    if (trackThroughputInBytes) {
+      return "Throughput: "
+          + "%,.0f reads-writes/%s, "
+          + "%,.2f mb/%s sent, "
+          + "%,.2f mb/%s received ("
+          + "%,.2f kb/write, "
+          + "%,.2f kb/read)";
+    } else {
+      return "Throughput: %,.0f reads-writes/%s";
+    }
   }
 
   private static String createLatencyMessageTemplate() {

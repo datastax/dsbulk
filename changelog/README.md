@@ -13,6 +13,7 @@
 - [improvement] DAT-451: Driver query warnings should not spam the console.
 - [improvement] DAT-430: Write records by batches.
 - [task] DAT-455: Update jackson-databind to 2.9.9.1 to fix CVE-2019-12814.
+- [improvement] DAT-432: Ability to disable bytes/sec metrics.
 
 
 ### 1.3.3
