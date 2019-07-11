@@ -27,6 +27,7 @@ import com.datastax.dsbulk.commons.tests.HttpTestServer;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
+import com.datastax.dsbulk.commons.tests.utils.FTPUtils;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.commons.tests.utils.URLUtils;
 import com.datastax.dsbulk.connectors.api.ErrorRecord;
@@ -35,17 +36,23 @@ import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultIndexedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
+import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.univocity.parsers.common.TextParsingException;
 import io.undertow.util.Headers;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.net.ConnectException;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -1061,6 +1068,100 @@ class CSVConnectorTest {
   }
 
   @Test
+  void should_read_only_from_file_when_http_url_is_not_working() throws Exception {
+    // given
+    Path urlFile =
+        createURLFile(Arrays.asList("http://localhost:1234/file.csv", rawURL("/sample.csv")));
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "urlfile = %s, normalizeLineEndingsInQuotes = true, escape = \"\\\"\", comment = \"#\"",
+                        quoteJson(urlFile)))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+
+    // when
+    connector.init();
+
+    // then
+    List<Record> actual = Flux.from(connector.read()).collectList().block();
+    assert actual != null;
+    hasOneFailedRecord(actual, "http://localhost:1234/file.csv", ConnectException.class);
+    assertRecords(
+        actual.stream().filter(DefaultRecord.class::isInstance).collect(Collectors.toList()));
+    connector.close();
+
+    Files.delete(urlFile);
+  }
+
+  @Test
+  void should_read_from_one_ftp_when_other_not_working() throws Exception {
+    // given
+    FTPUtils.FTPTestServer ftpServer =
+        FTPUtils.createFTPServer(
+            ImmutableMap.of(
+                "/file1.csv",
+                new String(Files.readAllBytes(path("/sample.csv")), StandardCharsets.UTF_8)));
+
+    String notExistingFtpFile = String.format("%s/file2.csv", ftpServer.createConnectionString());
+    Path urlFile =
+        createURLFile(
+            Arrays.asList(
+                String.format("%s/file1.csv", ftpServer.createConnectionString()),
+                notExistingFtpFile));
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "urlfile = %s, normalizeLineEndingsInQuotes = true, escape = \"\\\"\", comment = \"#\"",
+                        quoteJson(urlFile)))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+
+    // when
+    connector.init();
+
+    // then
+    List<Record> actual = Flux.from(connector.read()).collectList().block();
+    assert actual != null;
+    hasOneFailedRecord(actual, notExistingFtpFile, FileNotFoundException.class);
+    assertRecords(
+        actual.stream().filter(DefaultRecord.class::isInstance).collect(Collectors.toList()));
+    connector.close();
+
+    Files.delete(urlFile);
+    ftpServer.close();
+  }
+
+  private Throwable getFailedRecordThrowable(List<Record> actual) {
+    List<ErrorRecord> failedRecords =
+        actual.stream()
+            .filter(ErrorRecord.class::isInstance)
+            .map(ErrorRecord.class::cast)
+            .collect(Collectors.toList());
+    assertThat(failedRecords.size()).isEqualTo(1);
+    return failedRecords.get(0).getError();
+  }
+
+  private void hasOneFailedRecord(List<Record> actual, String expectedUrl, Class instanceT)
+      throws URISyntaxException, MalformedURLException {
+    List<ErrorRecord> failedRecords =
+        actual.stream()
+            .filter(ErrorRecord.class::isInstance)
+            .map(ErrorRecord.class::cast)
+            .collect(Collectors.toList());
+    assertThat(failedRecords).hasSize(1);
+    ErrorRecord failedRecord = failedRecords.get(0);
+    assertThat(failedRecord.getSource()).isEqualTo(new URL(expectedUrl));
+    assertThat(failedRecord.getResource()).isEqualTo(new URI(expectedUrl));
+    assertThat(failedRecord.getPosition()).isEqualTo(1);
+    assertThat(failedRecord.getError()).isInstanceOf(instanceT);
+  }
+
+  @Test
   void should_not_write_to_http_url() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
@@ -1093,17 +1194,16 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThatThrownBy(() -> Flux.from(connector.read()).collectList().block())
-        .satisfies(
-            t ->
-                assertThat(t.getCause())
-                    .isInstanceOf(IOException.class)
-                    .hasMessageContaining(
-                        "Length of parsed input (16) exceeds the maximum number "
-                            + "of characters defined in your parser settings (15). "
-                            + "Please increase the value of the connector.csv.maxCharsPerColumn setting.")
-                    .hasCauseExactlyInstanceOf(TextParsingException.class)
-                    .hasRootCauseExactlyInstanceOf(ArrayIndexOutOfBoundsException.class));
+    List<Record> records = Flux.from(connector.read()).collectList().block();
+    assert records != null;
+    assertThat(getFailedRecordThrowable(records))
+        .isInstanceOf(IOException.class)
+        .hasMessageContaining(
+            "Length of parsed input (16) exceeds the maximum number "
+                + "of characters defined in your parser settings (15). "
+                + "Please increase the value of the connector.csv.maxCharsPerColumn setting.")
+        .hasCauseExactlyInstanceOf(TextParsingException.class)
+        .hasRootCauseExactlyInstanceOf(ArrayIndexOutOfBoundsException.class);
     connector.close();
   }
 
@@ -1119,15 +1219,13 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThatThrownBy(() -> Flux.from(connector.read()).collectList().block())
-        .satisfies(
-            t ->
-                assertThat(t)
-                    .hasCauseInstanceOf(IOException.class)
-                    .hasMessageContaining("ArrayIndexOutOfBoundsException - 1")
-                    .hasMessageContaining(
-                        "Please increase the value of the connector.csv.maxColumns setting")
-                    .hasRootCauseInstanceOf(ArrayIndexOutOfBoundsException.class));
+    List<Record> records = Flux.from(connector.read()).collectList().block();
+    assert records != null;
+    assertThat(getFailedRecordThrowable(records))
+        .isInstanceOf(IOException.class)
+        .hasMessageContaining("ArrayIndexOutOfBoundsException - 1")
+        .hasMessageContaining("Please increase the value of the connector.csv.maxColumns setting")
+        .hasRootCauseInstanceOf(ArrayIndexOutOfBoundsException.class);
     connector.close();
   }
 
@@ -1282,17 +1380,14 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThatThrownBy(() -> Flux.from(connector.read()).collectList().block())
-        .satisfies(
-            t -> {
-              Throwable root = getRootCause(t.getCause());
-              assertThat(root)
-                  .isInstanceOf(IOException.class)
-                  .hasMessageContaining(
-                      "bad_header_empty.csv has invalid header: "
-                          + "found empty field name at index 1; "
-                          + "found empty field name at index 2");
-            });
+    List<Record> records = Flux.from(connector.read()).collectList().block();
+    assert records != null;
+    assertThat(getFailedRecordThrowable(records))
+        .isInstanceOf(IOException.class)
+        .hasMessageContaining(
+            "bad_header_empty.csv has invalid header: "
+                + "found empty field name at index 1; "
+                + "found empty field name at index 2");
     connector.close();
   }
 
@@ -1306,22 +1401,19 @@ class CSVConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThatThrownBy(() -> Flux.from(connector.read()).collectList().block())
-        .satisfies(
-            t -> {
-              Throwable root = getRootCause(t.getCause());
-              assertThat(root)
-                  .isInstanceOf(IOException.class)
-                  .hasMessageContaining(
-                      "bad_header_duplicate.csv has invalid header: "
-                          + "found duplicate field name at index 1; "
-                          + "found duplicate field name at index 2");
-            });
+    List<Record> records = Flux.from(connector.read()).collectList().block();
+    assert records != null;
+    assertThat(getFailedRecordThrowable(records))
+        .isInstanceOf(IOException.class)
+        .hasMessageContaining(
+            "bad_header_duplicate.csv has invalid header: "
+                + "found duplicate field name at index 1; "
+                + "found duplicate field name at index 2");
     connector.close();
   }
 
   @Test
-  void should_throw_exception_when_buffet_size_not_valid() {
+  void should_throw_exception_when_buffer_size_not_valid() {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(ConfigFactory.parseString("flushWindow = notANumber"))
@@ -1333,7 +1425,7 @@ class CSVConnectorTest {
   }
 
   @Test
-  void should_throw_exception_when_buffet_size_negative_or_zero() {
+  void should_throw_exception_when_buffer_size_negative_or_zero() {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(ConfigFactory.parseString("flushWindow = 0"))
@@ -1455,6 +1547,26 @@ class CSVConnectorTest {
     connector.init();
     assertThat(Flux.merge(connector.readByResource()).count().block()).isEqualTo(400);
     connector.close();
+  }
+
+  @Test
+  void should_throw_if_provide_two_non_existing_urls() throws IOException, URISyntaxException {
+    Path urlfile = createURLFile(Arrays.asList("/non-existing1", "/non-existing2"));
+
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "urlfile = %s, recursive = false, fileNamePattern = \"**/part-*\"",
+                        quoteJson(urlfile)))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    assertThatThrownBy(() -> Flux.merge(connector.readByResource()).count().block())
+        .hasCauseInstanceOf(IOException.class)
+        .hasMessageContaining("None of the provided resources was loaded successfully.");
+    Files.delete(urlfile);
   }
 
   private static String url(String resource) {

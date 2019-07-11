@@ -121,6 +121,8 @@ Examples:
 
 For other URLs: the URL will be read or written directly; settings like *fileNamePattern*, *recursive*, and *fileNameFormat* will have no effect.
 
+If there is an error opening or reading one of the provided URLs, it will be considered recoverable and processing will continue for other URLs. See log.maxErrors setting for more information.
+
 The default value is `-` (read from `stdin` / write to `stdout`).
 
 Default: **"-"**.
@@ -473,6 +475,8 @@ For your convenience, every line in the urlfile will be trimmed - that is, any l
 
 The file should be encoded in UTF-8, and each line should be a valid URL to load.
 
+If there is an error opening or reading one of the provided URLs, it will be considered recoverable and processing will continue for other URLs. See log.maxErrors setting for more information.
+
 The default value is "" - which means that this property is ignored.
 
 Default: **&lt;unspecified&gt;**.
@@ -507,6 +511,8 @@ Examples:
     url = "-"                              # write json data to stdout (for unload)
 
 For other URLs: the URL will be read or written directly; settings like *fileNamePattern*, *recursive*, and *fileNameFormat* will have no effect.
+
+If there is an error opening or reading one of the provided URLs, it will be considered recoverable and processing will continue for other URLs. See log.maxErrors setting for more information.
 
 The default value is `-` (read from `stdin` / write to `stdout`).
 
