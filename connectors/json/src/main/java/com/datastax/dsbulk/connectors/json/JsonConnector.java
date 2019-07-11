@@ -23,6 +23,7 @@ import com.datastax.dsbulk.connectors.api.ConnectorFeature;
 import com.datastax.dsbulk.connectors.api.MappedField;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
+import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -147,6 +148,7 @@ public class JsonConnector implements Connector {
   private int flushWindow;
   private Scheduler scheduler;
   private List<JsonWriter> writers;
+  private volatile boolean atLeastOneUrlWasLoadedSuccessfully = false;
 
   @Override
   public void configure(LoaderConfig settings, boolean read) {
@@ -324,7 +326,8 @@ public class JsonConnector implements Connector {
     assert read;
     return Flux.concat(
         Flux.fromIterable(roots).flatMap(this::scanRootDirectory).flatMap(this::readURL),
-        Flux.fromIterable(files).flatMap(this::readURL));
+        Flux.fromIterable(files).flatMap(this::readURL),
+        fluxWithErrorIfAllURLsFailed());
   }
 
   @Override
@@ -332,7 +335,18 @@ public class JsonConnector implements Connector {
     assert read;
     return Flux.concat(
         Flux.fromIterable(roots).flatMap(this::scanRootDirectory).map(this::readURL),
-        Flux.fromIterable(files).map(this::readURL));
+        Flux.fromIterable(files).map(this::readURL),
+        fluxWithErrorIfAllURLsFailed());
+  }
+
+  @NotNull
+  private <T> Flux<T> fluxWithErrorIfAllURLsFailed() {
+    return Flux.defer(
+        () ->
+            !atLeastOneUrlWasLoadedSuccessfully
+                ? Flux.error(
+                    new IOException("None of the provided resources was loaded successfully."))
+                : Flux.empty());
   }
 
   @Override
@@ -454,6 +468,7 @@ public class JsonConnector implements Connector {
               JsonFactory factory = objectMapper.getFactory();
               try (BufferedReader r = IOUtils.newBufferedReader(url, encoding);
                   JsonParser parser = factory.createParser(r)) {
+                atLeastOneUrlWasLoadedSuccessfully = true;
                 if (mode == DocumentMode.SINGLE_DOCUMENT) {
                   do {
                     parser.nextToken();
@@ -486,8 +501,25 @@ public class JsonConnector implements Connector {
                 }
                 LOGGER.debug("Done reading {}", url);
                 sink.complete();
+              } catch (JsonParseException e) {
+                sink.next(
+                    new DefaultErrorRecord(
+                        url,
+                        resource,
+                        1,
+                        new IOException(String.format("Error reading from %s", url), e)));
+                sink.complete();
+              } catch (IOException e) {
+                sink.next(new DefaultErrorRecord(url, resource, 1, e));
+                sink.complete();
               } catch (Exception e) {
-                sink.error(new IOException(String.format("Error reading from %s", url), e));
+                sink.next(
+                    new DefaultErrorRecord(
+                        url,
+                        resource,
+                        1,
+                        new IOException(String.format("Error reading from %s", url), e)));
+                sink.complete();
               }
             },
             FluxSink.OverflowStrategy.ERROR);

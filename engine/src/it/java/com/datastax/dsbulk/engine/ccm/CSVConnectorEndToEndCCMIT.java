@@ -19,7 +19,6 @@ import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLines;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStreamExcludingHeaders;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
-import static com.datastax.dsbulk.engine.DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR;
 import static com.datastax.dsbulk.engine.DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS;
 import static com.datastax.dsbulk.engine.DataStaxBulkLoader.STATUS_OK;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
@@ -74,6 +73,7 @@ import com.datastax.dsbulk.commons.tests.utils.Version;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
+import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
 import com.datastax.dsbulk.engine.tests.MockConnector;
 import com.datastax.dsbulk.engine.tests.utils.RecordUtils;
 import com.google.common.base.Splitter;
@@ -91,6 +91,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -267,6 +268,124 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(24, unloadDir);
+  }
+
+  @Test
+  void full_load_unload_using_urlfile_when_one_http_url_is_not_working() throws Exception {
+
+    Path urlFile =
+        createURLFile(
+            Arrays.asList(
+                "http://localhost:1234/non-existing.csv",
+                CSV_RECORDS_UNIQUE_PART_1.toExternalForm()));
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.csv.urlfile");
+    args.add(quoteJson(urlFile));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("ip_by_country");
+    args.add("--schema.mapping");
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
+    validateResultSetSize(10, "SELECT * FROM ip_by_country");
+    deleteDirectory(logDir);
+
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.csv.url");
+    args.add(quoteJson(unloadDir));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--connector.csv.maxConcurrentFiles");
+    args.add("1");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("ip_by_country");
+    args.add("--schema.mapping");
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
+
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    validateOutputFiles(10, unloadDir);
+    Files.delete(urlFile);
+  }
+
+  @Test
+  void full_load_should_return_fatal_error_when_both_urls_failed_parallel() throws Exception {
+
+    Path urlFile =
+        createURLFile(
+            Arrays.asList(
+                "http://localhost:1234/non-existing.csv",
+                "http://localhost:1234/non-existing2.csv"));
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.csv.urlfile");
+    args.add(quoteJson(urlFile));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("ip_by_country");
+    args.add("--schema.mapping");
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
+    assertThat(logs.getAllMessagesAsString())
+        .contains("None of the provided resources was loaded successfully.");
+
+    deleteDirectory(logDir);
+    Files.delete(urlFile);
+  }
+
+  @Test
+  void full_load_should_return_fatal_error_when_all_urls_failed_tpc() throws Exception {
+
+    List<String> urlFiles = new ArrayList<>();
+    for (int i = 0; i <= WorkflowUtils.TPC_THRESHOLD; i++) {
+      urlFiles.add(String.format("/non_existing%s.csv", i));
+    }
+    Path urlFile = createURLFile(urlFiles);
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.csv.urlfile");
+    args.add(quoteJson(urlFile));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("ip_by_country");
+    args.add("--schema.mapping");
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
+    assertThat(logs.getAllMessagesAsString())
+        .contains("None of the provided resources was loaded successfully.");
+
+    deleteDirectory(logDir);
+    Files.delete(urlFile);
   }
 
   /** Simple test case which attempts to load and unload data using ccm and compression (LZ4). */
@@ -3956,7 +4075,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   /** Test for empty headers (DAT-427). */
   @Test
-  void load_empty_headers() {
+  void load_empty_headers() throws Exception {
 
     session.execute("DROP TABLE IF EXISTS test_empty_headers");
     session.execute(
@@ -3976,14 +4095,14 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("*=*");
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
-    assertThat(status).isEqualTo(STATUS_ABORTED_FATAL_ERROR);
+    assertThat(status).isEqualTo(STATUS_COMPLETED_WITH_ERRORS);
 
-    assertThat(logs).hasMessageContaining("found empty field name at index 1");
+    validateExceptionsLog(1, "found empty field name at index 1", "connector-errors.log");
   }
 
   /** Test for duplicate headers (DAT-427). */
   @Test
-  void load_duplicate_headers() {
+  void load_duplicate_headers() throws Exception {
 
     session.execute("DROP TABLE IF EXISTS test_duplicate_headers");
     session.execute(
@@ -4003,9 +4122,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("*=*");
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
-    assertThat(status).isEqualTo(STATUS_ABORTED_FATAL_ERROR);
+    assertThat(status).isEqualTo(STATUS_COMPLETED_WITH_ERRORS);
 
-    assertThat(logs).hasMessageContaining("found duplicate field name at index 1");
+    validateExceptionsLog(1, "found duplicate field name at index 1", "connector-errors.log");
   }
 
   static void checkTemporalsWritten(Session session) {
