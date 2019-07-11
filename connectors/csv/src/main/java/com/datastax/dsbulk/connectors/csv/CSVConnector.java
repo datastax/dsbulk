@@ -367,7 +367,7 @@ public class CSVConnector implements Connector {
     return Flux.concat(
         Flux.fromIterable(roots).flatMap(this::scanRootDirectory).flatMap(this::readURL),
         Flux.fromIterable(files).flatMap(this::readURL),
-        loadingAllURLsFailed()
+        fluxWithErrorIfAllURLsFailed()
     );
   }
 
@@ -377,11 +377,11 @@ public class CSVConnector implements Connector {
     return Flux.concat(
         Flux.fromIterable(roots).flatMap(this::scanRootDirectory).map(this::readURL),
         Flux.fromIterable(files).map(this::readURL),
-        loadingAllURLsFailed());
+        fluxWithErrorIfAllURLsFailed());
   }
 
   @NotNull
-  private  <T> Flux<T> loadingAllURLsFailed() {
+  private  <T> Flux<T> fluxWithErrorIfAllURLsFailed() {
     return Flux.create(sink -> {
       if(!atLeastOneUrlWasLoadedSuccessfully){
         sink.error(new IOException("None of the provided URLs was loaded successfully."));
