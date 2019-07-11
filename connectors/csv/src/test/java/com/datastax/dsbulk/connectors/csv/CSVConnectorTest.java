@@ -1557,7 +1557,6 @@ class CSVConnectorTest {
 
   @Test
   void should_throw_if_provide_two_non_existing_urls() throws IOException, URISyntaxException {
-
     Path urlfile =
         createURLFile(
             Arrays.asList(

@@ -148,6 +148,8 @@ public class JsonConnector implements Connector {
   private int flushWindow;
   private Scheduler scheduler;
   private List<JsonWriter> writers;
+  private boolean atLeastOneUrlWasLoadedSuccessfully = false;
+
 
   @Override
   public void configure(LoaderConfig settings, boolean read) {
@@ -325,7 +327,8 @@ public class JsonConnector implements Connector {
     assert read;
     return Flux.concat(
         Flux.fromIterable(roots).flatMap(this::scanRootDirectory).flatMap(this::readURL),
-        Flux.fromIterable(files).flatMap(this::readURL));
+        Flux.fromIterable(files).flatMap(this::readURL),
+        loadingAllURLsFailed());
   }
 
   @Override
@@ -333,7 +336,21 @@ public class JsonConnector implements Connector {
     assert read;
     return Flux.concat(
         Flux.fromIterable(roots).flatMap(this::scanRootDirectory).map(this::readURL),
-        Flux.fromIterable(files).map(this::readURL));
+        Flux.fromIterable(files).map(this::readURL),
+        loadingAllURLsFailed());
+  }
+
+
+  @NotNull
+  private  <T> Flux<T> loadingAllURLsFailed() {
+    return Flux.create(sink -> {
+      if(!atLeastOneUrlWasLoadedSuccessfully){
+        sink.error(new IOException("None of the provided URLs was loaded successfully."));
+        sink.complete();
+      } else {
+        sink.complete();
+      }
+    }, FluxSink.OverflowStrategy.ERROR);
   }
 
   @Override
@@ -454,6 +471,7 @@ public class JsonConnector implements Connector {
               JsonFactory factory = objectMapper.getFactory();
               try (BufferedReader r = IOUtils.newBufferedReader(url, encoding);
                   JsonParser parser = factory.createParser(r)) {
+                atLeastOneUrlWasLoadedSuccessfully = true;
                 if (mode == DocumentMode.SINGLE_DOCUMENT) {
                   do {
                     parser.nextToken();

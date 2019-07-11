@@ -721,6 +721,30 @@ class JsonConnectorTest {
   }
 
   @Test
+  void should_throw_if_provide_two_non_existing_urls() throws IOException, URISyntaxException {
+    Path urlfile =
+        createURLFile(
+            Arrays.asList(
+                "/non-existing1", "/non-existing2"));
+
+    JsonConnector connector = new JsonConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                String.format(
+                    "urlfile = %s, recursive = false, fileNamePattern = \"**/part-*\"",
+                    quoteJson(urlfile)))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    assertThatThrownBy(() -> Flux.merge(connector.readByResource()).count().block())
+        .hasCauseInstanceOf(IOException.class)
+        .hasMessageContaining("None of the provided URLs was loaded successfully.");
+    connector.close();
+    Files.delete(urlfile);
+  }
+
+  @Test
   void should_error_when_directory_is_not_empty() throws Exception {
     JsonConnector connector = new JsonConnector();
     Path out = Files.createTempDirectory("test");

@@ -40,6 +40,9 @@ import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
+import com.datastax.dsbulk.commons.tests.logging.LogCapture;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.commons.tests.utils.Version;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
@@ -54,13 +57,17 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(LogInterceptingExtension.class)
 @CCMConfig(numberOfNodes = 1)
 @Tag("medium")
 @CCMRequirements(compatibleTypes = {DSE, DDAC})
@@ -69,12 +76,17 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   private static final Version V3 = Version.parse("3.0");
   private static final Version V2_1 = Version.parse("2.1");
 
+  private final LogInterceptor logs;
+
   private Path unloadDir;
   private Path logDir;
   private Path urlFile;
 
-  JsonConnectorEndToEndCCMIT(CCMCluster ccm, Session session) {
+
+
+  JsonConnectorEndToEndCCMIT(CCMCluster ccm, Session session, @LogCapture LogInterceptor logs) {
     super(ccm, session);
+    this.logs = logs;
   }
 
   @BeforeAll
@@ -249,6 +261,70 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(24, unloadDir);
+  }
+
+  @Test
+  void full_load_should_return_fatal_error_when_both_urls_failed_parallel() throws Exception {
+    Path urlFile =
+        createURLFile(
+            Arrays.asList(
+                "http://localhost:1234/non-existing.json",
+                "http://localhost:1234/non-existing2.json"));
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.name");
+    args.add("json");
+    args.add("--connector.json.urlfile");
+    args.add(quoteJson(urlFile));
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("ip_by_country");
+    args.add("--schema.mapping");
+    args.add(IP_BY_COUNTRY_MAPPING_NAMED);
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
+    assertThat(logs.getAllMessagesAsString())
+        .contains("None of the provided URLs was loaded successfully.");
+    deleteDirectory(logDir);
+    Files.delete(urlFile);
+  }
+
+
+  @Test
+  void full_load_should_return_fatal_error_when_both_urls_failed_tpc() throws Exception {
+
+    List<String> urlFiles = new ArrayList<>();
+    for(int i = 0; i <= WorkflowUtils.TPC_THRESHOLD; i++){
+      urlFiles.add(String.format("/non_existing%s.json", i ));
+    }
+
+    Path urlFile = createURLFile(urlFiles);
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.name");
+    args.add("json");
+    args.add("--connector.json.urlfile");
+    args.add(quoteJson(urlFile));
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("ip_by_country");
+    args.add("--schema.mapping");
+    args.add(IP_BY_COUNTRY_MAPPING_NAMED);
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
+    assertThat(logs.getAllMessagesAsString())
+        .contains("None of the provided URLs was loaded successfully.");
+    deleteDirectory(logDir);
+    Files.delete(urlFile);
   }
 
   /** DAT-307: Test to validate that missing primary keys will fail to load. */
