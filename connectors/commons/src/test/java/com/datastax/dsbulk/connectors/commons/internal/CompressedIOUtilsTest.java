@@ -108,7 +108,8 @@ class CompressedIOUtilsTest {
     assertTrue(CompressedIOUtils.isNoneCompression("none"));
   }
 
-  private static final List<String> CONTENT = ImmutableList.of("this is", "a", "test file");
+  private static final ImmutableList<String> CONTENT =
+      ImmutableList.of("this is", "a", "test file");
 
   boolean canReadContent(final String name, final String compression) throws IOException {
     Path path = Paths.get("src/test/resources/compression").resolve(name);

@@ -96,6 +96,12 @@
     </dependency>
 
     <dependency>
+      <groupId>org.mockftpserver</groupId>
+      <artifactId>MockFtpServer</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
       <groupId>io.undertow</groupId>
       <artifactId>undertow-core</artifactId>
       <scope>test</scope>

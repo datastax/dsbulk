@@ -108,6 +108,12 @@
       <scope>test</scope>
     </dependency>
 
+    <dependency>
+      <groupId>org.mockftpserver</groupId>
+      <artifactId>MockFtpServer</artifactId>
+      <scope>test</scope>
+    </dependency>
+
   </dependencies>
 
 </project>
