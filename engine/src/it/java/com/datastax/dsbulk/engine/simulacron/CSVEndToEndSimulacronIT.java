@@ -307,7 +307,7 @@ class CSVEndToEndSimulacronIT {
 
     int status = new DataStaxBulkLoader(args).run();
     assertThat(logs.getAllMessagesAsString())
-        .contains("None of the provided URLs was loaded successfully");
+        .contains("None of the provided resources was loaded successfully");
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
     Files.delete(urlFile);
   }
