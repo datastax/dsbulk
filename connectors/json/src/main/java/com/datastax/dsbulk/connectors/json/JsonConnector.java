@@ -148,7 +148,7 @@ public class JsonConnector implements Connector {
   private int flushWindow;
   private Scheduler scheduler;
   private List<JsonWriter> writers;
-  private boolean atLeastOneUrlWasLoadedSuccessfully = false;
+  private volatile boolean atLeastOneUrlWasLoadedSuccessfully = false;
 
   @Override
   public void configure(LoaderConfig settings, boolean read) {
@@ -341,16 +341,11 @@ public class JsonConnector implements Connector {
 
   @NotNull
   private <T> Flux<T> fluxWithErrorIfAllURLsFailed() {
-    return Flux.create(
-        sink -> {
-          if (!atLeastOneUrlWasLoadedSuccessfully) {
-            sink.error(new IOException("None of the provided URLs was loaded successfully."));
-            sink.complete();
-          } else {
-            sink.complete();
-          }
-        },
-        FluxSink.OverflowStrategy.ERROR);
+    return Flux.defer(
+        () ->
+            !atLeastOneUrlWasLoadedSuccessfully
+                ? Flux.error(new IOException("None of the provided URLs was loaded successfully."))
+                : Flux.empty());
   }
 
   @Override
