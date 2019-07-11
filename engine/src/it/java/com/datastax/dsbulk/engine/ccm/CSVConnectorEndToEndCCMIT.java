@@ -359,8 +359,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   void full_load_should_return_fatal_error_when_both_urls_failed_tpc() throws Exception {
 
     List<String> urlFiles = new ArrayList<>();
-    for(int i = 0; i <= WorkflowUtils.TPC_THRESHOLD; i++){
-      urlFiles.add(String.format("/non_existing%s.csv", i ));
+    for (int i = 0; i <= WorkflowUtils.TPC_THRESHOLD; i++) {
+      urlFiles.add(String.format("/non_existing%s.csv", i));
     }
     Path urlFile = createURLFile(urlFiles);
 

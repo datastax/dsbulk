@@ -270,34 +270,35 @@ class JsonEndToEndSimulacronIT {
     Path urlFile =
         createURLFile(
             Arrays.asList(
-                "http://localhost:1234/non-existing.json", "http://localhost:1234/non-existing2.json"));
+                "http://localhost:1234/non-existing.json",
+                "http://localhost:1234/non-existing2.json"));
 
     primeIpByCountryTable(simulacron);
     RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
     simulacron.prime(new Prime(insert));
 
     String[] args = {
-        "load",
-        "-c",
-        "json",
-        "--log.directory",
-        quoteJson(logDir),
-        "--connector.json.urlfile",
-        quoteJson(urlFile),
-        "--driver.query.consistency",
-        "ONE",
-        "--driver.hosts",
-        hostname,
-        "--driver.port",
-        port,
-        "--driver.pooling.local.connections",
-        "1",
-        "--schema.keyspace",
-        "ks1",
-        "--schema.query",
-        INSERT_INTO_IP_BY_COUNTRY,
-        "--schema.mapping",
-        IP_BY_COUNTRY_MAPPING_NAMED
+      "load",
+      "-c",
+      "json",
+      "--log.directory",
+      quoteJson(logDir),
+      "--connector.json.urlfile",
+      quoteJson(urlFile),
+      "--driver.query.consistency",
+      "ONE",
+      "--driver.hosts",
+      hostname,
+      "--driver.port",
+      port,
+      "--driver.pooling.local.connections",
+      "1",
+      "--schema.keyspace",
+      "ks1",
+      "--schema.query",
+      INSERT_INTO_IP_BY_COUNTRY,
+      "--schema.mapping",
+      IP_BY_COUNTRY_MAPPING_NAMED
     };
 
     int status = new DataStaxBulkLoader(args).run();

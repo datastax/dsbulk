@@ -46,6 +46,7 @@ import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.commons.tests.utils.Version;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
+import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -57,8 +58,6 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
-import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -81,8 +80,6 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   private Path unloadDir;
   private Path logDir;
   private Path urlFile;
-
-
 
   JsonConnectorEndToEndCCMIT(CCMCluster ccm, Session session, @LogCapture LogInterceptor logs) {
     super(ccm, session);
@@ -294,13 +291,12 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     Files.delete(urlFile);
   }
 
-
   @Test
   void full_load_should_return_fatal_error_when_both_urls_failed_tpc() throws Exception {
 
     List<String> urlFiles = new ArrayList<>();
-    for(int i = 0; i <= WorkflowUtils.TPC_THRESHOLD; i++){
-      urlFiles.add(String.format("/non_existing%s.json", i ));
+    for (int i = 0; i <= WorkflowUtils.TPC_THRESHOLD; i++) {
+      urlFiles.add(String.format("/non_existing%s.json", i));
     }
 
     Path urlFile = createURLFile(urlFiles);

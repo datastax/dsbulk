@@ -150,7 +150,6 @@ public class JsonConnector implements Connector {
   private List<JsonWriter> writers;
   private boolean atLeastOneUrlWasLoadedSuccessfully = false;
 
-
   @Override
   public void configure(LoaderConfig settings, boolean read) {
     try {
@@ -340,17 +339,18 @@ public class JsonConnector implements Connector {
         fluxWithErrorIfAllURLsFailed());
   }
 
-
   @NotNull
-  private  <T> Flux<T> fluxWithErrorIfAllURLsFailed() {
-    return Flux.create(sink -> {
-      if(!atLeastOneUrlWasLoadedSuccessfully){
-        sink.error(new IOException("None of the provided URLs was loaded successfully."));
-        sink.complete();
-      } else {
-        sink.complete();
-      }
-    }, FluxSink.OverflowStrategy.ERROR);
+  private <T> Flux<T> fluxWithErrorIfAllURLsFailed() {
+    return Flux.create(
+        sink -> {
+          if (!atLeastOneUrlWasLoadedSuccessfully) {
+            sink.error(new IOException("None of the provided URLs was loaded successfully."));
+            sink.complete();
+          } else {
+            sink.complete();
+          }
+        },
+        FluxSink.OverflowStrategy.ERROR);
   }
 
   @Override
@@ -506,13 +506,22 @@ public class JsonConnector implements Connector {
                 sink.complete();
               } catch (JsonParseException e) {
                 sink.next(
-                    new DefaultErrorRecord(url, resource, 1, new IOException(String.format("Error reading from %s", url), e)));
+                    new DefaultErrorRecord(
+                        url,
+                        resource,
+                        1,
+                        new IOException(String.format("Error reading from %s", url), e)));
                 sink.complete();
               } catch (IOException e) {
                 sink.next(new DefaultErrorRecord(url, resource, 1, e));
                 sink.complete();
               } catch (Exception e) {
-                sink.next(new DefaultErrorRecord(url, resource, 1, new IOException(String.format("Error reading from %s", url), e)));
+                sink.next(
+                    new DefaultErrorRecord(
+                        url,
+                        resource,
+                        1,
+                        new IOException(String.format("Error reading from %s", url), e)));
                 sink.complete();
               }
             },

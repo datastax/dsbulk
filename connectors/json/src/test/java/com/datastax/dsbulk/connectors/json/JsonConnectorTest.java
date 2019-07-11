@@ -722,18 +722,15 @@ class JsonConnectorTest {
 
   @Test
   void should_throw_if_provide_two_non_existing_urls() throws IOException, URISyntaxException {
-    Path urlfile =
-        createURLFile(
-            Arrays.asList(
-                "/non-existing1", "/non-existing2"));
+    Path urlfile = createURLFile(Arrays.asList("/non-existing1", "/non-existing2"));
 
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                String.format(
-                    "urlfile = %s, recursive = false, fileNamePattern = \"**/part-*\"",
-                    quoteJson(urlfile)))
+                    String.format(
+                        "urlfile = %s, recursive = false, fileNamePattern = \"**/part-*\"",
+                        quoteJson(urlfile)))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -1083,8 +1080,7 @@ class JsonConnectorTest {
     connector.close();
   }
 
-  private Throwable getFailedRecordThrowable(
-      List<Record> actual) {
+  private Throwable getFailedRecordThrowable(List<Record> actual) {
     List<ErrorRecord> failedRecords =
         actual.stream()
             .filter(ErrorRecord.class::isInstance)
