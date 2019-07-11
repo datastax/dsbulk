@@ -73,6 +73,7 @@ import com.datastax.dsbulk.commons.tests.utils.Version;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
+import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
 import com.datastax.dsbulk.engine.tests.MockConnector;
 import com.datastax.dsbulk.engine.tests.utils.RecordUtils;
 import com.google.common.base.Splitter;
@@ -318,6 +319,72 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(10, unloadDir);
+    Files.delete(urlFile);
+  }
+
+  @Test
+  void full_load_should_return_fatal_error_when_both_urls_failed_parallel() throws Exception {
+
+    Path urlFile =
+        createURLFile(
+            Arrays.asList(
+                "http://localhost:1234/non-existing.csv",
+                "http://localhost:1234/non-existing2.csv"));
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.csv.urlfile");
+    args.add(quoteJson(urlFile));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("ip_by_country");
+    args.add("--schema.mapping");
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
+    assertThat(logs.getAllMessagesAsString())
+        .contains("None of the provided URLs was loaded successfully.");
+
+    deleteDirectory(logDir);
+    Files.delete(urlFile);
+  }
+
+  @Test
+  void full_load_should_return_fatal_error_when_both_urls_failed_tpc() throws Exception {
+
+    List<String> urlFiles = new ArrayList<>();
+    for(int i = 0; i <= WorkflowUtils.TPC_THRESHOLD; i++){
+      urlFiles.add(String.format("/non_existing%s.csv", i ));
+    }
+    Path urlFile = createURLFile(urlFiles);
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.csv.urlfile");
+    args.add(quoteJson(urlFile));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("ip_by_country");
+    args.add("--schema.mapping");
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
+    assertThat(logs.getAllMessagesAsString())
+        .contains("None of the provided URLs was loaded successfully.");
+
+    deleteDirectory(logDir);
     Files.delete(urlFile);
   }
 

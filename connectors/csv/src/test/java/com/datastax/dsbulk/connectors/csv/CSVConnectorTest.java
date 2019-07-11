@@ -1555,6 +1555,30 @@ class CSVConnectorTest {
     connector.close();
   }
 
+  @Test
+  void should_throw_if_provide_two_non_existing_urls() throws IOException, URISyntaxException {
+
+    Path urlfile =
+        createURLFile(
+            Arrays.asList(
+                "/non-existing1", "/non-existing2"));
+
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                String.format(
+                    "urlfile = %s, recursive = false, fileNamePattern = \"**/part-*\"",
+                    quoteJson(urlfile)))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    assertThatThrownBy(() -> Flux.merge(connector.readByResource()).count().block())
+        .hasCauseInstanceOf(IOException.class)
+        .hasMessageContaining("None of the provided URLs was loaded successfully.");
+    Files.delete(urlfile);
+  }
+
   private static String url(String resource) {
     return quoteJson(CSVConnectorTest.class.getResource(resource));
   }

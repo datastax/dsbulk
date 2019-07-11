@@ -266,6 +266,52 @@ class CSVEndToEndSimulacronIT {
     Files.delete(urlFile);
   }
 
+  @Test
+  void full_load_using_urlfile_when_both_urls_not_working() throws IOException {
+
+    Path urlFile =
+        createURLFile(
+            Arrays.asList(
+                "http://localhost:1234/non-existing.csv",
+                "http://localhost:1234/non-existing2.csv"));
+
+    primeIpByCountryTable(simulacron);
+    RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
+    simulacron.prime(new Prime(insert));
+
+    String[] args = {
+        "load",
+        "--log.directory",
+        quoteJson(logDir),
+        "--log.verbosity",
+        "2",
+        "-header",
+        "false",
+        "--connector.csv.urlfile",
+        quoteJson(urlFile),
+        "--driver.query.consistency",
+        "ONE",
+        "--driver.hosts",
+        hostname,
+        "--driver.port",
+        port,
+        "--driver.pooling.local.connections",
+        "1",
+        "--schema.keyspace",
+        "ks1",
+        "--schema.query",
+        INSERT_INTO_IP_BY_COUNTRY,
+        "--schema.mapping",
+        IP_BY_COUNTRY_MAPPING_INDEXED
+    };
+
+    int status = new DataStaxBulkLoader(args).run();
+    assertThat(logs.getAllMessagesAsString())
+        .contains("None of the provided URLs was loaded successfully");
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
+    Files.delete(urlFile);
+  }
+
   @ParameterizedTest
   @MethodSource("multipleUrlsProvider")
   void full_load_multiple_urls(Path urlfile) {

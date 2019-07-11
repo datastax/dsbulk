@@ -41,6 +41,7 @@ import com.univocity.parsers.csv.CsvParserSettings;
 import com.univocity.parsers.csv.CsvWriter;
 import com.univocity.parsers.csv.CsvWriterSettings;
 import io.netty.util.concurrent.DefaultThreadFactory;
+
 import java.io.IOException;
 import java.io.Reader;
 import java.io.UncheckedIOException;
@@ -65,6 +66,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+
 import org.jetbrains.annotations.NotNull;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -150,9 +152,11 @@ public class CSVConnector implements Connector {
   private int resourceCount;
   private CsvParserSettings parserSettings;
   private CsvWriterSettings writerSettings;
-  @VisibleForTesting AtomicInteger counter;
+  @VisibleForTesting
+  AtomicInteger counter;
   private Scheduler scheduler;
   private List<CSVWriter> writers;
+  private boolean atLeastOneUrlWasLoadedSuccessfully = false;
 
   @Override
   public void configure(LoaderConfig settings, boolean read) {
@@ -362,7 +366,9 @@ public class CSVConnector implements Connector {
     assert read;
     return Flux.concat(
         Flux.fromIterable(roots).flatMap(this::scanRootDirectory).flatMap(this::readURL),
-        Flux.fromIterable(files).flatMap(this::readURL));
+        Flux.fromIterable(files).flatMap(this::readURL),
+        loadingAllURLsFailed()
+    );
   }
 
   @Override
@@ -370,7 +376,20 @@ public class CSVConnector implements Connector {
     assert read;
     return Flux.concat(
         Flux.fromIterable(roots).flatMap(this::scanRootDirectory).map(this::readURL),
-        Flux.fromIterable(files).map(this::readURL));
+        Flux.fromIterable(files).map(this::readURL),
+        loadingAllURLsFailed());
+  }
+
+  @NotNull
+  private  <T> Flux<T> loadingAllURLsFailed() {
+    return Flux.create(sink -> {
+      if(!atLeastOneUrlWasLoadedSuccessfully){
+        sink.error(new IOException("None of the provided URLs was loaded successfully."));
+        sink.complete();
+      } else {
+        sink.complete();
+      }
+    }, FluxSink.OverflowStrategy.ERROR);
   }
 
   @Override
@@ -491,6 +510,7 @@ public class CSVConnector implements Connector {
               LOGGER.debug("Reading {}", url);
               URI resource = URI.create(url.toExternalForm());
               try (Reader r = IOUtils.newBufferedReader(url, encoding)) {
+                atLeastOneUrlWasLoadedSuccessfully = true;
                 parser.beginParsing(r);
                 ParsingContext context = parser.getContext();
                 MappedField[] fieldNames = null;
