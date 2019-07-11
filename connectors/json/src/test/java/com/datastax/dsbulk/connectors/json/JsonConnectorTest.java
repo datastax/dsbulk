@@ -736,7 +736,7 @@ class JsonConnectorTest {
     connector.init();
     assertThatThrownBy(() -> Flux.merge(connector.readByResource()).count().block())
         .hasCauseInstanceOf(IOException.class)
-        .hasMessageContaining("None of the provided URLs was loaded successfully.");
+        .hasMessageContaining("None of the provided resources was loaded successfully.");
     connector.close();
     Files.delete(urlfile);
   }

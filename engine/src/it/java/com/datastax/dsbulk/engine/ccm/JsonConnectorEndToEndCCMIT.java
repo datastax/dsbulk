@@ -286,13 +286,13 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
     assertThat(logs.getAllMessagesAsString())
-        .contains("None of the provided URLs was loaded successfully.");
+        .contains("None of the provided resources was loaded successfully.");
     deleteDirectory(logDir);
     Files.delete(urlFile);
   }
 
   @Test
-  void full_load_should_return_fatal_error_when_both_urls_failed_tpc() throws Exception {
+  void full_load_should_return_fatal_error_when_all_urls_failed_tpc() throws Exception {
 
     List<String> urlFiles = new ArrayList<>();
     for (int i = 0; i <= WorkflowUtils.TPC_THRESHOLD; i++) {
@@ -318,7 +318,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
     assertThat(logs.getAllMessagesAsString())
-        .contains("None of the provided URLs was loaded successfully.");
+        .contains("None of the provided resources was loaded successfully.");
     deleteDirectory(logDir);
     Files.delete(urlFile);
   }

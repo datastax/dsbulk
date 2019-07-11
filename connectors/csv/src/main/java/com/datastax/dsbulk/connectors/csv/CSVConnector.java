@@ -381,7 +381,8 @@ public class CSVConnector implements Connector {
     return Flux.defer(
         () ->
             !atLeastOneUrlWasLoadedSuccessfully
-                ? Flux.error(new IOException("None of the provided URLs was loaded successfully."))
+                ? Flux.error(
+                    new IOException("None of the provided resources was loaded successfully."))
                 : Flux.empty());
   }
 
