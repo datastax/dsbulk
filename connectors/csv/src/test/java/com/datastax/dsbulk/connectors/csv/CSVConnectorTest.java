@@ -41,6 +41,7 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.univocity.parsers.common.TextParsingException;
 import io.undertow.util.Headers;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
@@ -62,6 +63,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+
 import org.assertj.core.util.Throwables;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -75,7 +77,8 @@ class CSVConnectorTest {
 
   static {
     URLUtils.setURLFactoryIfNeeded();
-    Thread.setDefaultUncaughtExceptionHandler((thread, t) -> {});
+    Thread.setDefaultUncaughtExceptionHandler((thread, t) -> {
+    });
   }
 
   private static Path MULTIPLE_URLS_FILE;
@@ -104,9 +107,9 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, normalizeLineEndingsInQuotes = true, escape = \"\\\"\", comment = \"#\"",
-                        url("/sample.csv")))
+                String.format(
+                    "url = %s, normalizeLineEndingsInQuotes = true, escape = \"\\\"\", comment = \"#\"",
+                    url("/sample.csv")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -121,9 +124,9 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, normalizeLineEndingsInQuotes = true, escape = \"\\\"\", comment = \"#\"",
-                        url("/sample.csv")))
+                String.format(
+                    "url = %s, normalizeLineEndingsInQuotes = true, escape = \"\\\"\", comment = \"#\"",
+                    url("/sample.csv")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -326,7 +329,7 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format("url = %s, recursive = false", quoteJson(rootPath)))
+                String.format("url = %s, recursive = false", quoteJson(rootPath)))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -366,9 +369,9 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, recursive = true, fileNamePattern = \"**/part-*\"",
-                        url("/root-custom")))
+                String.format(
+                    "url = %s, recursive = true, fileNamePattern = \"**/part-*\"",
+                    url("/root-custom")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -384,9 +387,9 @@ class CSVConnectorTest {
       LoaderConfig settings =
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
-                      String.format(
-                          "url = %s, recursive = true, fileNamePattern = \"**/part-*\"",
-                          quoteJson(rootPath)))
+                  String.format(
+                      "url = %s, recursive = true, fileNamePattern = \"**/part-*\"",
+                      quoteJson(rootPath)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);
       connector.init();
@@ -407,9 +410,9 @@ class CSVConnectorTest {
       LoaderConfig settings =
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
-                      String.format(
-                          "url = %s, recursive = true, fileNamePattern = \"**/part-*\"",
-                          quoteJson(rootPath)))
+                  String.format(
+                      "url = %s, recursive = true, fileNamePattern = \"**/part-*\"",
+                      quoteJson(rootPath)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);
       connector.init();
@@ -434,8 +437,8 @@ class CSVConnectorTest {
       LoaderConfig settings =
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
-                      String.format(
-                          "url = %s, escape = \"\\\"\", maxConcurrentFiles = 1", quoteJson(out)))
+                  String.format(
+                      "url = %s, escape = \"\\\"\", maxConcurrentFiles = 1", quoteJson(out)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
@@ -465,8 +468,8 @@ class CSVConnectorTest {
       LoaderConfig settings =
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
-                      String.format(
-                          "url = %s, escape = \"\\\"\", maxConcurrentFiles = 4", quoteJson(out)))
+                  String.format(
+                      "url = %s, escape = \"\\\"\", maxConcurrentFiles = 4", quoteJson(out)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
@@ -517,9 +520,9 @@ class CSVConnectorTest {
       LoaderConfig settings =
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
-                      String.format(
-                          "url = %s, escape = \"\\\"\", maxConcurrentFiles = 1, maxRecords = 4",
-                          quoteJson(out)))
+                  String.format(
+                      "url = %s, escape = \"\\\"\", maxConcurrentFiles = 1, maxRecords = 4",
+                      quoteJson(out)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
@@ -579,7 +582,7 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format("url = %s, recursive = true, skipRecords = 10", url("/root")))
+                String.format("url = %s, recursive = true, skipRecords = 10", url("/root")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -593,7 +596,7 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format("url = %s, recursive = true, skipRecords = 150", url("/root")))
+                String.format("url = %s, recursive = true, skipRecords = 150", url("/root")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -607,7 +610,7 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format("url = %s, recursive = true, maxRecords = 10", url("/root")))
+                String.format("url = %s, recursive = true, maxRecords = 10", url("/root")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -621,7 +624,7 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format("url = %s, recursive = true, maxRecords = 1", url("/root")))
+                String.format("url = %s, recursive = true, maxRecords = 1", url("/root")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -635,9 +638,9 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, recursive = true, skipRecords = 95, maxRecords = 10",
-                        url("/root")))
+                String.format(
+                    "url = %s, recursive = true, skipRecords = 95, maxRecords = 10",
+                    url("/root")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -651,9 +654,9 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, skipRecords = 10, maxRecords = 1",
-                        url("/root/ip-by-country-sample1.csv")))
+                String.format(
+                    "url = %s, skipRecords = 10, maxRecords = 1",
+                    url("/root/ip-by-country-sample1.csv")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -674,12 +677,12 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, "
-                            + "ignoreLeadingWhitespaces = false, "
-                            + "ignoreTrailingWhitespaces = false, "
-                            + "header = false",
-                        quoteJson(file)))
+                String.format(
+                    "url = %s, "
+                        + "ignoreLeadingWhitespaces = false, "
+                        + "ignoreTrailingWhitespaces = false, "
+                        + "header = false",
+                    quoteJson(file)))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -698,12 +701,12 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, "
-                            + "ignoreLeadingWhitespaces = true, "
-                            + "ignoreTrailingWhitespaces = true, "
-                            + "header = false",
-                        quoteJson(file)))
+                String.format(
+                    "url = %s, "
+                        + "ignoreLeadingWhitespaces = true, "
+                        + "ignoreTrailingWhitespaces = true, "
+                        + "header = false",
+                    quoteJson(file)))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -721,13 +724,13 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, "
-                            + "ignoreLeadingWhitespaces = false, "
-                            + "ignoreTrailingWhitespaces = false, "
-                            + "maxConcurrentFiles = 1, "
-                            + "header = false",
-                        quoteJson(out)))
+                String.format(
+                    "url = %s, "
+                        + "ignoreLeadingWhitespaces = false, "
+                        + "ignoreTrailingWhitespaces = false, "
+                        + "maxConcurrentFiles = 1, "
+                        + "header = false",
+                    quoteJson(out)))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
@@ -747,12 +750,12 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, "
-                            + "ignoreLeadingWhitespaces = true, "
-                            + "ignoreTrailingWhitespaces = true, "
-                            + "header = false",
-                        quoteJson(out)))
+                String.format(
+                    "url = %s, "
+                        + "ignoreLeadingWhitespaces = true, "
+                        + "ignoreTrailingWhitespaces = true, "
+                        + "header = false",
+                    quoteJson(out)))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
@@ -773,12 +776,12 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, "
-                            + "ignoreLeadingWhitespacesInQuotes = false, "
-                            + "ignoreTrailingWhitespacesInQuotes = false, "
-                            + "header = false",
-                        quoteJson(file)))
+                String.format(
+                    "url = %s, "
+                        + "ignoreLeadingWhitespacesInQuotes = false, "
+                        + "ignoreTrailingWhitespacesInQuotes = false, "
+                        + "header = false",
+                    quoteJson(file)))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -797,12 +800,12 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, "
-                            + "ignoreLeadingWhitespacesInQuotes = true, "
-                            + "ignoreTrailingWhitespacesInQuotes = true, "
-                            + "header = false",
-                        quoteJson(file)))
+                String.format(
+                    "url = %s, "
+                        + "ignoreLeadingWhitespacesInQuotes = true, "
+                        + "ignoreTrailingWhitespacesInQuotes = true, "
+                        + "header = false",
+                    quoteJson(file)))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -820,7 +823,7 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format("url = %s, nullValue = null, header = false", quoteJson(file)))
+                String.format("url = %s, nullValue = null, header = false", quoteJson(file)))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -838,7 +841,7 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format("url = %s, nullValue = NULL, header = false", quoteJson(file)))
+                String.format("url = %s, nullValue = NULL, header = false", quoteJson(file)))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -855,17 +858,17 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format("url = %s, nullValue = null, header = true", quoteJson(out)))
+                String.format("url = %s, nullValue = null, header = true", quoteJson(out)))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
     Flux.<Record>just(
-            DefaultRecord.mapped(
-                "source",
-                resource,
-                -1,
-                new Field[] {new DefaultMappedField("field1")},
-                new Object[] {null}))
+        DefaultRecord.mapped(
+            "source",
+            resource,
+            -1,
+            new Field[]{new DefaultMappedField("field1")},
+            new Object[]{null}))
         .transform(connector.write())
         .blockFirst();
     connector.close();
@@ -882,11 +885,11 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format("url = %s, nullValue = NULL, header = false", quoteJson(out)))
+                String.format("url = %s, nullValue = NULL, header = false", quoteJson(out)))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, false);
     connector.init();
-    Flux.<Record>just(DefaultRecord.indexed("source", resource, -1, new Object[] {null}))
+    Flux.<Record>just(DefaultRecord.indexed("source", resource, -1, new Object[]{null}))
         .transform(connector.write())
         .blockFirst();
     connector.close();
@@ -902,7 +905,7 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format("url = %s, emptyValue = \"\", header = false", quoteJson(file)))
+                String.format("url = %s, emptyValue = \"\", header = false", quoteJson(file)))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -920,7 +923,7 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format("url = %s, emptyValue = EMPTY, header = false", quoteJson(file)))
+                String.format("url = %s, emptyValue = EMPTY, header = false", quoteJson(file)))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -941,7 +944,7 @@ class CSVConnectorTest {
       LoaderConfig settings =
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
-                      String.format("url = %s, maxConcurrentFiles = 1", quoteJson(out)))
+                  String.format("url = %s, maxConcurrentFiles = 1", quoteJson(out)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       assertThrows(IllegalArgumentException.class, connector::init);
@@ -974,7 +977,7 @@ class CSVConnectorTest {
       LoaderConfig settings =
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
-                      String.format("url = %s, maxConcurrentFiles = 1", quoteJson(out)))
+                  String.format("url = %s, maxConcurrentFiles = 1", quoteJson(out)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
@@ -982,7 +985,7 @@ class CSVConnectorTest {
       // will cause the write to fail because the file already exists
       Files.createFile(file);
       assertThatThrownBy(
-              () -> Flux.fromIterable(createRecords()).transform(connector.write()).blockLast())
+          () -> Flux.fromIterable(createRecords()).transform(connector.write()).blockLast())
           .hasRootCauseExactlyInstanceOf(FileAlreadyExistsException.class);
       connector.close();
     } finally {
@@ -998,7 +1001,7 @@ class CSVConnectorTest {
       LoaderConfig settings =
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
-                      String.format("url = %s, maxConcurrentFiles = 2", quoteJson(out)))
+                  String.format("url = %s, maxConcurrentFiles = 2", quoteJson(out)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
       connector.init();
@@ -1021,18 +1024,18 @@ class CSVConnectorTest {
           Caused by: java.nio.file.FileAlreadyExistsException: /tmp/test2860250719180574800/output-000001.json
       */
       assertThatThrownBy(
-              () ->
-                  Flux.fromIterable(createRecords())
-                      .repeat(100)
-                      .transform(connector.write())
-                      .blockLast())
+          () ->
+              Flux.fromIterable(createRecords())
+                  .repeat(100)
+                  .transform(connector.write())
+                  .blockLast())
           .satisfies(
               t ->
                   assertThat(
-                          getRootCause(t) instanceof FileAlreadyExistsException
-                              || Arrays.stream(t.getSuppressed())
-                                  .map(Throwables::getRootCause)
-                                  .anyMatch(FileAlreadyExistsException.class::isInstance))
+                      getRootCause(t) instanceof FileAlreadyExistsException
+                          || Arrays.stream(t.getSuppressed())
+                          .map(Throwables::getRootCause)
+                          .anyMatch(FileAlreadyExistsException.class::isInstance))
                       .isTrue());
       connector.close();
     } finally {
@@ -1053,9 +1056,9 @@ class CSVConnectorTest {
       LoaderConfig settings =
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
-                      String.format(
-                          "url = \"http://localhost:%d/file.csv\", normalizeLineEndingsInQuotes = true, escape = \"\\\"\", comment = \"#\"",
-                          server.getPort()))
+                  String.format(
+                      "url = \"http://localhost:%d/file.csv\", normalizeLineEndingsInQuotes = true, escape = \"\\\"\", comment = \"#\"",
+                      server.getPort()))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);
       connector.init();
@@ -1076,9 +1079,9 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format(
-                        "urlfile = %s, normalizeLineEndingsInQuotes = true, escape = \"\\\"\", comment = \"#\"",
-                        quoteJson(urlFile)))
+                String.format(
+                    "urlfile = %s, normalizeLineEndingsInQuotes = true, escape = \"\\\"\", comment = \"#\"",
+                    quoteJson(urlFile)))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
 
@@ -1115,9 +1118,9 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format(
-                        "urlfile = %s, normalizeLineEndingsInQuotes = true, escape = \"\\\"\", comment = \"#\"",
-                        quoteJson(urlFile)))
+                String.format(
+                    "urlfile = %s, normalizeLineEndingsInQuotes = true, escape = \"\\\"\", comment = \"#\"",
+                    quoteJson(urlFile)))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
 
@@ -1136,16 +1139,15 @@ class CSVConnectorTest {
     ftpServer.close();
   }
 
-  private void hasOneFailedRecordWithExceptionMessage(
-      List<Record> actual, String expectedMessage, Class throwableClass) {
+  private Throwable getFailedRecordThrowable(
+      List<Record> actual) {
     List<ErrorRecord> failedRecords =
         actual.stream()
             .filter(ErrorRecord.class::isInstance)
             .map(ErrorRecord.class::cast)
             .collect(Collectors.toList());
-
-    assertThat(failedRecords.get(0).getError()).isInstanceOf(throwableClass);
-    assertThat(failedRecords.get(0).getError().getMessage().contains(expectedMessage));
+    assertThat(failedRecords.size()).isEqualTo(1);
+    return failedRecords.get(0).getError();
   }
 
   private void hasOneFailedRecord(List<Record> actual, String expectedUrl, Class instanceT)
@@ -1173,7 +1175,7 @@ class CSVConnectorTest {
     connector.configure(settings, false);
     connector.init();
     assertThatThrownBy(
-            () -> Flux.fromIterable(createRecords()).transform(connector.write()).blockLast())
+        () -> Flux.fromIterable(createRecords()).transform(connector.write()).blockLast())
         .hasCauseInstanceOf(IOException.class)
         .hasRootCauseInstanceOf(IllegalArgumentException.class)
         .satisfies(
@@ -1190,23 +1192,21 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, escape = \"\\\"\", comment = \"#\", maxCharsPerColumn = 15",
-                        url("/sample.csv")))
+                String.format(
+                    "url = %s, escape = \"\\\"\", comment = \"#\", maxCharsPerColumn = 15",
+                    url("/sample.csv")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThatThrownBy(() -> Flux.from(connector.read()).collectList().block())
-        .satisfies(
-            t ->
-                assertThat(t.getCause())
-                    .isInstanceOf(IOException.class)
-                    .hasMessageContaining(
-                        "Length of parsed input (16) exceeds the maximum number "
-                            + "of characters defined in your parser settings (15). "
-                            + "Please increase the value of the connector.csv.maxCharsPerColumn setting.")
-                    .hasCauseExactlyInstanceOf(TextParsingException.class)
-                    .hasRootCauseExactlyInstanceOf(ArrayIndexOutOfBoundsException.class));
+    List<Record> records = Flux.from(connector.read()).collectList().block();
+    assert records != null;
+    assertThat(getFailedRecordThrowable(records))
+        .isInstanceOf(IOException.class)
+        .hasMessageContaining("Length of parsed input (16) exceeds the maximum number "
+            + "of characters defined in your parser settings (15). "
+            + "Please increase the value of the connector.csv.maxCharsPerColumn setting.")
+        .hasCauseExactlyInstanceOf(TextParsingException.class)
+        .hasRootCauseExactlyInstanceOf(ArrayIndexOutOfBoundsException.class);
     connector.close();
   }
 
@@ -1216,21 +1216,20 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, escape = \"\\\"\", comment = \"#\", maxColumns = 1",
-                        url("/sample.csv")))
+                String.format(
+                    "url = %s, escape = \"\\\"\", comment = \"#\", maxColumns = 1",
+                    url("/sample.csv")))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThatThrownBy(() -> Flux.from(connector.read()).collectList().block())
-        .satisfies(
-            t ->
-                assertThat(t)
-                    .hasCauseInstanceOf(IOException.class)
-                    .hasMessageContaining("ArrayIndexOutOfBoundsException - 1")
-                    .hasMessageContaining(
-                        "Please increase the value of the connector.csv.maxColumns setting")
-                    .hasRootCauseInstanceOf(ArrayIndexOutOfBoundsException.class));
+    List<Record> records = Flux.from(connector.read()).collectList().block();
+    assert records != null;
+    assertThat(getFailedRecordThrowable(records))
+        .isInstanceOf(IOException.class)
+        .hasMessageContaining("ArrayIndexOutOfBoundsException - 1")
+        .hasMessageContaining(
+            "Please increase the value of the connector.csv.maxColumns setting")
+        .hasRootCauseInstanceOf(ArrayIndexOutOfBoundsException.class);
     connector.close();
   }
 
@@ -1375,7 +1374,9 @@ class CSVConnectorTest {
     connector.close();
   }
 
-  /** Test for DAT-427. */
+  /**
+   * Test for DAT-427.
+   */
   @Test
   void should_reject_header_with_empty_field() throws Exception {
     CSVConnector connector = new CSVConnector();
@@ -1387,16 +1388,17 @@ class CSVConnectorTest {
     connector.init();
     List<Record> records = Flux.from(connector.read()).collectList().block();
     assert records != null;
-    hasOneFailedRecordWithExceptionMessage(
-        records,
-        "bad_header_empty.csv has invalid header: "
+    assertThat(getFailedRecordThrowable(records))
+        .isInstanceOf(IOException.class)
+        .hasMessageContaining("bad_header_empty.csv has invalid header: "
             + "found empty field name at index 1; "
-            + "found empty field name at index 2",
-        IOException.class);
+            + "found empty field name at index 2");
     connector.close();
   }
 
-  /** Test for DAT-427. */
+  /**
+   * Test for DAT-427.
+   */
   @Test
   void should_reject_header_with_duplicate_field() throws Exception {
     CSVConnector connector = new CSVConnector();
@@ -1408,12 +1410,11 @@ class CSVConnectorTest {
     connector.init();
     List<Record> records = Flux.from(connector.read()).collectList().block();
     assert records != null;
-    hasOneFailedRecordWithExceptionMessage(
-        records,
-        "bad_header_duplicate.csv has invalid header: "
+    assertThat(getFailedRecordThrowable(records))
+        .isInstanceOf(IOException.class)
+        .hasMessageContaining("bad_header_duplicate.csv has invalid header: "
             + "found duplicate field name at index 1; "
-            + "found duplicate field name at index 2",
-        IOException.class);
+            + "found duplicate field name at index 2");
     connector.close();
   }
 
@@ -1444,7 +1445,7 @@ class CSVConnectorTest {
   private List<Record> createRecords() {
     ArrayList<Record> records = new ArrayList<>();
     Field[] fields =
-        Arrays.stream(new String[] {"Year", "Make", "Model", "Description", "Price"})
+        Arrays.stream(new String[]{"Year", "Make", "Model", "Description", "Price"})
             .map(DefaultMappedField::new)
             .toArray(Field[]::new);
     records.add(
@@ -1527,9 +1528,9 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format(
-                        "urlfile = %s, url = %s",
-                        quoteJson(MULTIPLE_URLS_FILE), quoteJson(MULTIPLE_URLS_FILE)))
+                String.format(
+                    "urlfile = %s, url = %s",
+                    quoteJson(MULTIPLE_URLS_FILE), quoteJson(MULTIPLE_URLS_FILE)))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
 
     assertDoesNotThrow(() -> connector.configure(settings, true));
@@ -1544,9 +1545,9 @@ class CSVConnectorTest {
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                    String.format(
-                        "urlfile = %s, recursive = false, fileNamePattern = \"**/part-*\"",
-                        quoteJson(MULTIPLE_URLS_FILE)))
+                String.format(
+                    "urlfile = %s, recursive = false, fileNamePattern = \"**/part-*\"",
+                    quoteJson(MULTIPLE_URLS_FILE)))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();

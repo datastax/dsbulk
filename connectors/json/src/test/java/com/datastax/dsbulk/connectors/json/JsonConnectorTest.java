@@ -826,7 +826,9 @@ class JsonConnectorTest {
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
-    assertThatThrownBy(() -> Flux.from(connector.read()).collectList().block())
+    List<Record> records = Flux.from(connector.read()).collectList().block();
+    assert records != null;
+    assertThat(getFailedRecordThrowable(records))
         .hasRootCauseExactlyInstanceOf(JsonParseException.class)
         .satisfies(
             t ->
@@ -1055,6 +1057,17 @@ class JsonConnectorTest {
         .hasMessage(
             "Invalid value for connector.json.encoding: Expecting valid charset name, got 'NotAnEncoding'");
     connector.close();
+  }
+
+  private Throwable getFailedRecordThrowable(
+      List<Record> actual) {
+    List<ErrorRecord> failedRecords =
+        actual.stream()
+            .filter(ErrorRecord.class::isInstance)
+            .map(ErrorRecord.class::cast)
+            .collect(Collectors.toList());
+    assertThat(failedRecords.size()).isEqualTo(1);
+    return failedRecords.get(0).getError();
   }
 
   private void verifyRecords(List<Record> actual) {

@@ -530,17 +530,14 @@ public class CSVConnector implements Connector {
                 sink.complete();
               } catch (TextParsingException e) {
                 IOException ioe = launderTextParsingException(e, url);
-                sink.error(ioe);
-              } catch (IOException e) {
-                sink.next(new DefaultErrorRecord(url, resource, recordNumber, e));
+                sink.next(new DefaultErrorRecord(url, resource, recordNumber, ioe));
                 sink.complete();
               } catch (Exception e) {
                 if (e.getCause() instanceof TextParsingException) {
                   e = launderTextParsingException(((TextParsingException) e.getCause()), url);
                 }
-                sink.error(
-                    new IOException(
-                        String.format("Error reading from %s at line %d", url, recordNumber), e));
+                sink.next(new DefaultErrorRecord(url, resource, recordNumber, e));
+                sink.complete();
               }
             },
             FluxSink.OverflowStrategy.ERROR);
