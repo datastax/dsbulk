@@ -154,6 +154,7 @@ public class CSVConnector implements Connector {
   private Scheduler scheduler;
   private List<CSVWriter> writers;
   private volatile boolean atLeastOneUrlWasLoadedSuccessfully = false;
+  private List<Throwable> urlRecordsErrors = new CopyOnWriteArrayList<>();
 
   @Override
   public void configure(LoaderConfig settings, boolean read) {
@@ -381,9 +382,17 @@ public class CSVConnector implements Connector {
     return Flux.defer(
         () ->
             !atLeastOneUrlWasLoadedSuccessfully
-                ? Flux.error(
-                    new IOException("None of the provided resources was loaded successfully."))
+                ? Flux.error(this::constructException)
                 : Flux.empty());
+  }
+
+  private Throwable constructException() {
+    IOException ioException =
+        new IOException("None of the provided resources was loaded successfully.");
+    for (Throwable t : urlRecordsErrors) {
+      ioException.addSuppressed(t);
+    }
+    return ioException;
   }
 
   @Override
@@ -545,13 +554,13 @@ public class CSVConnector implements Connector {
                 sink.complete();
               } catch (TextParsingException e) {
                 IOException ioe = launderTextParsingException(e, url);
-                sink.next(new DefaultErrorRecord(url, resource, recordNumber, ioe));
+                urlRecordsErrors.add(ioe);
                 sink.complete();
               } catch (Exception e) {
                 if (e.getCause() instanceof TextParsingException) {
                   e = launderTextParsingException(((TextParsingException) e.getCause()), url);
                 }
-                sink.next(new DefaultErrorRecord(url, resource, recordNumber, e));
+                urlRecordsErrors.add(e);
                 sink.complete();
               }
             },

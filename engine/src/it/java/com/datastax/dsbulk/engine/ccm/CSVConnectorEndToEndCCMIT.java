@@ -295,7 +295,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
-    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
+    assertThat(status).isEqualTo(STATUS_OK);
     validateResultSetSize(10, "SELECT * FROM ip_by_country");
     deleteDirectory(logDir);
 
@@ -349,7 +349,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
     assertThat(logs.getAllMessagesAsString())
-        .contains("None of the provided resources was loaded successfully.");
+        .contains("None of the provided resources was loaded successfully.")
+        .contains("Suppressed: Connection refused (Connection refused)")
+        .contains("Suppressed: Connection refused (Connection refused)");
 
     deleteDirectory(logDir);
     Files.delete(urlFile);
@@ -380,9 +382,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
-    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
     assertThat(logs.getAllMessagesAsString())
         .contains("None of the provided resources was loaded successfully.");
+
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
 
     deleteDirectory(logDir);
     Files.delete(urlFile);
