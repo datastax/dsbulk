@@ -102,15 +102,17 @@ class CSVConnectorTest {
     Files.delete(MULTIPLE_URLS_FILE);
   }
 
-  @Test
-  void should_read_single_file() throws Exception {
+  @ParameterizedTest(name = "[{index}] read {0} with compression {1}")
+  @MethodSource
+  @DisplayName("Should read single file with given compression")
+  void should_read_single_file(final String fileName, final String compMethod) throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "url = %s, normalizeLineEndingsInQuotes = true, escape = \"\\\"\", comment = \"#\"",
-                        url("/sample.csv")))
+                        "url = %s, normalizeLineEndingsInQuotes = true, escape = \"\\\"\", comment = \"#\", compression = \"%s\"",
+                        url("/" + fileName), compMethod))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -119,22 +121,18 @@ class CSVConnectorTest {
     connector.close();
   }
 
-  @Test
-  void should_read_single_file_compressed_gzip() throws Exception {
-    CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, normalizeLineEndingsInQuotes = true, escape = \"\\\"\", comment = \"#\", compression = \"gzip\""
-                            + ", fileNamePattern = \"**/*.csv.gz\"",
-                        url("/sample.csv.gz")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
-    connector.configure(settings, true);
-    connector.init();
-    List<Record> actual = Flux.from(connector.read()).collectList().block();
-    assertRecords(actual);
-    connector.close();
+  private static Stream<Arguments> should_read_single_file() {
+    return Stream.of(
+        arguments("sample.csv", CompressedIOUtils.NONE_COMPRESSION),
+        arguments("sample.csv.gz", CompressedIOUtils.GZIP_COMPRESSION),
+        arguments("sample.csv.bz2", CompressedIOUtils.BZIP2_COMPRESSION),
+        arguments("sample.csv.lz4", CompressedIOUtils.LZ4_COMPRESSION),
+        arguments("sample.csv.snappy", CompressedIOUtils.SNAPPY_COMPRESSION),
+        arguments("sample.csv.z", CompressedIOUtils.Z_COMPRESSION),
+        arguments("sample.csv.br", CompressedIOUtils.BROTLI_COMPRESSION),
+        arguments("sample.csv.lzma", CompressedIOUtils.LZMA_COMPRESSION),
+        arguments("sample.csv.xz", CompressedIOUtils.XZ_COMPRESSION),
+        arguments("sample.csv.zstd", CompressedIOUtils.ZSTD_COMPRESSION));
   }
 
   @Test

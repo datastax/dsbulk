@@ -104,16 +104,20 @@ class JsonConnectorTest {
     Files.delete(MULTIPLE_URLS_FILE);
   }
 
-  @Test
-  void should_read_single_file_multi_doc() throws Exception {
+  @ParameterizedTest(name = "[{index}] read multi doc file {0} with compression {1}")
+  @MethodSource
+  @DisplayName("Should read multidoc file with given compression")
+  void should_read_single_file_multi_doc(final String fileName, final String compMethod)
+      throws Exception {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
                         "url = %s, parserFeatures = {ALLOW_COMMENTS:true}, "
-                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}",
-                        url("/multi_doc.json")))
+                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}"
+                            + " , compression = \"%s\"",
+                        url("/" + fileName), compMethod))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -122,23 +126,18 @@ class JsonConnectorTest {
     connector.close();
   }
 
-  @Test
-  void should_read_single_file_multi_doc_compressed_gzip() throws Exception {
-    JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, compression = \"gzip\", parserFeatures = {ALLOW_COMMENTS:true}, "
-                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}"
-                            + ", fileNamePattern = \"**/*.json.gz\"",
-                        url("/multi_doc.json.gz")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
-    connector.configure(settings, true);
-    connector.init();
-    List<Record> actual = Flux.from(connector.read()).collectList().block();
-    verifyRecords(actual);
-    connector.close();
+  private static Stream<Arguments> should_read_single_file_multi_doc() {
+    return Stream.of(
+        arguments("multi_doc.json", CompressedIOUtils.NONE_COMPRESSION),
+        arguments("multi_doc.json.gz", CompressedIOUtils.GZIP_COMPRESSION),
+        arguments("multi_doc.json.bz2", CompressedIOUtils.BZIP2_COMPRESSION),
+        arguments("multi_doc.json.lz4", CompressedIOUtils.LZ4_COMPRESSION),
+        arguments("multi_doc.json.snappy", CompressedIOUtils.SNAPPY_COMPRESSION),
+        arguments("multi_doc.json.z", CompressedIOUtils.Z_COMPRESSION),
+        arguments("multi_doc.json.br", CompressedIOUtils.BROTLI_COMPRESSION),
+        arguments("multi_doc.json.lzma", CompressedIOUtils.LZMA_COMPRESSION),
+        arguments("multi_doc.json.xz", CompressedIOUtils.XZ_COMPRESSION),
+        arguments("multi_doc.json.zstd", CompressedIOUtils.ZSTD_COMPRESSION));
   }
 
   @Test
