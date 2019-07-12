@@ -426,8 +426,9 @@ public class JsonConnector implements Connector {
           files.add(u);
         }
       } catch (FileSystemNotFoundException ignored) {
-        files.add(u);
         // not a path on a known filesystem, fall back to reading from URL directly
+        files.add(u);
+        resourceCount++;
       }
     }
   }
