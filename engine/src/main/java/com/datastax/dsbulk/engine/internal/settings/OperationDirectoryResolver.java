@@ -23,7 +23,7 @@ public class OperationDirectoryResolver {
     } catch (InvalidPathException e) {
       throw new BulkConfigurationException(
           String.format(
-              "Execution ID '%s' is not a valid path name on the local filesytem", executionId),
+              "Operation ID '%s' is not a valid path name on the local filesytem", executionId),
           e);
     }
     if (Files.exists(operationDirectory)) {
@@ -32,16 +32,16 @@ public class OperationDirectoryResolver {
           @SuppressWarnings("StreamResourceLeak")
           long count = Files.list(operationDirectory).count();
           if (count > 0) {
-            throw new IllegalArgumentException(
-                "Execution directory exists but is not empty: " + operationDirectory);
+            throw new IllegalStateException(
+                "Operation directory exists but is not empty: " + operationDirectory);
           }
         } else {
-          throw new IllegalArgumentException(
-              "Execution directory exists but is not writable: " + operationDirectory);
+          throw new IllegalStateException(
+              "Operation directory exists but is not writable: " + operationDirectory);
         }
       } else {
-        throw new IllegalArgumentException(
-            "Execution directory exists but is not a directory: " + operationDirectory);
+        throw new IllegalStateException(
+            "Operation directory exists but is not a directory: " + operationDirectory);
       }
     } else {
       Files.createDirectories(operationDirectory);

@@ -267,67 +267,6 @@ class LogSettingsTest {
   }
 
   @Test
-  void should_throw_IAE_when_execution_directory_not_empty() throws Exception {
-    Path executionDir = tempFolder.resolve("TEST_EXECUTION_ID");
-    Path foo = executionDir.resolve("foo");
-    Files.createDirectories(foo);
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("directory = " + quoteJson(tempFolder))
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
-    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
-    assertThatThrownBy(settings::init)
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Execution directory exists but is not empty: " + executionDir);
-  }
-
-  @Test
-  void should_throw_IAE_when_execution_directory_not_writable() {
-    assumingThat(
-        !PlatformUtils.isWindows(),
-        () -> {
-          Path executionDir = tempFolder.resolve("TEST_EXECUTION_ID");
-          Files.createDirectories(executionDir);
-          assertThat(executionDir.toFile().setWritable(false, false)).isTrue();
-          LoaderConfig config =
-              new DefaultLoaderConfig(
-                  ConfigFactory.parseString("directory = " + quoteJson(tempFolder))
-                      .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
-          LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
-          assertThatThrownBy(settings::init)
-              .isInstanceOf(IllegalArgumentException.class)
-              .hasMessage("Execution directory exists but is not writable: " + executionDir);
-        });
-  }
-
-  @Test
-  void should_throw_IAE_when_execution_directory_not_directory() throws Exception {
-    Path executionDir = tempFolder.resolve("TEST_EXECUTION_ID");
-    Files.createFile(executionDir);
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("directory = " + quoteJson(tempFolder))
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
-    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
-    assertThatThrownBy(settings::init)
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Execution directory exists but is not a directory: " + executionDir);
-  }
-
-  @Test
-  void should_throw_IAE_when_execution_directory_contains_forbidden_chars() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("directory = " + quoteJson(tempFolder))
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
-    LogSettings settings = new LogSettings(config, "invalid file \u0000 name");
-    assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessageContaining(
-            "Execution ID 'invalid file \u0000 name' is not a valid path name on the local filesytem");
-  }
-
-  @Test
   void should_throw_exception_when_maxQueryStringLength_not_a_number() {
     LoaderConfig config =
         new DefaultLoaderConfig(
