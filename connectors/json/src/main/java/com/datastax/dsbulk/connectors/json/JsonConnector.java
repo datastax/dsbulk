@@ -259,7 +259,7 @@ public class JsonConnector implements Connector {
       objectMapper.setSerializationInclusion(serializationStrategy);
       writers = new CopyOnWriteArrayList<>();
       if (writeConcurrency() > 1) {
-        ThreadFactory threadFactory = new DefaultThreadFactory("csv-connector");
+        ThreadFactory threadFactory = new DefaultThreadFactory("json-connector");
         scheduler =
             maxConcurrentFiles == 1
                 ? Schedulers.newSingle(threadFactory)
