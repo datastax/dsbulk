@@ -389,9 +389,8 @@ public class CSVConnector implements Connector {
                   rail -> {
                     int key = Objects.requireNonNull(rail.key());
                     CSVWriter writer = writers.get(key);
-                    return rail.map(record -> Tuples.of(writer, record));
-                  })
-              .transform(writeRecords());
+                    return rail.map(record -> Tuples.of(writer, record)).transform(writeRecords());
+                  });
     } else {
       CSVWriter writer = writers.get(0);
       return upstream ->

@@ -352,9 +352,8 @@ public class JsonConnector implements Connector {
                   rail -> {
                     int key = Objects.requireNonNull(rail.key());
                     JsonWriter writer = writers.get(key);
-                    return rail.map(record -> Tuples.of(writer, record));
-                  })
-              .transform(writeRecords());
+                    return rail.map(record -> Tuples.of(writer, record)).transform(writeRecords());
+                  });
     } else {
       JsonWriter writer = writers.get(0);
       return upstream ->
