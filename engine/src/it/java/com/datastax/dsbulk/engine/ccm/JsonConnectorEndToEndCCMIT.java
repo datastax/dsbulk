@@ -190,6 +190,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
+    validateExceptionsLog(1, "Resource: http://localhost:1234/non-existing.json", "connector-errors.log");
+    validateExceptionsLog(1, "java.net.ConnectException: Connection refused (Connection refused)", "connector-errors.log");
     deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -284,9 +286,14 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(IP_BY_COUNTRY_MAPPING_NAMED);
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
-    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
     assertThat(logs.getAllMessagesAsString())
         .contains("None of the provided resources was loaded successfully.");
+
+    validateExceptionsLog(1, "Resource: http://localhost:1234/non-existing.json", "connector-errors.log");
+    validateExceptionsLog(1, "Resource: http://localhost:1234/non-existing2.json", "connector-errors.log");
+    validateExceptionsLog(2, "java.net.ConnectException: Connection refused (Connection refused)", "connector-errors.log");
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
+
     deleteDirectory(logDir);
     Files.delete(urlFile);
   }
@@ -319,6 +326,10 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
     assertThat(logs.getAllMessagesAsString())
         .contains("None of the provided resources was loaded successfully.");
+    for(String url: urlFiles){
+      validateExceptionsLog(1, String.format("java.io.FileNotFoundException: %s (No such file or directory)", url), "connector-errors.log");
+    }
+
     deleteDirectory(logDir);
     Files.delete(urlFile);
   }

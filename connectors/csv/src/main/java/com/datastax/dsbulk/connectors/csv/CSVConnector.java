@@ -153,9 +153,6 @@ public class CSVConnector implements Connector {
   @VisibleForTesting AtomicInteger counter;
   private Scheduler scheduler;
   private List<CSVWriter> writers;
-  private volatile boolean atLeastOneUrlWasLoadedSuccessfully = false;
-  private volatile List<Throwable> urlRecordsErrors = new CopyOnWriteArrayList<>();
-  private volatile Throwable combined;
 
   @Override
   public void configure(LoaderConfig settings, boolean read) {
@@ -376,15 +373,6 @@ public class CSVConnector implements Connector {
     return Flux.concat(
         Flux.fromIterable(roots).concatMapDelayError(this::scanRootDirectory).map(this::readURL),
         Flux.fromIterable(files).map(this::readURL));
-  }
-
-  private Throwable constructException() {
-    IOException ioException =
-        new IOException("None of the provided resources was loaded successfully.");
-    for (Throwable t : urlRecordsErrors) {
-      ioException.addSuppressed(t);
-    }
-    return ioException;
   }
 
   @Override
