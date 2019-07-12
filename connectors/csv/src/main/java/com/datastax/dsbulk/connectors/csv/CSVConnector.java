@@ -74,7 +74,6 @@ import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Signal;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
-import reactor.util.concurrent.Queues;
 
 /**
  * A connector for CSV files.
@@ -365,11 +364,9 @@ public class CSVConnector implements Connector {
     assert read;
     return Flux.concatDelayError(
         Flux.fromIterable(roots)
-            .flatMapDelayError(
-                this::scanRootDirectory, Queues.SMALL_BUFFER_SIZE, Queues.XS_BUFFER_SIZE)
-            .flatMapDelayError(this::readURL, Queues.SMALL_BUFFER_SIZE, Queues.XS_BUFFER_SIZE),
-        Flux.fromIterable(files)
-            .flatMapDelayError(this::readURL, Queues.SMALL_BUFFER_SIZE, Queues.XS_BUFFER_SIZE),
+            .concatMapDelayError(this::scanRootDirectory)
+            .concatMapDelayError(this::readURL),
+        Flux.fromIterable(files).concatMapDelayError(this::readURL),
         fluxWithErrorIfAllURLsFailed());
   }
 
@@ -377,10 +374,7 @@ public class CSVConnector implements Connector {
   public Publisher<Publisher<Record>> readByResource() {
     assert read;
     return Flux.concatDelayError(
-        Flux.fromIterable(roots)
-            .flatMapDelayError(
-                this::scanRootDirectory, Queues.SMALL_BUFFER_SIZE, Queues.XS_BUFFER_SIZE)
-            .map(this::readURL),
+        Flux.fromIterable(roots).concatMapDelayError(this::scanRootDirectory).map(this::readURL),
         Flux.fromIterable(files).map(this::readURL),
         fluxWithErrorIfAllURLsFailed());
   }

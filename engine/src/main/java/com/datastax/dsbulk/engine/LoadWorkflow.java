@@ -238,7 +238,7 @@ public class LoadWorkflow implements Workflow {
   }
 
   private void parallelFlux() {
-    Flux.defer(() -> connector.read())
+    Flux.from(connector.read())
         .window(batchingEnabled ? batchBufferSize : Queues.SMALL_BUFFER_SIZE)
         .flatMapDelayError(
             records -> {
