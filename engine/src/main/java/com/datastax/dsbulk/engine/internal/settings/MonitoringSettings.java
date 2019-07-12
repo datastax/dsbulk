@@ -69,7 +69,7 @@ public class MonitoringSettings {
   public MetricsManager newMetricsManager(
       WorkflowType workflowType,
       boolean batchingEnabled,
-      Path executionDirectory,
+      Path operationDirectory,
       Verbosity verbosity,
       MetricRegistry registry,
       ProtocolVersion protocolVersion,
@@ -93,7 +93,7 @@ public class MonitoringSettings {
         trackBytes,
         jmx,
         csv,
-        executionDirectory,
+        operationDirectory,
         verbosity,
         reportRate,
         batchingEnabled,

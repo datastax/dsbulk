@@ -132,7 +132,7 @@ public class LoadWorkflow implements Workflow {
         monitoringSettings.newMetricsManager(
             WorkflowType.LOAD,
             batchingEnabled,
-            logManager.getExecutionDirectory(),
+            logManager.getOperationDirectory(),
             logSettings.getVerbosity(),
             cluster.getMetrics().getRegistry(),
             cluster.getConfiguration().getProtocolOptions().getProtocolVersion(),

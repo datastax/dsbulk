@@ -93,7 +93,7 @@ class LogSettingsTest {
     try (LogManager logManager = settings.newLogManager(WorkflowType.LOAD, cluster)) {
       logManager.init();
       assertThat(logManager).isNotNull();
-      assertThat(logManager.getExecutionDirectory().toFile().getAbsolutePath())
+      assertThat(logManager.getOperationDirectory().toFile().getAbsolutePath())
           .isEqualTo(Paths.get("./target/logs/test").normalize().toFile().getAbsolutePath());
     }
   }
@@ -181,7 +181,7 @@ class LogSettingsTest {
     try (LogManager logManager = settings.newLogManager(WorkflowType.LOAD, cluster)) {
       logManager.init();
       assertThat(logManager).isNotNull();
-      assertThat(logManager.getExecutionDirectory().toFile())
+      assertThat(logManager.getOperationDirectory().toFile())
           .isEqualTo(tempFolder.resolve("test").toFile());
     }
   }
@@ -264,71 +264,6 @@ class LogSettingsTest {
     assertThat(contents)
         .contains("this is a test 1", "this is a test 2", "this is a test 3")
         .doesNotContain("this should not appear");
-  }
-
-  @Test
-  void should_throw_IAE_when_execution_directory_not_empty() throws Exception {
-    Path executionDir = tempFolder.resolve("TEST_EXECUTION_ID");
-    Path foo = executionDir.resolve("foo");
-    Files.createDirectories(foo);
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("directory = " + quoteJson(tempFolder))
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
-    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
-    assertThatThrownBy(settings::init)
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Execution directory exists but is not empty: " + executionDir);
-  }
-
-  @Test
-  void should_throw_IAE_when_execution_directory_not_writable() {
-    assumingThat(
-        !PlatformUtils.isWindows(),
-        () -> {
-          Path executionDir = tempFolder.resolve("TEST_EXECUTION_ID");
-          Files.createDirectories(executionDir);
-          assertThat(executionDir.toFile().setWritable(false, false)).isTrue();
-          LoaderConfig config =
-              new DefaultLoaderConfig(
-                  ConfigFactory.parseString("directory = " + quoteJson(tempFolder))
-                      .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
-          LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
-          assertThatThrownBy(settings::init)
-              .isInstanceOf(IllegalArgumentException.class)
-              .hasMessage("Execution directory exists but is not writable: " + executionDir);
-        });
-  }
-
-  @Test
-  void should_throw_IAE_when_execution_directory_not_directory() throws Exception {
-    Path executionDir = tempFolder.resolve("TEST_EXECUTION_ID");
-    Files.createFile(executionDir);
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("directory = " + quoteJson(tempFolder))
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
-    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
-    assertThatThrownBy(settings::init)
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Execution directory exists but is not a directory: " + executionDir);
-  }
-
-  @Test
-  void should_throw_IAE_when_execution_directory_contains_forbidden_chars() {
-    assumingThat(
-        !PlatformUtils.isWindows(),
-        () -> {
-          LoaderConfig config =
-              new DefaultLoaderConfig(
-                  ConfigFactory.parseString("directory = " + quoteJson(tempFolder))
-                      .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
-          char forbidden = '/';
-          LogSettings settings = new LogSettings(config, forbidden + " IS FORBIDDEN");
-          assertThatThrownBy(settings::init)
-              .isInstanceOf(IOException.class)
-              .hasMessageContaining(forbidden + " IS FORBIDDEN");
-        });
   }
 
   @Test
