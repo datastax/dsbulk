@@ -389,39 +389,37 @@ public class CSVConnector implements Connector {
                   rail -> {
                     int key = Objects.requireNonNull(rail.key());
                     CSVWriter writer = writers.get(key);
-                    return rail.map(record -> Tuples.of(writer, record)).transform(writeRecords());
-                  });
+                    return rail.map(record -> Tuples.of(writer, record)).window(flushWindow);
+                  })
+              .flatMap(this::writeRecords);
     } else {
       CSVWriter writer = writers.get(0);
       return upstream ->
-          Flux.from(upstream).map(record -> Tuples.of(writer, record)).transform(writeRecords());
+          Flux.from(upstream)
+              .map(record -> Tuples.of(writer, record))
+              .window(flushWindow)
+              .flatMap(this::writeRecords);
     }
   }
 
-  private Function<Flux<Tuple2<CSVWriter, Record>>, Flux<Record>> writeRecords() {
-    return records ->
-        records
-            .window(flushWindow)
-            .flatMap(
-                window -> {
-                  return window
-                      .materialize()
-                      .map(
-                          signal -> {
-                            if (signal.isOnNext()) {
-                              Tuple2<CSVWriter, Record> tuple = signal.get();
-                              assert tuple != null;
-                              try {
-                                tuple.getT1().write(tuple.getT2());
-                              } catch (Exception e) {
-                                signal = Signal.error(e);
-                              }
-                            }
-                            return signal;
-                          })
-                      .<Tuple2<CSVWriter, Record>>dematerialize()
-                      .map(Tuple2::getT2);
-                });
+  private Flux<Record> writeRecords(Flux<Tuple2<CSVWriter, Record>> window) {
+    return window
+        .materialize()
+        .map(
+            signal -> {
+              if (signal.isOnNext()) {
+                Tuple2<CSVWriter, Record> tuple = signal.get();
+                assert tuple != null;
+                try {
+                  tuple.getT1().write(tuple.getT2());
+                } catch (Exception e) {
+                  signal = Signal.error(e);
+                }
+              }
+              return signal;
+            })
+        .<Tuple2<CSVWriter, Record>>dematerialize()
+        .map(Tuple2::getT2);
   }
 
   private int writeConcurrency() {
