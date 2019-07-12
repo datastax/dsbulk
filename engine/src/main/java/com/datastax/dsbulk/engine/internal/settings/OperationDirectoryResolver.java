@@ -23,7 +23,7 @@ public class OperationDirectoryResolver {
     } catch (InvalidPathException e) {
       throw new BulkConfigurationException(
           String.format(
-              "Operation ID '%s' is not a valid path name on the local filesytem", executionId),
+              "Execution ID '%s' is not a valid path name on the local filesytem", executionId),
           e);
     }
     if (Files.exists(operationDirectory)) {

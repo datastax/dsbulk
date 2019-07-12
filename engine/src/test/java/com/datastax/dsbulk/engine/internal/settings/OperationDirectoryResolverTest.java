@@ -91,6 +91,6 @@ class OperationDirectoryResolverTest {
     assertThatThrownBy(resolver::resolve)
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
-            "Operation ID 'invalid file \u0000 name' is not a valid path name on the local filesytem");
+            "Execution ID 'invalid file \u0000 name' is not a valid path name on the local filesytem");
   }
 }
