@@ -36,8 +36,6 @@ import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
@@ -149,8 +147,8 @@ public class LogSettings {
   public void init() throws IOException {
     try {
       // Note: log.ansiMode is handled upstream by com.datastax.dsbulk.engine.DataStaxBulkLoader
-      resolveOperationDirectory();
-      checkOperationDirectory();
+      operationDirectory =
+          new OperationDirectoryResolver(config.getPath("directory"), executionId).resolve();
       System.setProperty(OPERATION_DIRECTORY_KEY, operationDirectory.toFile().getAbsolutePath());
       maxQueryStringLength = config.getInt(MAX_QUERY_STRING_LENGTH);
       maxBoundValueLength = config.getInt(MAX_BOUND_VALUE_LENGTH);
@@ -238,41 +236,6 @@ public class LogSettings {
 
   public Verbosity getVerbosity() {
     return verbosity;
-  }
-
-  private void resolveOperationDirectory() {
-    Path logDirectory = config.getPath("directory");
-    try {
-      operationDirectory = logDirectory.resolve(executionId);
-    } catch (InvalidPathException e) {
-      throw new BulkConfigurationException(
-          String.format(
-              "Execution ID '%s' is not a valid path name on the local filesytem", executionId),
-          e);
-    }
-  }
-
-  private void checkOperationDirectory() throws IOException {
-    if (Files.exists(operationDirectory)) {
-      if (Files.isDirectory(operationDirectory)) {
-        if (Files.isWritable(operationDirectory)) {
-          @SuppressWarnings("StreamResourceLeak")
-          long count = Files.list(operationDirectory).count();
-          if (count > 0) {
-            throw new IllegalArgumentException(
-                "Execution directory exists but is not empty: " + operationDirectory);
-          }
-        } else {
-          throw new IllegalArgumentException(
-              "Execution directory exists but is not writable: " + operationDirectory);
-        }
-      } else {
-        throw new IllegalArgumentException(
-            "Execution directory exists but is not a directory: " + operationDirectory);
-      }
-    } else {
-      Files.createDirectories(operationDirectory);
-    }
   }
 
   @VisibleForTesting
