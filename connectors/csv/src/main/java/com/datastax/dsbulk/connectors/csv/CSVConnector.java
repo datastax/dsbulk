@@ -49,6 +49,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLStreamHandler;
+import java.nio.channels.ClosedChannelException;
 import java.nio.charset.Charset;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Files;
@@ -615,7 +616,11 @@ public class CSVConnector implements Connector {
         LOGGER.trace("Writing record {} to {}", record, url);
         writer.writeRow(record.values());
       } catch (TextWritingException e) {
-        throw new IOException(String.format("Error writing to %s", url), e);
+        if ((e.getCause() instanceof ClosedChannelException)) {
+          // OK, happens when the channel was closed due to interruption
+        } else {
+          throw new IOException(String.format("Error writing to %s", url), e);
+        }
       }
     }
 
@@ -632,6 +637,8 @@ public class CSVConnector implements Connector {
       try {
         writer = new CsvWriter(IOUtils.newBufferedWriter(url, encoding), writerSettings);
         LOGGER.debug("Writing {}", url);
+      } catch (ClosedChannelException e) {
+        // OK, happens when the channel was closed due to interruption
       } catch (RuntimeException | IOException e) {
         throw new IOException(String.format("Error opening %s", url), e);
       }
@@ -645,7 +652,9 @@ public class CSVConnector implements Connector {
           writer = null;
         } catch (RuntimeException e) {
           // all serious errors are wrapped in an IllegalStateException with no useful information
-          throw new IOException(String.format("Error closing %s", url), e.getCause());
+          if ((!(e.getCause() instanceof ClosedChannelException))) {
+            throw new IOException(String.format("Error closing %s", url), e.getCause());
+          }
         }
       }
     }
