@@ -153,7 +153,6 @@ public class CSVConnector implements Connector {
   @VisibleForTesting AtomicInteger counter;
   private Scheduler scheduler;
   private List<CSVWriter> writers;
-  private volatile boolean atLeastOneUrlWasLoadedSuccessfully = false;
 
   @Override
   public void configure(LoaderConfig settings, boolean read) {
@@ -363,8 +362,7 @@ public class CSVConnector implements Connector {
     assert read;
     return Flux.concat(
         Flux.fromIterable(roots).flatMap(this::scanRootDirectory).flatMap(this::readURL),
-        Flux.fromIterable(files).flatMap(this::readURL),
-        fluxWithErrorIfAllURLsFailed());
+        Flux.fromIterable(files).flatMap(this::readURL));
   }
 
   @Override
@@ -372,18 +370,7 @@ public class CSVConnector implements Connector {
     assert read;
     return Flux.concat(
         Flux.fromIterable(roots).flatMap(this::scanRootDirectory).map(this::readURL),
-        Flux.fromIterable(files).map(this::readURL),
-        fluxWithErrorIfAllURLsFailed());
-  }
-
-  @NotNull
-  private <T> Flux<T> fluxWithErrorIfAllURLsFailed() {
-    return Flux.defer(
-        () ->
-            !atLeastOneUrlWasLoadedSuccessfully
-                ? Flux.error(
-                    new IOException("None of the provided resources was loaded successfully."))
-                : Flux.empty());
+        Flux.fromIterable(files).map(this::readURL));
   }
 
   @Override
@@ -505,7 +492,6 @@ public class CSVConnector implements Connector {
               LOGGER.debug("Reading {}", url);
               URI resource = URI.create(url.toExternalForm());
               try (Reader r = IOUtils.newBufferedReader(url, encoding)) {
-                atLeastOneUrlWasLoadedSuccessfully = true;
                 parser.beginParsing(r);
                 ParsingContext context = parser.getContext();
                 MappedField[] fieldNames = null;
@@ -545,14 +531,14 @@ public class CSVConnector implements Connector {
                 sink.complete();
               } catch (TextParsingException e) {
                 IOException ioe = launderTextParsingException(e, url);
-                sink.next(new DefaultErrorRecord(url, resource, recordNumber, ioe));
-                sink.complete();
+                sink.error(ioe);
               } catch (Exception e) {
                 if (e.getCause() instanceof TextParsingException) {
                   e = launderTextParsingException(((TextParsingException) e.getCause()), url);
                 }
-                sink.next(new DefaultErrorRecord(url, resource, recordNumber, e));
-                sink.complete();
+                sink.error(
+                    new IOException(
+                        String.format("Error reading from %s at line %d", url, recordNumber), e));
               }
             },
             FluxSink.OverflowStrategy.ERROR);
