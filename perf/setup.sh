@@ -12,6 +12,7 @@ ctool destroy dsbulk-client
 #ctool launch -p xenial dsbulk-client 1
 
 #to launch virtual machines on nebula:
+#http://docsreview.datastax.lan/en/dse/6.7/ctoolnebula/ctool/ctoolNebulaConfigureNebula
 ctool launch dsbulk-dse 3
 ctool launch dsbulk-client 1
 
