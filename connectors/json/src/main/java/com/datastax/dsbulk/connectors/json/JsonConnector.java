@@ -83,6 +83,8 @@ import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Signal;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 /**
  * A connector for Json files.
@@ -346,14 +348,21 @@ public class JsonConnector implements Connector {
               .parallel(maxConcurrentFiles)
               .runOn(scheduler)
               .groups()
-              .flatMap(rail -> rail.transform(writeRecords(Objects.requireNonNull(rail.key()))));
+              .flatMap(
+                  rail -> {
+                    int key = Objects.requireNonNull(rail.key());
+                    JsonWriter writer = writers.get(key);
+                    return rail.map(record -> Tuples.of(writer, record));
+                  })
+              .transform(writeRecords());
     } else {
-      return upstream -> Flux.from(upstream).transform(writeRecords(0));
+      JsonWriter writer = writers.get(0);
+      return upstream ->
+          Flux.from(upstream).map(record -> Tuples.of(writer, record)).transform(writeRecords());
     }
   }
 
-  private Function<Flux<Record>, Flux<Record>> writeRecords(int key) {
-    JsonWriter writer = writers.get(key);
+  private Function<Flux<Tuple2<JsonWriter, Record>>, Flux<Record>> writeRecords() {
     return records ->
         records
             .window(flushWindow)
@@ -364,17 +373,18 @@ public class JsonConnector implements Connector {
                       .map(
                           signal -> {
                             if (signal.isOnNext()) {
-                              Record record = signal.get();
-                              assert record != null;
+                              Tuple2<JsonWriter, Record> tuple = signal.get();
+                              assert tuple != null;
                               try {
-                                writer.write(record);
+                                tuple.getT1().write(tuple.getT2());
                               } catch (Exception e) {
                                 signal = Signal.error(e);
                               }
                             }
                             return signal;
                           })
-                      .dematerialize();
+                      .<Tuple2<JsonWriter, Record>>dematerialize()
+                      .map(Tuple2::getT2);
                 });
   }
 
