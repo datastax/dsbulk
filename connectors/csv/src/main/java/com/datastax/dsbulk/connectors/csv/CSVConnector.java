@@ -202,6 +202,47 @@ public class CSVConnector implements Connector {
     }
   }
 
+  @NotNull
+  private List<URL> loadURLs(LoaderConfig settings) {
+    if (isPathPresentAndNotEmpty(settings, URLFILE)) {
+      // suppress URL option
+      try {
+        return getURLsFromFile(settings.getPath(URLFILE));
+      } catch (IOException e) {
+        throw new BulkConfigurationException(
+            "Problem when retrieving urls from file specified by the URL file parameter", e);
+      }
+    } else {
+      return Collections.singletonList(settings.getURL(URL));
+    }
+  }
+
+  private void validateURL(LoaderConfig settings, boolean read) {
+    if (read) {
+      // for LOAD
+      if (isPathAbsentOrEmpty(settings, URL)) {
+        if (isPathAbsentOrEmpty(settings, URLFILE)) {
+          throw new BulkConfigurationException(
+              "A URL or URL file is mandatory when using the csv connector for LOAD. Please set connector.csv.url or connector.csv.urlfile "
+                  + "and try again. See settings.md or help for more information.");
+        }
+      }
+      if (isPathPresentAndNotEmpty(settings, URL) && isPathPresentAndNotEmpty(settings, URLFILE)) {
+        LOGGER.debug("You specified both URL and URL file. The URL file will take precedence.");
+      }
+    } else {
+      // for UNLOAD we are not supporting urlfile parameter
+      if (isPathPresentAndNotEmpty(settings, URLFILE)) {
+        throw new BulkConfigurationException("The urlfile parameter is not supported for UNLOAD");
+      }
+      if (isPathAbsentOrEmpty(settings, URL)) {
+        throw new BulkConfigurationException(
+            "A URL is mandatory when using the json connector for UNLOAD. Please set connector.csv.url "
+                + "and try again. See settings.md or help for more information.");
+      }
+    }
+  }
+
   @Override
   public void init() throws URISyntaxException, IOException {
     if (read) {
@@ -262,47 +303,6 @@ public class CSVConnector implements Connector {
       }
       for (int i = 0; i < maxConcurrentFiles; i++) {
         writers.add(new CSVWriter());
-      }
-    }
-  }
-
-  @NotNull
-  private List<URL> loadURLs(LoaderConfig settings) {
-    if (isPathPresentAndNotEmpty(settings, URLFILE)) {
-      // suppress URL option
-      try {
-        return getURLsFromFile(settings.getPath(URLFILE));
-      } catch (IOException e) {
-        throw new BulkConfigurationException(
-            "Problem when retrieving urls from file specified by the URL file parameter", e);
-      }
-    } else {
-      return Collections.singletonList(settings.getURL(URL));
-    }
-  }
-
-  private void validateURL(LoaderConfig settings, boolean read) {
-    if (read) {
-      // for LOAD
-      if (isPathAbsentOrEmpty(settings, URL)) {
-        if (isPathAbsentOrEmpty(settings, URLFILE)) {
-          throw new BulkConfigurationException(
-              "A URL or URL file is mandatory when using the csv connector for LOAD. Please set connector.csv.url or connector.csv.urlfile "
-                  + "and try again. See settings.md or help for more information.");
-        }
-      }
-      if (isPathPresentAndNotEmpty(settings, URL) && isPathPresentAndNotEmpty(settings, URLFILE)) {
-        LOGGER.debug("You specified both URL and URL file. The URL file will take precedence.");
-      }
-    } else {
-      // for UNLOAD we are not supporting urlfile parameter
-      if (isPathPresentAndNotEmpty(settings, URLFILE)) {
-        throw new BulkConfigurationException("The urlfile parameter is not supported for UNLOAD");
-      }
-      if (isPathAbsentOrEmpty(settings, URL)) {
-        throw new BulkConfigurationException(
-            "A URL is mandatory when using the json connector for UNLOAD. Please set connector.csv.url "
-                + "and try again. See settings.md or help for more information.");
       }
     }
   }
