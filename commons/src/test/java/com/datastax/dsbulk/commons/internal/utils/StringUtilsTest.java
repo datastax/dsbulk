@@ -10,48 +10,79 @@ package com.datastax.dsbulk.commons.internal.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.jupiter.api.Test;
+import java.util.stream.Stream;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class StringUtilsTest {
 
-  @Test
-  void should_ensure_brackets() {
-    assertThat(StringUtils.ensureBrackets("")).isEqualTo("[]");
-    assertThat(StringUtils.ensureBrackets("[]")).isEqualTo("[]");
-    assertThat(StringUtils.ensureBrackets("foo")).isEqualTo("[foo]");
-    assertThat(StringUtils.ensureBrackets("[foo]")).isEqualTo("[foo]");
+  @ParameterizedTest
+  @MethodSource
+  void should_ensure_brackets(String input, String expected) {
+    assertThat(StringUtils.ensureBrackets(input)).isEqualTo(expected);
   }
 
-  @Test
-  void should_ensure_braces() {
-    assertThat(StringUtils.ensureBraces("")).isEqualTo("{}");
-    assertThat(StringUtils.ensureBraces("{}")).isEqualTo("{}");
-    assertThat(StringUtils.ensureBraces("foo")).isEqualTo("{foo}");
-    assertThat(StringUtils.ensureBraces("{foo}")).isEqualTo("{foo}");
+  @SuppressWarnings("unused")
+  static Stream<Arguments> should_ensure_brackets() {
+    return Stream.of(
+        Arguments.of("", "[]"),
+        Arguments.of("[]", "[]"),
+        Arguments.of("foo", "[foo]"),
+        Arguments.of("[foo]", "[foo]"));
   }
 
-  @Test
-  void should_ensure_quoted() {
-    assertThat(StringUtils.ensureQuoted("")).isEqualTo("\"\"");
-    assertThat(StringUtils.ensureQuoted("\"")).isEqualTo("\"");
-    assertThat(StringUtils.ensureQuoted("\\\"")).isEqualTo("\"\\\"\"");
-    assertThat(StringUtils.ensureQuoted("\"\"")).isEqualTo("\"\"");
-    assertThat(StringUtils.ensureQuoted("foo")).isEqualTo("\"foo\"");
-    assertThat(StringUtils.ensureQuoted("\"foo\"")).isEqualTo("\"foo\"");
+  @ParameterizedTest
+  @MethodSource
+  void should_ensure_braces(String input, String expected) {
+    assertThat(StringUtils.ensureBraces(input)).isEqualTo(expected);
   }
 
-  @Test
-  void should_quote_jmx_if_necessary() {
-    assertThat(StringUtils.quoteJMXIfNecessary("")).isEqualTo("\"\"");
-    assertThat(StringUtils.quoteJMXIfNecessary("foo")).isEqualTo("foo");
-    assertThat(StringUtils.quoteJMXIfNecessary("foo-bar")).isEqualTo("foo-bar");
-    assertThat(StringUtils.quoteJMXIfNecessary("foo_bar")).isEqualTo("foo_bar");
-    assertThat(StringUtils.quoteJMXIfNecessary("foo?")).isEqualTo("\"foo\\?\"");
-    assertThat(StringUtils.quoteJMXIfNecessary("foo*")).isEqualTo("\"foo\\*\"");
-    assertThat(StringUtils.quoteJMXIfNecessary("foo\\")).isEqualTo("\"foo\\\\\"");
-    assertThat(StringUtils.quoteJMXIfNecessary("foo\n")).isEqualTo("\"foo\\n\"");
-    assertThat(StringUtils.quoteJMXIfNecessary("foo bar")).isEqualTo("\"foo bar\"");
-    assertThat(StringUtils.quoteJMXIfNecessary("foo|bar")).isEqualTo("\"foo|bar\"");
-    assertThat(StringUtils.quoteJMXIfNecessary("foo,bar")).isEqualTo("\"foo,bar\"");
+  @SuppressWarnings("unused")
+  static Stream<Arguments> should_ensure_braces() {
+    return Stream.of(
+        Arguments.of("", "{}"),
+        Arguments.of("{}", "{}"),
+        Arguments.of("foo", "{foo}"),
+        Arguments.of("{foo}", "{foo}"));
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  void should_ensure_quoted(String input, String expected) {
+    assertThat(StringUtils.ensureQuoted(input)).isEqualTo(expected);
+  }
+
+  @SuppressWarnings("unused")
+  static Stream<Arguments> should_ensure_quoted() {
+    return Stream.of(
+        Arguments.of("", "\"\""),
+        Arguments.of("\"", "\""),
+        Arguments.of("\\\"", "\"\\\"\""),
+        Arguments.of("\"\"", "\"\""),
+        Arguments.of("foo", "\"foo\""),
+        Arguments.of("\"foo\"", "\"foo\""));
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  void should_quote_jmx_if_necessary(String input, String expected) {
+    assertThat(StringUtils.quoteJMXIfNecessary(input)).isEqualTo(expected);
+  }
+
+  @SuppressWarnings("unused")
+  static Stream<Arguments> should_quote_jmx_if_necessary() {
+    return Stream.of(
+        Arguments.of("", "\"\""),
+        Arguments.of("foo", "foo"),
+        Arguments.of("foo-bar", "foo-bar"),
+        Arguments.of("foo_bar", "foo_bar"),
+        Arguments.of("foo?", "\"foo\\?\""),
+        Arguments.of("foo*", "\"foo\\*\""),
+        Arguments.of("foo\\", "\"foo\\\\\""),
+        Arguments.of("foo\n", "\"foo\\n\""),
+        Arguments.of("foo bar", "\"foo bar\""),
+        Arguments.of("foo|bar", "\"foo|bar\""),
+        Arguments.of("foo,bar", "\"foo,bar\""));
   }
 }
