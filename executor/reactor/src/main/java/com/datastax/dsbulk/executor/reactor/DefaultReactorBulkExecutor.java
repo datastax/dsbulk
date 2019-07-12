@@ -26,6 +26,7 @@ import java.util.stream.Stream;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.concurrent.Queues;
 
 /**
  * An implementation of {@link BulkExecutor} using <a href="https://projectreactor.io">Reactor</a>.
@@ -102,7 +103,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
       Publisher<? extends Statement> statements, Consumer<? super WriteResult> consumer) {
     CompletableFuture<Void> future = new CompletableFuture<>();
     Flux.from(statements)
-        .flatMap(this::writeReactive)
+        .flatMapDelayError(this::writeReactive, Queues.SMALL_BUFFER_SIZE, Queues.XS_BUFFER_SIZE)
         .doOnNext(consumer)
         .doOnComplete(() -> future.complete(null))
         .doOnError(future::completeExceptionally)
@@ -139,7 +140,8 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
   @Override
   public Flux<WriteResult> writeReactive(Publisher<? extends Statement> statements)
       throws BulkExecutionException {
-    return Flux.from(statements).flatMap(this::writeReactive);
+    return Flux.from(statements)
+        .flatMapDelayError(this::writeReactive, Queues.SMALL_BUFFER_SIZE, Queues.XS_BUFFER_SIZE);
   }
 
   @Override
@@ -181,7 +183,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
       Publisher<? extends Statement> statements, Consumer<? super ReadResult> consumer) {
     CompletableFuture<Void> future = new CompletableFuture<>();
     Flux.from(statements)
-        .flatMap(this::readReactive)
+        .flatMapDelayError(this::readReactive, Queues.SMALL_BUFFER_SIZE, Queues.XS_BUFFER_SIZE)
         .doOnNext(consumer)
         .doOnComplete(() -> future.complete(null))
         .doOnError(future::completeExceptionally)
@@ -223,6 +225,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
   @Override
   public Flux<ReadResult> readReactive(Publisher<? extends Statement> statements)
       throws BulkExecutionException {
-    return Flux.from(statements).flatMap(this::readReactive);
+    return Flux.from(statements)
+        .flatMapDelayError(this::readReactive, Queues.SMALL_BUFFER_SIZE, Queues.XS_BUFFER_SIZE);
   }
 }

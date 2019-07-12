@@ -17,6 +17,7 @@ import com.datastax.dsbulk.executor.api.batch.StatementBatcher;
 import org.jetbrains.annotations.NotNull;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
+import reactor.util.concurrent.Queues;
 
 /** A subclass of {@link StatementBatcher} that adds reactive-style capabilities to it. */
 public class ReactorStatementBatcher extends StatementBatcher {
@@ -188,7 +189,9 @@ public class ReactorStatementBatcher extends StatementBatcher {
    */
   @NotNull
   public Flux<Statement> batchByGroupingKey(@NotNull Publisher<? extends Statement> statements) {
-    return Flux.from(statements).groupBy(this::groupingKey).flatMap(this::batchAll);
+    return Flux.from(statements)
+        .groupBy(this::groupingKey)
+        .flatMapDelayError(this::batchAll, Queues.SMALL_BUFFER_SIZE, Queues.XS_BUFFER_SIZE);
   }
 
   /**
@@ -215,7 +218,7 @@ public class ReactorStatementBatcher extends StatementBatcher {
     return Flux.from(statements)
         .cast(Statement.class)
         .windowUntil(new ReactorAdaptiveSizingBatchPredicate(), false)
-        .flatMap(
+        .flatMapDelayError(
             stmts ->
                 Flux.from(stmts)
                     .reduce(
@@ -226,7 +229,9 @@ public class ReactorStatementBatcher extends StatementBatcher {
                           } else {
                             return new BatchStatement(batchType).add(s1).add(s2);
                           }
-                        }));
+                        }),
+            Queues.SMALL_BUFFER_SIZE,
+            Queues.XS_BUFFER_SIZE);
   }
 
   private class ReactorAdaptiveSizingBatchPredicate extends AdaptiveSizingBatchPredicate {}

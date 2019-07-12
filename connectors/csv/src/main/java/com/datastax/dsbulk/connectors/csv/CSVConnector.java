@@ -74,6 +74,7 @@ import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Signal;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
+import reactor.util.concurrent.Queues;
 
 /**
  * A connector for CSV files.
@@ -362,17 +363,24 @@ public class CSVConnector implements Connector {
   @Override
   public Publisher<Record> read() {
     assert read;
-    return Flux.concat(
-        Flux.fromIterable(roots).flatMap(this::scanRootDirectory).flatMap(this::readURL),
-        Flux.fromIterable(files).flatMap(this::readURL),
+    return Flux.concatDelayError(
+        Flux.fromIterable(roots)
+            .flatMapDelayError(
+                this::scanRootDirectory, Queues.SMALL_BUFFER_SIZE, Queues.XS_BUFFER_SIZE)
+            .flatMapDelayError(this::readURL, Queues.SMALL_BUFFER_SIZE, Queues.XS_BUFFER_SIZE),
+        Flux.fromIterable(files)
+            .flatMapDelayError(this::readURL, Queues.SMALL_BUFFER_SIZE, Queues.XS_BUFFER_SIZE),
         fluxWithErrorIfAllURLsFailed());
   }
 
   @Override
   public Publisher<Publisher<Record>> readByResource() {
     assert read;
-    return Flux.concat(
-        Flux.fromIterable(roots).flatMap(this::scanRootDirectory).map(this::readURL),
+    return Flux.concatDelayError(
+        Flux.fromIterable(roots)
+            .flatMapDelayError(
+                this::scanRootDirectory, Queues.SMALL_BUFFER_SIZE, Queues.XS_BUFFER_SIZE)
+            .map(this::readURL),
         Flux.fromIterable(files).map(this::readURL),
         fluxWithErrorIfAllURLsFailed());
   }
@@ -380,10 +388,7 @@ public class CSVConnector implements Connector {
   @NotNull
   private <T> Flux<T> fluxWithErrorIfAllURLsFailed() {
     return Flux.defer(
-        () ->
-            !atLeastOneUrlWasLoadedSuccessfully
-                ? Flux.error(this::constructException)
-                : Flux.empty());
+        () -> !urlRecordsErrors.isEmpty() ? Flux.error(this::constructException) : Flux.empty());
   }
 
   private Throwable constructException() {

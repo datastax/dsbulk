@@ -75,6 +75,7 @@ import reactor.core.publisher.Signal;
 import reactor.core.publisher.UnicastProcessor;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
+import reactor.util.concurrent.Queues;
 
 public class LogManager implements AutoCloseable {
 
@@ -268,21 +269,24 @@ public class LogManager implements AutoCloseable {
   @NotNull
   public Function<Flux<Void>, Flux<Void>> newTerminationHandler() {
     return upstream ->
-        upstream
-            // when a terminal signal arrives,
-            // complete all open processors
-            .doOnTerminate(failedRecordSink::complete)
-            .doOnTerminate(unmappableRecordSink::complete)
-            .doOnTerminate(unmappableStatementSink::complete)
-            .doOnTerminate(failedWriteSink::complete)
-            .doOnTerminate(failedReadSink::complete)
-            .doOnTerminate(failedCASWriteSink::complete)
-            .doOnTerminate(uncaughtExceptionSink::complete)
+        Flux.mergeDelayError(
+            Queues.XS_BUFFER_SIZE,
+            upstream
+                // when a terminal signal arrives,
+                // complete all open processors
+                .doOnTerminate(failedRecordSink::complete)
+                .doOnTerminate(unmappableRecordSink::complete)
+                .doOnTerminate(unmappableStatementSink::complete)
+                .doOnTerminate(failedWriteSink::complete)
+                .doOnTerminate(failedReadSink::complete)
+                .doOnTerminate(failedCASWriteSink::complete)
+                .doOnTerminate(uncaughtExceptionSink::complete)
             // By merging the main workflow with the uncaught exceptions
             // workflow, we make the main workflow fail when an uncaught
             // exception is triggered, even if the main workflow completes
             // normally.
-            .mergeWith(uncaughtExceptionProcessor);
+            ,
+            uncaughtExceptionProcessor);
   }
 
   /**
@@ -537,14 +541,16 @@ public class LogManager implements AutoCloseable {
   private Function<Flux<? extends Statement>, Flux<Record>> newStatementToRecordMapper() {
     return upstream ->
         upstream
-            .flatMap(
+            .flatMapDelayError(
                 statement -> {
                   if (statement instanceof BatchStatement) {
                     return Flux.fromIterable(((BatchStatement) statement).getStatements());
                   } else {
                     return Flux.just(statement);
                   }
-                })
+                },
+                Queues.SMALL_BUFFER_SIZE,
+                Queues.XS_BUFFER_SIZE)
             .cast(BulkStatement.class)
             .map(BulkStatement::getSource)
             .cast(Record.class);

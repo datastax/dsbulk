@@ -207,7 +207,7 @@ public class LoadWorkflow implements Workflow {
 
   private void threadPerCoreFlux() {
     Flux.defer(() -> connector.readByResource())
-        .flatMap(
+        .flatMapDelayError(
             records -> {
               Flux<Statement> stmts =
                   Flux.from(records)
@@ -219,7 +219,11 @@ public class LoadWorkflow implements Workflow {
                       .transform(failedStatementsMonitor)
                       .transform(unmappableStatementsHandler);
               if (batchingEnabled) {
-                stmts = stmts.window(batchBufferSize).flatMap(batcher).transform(batcherMonitor);
+                stmts =
+                    stmts
+                        .window(batchBufferSize)
+                        .flatMapDelayError(batcher, Queues.SMALL_BUFFER_SIZE, Queues.XS_BUFFER_SIZE)
+                        .transform(batcherMonitor);
               }
               return executeStatements(stmts)
                   .transform(queryWarningsHandler)
@@ -227,7 +231,8 @@ public class LoadWorkflow implements Workflow {
                   .transform(resultPositionsHndler)
                   .subscribeOn(scheduler);
             },
-            numCores)
+            numCores,
+            Queues.XS_BUFFER_SIZE)
         .transform(terminationHandler)
         .blockLast();
   }
@@ -235,7 +240,7 @@ public class LoadWorkflow implements Workflow {
   private void parallelFlux() {
     Flux.defer(() -> connector.read())
         .window(batchingEnabled ? batchBufferSize : Queues.SMALL_BUFFER_SIZE)
-        .flatMap(
+        .flatMapDelayError(
             records -> {
               Flux<Statement> stmts =
                   records
@@ -255,7 +260,8 @@ public class LoadWorkflow implements Workflow {
                   .transform(resultPositionsHndler)
                   .subscribeOn(scheduler);
             },
-            numCores)
+            numCores,
+            Queues.XS_BUFFER_SIZE)
         .transform(terminationHandler)
         .blockLast();
   }
@@ -265,7 +271,8 @@ public class LoadWorkflow implements Workflow {
     if (dryRun) {
       results = stmts.map(EmptyWriteResult::new);
     } else {
-      results = stmts.flatMap(executor::writeReactive, writeConcurrency);
+      results =
+          stmts.flatMapDelayError(executor::writeReactive, writeConcurrency, Queues.XS_BUFFER_SIZE);
     }
     return results;
   }
