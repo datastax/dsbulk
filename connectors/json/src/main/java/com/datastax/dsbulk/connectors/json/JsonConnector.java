@@ -11,6 +11,7 @@ package com.datastax.dsbulk.connectors.json;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.getURLsFromFile;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isPathAbsentOrEmpty;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isPathPresentAndNotEmpty;
+import static com.datastax.dsbulk.commons.internal.io.IOUtils.countReadableFiles;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
@@ -53,6 +54,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLStreamHandler;
+import java.nio.channels.ClosedChannelException;
 import java.nio.charset.Charset;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Files;
@@ -259,7 +261,7 @@ public class JsonConnector implements Connector {
       objectMapper.setSerializationInclusion(serializationStrategy);
       writers = new CopyOnWriteArrayList<>();
       if (writeConcurrency() > 1) {
-        ThreadFactory threadFactory = new DefaultThreadFactory("csv-connector");
+        ThreadFactory threadFactory = new DefaultThreadFactory("json-connector");
         scheduler =
             maxConcurrentFiles == 1
                 ? Schedulers.newSingle(threadFactory)
@@ -397,7 +399,7 @@ public class JsonConnector implements Connector {
           int inDirectoryResourceCount =
               Objects.requireNonNull(scanRootDirectory(root).take(100).count().block()).intValue();
           if (inDirectoryResourceCount == 0) {
-            if (IOUtils.countReadableFiles(root, recursive) == 0) {
+            if (countReadableFiles(root, recursive) == 0) {
               LOGGER.warn("Directory {} has no readable files.", root);
             } else {
               LOGGER.warn(
@@ -412,8 +414,9 @@ public class JsonConnector implements Connector {
           files.add(u);
         }
       } catch (FileSystemNotFoundException ignored) {
-        files.add(u);
         // not a path on a known filesystem, fall back to reading from URL directly
+        files.add(u);
+        resourceCount++;
       }
     }
   }
@@ -542,6 +545,8 @@ public class JsonConnector implements Connector {
         }
         writer.writeObject(record);
         currentLine++;
+      } catch (ClosedChannelException e) {
+        // OK, happens when the channel was closed due to interruption
       } catch (RuntimeException e) {
         throw new IOException(String.format("Error writing to %s", url), e);
       }
@@ -563,6 +568,8 @@ public class JsonConnector implements Connector {
         }
         currentLine = 0;
         LOGGER.debug("Writing " + url);
+      } catch (ClosedChannelException e) {
+        // OK, happens when the channel was closed due to interruption
       } catch (RuntimeException | IOException e) {
         throw new IOException(String.format("Error opening %s", url), e);
       }
@@ -580,6 +587,8 @@ public class JsonConnector implements Connector {
           writer.close();
           LOGGER.debug("Done writing {}", url);
           writer = null;
+        } catch (ClosedChannelException e) {
+          // OK, happens when the channel was closed due to interruption
         } catch (RuntimeException | IOException e) {
           throw new IOException(String.format("Error closing %s", url), e);
         }
