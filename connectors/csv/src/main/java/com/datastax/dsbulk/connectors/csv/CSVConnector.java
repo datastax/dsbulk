@@ -154,7 +154,8 @@ public class CSVConnector implements Connector {
   private Scheduler scheduler;
   private List<CSVWriter> writers;
   private volatile boolean atLeastOneUrlWasLoadedSuccessfully = false;
-  private List<Throwable> urlRecordsErrors = new CopyOnWriteArrayList<>();
+  private volatile List<Throwable> urlRecordsErrors = new CopyOnWriteArrayList<>();
+  private volatile Throwable combined;
 
   @Override
   public void configure(LoaderConfig settings, boolean read) {
@@ -362,28 +363,19 @@ public class CSVConnector implements Connector {
   @Override
   public Publisher<Record> read() {
     assert read;
-    return Flux.concat(
-        Flux.fromIterable(roots).flatMap(this::scanRootDirectory).flatMap(this::readURL),
-        Flux.fromIterable(files).flatMap(this::readURL),
-        fluxWithErrorIfAllURLsFailed());
+    return Flux.concatDelayError(
+        Flux.fromIterable(roots)
+            .concatMapDelayError(this::scanRootDirectory)
+            .concatMapDelayError(this::readURL),
+        Flux.fromIterable(files).concatMapDelayError(this::readURL));
   }
 
   @Override
   public Publisher<Publisher<Record>> readByResource() {
     assert read;
     return Flux.concat(
-        Flux.fromIterable(roots).flatMap(this::scanRootDirectory).map(this::readURL),
-        Flux.fromIterable(files).map(this::readURL),
-        fluxWithErrorIfAllURLsFailed());
-  }
-
-  @NotNull
-  private <T> Flux<T> fluxWithErrorIfAllURLsFailed() {
-    return Flux.defer(
-        () ->
-            !atLeastOneUrlWasLoadedSuccessfully
-                ? Flux.error(this::constructException)
-                : Flux.empty());
+        Flux.fromIterable(roots).concatMapDelayError(this::scanRootDirectory).map(this::readURL),
+        Flux.fromIterable(files).map(this::readURL));
   }
 
   private Throwable constructException() {
@@ -514,7 +506,6 @@ public class CSVConnector implements Connector {
               LOGGER.debug("Reading {}", url);
               URI resource = URI.create(url.toExternalForm());
               try (Reader r = IOUtils.newBufferedReader(url, encoding)) {
-                atLeastOneUrlWasLoadedSuccessfully = true;
                 parser.beginParsing(r);
                 ParsingContext context = parser.getContext();
                 MappedField[] fieldNames = null;
@@ -554,14 +545,14 @@ public class CSVConnector implements Connector {
                 sink.complete();
               } catch (TextParsingException e) {
                 IOException ioe = launderTextParsingException(e, url);
-                urlRecordsErrors.add(ioe);
-                sink.complete();
+                sink.error(ioe);
               } catch (Exception e) {
                 if (e.getCause() instanceof TextParsingException) {
                   e = launderTextParsingException(((TextParsingException) e.getCause()), url);
                 }
-                urlRecordsErrors.add(e);
-                sink.complete();
+                sink.error(
+                    new IOException(
+                        String.format("Error reading from %s at line %d", url, recordNumber), e));
               }
             },
             FluxSink.OverflowStrategy.ERROR);

@@ -207,7 +207,7 @@ public class LoadWorkflow implements Workflow {
 
   private void threadPerCoreFlux() {
     Flux.defer(() -> connector.readByResource())
-        .flatMap(
+        .flatMapDelayError(
             records -> {
               Flux<Statement> stmts =
                   Flux.from(records)
@@ -227,7 +227,7 @@ public class LoadWorkflow implements Workflow {
                   .transform(resultPositionsHndler)
                   .subscribeOn(scheduler);
             },
-            numCores)
+            numCores, 1024)
         .transform(terminationHandler)
         .blockLast();
   }
@@ -235,7 +235,7 @@ public class LoadWorkflow implements Workflow {
   private void parallelFlux() {
     Flux.defer(() -> connector.read())
         .window(batchingEnabled ? batchBufferSize : Queues.SMALL_BUFFER_SIZE)
-        .flatMap(
+        .flatMapDelayError(
             records -> {
               Flux<Statement> stmts =
                   records
@@ -255,7 +255,7 @@ public class LoadWorkflow implements Workflow {
                   .transform(resultPositionsHndler)
                   .subscribeOn(scheduler);
             },
-            numCores)
+            numCores, 1024)
         .transform(terminationHandler)
         .blockLast();
   }
