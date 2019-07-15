@@ -623,9 +623,7 @@ public class CSVConnector implements Connector {
         LOGGER.trace("Writing record {} to {}", record, url);
         writer.writeRow(record.values());
       } catch (TextWritingException e) {
-        if ((e.getCause() instanceof ClosedChannelException)) {
-          // OK, happens when the channel was closed due to interruption
-        } else {
+        if ((!(e.getCause() instanceof ClosedChannelException))) {
           throw new IOException(String.format("Error writing to %s", url), e);
         }
       }

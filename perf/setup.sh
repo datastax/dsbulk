@@ -6,13 +6,15 @@ export LC_CTYPE="en_US.UTF-8"
 
 ctool destroy dsbulk-dse
 ctool destroy dsbulk-client
-#to launch ironic machines on openstack:
-ctool --provider=ironic launch -p devtools-ironic dsbulk-dse 3
-ctool --provider=ironic launch -p devtools-ironic dsbulk-client 1
 
 #to launch virtual machines on openstack:
 #ctool launch -p xenial dsbulk-dse 3
 #ctool launch -p xenial dsbulk-client 1
+
+#to launch virtual machines on nebula:
+#http://docsreview.datastax.lan/en/dse/6.7/ctoolnebula/ctool/ctoolNebulaConfigureNebula
+ctool launch dsbulk-dse 3
+ctool launch dsbulk-client 1
 
 #setup dse
 ctool install dsbulk-dse -i tar -v 6.0.4 enterprise
