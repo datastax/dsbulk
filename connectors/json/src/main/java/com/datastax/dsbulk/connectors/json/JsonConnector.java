@@ -266,6 +266,8 @@ public class JsonConnector implements Connector {
       objectMapper.setSerializationInclusion(serializationStrategy);
       writers = new CopyOnWriteArrayList<>();
       ThreadFactory threadFactory = new DefaultThreadFactory("json-connector");
+      // if you will use it will finish properly because JsonWriter is not shared between threads
+      // Schedulers.newSingle(threadFactory);
       scheduler =
           maxConcurrentFiles == 1
               ? Schedulers.newSingle(threadFactory)
@@ -565,8 +567,7 @@ public class JsonConnector implements Connector {
       } catch (ClosedChannelException | JsonGenerationException e) {
         /**
          * todo here exception is thrown com.fasterxml.jackson.core.JsonGenerationException: Can not
-         * write a field name, expecting a value
-         * JsonGenerationException
+         * write a field name, expecting a value JsonGenerationException
          */
         System.out.println(Arrays.toString(e.getStackTrace()));
         // OK, happens when the channel was closed due to interruption
