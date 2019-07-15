@@ -87,7 +87,6 @@ import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -215,101 +214,6 @@ class CSVEndToEndSimulacronIT {
         .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
         .contains("Writes: total: 24, successful: 24, failed: 0");
     validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", ONE);
-  }
-
-  @Test
-  void full_load_using_urlfile_when_one_http_url_is_not_working() throws IOException {
-
-    Path urlFile =
-        createURLFile(
-            Arrays.asList(
-                "http://localhost:1234/non-existing.csv",
-                CSV_RECORDS_UNIQUE_PART_1.toExternalForm()));
-
-    primeIpByCountryTable(simulacron);
-    RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
-    simulacron.prime(new Prime(insert));
-
-    String[] args = {
-      "load",
-      "--log.directory",
-      quoteJson(logDir),
-      "--log.verbosity",
-      "2",
-      "-header",
-      "false",
-      "--connector.csv.urlfile",
-      quoteJson(urlFile),
-      "--driver.query.consistency",
-      "ONE",
-      "--driver.hosts",
-      hostname,
-      "--driver.port",
-      port,
-      "--driver.pooling.local.connections",
-      "1",
-      "--schema.keyspace",
-      "ks1",
-      "--schema.query",
-      INSERT_INTO_IP_BY_COUNTRY,
-      "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING_INDEXED
-    };
-
-    int status = new DataStaxBulkLoader(args).run();
-    assertThat(logs.getAllMessagesAsString())
-        .contains("Records: total: 11, successful: 10, failed: 1")
-        .contains("Batches: total: 10, size: 1.00 mean, 1 min, 1 max")
-        .contains("Writes: total: 10, successful: 10, failed: 0");
-    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
-    validateQueryCount(simulacron, 10, "INSERT INTO ip_by_country", ONE);
-    Files.delete(urlFile);
-  }
-
-  @Test
-  void full_load_using_urlfile_when_both_urls_not_working() throws IOException {
-
-    Path urlFile =
-        createURLFile(
-            Arrays.asList(
-                "http://localhost:1234/non-existing.csv",
-                "http://localhost:1234/non-existing2.csv"));
-
-    primeIpByCountryTable(simulacron);
-    RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
-    simulacron.prime(new Prime(insert));
-
-    String[] args = {
-      "load",
-      "--log.directory",
-      quoteJson(logDir),
-      "--log.verbosity",
-      "2",
-      "-header",
-      "false",
-      "--connector.csv.urlfile",
-      quoteJson(urlFile),
-      "--driver.query.consistency",
-      "ONE",
-      "--driver.hosts",
-      hostname,
-      "--driver.port",
-      port,
-      "--driver.pooling.local.connections",
-      "1",
-      "--schema.keyspace",
-      "ks1",
-      "--schema.query",
-      INSERT_INTO_IP_BY_COUNTRY,
-      "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING_INDEXED
-    };
-
-    int status = new DataStaxBulkLoader(args).run();
-    assertThat(logs.getAllMessagesAsString())
-        .contains("None of the provided resources was loaded successfully");
-    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
-    Files.delete(urlFile);
   }
 
   @ParameterizedTest

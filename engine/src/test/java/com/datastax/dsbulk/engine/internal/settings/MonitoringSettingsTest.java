@@ -96,7 +96,7 @@ class MonitoringSettingsTest {
     assertThat(ReflectionUtils.getInternalState(metricsManager, "expectedReads")).isEqualTo(50L);
     assertThat(ReflectionUtils.getInternalState(metricsManager, "jmx")).isEqualTo(false);
     assertThat(ReflectionUtils.getInternalState(metricsManager, "csv")).isEqualTo(true);
-    assertThat(ReflectionUtils.getInternalState(metricsManager, "executionDirectory"))
+    assertThat(ReflectionUtils.getInternalState(metricsManager, "operationDirectory"))
         .isEqualTo(tmpPath);
   }
 

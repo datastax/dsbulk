@@ -95,7 +95,7 @@ public class LogManager implements AutoCloseable {
 
   private final WorkflowType workflowType;
   private final Cluster cluster;
-  private final Path executionDirectory;
+  private final Path operationDirectory;
   private final ErrorThreshold errorThreshold;
   private final ErrorThreshold queryWarningsThreshold;
   private final StatementFormatter statementFormatter;
@@ -139,7 +139,7 @@ public class LogManager implements AutoCloseable {
   public LogManager(
       WorkflowType workflowType,
       Cluster cluster,
-      Path executionDirectory,
+      Path operationDirectory,
       ErrorThreshold errorThreshold,
       ErrorThreshold queryWarningsThreshold,
       StatementFormatter statementFormatter,
@@ -147,7 +147,7 @@ public class LogManager implements AutoCloseable {
       RowFormatter rowFormatter) {
     this.workflowType = workflowType;
     this.cluster = cluster;
-    this.executionDirectory = executionDirectory;
+    this.operationDirectory = operationDirectory;
     this.errorThreshold = errorThreshold;
     this.queryWarningsThreshold = queryWarningsThreshold;
     this.statementFormatter = statementFormatter;
@@ -185,8 +185,8 @@ public class LogManager implements AutoCloseable {
     Thread.setDefaultUncaughtExceptionHandler((thread, t) -> uncaughtExceptionSink.error(t));
   }
 
-  public Path getExecutionDirectory() {
-    return executionDirectory;
+  public Path getOperationDirectory() {
+    return operationDirectory;
   }
 
   public int getTotalErrors() {
@@ -221,7 +221,7 @@ public class LogManager implements AutoCloseable {
       positionsPrinter =
           new PrintWriter(
               Files.newBufferedWriter(
-                  executionDirectory.resolve(POSITIONS_FILE),
+                  operationDirectory.resolve(POSITIONS_FILE),
                   Charset.forName("UTF-8"),
                   CREATE_NEW,
                   WRITE));
@@ -710,7 +710,7 @@ public class LogManager implements AutoCloseable {
   // Bad file management
 
   private void appendToBadFile(Record record, String file) {
-    Path logFile = executionDirectory.resolve(file);
+    Path logFile = operationDirectory.resolve(file);
     PrintWriter writer = openFiles.get(logFile);
     assert writer != null;
     Object source = record.getSource();
@@ -736,7 +736,7 @@ public class LogManager implements AutoCloseable {
   }
 
   private void appendStatement(Result result, String logFileName, boolean appendNewLine) {
-    Path logFile = executionDirectory.resolve(logFileName);
+    Path logFile = operationDirectory.resolve(logFileName);
     PrintWriter writer = openFiles.get(logFile);
     assert writer != null;
     writer.print("Statement: ");
@@ -769,7 +769,7 @@ public class LogManager implements AutoCloseable {
 
   // record -> statement failed (load workflow)
   private void appendUnmappableStatementToDebugFile(UnmappableStatement statement) {
-    Path logFile = executionDirectory.resolve(MAPPING_ERRORS_FILE);
+    Path logFile = operationDirectory.resolve(MAPPING_ERRORS_FILE);
     PrintWriter writer = openFiles.get(logFile);
     assert writer != null;
     Record record = statement.getSource();
@@ -782,7 +782,7 @@ public class LogManager implements AutoCloseable {
 
   // row -> record failed (unload workflow)
   private void appendUnmappableReadResultToDebugFile(ErrorRecord record) {
-    Path logFile = executionDirectory.resolve(MAPPING_ERRORS_FILE);
+    Path logFile = operationDirectory.resolve(MAPPING_ERRORS_FILE);
     PrintWriter writer = openFiles.get(logFile);
     assert writer != null;
     writer.println("Resource: " + record.getResource());
@@ -805,7 +805,7 @@ public class LogManager implements AutoCloseable {
   // Connector errors
 
   private void appendFailedRecordToDebugFile(ErrorRecord record) {
-    Path logFile = executionDirectory.resolve(CONNECTOR_ERRORS_FILE);
+    Path logFile = operationDirectory.resolve(CONNECTOR_ERRORS_FILE);
     PrintWriter writer = openFiles.get(logFile);
     assert writer != null;
     writer.println("Resource: " + record.getResource());

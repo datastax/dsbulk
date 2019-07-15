@@ -50,6 +50,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLStreamHandler;
+import java.nio.channels.ClosedChannelException;
 import java.nio.charset.Charset;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Files;
@@ -156,7 +157,6 @@ public class CSVConnector implements Connector {
   @VisibleForTesting AtomicInteger counter;
   private Scheduler scheduler;
   private List<CSVWriter> writers;
-  private volatile boolean atLeastOneUrlWasLoadedSuccessfully = false;
 
   @Override
   public void configure(LoaderConfig settings, boolean read) {
@@ -216,6 +216,47 @@ public class CSVConnector implements Connector {
       }
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "connector.csv");
+    }
+  }
+
+  @NotNull
+  private List<URL> loadURLs(LoaderConfig settings) {
+    if (isPathPresentAndNotEmpty(settings, URLFILE)) {
+      // suppress URL option
+      try {
+        return getURLsFromFile(settings.getPath(URLFILE));
+      } catch (IOException e) {
+        throw new BulkConfigurationException(
+            "Problem when retrieving urls from file specified by the URL file parameter", e);
+      }
+    } else {
+      return Collections.singletonList(settings.getURL(URL));
+    }
+  }
+
+  private void validateURL(LoaderConfig settings, boolean read) {
+    if (read) {
+      // for LOAD
+      if (isPathAbsentOrEmpty(settings, URL)) {
+        if (isPathAbsentOrEmpty(settings, URLFILE)) {
+          throw new BulkConfigurationException(
+              "A URL or URL file is mandatory when using the csv connector for LOAD. Please set connector.csv.url or connector.csv.urlfile "
+                  + "and try again. See settings.md or help for more information.");
+        }
+      }
+      if (isPathPresentAndNotEmpty(settings, URL) && isPathPresentAndNotEmpty(settings, URLFILE)) {
+        LOGGER.debug("You specified both URL and URL file. The URL file will take precedence.");
+      }
+    } else {
+      // for UNLOAD we are not supporting urlfile parameter
+      if (isPathPresentAndNotEmpty(settings, URLFILE)) {
+        throw new BulkConfigurationException("The urlfile parameter is not supported for UNLOAD");
+      }
+      if (isPathAbsentOrEmpty(settings, URL)) {
+        throw new BulkConfigurationException(
+            "A URL is mandatory when using the json connector for UNLOAD. Please set connector.csv.url "
+                + "and try again. See settings.md or help for more information.");
+      }
     }
   }
 
@@ -283,47 +324,6 @@ public class CSVConnector implements Connector {
     }
   }
 
-  @NotNull
-  private List<URL> loadURLs(LoaderConfig settings) {
-    if (isPathPresentAndNotEmpty(settings, URLFILE)) {
-      // suppress URL option
-      try {
-        return getURLsFromFile(settings.getPath(URLFILE));
-      } catch (IOException e) {
-        throw new BulkConfigurationException(
-            "Problem when retrieving urls from file specified by the URL file parameter", e);
-      }
-    } else {
-      return Collections.singletonList(settings.getURL(URL));
-    }
-  }
-
-  private void validateURL(LoaderConfig settings, boolean read) {
-    if (read) {
-      // for LOAD
-      if (isPathAbsentOrEmpty(settings, URL)) {
-        if (isPathAbsentOrEmpty(settings, URLFILE)) {
-          throw new BulkConfigurationException(
-              "A URL or URL file is mandatory when using the csv connector for LOAD. Please set connector.csv.url or connector.csv.urlfile "
-                  + "and try again. See settings.md or help for more information.");
-        }
-      }
-      if (isPathPresentAndNotEmpty(settings, URL) && isPathPresentAndNotEmpty(settings, URLFILE)) {
-        LOGGER.debug("You specified both URL and URL file. The URL file will take precedence.");
-      }
-    } else {
-      // for UNLOAD we are not supporting urlfile parameter
-      if (isPathPresentAndNotEmpty(settings, URLFILE)) {
-        throw new BulkConfigurationException("The urlfile parameter is not supported for UNLOAD");
-      }
-      if (isPathAbsentOrEmpty(settings, URL)) {
-        throw new BulkConfigurationException(
-            "A URL is mandatory when using the json connector for UNLOAD. Please set connector.csv.url "
-                + "and try again. See settings.md or help for more information.");
-      }
-    }
-  }
-
   @Override
   public RecordMetadata getRecordMetadata() {
     return (field, cqlType) -> STRING_TYPE_TOKEN;
@@ -379,8 +379,7 @@ public class CSVConnector implements Connector {
     assert read;
     return Flux.concat(
         Flux.fromIterable(roots).flatMap(this::scanRootDirectory).flatMap(this::readURL),
-        Flux.fromIterable(files).flatMap(this::readURL),
-        fluxWithErrorIfAllURLsFailed());
+        Flux.fromIterable(files).flatMap(this::readURL));
   }
 
   @Override
@@ -388,18 +387,7 @@ public class CSVConnector implements Connector {
     assert read;
     return Flux.concat(
         Flux.fromIterable(roots).flatMap(this::scanRootDirectory).map(this::readURL),
-        Flux.fromIterable(files).map(this::readURL),
-        fluxWithErrorIfAllURLsFailed());
-  }
-
-  @NotNull
-  private <T> Flux<T> fluxWithErrorIfAllURLsFailed() {
-    return Flux.defer(
-        () ->
-            !atLeastOneUrlWasLoadedSuccessfully
-                ? Flux.error(
-                    new IOException("None of the provided resources was loaded successfully."))
-                : Flux.empty());
+        Flux.fromIterable(files).map(this::readURL));
   }
 
   @Override
@@ -482,8 +470,9 @@ public class CSVConnector implements Connector {
           files.add(u);
         }
       } catch (FileSystemNotFoundException ignored) {
-        files.add(u);
         // not a path on a known filesystem, fall back to reading from URL directly
+        files.add(u);
+        resourceCount++;
       }
     }
   }
@@ -523,7 +512,6 @@ public class CSVConnector implements Connector {
               LOGGER.debug("Reading {}", url);
               URI resource = URI.create(url.toExternalForm());
               try (Reader r = CompressedIOUtils.newBufferedReader(url, encoding, compression)) {
-                atLeastOneUrlWasLoadedSuccessfully = true;
                 parser.beginParsing(r);
                 ParsingContext context = parser.getContext();
                 MappedField[] fieldNames = null;
@@ -563,14 +551,14 @@ public class CSVConnector implements Connector {
                 sink.complete();
               } catch (TextParsingException e) {
                 IOException ioe = launderTextParsingException(e, url);
-                sink.next(new DefaultErrorRecord(url, resource, recordNumber, ioe));
-                sink.complete();
+                sink.error(ioe);
               } catch (Exception e) {
                 if (e.getCause() instanceof TextParsingException) {
                   e = launderTextParsingException(((TextParsingException) e.getCause()), url);
                 }
-                sink.next(new DefaultErrorRecord(url, resource, recordNumber, e));
-                sink.complete();
+                sink.error(
+                    new IOException(
+                        String.format("Error reading from %s at line %d", url, recordNumber), e));
               }
             },
             FluxSink.OverflowStrategy.ERROR);
@@ -647,7 +635,9 @@ public class CSVConnector implements Connector {
         LOGGER.trace("Writing record {} to {}", record, url);
         writer.writeRow(record.values());
       } catch (TextWritingException e) {
-        throw new IOException(String.format("Error writing to %s", url), e);
+        if ((!(e.getCause() instanceof ClosedChannelException))) {
+          throw new IOException(String.format("Error writing to %s", url), e);
+        }
       }
     }
 
@@ -666,6 +656,8 @@ public class CSVConnector implements Connector {
             new CsvWriter(
                 CompressedIOUtils.newBufferedWriter(url, encoding, compression), writerSettings);
         LOGGER.debug("Writing {}", url);
+      } catch (ClosedChannelException e) {
+        // OK, happens when the channel was closed due to interruption
       } catch (RuntimeException | IOException e) {
         throw new IOException(String.format("Error opening %s", url), e);
       }
@@ -679,7 +671,9 @@ public class CSVConnector implements Connector {
           writer = null;
         } catch (RuntimeException e) {
           // all serious errors are wrapped in an IllegalStateException with no useful information
-          throw new IOException(String.format("Error closing %s", url), e.getCause());
+          if ((!(e.getCause() instanceof ClosedChannelException))) {
+            throw new IOException(String.format("Error closing %s", url), e.getCause());
+          }
         }
       }
     }
