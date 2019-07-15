@@ -29,6 +29,7 @@ import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
@@ -63,6 +64,7 @@ import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -350,6 +352,13 @@ public class JsonConnector implements Connector {
               .flatMap(
                   rail -> {
                     int key = Objects.requireNonNull(rail.key());
+                    // todo it shows that for the same key it gets different thread - it means that
+                    // JsonWriter is shared
+                    // between multiple threads - ThreadWriter must be thread safe
+                    System.out.println(
+                        String.format(
+                            "for key %s, get Thread: %s", key, Thread.currentThread().getName()));
+
                     JsonWriter writer = writers.get(key);
                     return rail.map(record -> Tuples.of(writer, record)).window(flushWindow);
                   })
@@ -534,6 +543,8 @@ public class JsonConnector implements Connector {
   private class JsonWriter {
 
     private URL url;
+    // Jackson's ObjectMapper creates a new JsonGenerator on each request for serialization. Maybe
+    // we should do the same?
     private JsonGenerator writer;
     private long currentLine;
 
@@ -551,7 +562,13 @@ public class JsonConnector implements Connector {
         }
         writer.writeObject(record);
         currentLine++;
-      } catch (ClosedChannelException e) {
+      } catch (ClosedChannelException | JsonGenerationException e) {
+        /**
+         * todo here exception is thrown com.fasterxml.jackson.core.JsonGenerationException: Can not
+         * write a field name, expecting a value
+         * JsonGenerationException
+         */
+        System.out.println(Arrays.toString(e.getStackTrace()));
         // OK, happens when the channel was closed due to interruption
       } catch (RuntimeException e) {
         throw new IOException(String.format("Error writing to %s", url), e);
@@ -575,7 +592,8 @@ public class JsonConnector implements Connector {
         currentLine = 0;
         LOGGER.debug("Writing " + url);
       } catch (ClosedChannelException e) {
-        // OK, happens when the channel was closed due to interruption
+        System.out.println(Arrays.toString(e.getStackTrace()));
+
       } catch (RuntimeException | IOException e) {
         throw new IOException(String.format("Error opening %s", url), e);
       }
