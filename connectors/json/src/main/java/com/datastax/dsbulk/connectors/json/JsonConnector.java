@@ -69,6 +69,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -261,6 +262,7 @@ public class JsonConnector implements Connector {
         objectMapper.setDefaultPrettyPrinter(new DefaultPrettyPrinter(System.lineSeparator()));
       }
       objectMapper.setSerializationInclusion(serializationStrategy);
+      writers = new CopyOnWriteArrayList<>();
       ThreadFactory threadFactory = new DefaultThreadFactory("json-connector");
       scheduler =
           maxConcurrentFiles == 1
