@@ -76,12 +76,12 @@ ctool run --sudo dsbulk-client "sudo apt update --assume-yes; sudo apt install m
 #ctool run --sudo dsbulk-client "cd /mnt/data; git clone https://${github_username}:${github_password}@github.com/riptano/dsbulk.git"
 #ctool run --sudo dsbulk-client "cd /mnt/data/dsbulk; sudo mvn clean package -DskipTests -P release"
 
-#to build locally and scp to dsbulk-client
+#to build locally and scp to dsbulk-client, you can change --branch parameter to test against different branch
 dsbulk_version=1.3.1-SNAPSHOT
 rm -rf /tmp/dsbulk
 mkdir /tmp/dsbulk
 cd /tmp/dsbulk
-`github_username="username"; github_password="password"; git clone https://${github_username}:${github_password}@github.com/riptano/dsbulk.git`
+`github_username="username"; github_password="password"; git clone --single-branch --branch 1.x https://${github_username}:${github_password}@github.com/riptano/dsbulk.git`
 cd dsbulk
 mvn clean package -DskipTests -P release
 ctool scp -R dsbulk-client 0 /tmp/dsbulk/dsbulk/dist/target/*.zip /mnt/data/
