@@ -11,6 +11,7 @@ package com.datastax.dsbulk.connectors.json;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.getURLsFromFile;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isPathAbsentOrEmpty;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isPathPresentAndNotEmpty;
+import static com.datastax.dsbulk.commons.internal.io.IOUtils.countReadableFiles;
 import static reactor.util.concurrent.Queues.SMALL_BUFFER_SIZE;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
@@ -54,6 +55,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLStreamHandler;
+import java.nio.channels.ClosedChannelException;
 import java.nio.charset.Charset;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Files;
@@ -67,7 +69,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -82,6 +83,8 @@ import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Signal;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 /**
  * A connector for Json files.
@@ -258,7 +261,6 @@ public class JsonConnector implements Connector {
         objectMapper.setDefaultPrettyPrinter(new DefaultPrettyPrinter(System.lineSeparator()));
       }
       objectMapper.setSerializationInclusion(serializationStrategy);
-      writers = new CopyOnWriteArrayList<>();
       ThreadFactory threadFactory = new DefaultThreadFactory("json-connector");
       scheduler =
           maxConcurrentFiles == 1
@@ -343,39 +345,41 @@ public class JsonConnector implements Connector {
               .parallel(maxConcurrentFiles, SMALL_BUFFER_SIZE * 4)
               .runOn(scheduler)
               .groups()
-              .flatMap(rail -> rail.transform(writeRecords(Objects.requireNonNull(rail.key()))));
+              .flatMap(
+                  rail -> {
+                    int key = Objects.requireNonNull(rail.key());
+                    JsonWriter writer = writers.get(key);
+                    return rail.map(record -> Tuples.of(writer, record)).window(flushWindow);
+                  })
+              .flatMap(this::writeRecords);
     } else {
+      JsonWriter writer = writers.get(0);
       return upstream ->
           Flux.from(upstream)
-              .publishOn(scheduler, SMALL_BUFFER_SIZE * 4)
-              .transform(writeRecords(0));
+              .map(record -> Tuples.of(writer, record))
+              .window(flushWindow)
+              .flatMap(this::writeRecords);
     }
   }
 
-  private Function<Flux<Record>, Flux<Record>> writeRecords(int key) {
-    JsonWriter writer = writers.get(key);
-    return records ->
-        records
-            .window(flushWindow)
-            .flatMap(
-                window -> {
-                  return window
-                      .materialize()
-                      .map(
-                          signal -> {
-                            if (signal.isOnNext()) {
-                              Record record = signal.get();
-                              assert record != null;
-                              try {
-                                writer.write(record);
-                              } catch (Exception e) {
-                                signal = Signal.error(e);
-                              }
-                            }
-                            return signal;
-                          })
-                      .dematerialize();
-                });
+  private Flux<Record> writeRecords(Flux<Tuple2<JsonWriter, Record>> window) {
+    return window
+        .materialize()
+        .map(
+            signal -> {
+              if (signal.isOnNext()) {
+                Tuple2<JsonWriter, Record> tuple = signal.get();
+                assert tuple != null;
+                try {
+                  tuple.getT1().write(tuple.getT2());
+                } catch (Exception e) {
+                  signal = Signal.error(e);
+                }
+              }
+              return signal;
+            })
+        .<Tuple2<JsonWriter, Record>>dematerialize()
+        .map(Tuple2::getT2);
   }
 
   private int writeConcurrency() {
@@ -399,7 +403,7 @@ public class JsonConnector implements Connector {
           int inDirectoryResourceCount =
               Objects.requireNonNull(scanRootDirectory(root).take(100).count().block()).intValue();
           if (inDirectoryResourceCount == 0) {
-            if (IOUtils.countReadableFiles(root, recursive) == 0) {
+            if (countReadableFiles(root, recursive) == 0) {
               LOGGER.warn("Directory {} has no readable files.", root);
             } else {
               LOGGER.warn(
@@ -414,8 +418,9 @@ public class JsonConnector implements Connector {
           files.add(u);
         }
       } catch (FileSystemNotFoundException ignored) {
-        files.add(u);
         // not a path on a known filesystem, fall back to reading from URL directly
+        files.add(u);
+        resourceCount++;
       }
     }
   }
@@ -544,6 +549,8 @@ public class JsonConnector implements Connector {
         }
         writer.writeObject(record);
         currentLine++;
+      } catch (ClosedChannelException e) {
+        // OK, happens when the channel was closed due to interruption
       } catch (RuntimeException e) {
         throw new IOException(String.format("Error writing to %s", url), e);
       }
@@ -565,6 +572,8 @@ public class JsonConnector implements Connector {
         }
         currentLine = 0;
         LOGGER.debug("Writing " + url);
+      } catch (ClosedChannelException e) {
+        // OK, happens when the channel was closed due to interruption
       } catch (RuntimeException | IOException e) {
         throw new IOException(String.format("Error opening %s", url), e);
       }
@@ -582,6 +591,8 @@ public class JsonConnector implements Connector {
           writer.close();
           LOGGER.debug("Done writing {}", url);
           writer = null;
+        } catch (ClosedChannelException e) {
+          // OK, happens when the channel was closed due to interruption
         } catch (RuntimeException | IOException e) {
           throw new IOException(String.format("Error closing %s", url), e);
         }

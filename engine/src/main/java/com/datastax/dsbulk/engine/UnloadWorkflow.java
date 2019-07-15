@@ -113,7 +113,7 @@ public class UnloadWorkflow implements Workflow {
         monitoringSettings.newMetricsManager(
             WorkflowType.UNLOAD,
             false,
-            logManager.getExecutionDirectory(),
+            logManager.getOperationDirectory(),
             logSettings.getVerbosity(),
             cluster.getMetrics().getRegistry(),
             cluster.getConfiguration().getProtocolOptions().getProtocolVersion(),
