@@ -213,7 +213,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
-    validateOutputFiles(24, unloadDir);
+    validateOutputFiles(1000, unloadDir);
   }
 
   @Test
