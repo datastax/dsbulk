@@ -132,7 +132,7 @@ public class UnloadWorkflow implements Workflow {
         executorSettings.newReadExecutor(
             session, metricsManager.getExecutionListener(), schemaSettings.isSearchQuery());
     closed.set(false);
-    numCores = Runtime.getRuntime().availableProcessors();
+    numCores = 32;
     scheduler = Schedulers.newParallel(numCores, new DefaultThreadFactory("workflow"));
     // Set the concurrency to the number of cores to maximize parallelism, unless a maximum number
     // of concurrent queries has been set, in which case, if that number is lesser than the number

@@ -142,7 +142,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--connector.json.url");
     args.add(quoteJson(unloadDir));
     args.add("--connector.json.maxConcurrentFiles");
-    args.add("1");
+    args.add("8");
     args.add("--schema.keyspace");
     args.add(session.getLoggedKeyspace());
     args.add("--schema.table");
@@ -151,6 +151,67 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(IP_BY_COUNTRY_MAPPING_NAMED);
 
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    validateOutputFiles(24, unloadDir);
+  }
+
+  /**
+   * This test reproduced 2019-07-15 09:47:07 ERROR Operation UNLOAD_20190715-094705-475736 failed:
+   * Com.fasterxml.jackson.core.JsonGenerationException: Can not start an object, expecting field
+   * name (context: Object). Caused by: Can not start an object, expecting field name (context:
+   * Object). reactor.core.Exceptions$ReactiveException:
+   * com.fasterxml.jackson.core.JsonGenerationException: Can not start an object, expecting field
+   * name (context: Object) at
+   * com.datastax.dsbulk.engine.UnloadWorkflow.execute(UnloadWorkflow.java:176) [3 skipped] at
+   * com.datastax.dsbulk.engine.DataStaxBulkLoader$WorkflowThread.run(DataStaxBulkLoader.java:171)
+   * Suppressed: java.lang.Exception: #block terminated with an error at
+   * com.datastax.dsbulk.engine.UnloadWorkflow.execute(UnloadWorkflow.java:176) [2 skipped] ... 3
+   * common frames omitted Caused by: com.fasterxml.jackson.core.JsonGenerationException: Can not
+   * start an object, expecting field name (context: Object) at
+   * com.fasterxml.jackson.core.JsonGenerator._reportError(JsonGenerator.java:1961) at
+   * com.fasterxml.jackson.core.json.JsonGeneratorImpl._reportCantWriteValueExpectName(JsonGeneratorImpl.java:244)
+   * at
+   * com.fasterxml.jackson.core.json.WriterBasedJsonGenerator._verifyValueWrite(WriterBasedJsonGenerator.java:866)
+   * at
+   * com.fasterxml.jackson.core.json.WriterBasedJsonGenerator.writeStartObject(WriterBasedJsonGenerator.java:260)
+   * at com.fasterxml.jackson.databind.ser.std.MapSerializer.serialize(MapSerializer.java:630)
+   * 2019-07-15 09:47:07 WARN [643826864] Error writing cancel request. This is not critical (the
+   * request will eventually time out server-side).
+   */
+  @Test
+  void full_unload_simulate_perf_test() throws Exception {
+
+    List<String> args = new ArrayList<>();
+
+    // {"beginning_ip_address":"209.170.125.208","ending_ip_address":"209.170.125.223","beginning_ip_number":3517611472,"ending_ip_number":3517611487,"country_code":"SE","country_name":"Sweden"}
+    for (int i = 0; i < 1_000_000; i++) {
+      session.execute(
+          "insert into ip_by_country (country_code, country_name, beginning_ip_address, ending_ip_address, beginning_ip_number, ending_ip_number) "
+              + String.format(
+                  "values ('%s', 'SWEDEN', '209.170.125.223', '209.170.125.224', 1412421125, 5123451524)",
+                  i + "smth"));
+    }
+
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("-c");
+    args.add("json");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.name");
+    args.add("json");
+    args.add("--connector.json.url");
+    args.add(quoteJson(unloadDir));
+    args.add("--connector.json.maxConcurrentFiles");
+    args.add("8");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("ip_by_country");
+    args.add("--schema.mapping");
+    args.add(IP_BY_COUNTRY_MAPPING_NAMED);
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(24, unloadDir);
   }
