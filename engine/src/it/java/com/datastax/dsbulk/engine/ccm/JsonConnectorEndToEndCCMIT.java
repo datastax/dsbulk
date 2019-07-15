@@ -184,7 +184,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> args = new ArrayList<>();
 
     // {"beginning_ip_address":"209.170.125.208","ending_ip_address":"209.170.125.223","beginning_ip_number":3517611472,"ending_ip_number":3517611487,"country_code":"SE","country_name":"Sweden"}
-    for (int i = 0; i < 1_000_000; i++) {
+    for (int i = 0; i < 1_000; i++) {
       session.execute(
           "insert into ip_by_country (country_code, country_name, beginning_ip_address, ending_ip_address, beginning_ip_number, ending_ip_number) "
               + String.format(
