@@ -1,6 +1,6 @@
 ## Changelog
 
-### 1.2.1 (in progress)
+### 1.2.1
 
 - [task] DAT-456: Update jackson-databind to 2.9.9.1 to fix CVE-2019-12814.
 
