@@ -119,7 +119,6 @@ public class CSVConnector implements Connector {
   private static final String NORMALIZE_LINE_ENDINGS_IN_QUOTES = "normalizeLineEndingsInQuotes";
   private static final String NULL_VALUE = "nullValue";
   private static final String EMPTY_VALUE = "emptyValue";
-  private static final String FLUSH_WINDOW = "flushWindow";
 
   private boolean read;
   private List<URL> urls;
@@ -147,7 +146,6 @@ public class CSVConnector implements Connector {
   private boolean normalizeLineEndingsInQuotes;
   private String nullValue;
   private String emptyValue;
-  private int flushWindow;
   private int resourceCount;
   private CsvParserSettings parserSettings;
   private CsvWriterSettings writerSettings;
@@ -185,13 +183,6 @@ public class CSVConnector implements Connector {
       normalizeLineEndingsInQuotes = settings.getBoolean(NORMALIZE_LINE_ENDINGS_IN_QUOTES);
       nullValue = settings.getIsNull(NULL_VALUE) ? null : settings.getString(NULL_VALUE);
       emptyValue = settings.getIsNull(EMPTY_VALUE) ? null : settings.getString(EMPTY_VALUE);
-      flushWindow = settings.getInt(FLUSH_WINDOW);
-      if (flushWindow < 1) {
-        throw new BulkConfigurationException(
-            String.format(
-                "Invalid value for connector.csv.%s: Expecting integer > 0, got: %d",
-                FLUSH_WINDOW, flushWindow));
-      }
       if (!AUTO_NEWLINE.equalsIgnoreCase(newline) && (newline.isEmpty() || newline.length() > 2)) {
         throw new BulkConfigurationException(
             String.format(
@@ -294,17 +285,6 @@ public class CSVConnector implements Connector {
         format.setLineSeparator(newline);
       }
       counter = new AtomicInteger(0);
-      writers = new CopyOnWriteArrayList<>();
-      if (writeConcurrency() > 1) {
-        ThreadFactory threadFactory = new DefaultThreadFactory("csv-connector");
-        scheduler =
-            maxConcurrentFiles == 1
-                ? Schedulers.newSingle(threadFactory)
-                : Schedulers.newParallel(maxConcurrentFiles, threadFactory);
-      }
-      for (int i = 0; i < maxConcurrentFiles; i++) {
-        writers.add(new CSVWriter());
-      }
     }
   }
 
@@ -377,49 +357,57 @@ public class CSVConnector implements Connector {
   @Override
   public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
     assert !read;
-    if (writeConcurrency() > 1) {
-      return upstream ->
-          Flux.from(upstream)
-              .parallel(maxConcurrentFiles)
-              .runOn(scheduler)
-              .groups()
-              .flatMap(rail -> rail.transform(writeRecords(Objects.requireNonNull(rail.key()))));
+    writers = new CopyOnWriteArrayList<>();
+    if (!roots.isEmpty() && maxConcurrentFiles > 1) {
+      return upstream -> {
+        ThreadFactory threadFactory = new DefaultThreadFactory("csv-connector");
+        scheduler = Schedulers.newParallel(maxConcurrentFiles, threadFactory);
+        for (int i = 0; i < maxConcurrentFiles; i++) {
+          writers.add(new CSVWriter());
+        }
+        return Flux.from(upstream)
+            .parallel(maxConcurrentFiles)
+            .runOn(scheduler)
+            .groups()
+            .flatMap(
+                records -> {
+                  Integer key = records.key();
+                  assert key != null;
+                  return records.transform(writeRecords(writers.get(key)));
+                },
+                maxConcurrentFiles);
+      };
     } else {
-      return upstream -> Flux.from(upstream).transform(writeRecords(0));
+      return upstream -> {
+        CSVWriter writer = new CSVWriter();
+        writers.add(writer);
+        return Flux.from(upstream).transform(writeRecords(writer));
+      };
     }
   }
 
-  private Function<Flux<Record>, Flux<Record>> writeRecords(int key) {
-    CSVWriter writer = writers.get(key);
-    return records ->
-        records
-            .window(flushWindow)
-            .flatMap(
-                window -> {
-                  return window
-                      .materialize()
-                      .map(
-                          signal -> {
-                            if (signal.isOnNext()) {
-                              Record record = signal.get();
-                              assert record != null;
-                              try {
-                                writer.write(record);
-                              } catch (Exception e) {
-                                signal = Signal.error(e);
-                              }
-                            }
-                            return signal;
-                          })
-                      .dematerialize();
-                });
-  }
-
-  private int writeConcurrency() {
-    // when unloading, roots can only be empty or contain one element; if it's empty, we are writing
-    // to a single file and the write concurrency is necessarily 1; if it is not empty, we are
-    // writing to a directory and the write concurrency is maxConcurrentFiles.
-    return roots.isEmpty() ? 1 : maxConcurrentFiles;
+  private Function<Flux<Record>, Flux<Record>> writeRecords(CSVWriter writer) {
+    return upstream ->
+        upstream
+            .materialize()
+            .map(
+                signal -> {
+                  if (signal.isOnNext()) {
+                    Record record = signal.get();
+                    assert record != null;
+                    try {
+                      writer.write(record);
+                    } catch (Exception e) {
+                      // Note that we may be are inside a parallel flux;
+                      // sending more than one onError signal to downstream will result
+                      // in all onError signals but the first to be dropped.
+                      // The framework is expected to deal with that.
+                      signal = Signal.error(e);
+                    }
+                  }
+                  return signal;
+                })
+            .dematerialize();
   }
 
   private void tryReadFromDirectories() throws URISyntaxException, IOException {
@@ -603,13 +591,13 @@ public class CSVConnector implements Connector {
     private CsvWriter writer;
 
     private void write(Record record) throws IOException {
-      if (writer == null) {
-        open();
-      } else if (shouldRoll()) {
-        close();
-        open();
-      }
       try {
+        if (writer == null) {
+          open();
+        } else if (shouldRoll()) {
+          close();
+          open();
+        }
         if (shouldWriteHeader()) {
           writer.writeHeaders(record.fields().stream().map(Field::toString).toArray(String[]::new));
         }

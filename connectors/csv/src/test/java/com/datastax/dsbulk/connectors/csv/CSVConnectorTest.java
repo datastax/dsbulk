@@ -1320,30 +1320,6 @@ class CSVConnectorTest {
     connector.close();
   }
 
-  @Test
-  void should_throw_exception_when_buffet_size_not_valid() {
-    CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
-        new DefaultLoaderConfig(ConfigFactory.parseString("flushWindow = notANumber"))
-            .withFallback(CONNECTOR_DEFAULT_SETTINGS);
-    assertThatThrownBy(() -> connector.configure(settings, false))
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessageContaining(
-            "Invalid value for connector.csv.flushWindow: Expecting NUMBER, got STRING");
-  }
-
-  @Test
-  void should_throw_exception_when_buffet_size_negative_or_zero() {
-    CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
-        new DefaultLoaderConfig(ConfigFactory.parseString("flushWindow = 0"))
-            .withFallback(CONNECTOR_DEFAULT_SETTINGS);
-    assertThatThrownBy(() -> connector.configure(settings, false))
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessageContaining(
-            "Invalid value for connector.csv.flushWindow: Expecting integer > 0, got: 0");
-  }
-
   private List<Record> createRecords() {
     ArrayList<Record> records = new ArrayList<>();
     Field[] fields =

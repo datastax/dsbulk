@@ -119,7 +119,6 @@ public class JsonConnector implements Connector {
   private static final String DESERIALIZATION_FEATURES = "deserializationFeatures";
   private static final String SERIALIZATION_STRATEGY = "serializationStrategy";
   private static final String PRETTY_PRINT = "prettyPrint";
-  private static final String FLUSH_WINDOW = "flushWindow";
 
   private static final TypeReference<Map<String, JsonNode>> JSON_NODE_MAP_TYPE_REFERENCE =
       new TypeReference<Map<String, JsonNode>>() {};
@@ -146,7 +145,6 @@ public class JsonConnector implements Connector {
   private Map<DeserializationFeature, Boolean> deserializationFeatures;
   private JsonInclude.Include serializationStrategy;
   private boolean prettyPrint;
-  private int flushWindow;
   private Scheduler scheduler;
   private List<JsonWriter> writers;
 
@@ -175,13 +173,6 @@ public class JsonConnector implements Connector {
           getFeatureMap(settings.getConfig(DESERIALIZATION_FEATURES), DeserializationFeature.class);
       serializationStrategy = settings.getEnum(JsonInclude.Include.class, SERIALIZATION_STRATEGY);
       prettyPrint = settings.getBoolean(PRETTY_PRINT);
-      flushWindow = settings.getInt(FLUSH_WINDOW);
-      if (flushWindow < 1) {
-        throw new BulkConfigurationException(
-            String.format(
-                "Invalid value for connector.json.%s: Expecting integer > 0, got: %d",
-                FLUSH_WINDOW, flushWindow));
-      }
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "connector.json");
     }
@@ -259,17 +250,6 @@ public class JsonConnector implements Connector {
         objectMapper.setDefaultPrettyPrinter(new DefaultPrettyPrinter(System.lineSeparator()));
       }
       objectMapper.setSerializationInclusion(serializationStrategy);
-      writers = new CopyOnWriteArrayList<>();
-      if (writeConcurrency() > 1) {
-        ThreadFactory threadFactory = new DefaultThreadFactory("json-connector");
-        scheduler =
-            maxConcurrentFiles == 1
-                ? Schedulers.newSingle(threadFactory)
-                : Schedulers.newParallel(maxConcurrentFiles, threadFactory);
-      }
-      for (int i = 0; i < maxConcurrentFiles; i++) {
-        writers.add(new JsonWriter());
-      }
     }
   }
 
@@ -340,49 +320,57 @@ public class JsonConnector implements Connector {
   @Override
   public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
     assert !read;
-    if (writeConcurrency() > 1) {
-      return upstream ->
-          Flux.from(upstream)
-              .parallel(maxConcurrentFiles)
-              .runOn(scheduler)
-              .groups()
-              .flatMap(rail -> rail.transform(writeRecords(Objects.requireNonNull(rail.key()))));
+    writers = new CopyOnWriteArrayList<>();
+    if (!roots.isEmpty() && maxConcurrentFiles > 1) {
+      return upstream -> {
+        ThreadFactory threadFactory = new DefaultThreadFactory("json-connector");
+        scheduler = Schedulers.newParallel(maxConcurrentFiles, threadFactory);
+        for (int i = 0; i < maxConcurrentFiles; i++) {
+          writers.add(new JsonWriter());
+        }
+        return Flux.from(upstream)
+            .parallel(maxConcurrentFiles)
+            .runOn(scheduler)
+            .groups()
+            .flatMap(
+                records -> {
+                  Integer key = records.key();
+                  assert key != null;
+                  return records.transform(writeRecords(writers.get(key)));
+                },
+                maxConcurrentFiles);
+      };
     } else {
-      return upstream -> Flux.from(upstream).transform(writeRecords(0));
+      return upstream -> {
+        JsonWriter writer = new JsonWriter();
+        writers.add(writer);
+        return Flux.from(upstream).transform(writeRecords(writer));
+      };
     }
   }
 
-  private Function<Flux<Record>, Flux<Record>> writeRecords(int key) {
-    JsonWriter writer = writers.get(key);
-    return records ->
-        records
-            .window(flushWindow)
-            .flatMap(
-                window -> {
-                  return window
-                      .materialize()
-                      .map(
-                          signal -> {
-                            if (signal.isOnNext()) {
-                              Record record = signal.get();
-                              assert record != null;
-                              try {
-                                writer.write(record);
-                              } catch (Exception e) {
-                                signal = Signal.error(e);
-                              }
-                            }
-                            return signal;
-                          })
-                      .dematerialize();
-                });
-  }
-
-  private int writeConcurrency() {
-    // when unloading, roots can only be empty or contain one element; if it's empty, we are writing
-    // to a single file and the write concurrency is necessarily 1; if it is not empty, we are
-    // writing to a directory and the write concurrency is maxConcurrentFiles.
-    return roots.isEmpty() ? 1 : maxConcurrentFiles;
+  private Function<Flux<Record>, Flux<Record>> writeRecords(JsonWriter writer) {
+    return upstream ->
+        upstream
+            .materialize()
+            .map(
+                signal -> {
+                  if (signal.isOnNext()) {
+                    Record record = signal.get();
+                    assert record != null;
+                    try {
+                      writer.write(record);
+                    } catch (Exception e) {
+                      // Note that we may be are inside a parallel flux;
+                      // sending more than one onError signal to downstream will result
+                      // in all onError signals but the first to be dropped.
+                      // The framework is expected to deal with that.
+                      signal = Signal.error(e);
+                    }
+                  }
+                  return signal;
+                })
+            .dematerialize();
   }
 
   private void tryReadFromDirectories() throws URISyntaxException, IOException {
@@ -539,7 +527,7 @@ public class JsonConnector implements Connector {
           close();
           open();
         }
-        LOGGER.trace("Writing record {} to {}", record, url);
+        LOGGER.trace("Writing record {}", record);
         if (mode == DocumentMode.SINGLE_DOCUMENT && currentLine > 0) {
           writer.writeRaw(',');
         }
@@ -562,7 +550,8 @@ public class JsonConnector implements Connector {
         writer = createJsonWriter(url);
         if (mode == DocumentMode.SINGLE_DOCUMENT) {
           // do not use writer.writeStartArray(): we need to fool the parser into thinking it's on
-          // multi doc mode, to get a better-looking result
+          // multi doc mode,
+          // to get a better-looking result
           writer.writeRaw('[');
           writer.writeRaw(System.lineSeparator());
         }
