@@ -1,6 +1,6 @@
 ## Changelog
 
-### 1.3.4 (in progress)
+### 1.3.4
 
 - [bug] DAT-414: DSBulk should allow INSERT queries without clustering column when all columns are static.
 - [improvement] DAT-411: Improve error message when row fails to decode.
@@ -12,7 +12,6 @@
 - [improvement] DAT-428: Add support for UNITS_SINCE_EPOCH to CQL date and time.
 - [improvement] DAT-449: Add support for loading and unloading from/to compressed files.
 - [improvement] DAT-451: Driver query warnings should not spam the console.
-- [improvement] DAT-430: Write records by batches.
 - [task] DAT-455: Update jackson-databind to 2.9.9.1 to fix CVE-2019-12814.
 - [improvement] DAT-432: Ability to disable bytes/sec metrics.
 - [bug] DAT-427: DSBulk should handle empty column names in CSV headers.
