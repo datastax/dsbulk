@@ -6,7 +6,7 @@
  * and will post the amended terms at
  * https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
  */
-package com.datastax.dsbulk.engine.internal.policies;
+package com.datastax.dsbulk.engine.internal.policies.retry;
 
 import com.datastax.dsbulk.engine.internal.settings.BulkDriverOption;
 import com.datastax.oss.driver.api.core.ConsistencyLevel;

@@ -43,7 +43,6 @@ import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.engine.internal.statement.BulkBoundStatement;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
-import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.ProtocolVersion;
 import com.datastax.oss.driver.api.core.cql.BoundStatement;
 import com.datastax.oss.driver.api.core.cql.BoundStatementBuilder;
@@ -95,14 +94,14 @@ class DefaultRecordMapperTest {
   private BoundStatement boundStatement;
   private BoundStatementBuilder boundStatementBuilder;
   private ColumnDefinitions variables;
-  private ArgumentCaptor<CqlIdentifier> variableCaptor;
+  private ArgumentCaptor<Integer> variableCaptor;
   private ArgumentCaptor<ByteBuffer> valueCaptor;
   private RecordMetadata recordMetadata;
   private ColumnDefinition c1Def;
 
   @BeforeEach
   void setUp() {
-    variableCaptor = ArgumentCaptor.forClass(CqlIdentifier.class);
+    variableCaptor = ArgumentCaptor.forClass(Integer.class);
     valueCaptor = ArgumentCaptor.forClass(ByteBuffer.class);
     recordMetadata =
         new TestRecordMetadata(
@@ -119,17 +118,13 @@ class DefaultRecordMapperTest {
     when(boundStatementBuilder.protocolVersion()).thenReturn(ProtocolVersion.DEFAULT);
     when(boundStatementBuilder.build()).thenReturn(boundStatement);
 
-    //    when(boundStatement.getPreparedStatement()).thenReturn(insertStatement);
-    when(boundStatementBuilder.isSet(C1.asIdentifier())).thenReturn(true);
-    when(boundStatementBuilder.isSet(C2.asIdentifier())).thenReturn(true);
-    when(boundStatementBuilder.isSet(C3.asIdentifier())).thenReturn(true);
     when(boundStatementBuilder.isSet(0)).thenReturn(true);
     when(boundStatementBuilder.isSet(1)).thenReturn(true);
     when(boundStatementBuilder.isSet(2)).thenReturn(true);
 
-    when(boundStatementBuilder.setBytesUnsafe(any(CqlIdentifier.class), any(ByteBuffer.class)))
+    when(boundStatementBuilder.setBytesUnsafe(any(Integer.class), any(ByteBuffer.class)))
         .thenReturn(boundStatementBuilder);
-    when(boundStatementBuilder.setBytesUnsafe(any(CqlIdentifier.class), eq(null)))
+    when(boundStatementBuilder.setBytesUnsafe(any(Integer.class), eq(null)))
         .thenReturn(boundStatementBuilder);
 
     when(insertStatement.getVariableDefinitions()).thenReturn(variables);
@@ -218,9 +213,9 @@ class DefaultRecordMapperTest {
     assertThat(getInternalState(result, "delegate")).isSameAs(boundStatement);
     verify(boundStatementBuilder, times(3))
         .setBytesUnsafe(variableCaptor.capture(), valueCaptor.capture());
-    assertParameter(0, C1, TypeCodecs.INT.encode(42, V4));
-    assertParameter(1, C2, TypeCodecs.BIGINT.encode(4242L, V4));
-    assertParameter(2, C3, TypeCodecs.TEXT.encode("foo", V4));
+    assertParameter(0, 0, TypeCodecs.INT.encode(42, V4));
+    assertParameter(1, 1, TypeCodecs.BIGINT.encode(4242L, V4));
+    assertParameter(2, 2, TypeCodecs.TEXT.encode("foo", V4));
   }
 
   @Test
@@ -258,8 +253,7 @@ class DefaultRecordMapperTest {
     Statement result = mapper.map(record);
     assertThat(result).isInstanceOf(BulkBoundStatement.class);
     assertThat(getInternalState(result, "delegate")).isSameAs(boundStatement);
-    verify(boundStatementBuilder)
-        .setBytesUnsafe(C1.asIdentifier(), TypeCodecs.BIGINT.encode(-123456L, V4));
+    verify(boundStatementBuilder).setBytesUnsafe(0, TypeCodecs.BIGINT.encode(-123456L, V4));
   }
 
   @Test
@@ -298,8 +292,7 @@ class DefaultRecordMapperTest {
     Statement result = mapper.map(record);
     assertThat(result).isInstanceOf(BulkBoundStatement.class);
     assertThat(getInternalState(result, "delegate")).isSameAs(boundStatement);
-    verify(boundStatementBuilder)
-        .setBytesUnsafe(C1.asIdentifier(), TypeCodecs.BIGINT.encode(-1L, V4));
+    verify(boundStatementBuilder).setBytesUnsafe(0, TypeCodecs.BIGINT.encode(-1L, V4));
   }
 
   @Test
@@ -338,8 +331,7 @@ class DefaultRecordMapperTest {
     assertThat(getInternalState(result, "delegate")).isSameAs(boundStatement);
     verify(boundStatementBuilder)
         .setBytesUnsafe(
-            C1.asIdentifier(),
-            TypeCodecs.BIGINT.encode(Instant.parse("2017-01-02T00:00:02Z").toEpochMilli(), V4));
+            0, TypeCodecs.BIGINT.encode(Instant.parse("2017-01-02T00:00:02Z").toEpochMilli(), V4));
   }
 
   @Test
@@ -380,8 +372,7 @@ class DefaultRecordMapperTest {
     assertThat(getInternalState(result, "delegate")).isSameAs(boundStatement);
     verify(boundStatementBuilder)
         .setBytesUnsafe(
-            C1.asIdentifier(),
-            TypeCodecs.BIGINT.encode(Instant.parse("2017-11-23T12:34:56Z").toEpochMilli(), V4));
+            0, TypeCodecs.BIGINT.encode(Instant.parse("2017-11-23T12:34:56Z").toEpochMilli(), V4));
   }
 
   @Test
@@ -405,8 +396,8 @@ class DefaultRecordMapperTest {
     assertThat(getInternalState(result, "delegate")).isSameAs(boundStatement);
     verify(boundStatementBuilder, times(2))
         .setBytesUnsafe(variableCaptor.capture(), valueCaptor.capture());
-    assertParameter(0, C1, TypeCodecs.INT.encode(42, V4));
-    assertParameter(1, C3, TypeCodecs.TEXT.encode("foo", V4));
+    assertParameter(0, 0, TypeCodecs.INT.encode(42, V4));
+    assertParameter(1, 2, TypeCodecs.TEXT.encode("foo", V4));
   }
 
   @Test
@@ -429,7 +420,7 @@ class DefaultRecordMapperTest {
     assertThat(result).isInstanceOf(BulkBoundStatement.class);
     assertThat(getInternalState(result, "delegate")).isSameAs(boundStatement);
     verify(boundStatementBuilder).setBytesUnsafe(variableCaptor.capture(), valueCaptor.capture());
-    assertParameter(0, C1, null);
+    assertParameter(0, 0, null);
   }
 
   @Test
@@ -453,8 +444,8 @@ class DefaultRecordMapperTest {
     assertThat(((UnmappableStatement) result).getSource()).isEqualTo(record);
     verify(boundStatementBuilder, times(2))
         .setBytesUnsafe(variableCaptor.capture(), valueCaptor.capture());
-    assertParameter(0, C1, TypeCodecs.INT.encode(42, V4));
-    assertParameter(1, C2, TypeCodecs.BIGINT.encode(4242L, V4));
+    assertParameter(0, 0, TypeCodecs.INT.encode(42, V4));
+    assertParameter(1, 1, TypeCodecs.BIGINT.encode(4242L, V4));
   }
 
   @Test
@@ -483,11 +474,10 @@ class DefaultRecordMapperTest {
   @Test
   void should_return_unmappable_statement_when_pk_column_unmapped() {
     when(record.fields()).thenReturn(set(F1, F2, F3));
-    when(variables.firstIndexOf(C1.asIdentifier())).thenReturn(3);
     ColumnDefinition def = mock(ColumnDefinition.class);
     when(variables.get(3)).thenReturn(def);
     when(def.getName()).thenReturn(C1.asIdentifier());
-    when(boundStatementBuilder.isSet(C1.asIdentifier())).thenReturn(false);
+    when(boundStatementBuilder.isSet(0)).thenReturn(false);
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
@@ -558,8 +548,8 @@ class DefaultRecordMapperTest {
                 + "or set schema.allowMissingFields to true.");
   }
 
-  private void assertParameter(int index, CQLWord expectedVariable, ByteBuffer expectedValue) {
-    assertThat(variableCaptor.getAllValues().get(index)).isEqualTo(expectedVariable.asIdentifier());
+  private void assertParameter(int index, int expectedIndex, ByteBuffer expectedValue) {
+    assertThat(variableCaptor.getAllValues().get(index)).isEqualTo(expectedIndex);
     assertThat(valueCaptor.getAllValues().get(index)).isEqualTo(expectedValue);
   }
 

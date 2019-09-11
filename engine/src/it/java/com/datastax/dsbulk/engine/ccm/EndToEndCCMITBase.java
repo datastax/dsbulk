@@ -78,8 +78,6 @@ abstract class EndToEndCCMITBase {
     args.add(ccm.getInitialContactPoints().get(0).getHostAddress());
     args.add("--driver.port");
     args.add(Integer.toString(ccm.getBinaryPort()));
-    args.add("--driver.policy.lbp.localDc");
-    args.add(ccm.getDC(1));
     return args.toArray(new String[0]);
   }
 }

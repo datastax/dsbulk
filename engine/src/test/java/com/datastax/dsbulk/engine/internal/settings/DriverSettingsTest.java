@@ -24,7 +24,8 @@ import com.datastax.dsbulk.commons.tests.simulacron.SimulacronExtension;
 import com.datastax.dsbulk.commons.tests.simulacron.SimulacronUtils;
 import com.datastax.dsbulk.engine.internal.auth.AuthProviderFactory.KeyTabConfiguration;
 import com.datastax.dsbulk.engine.internal.auth.AuthProviderFactory.TicketCacheConfiguration;
-import com.datastax.dsbulk.engine.internal.policies.MultipleRetryPolicy;
+import com.datastax.dsbulk.engine.internal.policies.lbp.DCInferringDseLoadBalancingPolicy;
+import com.datastax.dsbulk.engine.internal.policies.retry.MultipleRetryPolicy;
 import com.datastax.dsbulk.engine.internal.ssl.JdkSslEngineFactory;
 import com.datastax.dsbulk.engine.internal.ssl.NettySslHandlerFactory;
 import com.datastax.dse.driver.api.core.DseSession;
@@ -126,7 +127,7 @@ class DriverSettingsTest {
     assertThat(profile.getString(DefaultDriverOption.ADDRESS_TRANSLATOR_CLASS))
         .isEqualTo(PassThroughAddressTranslator.class.getSimpleName());
     assertThat(profile.getString(DefaultDriverOption.LOAD_BALANCING_POLICY_CLASS))
-        .isEqualTo(DseLoadBalancingPolicy.class.getSimpleName());
+        .isEqualTo(DCInferringDseLoadBalancingPolicy.class.getName());
     assertThat(profile.getString(DefaultDriverOption.RETRY_POLICY_CLASS))
         .isEqualTo(MultipleRetryPolicy.class.getName());
     assertThat(profile.getInt(BulkDriverOption.RETRY_POLICY_MAX_RETRIES)).isEqualTo(10);
@@ -136,7 +137,7 @@ class DriverSettingsTest {
     assertThat(context.getAddressTranslator()).isInstanceOf(PassThroughAddressTranslator.class);
     assertThat(context.getTimestampGenerator()).isInstanceOf(AtomicTimestampGenerator.class);
     assertThat(context.getLoadBalancingPolicy(DriverExecutionProfile.DEFAULT_NAME))
-        .isInstanceOf(DseLoadBalancingPolicy.class);
+        .isInstanceOf(DCInferringDseLoadBalancingPolicy.class);
     assertThat(context.getRetryPolicy(DriverExecutionProfile.DEFAULT_NAME))
         .isInstanceOf(MultipleRetryPolicy.class);
     assertThat(context.getAuthProvider()).isEmpty();

@@ -17,6 +17,7 @@ import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONNEC
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONNECTION_POOL_REMOTE_SIZE;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONTACT_POINTS;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.HEARTBEAT_INTERVAL;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.LOAD_BALANCING_POLICY_CLASS;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_CONSISTENCY;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_DEFAULT_IDEMPOTENCE;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_PAGE_SIZE;
@@ -30,7 +31,8 @@ import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.internal.auth.AuthProviderFactory;
-import com.datastax.dsbulk.engine.internal.policies.MultipleRetryPolicy;
+import com.datastax.dsbulk.engine.internal.policies.lbp.DCInferringDseLoadBalancingPolicy;
+import com.datastax.dsbulk.engine.internal.policies.retry.MultipleRetryPolicy;
 import com.datastax.dsbulk.engine.internal.ssl.SslHandlerFactoryFactory;
 import com.datastax.dse.driver.api.core.DseSession;
 import com.datastax.dse.driver.api.core.DseSessionBuilder;
@@ -143,6 +145,8 @@ public class DriverSettings {
       driverConfig.put(TIMESTAMP_GENERATOR_CLASS, config.getString(TIMESTAMP_GENERATOR));
       driverConfig.put(ADDRESS_TRANSLATOR_CLASS, config.getString(ADDRESS_TRANSLATOR));
 
+      driverConfig.put(
+          LOAD_BALANCING_POLICY_CLASS, DCInferringDseLoadBalancingPolicy.class.getName());
       driverConfig.put(RETRY_POLICY_CLASS, MultipleRetryPolicy.class.getName());
       driverConfig.put(
           BulkDriverOption.RETRY_POLICY_MAX_RETRIES, config.getInt(POLICY_MAX_RETRIES));

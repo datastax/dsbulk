@@ -28,12 +28,17 @@ import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSet;
+import com.datastax.oss.driver.shaded.guava.common.primitives.Ints;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
+import org.jctools.maps.NonBlockingHashMap;
 
 public class DefaultRecordMapper implements RecordMapper {
 
@@ -46,6 +51,7 @@ public class DefaultRecordMapper implements RecordMapper {
   private final boolean allowExtraFields;
   private final boolean allowMissingFields;
   private final Function<PreparedStatement, BoundStatementBuilder> boundStatementBuilderFactory;
+  private final ConcurrentMap<CQLWord, int[]> variablesToIndices = new NonBlockingHashMap<>();
 
   public DefaultRecordMapper(
       PreparedStatement insertStatement,
@@ -104,7 +110,7 @@ public class DefaultRecordMapper implements RecordMapper {
         if (!variables.isEmpty()) {
           for (CQLWord variable : variables) {
             CqlIdentifier name = variable.asIdentifier();
-            DataType cqlType = variableDefinitions.get(name).getType();
+            DataType cqlType = variableDefinitions.get(variable.asIdentifier()).getType();
             GenericType<?> fieldType = recordMetadata.getFieldType(field, cqlType);
             Object raw = record.getFieldValue(field);
             bs = bindColumn(bs, variable, raw, cqlType, fieldType);
@@ -141,7 +147,10 @@ public class DefaultRecordMapper implements RecordMapper {
         return bs;
       }
     }
-    return bs.setBytesUnsafe(variable.asIdentifier(), bb);
+    for (int index : allIndicesOf(variable)) {
+      bs = bs.setBytesUnsafe(index, bb);
+    }
+    return bs;
   }
 
   private boolean isNull(ByteBuffer bb, DataType cqlType) {
@@ -178,8 +187,10 @@ public class DefaultRecordMapper implements RecordMapper {
 
   private void ensurePrimaryKeySet(BoundStatementBuilder bs) {
     for (CQLWord variable : primaryKeyVariables) {
-      if (!bs.isSet(variable.asIdentifier())) {
-        throw InvalidMappingException.unsetPrimaryKey(variable);
+      for (int index : allIndicesOf(variable)) {
+        if (!bs.isSet(index)) {
+          throw InvalidMappingException.unsetPrimaryKey(variable);
+        }
       }
     }
   }
@@ -191,5 +202,21 @@ public class DefaultRecordMapper implements RecordMapper {
         bs = bs.setToNull(i);
       }
     }
+  }
+
+  // Required until JAVA-2431 is fixed.
+  private int[] allIndicesOf(CQLWord variable) {
+    return variablesToIndices.computeIfAbsent(
+        variable,
+        v -> {
+          ColumnDefinitions variables = insertStatement.getVariableDefinitions();
+          List<Integer> indices = new ArrayList<>();
+          for (int i = 0; i < variables.size(); i++) {
+            if (variables.get(i).getName().equals(variable.asIdentifier())) {
+              indices.add(i);
+            }
+          }
+          return Ints.toArray(indices);
+        });
   }
 }
