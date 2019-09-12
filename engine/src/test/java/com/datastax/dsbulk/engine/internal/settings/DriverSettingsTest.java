@@ -50,6 +50,7 @@ import com.typesafe.config.ConfigFactory;
 import io.netty.handler.ssl.SslContext;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -144,6 +145,7 @@ class DriverSettingsTest {
     assertThat(((InternalDriverContext) context).getSslHandlerFactory()).isEmpty();
   }
 
+  @Disabled
   @Test
   void should_configure_authentication_with_PlainTextAuthProvider() throws Exception {
     LoaderConfig config =
@@ -163,6 +165,7 @@ class DriverSettingsTest {
     assertThat(getInternalState(provider, "password")).isEqualTo("s3cr3t");
   }
 
+  @Disabled
   @Test
   void should_configure_authentication_with_DsePlainTextAuthProvider() throws Exception {
     LoaderConfig config =
@@ -183,6 +186,7 @@ class DriverSettingsTest {
     assertThat(getInternalState(provider, "authorizationId")).isEqualTo("bob");
   }
 
+  @Disabled
   @Test
   void should_infer_authentication_with_DsePlainTextAuthProvider() throws Exception {
     LoaderConfig config =
@@ -237,6 +241,7 @@ class DriverSettingsTest {
     assertThat(loginConfigKeyTab).isEqualTo(keyTab.toString());
   }
 
+  @Disabled
   @Test
   void should_configure_authentication_with_DseGSSAPIAuthProvider_and_keytab_and_principal()
       throws Exception {
@@ -271,6 +276,7 @@ class DriverSettingsTest {
     assertThat(loginConfigKeyTab).isEqualTo(keyTab.toString());
   }
 
+  @Disabled
   @Test
   void should_configure_authentication_with_DseGSSAPIAuthProvider_and_empty_keytab_and_principal()
       throws Exception {
@@ -308,6 +314,7 @@ class DriverSettingsTest {
     assertThat(loginConfigKeyTab).isEqualTo(keyTab.toString());
   }
 
+  @Disabled
   @Test
   void should_configure_authentication_with_DseGSSAPIAuthProvider_and_ticket_cache()
       throws Exception {
@@ -335,6 +342,7 @@ class DriverSettingsTest {
     assertThat(getInternalState(loginConfiguration, "principal")).isNull();
   }
 
+  @Disabled
   @Test
   void should_configure_authentication_with_DseGSSAPIAuthProvider_and_ticket_cache_and_principal()
       throws Exception {
@@ -363,6 +371,7 @@ class DriverSettingsTest {
     assertThat(getInternalState(loginConfiguration, "principal")).isEqualTo("alice@DATASTAX.COM");
   }
 
+  @Disabled
   @Test
   void should_configure_encryption_with_SSLContext() throws Exception {
     Path keystore = Paths.get(getClass().getResource("/client.keystore").toURI());
@@ -398,6 +407,7 @@ class DriverSettingsTest {
         .isEqualTo(new String[] {"TLS_RSA_WITH_AES_128_CBC_SHA", "TLS_RSA_WITH_AES_256_CBC_SHA"});
   }
 
+  @Disabled
   @Test
   void should_configure_encryption_with_OpenSSL() throws Exception {
     Path keyCertChain = Paths.get(getClass().getResource("/client.crt").toURI());
@@ -435,6 +445,7 @@ class DriverSettingsTest {
         .containsExactly("TLS_RSA_WITH_AES_128_CBC_SHA", "TLS_RSA_WITH_AES_256_CBC_SHA");
   }
 
+  @Disabled
   @Test
   void should_configure_lbp() throws Exception {
     LoaderConfig config =
@@ -532,42 +543,6 @@ class DriverSettingsTest {
     assertThatThrownBy(() -> settings.init(new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining("must be provided with both auth.username and auth.password");
-  }
-
-  @Test
-  void should_error_unknown_lbp() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("policy.lbp.name = Unknown")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
-    DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessageContaining("Invalid value at 'policy.lbp.name'");
-  }
-
-  @Test
-  void should_error_lbp_bad_child_policy() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("policy.lbp.name = dse, policy.lbp.dse.childPolicy = junk")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
-    DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessageContaining("Invalid value at 'dse.childPolicy'");
-  }
-
-  @Test
-  void should_error_lbp_chaining_loop_self() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("policy.lbp.name = dse, policy.lbp.dse.childPolicy = dse")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
-    DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessageContaining("Load balancing policy chaining loop detected: dse,dse");
   }
 
   @Test
@@ -869,25 +844,20 @@ class DriverSettingsTest {
 
   @Test
   void should_accept_existing_openssl_keycertchain_and_key()
-      throws IOException, GeneralSecurityException {
-    Path key = Files.createTempFile("my", ".key");
-    Path chain = Files.createTempFile("my", ".chain");
-    try {
-      LoaderConfig config =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString(
-                      "ssl.provider = OpenSSL,"
-                          + "ssl.openssl.keyCertChain = "
-                          + quoteJson(chain)
-                          + ", ssl.openssl.privateKey = "
-                          + quoteJson(key))
-                  .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
-      DriverSettings settings = new DriverSettings(config);
-      settings.init(new HashMap<>());
-    } finally {
-      Files.delete(key);
-      Files.delete(chain);
-    }
+      throws IOException, GeneralSecurityException, URISyntaxException {
+    Path key = Paths.get(getClass().getResource("/client.key").toURI());
+    Path chain = Paths.get(getClass().getResource("/client.crt").toURI());
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                "ssl.provider = OpenSSL,"
+                    + "ssl.openssl.keyCertChain = "
+                    + quoteJson(chain)
+                    + ", ssl.openssl.privateKey = "
+                    + quoteJson(key))
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    settings.init(new HashMap<>());
   }
 
   @Test
@@ -1020,30 +990,28 @@ class DriverSettingsTest {
 
   @Test
   void should_throw_exception_when_timestamp_generator_invalid()
-      throws IOException, GeneralSecurityException {
+       {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("timestampGenerator = Unknown")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    settings.init(new HashMap<>());
-    assertThatThrownBy(() -> settings.newSession("test"))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Can't find class Unknown (specified by advanced.timestamp-generator.class)");
+    assertThatThrownBy(() ->     settings.init(new HashMap<>()))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("Invalid value for driver.timestampGenerator: Expecting FQCN or short class name, got 'Unknown'");
   }
 
   @Test
   void should_throw_exception_when_address_translator_invalid()
-      throws IOException, GeneralSecurityException {
+      {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("addressTranslator = Unknown")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    settings.init(new HashMap<>());
-    assertThatThrownBy(() -> settings.newSession("test"))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Can't find class Unknown (specified by advanced.address-translator.class)");
+    assertThatThrownBy(() -> settings.init(new HashMap<>()))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("Invalid value for driver.addressTranslator: Expecting FQCN or short class name, got 'Unknown'");
   }
 
   @Test
@@ -1069,7 +1037,7 @@ class DriverSettingsTest {
     assertThatThrownBy(() -> settings.init(new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
-            "Invalid value at 'query.consistency': Expecting one of ANY, ONE, TWO, THREE, QUORUM, ALL, LOCAL_QUORUM, EACH_QUORUM, SERIAL, LOCAL_SERIAL, LOCAL_ONE, got 'Unknown'");
+            "Invalid value at 'query.consistency': Expecting one of ANY, ONE, TWO, THREE, QUORUM, ALL, LOCAL_ONE, LOCAL_QUORUM, EACH_QUORUM, SERIAL, LOCAL_SERIAL, got 'Unknown'");
   }
 
   @Test
@@ -1082,7 +1050,7 @@ class DriverSettingsTest {
     assertThatThrownBy(() -> settings.init(new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
-            "Invalid value at 'query.serialConsistency': Expecting one of ANY, ONE, TWO, THREE, QUORUM, ALL, LOCAL_QUORUM, EACH_QUORUM, SERIAL, LOCAL_SERIAL, LOCAL_ONE, got 'Unknown'");
+            "Invalid value at 'query.serialConsistency': Expecting one of ANY, ONE, TWO, THREE, QUORUM, ALL, LOCAL_ONE, LOCAL_QUORUM, EACH_QUORUM, SERIAL, LOCAL_SERIAL, got 'Unknown'");
   }
 
   @Test

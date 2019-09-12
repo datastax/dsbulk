@@ -38,6 +38,8 @@ import com.datastax.dse.driver.api.core.DseSession;
 import com.datastax.dse.driver.api.core.DseSessionBuilder;
 import com.datastax.dse.driver.internal.core.config.typesafe.DefaultDseDriverConfigLoader;
 import com.datastax.dse.driver.internal.core.context.DseDriverContext;
+import com.datastax.oss.driver.api.core.DefaultConsistencyLevel;
+import com.datastax.oss.driver.api.core.addresstranslation.AddressTranslator;
 import com.datastax.oss.driver.api.core.auth.AuthProvider;
 import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
 import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
@@ -45,6 +47,7 @@ import com.datastax.oss.driver.api.core.config.DriverOption;
 import com.datastax.oss.driver.api.core.context.DriverContext;
 import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.driver.api.core.session.ProgrammaticArguments;
+import com.datastax.oss.driver.api.core.time.TimestampGenerator;
 import com.datastax.oss.driver.internal.core.ssl.SslHandlerFactory;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
@@ -136,14 +139,27 @@ public class DriverSettings {
       driverConfig.put(CONNECTION_POOL_REMOTE_SIZE, config.getInt(POOLING_REMOTE_CONNECTIONS));
       driverConfig.put(CONNECTION_MAX_REQUESTS, config.getInt(POOLING_REQUESTS));
       driverConfig.put(HEARTBEAT_INTERVAL, config.getDuration(POOLING_HEARTBEAT));
-      driverConfig.put(REQUEST_CONSISTENCY, config.getString(QUERY_CONSISTENCY));
-      driverConfig.put(REQUEST_SERIAL_CONSISTENCY, config.getString(QUERY_SERIALCONSISTENCY));
+
+      // validate enums upfront
+      config.getEnum(DefaultConsistencyLevel.class, QUERY_CONSISTENCY);
+      driverConfig.put(
+          REQUEST_CONSISTENCY,
+          config.getEnum(DefaultConsistencyLevel.class, QUERY_CONSISTENCY).name());
+      driverConfig.put(
+          REQUEST_SERIAL_CONSISTENCY,
+          config.getEnum(DefaultConsistencyLevel.class, QUERY_SERIALCONSISTENCY).name());
+
       driverConfig.put(REQUEST_PAGE_SIZE, config.getInt(QUERY_FETCHSIZE));
       driverConfig.put(REQUEST_DEFAULT_IDEMPOTENCE, config.getBoolean(QUERY_IDEMPOTENCE));
       driverConfig.put(REQUEST_TIMEOUT, config.getDuration(SOCKET_READTIMEOUT));
 
-      driverConfig.put(TIMESTAMP_GENERATOR_CLASS, config.getString(TIMESTAMP_GENERATOR));
-      driverConfig.put(ADDRESS_TRANSLATOR_CLASS, config.getString(ADDRESS_TRANSLATOR));
+      // validate classes upfront
+      driverConfig.put(
+          TIMESTAMP_GENERATOR_CLASS,
+          config.getClass(TIMESTAMP_GENERATOR, TimestampGenerator.class).getSimpleName());
+      driverConfig.put(
+          ADDRESS_TRANSLATOR_CLASS,
+          config.getClass(ADDRESS_TRANSLATOR, AddressTranslator.class).getSimpleName());
 
       driverConfig.put(
           LOAD_BALANCING_POLICY_CLASS, DCInferringDseLoadBalancingPolicy.class.getName());
