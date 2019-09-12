@@ -63,7 +63,7 @@ public class DCInferringDseLoadBalancingPolicy implements LoadBalancingPolicy, R
       LoggerFactory.getLogger(DCInferringDseLoadBalancingPolicy.class);
 
   private static final Predicate<Node> INCLUDE_ALL_NODES = n -> true;
-  private static final IntUnaryOperator INCREMENT = i -> (i == Integer.MAX_VALUE) ? 0 : i + 1;
+  private static final IntUnaryOperator INCREMENT = i -> i == Integer.MAX_VALUE ? 0 : i + 1;
 
   private static final long NEWLY_UP_INTERVAL_NANOS = MINUTES.toNanos(1);
   private static final int MAX_IN_FLIGHT_THRESHOLD = 10;
@@ -118,7 +118,7 @@ public class DCInferringDseLoadBalancingPolicy implements LoadBalancingPolicy, R
       Map<Node, String> datacenters = new LinkedHashMap<>();
       for (Node node : contactPoints) {
         String datacenter = node.getDatacenter();
-        datacenters.put(node, (datacenter == null) ? "<null>" : datacenter);
+        datacenters.put(node, datacenter == null ? "<null>" : datacenter);
       }
       if (datacenters.values().stream().distinct().count() > 1) {
         throw new IllegalStateException(
@@ -136,7 +136,7 @@ public class DCInferringDseLoadBalancingPolicy implements LoadBalancingPolicy, R
       for (Node node : contactPoints) {
         String datacenter = node.getDatacenter();
         if (!Objects.equals(localDc, datacenter)) {
-          badContactPoints.put(node, (datacenter == null) ? "<null>" : datacenter);
+          badContactPoints.put(node, datacenter == null ? "<null>" : datacenter);
         }
       }
       if (badContactPoints.entrySet().containsAll(contactPoints)) {
@@ -239,7 +239,7 @@ public class DCInferringDseLoadBalancingPolicy implements LoadBalancingPolicy, R
               unhealthyReplicas == null ? 0 : unhealthyReplicas.cardinality();
           if (newestUpReplica == null
               && unhealthyReplicasCount > 0
-              && unhealthyReplicasCount < (replicaCount / 2.0)) {
+              && unhealthyReplicasCount < replicaCount / 2.0) {
 
             // Reorder the unhealthy replicas to the back of the list
             // Start from the back of the replicas, then move backwards;
@@ -377,27 +377,36 @@ public class DCInferringDseLoadBalancingPolicy implements LoadBalancingPolicy, R
     // Note: we're on the hot path and the getXxx methods are potentially more than simple getters,
     // so we only call each method when strictly necessary (which is why the code below looks a bit
     // weird).
-    CqlIdentifier keyspace = request.getKeyspace();
-    if (keyspace == null) {
-      keyspace = request.getRoutingKeyspace();
-    }
-    if (keyspace == null && session.getKeyspace().isPresent()) {
-      keyspace = session.getKeyspace().get();
-    }
-    if (keyspace == null) {
-      return Collections.emptySet();
-    }
+    CqlIdentifier keyspace;
+    Token token;
+    ByteBuffer key;
+    try {
+      keyspace = request.getKeyspace();
+      if (keyspace == null) {
+        keyspace = request.getRoutingKeyspace();
+      }
+      if (keyspace == null && session.getKeyspace().isPresent()) {
+        keyspace = session.getKeyspace().get();
+      }
+      if (keyspace == null) {
+        return Collections.emptySet();
+      }
 
-    Token token = request.getRoutingToken();
-    ByteBuffer key = (token == null) ? request.getRoutingKey() : null;
-    if (token == null && key == null) {
+      token = request.getRoutingToken();
+      key = token == null ? request.getRoutingKey() : null;
+      if (token == null && key == null) {
+        return Collections.emptySet();
+      }
+    } catch (Exception e) {
+      // Protect against poorly-implemented Request instances
+      // This is mostly intended when executing tests against Simulacron
       return Collections.emptySet();
     }
 
     Optional<TokenMap> maybeTokenMap = metadataManager.getMetadata().getTokenMap();
     if (maybeTokenMap.isPresent()) {
       TokenMap tokenMap = maybeTokenMap.get();
-      return (token != null)
+      return token != null
           ? tokenMap.getReplicas(keyspace, token)
           : tokenMap.getReplicas(keyspace, key);
     } else {
@@ -475,7 +484,7 @@ public class DCInferringDseLoadBalancingPolicy implements LoadBalancingPolicy, R
     // Note: getInFlight() includes orphaned ids, which is what we want as we need to account
     // for requests that were cancelled or timed out (since the node is likely to still be
     // processing them).
-    return (pool == null) ? 0 : pool.getInFlight();
+    return pool == null ? 0 : pool.getInFlight();
   }
 
   private static Predicate<Node> getFilterFromConfig(
