@@ -70,9 +70,9 @@ import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.oss.simulacron.common.codec.WriteType;
 import com.datastax.oss.simulacron.common.result.FunctionFailureResult;
+import com.datastax.oss.simulacron.common.result.ReadTimeoutResult;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
 import com.datastax.oss.simulacron.common.result.SyntaxErrorResult;
-import com.datastax.oss.simulacron.common.result.UnavailableResult;
 import com.datastax.oss.simulacron.common.result.WriteFailureResult;
 import com.datastax.oss.simulacron.common.result.WriteTimeoutResult;
 import com.datastax.oss.simulacron.common.stubbing.Prime;
@@ -144,6 +144,8 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "false",
       "--connector.csv.url",
       quoteJson(CSV_RECORDS_UNIQUE),
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -175,6 +177,8 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "false",
       "--connector.csv.urlfile",
       quoteJson(urlfile.toAbsolutePath()),
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -211,6 +215,8 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       quoteJson(CSV_RECORDS_UNIQUE),
       "-dryRun",
       "true",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -235,6 +241,8 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "false",
       "--connector.csv.url",
       quoteJson(CSV_RECORDS_CRLF),
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -259,6 +267,8 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "false",
       "--connector.csv.url",
       quoteJson(CSV_RECORDS_PARTIAL_BAD),
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -291,13 +301,15 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     params.put("country_name", "France");
     prime1 =
         createParameterizedQuery(
-            INSERT_INTO_IP_BY_COUNTRY, params, new UnavailableResult(LOCAL_ONE, 1, 0));
+            INSERT_INTO_IP_BY_COUNTRY, params, new ReadTimeoutResult(LOCAL_ONE, 1, 0, false));
     simulacron.prime(new Prime(prime1));
 
     params.put("country_name", "Gregistan");
     prime1 =
         createParameterizedQuery(
-            INSERT_INTO_IP_BY_COUNTRY, params, new WriteTimeoutResult(ONE, 0, 0, WriteType.BATCH));
+            INSERT_INTO_IP_BY_COUNTRY,
+            params,
+            new WriteTimeoutResult(LOCAL_ONE, 0, 0, WriteType.BATCH_LOG));
     simulacron.prime(new Prime(prime1));
 
     params.put("country_name", "Andybaijan");
@@ -325,6 +337,8 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       quoteJson(CSV_RECORDS_ERROR),
       "--driver.policy.maxRetries",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -358,6 +372,8 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "3",
       "--connector.csv.maxRecords",
       "24",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -389,6 +405,8 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       quoteJson(CSV_RECORDS_LONG),
       "--connector.csv.maxCharsPerColumn",
       "10000",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -415,6 +433,8 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "false",
       "--connector.csv.url",
       quoteJson(CSV_RECORDS_PARTIAL_BAD_LONG),
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -447,6 +467,8 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       quoteJson(getClass().getResource("/ip-by-country-pk-null.csv")),
       "--codec.nullStrings",
       "[NULL]",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -555,6 +577,8 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       quoteJson(unloadDir),
       "--connector.csv.maxConcurrentFiles",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -566,7 +590,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     assertThat(logs.getAllMessagesAsString())
         .contains("Records: total: 24, successful: 24, failed: 0")
         .contains("Reads: total: 24, successful: 24, failed: 0");
-    validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ONE);
+    validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, LOCAL_ONE);
     validateOutputFiles(24, unloadDir);
   }
 
@@ -593,6 +617,8 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       ";",
       "--connector.csv.quote",
       "<",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -603,7 +629,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     assertThat(status).isZero();
     verifyDelimiterCount(';', 168);
     verifyDelimiterCount('<', 96);
-    validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ONE);
+    validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, LOCAL_ONE);
     validateOutputFiles(24, unloadDir);
   }
 
@@ -623,6 +649,8 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       quoteJson(unloadDir),
       "--connector.csv.maxConcurrentFiles",
       "4",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -652,6 +680,8 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       quoteJson(unloadDir),
       "--connector.csv.maxConcurrentFiles",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -660,7 +690,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
-    validateQueryCount(simulacron, 0, SELECT_FROM_IP_BY_COUNTRY, ONE);
+    validateQueryCount(simulacron, 0, SELECT_FROM_IP_BY_COUNTRY, LOCAL_ONE);
     validatePrepare(simulacron, SELECT_FROM_IP_BY_COUNTRY);
   }
 
@@ -681,6 +711,8 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       quoteJson(unloadDir),
       "--connector.csv.maxConcurrentFiles",
       "4",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -689,7 +721,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
-    validateQueryCount(simulacron, 0, SELECT_FROM_IP_BY_COUNTRY, ONE);
+    validateQueryCount(simulacron, 0, SELECT_FROM_IP_BY_COUNTRY, LOCAL_ONE);
     validatePrepare(simulacron, SELECT_FROM_IP_BY_COUNTRY);
   }
 
@@ -739,6 +771,8 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "unload",
       "--connector.name",
       "mock",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -770,6 +804,8 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "-",
       "--connector.csv.maxConcurrentFiles",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -779,7 +815,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
 
-    validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ONE);
+    validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, LOCAL_ONE);
     assertThat(stdOut.getStreamLines().size()).isEqualTo(24);
   }
 

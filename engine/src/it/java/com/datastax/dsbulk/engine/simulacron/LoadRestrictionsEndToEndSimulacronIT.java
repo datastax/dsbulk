@@ -29,6 +29,7 @@ import com.datastax.dsbulk.commons.tests.simulacron.SimulacronUtils;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
+import com.datastax.oss.protocol.internal.util.collection.NullAllowingImmutableMap;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.stubbing.Prime;
 import com.datastax.oss.simulacron.server.BoundCluster;
@@ -52,7 +53,9 @@ class LoadRestrictionsEndToEndSimulacronIT extends EndToEndSimulacronITBase {
   @Override
   @BeforeEach
   void resetPrimes() {
-    super.resetPrimes();
+    simulacron.clearPrimes(true);
+    SimulacronUtils.primeSystemPeers(simulacron);
+    SimulacronUtils.primeSystemPeersV2(simulacron);
     primeIpByCountryTable(simulacron);
     RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
     simulacron.prime(new Prime(insert));
@@ -62,7 +65,7 @@ class LoadRestrictionsEndToEndSimulacronIT extends EndToEndSimulacronITBase {
   void should_deny_load_to_oss_cassandra() {
     // DAT-322: absence of dse_version + absence of a DSE patch in release_version => OSS C*
     SimulacronUtils.primeSystemLocal(
-        simulacron, ImmutableMap.of("release_version", "4.0.0", "dse_version", ""));
+        simulacron, NullAllowingImmutableMap.of("release_version", "4.0.0", "dse_version", null));
     String[] args = {
       "load",
       "--log.directory",
@@ -71,12 +74,6 @@ class LoadRestrictionsEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "false",
       "--connector.csv.url",
       quoteJson(CSV_RECORDS_UNIQUE),
-      "--driver.hosts",
-      hostname,
-      "--driver.port",
-      port,
-      "--driver.pooling.local.connections",
-      "1",
       "--schema.keyspace",
       "ks1",
       "--schema.query",
@@ -85,7 +82,7 @@ class LoadRestrictionsEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       IP_BY_COUNTRY_MAPPING_INDEXED
     };
 
-    int status = new DataStaxBulkLoader(args).run();
+    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
 
     assertThat(logs)
@@ -106,7 +103,8 @@ class LoadRestrictionsEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     // DAT-322: absence of dse_version + presence of a DSE patch in release_version => DDAC
     // (DataStax Distribution of Apache Cassandra).
     SimulacronUtils.primeSystemLocal(
-        simulacron, ImmutableMap.of("release_version", "4.0.0.2284", "dse_version", ""));
+        simulacron,
+        NullAllowingImmutableMap.of("release_version", "4.0.0.2284", "dse_version", null));
     String[] args = {
       "load",
       "--log.directory",
@@ -115,12 +113,6 @@ class LoadRestrictionsEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "false",
       "--connector.csv.url",
       quoteJson(CSV_RECORDS_UNIQUE),
-      "--driver.hosts",
-      hostname,
-      "--driver.port",
-      port,
-      "--driver.pooling.local.connections",
-      "1",
       "--schema.keyspace",
       "ks1",
       "--schema.query",
@@ -128,7 +120,7 @@ class LoadRestrictionsEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "--schema.mapping",
       IP_BY_COUNTRY_MAPPING_INDEXED
     };
-    int status = new DataStaxBulkLoader(args).run();
+    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
   }
 
@@ -145,14 +137,6 @@ class LoadRestrictionsEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "false",
       "--connector.csv.url",
       quoteJson(CSV_RECORDS_UNIQUE),
-      "--driver.hosts",
-      hostname,
-      "--driver.port",
-      port,
-      "--driver.pooling.local.connections",
-      "1",
-      "--driver.policy.lbp.localDc",
-      "dc1",
       "--schema.keyspace",
       "ks1",
       "--schema.query",
@@ -160,7 +144,7 @@ class LoadRestrictionsEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "--schema.mapping",
       IP_BY_COUNTRY_MAPPING_INDEXED
     };
-    int status = new DataStaxBulkLoader(args).run();
+    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
   }
 }

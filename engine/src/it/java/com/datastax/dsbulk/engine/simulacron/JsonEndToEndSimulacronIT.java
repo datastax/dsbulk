@@ -67,12 +67,11 @@ import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.tests.MockConnector;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
-import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.oss.simulacron.common.codec.WriteType;
 import com.datastax.oss.simulacron.common.result.FunctionFailureResult;
+import com.datastax.oss.simulacron.common.result.ReadTimeoutResult;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
 import com.datastax.oss.simulacron.common.result.SyntaxErrorResult;
-import com.datastax.oss.simulacron.common.result.UnavailableResult;
 import com.datastax.oss.simulacron.common.result.WriteFailureResult;
 import com.datastax.oss.simulacron.common.result.WriteTimeoutResult;
 import com.datastax.oss.simulacron.common.stubbing.Prime;
@@ -144,6 +143,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "json",
       "--connector.json.url",
       quoteJson(JSON_RECORDS_UNIQUE),
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -156,7 +157,7 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
         .contains("Records: total: 24, successful: 24, failed: 0")
         .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
         .contains("Writes: total: 24, successful: 24, failed: 0");
-    validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", ONE);
+    validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", LOCAL_ONE);
   }
 
   @ParameterizedTest
@@ -173,6 +174,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "json",
       "--connector.json.urlfile",
       quoteJson(urlfile.toAbsolutePath()),
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -185,7 +188,7 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
         .contains("Records: total: 24, successful: 24, failed: 0")
         .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
         .contains("Writes: total: 24, successful: 24, failed: 0");
-    validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", ONE);
+    validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", LOCAL_ONE);
   }
 
   @SuppressWarnings("unused")
@@ -209,6 +212,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       quoteJson(JSON_RECORDS_UNIQUE),
       "-dryRun",
       "true",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -233,6 +238,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "json",
       "--connector.json.url",
       quoteJson(JSON_RECORDS_CRLF),
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -241,7 +248,7 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
-    validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", ONE);
+    validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", LOCAL_ONE);
   }
 
   @Test
@@ -269,7 +276,7 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
     validateQueryCount(
-        simulacron, 1, "INSERT INTO ks1.table1 (key, value) VALUES (:key, :value)", ONE);
+        simulacron, 1, "INSERT INTO ks1.table1 (key, value) VALUES (:key, :value)", LOCAL_ONE);
   }
 
   @Test
@@ -285,6 +292,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "json",
       "--connector.json.url",
       quoteJson(JSON_RECORDS_PARTIAL_BAD),
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -317,13 +326,15 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     params.put("country_name", "France");
     prime1 =
         createParameterizedQuery(
-            INSERT_INTO_IP_BY_COUNTRY, params, new UnavailableResult(LOCAL_ONE, 1, 0));
+            INSERT_INTO_IP_BY_COUNTRY, params, new ReadTimeoutResult(LOCAL_ONE, 1, 0, false));
     simulacron.prime(new Prime(prime1));
 
     params.put("country_name", "Gregistan");
     prime1 =
         createParameterizedQuery(
-            INSERT_INTO_IP_BY_COUNTRY, params, new WriteTimeoutResult(ONE, 0, 0, WriteType.BATCH));
+            INSERT_INTO_IP_BY_COUNTRY,
+            params,
+            new WriteTimeoutResult(LOCAL_ONE, 0, 0, WriteType.BATCH_LOG));
     simulacron.prime(new Prime(prime1));
 
     params.put("country_name", "Andybaijan");
@@ -351,6 +362,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       quoteJson(JSON_RECORDS_ERROR),
       "--driver.policy.maxRetries",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -384,6 +397,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "3",
       "--connector.json.maxRecords",
       "24",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       INSERT_INTO_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -492,6 +507,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       quoteJson(unloadDir),
       "--connector.json.maxConcurrentFiles",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -503,7 +520,7 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     assertThat(logs.getAllMessagesAsString())
         .contains("Records: total: 24, successful: 24, failed: 0")
         .contains("Reads: total: 24, successful: 24, failed: 0");
-    validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ONE);
+    validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, LOCAL_ONE);
     validateOutputFiles(24, unloadDir);
   }
 
@@ -523,6 +540,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       quoteJson(unloadDir),
       "--connector.json.maxConcurrentFiles",
       "4",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -531,7 +550,7 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
-    validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ConsistencyLevel.LOCAL_ONE);
+    validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, LOCAL_ONE);
     validateOutputFiles(1000, unloadDir);
   }
 
@@ -577,7 +596,7 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
         simulacron,
         1,
         "SELECT pk, c1 FROM ks1.table1 WHERE token(pk) > :start AND token(pk) <= :end",
-        ONE);
+        LOCAL_ONE);
     validateOutputFiles(1, unloadDir);
     Optional<String> line = readAllLinesInDirectoryAsStream(unloadDir).findFirst();
     assertThat(line).isPresent().hasValue("{pk:1}");
@@ -600,6 +619,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       quoteJson(unloadDir),
       "--connector.json.maxConcurrentFiles",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -608,7 +629,7 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
-    validateQueryCount(simulacron, 0, SELECT_FROM_IP_BY_COUNTRY, ONE);
+    validateQueryCount(simulacron, 0, SELECT_FROM_IP_BY_COUNTRY, LOCAL_ONE);
     validatePrepare(simulacron, SELECT_FROM_IP_BY_COUNTRY);
   }
 
@@ -629,6 +650,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       quoteJson(unloadDir),
       "--connector.json.maxConcurrentFiles",
       "4",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -637,7 +660,7 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
-    validateQueryCount(simulacron, 0, SELECT_FROM_IP_BY_COUNTRY, ONE);
+    validateQueryCount(simulacron, 0, SELECT_FROM_IP_BY_COUNTRY, LOCAL_ONE);
     validatePrepare(simulacron, SELECT_FROM_IP_BY_COUNTRY);
   }
 
@@ -690,6 +713,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "unload",
       "--connector.name",
       "mock",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -721,6 +746,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "-",
       "--connector.json.maxConcurrentFiles",
       "1",
+      "--schema.keyspace",
+      "ks1",
       "--schema.query",
       SELECT_FROM_IP_BY_COUNTRY,
       "--schema.mapping",
@@ -729,7 +756,7 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
-    validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ONE);
+    validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, LOCAL_ONE);
     assertThat(stdOut.getStreamLines().size()).isEqualTo(24);
   }
 }

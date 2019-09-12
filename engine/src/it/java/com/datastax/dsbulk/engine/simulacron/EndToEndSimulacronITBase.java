@@ -107,8 +107,6 @@ class EndToEndSimulacronITBase {
           "LOCAL_ONE",
           "--driver.pooling.local.connections",
           "1",
-          "--schema.keyspace",
-          "ks1"
         };
     return Stream.of(args, commonArgs).flatMap(Stream::of).toArray(String[]::new);
   }
