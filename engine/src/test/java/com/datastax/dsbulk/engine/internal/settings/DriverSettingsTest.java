@@ -850,11 +850,11 @@ class DriverSettingsTest {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
-                "ssl.provider = OpenSSL,"
-                    + "ssl.openssl.keyCertChain = "
-                    + quoteJson(chain)
-                    + ", ssl.openssl.privateKey = "
-                    + quoteJson(key))
+                    "ssl.provider = OpenSSL,"
+                        + "ssl.openssl.keyCertChain = "
+                        + quoteJson(chain)
+                        + ", ssl.openssl.privateKey = "
+                        + quoteJson(key))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
     settings.init(new HashMap<>());
@@ -989,21 +989,20 @@ class DriverSettingsTest {
   }
 
   @Test
-  void should_throw_exception_when_timestamp_generator_invalid()
-       {
+  void should_throw_exception_when_timestamp_generator_invalid() {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("timestampGenerator = Unknown")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() ->     settings.init(new HashMap<>()))
+    assertThatThrownBy(() -> settings.init(new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for driver.timestampGenerator: Expecting FQCN or short class name, got 'Unknown'");
+        .hasMessage(
+            "Invalid value for driver.timestampGenerator: Expecting FQCN or short class name, got 'Unknown'");
   }
 
   @Test
-  void should_throw_exception_when_address_translator_invalid()
-      {
+  void should_throw_exception_when_address_translator_invalid() {
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("addressTranslator = Unknown")
@@ -1011,7 +1010,8 @@ class DriverSettingsTest {
     DriverSettings settings = new DriverSettings(config);
     assertThatThrownBy(() -> settings.init(new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for driver.addressTranslator: Expecting FQCN or short class name, got 'Unknown'");
+        .hasMessage(
+            "Invalid value for driver.addressTranslator: Expecting FQCN or short class name, got 'Unknown'");
   }
 
   @Test
