@@ -32,7 +32,6 @@ import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.NETTY_
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.NETTY_IO_SHUTDOWN_QUIET_PERIOD;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.NETTY_IO_SHUTDOWN_TIMEOUT;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.NETTY_IO_SHUTDOWN_UNIT;
-import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.PROTOCOL_VERSION;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_TIMEOUT;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_WARN_IF_SET_KEYSPACE;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.SSL_ENGINE_FACTORY_CLASS;

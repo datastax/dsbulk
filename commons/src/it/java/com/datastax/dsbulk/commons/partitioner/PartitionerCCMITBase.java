@@ -42,7 +42,7 @@ abstract class PartitionerCCMITBase {
 
   private static final int EXPECTED_TOTAL = 10000;
 
-  @SuppressWarnings({"Unused", "FieldCanBeLocal"})
+  @SuppressWarnings({"unused", "FieldCanBeLocal"})
   private final CCMCluster ccm;
 
   private final CqlSession session;
