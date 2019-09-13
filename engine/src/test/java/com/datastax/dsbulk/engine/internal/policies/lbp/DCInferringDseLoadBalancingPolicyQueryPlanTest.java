@@ -158,7 +158,8 @@ class DCInferringDseLoadBalancingPolicyQueryPlanTest
     thenAssertRoundRobinQueryPlans(plans);
     then(request).should(never()).getRoutingKey();
     then(request).should(never()).getRoutingToken();
-    then(metadataManager).should(never()).getMetadata();
+    then(tokenMap).should(never()).getReplicas(any(CqlIdentifier.class), any(Token.class));
+    then(tokenMap).should(never()).getReplicas(any(CqlIdentifier.class), any(ByteBuffer.class));
   }
 
   @Test
@@ -172,7 +173,8 @@ class DCInferringDseLoadBalancingPolicyQueryPlanTest
     List<Queue<Node>> plans = generateQueryPlans();
     // Then
     thenAssertRoundRobinQueryPlans(plans);
-    then(metadataManager).should(never()).getMetadata();
+    then(tokenMap).should(never()).getReplicas(any(CqlIdentifier.class), any(Token.class));
+    then(tokenMap).should(never()).getReplicas(any(CqlIdentifier.class), any(ByteBuffer.class));
   }
 
   @Test

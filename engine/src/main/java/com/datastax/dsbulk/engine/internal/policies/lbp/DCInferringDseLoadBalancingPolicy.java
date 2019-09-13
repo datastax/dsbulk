@@ -374,6 +374,11 @@ public class DCInferringDseLoadBalancingPolicy implements LoadBalancingPolicy, R
       return Collections.emptySet();
     }
 
+    Optional<TokenMap> maybeTokenMap = metadataManager.getMetadata().getTokenMap();
+    if (!maybeTokenMap.isPresent()) {
+      return Collections.emptySet();
+    }
+
     // Note: we're on the hot path and the getXxx methods are potentially more than simple getters,
     // so we only call each method when strictly necessary (which is why the code below looks a bit
     // weird).
@@ -403,15 +408,10 @@ public class DCInferringDseLoadBalancingPolicy implements LoadBalancingPolicy, R
       return Collections.emptySet();
     }
 
-    Optional<TokenMap> maybeTokenMap = metadataManager.getMetadata().getTokenMap();
-    if (maybeTokenMap.isPresent()) {
-      TokenMap tokenMap = maybeTokenMap.get();
-      return token != null
-          ? tokenMap.getReplicas(keyspace, token)
-          : tokenMap.getReplicas(keyspace, key);
-    } else {
-      return Collections.emptySet();
-    }
+    TokenMap tokenMap = maybeTokenMap.get();
+    return token != null
+        ? tokenMap.getReplicas(keyspace, token)
+        : tokenMap.getReplicas(keyspace, key);
   }
 
   private boolean isUnhealthy(@NonNull Node node, @NonNull Session session, long now) {
