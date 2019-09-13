@@ -27,18 +27,18 @@ import com.datastax.oss.driver.api.core.type.DataType;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSet;
-import com.datastax.oss.driver.shaded.guava.common.primitives.Ints;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
-import org.jctools.maps.NonBlockingHashMap;
 
 public class DefaultRecordMapper implements RecordMapper {
 
@@ -51,7 +51,7 @@ public class DefaultRecordMapper implements RecordMapper {
   private final boolean allowExtraFields;
   private final boolean allowMissingFields;
   private final Function<PreparedStatement, BoundStatementBuilder> boundStatementBuilderFactory;
-  private final ConcurrentMap<CQLWord, int[]> variablesToIndices = new NonBlockingHashMap<>();
+  private final ImmutableMap<CQLWord, List<Integer>> variablesToIndices;
 
   public DefaultRecordMapper(
       PreparedStatement insertStatement,
@@ -94,6 +94,7 @@ public class DefaultRecordMapper implements RecordMapper {
     this.allowExtraFields = allowExtraFields;
     this.allowMissingFields = allowMissingFields;
     this.boundStatementBuilderFactory = boundStatementBuilderFactory;
+    this.variablesToIndices = buildVariablesToIndices();
   }
 
   @NonNull
@@ -110,7 +111,7 @@ public class DefaultRecordMapper implements RecordMapper {
         if (!variables.isEmpty()) {
           for (CQLWord variable : variables) {
             CqlIdentifier name = variable.asIdentifier();
-            DataType cqlType = variableDefinitions.get(variable.asIdentifier()).getType();
+            DataType cqlType = variableDefinitions.get(name).getType();
             GenericType<?> fieldType = recordMetadata.getFieldType(field, cqlType);
             Object raw = record.getFieldValue(field);
             bs = bindColumn(bs, variable, raw, cqlType, fieldType);
@@ -147,7 +148,7 @@ public class DefaultRecordMapper implements RecordMapper {
         return bs;
       }
     }
-    for (int index : allIndicesOf(variable)) {
+    for (int index : variablesToIndices.get(variable)) {
       bs = bs.setBytesUnsafe(index, bb);
     }
     return bs;
@@ -187,7 +188,7 @@ public class DefaultRecordMapper implements RecordMapper {
 
   private void ensurePrimaryKeySet(BoundStatementBuilder bs) {
     for (CQLWord variable : primaryKeyVariables) {
-      for (int index : allIndicesOf(variable)) {
+      for (int index : variablesToIndices.get(variable)) {
         if (!bs.isSet(index)) {
           throw InvalidMappingException.unsetPrimaryKey(variable);
         }
@@ -204,19 +205,14 @@ public class DefaultRecordMapper implements RecordMapper {
     }
   }
 
-  // Required until JAVA-2431 is fixed.
-  private int[] allIndicesOf(CQLWord variable) {
-    return variablesToIndices.computeIfAbsent(
-        variable,
-        v -> {
-          ColumnDefinitions variables = insertStatement.getVariableDefinitions();
-          List<Integer> indices = new ArrayList<>();
-          for (int i = 0; i < variables.size(); i++) {
-            if (variables.get(i).getName().equals(variable.asIdentifier())) {
-              indices.add(i);
-            }
-          }
-          return Ints.toArray(indices);
-        });
+  private ImmutableMap<CQLWord, List<Integer>> buildVariablesToIndices() {
+    Map<CQLWord, List<Integer>> variablesToIndices = new HashMap<>();
+    ColumnDefinitions variables = insertStatement.getVariableDefinitions();
+    for (int i = 0; i < variables.size(); i++) {
+      CQLWord name = CQLWord.fromCqlIdentifier(variables.get(i).getName());
+      List<Integer> indices = variablesToIndices.computeIfAbsent(name, k -> new ArrayList<>());
+      indices.add(i);
+    }
+    return ImmutableMap.copyOf(variablesToIndices);
   }
 }

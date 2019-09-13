@@ -32,6 +32,7 @@ import static org.mockito.Mockito.when;
 
 import com.datastax.dsbulk.commons.codecs.string.StringToIntegerCodec;
 import com.datastax.dsbulk.commons.codecs.string.StringToLongCodec;
+import com.datastax.dsbulk.commons.codecs.string.StringToStringCodec;
 import com.datastax.dsbulk.commons.codecs.util.CodecUtils;
 import com.datastax.dsbulk.commons.codecs.util.CqlTemporalFormat;
 import com.datastax.dsbulk.commons.codecs.util.OverflowStrategy;
@@ -52,7 +53,6 @@ import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.api.core.type.codec.CodecNotFoundException;
-import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
@@ -68,8 +68,9 @@ import org.assertj.core.util.Sets;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
-@SuppressWarnings("unchecked")
 class DefaultRecordMapperTest {
 
   private static final Field F1 = new DefaultMappedField("field1");
@@ -80,40 +81,36 @@ class DefaultRecordMapperTest {
   private static final CQLWord C2 = CQLWord.fromInternal("col2");
   private static final CQLWord C3 = CQLWord.fromInternal("My Fancy Column Name");
 
-  private final TypeCodec codec1 = mock(StringToIntegerCodec.class);
-  private final TypeCodec codec2 = mock(StringToLongCodec.class);
-  private final TypeCodec codec3 = TypeCodecs.TEXT;
-
   private final List<String> nullStrings = newArrayList("");
+
   private final FastThreadLocal<NumberFormat> formatter =
       CodecUtils.getNumberFormatThreadLocal("#,###.##", US, HALF_EVEN, true);
 
-  private Mapping mapping;
-  private Record record;
-  private PreparedStatement insertStatement;
-  private BoundStatement boundStatement;
-  private BoundStatementBuilder boundStatementBuilder;
-  private ColumnDefinitions variables;
+  @Mock private Mapping mapping;
+  @Mock private Record record;
+  @Mock private PreparedStatement insertStatement;
+  @Mock private BoundStatement boundStatement;
+  @Mock private BoundStatementBuilder boundStatementBuilder;
+  @Mock private ColumnDefinitions variables;
+  @Mock private ColumnDefinition c1Def;
+  @Mock private StringToIntegerCodec codec1;
+  @Mock private StringToLongCodec codec2;
+  @Mock private StringToStringCodec codec3;
+
   private ArgumentCaptor<Integer> variableCaptor;
   private ArgumentCaptor<ByteBuffer> valueCaptor;
+
   private RecordMetadata recordMetadata;
-  private ColumnDefinition c1Def;
 
   @BeforeEach
   void setUp() {
+    MockitoAnnotations.initMocks(this);
     variableCaptor = ArgumentCaptor.forClass(Integer.class);
     valueCaptor = ArgumentCaptor.forClass(ByteBuffer.class);
     recordMetadata =
         new TestRecordMetadata(
             ImmutableMap.of(
                 F1, GenericType.STRING, F2, GenericType.STRING, F3, GenericType.STRING));
-
-    boundStatement = mock(BoundStatement.class);
-    boundStatementBuilder = mock(BoundStatementBuilder.class);
-    mapping = mock(Mapping.class);
-    record = mock(Record.class);
-    insertStatement = mock(PreparedStatement.class);
-    variables = mock(ColumnDefinitions.class);
 
     when(boundStatementBuilder.protocolVersion()).thenReturn(ProtocolVersion.DEFAULT);
     when(boundStatementBuilder.build()).thenReturn(boundStatement);
@@ -191,6 +188,15 @@ class DefaultRecordMapperTest {
                 return null;
               }
               return TypeCodecs.BIGINT.encode(Long.parseLong(s), invocation.getArgument(1));
+            });
+    when(codec3.encode(any(), any()))
+        .thenAnswer(
+            invocation -> {
+              String s = invocation.getArgument(0);
+              if (s == null) {
+                return null;
+              }
+              return TypeCodecs.TEXT.encode(s, invocation.getArgument(1));
             });
   }
 
@@ -474,9 +480,6 @@ class DefaultRecordMapperTest {
   @Test
   void should_return_unmappable_statement_when_pk_column_unmapped() {
     when(record.fields()).thenReturn(set(F1, F2, F3));
-    ColumnDefinition def = mock(ColumnDefinition.class);
-    when(variables.get(3)).thenReturn(def);
-    when(def.getName()).thenReturn(C1.asIdentifier());
     when(boundStatementBuilder.isSet(0)).thenReturn(false);
     RecordMapper mapper =
         new DefaultRecordMapper(
@@ -553,6 +556,7 @@ class DefaultRecordMapperTest {
     assertThat(valueCaptor.getAllValues().get(index)).isEqualTo(expectedValue);
   }
 
+  @SafeVarargs
   private static <T> Set<T> set(T... elements) {
     return Sets.newLinkedHashSet(elements);
   }

@@ -49,6 +49,7 @@ import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
+import com.datastax.dsbulk.connectors.api.Field;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.connectors.api.internal.DefaultIndexedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
@@ -86,7 +87,7 @@ import com.datastax.oss.driver.shaded.guava.common.base.CharMatcher;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSetMultimap;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
-import com.datastax.oss.driver.shaded.guava.common.collect.Multimap;
+import com.datastax.oss.driver.shaded.guava.common.collect.SetMultimap;
 import com.datastax.oss.driver.shaded.guava.common.collect.Sets;
 import com.typesafe.config.ConfigFactory;
 import edu.umd.cs.findbugs.annotations.NonNull;
@@ -106,7 +107,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 
-@SuppressWarnings("unchecked")
 @ExtendWith(LogInterceptingExtension.class)
 class SchemaSettingsTest {
 
@@ -528,7 +528,8 @@ class SchemaSettingsTest {
             String.format(
                 "INSERT INTO ks.t1 (%1$s, \"%2$s\", %3$s) VALUES (:%1$s, :\"%2$s\", :%3$s)",
                 C1, C2, C3));
-    assertMapping((DefaultMapping) getInternalState(recordMapper, "mapping"));
+    assertMapping(
+        (DefaultMapping) getInternalState(recordMapper, "mapping"), C1, C1, C2, C2, C3, C3);
     if (version.getCode() < V4.getCode()) {
       assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isFalse();
     } else {
@@ -636,7 +637,8 @@ class SchemaSettingsTest {
             String.format(
                 "INSERT INTO ks.t1 (%1$s, \"%2$s\", %3$s) VALUES (:%1$s, :\"%2$s\", :%3$s)",
                 C1, C2, C3));
-    assertMapping((DefaultMapping) getInternalState(recordMapper, "mapping"));
+    assertMapping(
+        (DefaultMapping) getInternalState(recordMapper, "mapping"), C1, C1, C2, C2, C3, C3);
     assertThat((Boolean) getInternalState(recordMapper, NULL_TO_UNSET)).isFalse();
   }
 
@@ -826,7 +828,8 @@ class SchemaSettingsTest {
                 "SELECT %1$s, \"%2$s\", %3$s FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end",
                 C1, C2, C3));
 
-    assertMapping((DefaultMapping) getInternalState(readResultMapper, "mapping"));
+    assertMapping(
+        (DefaultMapping) getInternalState(readResultMapper, "mapping"), C1, C1, C2, C2, C3, C3);
   }
 
   @ParameterizedTest
@@ -846,7 +849,8 @@ class SchemaSettingsTest {
             String.format(
                 "SELECT %1$s, \"%2$s\", %3$s FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end",
                 C1, C2, C3));
-    assertMapping((DefaultMapping) getInternalState(readResultMapper, "mapping"));
+    assertMapping(
+        (DefaultMapping) getInternalState(readResultMapper, "mapping"), C1, C1, C2, C2, C3, C3);
   }
 
   @Test
@@ -858,8 +862,10 @@ class SchemaSettingsTest {
     RecordMapper mapper = schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     DefaultMapping mapping = (DefaultMapping) getInternalState(mapper, "mapping");
     assertThat(mapping).isNotNull();
-    assertThat((Set) getInternalState(mapping, "writeTimeVariables"))
-        .containsOnly(INTERNAL_TIMESTAMP_VARNAME);
+    @SuppressWarnings("unchecked")
+    Set<CQLWord> writeTimeVariables =
+        (Set<CQLWord>) getInternalState(mapping, "writeTimeVariables");
+    assertThat(writeTimeVariables).containsOnly(INTERNAL_TIMESTAMP_VARNAME);
   }
 
   @Test
@@ -880,8 +886,10 @@ class SchemaSettingsTest {
     RecordMapper mapper = schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     DefaultMapping mapping = (DefaultMapping) getInternalState(mapper, "mapping");
     assertThat(mapping).isNotNull();
-    assertThat((Set) getInternalState(mapping, "writeTimeVariables"))
-        .containsOnly(CQLWord.fromInternal(C3.asInternal()));
+    @SuppressWarnings("unchecked")
+    Set<CQLWord> writeTimeVariables =
+        (Set<CQLWord>) getInternalState(mapping, "writeTimeVariables");
+    assertThat(writeTimeVariables).containsOnly(CQLWord.fromInternal(C3.asInternal()));
   }
 
   @Test
@@ -901,7 +909,10 @@ class SchemaSettingsTest {
     RecordMapper mapper = schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
     DefaultMapping mapping = (DefaultMapping) getInternalState(mapper, "mapping");
     assertThat(mapping).isNotNull();
-    assertThat((Set) getInternalState(mapping, "writeTimeVariables"))
+    @SuppressWarnings("unchecked")
+    Set<CQLWord> writeTimeVariables =
+        (Set<CQLWord>) getInternalState(mapping, "writeTimeVariables");
+    assertThat(writeTimeVariables)
         .containsOnly(CQLWord.fromInternal("This is a quoted \" variable name"));
   }
 
@@ -1868,10 +1879,6 @@ class SchemaSettingsTest {
             .withFallback(ConfigFactory.load().getConfig("dsbulk.schema")));
   }
 
-  private static void assertMapping(DefaultMapping mapping) {
-    assertMapping(mapping, C1, C1, C2, C2, C3, C3);
-  }
-
   private static void assertMapping(DefaultMapping mapping, Object... fieldsAndVars) {
     ImmutableSetMultimap.Builder<Object, Object> expected = ImmutableSetMultimap.builder();
     for (int i = 0; i < fieldsAndVars.length; i += 2) {
@@ -1889,7 +1896,9 @@ class SchemaSettingsTest {
         expected.put(new DefaultMappedField(first), second);
       }
     }
-    assertThat((Multimap) getInternalState(mapping, "fieldsToVariables"))
-        .isEqualTo(expected.build());
+    @SuppressWarnings("unchecked")
+    SetMultimap<Field, CQLWord> fieldsToVariables =
+        (SetMultimap<Field, CQLWord>) getInternalState(mapping, "fieldsToVariables");
+    assertThat(fieldsToVariables).isEqualTo(expected.build());
   }
 }
