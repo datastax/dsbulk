@@ -8,6 +8,7 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
+import static com.datastax.dsbulk.commons.partitioner.TokenUtils.getTokenValue;
 import static com.datastax.dsbulk.commons.tests.driver.DriverUtils.newToken;
 import static com.datastax.dsbulk.commons.tests.driver.DriverUtils.newTokenRange;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.global;
@@ -39,7 +40,6 @@ import com.datastax.oss.driver.api.core.metadata.TokenMap;
 import com.datastax.oss.driver.api.core.metadata.token.Token;
 import com.datastax.oss.driver.api.core.metadata.token.TokenRange;
 import com.datastax.oss.driver.internal.core.metadata.DefaultEndPoint;
-import com.datastax.oss.driver.internal.core.metadata.token.Murmur3Token;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.driver.shaded.guava.common.collect.Sets;
 import com.typesafe.config.ConfigFactory;
@@ -296,17 +296,11 @@ class DefaultReadResultCounterTest {
     assertThat(stdout.getStreamLines())
         .contains(
             String.format(
-                "%s %s 1 33.33",
-                ((Murmur3Token) range1.getStart()).getValue(),
-                ((Murmur3Token) range1.getEnd()).getValue()),
+                "%s %s 1 33.33", getTokenValue(range1.getStart()), getTokenValue(range1.getEnd())),
             String.format(
-                "%s %s 2 66.67",
-                ((Murmur3Token) range2.getStart()).getValue(),
-                ((Murmur3Token) range2.getEnd()).getValue()),
+                "%s %s 2 66.67", getTokenValue(range2.getStart()), getTokenValue(range2.getEnd())),
             String.format(
-                "%s %s 0 0.00",
-                ((Murmur3Token) range3.getStart()).getValue(),
-                ((Murmur3Token) range3.getEnd()).getValue()));
+                "%s %s 0 0.00", getTokenValue(range3.getStart()), getTokenValue(range3.getEnd())));
   }
 
   @Test

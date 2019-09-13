@@ -8,6 +8,7 @@
  */
 package com.datastax.dsbulk.engine.ccm;
 
+import static com.datastax.dsbulk.commons.partitioner.TokenUtils.getTokenValue;
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.datastax.dsbulk.commons.tests.utils.CQLUtils.createKeyspaceSimpleStrategy;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
@@ -281,7 +282,9 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
                     line.startsWith(
                         String.format(
                             "%s %s %s",
-                            entry.getKey().getStart(), entry.getKey().getEnd(), entry.getValue())));
+                            getTokenValue(entry.getKey().getStart()),
+                            getTokenValue(entry.getKey().getEnd()),
+                            entry.getValue())));
       }
     }
     if (modes.contains(StatisticsMode.hosts)) {

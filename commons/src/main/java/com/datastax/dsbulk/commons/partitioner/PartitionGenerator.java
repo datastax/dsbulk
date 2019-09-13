@@ -12,7 +12,6 @@ import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.metadata.EndPoint;
 import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.driver.api.core.metadata.TokenMap;
-import com.datastax.oss.driver.internal.core.metadata.token.Murmur3Token;
 import com.datastax.oss.driver.internal.core.metadata.token.Murmur3TokenRange;
 import com.datastax.oss.driver.internal.core.metadata.token.RandomToken;
 import com.datastax.oss.driver.internal.core.metadata.token.RandomTokenRange;
@@ -70,9 +69,8 @@ public class PartitionGenerator<V extends Number, T extends Token<V>> {
     T endToken;
     if (range instanceof Murmur3TokenRange) {
       startToken =
-          tokenFactory.tokenFromString(Long.toString(((Murmur3Token) range.getStart()).getValue()));
-      endToken =
-          tokenFactory.tokenFromString(Long.toString(((Murmur3Token) range.getEnd()).getValue()));
+          tokenFactory.tokenFromString(TokenUtils.getTokenValue(range.getStart()).toString());
+      endToken = tokenFactory.tokenFromString(TokenUtils.getTokenValue(range.getEnd()).toString());
     } else if (range instanceof RandomTokenRange) {
       startToken =
           tokenFactory.tokenFromString(((RandomToken) range.getStart()).getValue().toString());

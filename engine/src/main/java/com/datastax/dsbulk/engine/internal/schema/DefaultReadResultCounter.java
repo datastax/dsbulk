@@ -8,6 +8,7 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
+import static com.datastax.dsbulk.commons.partitioner.TokenUtils.getTokenValue;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.global;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.hosts;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.partitions;
@@ -30,8 +31,6 @@ import com.datastax.oss.driver.api.core.metadata.token.Token;
 import com.datastax.oss.driver.api.core.metadata.token.TokenRange;
 import com.datastax.oss.driver.api.core.type.DataType;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
-import com.datastax.oss.driver.internal.core.metadata.token.Murmur3Token;
-import com.datastax.oss.driver.internal.core.metadata.token.RandomToken;
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.PrintStream;
@@ -199,8 +198,8 @@ public class DefaultReadResultCounter implements ReadResultCounter {
             float percentage = (float) totalPerRange / (float) totalRows * 100f;
             out.printf(
                 "%s %s %d %.2f%n",
-                tokenAsString(range.getStart()),
-                tokenAsString(range.getEnd()),
+                getTokenValue(range.getStart()),
+                getTokenValue(range.getEnd()),
                 totalPerRange,
                 percentage);
           });
@@ -215,17 +214,6 @@ public class DefaultReadResultCounter implements ReadResultCounter {
             out.printf("%s %d %.2f%n", count.pk, count.count, percentage);
           });
     }
-  }
-
-  private static String tokenAsString(Token token) {
-    if (token instanceof Murmur3Token) {
-      return String.valueOf(((Murmur3Token) token).getValue());
-    }
-    if (token instanceof RandomToken) {
-      return String.valueOf(((RandomToken) token).getValue());
-    }
-    // other token types not supported, but handle gracefully
-    return token.toString();
   }
 
   /**
