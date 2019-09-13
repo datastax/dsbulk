@@ -51,12 +51,9 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
-import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
-import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
-import com.datastax.dsbulk.commons.tests.simulacron.SimulacronExtension;
 import com.datastax.dsbulk.commons.tests.simulacron.SimulacronUtils;
 import com.datastax.dsbulk.commons.tests.simulacron.SimulacronUtils.Column;
 import com.datastax.dsbulk.commons.tests.simulacron.SimulacronUtils.Table;
@@ -90,17 +87,11 @@ import java.util.function.Function;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.reactivestreams.Publisher;
 
-@ExtendWith(SimulacronExtension.class)
-@ExtendWith(LogInterceptingExtension.class)
-@ExtendWith(StreamInterceptingExtension.class)
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
 
   private Path urlFileTwoFiles;

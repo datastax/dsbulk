@@ -17,6 +17,7 @@ import com.datastax.oss.simulacron.server.Inet4Resolver;
 import com.datastax.oss.simulacron.server.Server;
 import java.lang.reflect.Parameter;
 import java.net.InetAddress;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.extension.AfterEachCallback;
@@ -106,6 +107,9 @@ public class SimulacronExtension extends RemoteClusterExtension implements After
                   BoundClusterFactory.createInstanceForClass(context.getRequiredTestClass());
               BoundCluster boundCluster = SERVER.register(factory.createClusterSpec());
               boundCluster.start();
+              SimulacronUtils.primeSystemLocal(boundCluster, Collections.emptyMap());
+              SimulacronUtils.primeSystemPeers(boundCluster);
+              SimulacronUtils.primeSystemPeersV2(boundCluster);
               return boundCluster;
             },
             BoundCluster.class);

@@ -19,12 +19,9 @@ import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.primeIpByCoun
 import static org.slf4j.event.Level.ERROR;
 
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
-import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
-import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
-import com.datastax.dsbulk.commons.tests.simulacron.SimulacronExtension;
 import com.datastax.dsbulk.commons.tests.simulacron.SimulacronUtils;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
@@ -35,11 +32,7 @@ import com.datastax.oss.simulacron.common.stubbing.Prime;
 import com.datastax.oss.simulacron.server.BoundCluster;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 
-@ExtendWith(SimulacronExtension.class)
-@ExtendWith(LogInterceptingExtension.class)
-@ExtendWith(StreamInterceptingExtension.class)
 class LoadRestrictionsEndToEndSimulacronIT extends EndToEndSimulacronITBase {
 
   LoadRestrictionsEndToEndSimulacronIT(
