@@ -143,7 +143,6 @@ public abstract class SessionFactory {
       loggedKeyspaceName = config.loggedKeyspaceName();
       ProgrammaticDriverConfigLoaderBuilder loaderBuilder =
           DseDriverConfigLoader.programmaticBuilder()
-              .withString(PROTOCOL_VERSION, "V4")
               .withInt(CONNECTION_POOL_LOCAL_SIZE, 1)
               .withInt(CONNECTION_POOL_REMOTE_SIZE, 1)
               .withString(LOAD_BALANCING_LOCAL_DATACENTER, dcName)
