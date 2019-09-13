@@ -63,8 +63,12 @@ import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DriverSettings {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(DriverSettings.class);
 
   // Path Constants
   private static final String POOLING = "pooling";
@@ -99,6 +103,29 @@ public class DriverSettings {
   private static final String POLICY_MAX_RETRIES = POLICY + '.' + "maxRetries";
   private static final String POLICY_LBP_LOCAL_DC = POLICY + '.' + LBP + '.' + "localDc";
   private static final String POLICY_LBP_WHITE_LIST = POLICY + '.' + LBP + '.' + "whiteList";
+
+  // deprecated settings since DAT-303
+
+  private static final String POOLING_LOCAL_REQUESTS = POOLING + '.' + LOCAL + '.' + "requests";
+  private static final String POOLING_REMOTE_REQUESTS = POOLING + '.' + REMOTE + '.' + "requests";
+
+  private static final String POLICY_LBP_NAME = POLICY + '.' + LBP + '.' + "name";
+  private static final String POLICY_LBP_DSE_CHILD_POLICY =
+      POLICY + '.' + LBP + '.' + "dse.childPolicy";
+  private static final String POLICY_LBP_TOKEN_AWARE_CHILD_POLICY =
+      POLICY + '.' + LBP + '.' + "tokenAware.childPolicy";
+  private static final String POLICY_LBP_TOKEN_AWARE_REPLICA_ORDERING =
+      POLICY + '.' + LBP + '.' + "tokenAware.replicaOrdering";
+  private static final String POLICY_LBP_DC_AWARE_LOCAL_DC =
+      POLICY + '.' + LBP + '.' + "dcAwareRoundRobin.localDc";
+  private static final String POLICY_LBP_DC_AWARE_ALLOW_REMOTE =
+      POLICY + '.' + LBP + '.' + "dcAwareRoundRobin.allowRemoteDCsForLocalConsistencyLevel";
+  private static final String POLICY_LBP_DC_AWARE_REMOTE_HOSTS =
+      POLICY + '.' + LBP + '.' + "dcAwareRoundRobin.usedHostsPerRemoteDc";
+  private static final String POLICY_LBP_WHITE_LIST_CHILD_POLICY =
+      POLICY + '.' + LBP + '.' + "whiteList.childPolicy";
+  private static final String POLICY_LBP_WHITE_LIST_HOSTS =
+      POLICY + '.' + LBP + '.' + "whiteList.hosts";
 
   private final LoaderConfig config;
 
@@ -137,10 +164,25 @@ public class DriverSettings {
 
       driverConfig.put(CONNECTION_POOL_LOCAL_SIZE, config.getInt(POOLING_LOCAL_CONNECTIONS));
       driverConfig.put(CONNECTION_POOL_REMOTE_SIZE, config.getInt(POOLING_REMOTE_CONNECTIONS));
-      driverConfig.put(CONNECTION_MAX_REQUESTS, config.getInt(POOLING_REQUESTS));
+
+      int maxRequests = config.getInt(POOLING_REQUESTS);
+      if (config.hasPath(POOLING_LOCAL_REQUESTS)) {
+        LOGGER.warn(
+            "Driver setting {} is deprecated; please use {} instead",
+            POOLING_LOCAL_REQUESTS,
+            POOLING_REQUESTS);
+        maxRequests = config.getInt(POOLING_LOCAL_REQUESTS);
+      }
+      if (config.hasPath(POOLING_REMOTE_REQUESTS)) {
+        LOGGER.warn(
+            "Driver setting {} is obsolete; please remove it from your configuration",
+            POOLING_REMOTE_REQUESTS);
+      }
+      driverConfig.put(CONNECTION_MAX_REQUESTS, maxRequests);
+
       driverConfig.put(HEARTBEAT_INTERVAL, config.getDuration(POOLING_HEARTBEAT));
 
-      // validate enums upfront
+      // validate enums upfront to get a better error message
       config.getEnum(DefaultConsistencyLevel.class, QUERY_CONSISTENCY);
       driverConfig.put(
           REQUEST_CONSISTENCY,
@@ -153,7 +195,7 @@ public class DriverSettings {
       driverConfig.put(REQUEST_DEFAULT_IDEMPOTENCE, config.getBoolean(QUERY_IDEMPOTENCE));
       driverConfig.put(REQUEST_TIMEOUT, config.getDuration(SOCKET_READTIMEOUT));
 
-      // validate classes upfront
+      // validate classes upfront to get a better error message
       driverConfig.put(
           TIMESTAMP_GENERATOR_CLASS,
           config.getClass(TIMESTAMP_GENERATOR, TimestampGenerator.class).getSimpleName());
@@ -170,16 +212,72 @@ public class DriverSettings {
       authProvider = AuthProviderFactory.createAuthProvider(config);
       sslHandlerFactory = SslHandlerFactoryFactory.createSslHandlerFactory(config);
 
+      String localDc = null;
+      // Default for localDc is null
       if (config.hasPath(POLICY_LBP_LOCAL_DC)) {
         localDc = config.getString(POLICY_LBP_LOCAL_DC);
       }
 
-      List<SocketAddress> whiteList =
-          config.getStringList(POLICY_LBP_WHITE_LIST).stream()
-              .map(host -> new InetSocketAddress(host, port))
-              .collect(Collectors.toList());
+      List<String> whiteList = config.getStringList(POLICY_LBP_WHITE_LIST);
+
+      if (config.hasPath(POLICY_LBP_NAME)) {
+        LOGGER.warn(
+            "Driver setting {} is obsolete; please remove it from your configuration",
+            POLICY_LBP_NAME);
+      }
+      if (config.hasPath(POLICY_LBP_DSE_CHILD_POLICY)) {
+        LOGGER.warn(
+            "Driver setting {} is obsolete; please remove it from your configuration",
+            POLICY_LBP_DSE_CHILD_POLICY);
+      }
+      if (config.hasPath(POLICY_LBP_TOKEN_AWARE_CHILD_POLICY)) {
+        LOGGER.warn(
+            "Driver setting {} is obsolete; please remove it from your configuration",
+            POLICY_LBP_TOKEN_AWARE_CHILD_POLICY);
+      }
+      if (config.hasPath(POLICY_LBP_TOKEN_AWARE_REPLICA_ORDERING)) {
+        LOGGER.warn(
+            "Driver setting {} is obsolete; please remove it from your configuration",
+            POLICY_LBP_TOKEN_AWARE_REPLICA_ORDERING);
+      }
+      if (config.hasPath(POLICY_LBP_DC_AWARE_LOCAL_DC)) {
+        LOGGER.warn(
+            "Driver setting {} is deprecated; please use {} instead",
+            POLICY_LBP_DC_AWARE_LOCAL_DC,
+            POLICY_LBP_LOCAL_DC);
+        localDc = config.getString(POLICY_LBP_DC_AWARE_LOCAL_DC);
+      }
+      if (config.hasPath(POLICY_LBP_DC_AWARE_ALLOW_REMOTE)) {
+        LOGGER.warn(
+            "Driver setting {} is obsolete; please remove it from your configuration",
+            POLICY_LBP_DC_AWARE_ALLOW_REMOTE);
+      }
+      if (config.hasPath(POLICY_LBP_DC_AWARE_REMOTE_HOSTS)) {
+        LOGGER.warn(
+            "Driver setting {} is obsolete; please remove it from your configuration",
+            POLICY_LBP_DC_AWARE_REMOTE_HOSTS);
+      }
+      if (config.hasPath(POLICY_LBP_WHITE_LIST_CHILD_POLICY)) {
+        LOGGER.warn(
+            "Driver setting {} is obsolete; please remove it from your configuration",
+            POLICY_LBP_WHITE_LIST_CHILD_POLICY);
+      }
+      if (config.hasPath(POLICY_LBP_WHITE_LIST_HOSTS)) {
+        LOGGER.warn(
+            "Driver setting {} is deprecated; please use {} instead",
+            POLICY_LBP_WHITE_LIST_HOSTS,
+            POLICY_LBP_WHITE_LIST);
+        whiteList = config.getStringList(POLICY_LBP_WHITE_LIST_HOSTS);
+      }
+
+      this.localDc = localDc;
+
       if (!whiteList.isEmpty()) {
-        nodeFilter = node -> whiteList.contains(node.getEndPoint().resolve());
+        List<SocketAddress> allowedHosts =
+            config.getStringList(POLICY_LBP_WHITE_LIST).stream()
+                .map(host -> new InetSocketAddress(host, port))
+                .collect(Collectors.toList());
+        nodeFilter = node -> allowedHosts.contains(node.getEndPoint().resolve());
       }
 
     } catch (ConfigException e) {
