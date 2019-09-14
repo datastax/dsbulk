@@ -12,7 +12,6 @@ import com.datastax.dsbulk.executor.api.batch.StatementBatcher;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.ProtocolVersion;
 import com.datastax.oss.driver.api.core.cql.BatchStatement;
-import com.datastax.oss.driver.api.core.cql.BatchStatementBuilder;
 import com.datastax.oss.driver.api.core.cql.BatchType;
 import com.datastax.oss.driver.api.core.cql.BatchableStatement;
 import com.datastax.oss.driver.api.core.cql.DefaultBatchType;
@@ -21,6 +20,7 @@ import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hu.akarnokd.rxjava2.operators.FlowableTransformers;
 import io.reactivex.Flowable;
+import java.util.ArrayList;
 import org.reactivestreams.Publisher;
 
 /** A subclass of {@link StatementBatcher} that adds reactive-style capabilities to it. */
@@ -221,9 +221,16 @@ public class RxJavaStatementBatcher extends StatementBatcher {
             stmts ->
                 stmts
                     .reduce(
-                        BatchStatement.builder(batchType),
-                        (builder, child) -> builder.addStatements((BatchableStatement<?>) child))
-                    .map(BatchStatementBuilder::build));
+                        new ArrayList<BatchableStatement<?>>(),
+                        (children, child) -> {
+                          children.add((BatchableStatement<?>) child);
+                          return children;
+                        })
+                    .map(
+                        children ->
+                            children.size() == 1
+                                ? children.get(0)
+                                : BatchStatement.newInstance(batchType, children)));
   }
 
   private class RxJavaAdaptiveSizingBatchPredicate extends AdaptiveSizingBatchPredicate
