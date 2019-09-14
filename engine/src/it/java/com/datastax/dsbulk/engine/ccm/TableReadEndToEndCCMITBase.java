@@ -32,6 +32,7 @@ import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode;
 import com.datastax.dsbulk.engine.tests.MockConnector;
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.metadata.EndPoint;
 import com.datastax.oss.driver.api.core.metadata.Metadata;
 import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.driver.api.core.metadata.TokenMap;
@@ -39,6 +40,7 @@ import com.datastax.oss.driver.api.core.metadata.token.Token;
 import com.datastax.oss.driver.api.core.metadata.token.TokenRange;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -292,9 +294,15 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
       for (Map.Entry<Node, Integer> entry : hosts.entrySet()) {
         assertThat(lines)
             .anyMatch(
-                line ->
-                    line.startsWith(
-                        String.format("%s %s", entry.getKey().getEndPoint(), entry.getValue())));
+                line -> {
+                  EndPoint endPoint = entry.getKey().getEndPoint();
+                  InetSocketAddress addr = (InetSocketAddress) endPoint.resolve();
+                  String ip = addr.getAddress().getHostAddress();
+                  int port = addr.getPort();
+                  // Sometimes the end point resolves as "127.0.0.2/127.0.0.2:9042", sometimes
+                  // as just "/127.0.0.2:9042"
+                  return line.contains(String.format("%s:%d %s", ip, port, entry.getValue()));
+                });
       }
     }
     if (modes.contains(StatisticsMode.partitions)) {
