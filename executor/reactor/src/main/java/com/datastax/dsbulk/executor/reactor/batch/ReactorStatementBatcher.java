@@ -12,6 +12,7 @@ import com.datastax.dsbulk.executor.api.batch.StatementBatcher;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.ProtocolVersion;
 import com.datastax.oss.driver.api.core.cql.BatchStatement;
+import com.datastax.oss.driver.api.core.cql.BatchStatementBuilder;
 import com.datastax.oss.driver.api.core.cql.BatchType;
 import com.datastax.oss.driver.api.core.cql.BatchableStatement;
 import com.datastax.oss.driver.api.core.cql.DefaultBatchType;
@@ -219,15 +220,11 @@ public class ReactorStatementBatcher extends StatementBatcher {
         .windowUntil(new ReactorAdaptiveSizingBatchPredicate(), false)
         .flatMap(
             stmts ->
-                stmts.reduce(
-                    (s1, s2) -> {
-                      if (s1 instanceof BatchStatement) {
-                        return ((BatchStatement) s1).add((BatchableStatement<?>) s2);
-                      } else {
-                        return BatchStatement.newInstance(
-                            batchType, (BatchableStatement<?>) s1, (BatchableStatement<?>) s2);
-                      }
-                    }));
+                stmts
+                    .reduce(
+                        BatchStatement.builder(batchType),
+                        (builder, child) -> builder.addStatements((BatchableStatement<?>) child))
+                    .map(BatchStatementBuilder::build));
   }
 
   private class ReactorAdaptiveSizingBatchPredicate extends AdaptiveSizingBatchPredicate {}
