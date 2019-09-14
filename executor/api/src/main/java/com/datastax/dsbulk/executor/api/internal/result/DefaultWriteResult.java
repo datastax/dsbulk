@@ -21,25 +21,28 @@ import java.util.stream.StreamSupport;
 public final class DefaultWriteResult extends DefaultResult implements WriteResult {
 
   @Nullable private final AsyncResultSet rs;
+  private boolean wasApplied;
 
   public DefaultWriteResult(@NonNull Statement<?> statement, @NonNull AsyncResultSet rs) {
     super(statement, rs.getExecutionInfo());
     this.rs = rs;
+    wasApplied = rs.wasApplied();
   }
 
   public DefaultWriteResult(@NonNull BulkExecutionException error) {
     super(error);
     this.rs = null;
+    wasApplied = false;
   }
 
   @Override
   public boolean wasApplied() {
-    return rs != null && rs.wasApplied();
+    return wasApplied;
   }
 
   @Override
   public Stream<? extends Row> getFailedWrites() {
-    return rs == null || rs.wasApplied()
+    return rs == null || wasApplied
         ? Stream.empty()
         : StreamSupport.stream(rs.currentPage().spliterator(), false);
   }
