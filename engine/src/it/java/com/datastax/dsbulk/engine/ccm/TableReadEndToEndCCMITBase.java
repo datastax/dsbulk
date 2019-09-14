@@ -128,14 +128,14 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
       session.execute(
           String.format(
               "CREATE MATERIALIZED VIEW IF NOT EXISTS \"%1$s\".\"%2$s_mv\" AS "
-                  + "SELECT cc FROM \"%1$s\".\"%2$s\" WHERE cc IS NOT NULL "
+                  + "SELECT pk, cc FROM \"%1$s\".\"%2$s\" WHERE cc IS NOT NULL "
                   + "PRIMARY KEY (pk, cc)",
               keyspace, table));
     } else {
       session.execute(
           String.format(
               "CREATE MATERIALIZED VIEW IF NOT EXISTS \"%1$s\".\"%2$s_mv\" AS "
-                  + "SELECT cc FROM \"%1$s\".\"%2$s\" WHERE cc IS NOT NULL AND \"PK1\" IS NOT NULL AND \"PK2\" IS NOT NULL "
+                  + "SELECT \"PK1\", \"PK2\", cc FROM \"%1$s\".\"%2$s\" WHERE cc IS NOT NULL AND \"PK1\" IS NOT NULL AND \"PK2\" IS NOT NULL "
                   + "PRIMARY KEY ((\"PK1\", \"PK2\"), cc)",
               keyspace, table));
     }
