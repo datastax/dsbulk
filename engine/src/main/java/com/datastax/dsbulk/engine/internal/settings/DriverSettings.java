@@ -20,6 +20,7 @@ import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.HEARTB
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.LOAD_BALANCING_POLICY_CLASS;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_CONSISTENCY;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_DEFAULT_IDEMPOTENCE;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_LOG_WARNINGS;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_PAGE_SIZE;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_SERIAL_CONSISTENCY;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_TIMEOUT;
@@ -144,6 +145,9 @@ public class DriverSettings {
     try {
 
       driverConfig = new HashMap<>(executorConfig);
+
+      // Disable driver-level query warnings, these are handled by LogManager
+      driverConfig.put(REQUEST_LOG_WARNINGS, false);
 
       List<String> hosts = config.getStringList(HOSTS);
       if (hosts.isEmpty()) {
