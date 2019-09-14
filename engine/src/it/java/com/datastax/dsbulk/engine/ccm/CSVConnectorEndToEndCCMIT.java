@@ -746,10 +746,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     You should use a logged batch for atomicity, or asynchronous writes for performance.
      */
     assertThat(logs)
-        .hasMessageMatching(
-            "Query generated server-side warning: "
-                + "Unlogged batch covering \\d+ partitions detected against "
-                + "table [\\[\\{]ks1\\.ip_by_country[\\]\\}]")
+        .hasMessageContaining("Query generated server-side warning")
+        .hasMessageMatching("Unlogged batch covering \\d+ partitions detected")
+        .hasMessageContaining(session.getKeyspace().get().asCql(true) + ".ip_by_country")
         .hasMessageContaining(
             "The maximum number of logged query warnings has been exceeded (1); "
                 + "subsequent warnings will not be logged.");
@@ -3690,11 +3689,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("INSERT INTO test_cas (pk, cc, v) VALUES (:pk, :cc, :v) IF NOT EXISTS");
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status)
-        .overridingErrorMessage(
-            "Expecting %d but got %d, logged messages are:\n%s",
-            STATUS_COMPLETED_WITH_ERRORS, status, logs.getAllMessagesAsString())
-        .isEqualTo(STATUS_COMPLETED_WITH_ERRORS);
+    assertThat(status).isEqualTo(STATUS_COMPLETED_WITH_ERRORS);
 
     Path bad = getOperationDirectory().resolve("paxos.bad");
     assertThat(bad).exists();
