@@ -741,12 +741,15 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     /*
     Unlogged batch covering N partitions detected against table [ks1.ip_by_country].
     You should use a logged batch for atomicity, or asynchronous writes for performance.
+    DSE 6.0+:
+    Unlogged batch covering 20 partitions detected against table {ks1.ip_by_country}.
+    You should use a logged batch for atomicity, or asynchronous writes for performance.
      */
     assertThat(logs)
         .hasMessageMatching(
             "Query generated server-side warning: "
                 + "Unlogged batch covering \\d+ partitions detected against "
-                + "table \\[ks1.ip_by_country\\]")
+                + "table [\\[\\{]ks1\\.ip_by_country[\\]\\}]")
         .hasMessageContaining(
             "The maximum number of logged query warnings has been exceeded (1); "
                 + "subsequent warnings will not be logged.");
