@@ -3690,7 +3690,11 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("INSERT INTO test_cas (pk, cc, v) VALUES (:pk, :cc, :v) IF NOT EXISTS");
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isEqualTo(STATUS_COMPLETED_WITH_ERRORS);
+    assertThat(status)
+        .overridingErrorMessage(
+            "Expecting %d but got %d, logged messages are:\n%s",
+            STATUS_COMPLETED_WITH_ERRORS, status, logs.getAllMessagesAsString())
+        .isEqualTo(STATUS_COMPLETED_WITH_ERRORS);
 
     Path bad = getOperationDirectory().resolve("paxos.bad");
     assertThat(bad).exists();
