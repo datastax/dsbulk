@@ -354,6 +354,7 @@ public class SchemaSettings {
     }
     return new DefaultRecordMapper(
         preparedStatement,
+        partitionKeyVariables(),
         mutatesOnlyStaticColumns() ? partitionKeyVariables() : primaryKeyVariables(),
         protocolVersion,
         mapping,

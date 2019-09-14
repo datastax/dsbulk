@@ -20,12 +20,14 @@ import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.DefaultProtocolVersion;
 import com.datastax.oss.driver.api.core.ProtocolVersion;
 import com.datastax.oss.driver.api.core.cql.BatchableStatement;
+import com.datastax.oss.driver.api.core.cql.BoundStatement;
 import com.datastax.oss.driver.api.core.cql.BoundStatementBuilder;
 import com.datastax.oss.driver.api.core.cql.ColumnDefinitions;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.type.DataType;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
+import com.datastax.oss.driver.internal.core.util.RoutingKey;
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSet;
@@ -35,6 +37,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -43,6 +46,7 @@ import java.util.function.Function;
 public class DefaultRecordMapper implements RecordMapper {
 
   private final PreparedStatement insertStatement;
+  private final Set<CQLWord> partitionKeyVariables;
   private final ImmutableSet<CQLWord> primaryKeyVariables;
   private final ProtocolVersion protocolVersion;
   private final Mapping mapping;
@@ -55,6 +59,7 @@ public class DefaultRecordMapper implements RecordMapper {
 
   public DefaultRecordMapper(
       PreparedStatement insertStatement,
+      Set<CQLWord> partitionKeyVariables,
       Set<CQLWord> primaryKeyVariables,
       ProtocolVersion protocolVersion,
       Mapping mapping,
@@ -64,6 +69,7 @@ public class DefaultRecordMapper implements RecordMapper {
       boolean allowMissingFields) {
     this(
         insertStatement,
+        partitionKeyVariables,
         primaryKeyVariables,
         protocolVersion,
         mapping,
@@ -77,6 +83,7 @@ public class DefaultRecordMapper implements RecordMapper {
   @VisibleForTesting
   DefaultRecordMapper(
       PreparedStatement insertStatement,
+      Set<CQLWord> partitionKeyVariables,
       Set<CQLWord> primaryKeyVariables,
       ProtocolVersion protocolVersion,
       Mapping mapping,
@@ -86,6 +93,7 @@ public class DefaultRecordMapper implements RecordMapper {
       boolean allowMissingFields,
       Function<PreparedStatement, BoundStatementBuilder> boundStatementBuilderFactory) {
     this.insertStatement = insertStatement;
+    this.partitionKeyVariables = ImmutableSet.copyOf(partitionKeyVariables);
     this.primaryKeyVariables = ImmutableSet.copyOf(primaryKeyVariables);
     this.protocolVersion = protocolVersion;
     this.mapping = mapping;
@@ -104,7 +112,7 @@ public class DefaultRecordMapper implements RecordMapper {
       if (!allowMissingFields) {
         ensureAllFieldsPresent(record.fields());
       }
-      BoundStatementBuilder bs = boundStatementBuilderFactory.apply(insertStatement);
+      BoundStatementBuilder builder = boundStatementBuilderFactory.apply(insertStatement);
       ColumnDefinitions variableDefinitions = insertStatement.getVariableDefinitions();
       for (Field field : record.fields()) {
         Set<CQLWord> variables = mapping.fieldToVariables(field);
@@ -114,44 +122,48 @@ public class DefaultRecordMapper implements RecordMapper {
             DataType cqlType = variableDefinitions.get(name).getType();
             GenericType<?> fieldType = recordMetadata.getFieldType(field, cqlType);
             Object raw = record.getFieldValue(field);
-            bs = bindColumn(bs, variable, raw, cqlType, fieldType);
+            builder = bindColumn(builder, variable, raw, cqlType, fieldType);
           }
         } else if (!allowExtraFields) {
           // the field wasn't mapped to any known variable
           throw InvalidMappingException.extraneousField(field);
         }
       }
-      ensurePrimaryKeySet(bs);
+      ensurePrimaryKeySet(builder);
       if (protocolVersion.getCode() < DefaultProtocolVersion.V4.getCode()) {
-        ensureAllVariablesSet(bs);
+        ensureAllVariablesSet(builder);
       }
       record.clear();
-      return new BulkBoundStatement<>(record, bs.build());
+      if (protocolVersion.getCode() <= DefaultProtocolVersion.V3.getCode()) {
+        builder = setRoutingKey(builder);
+      }
+      BoundStatement bs = builder.build();
+      return new BulkBoundStatement<>(record, bs);
     } catch (Exception e) {
       return new UnmappableStatement(record, e);
     }
   }
 
   private <T> BoundStatementBuilder bindColumn(
-      BoundStatementBuilder bs,
+      BoundStatementBuilder builder,
       CQLWord variable,
       @Nullable T raw,
       DataType cqlType,
       GenericType<? extends T> javaType) {
     TypeCodec<T> codec = mapping.codec(variable, cqlType, javaType);
-    ByteBuffer bb = codec.encode(raw, bs.protocolVersion());
+    ByteBuffer bb = codec.encode(raw, builder.protocolVersion());
     if (isNull(bb, cqlType)) {
       if (primaryKeyVariables.contains(variable)) {
         throw InvalidMappingException.nullPrimaryKey(variable);
       }
       if (nullToUnset) {
-        return bs;
+        return builder;
       }
     }
     for (int index : variablesToIndices.get(variable)) {
-      bs = bs.setBytesUnsafe(index, bb);
+      builder = builder.setBytesUnsafe(index, bb);
     }
-    return bs;
+    return builder;
   }
 
   private boolean isNull(ByteBuffer bb, DataType cqlType) {
@@ -214,5 +226,28 @@ public class DefaultRecordMapper implements RecordMapper {
       indices.add(i);
     }
     return ImmutableMap.copyOf(variablesToIndices);
+  }
+
+  // FIXME remove when JAVA-2443 is fixed
+  private BoundStatementBuilder setRoutingKey(BoundStatementBuilder bs) {
+    ByteBuffer[] routingKeyComponents = new ByteBuffer[partitionKeyVariables.size()];
+    Iterator<CQLWord> iterator = partitionKeyVariables.iterator();
+    for (int i = 0; iterator.hasNext(); i++) {
+      CQLWord variable = iterator.next();
+      routingKeyComponents[i] = bs.getBytesUnsafe(variable.asIdentifier());
+    }
+    if (allSet(routingKeyComponents)) {
+      bs = bs.setRoutingKey(RoutingKey.compose(routingKeyComponents));
+    }
+    return bs;
+  }
+
+  private static boolean allSet(ByteBuffer[] routingKeyComponents) {
+    for (ByteBuffer routingKeyComponent : routingKeyComponents) {
+      if (routingKeyComponent == null) {
+        return false;
+      }
+    }
+    return true;
   }
 }
