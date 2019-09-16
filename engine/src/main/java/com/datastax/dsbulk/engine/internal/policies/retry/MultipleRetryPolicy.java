@@ -16,7 +16,6 @@ import com.datastax.oss.driver.api.core.context.DriverContext;
 import com.datastax.oss.driver.api.core.retry.RetryDecision;
 import com.datastax.oss.driver.api.core.retry.RetryPolicy;
 import com.datastax.oss.driver.api.core.servererrors.CoordinatorException;
-import com.datastax.oss.driver.api.core.servererrors.DefaultWriteType;
 import com.datastax.oss.driver.api.core.servererrors.ReadFailureException;
 import com.datastax.oss.driver.api.core.servererrors.WriteFailureException;
 import com.datastax.oss.driver.api.core.servererrors.WriteType;
@@ -56,9 +55,7 @@ public class MultipleRetryPolicy implements RetryPolicy {
       int blockFor,
       int received,
       int retryCount) {
-    return (retryCount < maxRetryCount && writeType == DefaultWriteType.BATCH_LOG)
-        ? RetryDecision.RETRY_SAME
-        : RetryDecision.RETHROW;
+    return (retryCount < maxRetryCount) ? RetryDecision.RETRY_SAME : RetryDecision.RETHROW;
   }
 
   @Override
