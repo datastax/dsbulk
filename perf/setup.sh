@@ -42,6 +42,9 @@ ctool run --sudo dsbulk-client "cd /mnt/data; sudo su automaton; git clone https
 ctool run --sudo dsbulk-client "mkdir /mnt/data/DSEBulkLoadTest/in/data100B_one_file"
 ctool run --sudo dsbulk-client "cd /mnt/data/DSEBulkLoadTest/in/data100B; cat data100B_0.csv data100B_1.csv data100B_2.csv data100B_3.csv data100B_4.csv data100B_5.csv data100B_6.csv data100B_7.csv data100B_8.csv data100B_9.csv data100B_10.csv data100B_11.csv data100B_12.csv data100B_13.csv data100B_14.csv data100B_15.csv data100B_16.csv data100B_17.csv data100B_18.csv data100B_19.csv > ../data100B_one_file/data100B.csv"
 
+#install maven && java
+ctool run --sudo dsbulk-client "sudo apt update --assume-yes; sudo apt install maven --assume-yes; sudo apt-get install unzip --assume-yes"
+
 #setup data-set (multiple records per Partition Key)
 github_username="username"; github_password="password";
 ctool run --sudo dsbulk-client "cd /mnt/data; sudo su automaton; git clone https://${github_username}:${github_password}@github.com/riptano/data_faker.git; cd data_faker; mvn clean package"
@@ -65,8 +68,6 @@ ctool run dsbulk-dse 0 "cqlsh -e \"CREATE TABLE IF NOT EXISTS test.test10(pkey B
 #ordered data-set table setup
 ctool run dsbulk-dse 0 "cqlsh -e \"CREATE TABLE IF NOT EXISTS test.transactions(user_id TEXT, date timestamp, item TEXT, price float, quantity int, total decimal, currency TEXT, payment TEXT, contact list<text>, PRIMARY KEY ((user_id), date));\""
 
-#install maven && java
-ctool run --sudo dsbulk-client "sudo apt update --assume-yes; sudo apt install maven --assume-yes; sudo apt-get install unzip --assume-yes"
 
 # TODO tweak settings.xml
 
