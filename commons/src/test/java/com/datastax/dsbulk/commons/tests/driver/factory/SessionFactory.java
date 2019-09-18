@@ -26,6 +26,7 @@ import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.commons.tests.utils.StringUtils;
 import com.datastax.dse.driver.api.core.DseSession;
 import com.datastax.dse.driver.api.core.DseSessionBuilder;
+import com.datastax.dse.driver.api.core.config.DseDriverConfigLoader;
 import com.datastax.dse.driver.internal.core.auth.DsePlainTextAuthProvider;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
@@ -115,7 +116,7 @@ public abstract class SessionFactory {
       loggedKeyspaceName = config.loggedKeyspaceName();
       // init-query-timeout is 500ms by default, which sometimes triggers in CI builds.
       ProgrammaticDriverConfigLoaderBuilder loaderBuilder =
-          DriverConfigLoader.programmaticBuilder()
+          DseDriverConfigLoader.programmaticBuilder()
               .withString(DefaultDriverOption.LOAD_BALANCING_LOCAL_DATACENTER, dcName)
               .withDuration(
                   DefaultDriverOption.CONNECTION_INIT_QUERY_TIMEOUT, Duration.ofSeconds(3));
