@@ -14,6 +14,7 @@ import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.getBulkLoa
 import static com.datastax.dse.driver.api.core.config.DseDriverOption.CONTINUOUS_PAGING_TIMEOUT_FIRST_PAGE;
 import static com.datastax.dse.driver.api.core.config.DseDriverOption.CONTINUOUS_PAGING_TIMEOUT_OTHER_PAGES;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.ADDRESS_TRANSLATOR_CLASS;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CLOUD_SECURE_CONNECT_BUNDLE;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONNECTION_MAX_REQUESTS;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONNECTION_POOL_LOCAL_SIZE;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONNECTION_POOL_REMOTE_SIZE;
@@ -53,9 +54,11 @@ import com.datastax.oss.driver.api.core.context.DriverContext;
 import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.driver.api.core.session.ProgrammaticArguments;
 import com.datastax.oss.driver.api.core.time.TimestampGenerator;
+import com.datastax.oss.driver.internal.core.ssl.JdkSslHandlerFactory;
 import com.datastax.oss.driver.internal.core.ssl.SslHandlerFactory;
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
+import com.datastax.oss.protocol.internal.ProtocolConstants;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
@@ -64,6 +67,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.UnknownHostException;
+import java.nio.file.Path;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -92,6 +96,10 @@ public class DriverSettings {
 
   private static final String HOSTS = "hosts";
   private static final String PORT = "port";
+
+  private static final String CLOUD = "cloud";
+  private static final String SECURE_CONNECT_BUNDLE_PATH = CLOUD + '.' + "secureConnectBundle";
+
   private static final String POOLING_LOCAL_CONNECTIONS =
       POOLING + '.' + LOCAL + '.' + "connections";
   private static final String POOLING_REMOTE_CONNECTIONS =
@@ -148,7 +156,7 @@ public class DriverSettings {
     this.config = config;
   }
 
-  public void init(Map<DriverOption, Object> executorConfig)
+  public void init(boolean write, Map<DriverOption, Object> executorConfig)
       throws GeneralSecurityException, IOException {
     try {
 
@@ -157,16 +165,29 @@ public class DriverSettings {
       // Disable driver-level query warnings, these are handled by LogManager
       driverConfig.put(REQUEST_LOG_WARNINGS, false);
 
-      List<String> hosts = config.getStringList(HOSTS);
-      if (hosts.isEmpty()) {
-        throw new BulkConfigurationException(
-            "Setting driver.hosts is mandatory. Please set driver.hosts "
-                + "and try again. See settings.md or help for more information.");
-      }
       int port = config.getInt(PORT);
-      driverConfig.put(
-          CONTACT_POINTS,
-          hosts.stream().map(host -> host + ':' + port).collect(Collectors.toList()));
+
+      Path secureBundleLocation = null;
+      if (config.hasPath(SECURE_CONNECT_BUNDLE_PATH)) {
+        secureBundleLocation = config.getPath(SECURE_CONNECT_BUNDLE_PATH);
+      }
+
+      boolean cloud = secureBundleLocation != null;
+
+      if (cloud) {
+        driverConfig.put(
+            CLOUD_SECURE_CONNECT_BUNDLE, secureBundleLocation.toAbsolutePath().toString());
+      } else {
+        List<String> hosts = config.getStringList(HOSTS);
+        if (hosts.isEmpty()) {
+          throw new BulkConfigurationException(
+              "Setting driver.hosts is mandatory. Please set driver.hosts "
+                  + "and try again. See settings.md or help for more information.");
+        }
+        driverConfig.put(
+            CONTACT_POINTS,
+            hosts.stream().map(host -> host + ':' + port).collect(Collectors.toList()));
+      }
 
       Compression compression = config.getEnum(Compression.class, PROTOCOL_COMPRESSION);
       if (compression != Compression.NONE) {
@@ -198,6 +219,17 @@ public class DriverSettings {
       ConsistencyLevel cl = config.getEnum(DefaultConsistencyLevel.class, QUERY_CONSISTENCY);
       ConsistencyLevel serialCl =
           config.getEnum(DefaultConsistencyLevel.class, QUERY_SERIALCONSISTENCY);
+      if (cloud && !isCloudCompatible(write, cl)) {
+        String resource = config.getValue(QUERY_CONSISTENCY).origin().resource();
+        if (resource != null && resource.equals("reference.conf")) {
+          LOGGER.info("Changing default consistency level to LOCAL_QUORUM for Cloud deployments");
+        } else {
+          LOGGER.warn(
+              "Cloud deployments reject consistency level {} when writing; forcing LOCAL_QUORUM",
+              cl);
+        }
+        cl = DefaultConsistencyLevel.LOCAL_QUORUM;
+      }
       driverConfig.put(REQUEST_CONSISTENCY, cl.name());
       driverConfig.put(REQUEST_SERIAL_CONSISTENCY, serialCl.name());
 
@@ -214,9 +246,11 @@ public class DriverSettings {
       driverConfig.put(
           TIMESTAMP_GENERATOR_CLASS,
           config.getClass(TIMESTAMP_GENERATOR, TimestampGenerator.class).getSimpleName());
-      driverConfig.put(
-          ADDRESS_TRANSLATOR_CLASS,
-          config.getClass(ADDRESS_TRANSLATOR, AddressTranslator.class).getSimpleName());
+      if (!cloud) {
+        driverConfig.put(
+            ADDRESS_TRANSLATOR_CLASS,
+            config.getClass(ADDRESS_TRANSLATOR, AddressTranslator.class).getSimpleName());
+      }
 
       driverConfig.put(
           LOAD_BALANCING_POLICY_CLASS, DCInferringDseLoadBalancingPolicy.class.getName());
@@ -225,7 +259,9 @@ public class DriverSettings {
           BulkDriverOption.RETRY_POLICY_MAX_RETRIES, config.getInt(POLICY_MAX_RETRIES));
 
       authProvider = AuthProviderFactory.createAuthProvider(config);
-      sslHandlerFactory = SslHandlerFactoryFactory.createSslHandlerFactory(config);
+      if (!cloud) {
+        sslHandlerFactory = SslHandlerFactoryFactory.createSslHandlerFactory(config);
+      }
 
       if (config.hasPath(POLICY_LBP_NAME)) {
         LOGGER.warn(
@@ -263,52 +299,66 @@ public class DriverSettings {
             POLICY_LBP_WHITE_LIST_CHILD_POLICY);
       }
 
-      String localDc = null;
-      // Default for localDc is null
-      if (config.hasPath(POLICY_LBP_LOCAL_DC)) {
-        localDc = config.getString(POLICY_LBP_LOCAL_DC);
-      }
-      if (config.hasPath(POLICY_LBP_DC_AWARE_LOCAL_DC)) {
-        LOGGER.warn(
-            "Driver setting {} is deprecated; please use {} instead",
-            POLICY_LBP_DC_AWARE_LOCAL_DC,
-            POLICY_LBP_LOCAL_DC);
-        localDc = config.getString(POLICY_LBP_DC_AWARE_LOCAL_DC);
-      }
-      if (localDc != null) {
-        driverConfig.put(LOAD_BALANCING_LOCAL_DATACENTER, localDc);
-      }
+      if (!cloud) {
+        String localDc = null;
+        // Default for localDc is null
+        if (config.hasPath(POLICY_LBP_LOCAL_DC)) {
+          localDc = config.getString(POLICY_LBP_LOCAL_DC);
+        }
+        if (config.hasPath(POLICY_LBP_DC_AWARE_LOCAL_DC)) {
+          LOGGER.warn(
+              "Driver setting {} is deprecated; please use {} instead",
+              POLICY_LBP_DC_AWARE_LOCAL_DC,
+              POLICY_LBP_LOCAL_DC);
+          localDc = config.getString(POLICY_LBP_DC_AWARE_LOCAL_DC);
+        }
+        if (localDc != null) {
+          driverConfig.put(LOAD_BALANCING_LOCAL_DATACENTER, localDc);
+        }
 
-      List<String> whiteList = config.getStringList(POLICY_LBP_ALLOWED_HOSTS);
-      if (config.hasPath(POLICY_LBP_WHITE_LIST_HOSTS)) {
-        LOGGER.warn(
-            "Driver setting {} is deprecated; please use {} instead",
-            POLICY_LBP_WHITE_LIST_HOSTS,
-            POLICY_LBP_ALLOWED_HOSTS);
-        whiteList = config.getStringList(POLICY_LBP_WHITE_LIST_HOSTS);
-      }
-      if (!whiteList.isEmpty()) {
-        ImmutableList<SocketAddress> allowedHosts =
-            config.getStringList(POLICY_LBP_ALLOWED_HOSTS).stream()
-                .flatMap(
-                    host -> {
-                      try {
-                        return Arrays.stream(InetAddress.getAllByName(host));
-                      } catch (UnknownHostException e) {
-                        String msg =
-                            String.format(
-                                "Could not resolve host: %s, please verify your %s setting",
-                                host, POLICY_LBP_ALLOWED_HOSTS);
-                        throw new BulkConfigurationException(msg, e);
-                      }
-                    })
-                .map(host -> new InetSocketAddress(host, port))
-                .collect(ImmutableList.toImmutableList());
-        nodeFilter = node -> allowedHosts.contains(node.getEndPoint().resolve());
+        List<String> whiteList = config.getStringList(POLICY_LBP_ALLOWED_HOSTS);
+        if (config.hasPath(POLICY_LBP_WHITE_LIST_HOSTS)) {
+          LOGGER.warn(
+              "Driver setting {} is deprecated; please use {} instead",
+              POLICY_LBP_WHITE_LIST_HOSTS,
+              POLICY_LBP_ALLOWED_HOSTS);
+          whiteList = config.getStringList(POLICY_LBP_WHITE_LIST_HOSTS);
+        }
+        if (!whiteList.isEmpty()) {
+          ImmutableList<SocketAddress> allowedHosts =
+              config.getStringList(POLICY_LBP_ALLOWED_HOSTS).stream()
+                  .flatMap(
+                      host -> {
+                        try {
+                          return Arrays.stream(InetAddress.getAllByName(host));
+                        } catch (UnknownHostException e) {
+                          String msg =
+                              String.format(
+                                  "Could not resolve host: %s, please verify your %s setting",
+                                  host, POLICY_LBP_ALLOWED_HOSTS);
+                          throw new BulkConfigurationException(msg, e);
+                        }
+                      })
+                  .map(host -> new InetSocketAddress(host, port))
+                  .collect(ImmutableList.toImmutableList());
+          nodeFilter = node -> allowedHosts.contains(node.getEndPoint().resolve());
+        }
       }
 
     } catch (ConfigException e) {
       throw ConfigUtils.configExceptionToBulkConfigurationException(e, "driver");
+    }
+  }
+
+  private boolean isCloudCompatible(boolean write, ConsistencyLevel cl) {
+    if (write) {
+      int protocolCode = cl.getProtocolCode();
+      return protocolCode != ProtocolConstants.ConsistencyLevel.ANY
+          && protocolCode != ProtocolConstants.ConsistencyLevel.ONE
+          && protocolCode != ProtocolConstants.ConsistencyLevel.LOCAL_ONE;
+    } else {
+      // All levels accepted when reading
+      return true;
     }
   }
 
@@ -340,7 +390,13 @@ public class DriverSettings {
                 configLoader, programmaticArguments, dseProgrammaticArgumentsBuilder.build()) {
               @Override
               protected Optional<SslHandlerFactory> buildSslHandlerFactory() {
-                return Optional.ofNullable(sslHandlerFactory);
+                // If a JDK-based factory was provided through the public API, wrap it;
+                // this can only happen in DSBulk if a secure connect bundle was provided.
+                if (getSslEngineFactory().isPresent()) {
+                  return getSslEngineFactory().map(JdkSslHandlerFactory::new);
+                } else {
+                  return Optional.ofNullable(sslHandlerFactory);
+                }
               }
             };
           }
