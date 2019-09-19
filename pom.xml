@@ -906,6 +906,16 @@ https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
   </profiles>
 
   <repositories>
+      <repository>
+        <id>datastax-releases-public-local</id>
+        <url>https://repo.datastax.com/datastax-public-releases-local/</url>
+        <releases>
+          <enabled>true</enabled>
+        </releases>
+        <snapshots>
+          <enabled>false</enabled>
+        </snapshots>
+      </repository>
     <repository>
       <id>datastax-releases-local</id>
       <name>DataStax Local Releases</name>

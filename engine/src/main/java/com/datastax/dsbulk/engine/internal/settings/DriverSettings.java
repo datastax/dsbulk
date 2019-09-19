@@ -12,6 +12,7 @@ import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.BULK_LOADE
 import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.clientId;
 import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.getBulkLoaderVersion;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.ADDRESS_TRANSLATOR_CLASS;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CLOUD_SECURE_CONNECT_BUNDLE;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONNECTION_MAX_REQUESTS;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONNECTION_POOL_LOCAL_SIZE;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONNECTION_POOL_REMOTE_SIZE;
@@ -84,6 +85,7 @@ public class DriverSettings {
 
   private static final String HOSTS = "hosts";
   private static final String PORT = "port";
+  private static final String CLOUD = "cloud";
   private static final String POOLING_LOCAL_CONNECTIONS =
       POOLING + '.' + LOCAL + '.' + "connections";
   private static final String POOLING_REMOTE_CONNECTIONS =
@@ -150,16 +152,23 @@ public class DriverSettings {
       // Disable driver-level query warnings, these are handled by LogManager
       driverConfig.put(REQUEST_LOG_WARNINGS, false);
 
-      List<String> hosts = config.getStringList(HOSTS);
-      if (hosts.isEmpty()) {
-        throw new BulkConfigurationException(
-            "Setting driver.hosts is mandatory. Please set driver.hosts "
-                + "and try again. See settings.md or help for more information.");
-      }
+      String secureBundleLocation = config.getString(CLOUD);
+
       int port = config.getInt(PORT);
-      driverConfig.put(
-          CONTACT_POINTS,
-          hosts.stream().map(host -> host + ':' + port).collect(Collectors.toList()));
+      if (secureBundleLocation == null) {
+        List<String> hosts = config.getStringList(HOSTS);
+        if (hosts.isEmpty()) {
+          throw new BulkConfigurationException(
+              "Setting driver.hosts is mandatory. Please set driver.hosts "
+                  + "and try again. See settings.md or help for more information.");
+        }
+
+        driverConfig.put(
+            CONTACT_POINTS,
+            hosts.stream().map(host -> host + ':' + port).collect(Collectors.toList()));
+      } else {
+        driverConfig.put(CLOUD_SECURE_CONNECT_BUNDLE, secureBundleLocation);
+      }
 
       Compression compression = config.getEnum(Compression.class, PROTOCOL_COMPRESSION);
       if (compression != Compression.NONE) {
@@ -204,18 +213,21 @@ public class DriverSettings {
       driverConfig.put(
           TIMESTAMP_GENERATOR_CLASS,
           config.getClass(TIMESTAMP_GENERATOR, TimestampGenerator.class).getSimpleName());
-      driverConfig.put(
-          ADDRESS_TRANSLATOR_CLASS,
-          config.getClass(ADDRESS_TRANSLATOR, AddressTranslator.class).getSimpleName());
+      if (secureBundleLocation == null) {
+        driverConfig.put(
+            ADDRESS_TRANSLATOR_CLASS,
+            config.getClass(ADDRESS_TRANSLATOR, AddressTranslator.class).getSimpleName());
+      }
 
       driverConfig.put(
           LOAD_BALANCING_POLICY_CLASS, DCInferringDseLoadBalancingPolicy.class.getName());
       driverConfig.put(RETRY_POLICY_CLASS, MultipleRetryPolicy.class.getName());
       driverConfig.put(
           BulkDriverOption.RETRY_POLICY_MAX_RETRIES, config.getInt(POLICY_MAX_RETRIES));
-
       authProvider = AuthProviderFactory.createAuthProvider(config);
-      sslHandlerFactory = SslHandlerFactoryFactory.createSslHandlerFactory(config);
+      if (secureBundleLocation == null) {
+        sslHandlerFactory = SslHandlerFactoryFactory.createSslHandlerFactory(config);
+      }
 
       String localDc = null;
       // Default for localDc is null
@@ -309,30 +321,45 @@ public class DriverSettings {
                   .resolve();
           return config.getConfig("datastax-java-driver");
         };
-    DseSessionBuilder sessionBuilder =
-        new DseSessionBuilder() {
-          @Override
-          protected DriverContext buildContext(
-              DriverConfigLoader configLoader, ProgrammaticArguments programmaticArguments) {
-            return new DseDriverContext(
-                configLoader, programmaticArguments, dseProgrammaticArgumentsBuilder.build()) {
+    DseSessionBuilder sessionBuilder;
+    if (sslHandlerFactory != null) {
+      sessionBuilder =
+          new DseSessionBuilder() {
+            @Override
+            protected DriverContext buildContext(
+                DriverConfigLoader configLoader, ProgrammaticArguments programmaticArguments) {
+              return new DseDriverContext(
+                  configLoader, programmaticArguments, dseProgrammaticArgumentsBuilder.build()) {
+                @Override
+                protected Optional<SslHandlerFactory> buildSslHandlerFactory() {
+                  return Optional.ofNullable(sslHandlerFactory);
+                }
+              };
+            }
+          };
+    } else {
+      sessionBuilder =
+          new DseSessionBuilder() {
+            @Override
+            protected DriverContext buildContext(
+                DriverConfigLoader configLoader, ProgrammaticArguments programmaticArguments) {
+              return new DseDriverContext(
+                  configLoader, programmaticArguments, dseProgrammaticArgumentsBuilder.build()) {};
+            }
+          };
+    }
+    sessionBuilder
+        .withApplicationVersion(getBulkLoaderVersion())
+        .withApplicationName(BULK_LOADER_APPLICATION_NAME + " " + executionId)
+        .withClientId(clientId(executionId))
+        .withAuthProvider(authProvider)
+        .withConfigLoader(
+            new DefaultDseDriverConfigLoader(configSupplier) {
               @Override
-              protected Optional<SslHandlerFactory> buildSslHandlerFactory() {
-                return Optional.ofNullable(sslHandlerFactory);
+              public boolean supportsReloading() {
+                return false;
               }
-            };
-          }
-        }.withApplicationVersion(getBulkLoaderVersion())
-            .withApplicationName(BULK_LOADER_APPLICATION_NAME + " " + executionId)
-            .withClientId(clientId(executionId))
-            .withAuthProvider(authProvider)
-            .withConfigLoader(
-                new DefaultDseDriverConfigLoader(configSupplier) {
-                  @Override
-                  public boolean supportsReloading() {
-                    return false;
-                  }
-                });
+            });
     if (localDc != null) {
       sessionBuilder.withLocalDatacenter(localDc);
     }
