@@ -111,7 +111,7 @@ public class UnloadWorkflow implements Workflow {
     codecSettings.init();
     monitoringSettings.init();
     executorSettings.init();
-    driverSettings.init(executorSettings.getExecutorConfig());
+    driverSettings.init(false, executorSettings.getExecutorConfig());
     connectorSettings.init();
     connector = connectorSettings.getConnector();
     connector.init();

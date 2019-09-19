@@ -117,7 +117,7 @@ public class LoadWorkflow implements Workflow {
     batchSettings.init();
     executorSettings.init();
     engineSettings.init();
-    driverSettings.init(executorSettings.getExecutorConfig());
+    driverSettings.init(true, executorSettings.getExecutorConfig());
     session = driverSettings.newSession(executionId);
     checkProductCompatibility(session);
     printDebugInfoAboutCluster(session);
