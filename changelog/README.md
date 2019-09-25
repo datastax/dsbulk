@@ -1,5 +1,11 @@
 ## Changelog
 
+### DataStax Graph (in progress)
+
+- [new feature] DAT-354: Add Basic NGDG support to DSBulk Engine.
+- [improvement] DAT-361: Display metrics in vertices or edges per second in graph mode.
+
+
 ### 1.3.4
 
 - [bug] DAT-414: DSBulk should allow INSERT queries without clustering column when all columns are static.
