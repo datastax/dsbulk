@@ -121,7 +121,7 @@ public class SchemaSettings {
   private static final String QUERY = "query";
   private static final String QUERY_TTL = "queryTtl";
   private static final String QUERY_TIMESTAMP = "queryTimestamp";
-  private static final String NATIVE = "Native";
+  private static final String CORE = "Core";
   private static final String SPLITS = "splits";
 
   private final LoaderConfig config;
@@ -1331,6 +1331,6 @@ public class SchemaSettings {
   }
 
   private static boolean isSupportedGraph(KeyspaceMetadata keyspace) {
-    return NATIVE.equals(keyspace.getGraphEngine());
+    return CORE.equals(keyspace.getGraphEngine());
   }
 }

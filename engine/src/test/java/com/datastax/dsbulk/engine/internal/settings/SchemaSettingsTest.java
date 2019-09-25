@@ -2028,7 +2028,7 @@ class SchemaSettingsTest {
     VertexMetadata vertexMetadata = mock(VertexMetadata.class);
     when(table.getVertexMetadata()).thenReturn(vertexMetadata);
     when(vertexMetadata.getLabelName()).thenReturn("v1");
-    when(keyspace.getGraphEngine()).thenReturn("Native");
+    when(keyspace.getGraphEngine()).thenReturn("Core");
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("graph=ks, vertex=v1")
@@ -2045,7 +2045,7 @@ class SchemaSettingsTest {
     when(edgeMetadata.getLabelName()).thenReturn("e1");
     when(edgeMetadata.getFromLabel()).thenReturn("v1");
     when(edgeMetadata.getToLabel()).thenReturn("v2");
-    when(keyspace.getGraphEngine()).thenReturn("Native");
+    when(keyspace.getGraphEngine()).thenReturn("Core");
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("graph=ks, edge=e1, from=v1, to=v2")
@@ -2165,22 +2165,22 @@ class SchemaSettingsTest {
   }
 
   @Test
-  void should_error_when_graph_options_provided_but_keyspace_not_native_graph() {
+  void should_error_when_graph_options_provided_but_keyspace_not_core_graph() {
     VertexMetadata vertexMetadata = mock(VertexMetadata.class);
     when(table.getVertexMetadata()).thenReturn(vertexMetadata);
     when(vertexMetadata.getLabelName()).thenReturn("v1");
-    when(keyspace.getGraphEngine()).thenReturn("Legacy");
+    when(keyspace.getGraphEngine()).thenReturn("Classic");
     LoaderConfig config = makeLoaderConfig("graph=ks, vertex=v1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, cluster, false, true))
         .isInstanceOf(IllegalStateException.class)
         .hasMessage(
-            "Graph operations requested but provided graph ks was created with an unsupported graph engine: Legacy");
+            "Graph operations requested but provided graph ks was created with an unsupported graph engine: Classic");
   }
 
   @Test
-  void should_warn_when_keyspace_is_native_graph_but_non_graph_options_provided() {
-    when(keyspace.getGraphEngine()).thenReturn("Native");
+  void should_warn_when_keyspace_is_core_graph_but_non_graph_options_provided() {
+    when(keyspace.getGraphEngine()).thenReturn("Core");
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("keyspace=ks, table=t1")
@@ -2195,8 +2195,8 @@ class SchemaSettingsTest {
   }
 
   @Test
-  void should_warn_when_keyspace_is_legacy_graph_and_workflow_is_load() {
-    when(keyspace.getGraphEngine()).thenReturn("Legacy");
+  void should_warn_when_keyspace_is_classic_graph_and_workflow_is_load() {
+    when(keyspace.getGraphEngine()).thenReturn("Classic");
     LoaderConfig config =
         new DefaultLoaderConfig(
             ConfigFactory.parseString("keyspace=ks, table=t1")
@@ -2206,7 +2206,7 @@ class SchemaSettingsTest {
     assertThat(logs)
         .hasMessageContaining(
             "Provided keyspace is a graph created with a legacy graph engine: "
-                + "Legacy; attempting to load data into such a keyspace is not supported and "
+                + "Classic; attempting to load data into such a keyspace is not supported and "
                 + "may put the graph in an inconsistent state.");
   }
 

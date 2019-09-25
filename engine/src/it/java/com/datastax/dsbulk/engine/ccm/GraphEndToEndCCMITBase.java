@@ -18,7 +18,7 @@ abstract class GraphEndToEndCCMITBase extends EndToEndCCMITBase {
       "{'class': 'SimpleStrategy', 'replication_factor' :1}";
 
   private static final String CREATE_GRAPH_GREMLIN_QUERY =
-      "system.graph(name).ifNotExists().withReplication(replicationConfig).nativeEngine().create()";
+      "system.graph(name).ifNotExists().withReplication(replicationConfig).coreEngine().create()";
 
   static final String FRAUD_GRAPH = "Fraud";
 
@@ -33,7 +33,7 @@ abstract class GraphEndToEndCCMITBase extends EndToEndCCMITBase {
   static final String CUSTOMER_PLACES_ORDER_TABLE =
       CUSTOMER_VERTEX_LABEL + "__" + PLACES_EDGE_LABEL + "__" + ORDER_VERTEX_LABEL;
 
-  static final String CUSTOMER_ORDER_MAPPINGS = "Customerid = out_Customerid, Orderid = in_Orderid";
+  static final String CUSTOMER_ORDER_MAPPINGS = "Customerid = Customer_Customerid, Orderid = Order_Orderid";
 
   static final String SELECT_ALL_CUSTOMERS =
       "SELECT * FROM \"" + FRAUD_GRAPH + "\".\"" + CUSTOMER_TABLE + "\"";
@@ -66,7 +66,7 @@ abstract class GraphEndToEndCCMITBase extends EndToEndCCMITBase {
 
   void createOrderVertex() {
     dseSession.executeGraph(
-        "g.api().schema().vertexLabel(\""
+        "schema.vertexLabel(\""
             + ORDER_VERTEX_LABEL
             + "\").ifNotExists()"
             + ".partitionBy(\"Orderid\", Uuid)"
@@ -81,7 +81,7 @@ abstract class GraphEndToEndCCMITBase extends EndToEndCCMITBase {
 
   void createCustomerPlacesOrderEdge() {
     dseSession.executeGraph(
-        "g.api().schema().edgeLabel(\""
+        "schema.edgeLabel(\""
             + PLACES_EDGE_LABEL
             + "\").from(\""
             + CUSTOMER_VERTEX_LABEL
