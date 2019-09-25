@@ -42,9 +42,7 @@ public class MultipleRetryPolicy implements RetryPolicy {
       int received,
       boolean dataPresent,
       int retryCount) {
-    return (retryCount < maxRetryCount && received >= blockFor && !dataPresent)
-        ? RetryDecision.RETRY_SAME
-        : RetryDecision.RETHROW;
+    return retryCount < maxRetryCount ? RetryDecision.RETRY_SAME : RetryDecision.RETHROW;
   }
 
   @Override
@@ -55,7 +53,7 @@ public class MultipleRetryPolicy implements RetryPolicy {
       int blockFor,
       int received,
       int retryCount) {
-    return (retryCount < maxRetryCount) ? RetryDecision.RETRY_SAME : RetryDecision.RETHROW;
+    return retryCount < maxRetryCount ? RetryDecision.RETRY_SAME : RetryDecision.RETHROW;
   }
 
   @Override
