@@ -14,7 +14,6 @@ import com.datastax.oss.driver.api.core.ProtocolVersion;
 import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
 import com.datastax.oss.driver.api.core.context.DriverContext;
 import com.datastax.oss.driver.api.core.cql.BoundStatement;
-import com.datastax.oss.driver.api.core.cql.ColumnDefinitions;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.driver.api.core.metadata.token.Token;
@@ -87,14 +86,7 @@ public class BulkBoundStatement<T> implements BoundStatement, BulkStatement<T> {
   @Nullable
   @Override
   public CqlIdentifier getRoutingKeyspace() {
-    // FIXME remove when JAVA-2430 is fixed
-    CqlIdentifier routingKeyspace = delegate.getRoutingKeyspace();
-    if (routingKeyspace != null) {
-      return routingKeyspace;
-    } else {
-      ColumnDefinitions definitions = getPreparedStatement().getVariableDefinitions();
-      return (definitions.size() == 0) ? null : definitions.get(0).getKeyspace();
-    }
+    return delegate.getRoutingKeyspace();
   }
 
   @NonNull

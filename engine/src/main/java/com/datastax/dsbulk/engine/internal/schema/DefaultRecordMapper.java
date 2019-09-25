@@ -27,7 +27,6 @@ import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.type.DataType;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
-import com.datastax.oss.driver.internal.core.util.RoutingKey;
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSet;
@@ -37,7 +36,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -46,7 +44,6 @@ import java.util.function.Function;
 public class DefaultRecordMapper implements RecordMapper {
 
   private final PreparedStatement insertStatement;
-  private final Set<CQLWord> partitionKeyVariables;
   private final ImmutableSet<CQLWord> primaryKeyVariables;
   private final ProtocolVersion protocolVersion;
   private final Mapping mapping;
@@ -59,7 +56,6 @@ public class DefaultRecordMapper implements RecordMapper {
 
   public DefaultRecordMapper(
       PreparedStatement insertStatement,
-      Set<CQLWord> partitionKeyVariables,
       Set<CQLWord> primaryKeyVariables,
       ProtocolVersion protocolVersion,
       Mapping mapping,
@@ -69,7 +65,6 @@ public class DefaultRecordMapper implements RecordMapper {
       boolean allowMissingFields) {
     this(
         insertStatement,
-        partitionKeyVariables,
         primaryKeyVariables,
         protocolVersion,
         mapping,
@@ -83,7 +78,6 @@ public class DefaultRecordMapper implements RecordMapper {
   @VisibleForTesting
   DefaultRecordMapper(
       PreparedStatement insertStatement,
-      Set<CQLWord> partitionKeyVariables,
       Set<CQLWord> primaryKeyVariables,
       ProtocolVersion protocolVersion,
       Mapping mapping,
@@ -93,7 +87,6 @@ public class DefaultRecordMapper implements RecordMapper {
       boolean allowMissingFields,
       Function<PreparedStatement, BoundStatementBuilder> boundStatementBuilderFactory) {
     this.insertStatement = insertStatement;
-    this.partitionKeyVariables = ImmutableSet.copyOf(partitionKeyVariables);
     this.primaryKeyVariables = ImmutableSet.copyOf(primaryKeyVariables);
     this.protocolVersion = protocolVersion;
     this.mapping = mapping;
@@ -134,9 +127,6 @@ public class DefaultRecordMapper implements RecordMapper {
         ensureAllVariablesSet(builder);
       }
       record.clear();
-      if (protocolVersion.getCode() <= DefaultProtocolVersion.V3.getCode()) {
-        builder = setRoutingKey(builder);
-      }
       BoundStatement bs = builder.build();
       return new BulkBoundStatement<>(record, bs);
     } catch (Exception e) {
@@ -226,28 +216,5 @@ public class DefaultRecordMapper implements RecordMapper {
       indices.add(i);
     }
     return ImmutableMap.copyOf(variablesToIndices);
-  }
-
-  // FIXME remove when JAVA-2443 is fixed
-  private BoundStatementBuilder setRoutingKey(BoundStatementBuilder bs) {
-    ByteBuffer[] routingKeyComponents = new ByteBuffer[partitionKeyVariables.size()];
-    Iterator<CQLWord> iterator = partitionKeyVariables.iterator();
-    for (int i = 0; iterator.hasNext(); i++) {
-      CQLWord variable = iterator.next();
-      routingKeyComponents[i] = bs.getBytesUnsafe(variable.asIdentifier());
-    }
-    if (allSet(routingKeyComponents)) {
-      bs = bs.setRoutingKey(RoutingKey.compose(routingKeyComponents));
-    }
-    return bs;
-  }
-
-  private static boolean allSet(ByteBuffer[] routingKeyComponents) {
-    for (ByteBuffer routingKeyComponent : routingKeyComponents) {
-      if (routingKeyComponent == null) {
-        return false;
-      }
-    }
-    return true;
   }
 }

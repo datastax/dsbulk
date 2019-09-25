@@ -207,7 +207,6 @@ class DefaultRecordMapperTest {
         new DefaultRecordMapper(
             insertStatement,
             set(C1, C2, C3),
-            set(C1, C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -250,7 +249,6 @@ class DefaultRecordMapperTest {
         new DefaultRecordMapper(
             insertStatement,
             set(C1, C2, C3),
-            set(C1, C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -290,7 +288,6 @@ class DefaultRecordMapperTest {
         new DefaultRecordMapper(
             insertStatement,
             set(C1, C2, C3),
-            set(C1, C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -327,7 +324,6 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            set(C1, C2, C3),
             set(C1, C2, C3),
             V4,
             mapping,
@@ -370,7 +366,6 @@ class DefaultRecordMapperTest {
         new DefaultRecordMapper(
             insertStatement,
             set(C1, C2, C3),
-            set(C1, C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -394,7 +389,6 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            set(C1, C2, C3),
             set(C1, C3),
             V4,
             mapping,
@@ -420,7 +414,6 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            set(C1, C2, C3),
             set(C2, C3),
             V4,
             mapping,
@@ -444,7 +437,6 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            set(C1, C2, C3),
             set(C1, C2, C3),
             V4,
             mapping,
@@ -470,7 +462,6 @@ class DefaultRecordMapperTest {
         new DefaultRecordMapper(
             insertStatement,
             set(C1, C2, C3),
-            set(C1, C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -494,7 +485,6 @@ class DefaultRecordMapperTest {
         new DefaultRecordMapper(
             insertStatement,
             set(C1, C2, C3),
-            set(C1, C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -517,7 +507,6 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            set(C1, C2, C3),
             set(C1, C2, C3),
             V4,
             mapping,
@@ -543,7 +532,6 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            set(C1, C2, C3),
             set(C1, C2, C3),
             V4,
             mapping,
