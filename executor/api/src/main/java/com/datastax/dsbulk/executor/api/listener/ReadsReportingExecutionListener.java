@@ -22,6 +22,7 @@ import com.datastax.dsbulk.commons.log.LogSink;
 import java.util.SortedMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,7 +74,7 @@ public class ReadsReportingExecutionListener extends AbstractMetricsReportingExe
   private final Counter failed;
   private final Counter successful;
   private final Counter inFlight;
-  private final Meter received;
+  @Nullable private final Meter received;
   private final LogSink sink;
 
   /**
@@ -107,13 +108,14 @@ public class ReadsReportingExecutionListener extends AbstractMetricsReportingExe
     this.expectedTotal = expectedTotal;
     this.sink = sink;
     countMessage = createCountMessageTemplate(expectedTotal);
-    throughputMessage = createThroughputMessageTemplate();
+    throughputMessage =
+        createThroughputMessageTemplate(delegate.getBytesReceivedMeter().isPresent());
     latencyMessage = createLatencyMessageTemplate();
     timer = delegate.getTotalReadsTimer();
     successful = delegate.getSuccessfulReadsCounter();
     failed = delegate.getFailedReadsCounter();
     inFlight = delegate.getInFlightRequestsCounter();
-    received = delegate.getBytesReceivedMeter();
+    received = delegate.getBytesReceivedMeter().orElse(null);
   }
 
   private ReadsReportingExecutionListener(
@@ -127,13 +129,14 @@ public class ReadsReportingExecutionListener extends AbstractMetricsReportingExe
     this.expectedTotal = expectedTotal;
     this.sink = sink;
     countMessage = createCountMessageTemplate(expectedTotal);
-    throughputMessage = createThroughputMessageTemplate();
+    throughputMessage =
+        createThroughputMessageTemplate(delegate.getBytesReceivedMeter().isPresent());
     latencyMessage = createLatencyMessageTemplate();
     timer = delegate.getTotalReadsTimer();
     successful = delegate.getSuccessfulReadsCounter();
     failed = delegate.getFailedReadsCounter();
     inFlight = delegate.getInFlightRequestsCounter();
-    received = delegate.getBytesReceivedMeter();
+    received = delegate.getBytesReceivedMeter().orElse(null);
   }
 
   @Override
@@ -166,15 +169,19 @@ public class ReadsReportingExecutionListener extends AbstractMetricsReportingExe
               achieved));
     }
     double throughput = timer.getMeanRate();
-    double sizeReceived = received.getMeanRate();
-    sink.accept(
-        String.format(
-            throughputMessage,
-            convertRate(throughput),
-            rateUnit,
-            convertRate(sizeReceived / BYTES_PER_MB),
-            rateUnit,
-            throughput == 0 ? 0 : (sizeReceived / BYTES_PER_KB) / throughput));
+    if (received != null) {
+      double sizeReceived = received.getMeanRate();
+      sink.accept(
+          String.format(
+              throughputMessage,
+              convertRate(throughput),
+              rateUnit,
+              convertRate(sizeReceived / BYTES_PER_MB),
+              rateUnit,
+              throughput == 0 ? 0 : (sizeReceived / BYTES_PER_KB) / throughput));
+    } else {
+      sink.accept(String.format(throughputMessage, convertRate(throughput), rateUnit));
+    }
     sink.accept(
         String.format(
             latencyMessage,
@@ -203,8 +210,12 @@ public class ReadsReportingExecutionListener extends AbstractMetricsReportingExe
     }
   }
 
-  private static String createThroughputMessageTemplate() {
-    return "Throughput: %,.0f reads/%s, %,.2f mb/%s (%,.2f kb/read)";
+  private static String createThroughputMessageTemplate(boolean trackThroughputInBytes) {
+    if (trackThroughputInBytes) {
+      return "Throughput: %,.0f reads/%s, %,.2f mb/%s (%,.2f kb/read)";
+    } else {
+      return "Throughput: %,.0f reads/%s";
+    }
   }
 
   private static String createLatencyMessageTemplate() {

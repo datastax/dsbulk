@@ -8,32 +8,26 @@
  */
 package com.datastax.dsbulk.engine.internal.log;
 
+import com.datastax.dsbulk.engine.internal.log.threshold.ErrorThreshold;
+
 /**
  * Thrown when the engine encounters too many errors. This exception triggers the operation
  * abortion.
  */
 public class TooManyErrorsException extends RuntimeException {
 
-  private final int maxErrors;
-  private final float maxErrorRatio;
+  private final ErrorThreshold threshold;
 
-  TooManyErrorsException(int maxErrors) {
-    super("Too many errors, the maximum allowed is " + maxErrors + ".");
-    this.maxErrors = maxErrors;
-    maxErrorRatio = -1;
+  public TooManyErrorsException(ErrorThreshold threshold) {
+    super(createErrorMessage(threshold));
+    this.threshold = threshold;
   }
 
-  TooManyErrorsException(float maxErrorRatio) {
-    super("Too many errors, the maximum percentage allowed is " + (maxErrorRatio * 100f) + "%.");
-    this.maxErrorRatio = maxErrorRatio;
-    maxErrors = -1;
+  private static String createErrorMessage(ErrorThreshold threshold) {
+    return "Too many errors, the maximum allowed is " + threshold.thresholdAsString() + ".";
   }
 
-  public int getMaxErrors() {
-    return maxErrors;
-  }
-
-  public float getMaxErrorRatio() {
-    return maxErrorRatio;
+  public ErrorThreshold getThreshold() {
+    return threshold;
   }
 }

@@ -22,12 +22,38 @@ public abstract class JsonNodeConvertingCodec<T> extends ConvertingCodec<JsonNod
     this.nullStrings = nullStrings;
   }
 
+  /**
+   * Whether the input is null.
+   *
+   * <p>This method should be used to inspect external inputs that are meant to be converted <em>to
+   * textual CQL types only (text, varchar and ascii)</em>.
+   *
+   * <p>It always considers the empty string as NOT equivalent to NULL, unless the user clearly
+   * specifies that the empty string is to be considered as NULL, through the <code>
+   * codec.nullStrings</code> setting.
+   *
+   * <p>Do NOT use this method for non-textual CQL types; use {@link #isNullOrEmpty(JsonNode)}
+   * instead.
+   */
   protected boolean isNull(JsonNode node) {
     return node == null
         || node.isNull()
         || (node.isValueNode() && nullStrings.contains(node.asText()));
   }
 
+  /**
+   * Whether the input is null or empty.
+   *
+   * <p>This method should be used to inspect external inputs that are meant to be converted <em>to
+   * non-textual CQL types only</em>.
+   *
+   * <p>It always considers the empty string as equivalent to NULL, which is in compliance with the
+   * documentation of <code>codec.nullStrings</code>: "Note that, regardless of this setting, DSBulk
+   * will always convert empty strings to `null` if the target CQL type is not textual (i.e. not
+   * text, varchar or ascii)."
+   *
+   * <p>Do NOT use this method for textual CQL types; use {@link #isNull(JsonNode)} instead.
+   */
   protected boolean isNullOrEmpty(JsonNode node) {
     return isNull(node) || (node.isValueNode() && node.asText().isEmpty());
   }

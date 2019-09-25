@@ -122,7 +122,7 @@ class JsonNodeToInstantCodecTest {
                 CqlTemporalFormat.DEFAULT_INSTANCE.format(minutesAfterMillennium)));
     assertThat(codec4)
         .convertsFromInternal(minutesAfterMillennium)
-        .toExternal(JSON_NODE_FACTORY.textNode("123456"));
+        .toExternal(JSON_NODE_FACTORY.numberNode(123456L));
   }
 
   @Test

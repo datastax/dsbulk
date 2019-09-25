@@ -101,16 +101,12 @@ public class TokenRangeReadStatementGenerator {
 
   private BuiltStatement buildWrapped(TokenRange<?, ?> range) {
     String[] pks =
-        table
-            .getPartitionKey()
-            .stream()
+        table.getPartitionKey().stream()
             .map(ColumnMetadata::getName)
             .map(Metadata::quoteIfNecessary)
             .toArray(String[]::new);
     String[] all =
-        table
-            .getColumns()
-            .stream()
+        table.getColumns().stream()
             .map(ColumnMetadata::getName)
             .map(Metadata::quoteIfNecessary)
             .toArray(String[]::new);

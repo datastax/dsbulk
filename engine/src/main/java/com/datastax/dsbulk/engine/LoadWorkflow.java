@@ -82,6 +82,7 @@ public class LoadWorkflow implements Workflow {
   private Function<Flux<Void>, Flux<Void>> terminationHandler;
   private Function<Flux<WriteResult>, Flux<WriteResult>> failedWritesHandler;
   private Function<Flux<WriteResult>, Flux<Void>> resultPositionsHndler;
+  private Function<Flux<WriteResult>, Flux<WriteResult>> queryWarningsHandler;
   private int numCores;
 
   LoadWorkflow(LoaderConfig config) {
@@ -131,7 +132,7 @@ public class LoadWorkflow implements Workflow {
         monitoringSettings.newMetricsManager(
             WorkflowType.LOAD,
             batchingEnabled,
-            logManager.getExecutionDirectory(),
+            logManager.getOperationDirectory(),
             logSettings.getVerbosity(),
             cluster.getMetrics().getRegistry(),
             cluster.getConfiguration().getProtocolOptions().getProtocolVersion(),
@@ -162,6 +163,7 @@ public class LoadWorkflow implements Workflow {
     totalItemsCounter = logManager.newTotalItemsCounter();
     failedRecordsHandler = logManager.newFailedRecordsHandler();
     unmappableStatementsHandler = logManager.newUnmappableStatementsHandler();
+    queryWarningsHandler = logManager.newQueryWarningsHandler();
     failedWritesHandler = logManager.newFailedWritesHandler();
     resultPositionsHndler = logManager.newResultPositionsHandler();
     terminationHandler = logManager.newTerminationHandler();
@@ -221,6 +223,7 @@ public class LoadWorkflow implements Workflow {
                 stmts = stmts.window(batchBufferSize).flatMap(batcher).transform(batcherMonitor);
               }
               return executeStatements(stmts)
+                  .transform(queryWarningsHandler)
                   .transform(failedWritesHandler)
                   .transform(resultPositionsHndler)
                   .subscribeOn(scheduler);
@@ -248,6 +251,7 @@ public class LoadWorkflow implements Workflow {
                 stmts = stmts.transform(batcher).transform(batcherMonitor);
               }
               return executeStatements(stmts)
+                  .transform(queryWarningsHandler)
                   .transform(failedWritesHandler)
                   .transform(resultPositionsHndler)
                   .subscribeOn(scheduler);

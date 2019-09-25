@@ -30,7 +30,7 @@ public class JsonNodeToLineStringCodec extends JsonNodeConvertingCodec<LineStrin
 
   @Override
   public LineString externalToInternal(JsonNode node) {
-    if (isNull(node)) {
+    if (isNullOrEmpty(node)) {
       return null;
     }
     try {

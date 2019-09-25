@@ -8,6 +8,7 @@
  */
 package com.datastax.dsbulk.connectors.json;
 
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.createURLFile;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readFile;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
@@ -15,6 +16,7 @@ import static java.nio.charset.StandardCharsets.ISO_8859_1;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.util.Throwables.getRootCause;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
@@ -41,7 +43,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
-import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.FileAlreadyExistsException;
@@ -52,8 +53,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.assertj.core.util.Throwables;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.slf4j.event.Level;
 import reactor.core.publisher.Flux;
 
 @ExtendWith(LogInterceptingExtension.class)
@@ -72,6 +77,21 @@ class JsonConnectorTest {
   private final ObjectMapper objectMapper = new ObjectMapper();
 
   private final URI resource = URI.create("file://file1.csv");
+
+  private static Path MULTIPLE_URLS_FILE;
+
+  @BeforeAll
+  static void setup() throws IOException {
+    MULTIPLE_URLS_FILE =
+        createURLFile(
+            Arrays.asList(
+                rawURL("/part_1"), rawURL("/part_2"), rawURL("/root-custom/child/part-0003")));
+  }
+
+  @AfterAll
+  static void cleanup() throws IOException {
+    Files.delete(MULTIPLE_URLS_FILE);
+  }
 
   @Test
   void should_read_single_file_multi_doc() throws Exception {
@@ -486,6 +506,23 @@ class JsonConnectorTest {
     }
   }
 
+  // Test for DAT-443
+  @Test
+  void should_generate_file_name() throws Exception {
+    Path out = Files.createTempDirectory("test");
+    JsonConnector connector = new JsonConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("url = " + quoteJson(out))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, false);
+    connector.init();
+    connector.counter.set(999);
+    assertThat(connector.getOrCreateDestinationURL().getPath()).endsWith("output-001000.json");
+    connector.counter.set(999_999);
+    assertThat(connector.getOrCreateDestinationURL().getPath()).endsWith("output-1000000.json");
+  }
+
   @Test
   void should_roll_file_when_max_records_reached() throws Exception {
     JsonConnector connector = new JsonConnector();
@@ -622,8 +659,57 @@ class JsonConnectorTest {
     assertThatThrownBy(() -> connector.configure(settings, true))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
-            "An URL is mandatory when using the json connector. Please set connector.json.url and "
+            "A URL or URL file is mandatory when using the json connector for LOAD. Please set connector.json.url or connector.json.urlfile and "
                 + "try again. See settings.md or help for more information.");
+  }
+
+  @Test
+  void should_throw_if_passing_urlfile_parameter_for_write() {
+    JsonConnector connector = new JsonConnector();
+
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(String.format("urlfile = %s", quoteJson(MULTIPLE_URLS_FILE)))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+
+    assertThatThrownBy(() -> connector.configure(settings, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining("The urlfile parameter is not supported for UNLOAD");
+  }
+
+  @Test
+  void should_not_throw_and_log_if_passing_both_url_and_urlfile_parameter(
+      @LogCapture(level = Level.DEBUG) LogInterceptor logs) {
+    JsonConnector connector = new JsonConnector();
+
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "urlfile = %s, url = %s",
+                        quoteJson(MULTIPLE_URLS_FILE), quoteJson(MULTIPLE_URLS_FILE)))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+
+    assertDoesNotThrow(() -> connector.configure(settings, true));
+
+    assertThat(logs.getLoggedMessages())
+        .contains("You specified both URL and URL file. The URL file will take precedence.");
+  }
+
+  @Test
+  void should_accept_multiple_urls() throws IOException, URISyntaxException {
+    JsonConnector connector = new JsonConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "urlfile = %s, recursive = false, fileNamePattern = \"**/part-*\"",
+                        quoteJson(MULTIPLE_URLS_FILE)))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    assertThat(Flux.merge(connector.readByResource()).count().block()).isEqualTo(400);
+    connector.close();
   }
 
   @Test
@@ -709,9 +795,9 @@ class JsonConnectorTest {
           .satisfies(
               t ->
                   assertThat(
-                          t.getCause() instanceof FileAlreadyExistsException
+                          getRootCause(t) instanceof FileAlreadyExistsException
                               || Arrays.stream(t.getSuppressed())
-                                  .map(Throwable::getCause)
+                                  .map(Throwables::getRootCause)
                                   .anyMatch(FileAlreadyExistsException.class::isInstance))
                       .isTrue());
       connector.close();
@@ -783,7 +869,6 @@ class JsonConnectorTest {
     connector.init();
     assertThatThrownBy(
             () -> Flux.fromIterable(createRecords()).transform(connector.write()).blockLast())
-        .isInstanceOf(UncheckedIOException.class)
         .hasCauseInstanceOf(IOException.class)
         .hasRootCauseInstanceOf(IllegalArgumentException.class)
         .satisfies(
@@ -979,6 +1064,10 @@ class JsonConnectorTest {
 
   private static String url(String resource) {
     return quoteJson(JsonConnectorTest.class.getResource(resource));
+  }
+
+  private static String rawURL(String resource) {
+    return JsonConnectorTest.class.getResource(resource).toExternalForm();
   }
 
   private static Path path(@SuppressWarnings("SameParameterValue") String resource)

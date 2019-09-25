@@ -32,6 +32,8 @@ class StringToPointCodecTest {
         .toInternal(point)
         .convertsFromExternal(null)
         .toInternal(null)
+        .convertsFromExternal("")
+        .toInternal(null)
         .convertsFromExternal("NULL")
         .toInternal(null);
   }

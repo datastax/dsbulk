@@ -12,7 +12,6 @@ import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assumptions.assumingThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -26,10 +25,13 @@ import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
-import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
+import com.datastax.dsbulk.engine.internal.log.threshold.AbsoluteErrorThreshold;
+import com.datastax.dsbulk.engine.internal.log.threshold.ErrorThreshold;
+import com.datastax.dsbulk.engine.internal.log.threshold.RatioErrorThreshold;
+import com.datastax.dsbulk.engine.internal.log.threshold.UnlimitedErrorThreshold;
 import com.datastax.dsbulk.engine.tests.utils.LogUtils;
 import com.typesafe.config.ConfigFactory;
 import java.io.IOException;
@@ -89,9 +91,49 @@ class LogSettingsTest {
     try (LogManager logManager = settings.newLogManager(WorkflowType.LOAD, cluster)) {
       logManager.init();
       assertThat(logManager).isNotNull();
-      assertThat(logManager.getExecutionDirectory().toFile().getAbsolutePath())
+      assertThat(logManager.getOperationDirectory().toFile().getAbsolutePath())
           .isEqualTo(Paths.get("./target/logs/test").normalize().toFile().getAbsolutePath());
     }
+  }
+
+  @Test()
+  void should_accept_maxErrors_as_absolute_number() throws IOException {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxErrors = 20")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LogSettings settings = new LogSettings(config, "test");
+    settings.init();
+    ErrorThreshold threshold = settings.errorThreshold;
+    assertThat(threshold).isInstanceOf(AbsoluteErrorThreshold.class);
+    assertThat(((AbsoluteErrorThreshold) threshold).getMaxErrors()).isEqualTo(20);
+  }
+
+  @Test()
+  void should_accept_maxErrors_as_percentage() throws IOException {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxErrors = 20%")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LogSettings settings = new LogSettings(config, "test");
+    settings.init();
+    ErrorThreshold threshold = settings.errorThreshold;
+    assertThat(threshold).isInstanceOf(RatioErrorThreshold.class);
+    assertThat(((RatioErrorThreshold) threshold).getMaxErrorRatio()).isEqualTo(0.2f);
+    // min sample is fixed and cannot be changed by the user currently
+    assertThat(((RatioErrorThreshold) threshold).getMinSample()).isEqualTo(100);
+  }
+
+  @Test()
+  void should_disable_maxErrors() throws IOException {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxErrors = -42")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LogSettings settings = new LogSettings(config, "test");
+    settings.init();
+    ErrorThreshold threshold = settings.errorThreshold;
+    assertThat(threshold).isInstanceOf(UnlimitedErrorThreshold.class);
   }
 
   @Test()
@@ -107,11 +149,21 @@ class LogSettingsTest {
 
     config =
         new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxErrors = -1%")
+            ConfigFactory.parseString("maxErrors = 0%")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
 
     LogSettings settings2 = new LogSettings(config, "test");
     assertThatThrownBy(settings2::init)
+        .hasMessage(
+            "maxErrors must either be a number, or percentage between 0 and 100 exclusive.");
+
+    config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxErrors = -1%")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+
+    LogSettings settings3 = new LogSettings(config, "test");
+    assertThatThrownBy(settings3::init)
         .hasMessage(
             "maxErrors must either be a number, or percentage between 0 and 100 exclusive.");
   }
@@ -127,7 +179,7 @@ class LogSettingsTest {
     try (LogManager logManager = settings.newLogManager(WorkflowType.LOAD, cluster)) {
       logManager.init();
       assertThat(logManager).isNotNull();
-      assertThat(logManager.getExecutionDirectory().toFile())
+      assertThat(logManager.getOperationDirectory().toFile())
           .isEqualTo(tempFolder.resolve("test").toFile());
     }
   }
@@ -210,71 +262,6 @@ class LogSettingsTest {
     assertThat(contents)
         .contains("this is a test 1", "this is a test 2", "this is a test 3")
         .doesNotContain("this should not appear");
-  }
-
-  @Test
-  void should_throw_IAE_when_execution_directory_not_empty() throws Exception {
-    Path executionDir = tempFolder.resolve("TEST_EXECUTION_ID");
-    Path foo = executionDir.resolve("foo");
-    Files.createDirectories(foo);
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("directory = " + quoteJson(tempFolder))
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
-    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
-    assertThatThrownBy(settings::init)
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Execution directory exists but is not empty: " + executionDir);
-  }
-
-  @Test
-  void should_throw_IAE_when_execution_directory_not_writable() {
-    assumingThat(
-        !PlatformUtils.isWindows(),
-        () -> {
-          Path executionDir = tempFolder.resolve("TEST_EXECUTION_ID");
-          Files.createDirectories(executionDir);
-          assertThat(executionDir.toFile().setWritable(false, false)).isTrue();
-          LoaderConfig config =
-              new DefaultLoaderConfig(
-                  ConfigFactory.parseString("directory = " + quoteJson(tempFolder))
-                      .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
-          LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
-          assertThatThrownBy(settings::init)
-              .isInstanceOf(IllegalArgumentException.class)
-              .hasMessage("Execution directory exists but is not writable: " + executionDir);
-        });
-  }
-
-  @Test
-  void should_throw_IAE_when_execution_directory_not_directory() throws Exception {
-    Path executionDir = tempFolder.resolve("TEST_EXECUTION_ID");
-    Files.createFile(executionDir);
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("directory = " + quoteJson(tempFolder))
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
-    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
-    assertThatThrownBy(settings::init)
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Execution directory exists but is not a directory: " + executionDir);
-  }
-
-  @Test
-  void should_throw_IAE_when_execution_directory_contains_forbidden_chars() {
-    assumingThat(
-        !PlatformUtils.isWindows(),
-        () -> {
-          LoaderConfig config =
-              new DefaultLoaderConfig(
-                  ConfigFactory.parseString("directory = " + quoteJson(tempFolder))
-                      .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
-          char forbidden = '/';
-          LogSettings settings = new LogSettings(config, forbidden + " IS FORBIDDEN");
-          assertThatThrownBy(settings::init)
-              .isInstanceOf(IOException.class)
-              .hasMessageContaining(forbidden + " IS FORBIDDEN");
-        });
   }
 
   @Test
@@ -362,5 +349,42 @@ class LogSettingsTest {
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
             "Invalid value at 'stmt.level': Expecting one of ABRIDGED, NORMAL, EXTENDED, got 'NotALevel'");
+  }
+
+  @Test()
+  void should_accept_maxQueryWarnings_as_absolute_number() throws IOException {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxQueryWarnings = 20")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LogSettings settings = new LogSettings(config, "test");
+    settings.init();
+    ErrorThreshold threshold = settings.queryWarningsThreshold;
+    assertThat(threshold).isInstanceOf(AbsoluteErrorThreshold.class);
+    assertThat(((AbsoluteErrorThreshold) threshold).getMaxErrors()).isEqualTo(20);
+  }
+
+  @Test()
+  void should_not_accept_maxQueryWarnings_as_percentage() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxQueryWarnings = 20%")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LogSettings settings = new LogSettings(config, "test");
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("Invalid value for log.maxQueryWarnings: Expecting NUMBER, got STRING");
+  }
+
+  @Test()
+  void should_disable_maxQueryWarnings() throws IOException {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("maxQueryWarnings = -42")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LogSettings settings = new LogSettings(config, "test");
+    settings.init();
+    ErrorThreshold threshold = settings.queryWarningsThreshold;
+    assertThat(threshold).isInstanceOf(UnlimitedErrorThreshold.class);
   }
 }

@@ -10,10 +10,13 @@ package com.datastax.dsbulk.executor.api.ccm;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.exceptions.SyntaxError;
+import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.CCMExtension;
+import com.datastax.dsbulk.commons.tests.utils.Version;
 import com.datastax.dsbulk.executor.api.BulkExecutor;
 import com.datastax.dsbulk.executor.api.BulkExecutorITBase;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
@@ -28,11 +31,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class BulkExecutorCCMITBase extends BulkExecutorITBase {
 
+  private final CCMCluster ccm;
   private final Session session;
 
   public BulkExecutorCCMITBase(
-      Session session, BulkExecutor failFastExecutor, BulkExecutor failSafeExecutor) {
+      CCMCluster ccm,
+      Session session,
+      BulkExecutor failFastExecutor,
+      BulkExecutor failSafeExecutor) {
     super(failFastExecutor, failSafeExecutor);
+    this.ccm = ccm;
     this.session = session;
   }
 
@@ -52,6 +60,10 @@ public abstract class BulkExecutorCCMITBase extends BulkExecutorITBase {
 
   @Test
   void should_insert_CAS() {
+
+    assumeTrue(
+        ccm.getCassandraVersion().compareTo(Version.parse("2.0.0")) > 0, "LWT requires C* 2.0+");
+
     // regular insert
     WriteResult result = failSafeExecutor.writeSync("INSERT INTO test_write (pk, v) VALUES (0, 0)");
     assertThat(result.wasApplied()).isTrue();

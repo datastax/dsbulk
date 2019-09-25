@@ -60,10 +60,7 @@ public abstract class BulkExecutorSimulacronITBase extends BulkExecutorITBase {
   @Override
   protected void verifyWrites(int expected) {
     long size =
-        simulacron
-            .getLogs()
-            .getQueryLogs()
-            .stream()
+        simulacron.getLogs().getQueryLogs().stream()
             .filter(l -> l.getType().equals("QUERY"))
             .filter(l -> l.getQuery().contains("INSERT INTO test_write"))
             .count();

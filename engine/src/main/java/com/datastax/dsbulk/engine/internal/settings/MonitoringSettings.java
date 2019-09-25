@@ -30,6 +30,7 @@ public class MonitoringSettings {
   private static final String REPORT_RATE = "reportRate";
   private static final String EXPECTED_WRITES = "expectedWrites";
   private static final String EXPECTED_READS = "expectedReads";
+  private static final String TRACK_BYTES = "trackBytes";
   private static final String JMX = "jmx";
   private static final String CSV = "csv";
 
@@ -41,6 +42,7 @@ public class MonitoringSettings {
   private Duration reportRate;
   private long expectedWrites;
   private long expectedReads;
+  private boolean trackBytes;
   private boolean jmx;
   private boolean csv;
 
@@ -56,6 +58,7 @@ public class MonitoringSettings {
       reportRate = config.getDuration(REPORT_RATE);
       expectedWrites = config.getLong(EXPECTED_WRITES);
       expectedReads = config.getLong(EXPECTED_READS);
+      trackBytes = config.getBoolean(TRACK_BYTES);
       jmx = config.getBoolean(JMX);
       csv = config.getBoolean(CSV);
     } catch (ConfigException e) {
@@ -66,7 +69,7 @@ public class MonitoringSettings {
   public MetricsManager newMetricsManager(
       WorkflowType workflowType,
       boolean batchingEnabled,
-      Path executionDirectory,
+      Path operationDirectory,
       Verbosity verbosity,
       MetricRegistry registry,
       ProtocolVersion protocolVersion,
@@ -88,9 +91,10 @@ public class MonitoringSettings {
         durationUnit,
         expectedWrites,
         expectedReads,
+        trackBytes,
         jmx,
         csv,
-        executionDirectory,
+        operationDirectory,
         verbosity,
         reportRate,
         batchingEnabled,

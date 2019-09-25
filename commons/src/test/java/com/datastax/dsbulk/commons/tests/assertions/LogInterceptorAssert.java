@@ -36,17 +36,38 @@ public class LogInterceptorAssert
     return this;
   }
 
+  public LogInterceptorAssert doesNotHaveMessageContaining(String fragment) {
+    Optional<String> message =
+        actual.getLoggedMessages().stream().filter(s -> s.contains(fragment)).findAny();
+    assertThat(message)
+        .overridingErrorMessage(
+            "Expecting logged messages to not have a message containing '%s' but they did",
+            fragment)
+        .isNotPresent();
+    return this;
+  }
+
   public LogInterceptorAssert hasMessageMatching(String regex) {
     Optional<String> message =
-        actual
-            .getLoggedMessages()
-            .stream()
+        actual.getLoggedMessages().stream()
             .filter(s -> Pattern.compile(regex).matcher(s).find())
             .findAny();
     assertThat(message)
         .overridingErrorMessage(
             "Expecting logged messages to have a message matching '%s' but they did not", regex)
         .isPresent();
+    return this;
+  }
+
+  public LogInterceptorAssert doesNotHaveMessageMatching(String regex) {
+    Optional<String> message =
+        actual.getLoggedMessages().stream()
+            .filter(s -> Pattern.compile(regex).matcher(s).find())
+            .findAny();
+    assertThat(message)
+        .overridingErrorMessage(
+            "Expecting logged messages to not have a message matching '%s' but they did", regex)
+        .isNotPresent();
     return this;
   }
 

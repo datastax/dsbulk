@@ -11,6 +11,7 @@ package com.datastax.dsbulk.commons.tests.utils;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
@@ -18,6 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -29,8 +31,7 @@ public class FileUtils {
   }
 
   public static String readFile(Path file, Charset charset) throws IOException {
-    return Files.readAllLines(file, charset)
-        .stream()
+    return Files.readAllLines(file, charset).stream()
         .collect(Collectors.joining(System.lineSeparator()));
   }
 
@@ -63,8 +64,7 @@ public class FileUtils {
 
   public static Stream<String> readAllLinesInDirectoryAsStreamExcludingHeaders(
       Path dir, Charset charset) throws IOException {
-    return listAllFilesInDirectory(dir)
-        .stream()
+    return listAllFilesInDirectory(dir).stream()
         .flatMap(file -> readAllLines(file, charset).skip(1));
   }
 
@@ -107,5 +107,20 @@ public class FileUtils {
           });
     } catch (IOException ignored) {
     }
+  }
+
+  public static Path createURLFile(URL... urls) throws IOException {
+    Path file = Files.createTempFile("urlfile", null);
+    Files.write(
+        file,
+        Arrays.stream(urls).map(URL::toExternalForm).collect(Collectors.toList()),
+        StandardCharsets.UTF_8);
+    return file;
+  }
+
+  public static Path createURLFile(List<String> urls) throws IOException {
+    Path file = Files.createTempFile("urlfile", null);
+    Files.write(file, urls, StandardCharsets.UTF_8);
+    return file;
   }
 }

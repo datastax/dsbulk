@@ -25,8 +25,7 @@ public class BooleanToNumberCodec<INTERNAL extends Number>
   public BooleanToNumberCodec(TypeCodec<INTERNAL> targetCodec, List<BigDecimal> booleanNumbers) {
     super(targetCodec, Boolean.class);
     this.booleanNumbers =
-        booleanNumbers
-            .stream()
+        booleanNumbers.stream()
             .map(
                 n ->
                     CodecUtils.convertNumber(

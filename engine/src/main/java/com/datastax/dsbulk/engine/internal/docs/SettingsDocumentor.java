@@ -142,10 +142,7 @@ public class SettingsDocumentor {
     // We collect all the lines in the comment block for the setting and join with newlines.
     // However, each line starts with a single leading space that we want to remove.
     String desc =
-        value
-            .origin()
-            .comments()
-            .stream()
+        value.origin().comments().stream()
             .filter(line -> !SettingsUtils.isAnnotation(line))
             .map(s -> s.length() > 0 ? s.substring(1) : s)
             .collect(Collectors.joining("\n"));

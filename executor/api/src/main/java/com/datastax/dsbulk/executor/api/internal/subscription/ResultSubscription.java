@@ -610,7 +610,7 @@ public abstract class ResultSubscription<R extends Result, P> implements Subscri
         guavaFuture,
         new FutureCallback<T>() {
           @Override
-          public void onFailure(Throwable throwable) {
+          public void onFailure(@NotNull Throwable throwable) {
             completableFuture.completeExceptionally(throwable);
           }
 

@@ -22,7 +22,7 @@ public class StringToPolygonCodec extends StringConvertingCodec<Polygon> {
 
   @Override
   public Polygon externalToInternal(String s) {
-    if (isNull(s)) {
+    if (isNullOrEmpty(s)) {
       return null;
     }
     return CodecUtils.parsePolygon(s);

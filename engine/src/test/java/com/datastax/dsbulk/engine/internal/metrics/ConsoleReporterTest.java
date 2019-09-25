@@ -11,11 +11,13 @@ package com.datastax.dsbulk.engine.internal.metrics;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.Timer;
 import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
@@ -24,140 +26,344 @@ import com.datastax.dsbulk.commons.tests.logging.StreamType;
 import com.datastax.dsbulk.engine.internal.settings.RowType;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Stream;
 import org.fusesource.jansi.Ansi;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
+@ExtendWith(MockitoExtension.class)
 @ExtendWith(StreamInterceptingExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class ConsoleReporterTest {
+
+  @Mock private Timer writes;
+
+  @Mock private Counter failed;
+
+  @Mock private Meter bytes;
+
+  @Mock private Histogram batches;
+
+  @Mock private Snapshot latencies;
+
+  @Mock private Snapshot batchSizes;
 
   private boolean ansiEnabled;
 
   @BeforeEach
-  void setUp() {
+  void disableAnsi() {
     ansiEnabled = Ansi.isEnabled();
     Ansi.setEnabled(false);
   }
 
   @AfterEach
-  void tearDown() {
+  void reEnableAnsi() {
     Ansi.setEnabled(ansiEnabled);
   }
 
-  @ParameterizedTest
-  @EnumSource(RowType.class)
-  void should_report_on_console_without_expected_total_and_without_batches(
-      RowType rowType, @StreamCapture(StreamType.STDERR) StreamInterceptor stderr) {
-    MetricRegistry registry = new MetricRegistry();
-    Timer writes = registry.timer("writes");
-    Counter failed = registry.counter("failed");
-    Meter bytes = registry.meter("bytes");
-    Histogram batches = registry.histogram("batches");
-    ConsoleReporter reporter =
-        new ConsoleReporter(
-            registry,
-            new AtomicBoolean(true),
-            writes::getCount,
-            failed::getCount,
-            writes,
-            bytes,
-            null,
-            SECONDS,
-            MILLISECONDS,
+  static Stream<Arguments> arguments() {
+    return Stream.of(
+
+        // Regular row type
+        Arguments.of(
+            RowType.REGULAR,
+            false,
             -1,
-            new ScheduledThreadPoolExecutor(1),
-            rowType);
-    reporter.report();
-    assertThat(stderr.getStreamAsString())
-        .matches(
-            "total \\| failed \\| "
-                + rowType.plural()
-                + "/s \\| mb/s \\| kb/"
-                + rowType.singular()
-                + " \\| p50ms \\| p99ms \\| p999ms"
+            false,
+            ""
+                + "  total | failed | rows/s | p50ms |  p99ms | p999ms"
                 + System.lineSeparator()
-                + "\\s+0 \\|\\s+0 \\|\\s+0 \\|\\s+0\\.00 \\|\\s+0\\.00 \\|\\s+0\\.00 \\|\\s+0\\.00 \\|\\s+0\\.00"
-                + System.lineSeparator());
-    stderr.clear();
-    writes.update(10, MILLISECONDS);
-    writes.update(10, MILLISECONDS);
-    writes.update(10, MILLISECONDS);
-    failed.inc();
-    bytes.mark(10);
-    bytes.mark(10);
-    bytes.mark(10);
-    batches.update(10);
-    batches.update(20);
-    reporter.report();
-    assertThat(stderr.getStreamAsString())
-        .matches(
-            "total \\| failed \\| "
-                + rowType.plural()
-                + "/s \\| mb/s \\| kb/"
-                + rowType.singular()
-                + " \\| p50ms \\| p99ms \\| p999ms"
+                + "100,000 |      1 | 10,000 | 50.00 | 100.00 | 250.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.REGULAR,
+            false,
+            -1,
+            true,
+            ""
+                + "  total | failed | rows/s | p50ms |  p99ms | p999ms | batches"
                 + System.lineSeparator()
-                + "\\s+3 \\|\\s+1 \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+"
-                + System.lineSeparator());
+                + "100,000 |      1 | 10,000 | 50.00 | 100.00 | 250.00 |   32.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.REGULAR,
+            false,
+            100000,
+            false,
+            ""
+                + "  total | failed | achieved | rows/s | p50ms |  p99ms | p999ms"
+                + System.lineSeparator()
+                + "100,000 |      1 |     100% | 10,000 | 50.00 | 100.00 | 250.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.REGULAR,
+            false,
+            100000,
+            true,
+            ""
+                + "  total | failed | achieved | rows/s | p50ms |  p99ms | p999ms | batches"
+                + System.lineSeparator()
+                + "100,000 |      1 |     100% | 10,000 | 50.00 | 100.00 | 250.00 |   32.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.REGULAR,
+            true,
+            -1,
+            false,
+            ""
+                + "  total | failed | rows/s | mb/s | kb/row | p50ms |  p99ms | p999ms"
+                + System.lineSeparator()
+                + "100,000 |      1 | 10,000 | 1.00 |   0.10 | 50.00 | 100.00 | 250.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.REGULAR,
+            true,
+            -1,
+            true,
+            ""
+                + "  total | failed | rows/s | mb/s | kb/row | p50ms |  p99ms | p999ms | batches"
+                + System.lineSeparator()
+                + "100,000 |      1 | 10,000 | 1.00 |   0.10 | 50.00 | 100.00 | 250.00 |   32.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.REGULAR,
+            true,
+            100000,
+            false,
+            ""
+                + "  total | failed | achieved | rows/s | mb/s | kb/row | p50ms |  p99ms | p999ms"
+                + System.lineSeparator()
+                + "100,000 |      1 |     100% | 10,000 | 1.00 |   0.10 | 50.00 | 100.00 | 250.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.REGULAR,
+            true,
+            100000,
+            true,
+            ""
+                + "  total | failed | achieved | rows/s | mb/s | kb/row | p50ms |  p99ms | p999ms | batches"
+                + System.lineSeparator()
+                + "100,000 |      1 |     100% | 10,000 | 1.00 |   0.10 | 50.00 | 100.00 | 250.00 |   32.00"
+                + System.lineSeparator()),
+
+        // Vertices
+        Arguments.of(
+            RowType.VERTEX,
+            false,
+            -1,
+            false,
+            ""
+                + "  total | failed | vertices/s | p50ms |  p99ms | p999ms"
+                + System.lineSeparator()
+                + "100,000 |      1 |     10,000 | 50.00 | 100.00 | 250.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.VERTEX,
+            false,
+            -1,
+            true,
+            ""
+                + "  total | failed | vertices/s | p50ms |  p99ms | p999ms | batches"
+                + System.lineSeparator()
+                + "100,000 |      1 |     10,000 | 50.00 | 100.00 | 250.00 |   32.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.VERTEX,
+            false,
+            100000,
+            false,
+            ""
+                + "  total | failed | achieved | vertices/s | p50ms |  p99ms | p999ms"
+                + System.lineSeparator()
+                + "100,000 |      1 |     100% |     10,000 | 50.00 | 100.00 | 250.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.VERTEX,
+            false,
+            100000,
+            true,
+            ""
+                + "  total | failed | achieved | vertices/s | p50ms |  p99ms | p999ms | batches"
+                + System.lineSeparator()
+                + "100,000 |      1 |     100% |     10,000 | 50.00 | 100.00 | 250.00 |   32.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.VERTEX,
+            true,
+            -1,
+            false,
+            ""
+                + "  total | failed | vertices/s | mb/s | kb/vertex | p50ms |  p99ms | p999ms"
+                + System.lineSeparator()
+                + "100,000 |      1 |     10,000 | 1.00 |      0.10 | 50.00 | 100.00 | 250.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.VERTEX,
+            true,
+            -1,
+            true,
+            ""
+                + "  total | failed | vertices/s | mb/s | kb/vertex | p50ms |  p99ms | p999ms | batches"
+                + System.lineSeparator()
+                + "100,000 |      1 |     10,000 | 1.00 |      0.10 | 50.00 | 100.00 | 250.00 |   32.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.VERTEX,
+            true,
+            100000,
+            false,
+            ""
+                + "  total | failed | achieved | vertices/s | mb/s | kb/vertex | p50ms |  p99ms | p999ms"
+                + System.lineSeparator()
+                + "100,000 |      1 |     100% |     10,000 | 1.00 |      0.10 | 50.00 | 100.00 | 250.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.VERTEX,
+            true,
+            100000,
+            true,
+            ""
+                + "  total | failed | achieved | vertices/s | mb/s | kb/vertex | p50ms |  p99ms | p999ms | batches"
+                + System.lineSeparator()
+                + "100,000 |      1 |     100% |     10,000 | 1.00 |      0.10 | 50.00 | 100.00 | 250.00 |   32.00"
+                + System.lineSeparator()),
+
+        // Edges
+        Arguments.of(
+            RowType.EDGE,
+            false,
+            -1,
+            false,
+            ""
+                + "  total | failed | edges/s | p50ms |  p99ms | p999ms"
+                + System.lineSeparator()
+                + "100,000 |      1 |  10,000 | 50.00 | 100.00 | 250.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.EDGE,
+            false,
+            -1,
+            true,
+            ""
+                + "  total | failed | edges/s | p50ms |  p99ms | p999ms | batches"
+                + System.lineSeparator()
+                + "100,000 |      1 |  10,000 | 50.00 | 100.00 | 250.00 |   32.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.EDGE,
+            false,
+            100000,
+            false,
+            ""
+                + "  total | failed | achieved | edges/s | p50ms |  p99ms | p999ms"
+                + System.lineSeparator()
+                + "100,000 |      1 |     100% |  10,000 | 50.00 | 100.00 | 250.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.EDGE,
+            false,
+            100000,
+            true,
+            ""
+                + "  total | failed | achieved | edges/s | p50ms |  p99ms | p999ms | batches"
+                + System.lineSeparator()
+                + "100,000 |      1 |     100% |  10,000 | 50.00 | 100.00 | 250.00 |   32.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.EDGE,
+            true,
+            -1,
+            false,
+            ""
+                + "  total | failed | edges/s | mb/s | kb/edge | p50ms |  p99ms | p999ms"
+                + System.lineSeparator()
+                + "100,000 |      1 |  10,000 | 1.00 |    0.10 | 50.00 | 100.00 | 250.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.EDGE,
+            true,
+            -1,
+            true,
+            ""
+                + "  total | failed | edges/s | mb/s | kb/edge | p50ms |  p99ms | p999ms | batches"
+                + System.lineSeparator()
+                + "100,000 |      1 |  10,000 | 1.00 |    0.10 | 50.00 | 100.00 | 250.00 |   32.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.EDGE,
+            true,
+            100000,
+            false,
+            ""
+                + "  total | failed | achieved | edges/s | mb/s | kb/edge | p50ms |  p99ms | p999ms"
+                + System.lineSeparator()
+                + "100,000 |      1 |     100% |  10,000 | 1.00 |    0.10 | 50.00 | 100.00 | 250.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.EDGE,
+            true,
+            100000,
+            true,
+            ""
+                + "  total | failed | achieved | edges/s | mb/s | kb/edge | p50ms |  p99ms | p999ms | batches"
+                + System.lineSeparator()
+                + "100,000 |      1 |     100% |  10,000 | 1.00 |    0.10 | 50.00 | 100.00 | 250.00 |   32.00"
+                + System.lineSeparator()));
   }
 
-  @ParameterizedTest
-  @EnumSource(RowType.class)
-  void should_report_on_console_with_expected_total_and_with_batches(
-      RowType rowType, @StreamCapture(StreamType.STDERR) StreamInterceptor stderr) {
-    MetricRegistry registry = new MetricRegistry();
-    Timer writes = registry.timer("writes");
-    Counter failed = registry.counter("failed");
-    Meter bytes = registry.meter("bytes");
-    Histogram batches = registry.histogram("batches");
+  @BeforeEach
+  void setUpMocks() {
+    when(writes.getCount()).thenReturn(100_000L); // 100,000 rows total
+    when(writes.getMeanRate()).thenReturn(10_000d); // 10,000 rows/sec
+    when(failed.getCount()).thenReturn(1L);
+    when(writes.getSnapshot()).thenReturn(latencies);
+    when(latencies.getMean()).thenReturn((double) MILLISECONDS.toNanos(50));
+    when(latencies.get99thPercentile()).thenReturn((double) MILLISECONDS.toNanos(100));
+    when(latencies.get999thPercentile()).thenReturn((double) MILLISECONDS.toNanos(250));
+    when(bytes.getMeanRate()).thenReturn(1024d * 1024d); // 1Mb per second
+    when(batches.getSnapshot()).thenReturn(batchSizes);
+    when(batchSizes.getMean()).thenReturn(32d); // 32 stmts per batch in average
+  }
+
+  @ParameterizedTest(
+      name = "[{index}] rowType = {0}, trackThroughput = {1} expectedTotal = {2} withBatches = {3}")
+  @MethodSource("arguments")
+  void should_report_on_console(
+      RowType rowType,
+      boolean trackThroughput,
+      long expectedTotal,
+      boolean withBatches,
+      String expectedOutput,
+      @StreamCapture(StreamType.STDERR) StreamInterceptor stderr) {
+
+    // given
     ConsoleReporter reporter =
         new ConsoleReporter(
-            registry,
+            new MetricRegistry(),
             new AtomicBoolean(true),
             writes::getCount,
             failed::getCount,
             writes,
-            bytes,
-            batches,
+            trackThroughput ? bytes : null,
+            withBatches ? batches : null,
             SECONDS,
             MILLISECONDS,
-            1000,
+            expectedTotal,
             new ScheduledThreadPoolExecutor(1),
             rowType);
+
+    // when
     reporter.report();
-    assertThat(stderr.getStreamAsString())
-        .matches(
-            "total \\| failed \\| achieved \\| "
-                + rowType.plural()
-                + "/s \\| mb/s \\| kb/"
-                + rowType.singular()
-                + " \\| p50ms \\| p99ms \\| p999ms \\| batches"
-                + System.lineSeparator()
-                + "\\s+0 \\|\\s+0 \\|\\s+0% \\|\\s+0 \\|\\s+0\\.00 \\|\\s+0\\.00 \\|\\s+0\\.00 \\|\\s+0\\.00 \\|\\s+0\\.00 \\|\\s+0\\.00"
-                + System.lineSeparator());
-    stderr.clear();
-    writes.update(10, MILLISECONDS);
-    writes.update(10, MILLISECONDS);
-    writes.update(10, MILLISECONDS);
-    failed.inc();
-    bytes.mark(10);
-    bytes.mark(10);
-    bytes.mark(10);
-    batches.update(10);
-    batches.update(20);
-    reporter.report();
-    assertThat(stderr.getStreamAsString())
-        .matches(
-            "total \\| failed \\| achieved \\| "
-                + rowType.plural()
-                + "/s \\| mb/s \\| kb/"
-                + rowType.singular()
-                + " \\| p50ms \\| p99ms \\| p999ms \\| batches"
-                + System.lineSeparator()
-                + "\\s+3 \\|\\s+1 \\|\\s+0% \\|\\s+[\\d,]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|\\s+[\\d,.]+ \\|   15\\.00"
-                + System.lineSeparator());
+
+    // then
+    assertThat(stderr.getStreamAsString()).isEqualTo(expectedOutput);
   }
 }

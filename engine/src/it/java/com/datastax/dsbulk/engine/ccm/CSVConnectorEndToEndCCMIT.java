@@ -13,12 +13,15 @@ import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.ass
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DDAC;
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.createURLFile;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLines;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStreamExcludingHeaders;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
+import static com.datastax.dsbulk.engine.DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR;
 import static com.datastax.dsbulk.engine.DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS;
+import static com.datastax.dsbulk.engine.DataStaxBulkLoader.STATUS_OK;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.instantToNumber;
 import static com.datastax.dsbulk.engine.internal.codecs.util.CodecUtils.numberToInstant;
 import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.REJECT;
@@ -26,6 +29,8 @@ import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.T
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_SKIP;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
+import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE_PART_1;
+import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE_PART_2;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_WITH_SPACES;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.INSERT_INTO_IP_BY_COUNTRY;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY_MAPPING_CASE_SENSITIVE;
@@ -79,6 +84,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.net.URI;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -92,12 +98,15 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 @ExtendWith(LogInterceptingExtension.class)
 @ExtendWith(StreamInterceptingExtension.class)
@@ -113,6 +122,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   private final LogInterceptor logs;
   private final StreamInterceptor stderr;
+
+  private Path urlFile;
   private Path logDir;
   private Path unloadDir;
 
@@ -156,6 +167,16 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     stderr.clear();
   }
 
+  @BeforeAll
+  void setupURLFile() throws IOException {
+    urlFile = createURLFile(CSV_RECORDS_UNIQUE_PART_1, CSV_RECORDS_UNIQUE_PART_2);
+  }
+
+  @AfterAll
+  void cleanupURLFile() throws IOException {
+    Files.delete(urlFile);
+  }
+
   /** Simple test case which attempts to load and unload data using ccm. */
   @Test
   void full_load_unload() throws Exception {
@@ -179,6 +200,51 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(status).isZero();
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
     validatePositionsFile(CSV_RECORDS_UNIQUE, 24);
+    deleteDirectory(logDir);
+
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.csv.url");
+    args.add(quoteJson(unloadDir));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--connector.csv.maxConcurrentFiles");
+    args.add("1");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("ip_by_country");
+    args.add("--schema.mapping");
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
+
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    validateOutputFiles(24, unloadDir);
+  }
+
+  @Test
+  void full_load_unload_using_urlfile() throws Exception {
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.csv.urlfile");
+    args.add(quoteJson(urlFile));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("ip_by_country");
+    args.add("--schema.mapping");
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    validateResultSetSize(24, "SELECT * FROM ip_by_country");
     deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -695,6 +761,47 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(500, unloadDir);
+  }
+
+  /** Test for DAT-451. */
+  @Test
+  void full_load_query_warnings() throws Exception {
+
+    assumeTrue(
+        ccm.getCassandraVersion().compareTo(V3) >= 0,
+        "Query warnings are only present in C* >= 3.0");
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--log.maxQueryWarnings");
+    args.add("1");
+    args.add("--connector.csv.url");
+    args.add(quoteJson(CSV_RECORDS));
+    args.add("--connector.csv.header");
+    args.add("true");
+    args.add("--batch.mode");
+    args.add("REPLICA_SET");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("ip_by_country");
+    args.add("--schema.mapping");
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+    validateResultSetSize(500, "SELECT * FROM ip_by_country");
+    validatePositionsFile(CSV_RECORDS, 500);
+    assertThat(logs)
+        .hasMessageMatching(
+            "Query generated server-side warning: "
+                + "Unlogged batch covering \\d+ partitions detected against "
+                + "table \\[ks1.ip_by_country\\]")
+        .hasMessageContaining(
+            "The maximum number of logged query warnings has been exceeded (1); "
+                + "subsequent warnings will not be logged.");
   }
 
   @Test
@@ -2168,6 +2275,40 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(row2.isNull(0)).isFalse();
   }
 
+  /** Test for DAT-414 * */
+  @Test
+  void delete_static_column() {
+
+    session.execute("DROP TABLE IF EXISTS test_delete");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS test_delete (pk int, cc int, v int, s int static, PRIMARY KEY (pk, cc))");
+    session.execute("INSERT INTO test_delete (pk, cc, v, s) VALUES (1,1,1,1)");
+
+    MockConnector.mockReads(mappedCSV("pk", "1"));
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.name");
+    args.add("mock");
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.query");
+    args.add("DELETE s FROM test_delete WHERE pk = ?");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_OK);
+
+    Row row = session.execute("SELECT * FROM test_delete WHERE pk = 1 AND cc = 1").one();
+    assertThat(row).isNotNull();
+    // should have deleted only the static column
+    assertThat(row.getInt("pk")).isEqualTo(1);
+    assertThat(row.getInt("cc")).isEqualTo(1);
+    assertThat(row.getInt("v")).isEqualTo(1);
+    assertThat(row.isNull("s")).isTrue();
+  }
+
   @Test
   void batch_with_custom_query() {
 
@@ -2291,7 +2432,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int unloadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(unloadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
-    checkTemporalsRead(unloadDir, false);
+    checkTemporalsRead(unloadDir);
     deleteDirectory(logDir);
 
     // check we can load from the unloaded dataset
@@ -2329,7 +2470,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     checkTemporalsWritten(session);
   }
 
-  /** Test for DAT-364 (numeric timestamps). */
+  /** Test for DAT-364 (numeric timestamps) and DAT-428 (numeric dates and times). */
   @Test
   void temporal_roundtrip_numeric() throws Exception {
 
@@ -2353,18 +2494,18 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(ClassLoader.getSystemResource("temporal-numeric.csv").toExternalForm());
     args.add("--connector.csv.header");
     args.add("true");
-    args.add("--codec.locale");
-    args.add("fr_FR");
     args.add("--codec.timeZone");
     args.add("Europe/Paris");
     args.add("--codec.date");
-    args.add("cccc, d MMMM uuuu");
+    args.add("UNITS_SINCE_EPOCH");
     args.add("--codec.time");
-    args.add("HHmmssSSS");
+    args.add("UNITS_SINCE_EPOCH");
     args.add("--codec.timestamp");
     args.add("UNITS_SINCE_EPOCH");
     args.add("--codec.unit");
-    args.add("SECONDS");
+    args.add("MINUTES");
+    args.add("--codec.epoch");
+    args.add("2000-01-01T00:00:00+01:00[Europe/Paris]");
     args.add("--schema.keyspace");
     args.add(session.getLoggedKeyspace());
     args.add("--schema.table");
@@ -2374,7 +2515,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
-    checkTemporalsWritten(session);
+    checkNumericTemporalsWritten(session);
     deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -2387,18 +2528,18 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("false");
     args.add("--connector.csv.delimiter");
     args.add(";");
-    args.add("--codec.locale");
-    args.add("fr_FR");
     args.add("--codec.timeZone");
     args.add("Europe/Paris");
     args.add("--codec.date");
-    args.add("cccc, d MMMM uuuu");
+    args.add("UNITS_SINCE_EPOCH");
     args.add("--codec.time");
-    args.add("HHmmssSSS");
+    args.add("UNITS_SINCE_EPOCH");
     args.add("--codec.timestamp");
     args.add("UNITS_SINCE_EPOCH");
     args.add("--codec.unit");
-    args.add("SECONDS");
+    args.add("MINUTES");
+    args.add("--codec.epoch");
+    args.add("2000-01-01T00:00:00+01:00[Europe/Paris]");
     args.add("--connector.csv.maxConcurrentFiles");
     args.add("1");
     args.add("--schema.keyspace");
@@ -2408,7 +2549,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int unloadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(unloadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
-    checkTemporalsRead(unloadDir, true);
+    checkNumericTemporalsRead(unloadDir);
     deleteDirectory(logDir);
 
     // check we can load from the unloaded dataset
@@ -2422,18 +2563,18 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("false");
     args.add("--connector.csv.delimiter");
     args.add(";");
-    args.add("--codec.locale");
-    args.add("fr_FR");
     args.add("--codec.timeZone");
     args.add("Europe/Paris");
     args.add("--codec.date");
-    args.add("cccc, d MMMM uuuu");
+    args.add("UNITS_SINCE_EPOCH");
     args.add("--codec.time");
-    args.add("HHmmssSSS");
+    args.add("UNITS_SINCE_EPOCH");
     args.add("--codec.timestamp");
     args.add("UNITS_SINCE_EPOCH");
     args.add("--codec.unit");
-    args.add("SECONDS");
+    args.add("MINUTES");
+    args.add("--codec.epoch");
+    args.add("2000-01-01T00:00:00+01:00[Europe/Paris]");
     args.add("--schema.keyspace");
     args.add(session.getLoggedKeyspace());
     args.add("--schema.table");
@@ -2443,7 +2584,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
-    checkTemporalsWritten(session);
+    checkNumericTemporalsWritten(session);
   }
 
   /** Test for DAT-253. */
@@ -2629,6 +2770,166 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
     assertThat(status).isZero();
+  }
+
+  /** Test for DAT-326. */
+  @Test
+  void literal_mapped_to_primary_key_with_custom_query() {
+
+    session.execute("DROP TABLE IF EXISTS dat326d");
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS dat326d (pk int, cc int, v int, PRIMARY KEY (pk, cc))");
+
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            quoteJson(logDir),
+            "-header",
+            "true",
+            "--connector.csv.url",
+            quoteJson(getClass().getResource("/function-pk.csv")),
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            "INSERT INTO dat326d (pk, cc, v) VALUES (:pk, 42, :v)");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+  }
+
+  /** Test for DAT-414. */
+  @ParameterizedTest
+  @CsvSource(
+      value = {
+        "INSERT INTO dat414 (\"PK\", \"CC\", \"V\") VALUES (:\"PK\", :\"CC\", :\"V\")|INSERT INTO dat414 (\"PK\", \"S\") VALUES (:\"PK\", :\"S\")",
+        "UPDATE dat414 SET \"V\" = :\"V\" WHERE \"PK\" = :\"PK\" AND \"CC\" = :\"CC\"|UPDATE dat414 SET \"S\" = :\"S\" WHERE \"PK\" = :\"PK\""
+      },
+      delimiter = '|')
+  void static_columns_full_round_trip(String insertRegular, String insertStatic) throws Exception {
+
+    session.execute("DROP TABLE IF EXISTS dat414");
+    session.execute(
+        "CREATE TABLE dat414 (\"PK\" int, \"CC\" int, \"V\" int, \"S\" int static, PRIMARY KEY (\"PK\", \"CC\"))");
+    // row with static and regular columns set
+    session.execute("INSERT INTO dat414 (\"PK\", \"CC\", \"V\", \"S\") VALUES (1,1,1,1)");
+    // row with only regular columns set
+    session.execute("INSERT INTO dat414 (\"PK\", \"CC\", \"V\") VALUES (2,2,2)");
+    // row with only static columns set
+    session.execute("INSERT INTO dat414 (\"PK\", \"S\") VALUES (3,3)");
+
+    Path unloadRegular = createTempDirectory("unload-regular");
+    Path unloadStatic = createTempDirectory("unload-static");
+
+    // unload regular columns only
+    List<String> args =
+        Lists.newArrayList(
+            "unload",
+            "--log.directory",
+            quoteJson(logDir),
+            "-header",
+            "true",
+            "--connector.csv.url",
+            quoteJson(unloadRegular),
+            "--connector.csv.maxConcurrentFiles",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            quoteJson("SELECT \"PK\", \"CC\", \"V\" from dat414"));
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+
+    // unload static columns only
+    args =
+        Lists.newArrayList(
+            "unload",
+            "--log.directory",
+            quoteJson(logDir),
+            "-header",
+            "true",
+            "--connector.csv.url",
+            quoteJson(unloadStatic),
+            "--connector.csv.maxConcurrentFiles",
+            "1",
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            quoteJson("SELECT \"PK\", \"S\" from dat414"));
+
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+
+    session.execute("TRUNCATE dat414");
+
+    // load regular columns only
+    args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            quoteJson(logDir),
+            "-header",
+            "true",
+            "--connector.csv.url",
+            quoteJson(unloadRegular),
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            quoteJson(insertRegular));
+
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    // Some versions of C* export a spurious row for partition key 3 containing only nulls apart
+    // from the partition key itself.
+    // In such cases DSBulk should reject the line '3,null,null' as it has a null clustering column
+    assertThat(status).isIn(STATUS_OK, STATUS_COMPLETED_WITH_ERRORS);
+    if (status == STATUS_COMPLETED_WITH_ERRORS) {
+      validateNumberOfBadRecords(1);
+    }
+
+    // load static columns only
+    args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            quoteJson(logDir),
+            "-header",
+            "true",
+            "--connector.csv.url",
+            quoteJson(unloadStatic),
+            "--schema.keyspace",
+            session.getLoggedKeyspace(),
+            "--schema.query",
+            quoteJson(insertStatic));
+
+    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isZero();
+
+    List<Row> rows = session.execute("SELECT * FROM dat414").all();
+    assertThat(rows)
+        .anySatisfy(
+            row -> {
+              assertThat(row.getInt("\"PK\"")).isEqualTo(1);
+              assertThat(row.getInt("\"CC\"")).isEqualTo(1);
+              assertThat(row.getInt("\"V\"")).isEqualTo(1);
+              assertThat(row.getInt("\"S\"")).isEqualTo(1);
+            });
+    assertThat(rows)
+        .anySatisfy(
+            row -> {
+              assertThat(row.getInt("\"PK\"")).isEqualTo(2);
+              assertThat(row.getInt("\"CC\"")).isEqualTo(2);
+              assertThat(row.getInt("\"V\"")).isEqualTo(2);
+              assertThat(row.isNull("\"S\"")).isTrue();
+            });
+    assertThat(rows)
+        .anySatisfy(
+            row -> {
+              assertThat(row.getInt("\"PK\"")).isEqualTo(3);
+              assertThat(row.isNull("\"CC\"")).isTrue();
+              assertThat(row.isNull("\"V\"")).isTrue();
+              assertThat(row.getInt("\"S\"")).isEqualTo(3);
+            });
   }
 
   @Test
@@ -3653,6 +3954,60 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             "test12,\"[\\\"1234 test text\\\",\\\"789 value text\\\"]\",{},[],");
   }
 
+  /** Test for empty headers (DAT-427). */
+  @Test
+  void load_empty_headers() {
+
+    session.execute("DROP TABLE IF EXISTS test_empty_headers");
+    session.execute(
+        "CREATE TABLE test_empty_headers (pk int, cc int, v int, PRIMARY KEY (pk, cc))");
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.csv.url");
+    args.add(ClassLoader.getSystemResource("bad_header_empty.csv").toExternalForm());
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("test_empty_headers");
+    args.add("--schema.mapping");
+    args.add("*=*");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(STATUS_ABORTED_FATAL_ERROR);
+
+    assertThat(logs).hasMessageContaining("found empty field name at index 1");
+  }
+
+  /** Test for duplicate headers (DAT-427). */
+  @Test
+  void load_duplicate_headers() {
+
+    session.execute("DROP TABLE IF EXISTS test_duplicate_headers");
+    session.execute(
+        "CREATE TABLE test_duplicate_headers (pk int, cc int, v int, PRIMARY KEY (pk, cc))");
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--log.directory");
+    args.add(quoteJson(logDir));
+    args.add("--connector.csv.url");
+    args.add(ClassLoader.getSystemResource("bad_header_duplicate.csv").toExternalForm());
+    args.add("--schema.keyspace");
+    args.add(session.getLoggedKeyspace());
+    args.add("--schema.table");
+    args.add("test_duplicate_headers");
+    args.add("--schema.mapping");
+    args.add("*=*");
+
+    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    assertThat(status).isEqualTo(STATUS_ABORTED_FATAL_ERROR);
+
+    assertThat(logs).hasMessageContaining("found duplicate field name at index 1");
+  }
+
   static void checkTemporalsWritten(Session session) {
     Row row = session.execute("SELECT * FROM temporals WHERE key = 0").one();
     LocalDate date = row.get("vdate", LocalDateCodec.instance);
@@ -3663,17 +4018,38 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(timestamp).isEqualTo(Instant.parse("2018-03-09T16:12:32Z"));
   }
 
-  private static void checkTemporalsRead(Path unloadDir, boolean numeric) throws IOException {
+  private static void checkTemporalsRead(Path unloadDir) throws IOException {
     String line = readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList()).get(0);
     List<String> cols = Lists.newArrayList(Splitter.on(';').split(line));
     assertThat(cols).hasSize(4);
     assertThat(cols.get(1)).isEqualTo("vendredi, 9 mars 2018");
     assertThat(cols.get(2)).isEqualTo("171232584");
-    if (numeric) {
-      assertThat(cols.get(3)).isEqualTo("1520611952");
-    } else {
-      assertThat(cols.get(3)).isEqualTo("2018-03-09T17:12:32+01:00[Europe/Paris]");
-    }
+    assertThat(cols.get(3)).isEqualTo("2018-03-09T17:12:32+01:00[Europe/Paris]");
+  }
+
+  static void checkNumericTemporalsWritten(Session session) {
+    Row row = session.execute("SELECT * FROM temporals WHERE key = 0").one();
+    LocalDate date = row.get("vdate", LocalDateCodec.instance);
+    LocalTime time = row.get("vtime", LocalTimeCodec.instance);
+    Instant timestamp = row.get("vtimestamp", InstantCodec.instance);
+    // 11520 minutes = 8 days = 2000-01-09
+    assertThat(date).isEqualTo(LocalDate.of(2000, 1, 9));
+    // 123 minutes = 02:03:00
+    assertThat(time).isEqualTo(LocalTime.of(2, 3));
+    // 123456 minutes = 85 days, 17 hours and 36 minutes after year 2000 in paris = March 26th 2000,
+    // at 18:36 instead of 17:36 because Daylight Savings Time started on March 26th at 03:00
+    assertThat(timestamp)
+        .isEqualTo(ZonedDateTime.parse("2000-03-26T18:36:00+02:00[Europe/Paris]").toInstant());
+  }
+
+  private static void checkNumericTemporalsRead(Path unloadDir) throws IOException {
+    String line = readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList()).get(0);
+    List<String> cols = Lists.newArrayList(Splitter.on(';').split(line));
+    assertThat(cols).hasSize(4);
+    // 2000-01-09 = 8 days * 1440 minutes = 11520 minutes
+    assertThat(cols.get(1)).isEqualTo("11520");
+    assertThat(cols.get(2)).isEqualTo("123");
+    assertThat(cols.get(3)).isEqualTo("123456");
   }
 
   private void validateErrorMessageLogged(String... msg) {

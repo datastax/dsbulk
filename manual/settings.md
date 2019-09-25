@@ -226,7 +226,7 @@ Default: **-1**.
 
 #### -maxErrors,--log.maxErrors _&lt;number&gt;_
 
-The maximum number of errors to tolerate before aborting the entire operation. Set to either a number or a string of the form `N%` where `N` is a decimal number between 0 and 100. Setting this value to `-1` disables this feature (not recommended).
+The maximum number of errors to tolerate before aborting the entire operation. This can be expressed either as an absolute number of errors – in which case, set this to an integer greater than or equal to zero; or as a percentage of total rows processed so far – in which case, set this to a string of the form `N%`, where `N` is a decimal number between 0 and 100 exclusive (e.g. "20%"). Setting this value to any negative integer disables this feature (not recommended).
 
 Default: **100**.
 
@@ -360,7 +360,7 @@ Default: **"\\"**.
 
 The file name format to use when writing. This setting is ignored when reading and for non-file URLs. The file name must comply with the formatting rules of `String.format()`, and must contain a `%d` format specifier that will be used to increment file name counters.
 
-Default: **"output-%0,6d.csv"**.
+Default: **"output-%06d.csv"**.
 
 #### --connector.csv.fileNamePattern _&lt;string&gt;_
 
@@ -434,6 +434,43 @@ Enable or disable scanning for files in the root's subdirectories. Only applicab
 
 Default: **false**.
 
+#### --connector.csv.urlfile _&lt;string&gt;_
+
+The URL or path of the file that contains the list of resources to read from.
+
+The file specified here should be located on the local filesystem.
+
+This setting and `connector.csv.url` are mutually exclusive. If both are defined and non empty, this setting takes precedence over `connector.csv.url`.
+
+This setting applies only when loading. When unloading, this setting should be left empty or set to null; any non-empty value will trigger a fatal error.
+
+The file with URLs should follow this format:
+
+```
+/path/to/file/file.csv
+/path/to.dir/
+```
+
+Every line should contain one path. You don't need to escape paths in this file.
+
+All the remarks for `connector.csv.url` apply for each line in the file, and especially, settings like `fileNamePattern`, `recursive`, and `fileNameFormat` all apply to each line individually.
+
+You can comment out a line in the URL file by making it start with a # sign:
+
+```
+#/path/that/will/be/ignored
+```
+
+Such a line will be ignored.
+
+For your convenience, every line in the urlfile will be trimmed - that is, any leading and trailing white space will be removed.
+
+The file should be encoded in UTF-8, and each line should be a valid URL to load.
+
+The default value is "" - which means that this property is ignored.
+
+Default: **&lt;unspecified&gt;**.
+
 <a name="connector.json"></a>
 ### Connector Json Settings
 
@@ -506,7 +543,7 @@ Default: **"UTF-8"**.
 
 The file name format to use when writing. This setting is ignored when reading and for non-file URLs. The file name must comply with the formatting rules of `String.format()`, and must contain a `%d` format specifier that will be used to increment file name counters.
 
-Default: **"output-%0,6d.json"**.
+Default: **"output-%06d.json"**.
 
 #### --connector.json.fileNamePattern _&lt;string&gt;_
 
@@ -557,6 +594,43 @@ Note that some Jackson features might not be supported, in particular features t
 The strategy to use for filtering out entries when formatting output. Valid values are enum constants defined in `com.fasterxml.jackson.annotation.JsonInclude.Include` (but beware that the `CUSTOM` strategy cannot be honored). Used for unloading only.
 
 Default: **"ALWAYS"**.
+
+#### --connector.json.urlfile _&lt;string&gt;_
+
+The URL or path of the file that contains the list of resources to read from.
+
+The file specified here should be located on the local filesystem.
+
+This setting and `connector.json.url` are mutually exclusive. If both are defined and non empty, this setting takes precedence over `connector.json.url`.
+
+This setting applies only when loading. When unloading, this setting should be left empty or set to null; any non-empty value will trigger a fatal error.
+
+The file with URLs should follow this format:
+
+```
+/path/to/file/file.json
+/path/to.dir/
+```
+
+Every line should contain one path. You don't need to escape paths in this file.
+
+All the remarks for `connector.csv.json` apply for each line in the file, and especially, settings like `fileNamePattern`, `recursive`, and `fileNameFormat` all apply to each line individually.
+
+You can comment out a line in the URL file by making it start with a # sign:
+
+```
+#/path/that/will/be/ignored
+```
+
+Such a line will be ignored.
+
+For your convenience, every line in the urlfile will be trimmed - that is, any leading and trailing white space will be removed.
+
+The file should be encoded in UTF-8, and each line should be a valid URL to load.
+
+The default value is "" - which means that this property is ignored.
+
+Default: **&lt;unspecified&gt;**.
 
 <a name="schema"></a>
 ## Schema Settings
@@ -717,7 +791,7 @@ Default: **null**.
 
 The maximum number of statements that a batch can contain. The ideal value depends on two factors:
 - The data being loaded: the larger the data, the smaller the batches should be.
-- The batch mode: when `PARTITION_KEY` is used, larger batches are acceptable, whereas when `REPLICA_SET` is used, smaller batches usually perform better.
+- The batch mode: when `PARTITION_KEY` is used, larger batches are acceptable, whereas when `REPLICA_SET` is used, smaller batches usually perform better. Also, when using `REPLICA_SET`, it is preferrable to keep this number below the threshold configured server-side for the setting `unlogged_batch_across_partitions_warn_threshold` (the default is 10); failing to do so is likely to trigger query warnings (see `log.maxQueryWarnings` for more information).
 When set to a value lesser than or equal to zero, the maximum number of statements is considered unlimited. At least one of `maxBatchStatements` or `maxSizeInBytes` must be set to a positive value when batching is enabled.
 
 Default: **32**.
@@ -772,6 +846,7 @@ The temporal pattern to use for `String` to CQL `date` conversion. Valid choices
 
 - A date-time pattern such as `yyyy-MM-dd`.
 - A pre-defined formatter such as `ISO_LOCAL_DATE`. Any public static field in `java.time.format.DateTimeFormatter` can be used.
+- The special formatter `UNITS_SINCE_EPOCH`, which is a special parser that reads and writes local dates as numbers representing time units since a given epoch; the unit and the epoch to use can be specified with `codec.unit` and `codec.timestamp`.
 
 For more information on patterns and pre-defined formatters, see [Patterns for Formatting and Parsing](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns) in Oracle Java documentation.
 
@@ -864,6 +939,7 @@ The temporal pattern to use for `String` to CQL `time` conversion. Valid choices
 
 - A date-time pattern, such as `HH:mm:ss`.
 - A pre-defined formatter, such as `ISO_LOCAL_TIME`. Any public static field in `java.time.format.DateTimeFormatter` can be used.
+- The special formatter `UNITS_SINCE_EPOCH`, which is a special parser that reads and writes local times as numbers representing time units since a given epoch; the unit and the epoch to use can be specified with `codec.unit` and `codec.timestamp`.
 
 For more information on patterns and pre-defined formatters, see [Patterns for formatting and Parsing](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#patterns) in Oracle Java documentation.
 
@@ -1160,7 +1236,8 @@ Default: **"LOCAL_ONE"**.
 
 #### --driver.query.fetchSize _&lt;number&gt;_
 
-The page size, or how many rows will be retrieved simultaneously in a single network round trip. This setting will limit the number of results loaded into memory simultaneously during unloading or counting. Setting this value to any negative value will disable paging, i.e., the entire result set will be retrieved in one pass (not recommended). Not applicable for loading. When connecting with a positive page size to legacy clusters with protocol version 1, which does not support paging, paging will be automatically disabled and a warning will be logged. Note that this setting controls paging for regular queries; to customize the page size for continuous queries, use the `executor.continuousPaging.pageSize` setting instead.
+The page size, or how many rows will be retrieved simultaneously in a single network round trip. The ideal page size depends on the size of the rows being unloaded: larger page sizes may have a positive impact on throughput for small rows, and vice versa.
+This setting will limit the number of results loaded into memory simultaneously during unloading or counting. Setting this value to any negative value will disable paging, i.e., the entire result set will be retrieved in one pass (not recommended). Not applicable for loading. When connecting with a positive page size to legacy clusters with protocol version 1, which does not support paging, paging will be automatically disabled and a warning will be logged. Note that this setting controls paging for regular queries; to customize the page size for continuous queries, use the `executor.continuousPaging.pageSize` setting instead.
 
 Default: **5000**.
 
@@ -1325,7 +1402,7 @@ Default: **0**.
 
 #### --executor.continuousPaging.pageSize _&lt;number&gt;_
 
-The size of the page. The unit to use is determined by the `pageUnit` setting.
+The size of the page. The unit to use is determined by the `pageUnit` setting. The ideal page size depends on the size of the rows being unloaded: larger page sizes may have a positive impact on throughput for small rows, and vice versa.
 
 Default: **5000**.
 
@@ -1348,7 +1425,7 @@ Log and error management settings.
 
 #### -maxErrors,--log.maxErrors _&lt;number&gt;_
 
-The maximum number of errors to tolerate before aborting the entire operation. Set to either a number or a string of the form `N%` where `N` is a decimal number between 0 and 100. Setting this value to `-1` disables this feature (not recommended).
+The maximum number of errors to tolerate before aborting the entire operation. This can be expressed either as an absolute number of errors – in which case, set this to an integer greater than or equal to zero; or as a percentage of total rows processed so far – in which case, set this to a string of the form `N%`, where `N` is a decimal number between 0 and 100 exclusive (e.g. "20%"). Setting this value to any negative integer disables this feature (not recommended).
 
 Default: **100**.
 
@@ -1381,6 +1458,12 @@ Whether or not to use ANSI colors and other escape sequences in log messages pri
 Note to Windows users: ANSI support on Windows works best when the Microsoft Visual C++ 2008 SP1 Redistributable Package is installed; you can download it [here](https://www.microsoft.com/en-us/download/details.aspx?displaylang=en&id=5582).
 
 Default: **"normal"**.
+
+#### --log.maxQueryWarnings _&lt;number&gt;_
+
+The maximum number of query warnings to log before muting them. Query warnings are sent by the server (for example, if the number of statements in a batch is greater than the warning threshold configured on the server). They are useful to diagnose suboptimal configurations but tend to be too invasive, which is why DSBulk by default will only log the 50 first query warnings; any subsequent warnings will be muted and won't be logged at all. Setting this value to any negative integer disables this feature (not recommended).
+
+Default: **50**.
 
 #### --log.row.maxResultSetValueLength _&lt;number&gt;_
 
@@ -1486,6 +1569,12 @@ Default: **true**.
 The time unit used when printing throughput rates. Valid values: all `TimeUnit` enum constants.
 
 Default: **"SECONDS"**.
+
+#### --monitoring.trackBytes _&lt;boolean&gt;_
+
+Whether or not to track the throughput in bytes. When enabled, DSBulk will track and display the number of bytes sent or received per second. While useful to evaluate how much data is actually being transferred, computing such metrics is CPU-intensive and may slow down the operation. This is why it is disabled by default. Also note that the heuristic used to compute data sizes is not 100% accurate and sometimes underestimates the actual size.
+
+Default: **false**.
 
 <a name="stats"></a>
 ## Stats Settings

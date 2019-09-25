@@ -270,7 +270,7 @@ public class DriverSettings {
                   if (entries.length > 0) {
                     authPrincipal =
                         (String) getNameMethod.invoke(getServiceMethod.invoke(entries[0]));
-                    LOGGER.debug("Found Kerberos principal %s in %s", authPrincipal, authKeyTab);
+                    LOGGER.debug("Found Kerberos principal {} in {}", authPrincipal, authKeyTab);
                   } else {
                     throw new BulkConfigurationException(
                         String.format("Could not find any principals in %s", authKeyTab));
@@ -497,9 +497,7 @@ public class DriverSettings {
         break;
       case whiteList:
         List<InetSocketAddress> whiteList =
-            config
-                .getStringList("policy.lbp.whiteList.hosts")
-                .stream()
+            config.getStringList("policy.lbp.whiteList.hosts").stream()
                 .map(host -> new InetSocketAddress(host, port))
                 .collect(Collectors.toList());
         policy = new WhiteListPolicy(childPolicy, whiteList);

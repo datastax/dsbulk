@@ -32,6 +32,8 @@ class StringToDateRangeCodecTest {
         .toInternal(dateRange)
         .convertsFromExternal(null)
         .toInternal(null)
+        .convertsFromExternal("")
+        .toInternal(null)
         .convertsFromExternal("NULL")
         .toInternal(null);
   }

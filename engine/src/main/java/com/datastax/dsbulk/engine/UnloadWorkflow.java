@@ -76,6 +76,7 @@ public class UnloadWorkflow implements Workflow {
   private Function<Flux<Record>, Flux<Record>> failedRecordsHandler;
   private Function<Flux<ReadResult>, Flux<ReadResult>> totalItemsCounter;
   private Function<Flux<ReadResult>, Flux<ReadResult>> failedReadsHandler;
+  private Function<Flux<ReadResult>, Flux<ReadResult>> queryWarningsHandler;
   private Function<Flux<Record>, Flux<Record>> unmappableRecordsHandler;
   private Function<Flux<Void>, Flux<Void>> terminationHandler;
   private int readConcurrency;
@@ -102,9 +103,6 @@ public class UnloadWorkflow implements Workflow {
     if (engineSettings.isDryRun()) {
       throw new BulkConfigurationException("Dry-run is not supported for unload");
     }
-    connectorSettings.init();
-    connector = connectorSettings.getConnector();
-    connector.init();
     // No logs should be produced until the following statement returns
     logSettings.init();
     logSettings.logEffectiveSettings(settingsManager.getGlobalConfig());
@@ -112,6 +110,9 @@ public class UnloadWorkflow implements Workflow {
     monitoringSettings.init();
     executorSettings.init();
     driverSettings.init();
+    connectorSettings.init();
+    connector = connectorSettings.getConnector();
+    connector.init();
     cluster = driverSettings.newCluster();
     cluster.init();
     driverSettings.checkProtocolVersion(cluster);
@@ -128,7 +129,7 @@ public class UnloadWorkflow implements Workflow {
         monitoringSettings.newMetricsManager(
             WorkflowType.UNLOAD,
             false,
-            logManager.getExecutionDirectory(),
+            logManager.getOperationDirectory(),
             logSettings.getVerbosity(),
             cluster.getMetrics().getRegistry(),
             cluster.getConfiguration().getProtocolOptions().getProtocolVersion(),
@@ -155,6 +156,7 @@ public class UnloadWorkflow implements Workflow {
     failedRecordsHandler = logManager.newFailedRecordsHandler();
     totalItemsCounter = logManager.newTotalItemsCounter();
     failedReadsHandler = logManager.newFailedReadsHandler();
+    queryWarningsHandler = logManager.newQueryWarningsHandler();
     unmappableRecordsHandler = logManager.newUnmappableRecordsHandler();
     terminationHandler = logManager.newTerminationHandler();
     numCores = Runtime.getRuntime().availableProcessors();
@@ -209,6 +211,7 @@ public class UnloadWorkflow implements Workflow {
             statement ->
                 executor
                     .readReactive(statement)
+                    .transform(queryWarningsHandler)
                     .transform(totalItemsMonitor)
                     .transform(totalItemsCounter)
                     .transform(failedReadResultsMonitor)
@@ -228,6 +231,7 @@ public class UnloadWorkflow implements Workflow {
         .flatMap(
             results ->
                 results
+                    .transform(queryWarningsHandler)
                     .transform(totalItemsMonitor)
                     .transform(totalItemsCounter)
                     .transform(failedReadResultsMonitor)

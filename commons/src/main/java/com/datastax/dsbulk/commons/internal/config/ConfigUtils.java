@@ -20,11 +20,15 @@ import com.typesafe.config.ConfigList;
 import com.typesafe.config.ConfigObject;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -252,10 +256,7 @@ public class ConfigUtils {
    */
   @NotNull
   public static Optional<String> getTypeHint(@NotNull ConfigValue value) {
-    return value
-        .origin()
-        .comments()
-        .stream()
+    return value.origin().comments().stream()
         .filter(line -> line.contains(TYPE_ANNOTATION))
         .map(line -> line.replace("@type", ""))
         .map(String::trim)
@@ -270,10 +271,7 @@ public class ConfigUtils {
    */
   @NotNull
   public static String getComments(@NotNull ConfigValue value) {
-    return value
-        .origin()
-        .comments()
-        .stream()
+    return value.origin().comments().stream()
         .filter(line -> !line.contains(TYPE_ANNOTATION))
         .map(String::trim)
         .collect(Collectors.joining("\n"));
@@ -345,5 +343,54 @@ public class ConfigUtils {
         throw new Missing(path);
       }
     }
+  }
+
+  /**
+   * Loads list of URLs from a file given as the urlfile argument using encoding. The given file
+   * should be encoded in UTF_8.
+   *
+   * @param urlfile The path to file passed as the --urlfile argument to dsbulk.
+   * @return The list of urls resolved from urlfile line by line.
+   * @throws IOException If unable to load a file from urlfile path.
+   */
+  public static List<URL> getURLsFromFile(Path urlfile) throws IOException {
+    List<URL> result = new ArrayList<>();
+    List<String> paths = Files.readAllLines(urlfile);
+    for (String path : paths) {
+      try {
+        if (!path.startsWith("#")) {
+          result.add(ConfigUtils.resolveURL(path.trim()));
+        }
+      } catch (Exception e) {
+        throw new BulkConfigurationException(
+            String.format("%s: Expecting valid filepath or URL, got '%s'", urlfile, path), e);
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Checks if the given path is absent (i.e., it does not exist or has an explicit {@code null}
+   * value), or if the path value is an empty string.
+   *
+   * @param config The config.
+   * @param path The path expression.
+   * @return {@code true} if the given path is absent or if its value is an empty string, {@code
+   *     false} otherwise.
+   */
+  public static boolean isPathAbsentOrEmpty(Config config, String path) {
+    return !config.hasPath(path) || config.getString(path).isEmpty();
+  }
+
+  /**
+   * Checks if the given path is present and its value is a non-empty string.
+   *
+   * @param config The config.
+   * @param path The path expression.
+   * @return {@code true} if the given path is present and its value is a non-empty string, {@code
+   *     false} otherwise.
+   */
+  public static boolean isPathPresentAndNotEmpty(Config config, String path) {
+    return config.hasPath(path) && !config.getString(path).isEmpty();
   }
 }

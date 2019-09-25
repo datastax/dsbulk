@@ -22,7 +22,7 @@ public class StringToPointCodec extends StringConvertingCodec<Point> {
 
   @Override
   public Point externalToInternal(String s) {
-    if (isNull(s)) {
+    if (isNullOrEmpty(s)) {
       return null;
     }
     return CodecUtils.parsePoint(s);

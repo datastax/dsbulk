@@ -16,6 +16,7 @@ import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.getValueTy
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.resolvePath;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.resolveThreads;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.resolveURL;
+import static com.datastax.dsbulk.commons.tests.utils.FileUtils.createURLFile;
 import static com.typesafe.config.ConfigValueType.BOOLEAN;
 import static com.typesafe.config.ConfigValueType.LIST;
 import static com.typesafe.config.ConfigValueType.NULL;
@@ -24,18 +25,30 @@ import static com.typesafe.config.ConfigValueType.STRING;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumingThat;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.utils.URLUtils;
+import com.google.common.collect.Lists;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.regex.PatternSyntaxException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class ConfigUtilsTest {
 
@@ -195,5 +208,64 @@ class ConfigUtilsTest {
         new DefaultLoaderConfig(
             ConfigFactory.parseString("# This is a comment.\n# @type string\nmyField = foo"));
     assertThat(getComments(config.getValue("myField"))).isEqualTo("This is a comment.");
+  }
+
+  @ParameterizedTest
+  @MethodSource("urlsProvider")
+  void should_get_urls_from_file(
+      List<String> input, List<URL> expectedNonWindows, List<URL> expectedWindows)
+      throws IOException {
+    // given
+    Path urlFile = createURLFile(input);
+
+    // when
+    List<URL> urlsFromFile = ConfigUtils.getURLsFromFile(urlFile);
+
+    // then
+    assumingThat(
+        !PlatformUtils.isWindows(), () -> assertThat(urlsFromFile).isEqualTo(expectedNonWindows));
+    assumingThat(
+        PlatformUtils.isWindows(), () -> assertThat(urlsFromFile).isEqualTo(expectedWindows));
+    Files.delete(urlFile);
+  }
+
+  @Test
+  void should_throw_if_provided_urlfile_path_not_exists() {
+    // given
+    Path urlFile = Paths.get("/non-existing");
+
+    // when
+    assertThatThrownBy(() -> ConfigUtils.getURLsFromFile(urlFile))
+        .isInstanceOf(NoSuchFileException.class);
+  }
+
+  @Test
+  void should_handle_file_with_non_ascii_url() throws IOException {
+    // given
+    Path urlFile = createURLFile(new URL("http://foo.com/bar?param=καλημέρα"));
+
+    // when
+    List<URL> urlsFromFile = ConfigUtils.getURLsFromFile(urlFile);
+
+    // then
+    assertThat(urlsFromFile).containsExactly(new URL("http://foo.com/bar?param=καλημέρα"));
+
+    Files.delete(urlFile);
+  }
+
+  static List<Arguments> urlsProvider() throws MalformedURLException {
+    return Lists.newArrayList(
+        arguments(
+            Arrays.asList("/a-first-file", "/second-file"),
+            Arrays.asList(new URL("file:/a-first-file"), new URL("file:/second-file")),
+            Arrays.asList(new URL("file:/C:/a-first-file"), new URL("file:/C:/second-file"))),
+        arguments(
+            Arrays.asList("/a-first-file", "#/second-file"),
+            Collections.singletonList(new URL("file:/a-first-file")),
+            Collections.singletonList(new URL("file:/C:/a-first-file"))),
+        arguments(
+            Arrays.asList("/a-first-file", "/second-file "),
+            Arrays.asList(new URL("file:/a-first-file"), new URL("file:/second-file")),
+            Arrays.asList(new URL("file:/C:/a-first-file"), new URL("file:/C:/second-file"))));
   }
 }

@@ -49,6 +49,7 @@ import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import org.jetbrains.annotations.NotNull;
 
 public class CodecSettings {
 
@@ -127,18 +128,18 @@ public class CodecSettings {
                 NUMERIC_TIMESTAMP_EPOCH, epochStr));
       }
       localDateFormat =
-          getTemporalFormat(config.getString(DATE), null, locale, timeUnit, epoch, numberFormat);
+          getTemporalFormat(
+              config.getString(DATE), timeZone, locale, timeUnit, epoch, numberFormat, false);
       localTimeFormat =
-          getTemporalFormat(config.getString(TIME), null, locale, timeUnit, epoch, numberFormat);
+          getTemporalFormat(
+              config.getString(TIME), timeZone, locale, timeUnit, epoch, numberFormat, false);
       timestampFormat =
           getTemporalFormat(
-              config.getString(TIMESTAMP), timeZone, locale, timeUnit, epoch, numberFormat);
+              config.getString(TIMESTAMP), timeZone, locale, timeUnit, epoch, numberFormat, true);
 
       // boolean
       booleanNumbers =
-          config
-              .getStringList(BOOLEAN_NUMBERS)
-              .stream()
+          config.getStringList(BOOLEAN_NUMBERS).stream()
               .map(BigDecimal::new)
               .collect(Collectors.toList());
       if (booleanNumbers.size() != 2) {
@@ -236,12 +237,13 @@ public class CodecSettings {
 
   @VisibleForTesting
   public static TemporalFormat getTemporalFormat(
-      String pattern,
-      ZoneId timeZone,
-      Locale locale,
-      TimeUnit timeUnit,
-      ZonedDateTime epoch,
-      FastThreadLocal<NumberFormat> numberFormat) {
+      @NotNull String pattern,
+      @NotNull ZoneId timeZone,
+      @NotNull Locale locale,
+      @NotNull TimeUnit timeUnit,
+      @NotNull ZonedDateTime epoch,
+      @NotNull FastThreadLocal<NumberFormat> numberFormat,
+      boolean useZonedParser) {
     if (pattern.equals(CQL_TIMESTAMP)) {
       return new CqlTemporalFormat(timeZone);
     } else if (pattern.equals(UNITS_SINCE_EPOCH)) {
@@ -265,10 +267,10 @@ public class CodecSettings {
               // (i.e., does not convert between "uuuu" and "yyyy")
               .withResolverStyle(ResolverStyle.SMART)
               .withChronology(IsoChronology.INSTANCE);
-      if (timeZone == null) {
-        return new SimpleTemporalFormat(format);
-      } else {
+      if (useZonedParser) {
         return new ZonedTemporalFormat(format, timeZone);
+      } else {
+        return new SimpleTemporalFormat(format);
       }
     }
   }

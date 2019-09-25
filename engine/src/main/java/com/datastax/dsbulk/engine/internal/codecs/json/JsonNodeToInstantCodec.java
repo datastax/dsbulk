@@ -39,16 +39,6 @@ public class JsonNodeToInstantCodec extends JsonNodeToTemporalCodec<Instant> {
     if (temporal == null) {
       return null;
     }
-    return CodecUtils.convertTemporal(temporal, Instant.class, timeZone, epoch.toLocalDate());
-  }
-
-  @Override
-  TemporalAccessor parseTemporalAccessor(JsonNode node) {
-    if (isNullOrEmpty(node)) {
-      return null;
-    }
-    String s = node.asText();
-    // For timestamps, the conversion is more complex than for other temporals
-    return temporalFormat.parse(s);
+    return CodecUtils.toInstant(temporal, timeZone, epoch.toLocalDate());
   }
 }

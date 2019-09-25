@@ -12,6 +12,7 @@ import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
 
 import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.driver.core.SerializedSession;
+import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMVersionRequirement;
 import com.datastax.dsbulk.executor.api.ccm.BulkExecutorCCMITBase;
@@ -24,8 +25,9 @@ import org.junit.jupiter.api.Tag;
     versionRequirements = @CCMVersionRequirement(type = DSE, min = "5.1"))
 class ContinuousReactorBulkExecutorCCMIT extends BulkExecutorCCMITBase {
 
-  ContinuousReactorBulkExecutorCCMIT(ContinuousPagingSession session) {
+  ContinuousReactorBulkExecutorCCMIT(CCMCluster ccm, ContinuousPagingSession session) {
     super(
+        ccm,
         session,
         ContinuousReactorBulkExecutor.builder(new SerializedSession(session)).build(),
         ContinuousReactorBulkExecutor.builder(new SerializedSession(session)).failSafe().build());

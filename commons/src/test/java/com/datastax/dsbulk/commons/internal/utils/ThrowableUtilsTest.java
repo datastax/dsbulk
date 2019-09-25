@@ -60,12 +60,12 @@ class ThrowableUtilsTest {
     assertThat(ThrowableUtils.getSanitizedErrorMessage(root))
         .isEqualTo(
             String.format(
-                "Root.%n"
+                "Exception: Root.%n"
                     + "   Suppressed: Suppressed1.%n"
                     + "     Caused by: Suppressed1 cause.%n"
                     + "   Suppressed: Suppressed2.%n"
                     + "     Caused by: Suppressed2 cause.%n"
-                    + "   Caused by: Cause."));
+                    + "   Caused by: Exception: Cause."));
   }
 
   @Test
@@ -77,10 +77,10 @@ class ThrowableUtilsTest {
     assertThat(ThrowableUtils.getSanitizedErrorMessage(root, RuntimeException.class::isInstance, 4))
         .isEqualTo(
             String.format(
-                "Root.%n"
+                "RuntimeException: Root.%n"
                     + "     Suppressed: Suppressed2.%n"
                     + "         Caused by: Suppressed2 cause.%n"
-                    + "     Caused by: Cause."));
+                    + "     Caused by: RuntimeException: Cause."));
   }
 
   @ParameterizedTest(name = "Message for {0} should contain \"{1}\"")

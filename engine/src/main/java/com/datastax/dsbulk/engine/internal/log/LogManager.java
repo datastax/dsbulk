@@ -23,6 +23,7 @@ import ch.qos.logback.classic.spi.ThrowableProxy;
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.CodecRegistry;
+import com.datastax.driver.core.ExecutionInfo;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.exceptions.BusyConnectionException;
@@ -37,6 +38,7 @@ import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.row.RowFormatter;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosity;
 import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatter;
+import com.datastax.dsbulk.engine.internal.log.threshold.ErrorThreshold;
 import com.datastax.dsbulk.engine.internal.schema.InvalidMappingException;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
 import com.datastax.dsbulk.engine.internal.statement.BulkStatement;
@@ -47,7 +49,6 @@ import com.datastax.dsbulk.executor.api.result.WriteResult;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.google.common.base.Joiner;
-import com.google.common.collect.Range;
 import com.google.common.util.concurrent.MoreExecutors;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -78,7 +79,6 @@ import reactor.core.scheduler.Schedulers;
 public class LogManager implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LogManager.class);
-  private static final int MIN_SAMPLE = 100;
 
   private static final String MAPPING_ERRORS_FILE = "mapping-errors.log";
   private static final String CONNECTOR_ERRORS_FILE = "connector-errors.log";
@@ -95,15 +95,18 @@ public class LogManager implements AutoCloseable {
 
   private final WorkflowType workflowType;
   private final Cluster cluster;
-  private final Path executionDirectory;
-  private final int maxErrors;
-  private final float maxErrorRatio;
+  private final Path operationDirectory;
+  private final ErrorThreshold errorThreshold;
+  private final ErrorThreshold queryWarningsThreshold;
   private final StatementFormatter statementFormatter;
   private final StatementFormatVerbosity statementFormatVerbosity;
   private final RowFormatter rowFormatter;
 
   private final AtomicInteger errors = new AtomicInteger(0);
   private final LongAdder totalItems = new LongAdder();
+
+  private final AtomicInteger queryWarnings = new AtomicInteger(0);
+  private final AtomicBoolean queryWarningsEnabled = new AtomicBoolean(true);
 
   private final LoadingCache<Path, PrintWriter> openFiles =
       Caffeine.newBuilder()
@@ -136,17 +139,17 @@ public class LogManager implements AutoCloseable {
   public LogManager(
       WorkflowType workflowType,
       Cluster cluster,
-      Path executionDirectory,
-      int maxErrors,
-      float maxErrorRatio,
+      Path operationDirectory,
+      ErrorThreshold errorThreshold,
+      ErrorThreshold queryWarningsThreshold,
       StatementFormatter statementFormatter,
       StatementFormatVerbosity statementFormatVerbosity,
       RowFormatter rowFormatter) {
     this.workflowType = workflowType;
     this.cluster = cluster;
-    this.executionDirectory = executionDirectory;
-    this.maxErrors = maxErrors;
-    this.maxErrorRatio = maxErrorRatio;
+    this.operationDirectory = operationDirectory;
+    this.errorThreshold = errorThreshold;
+    this.queryWarningsThreshold = queryWarningsThreshold;
     this.statementFormatter = statementFormatter;
     this.statementFormatVerbosity = statementFormatVerbosity;
     this.rowFormatter = rowFormatter;
@@ -182,8 +185,8 @@ public class LogManager implements AutoCloseable {
     Thread.setDefaultUncaughtExceptionHandler((thread, t) -> uncaughtExceptionSink.error(t));
   }
 
-  public Path getExecutionDirectory() {
-    return executionDirectory;
+  public Path getOperationDirectory() {
+    return operationDirectory;
   }
 
   public int getTotalErrors() {
@@ -218,7 +221,7 @@ public class LogManager implements AutoCloseable {
       positionsPrinter =
           new PrintWriter(
               Files.newBufferedWriter(
-                  executionDirectory.resolve(POSITIONS_FILE),
+                  operationDirectory.resolve(POSITIONS_FILE),
                   Charset.forName("UTF-8"),
                   CREATE_NEW,
                   WRITE));
@@ -241,8 +244,7 @@ public class LogManager implements AutoCloseable {
           Joiner.on(", ").join(badFiles));
     }
     List<Path> debugFiles =
-        files
-            .stream()
+        files.stream()
             .map(Path::getFileName)
             .filter(path -> !badFileMatcher.matches(path))
             .collect(toList());
@@ -478,6 +480,25 @@ public class LogManager implements AutoCloseable {
             .<ReadResult>dematerialize()
             .filter(Result::isSuccess);
   }
+  /**
+   * Handler for query warnings.
+   *
+   * <p>Used by all workflows.
+   *
+   * <p>Increments the number of query warnings; if the threshold is exceeded, logs one last warning
+   * than mutes subsequent query warnings.
+   *
+   * @return a handler for for query warnings.
+   */
+  public <T extends Result> Function<Flux<T>, Flux<T>> newQueryWarningsHandler() {
+    return upstream ->
+        upstream.doOnNext(
+            result -> {
+              if (queryWarningsEnabled.get()) {
+                result.getExecutionInfo().ifPresent(this::maybeLogQueryWarnings);
+              }
+            });
+  }
 
   /**
    * Handler for result positions.
@@ -689,7 +710,7 @@ public class LogManager implements AutoCloseable {
   // Bad file management
 
   private void appendToBadFile(Record record, String file) {
-    Path logFile = executionDirectory.resolve(file);
+    Path logFile = operationDirectory.resolve(file);
     PrintWriter writer = openFiles.get(logFile);
     assert writer != null;
     Object source = record.getSource();
@@ -701,21 +722,21 @@ public class LogManager implements AutoCloseable {
 
   // write query failed
   private void appendFailedWriteResultToDebugFile(WriteResult result) {
-    appendStatement(result, LOAD_ERRORS_FILE);
+    appendStatement(result, LOAD_ERRORS_FILE, true);
   }
 
   // CAS write query failed
   private void appendFailedCASWriteResultToDebugFile(WriteResult result) {
-    appendStatement(result, CAS_ERRORS_FILE);
+    appendStatement(result, CAS_ERRORS_FILE, true);
   }
 
   // read query failed
   private void appendFailedReadResultToDebugFile(ReadResult result) {
-    appendStatement(result, UNLOAD_ERRORS_FILE);
+    appendStatement(result, UNLOAD_ERRORS_FILE, true);
   }
 
-  private void appendStatement(Result result, String logFileName) {
-    Path logFile = executionDirectory.resolve(logFileName);
+  private void appendStatement(Result result, String logFileName, boolean appendNewLine) {
+    Path logFile = operationDirectory.resolve(logFileName);
     PrintWriter writer = openFiles.get(logFile);
     assert writer != null;
     writer.print("Statement: ");
@@ -739,14 +760,16 @@ public class LogManager implements AutoCloseable {
     if (result.getError().isPresent()) {
       stackTracePrinter.printStackTrace(result.getError().get(), writer);
     }
-    writer.println();
+    if (appendNewLine) {
+      writer.println();
+    }
   }
 
   // Mapping errors (failed record -> statement or row -> record mappings)
 
   // record -> statement failed (load workflow)
   private void appendUnmappableStatementToDebugFile(UnmappableStatement statement) {
-    Path logFile = executionDirectory.resolve(MAPPING_ERRORS_FILE);
+    Path logFile = operationDirectory.resolve(MAPPING_ERRORS_FILE);
     PrintWriter writer = openFiles.get(logFile);
     assert writer != null;
     Record record = statement.getSource();
@@ -759,13 +782,13 @@ public class LogManager implements AutoCloseable {
 
   // row -> record failed (unload workflow)
   private void appendUnmappableReadResultToDebugFile(ErrorRecord record) {
-    Path logFile = executionDirectory.resolve(MAPPING_ERRORS_FILE);
+    Path logFile = operationDirectory.resolve(MAPPING_ERRORS_FILE);
     PrintWriter writer = openFiles.get(logFile);
     assert writer != null;
     writer.println("Resource: " + record.getResource());
     if (record.getSource() instanceof ReadResult) {
       ReadResult source = (ReadResult) record.getSource();
-      appendStatement(source, MAPPING_ERRORS_FILE);
+      appendStatement(source, MAPPING_ERRORS_FILE, false);
       source
           .getRow()
           .ifPresent(
@@ -782,7 +805,7 @@ public class LogManager implements AutoCloseable {
   // Connector errors
 
   private void appendFailedRecordToDebugFile(ErrorRecord record) {
-    Path logFile = executionDirectory.resolve(CONNECTOR_ERRORS_FILE);
+    Path logFile = operationDirectory.resolve(CONNECTOR_ERRORS_FILE);
     PrintWriter writer = openFiles.get(logFile);
     assert writer != null;
     writer.println("Resource: " + record.getResource());
@@ -795,44 +818,18 @@ public class LogManager implements AutoCloseable {
   // Utility methods
 
   private static void appendToPositionsFile(
-      URI resource, List<Range<Long>> positions, PrintWriter positionsPrinter) {
+      URI resource, List<Range> positions, PrintWriter positionsPrinter) {
     positionsPrinter.print(resource);
     positionsPrinter.print(':');
-    positions.stream().findFirst().ifPresent(pos -> positionsPrinter.print(pos.upperEndpoint()));
+    positions.stream().findFirst().ifPresent(pos -> positionsPrinter.print(pos.getUpper()));
     positionsPrinter.println();
   }
 
   private <T> Signal<T> maybeTriggerOnError(Signal<T> signal, int errorCount) {
-    TooManyErrorsException exception;
-    if (isPercentageBased()) {
-      exception = maxPercentageExceeded(errorCount);
-    } else {
-      exception = maxErrorCountExceeded(errorCount);
-    }
-    if (exception != null) {
-      return Signal.error(exception);
+    if (errorThreshold.checkThresholdExceeded(errorCount, totalItems)) {
+      return Signal.error(new TooManyErrorsException(errorThreshold));
     }
     return signal;
-  }
-
-  private boolean isPercentageBased() {
-    return maxErrorRatio != 0;
-  }
-
-  private TooManyErrorsException maxErrorCountExceeded(int errorCount) {
-    if (maxErrors > 0 && errorCount > maxErrors) {
-      return new TooManyErrorsException(maxErrors);
-    }
-    return null;
-  }
-
-  private TooManyErrorsException maxPercentageExceeded(int errorCount) {
-    long attemptedTemp = totalItems.longValue();
-    float currentRatio = (float) errorCount / attemptedTemp;
-    if (attemptedTemp > MIN_SAMPLE && currentRatio > maxErrorRatio) {
-      return new TooManyErrorsException(maxErrorRatio);
-    }
-    return null;
   }
 
   private void maybeWarnInvalidMapping(UnmappableStatement stmt) {
@@ -841,6 +838,24 @@ public class LogManager implements AutoCloseable {
         LOGGER.warn(
             "At least 1 record does not match the provided schema.mapping or schema.query. "
                 + "Please check that the connector configuration and the schema configuration are correct.");
+      }
+    }
+  }
+
+  private void maybeLogQueryWarnings(ExecutionInfo info) {
+    if (info.getWarnings() != null) {
+      for (String warning : info.getWarnings()) {
+        if (queryWarningsThreshold.checkThresholdExceeded(
+            queryWarnings.incrementAndGet(), totalItems)) {
+          queryWarningsEnabled.set(false);
+          LOGGER.warn(
+              "The maximum number of logged query warnings has been exceeded ({}); "
+                  + "subsequent warnings will not be logged.",
+              queryWarningsThreshold.thresholdAsString());
+          break;
+        } else {
+          LOGGER.warn("Query generated server-side warning: " + warning);
+        }
       }
     }
   }

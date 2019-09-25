@@ -30,7 +30,6 @@ import com.datastax.dsbulk.commons.log.LogSink;
 import com.datastax.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
-import com.datastax.dsbulk.engine.internal.settings.LogSettings.Verbosity;
 import com.datastax.dsbulk.engine.internal.settings.RowType;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
 import com.datastax.dsbulk.executor.api.listener.AbstractMetricsReportingExecutionListenerBuilder;
@@ -74,7 +73,7 @@ public class MetricsManager implements AutoCloseable {
   private final long expectedReads;
   private final boolean jmx;
   private final boolean csv;
-  private final Path executionDirectory;
+  private final Path operationDirectory;
   private final Duration reportInterval;
   private final boolean batchingEnabled;
   private final LogSettings.Verbosity verbosity;
@@ -104,10 +103,11 @@ public class MetricsManager implements AutoCloseable {
       TimeUnit durationUnit,
       long expectedWrites,
       long expectedReads,
+      boolean trackBytes,
       boolean jmx,
       boolean csv,
-      Path executionDirectory,
-      Verbosity verbosity,
+      Path operationDirectory,
+      LogSettings.Verbosity verbosity,
       Duration reportInterval,
       boolean batchingEnabled,
       ProtocolVersion protocolVersion,
@@ -118,7 +118,8 @@ public class MetricsManager implements AutoCloseable {
         .getMetrics()
         .forEach((name, metric) -> this.registry.register("driver/" + name, metric));
     this.listener =
-        new MetricsCollectingExecutionListener(registry, protocolVersion, codecRegistry);
+        new MetricsCollectingExecutionListener(
+            registry, protocolVersion, codecRegistry, trackBytes);
     this.workflowType = workflowType;
     this.executionId = executionId;
     this.scheduler = scheduler;
@@ -128,7 +129,7 @@ public class MetricsManager implements AutoCloseable {
     this.expectedReads = expectedReads;
     this.jmx = jmx;
     this.csv = csv;
-    this.executionDirectory = executionDirectory;
+    this.operationDirectory = operationDirectory;
     this.verbosity = verbosity;
     this.reportInterval = reportInterval;
     this.batchingEnabled = batchingEnabled;
@@ -296,7 +297,7 @@ public class MetricsManager implements AutoCloseable {
         CsvReporter.forRegistry(registry)
             .convertDurationsTo(durationUnit)
             .convertRatesTo(rateUnit)
-            .build(executionDirectory.toFile());
+            .build(operationDirectory.toFile());
     csvReporter.start(reportInterval.getSeconds(), SECONDS);
   }
 
@@ -370,7 +371,7 @@ public class MetricsManager implements AutoCloseable {
               () -> totalRecords.getCount(),
               () -> failedRecords.getCount() + listener.getFailedWritesCounter().getCount(),
               listener.getTotalWritesTimer(),
-              listener.getBytesSentMeter(),
+              listener.getBytesSentMeter().orElse(null),
               batchingEnabled ? registry.histogram("batches/size") : null,
               SECONDS,
               MILLISECONDS,
@@ -385,7 +386,7 @@ public class MetricsManager implements AutoCloseable {
               () -> listener.getTotalReadsTimer().getCount(),
               () -> failedRecords.getCount() + listener.getFailedReadsCounter().getCount(),
               listener.getTotalReadsTimer(),
-              listener.getBytesReceivedMeter(),
+              listener.getBytesReceivedMeter().orElse(null),
               null,
               SECONDS,
               MILLISECONDS,

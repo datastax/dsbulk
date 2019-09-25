@@ -418,9 +418,7 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   public static LinkedHashMultimap<MappingField, CQLFragment> sortFieldsByIndex(
       Multimap<MappingField, CQLFragment> unsorted) {
     LinkedHashMultimap<MappingField, CQLFragment> sorted = LinkedHashMultimap.create();
-    unsorted
-        .entries()
-        .stream()
+    unsorted.entries().stream()
         .sorted(
             Entry.comparingByKey(Comparator.comparingInt(MappingInspector::compareIndexedFields)))
         .forEachOrdered(entry -> sorted.put(entry.getKey(), entry.getValue()));
@@ -449,8 +447,7 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
       toCheck = explicitVariables.inverse().values();
     }
     List<MappingToken> duplicates =
-        toCheck
-            .stream()
+        toCheck.stream()
             .collect(groupingBy(v -> v, counting()))
             .entrySet()
             .stream()

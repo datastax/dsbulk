@@ -17,6 +17,7 @@ import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newPreparedId;
 import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newToken;
 import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newTokenRange;
 import static com.datastax.driver.core.DriverCoreHooks.wrappedStatement;
+import static com.datastax.driver.core.Metadata.quote;
 import static com.datastax.driver.core.ProtocolVersion.V1;
 import static com.datastax.driver.core.ProtocolVersion.V3;
 import static com.datastax.driver.core.ProtocolVersion.V4;
@@ -180,7 +181,7 @@ class SchemaSettingsTest {
     when(session.prepare(anyString())).thenReturn(ps);
     when(table.getColumns()).thenReturn(columns);
     when(table.getColumn(C1)).thenReturn(col1);
-    when(table.getColumn(C2)).thenReturn(col2);
+    when(table.getColumn(quote(C2))).thenReturn(col2);
     when(table.getColumn(C3)).thenReturn(col3);
     when(table.getPrimaryKey()).thenReturn(singletonList(col1));
     when(table.getPartitionKey()).thenReturn(singletonList(col1));
@@ -455,6 +456,7 @@ class SchemaSettingsTest {
     ColumnDefinitions definitions =
         newColumnDefinitions(newDefinition("c1var", varchar()), newDefinition("c2var", varchar()));
     when(ps.getVariables()).thenReturn(definitions);
+    when(table.getColumn("c2")).thenReturn(col2);
     LoaderConfig config =
         makeLoaderConfig(
             "mapping = \"0 = c1var , 2 = c2var\", "
@@ -1021,6 +1023,7 @@ class SchemaSettingsTest {
             newDefinition("c2", varchar()),
             newDefinition("c3", varchar()));
     when(ps.getVariables()).thenReturn(definitions);
+    when(table.getColumn("c2")).thenReturn(col2);
     LoaderConfig config =
         makeLoaderConfig(
             "query = \"INSERT INTO ks.t1 (c1,c2) VALUES (:c1, :c2) USING TIMESTAMP :c3\","
@@ -1042,6 +1045,7 @@ class SchemaSettingsTest {
             newDefinition("c2", varchar()),
             newDefinition("\"This is a quoted \\\" variable name\"", varchar()));
     when(ps.getVariables()).thenReturn(definitions);
+    when(table.getColumn("c2")).thenReturn(col2);
     LoaderConfig config =
         makeLoaderConfig(
             "query = \"INSERT INTO ks.t1 (c1,c2) VALUES (:c1, :c2) USING TTL 123 AND tImEsTaMp     :\\\"This is a quoted \\\"\\\" variable name\\\"\"");
@@ -2091,6 +2095,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_when_insert_query_does_not_contain_primary_key() {
+    when(table.getColumn("c2")).thenReturn(col2);
     LoaderConfig config = makeLoaderConfig("query = \"INSERT INTO ks.t1 (c2) VALUES (:c2)\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(LOAD, cluster, false, true);
@@ -2098,6 +2103,19 @@ class SchemaSettingsTest {
             () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage("Missing required primary key column c1 from schema.mapping or schema.query");
+  }
+
+  @Test
+  void
+      should_not_error_when_insert_query_does_not_contain_clustering_column_but_mutation_is_static_only() {
+    LoaderConfig config =
+        makeLoaderConfig("query = \"INSERT INTO ks.t1 (c1, c3) VALUES (:c1, :c3)\"");
+    when(table.getPrimaryKey()).thenReturn(newArrayList(col1, col2));
+    when(table.getPartitionKey()).thenReturn(singletonList(col1));
+    when(col3.isStatic()).thenReturn(true);
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(LOAD, cluster, false, true);
+    schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
   }
 
   @Test

@@ -22,7 +22,7 @@ public class StringToDateRangeCodec extends StringConvertingCodec<DateRange> {
 
   @Override
   public DateRange externalToInternal(String s) {
-    if (isNull(s)) {
+    if (isNullOrEmpty(s)) {
       return null;
     }
     return CodecUtils.parseDateRange(s);

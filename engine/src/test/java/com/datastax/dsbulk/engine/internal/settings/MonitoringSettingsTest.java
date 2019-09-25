@@ -73,7 +73,8 @@ class MonitoringSettingsTest {
                     + "durationUnit = SECONDS, "
                     + "reportRate = 30 minutes, "
                     + "expectedWrites = 1000, "
-                    + "expectedReads = 50,"
+                    + "expectedReads = 50, "
+                    + "trackBytes = true, "
                     + "jmx = false,"
                     + "csv = true"));
     MonitoringSettings settings = new MonitoringSettings(config, "test");
@@ -97,7 +98,7 @@ class MonitoringSettingsTest {
     assertThat(ReflectionUtils.getInternalState(metricsManager, "expectedReads")).isEqualTo(50L);
     assertThat(ReflectionUtils.getInternalState(metricsManager, "jmx")).isEqualTo(false);
     assertThat(ReflectionUtils.getInternalState(metricsManager, "csv")).isEqualTo(true);
-    assertThat(ReflectionUtils.getInternalState(metricsManager, "executionDirectory"))
+    assertThat(ReflectionUtils.getInternalState(metricsManager, "operationDirectory"))
         .isEqualTo(tmpPath);
   }
 
@@ -123,6 +124,18 @@ class MonitoringSettingsTest {
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage("Invalid value for monitoring.expectedReads: Expecting NUMBER, got STRING");
+  }
+
+  @Test
+  void should_throw_exception_when_trackBytes_not_a_boolean() {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("trackBytes = NotABoolean")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.monitoring")));
+    MonitoringSettings settings = new MonitoringSettings(config, "test");
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("Invalid value for monitoring.trackBytes: Expecting BOOLEAN, got STRING");
   }
 
   @Test
