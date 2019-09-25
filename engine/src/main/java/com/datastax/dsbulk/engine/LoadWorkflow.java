@@ -248,7 +248,11 @@ public class LoadWorkflow implements Workflow {
                       .transform(failedStatementsMonitor)
                       .transform(unmappableStatementsHandler);
               if (batchingEnabled) {
-                stmts = stmts.transform(batcher).transform(batcherMonitor);
+                stmts =
+                    stmts
+                        .transform(batcher)
+                        .doOnNext(stmt -> stmt.setIdempotent(true))
+                        .transform(batcherMonitor);
               }
               return executeStatements(stmts)
                   .transform(queryWarningsHandler)
