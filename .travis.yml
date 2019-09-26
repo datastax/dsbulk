@@ -1,14 +1,31 @@
 language: java
-
-jdk:
-  - oraclejdk8
-
+dist: trusty
 sudo: false
+# see https://sormuras.github.io/blog/2018-03-20-jdk-matrix.html
+matrix:
+  include:
+    # 8
+    - env: JDK='OpenJDK 8'
+      jdk: openjdk8
+    # 11
+    - env: JDK='OpenJDK 11'
+      # switch to JDK 11 before running tests
+      before_script: . $TRAVIS_BUILD_DIR/ci/install-jdk.sh -F 11 -L GPL
+    # 12
+    - env: JDK='OpenJDK 12'
+      # switch to JDK 12 before running tests
+      before_script: . $TRAVIS_BUILD_DIR/ci/install-jdk.sh -F 12 -L GPL
+
+before_install:
+  - cp $TRAVIS_BUILD_DIR/ci/settings.xml $HOME/.m2/settings.xml
+  # Require JDK8 for compiling
+  - jdk_switcher use openjdk8
+
+install: mvn test-compile -B -V
+
+script: mvn verify -B -V -Dmaven.main.skip=true -Dmaven.test.skip=true
 
 cache:
   directories:
     - $HOME/.m2
 
-before_install: cp .settings.xml $HOME/.m2/settings.xml
-
-script: mvn verify -B

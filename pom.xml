@@ -458,6 +458,7 @@
             <failOnWarning>false</failOnWarning>
             <compilerId>javac-with-errorprone</compilerId>
             <forceJavacCompilerUse>true</forceJavacCompilerUse>
+            <useIncrementalCompilation>false</useIncrementalCompilation>
           </configuration>
           <dependencies>
             <dependency>
