@@ -50,6 +50,7 @@ import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.driver.api.core.session.ProgrammaticArguments;
 import com.datastax.oss.driver.api.core.time.TimestampGenerator;
 import com.datastax.oss.driver.internal.core.ssl.SslHandlerFactory;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
@@ -277,10 +278,10 @@ public class DriverSettings {
       this.localDc = localDc;
 
       if (!whiteList.isEmpty()) {
-        List<SocketAddress> allowedHosts =
+        ImmutableList<SocketAddress> allowedHosts =
             config.getStringList(POLICY_LBP_WHITE_LIST).stream()
                 .map(host -> new InetSocketAddress(host, port))
-                .collect(Collectors.toList());
+                .collect(ImmutableList.toImmutableList());
         nodeFilter = node -> allowedHosts.contains(node.getEndPoint().resolve());
       }
 
