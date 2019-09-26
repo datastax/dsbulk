@@ -50,6 +50,7 @@ import com.datastax.oss.driver.api.core.context.DriverContext;
 import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.driver.api.core.session.ProgrammaticArguments;
 import com.datastax.oss.driver.api.core.time.TimestampGenerator;
+import com.datastax.oss.driver.internal.core.ssl.JdkSslHandlerFactory;
 import com.datastax.oss.driver.internal.core.ssl.SslHandlerFactory;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
 import com.typesafe.config.Config;
@@ -338,7 +339,13 @@ public class DriverSettings {
                 configLoader, programmaticArguments, dseProgrammaticArgumentsBuilder.build()) {
               @Override
               protected Optional<SslHandlerFactory> buildSslHandlerFactory() {
-                return Optional.ofNullable(sslHandlerFactory);
+                // If a JDK-based factory was provided through the public API, wrap it;
+                // this can only happen in DSBulk if a secure connect bundle was provided.
+                if (getSslEngineFactory().isPresent()) {
+                  return getSslEngineFactory().map(JdkSslHandlerFactory::new);
+                } else {
+                  return Optional.ofNullable(sslHandlerFactory);
+                }
               }
             };
           }
