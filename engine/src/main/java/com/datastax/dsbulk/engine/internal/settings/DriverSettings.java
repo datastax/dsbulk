@@ -58,6 +58,7 @@ import com.typesafe.config.ConfigFactory;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.nio.file.Path;
 import java.security.GeneralSecurityException;
 import java.util.HashMap;
 import java.util.List;
@@ -85,7 +86,10 @@ public class DriverSettings {
 
   private static final String HOSTS = "hosts";
   private static final String PORT = "port";
+
   private static final String CLOUD = "cloud";
+  private static final String SECURE_CONNECT_BUNDLE_PATH = CLOUD + '.' + "secureConnectBundle";
+
   private static final String POOLING_LOCAL_CONNECTIONS =
       POOLING + '.' + LOCAL + '.' + "connections";
   private static final String POOLING_REMOTE_CONNECTIONS =
@@ -152,7 +156,10 @@ public class DriverSettings {
       // Disable driver-level query warnings, these are handled by LogManager
       driverConfig.put(REQUEST_LOG_WARNINGS, false);
 
-      String secureBundleLocation = config.getString(CLOUD);
+      Path secureBundleLocation = null;
+      if (config.hasPath(SECURE_CONNECT_BUNDLE_PATH)) {
+        secureBundleLocation = config.getPath(SECURE_CONNECT_BUNDLE_PATH);
+      }
 
       int port = config.getInt(PORT);
       if (secureBundleLocation == null) {
@@ -167,7 +174,8 @@ public class DriverSettings {
             CONTACT_POINTS,
             hosts.stream().map(host -> host + ':' + port).collect(Collectors.toList()));
       } else {
-        driverConfig.put(CLOUD_SECURE_CONNECT_BUNDLE, secureBundleLocation);
+        driverConfig.put(
+            CLOUD_SECURE_CONNECT_BUNDLE, secureBundleLocation.toAbsolutePath().toString());
       }
 
       Compression compression = config.getEnum(Compression.class, PROTOCOL_COMPRESSION);
@@ -231,7 +239,7 @@ public class DriverSettings {
 
       String localDc = null;
       // Default for localDc is null
-      if (config.hasPath(POLICY_LBP_LOCAL_DC)) {
+      if (config.hasPath(POLICY_LBP_LOCAL_DC) && secureBundleLocation == null) {
         localDc = config.getString(POLICY_LBP_LOCAL_DC);
       }
 
@@ -289,7 +297,7 @@ public class DriverSettings {
 
       this.localDc = localDc;
 
-      if (!whiteList.isEmpty()) {
+      if (!whiteList.isEmpty() && secureBundleLocation == null) {
         ImmutableList<SocketAddress> allowedHosts =
             config.getStringList(POLICY_LBP_WHITE_LIST).stream()
                 .map(host -> new InetSocketAddress(host, port))
@@ -321,45 +329,30 @@ public class DriverSettings {
                   .resolve();
           return config.getConfig("datastax-java-driver");
         };
-    DseSessionBuilder sessionBuilder;
-    if (sslHandlerFactory != null) {
-      sessionBuilder =
-          new DseSessionBuilder() {
-            @Override
-            protected DriverContext buildContext(
-                DriverConfigLoader configLoader, ProgrammaticArguments programmaticArguments) {
-              return new DseDriverContext(
-                  configLoader, programmaticArguments, dseProgrammaticArgumentsBuilder.build()) {
-                @Override
-                protected Optional<SslHandlerFactory> buildSslHandlerFactory() {
-                  return Optional.ofNullable(sslHandlerFactory);
-                }
-              };
-            }
-          };
-    } else {
-      sessionBuilder =
-          new DseSessionBuilder() {
-            @Override
-            protected DriverContext buildContext(
-                DriverConfigLoader configLoader, ProgrammaticArguments programmaticArguments) {
-              return new DseDriverContext(
-                  configLoader, programmaticArguments, dseProgrammaticArgumentsBuilder.build()) {};
-            }
-          };
-    }
-    sessionBuilder
-        .withApplicationVersion(getBulkLoaderVersion())
-        .withApplicationName(BULK_LOADER_APPLICATION_NAME + " " + executionId)
-        .withClientId(clientId(executionId))
-        .withAuthProvider(authProvider)
-        .withConfigLoader(
-            new DefaultDseDriverConfigLoader(configSupplier) {
+    DseSessionBuilder sessionBuilder =
+        new DseSessionBuilder() {
+          @Override
+          protected DriverContext buildContext(
+              DriverConfigLoader configLoader, ProgrammaticArguments programmaticArguments) {
+            return new DseDriverContext(
+                configLoader, programmaticArguments, dseProgrammaticArgumentsBuilder.build()) {
               @Override
-              public boolean supportsReloading() {
-                return false;
+              protected Optional<SslHandlerFactory> buildSslHandlerFactory() {
+                return Optional.ofNullable(sslHandlerFactory);
               }
-            });
+            };
+          }
+        }.withApplicationVersion(getBulkLoaderVersion())
+            .withApplicationName(BULK_LOADER_APPLICATION_NAME + " " + executionId)
+            .withClientId(clientId(executionId))
+            .withAuthProvider(authProvider)
+            .withConfigLoader(
+                new DefaultDseDriverConfigLoader(configSupplier) {
+                  @Override
+                  public boolean supportsReloading() {
+                    return false;
+                  }
+                });
     if (localDc != null) {
       sessionBuilder.withLocalDatacenter(localDc);
     }

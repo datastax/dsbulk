@@ -15,6 +15,7 @@ A template configuration file can be found [here](./application.template.conf).
 <a href="#codec">Codec Settings</a><br>
 <a href="#driver">Driver Settings</a><br>
 &nbsp;&nbsp;&nbsp;<a href="#driver.auth">Driver Auth Settings</a><br>
+&nbsp;&nbsp;&nbsp;<a href="#driver.cloud">Driver Cloud Settings</a><br>
 &nbsp;&nbsp;&nbsp;<a href="#driver.policy">Driver Policy Settings</a><br>
 &nbsp;&nbsp;&nbsp;<a href="#driver.pooling">Driver Pooling Settings</a><br>
 &nbsp;&nbsp;&nbsp;<a href="#driver.protocol">Driver Protocol Settings</a><br>
@@ -182,6 +183,8 @@ Default: **false**.
 
 The contact points to use for the initial connection to the cluster. This must be a comma-separated list of hosts, each specified by a host-name or ip address. If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use `localhost` as a host-name (since it resolves to both IPv4 and IPv6 addresses on some platforms). The port for all hosts must be specified with `driver.port`.
 
+This setting is ignored if `driver.cloud.secureConnectBundle` is provided.
+
 Default: **["127.0.0.1"]**.
 
 #### -port,--driver.port _&lt;number&gt;_
@@ -189,6 +192,8 @@ Default: **["127.0.0.1"]**.
 The native transport port to connect to. This must match DSE's [native_transport_port](https://docs.datastax.com/en/cassandra/2.1/cassandra/configuration/configCassandra_yaml_r.html#configCassandra_yaml_r__native_transport_port) configuration option.
 
 Note that all nodes in a cluster must accept connections on the same port number. Mixed-port clusters are not supported.
+
+This setting is ignored if `driver.cloud.secureConnectBundle` is provided.
 
 Default: **9042**.
 
@@ -221,6 +226,8 @@ Default: **"LOCAL_ONE"**.
 #### -localDc,--driver.policy.lbp.localDc _&lt;string&gt;_
 
 The datacenter name (commonly dc1, dc2, etc.) local to the machine on which dsbulk is running, so that requests are sent to nodes in the local datacenter whenever possible.
+
+This setting is ignored if `driver.cloud.secureConnectBundle` is provided.
 
 Default: **null**.
 
@@ -975,6 +982,8 @@ Driver-specific configuration.
 
 The contact points to use for the initial connection to the cluster. This must be a comma-separated list of hosts, each specified by a host-name or ip address. If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use `localhost` as a host-name (since it resolves to both IPv4 and IPv6 addresses on some platforms). The port for all hosts must be specified with `driver.port`.
 
+This setting is ignored if `driver.cloud.secureConnectBundle` is provided.
+
 Default: **["127.0.0.1"]**.
 
 #### -port,--driver.port _&lt;number&gt;_
@@ -982,6 +991,8 @@ Default: **["127.0.0.1"]**.
 The native transport port to connect to. This must match DSE's [native_transport_port](https://docs.datastax.com/en/cassandra/2.1/cassandra/configuration/configCassandra_yaml_r.html#configCassandra_yaml_r__native_transport_port) configuration option.
 
 Note that all nodes in a cluster must accept connections on the same port number. Mixed-port clusters are not supported.
+
+This setting is ignored if `driver.cloud.secureConnectBundle` is provided.
 
 Default: **9042**.
 
@@ -995,6 +1006,8 @@ The driver provides the following implementations out of the box:
 You can also specify a custom class that implements
 `com.datastax.oss.driver.internal.core.addresstranslation.AddressTranslator` and has a public
 constructor with a `DriverContext` argument.
+
+This setting is ignored if `driver.cloud.secureConnectBundle` is provided.
 
 Default: **"PassThroughAddressTranslator"**.
 
@@ -1086,6 +1099,18 @@ The SASL service name to use. This value should match the username of the Kerber
 
 Default: **"dse"**.
 
+<a name="driver.cloud"></a>
+### Driver Cloud Settings
+
+Cloud-specific settings.
+
+#### --driver.cloud.secureConnectBundle _&lt;string&gt;_
+
+The location of the cloud secure bundle used to connect to Datastax Apache Cassandra as a
+service.
+
+Default: **null**.
+
 <a name="driver.policy"></a>
 ### Driver Policy Settings
 
@@ -1095,11 +1120,15 @@ Settings for various driver policies.
 
 The datacenter name (commonly dc1, dc2, etc.) local to the machine on which dsbulk is running, so that requests are sent to nodes in the local datacenter whenever possible.
 
+This setting is ignored if `driver.cloud.secureConnectBundle` is provided.
+
 Default: **null**.
 
 #### --driver.policy.lbp.whiteList _&lt;list&gt;_
 
 List of hosts to white list. This must be a comma-separated list of hosts, each specified by a host-name or ip address. If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use `localhost` as a host-name (since it resolves to both IPv4 and IPv6 addresses on some platforms). If empty, all hosts will be contacted.
+
+This setting is ignored if `driver.cloud.secureConnectBundle` is provided.
 
 Default: **[]**.
 
@@ -1200,6 +1229,8 @@ Default: **"60 seconds"**.
 Encryption-specific settings.
 
 For more information about how to configure this section, see the Java Secure Socket Extension (JSSE) Reference Guide: http://docs.oracle.com/javase/6/docs/technotes/guides/security/jsse/JSSERefGuide.html. You can also check the DataStax Java driver documentation on SSL: http://docs.datastax.com/en/developer/java-driver-dse/latest/manual/ssl/
+
+This entire section is ignored if `driver.cloud.secureConnectBundle` is provided.
 
 #### --driver.ssl.cipherSuites _&lt;list&gt;_
 
