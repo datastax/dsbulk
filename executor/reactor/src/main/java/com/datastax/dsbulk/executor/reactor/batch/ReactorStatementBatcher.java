@@ -216,7 +216,7 @@ public class ReactorStatementBatcher extends StatementBatcher {
    */
   @NonNull
   public Flux<Statement<?>> batchAll(@NonNull Publisher<BatchableStatement<?>> statements) {
-    return Flux.<Statement<?>>from(statements)
+    return Flux.from(statements)
         .windowUntil(new ReactorAdaptiveSizingBatchPredicate(), false)
         .flatMap(
             stmts ->
@@ -224,7 +224,7 @@ public class ReactorStatementBatcher extends StatementBatcher {
                     .reduce(
                         new ArrayList<BatchableStatement<?>>(),
                         (children, child) -> {
-                          children.add((BatchableStatement<?>) child);
+                          children.add(child);
                           return children;
                         })
                     .map(
