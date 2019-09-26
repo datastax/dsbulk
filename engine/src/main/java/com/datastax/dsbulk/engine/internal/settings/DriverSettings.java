@@ -157,12 +157,13 @@ public class DriverSettings {
       // Disable driver-level query warnings, these are handled by LogManager
       driverConfig.put(REQUEST_LOG_WARNINGS, false);
 
+      int port = config.getInt(PORT);
+
       Path secureBundleLocation = null;
       if (config.hasPath(SECURE_CONNECT_BUNDLE_PATH)) {
         secureBundleLocation = config.getPath(SECURE_CONNECT_BUNDLE_PATH);
       }
 
-      int port = config.getInt(PORT);
       if (secureBundleLocation == null) {
         List<String> hosts = config.getStringList(HOSTS);
         if (hosts.isEmpty()) {
@@ -238,14 +239,6 @@ public class DriverSettings {
         sslHandlerFactory = SslHandlerFactoryFactory.createSslHandlerFactory(config);
       }
 
-      String localDc = null;
-      // Default for localDc is null
-      if (config.hasPath(POLICY_LBP_LOCAL_DC) && secureBundleLocation == null) {
-        localDc = config.getString(POLICY_LBP_LOCAL_DC);
-      }
-
-      List<String> whiteList = config.getStringList(POLICY_LBP_WHITE_LIST);
-
       if (config.hasPath(POLICY_LBP_NAME)) {
         LOGGER.warn(
             "Driver setting {} is obsolete; please remove it from your configuration",
@@ -266,13 +259,6 @@ public class DriverSettings {
             "Driver setting {} is obsolete; please remove it from your configuration",
             POLICY_LBP_TOKEN_AWARE_REPLICA_ORDERING);
       }
-      if (config.hasPath(POLICY_LBP_DC_AWARE_LOCAL_DC)) {
-        LOGGER.warn(
-            "Driver setting {} is deprecated; please use {} instead",
-            POLICY_LBP_DC_AWARE_LOCAL_DC,
-            POLICY_LBP_LOCAL_DC);
-        localDc = config.getString(POLICY_LBP_DC_AWARE_LOCAL_DC);
-      }
       if (config.hasPath(POLICY_LBP_DC_AWARE_ALLOW_REMOTE)) {
         LOGGER.warn(
             "Driver setting {} is obsolete; please remove it from your configuration",
@@ -288,22 +274,38 @@ public class DriverSettings {
             "Driver setting {} is obsolete; please remove it from your configuration",
             POLICY_LBP_WHITE_LIST_CHILD_POLICY);
       }
-      if (config.hasPath(POLICY_LBP_WHITE_LIST_HOSTS)) {
-        LOGGER.warn(
-            "Driver setting {} is deprecated; please use {} instead",
-            POLICY_LBP_WHITE_LIST_HOSTS,
-            POLICY_LBP_WHITE_LIST);
-        whiteList = config.getStringList(POLICY_LBP_WHITE_LIST_HOSTS);
-      }
 
-      this.localDc = localDc;
+      if (secureBundleLocation == null) {
 
-      if (!whiteList.isEmpty() && secureBundleLocation == null) {
-        ImmutableList<SocketAddress> allowedHosts =
-            config.getStringList(POLICY_LBP_WHITE_LIST).stream()
-                .map(host -> new InetSocketAddress(host, port))
-                .collect(ImmutableList.toImmutableList());
-        nodeFilter = node -> allowedHosts.contains(node.getEndPoint().resolve());
+        String localDc = null;
+        // Default for localDc is null
+        if (config.hasPath(POLICY_LBP_LOCAL_DC)) {
+          localDc = config.getString(POLICY_LBP_LOCAL_DC);
+        }
+        if (config.hasPath(POLICY_LBP_DC_AWARE_LOCAL_DC)) {
+          LOGGER.warn(
+              "Driver setting {} is deprecated; please use {} instead",
+              POLICY_LBP_DC_AWARE_LOCAL_DC,
+              POLICY_LBP_LOCAL_DC);
+          localDc = config.getString(POLICY_LBP_DC_AWARE_LOCAL_DC);
+        }
+        this.localDc = localDc;
+
+        List<String> whiteList = config.getStringList(POLICY_LBP_WHITE_LIST);
+        if (config.hasPath(POLICY_LBP_WHITE_LIST_HOSTS)) {
+          LOGGER.warn(
+              "Driver setting {} is deprecated; please use {} instead",
+              POLICY_LBP_WHITE_LIST_HOSTS,
+              POLICY_LBP_WHITE_LIST);
+          whiteList = config.getStringList(POLICY_LBP_WHITE_LIST_HOSTS);
+        }
+        if (!whiteList.isEmpty()) {
+          ImmutableList<SocketAddress> allowedHosts =
+              config.getStringList(POLICY_LBP_WHITE_LIST).stream()
+                  .map(host -> new InetSocketAddress(host, port))
+                  .collect(ImmutableList.toImmutableList());
+          nodeFilter = node -> allowedHosts.contains(node.getEndPoint().resolve());
+        }
       }
 
     } catch (ConfigException e) {
