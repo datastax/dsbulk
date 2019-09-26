@@ -215,7 +215,7 @@ public class RxJavaStatementBatcher extends StatementBatcher {
    */
   @NonNull
   public Flowable<Statement<?>> batchAll(@NonNull Publisher<BatchableStatement<?>> statements) {
-    return Flowable.<Statement<?>>fromPublisher(statements)
+    return Flowable.fromPublisher(statements)
         .compose(FlowableTransformers.windowUntil(new RxJavaAdaptiveSizingBatchPredicate()))
         .flatMapSingle(
             stmts ->
@@ -223,7 +223,7 @@ public class RxJavaStatementBatcher extends StatementBatcher {
                     .reduce(
                         new ArrayList<BatchableStatement<?>>(),
                         (children, child) -> {
-                          children.add((BatchableStatement<?>) child);
+                          children.add(child);
                           return children;
                         })
                     .map(
@@ -234,5 +234,5 @@ public class RxJavaStatementBatcher extends StatementBatcher {
   }
 
   private class RxJavaAdaptiveSizingBatchPredicate extends AdaptiveSizingBatchPredicate
-      implements io.reactivex.functions.Predicate<Statement<?>> {}
+      implements io.reactivex.functions.Predicate<BatchableStatement<?>> {}
 }

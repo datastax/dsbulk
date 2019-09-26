@@ -460,13 +460,13 @@ public class StatementBatcher {
     return session.getKeyspace().orElse(null);
   }
 
-  protected class AdaptiveSizingBatchPredicate implements Predicate<Statement<?>> {
+  protected class AdaptiveSizingBatchPredicate implements Predicate<BatchableStatement<?>> {
 
     private int statementsCounter = 0;
     private long bytesInCurrentBatch = 0;
 
     @Override
-    public boolean test(@NonNull Statement<?> statement) {
+    public boolean test(@NonNull BatchableStatement<?> statement) {
       boolean statementsOverflowBuffer = ++statementsCounter >= getMaxBatchStatements();
       boolean bytesOverflowBuffer =
           (bytesInCurrentBatch += calculateSize(statement)) >= getMaxSizeInBytes();
