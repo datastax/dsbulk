@@ -171,9 +171,9 @@ class LogManagerTest {
     row1 = mockRow(1);
     Row row2 = mockRow(2);
     Row row3 = mockRow(3);
-    Statement stmt1 = SimpleStatement.newInstance("SELECT 1");
-    Statement stmt2 = SimpleStatement.newInstance("SELECT 2");
-    Statement stmt3 = SimpleStatement.newInstance("SELECT 3");
+    Statement<?> stmt1 = SimpleStatement.newInstance("SELECT 1");
+    Statement<?> stmt2 = SimpleStatement.newInstance("SELECT 2");
+    Statement<?> stmt3 = SimpleStatement.newInstance("SELECT 3");
     successfulReadResult1 = new DefaultReadResult(stmt1, info, row1);
     ReadResult successfulReadResult2 = new DefaultReadResult(stmt2, info, row2);
     ReadResult successfulReadResult3 = new DefaultReadResult(stmt3, info, row3);

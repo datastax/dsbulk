@@ -45,7 +45,7 @@ public interface RxJavaBulkReader extends ReactiveBulkReader {
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
   @Override
-  Flowable<ReadResult> readReactive(Statement statement) throws BulkExecutionException;
+  Flowable<ReadResult> readReactive(Statement<?> statement) throws BulkExecutionException;
 
   /**
    * Executes the given stream of read statements reactively.

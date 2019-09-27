@@ -10,8 +10,8 @@ package com.datastax.dsbulk.engine.internal.settings;
 
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
+import com.datastax.dsbulk.executor.api.AbstractBulkExecutor;
 import com.datastax.dsbulk.executor.api.AbstractBulkExecutorBuilder;
-import com.datastax.dsbulk.executor.api.ReactiveBulkExecutor;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.listener.MetricsCollectingExecutionListener;
 import com.datastax.dsbulk.executor.reactor.ContinuousReactorBulkExecutor;
@@ -151,21 +151,15 @@ public class ExecutorSettings {
   private ReactorBulkExecutor newDefaultExecutor(
       CqlSession session, ExecutionListener executionListener) {
     DefaultReactorBulkExecutorBuilder builder = DefaultReactorBulkExecutor.builder(session);
-    configureExecutor(builder, executionListener);
-    return builder.build();
+    return configureExecutor(builder, executionListener).build();
   }
 
   private ReactorBulkExecutor newContinuousExecutor(
       DseSession session, ExecutionListener executionListener) {
     ContinuousReactorBulkExecutorBuilder builder = ContinuousReactorBulkExecutor.builder(session);
-    configureExecutor(builder, executionListener);
-    //    ContinuousPagingOptions options =
-    //        ContinuousPagingOptions.builder()
-    //            .withPageSize(pageSize, pageUnit)
-    //            .withMaxPages(maxPages)
-    //            .withMaxPagesPerSecond(maxPagesPerSecond)
-    //            .build();
-    return builder.withMaxInFlightQueries(maxConcurrentQueries).build();
+    return configureExecutor(builder, executionListener)
+        .withMaxInFlightQueries(maxConcurrentQueries)
+        .build();
   }
 
   private boolean continuousPagingAvailable(CqlSession session) {
@@ -186,10 +180,9 @@ public class ExecutorSettings {
     return false;
   }
 
-  private void configureExecutor(
-      AbstractBulkExecutorBuilder<? extends ReactiveBulkExecutor> builder,
-      ExecutionListener executionListener) {
-    builder
+  private <T extends AbstractBulkExecutor> AbstractBulkExecutorBuilder<T> configureExecutor(
+      AbstractBulkExecutorBuilder<T> builder, ExecutionListener executionListener) {
+    return builder
         .withExecutionListener(executionListener)
         .withMaxInFlightRequests(maxInFlight)
         .withMaxRequestsPerSecond(maxPerSecond)

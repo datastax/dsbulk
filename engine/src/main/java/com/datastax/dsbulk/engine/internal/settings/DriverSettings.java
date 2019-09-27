@@ -200,6 +200,7 @@ public class DriverSettings {
 
       driverConfig.put(REQUEST_PAGE_SIZE, config.getInt(QUERY_FETCHSIZE));
       driverConfig.put(REQUEST_DEFAULT_IDEMPOTENCE, config.getBoolean(QUERY_IDEMPOTENCE));
+
       driverConfig.put(REQUEST_TIMEOUT, config.getDuration(SOCKET_READTIMEOUT));
       driverConfig.put(
           CONTINUOUS_PAGING_TIMEOUT_FIRST_PAGE, config.getDuration(SOCKET_READTIMEOUT));

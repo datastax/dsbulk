@@ -28,7 +28,7 @@ import org.reactivestreams.Publisher;
 public interface BulkWriter extends SyncBulkWriter, AsyncBulkWriter, ReactiveBulkWriter {
 
   @Override
-  default WriteResult writeSync(Statement statement) throws BulkExecutionException {
+  default WriteResult writeSync(Statement<?> statement) throws BulkExecutionException {
     try {
       return Uninterruptibles.getUninterruptibly(writeAsync(statement));
     } catch (ExecutionException e) {

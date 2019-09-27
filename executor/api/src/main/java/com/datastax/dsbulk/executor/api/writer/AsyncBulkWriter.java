@@ -46,7 +46,7 @@ public interface AsyncBulkWriter extends AutoCloseable {
    *     operation completes.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
-  CompletableFuture<WriteResult> writeAsync(Statement statement) throws BulkExecutionException;
+  CompletableFuture<WriteResult> writeAsync(Statement<?> statement) throws BulkExecutionException;
 
   /**
    * Executes the given stream of write statements asynchronously.

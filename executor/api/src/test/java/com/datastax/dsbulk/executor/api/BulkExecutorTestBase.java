@@ -1273,7 +1273,7 @@ public abstract class BulkExecutorTestBase {
         .forEach(s -> assertThat(s).startsWith("should fail"));
   }
 
-  private String toQueryString(Statement statement) {
+  private String toQueryString(Statement<?> statement) {
     return statement instanceof SimpleStatement
         ? ((SimpleStatement) statement).getQuery()
         : ((BoundStatement) statement).getPreparedStatement().getQuery();
@@ -1314,7 +1314,7 @@ public abstract class BulkExecutorTestBase {
     @Override
     public boolean matches(BulkExecutionException item) {
       if (item != null) {
-        Statement stmt = item.getStatement();
+        Statement<?> stmt = item.getStatement();
         if (((stmt instanceof SimpleStatement)
                 && ((SimpleStatement) stmt).getQuery().contains(textToMatch))
             || ((stmt instanceof BoundStatement)

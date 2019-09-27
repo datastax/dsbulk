@@ -48,7 +48,7 @@ public interface ReactorBulkWriter extends ReactiveBulkWriter {
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
   @Override
-  Mono<WriteResult> writeReactive(Statement statement) throws BulkExecutionException;
+  Mono<WriteResult> writeReactive(Statement<?> statement) throws BulkExecutionException;
 
   /**
    * Executes the given stream of write statements reactively.

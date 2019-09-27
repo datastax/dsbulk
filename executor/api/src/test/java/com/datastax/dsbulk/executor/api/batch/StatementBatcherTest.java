@@ -228,7 +228,7 @@ public class StatementBatcherTest {
     StatementBatcher batcher = new StatementBatcher();
     List<Statement<?>> statements = batcher.batchAll(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements).hasSize(1);
-    Statement statement = statements.get(0);
+    Statement<?> statement = statements.get(0);
     assertThat(((BatchStatement) statement))
         .containsExactly(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
   }
@@ -245,7 +245,7 @@ public class StatementBatcherTest {
     StatementBatcher batcher = new StatementBatcher();
     List<Statement<?>> statements = batcher.batchAll(stmt1);
     assertThat(statements).hasSize(1);
-    Statement statement = statements.get(0);
+    Statement<?> statement = statements.get(0);
     assertThat(statement).isSameAs(stmt1);
   }
 

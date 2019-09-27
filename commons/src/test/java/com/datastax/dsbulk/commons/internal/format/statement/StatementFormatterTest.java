@@ -45,7 +45,7 @@ class StatementFormatterTest {
   @Test
   void should_format_simple_statement() {
     StatementFormatter formatter = StatementFormatter.builder().build();
-    Statement statement =
+    Statement<?> statement =
         SimpleStatement.newInstance("SELECT * FROM t WHERE c1 = ? AND c2 = ?", "foo", 42)
             .setIdempotent(true)
             .setConsistencyLevel(DefaultConsistencyLevel.QUORUM)
@@ -88,7 +88,7 @@ class StatementFormatterTest {
   @Test
   void should_format_simple_statement_with_named_values() {
     StatementFormatter formatter = StatementFormatter.builder().build();
-    Statement statement =
+    Statement<?> statement =
         SimpleStatement.newInstance(
             "SELECT * FROM t WHERE c1 = ? AND c2 = ?", ImmutableMap.of("c1", "foo", "c2", 42));
     String s =
@@ -104,7 +104,7 @@ class StatementFormatterTest {
   @Test
   void should_format_statement_without_values() {
     StatementFormatter formatter = StatementFormatter.builder().build();
-    Statement statement = SimpleStatement.newInstance("SELECT * FROM t WHERE c1 = 42");
+    Statement<?> statement = SimpleStatement.newInstance("SELECT * FROM t WHERE c1 = 42");
     String s =
         formatter.format(statement, StatementFormatVerbosity.EXTENDED, version, codecRegistry);
     assertThat(s)
@@ -162,7 +162,7 @@ class StatementFormatterTest {
   @Test
   void should_format_with_abridged_verbosity() {
     StatementFormatter formatter = StatementFormatter.builder().build();
-    Statement statement =
+    Statement<?> statement =
         SimpleStatement.newInstance("SELECT * FROM t WHERE c1 = ? AND c2 = ?", "foo", 42);
     String s =
         formatter.format(statement, StatementFormatVerbosity.ABRIDGED, version, codecRegistry);
@@ -181,7 +181,7 @@ class StatementFormatterTest {
   @Test
   void should_format_with_normal_verbosity() {
     StatementFormatter formatter = StatementFormatter.builder().build();
-    Statement statement =
+    Statement<?> statement =
         SimpleStatement.newInstance("SELECT * FROM t WHERE c1 = ? AND c2 = ?", "foo", 42);
     String s = formatter.format(statement, StatementFormatVerbosity.NORMAL, version, codecRegistry);
     assertThat(s)

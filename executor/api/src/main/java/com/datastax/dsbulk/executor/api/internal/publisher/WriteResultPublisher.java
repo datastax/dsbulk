@@ -26,7 +26,6 @@ import org.reactivestreams.Subscriber;
  *
  * @see com.datastax.dsbulk.executor.api.AbstractBulkExecutor#writeReactive(Statement)
  */
-@SuppressWarnings("UnstableApiUsage")
 public class WriteResultPublisher implements Publisher<WriteResult> {
 
   private final Statement<?> statement;

@@ -41,7 +41,7 @@ public interface SyncBulkWriter extends AutoCloseable {
    * @return The write result.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
-  WriteResult writeSync(Statement statement) throws BulkExecutionException;
+  WriteResult writeSync(Statement<?> statement) throws BulkExecutionException;
 
   /**
    * Executes the given stream of write statements synchronously.

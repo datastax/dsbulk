@@ -161,7 +161,7 @@ public final class StatementWriter implements Appendable {
    * @param statement The statement to format.
    * @return this (for method chaining).
    */
-  public StatementWriter appendClassNameAndHashCode(Statement statement) {
+  public StatementWriter appendClassNameAndHashCode(Statement<?> statement) {
     String fqcn = statement.getClass().getName();
     if (fqcn.startsWith("com.datastax.driver.core.querybuilder")) fqcn = "BuiltStatement";
     if (fqcn.startsWith("com.datastax.driver.core.schemabuilder")) fqcn = "SchemaStatement";

@@ -24,7 +24,6 @@ import java.util.Iterator;
 import java.util.concurrent.Semaphore;
 import org.reactivestreams.Subscriber;
 
-@SuppressWarnings("UnstableApiUsage")
 public class ReadResultSubscription extends ResultSubscription<ReadResult, AsyncResultSet> {
 
   public ReadResultSubscription(

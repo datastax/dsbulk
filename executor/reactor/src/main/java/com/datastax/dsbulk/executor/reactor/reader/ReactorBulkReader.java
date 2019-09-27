@@ -45,7 +45,7 @@ public interface ReactorBulkReader extends ReactiveBulkReader {
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
   @Override
-  Flux<ReadResult> readReactive(Statement statement) throws BulkExecutionException;
+  Flux<ReadResult> readReactive(Statement<?> statement) throws BulkExecutionException;
 
   /**
    * Executes the given stream of read statements reactively.

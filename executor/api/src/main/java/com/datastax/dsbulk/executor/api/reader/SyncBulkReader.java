@@ -44,7 +44,7 @@ public interface SyncBulkReader extends AutoCloseable {
    * @param consumer A consumer for read results.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
-  void readSync(Statement statement, Consumer<? super ReadResult> consumer)
+  void readSync(Statement<?> statement, Consumer<? super ReadResult> consumer)
       throws BulkExecutionException;
 
   /**

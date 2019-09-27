@@ -75,7 +75,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
   }
 
   @Override
-  public CompletableFuture<WriteResult> writeAsync(Statement statement) {
+  public CompletableFuture<WriteResult> writeAsync(Statement<?> statement) {
     CompletableFuture<WriteResult> future = new CompletableFuture<>();
     Mono.from(writeReactive(statement))
         .doOnSuccess(future::complete)
@@ -112,7 +112,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
   }
 
   @Override
-  public Mono<WriteResult> writeReactive(Statement statement) {
+  public Mono<WriteResult> writeReactive(Statement<?> statement) {
     Objects.requireNonNull(statement);
     return Mono.from(
         new WriteResultPublisher(
@@ -152,7 +152,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
 
   @Override
   public CompletableFuture<Void> readAsync(
-      Statement statement, Consumer<? super ReadResult> consumer) throws BulkExecutionException {
+      Statement<?> statement, Consumer<? super ReadResult> consumer) throws BulkExecutionException {
     return readAsync(Flux.just(statement), consumer);
   }
 
@@ -196,7 +196,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
   }
 
   @Override
-  public Flux<ReadResult> readReactive(Statement statement) {
+  public Flux<ReadResult> readReactive(Statement<?> statement) {
     Objects.requireNonNull(statement);
     return Flux.from(
         new ReadResultPublisher(

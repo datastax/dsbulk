@@ -39,7 +39,7 @@ public class ContinuousReadResultPublisherTest extends ResultPublisherTestBase<R
 
   @Override
   public Publisher<ReadResult> createFailedPublisher() {
-    Statement statement = SimpleStatement.newInstance("irrelevant");
+    Statement<?> statement = SimpleStatement.newInstance("irrelevant");
     ContinuousSession session = setUpSession(1);
     return new ContinuousReadResultPublisher(
         statement, session, true, FAILED_LISTENER, null, null, null);

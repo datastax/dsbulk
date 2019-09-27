@@ -58,7 +58,7 @@ public class ContinuousReactorBulkExecutor extends DefaultReactorBulkExecutor
   }
 
   @Override
-  public Flux<ReadResult> readReactive(Statement statement) {
+  public Flux<ReadResult> readReactive(Statement<?> statement) {
     Objects.requireNonNull(statement);
     return Flux.from(
         new ContinuousReadResultPublisher(

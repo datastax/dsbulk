@@ -75,7 +75,7 @@ public class DefaultRxJavaBulkExecutor extends AbstractBulkExecutor implements R
   }
 
   @Override
-  public CompletableFuture<WriteResult> writeAsync(Statement statement) {
+  public CompletableFuture<WriteResult> writeAsync(Statement<?> statement) {
     CompletableFuture<WriteResult> future = new CompletableFuture<>();
     Single.fromPublisher(writeReactive(statement))
         .doOnSuccess(future::complete)
@@ -112,7 +112,7 @@ public class DefaultRxJavaBulkExecutor extends AbstractBulkExecutor implements R
   }
 
   @Override
-  public Flowable<WriteResult> writeReactive(Statement statement) {
+  public Flowable<WriteResult> writeReactive(Statement<?> statement) {
     Objects.requireNonNull(statement);
     return Flowable.fromPublisher(
         new WriteResultPublisher(
@@ -152,7 +152,7 @@ public class DefaultRxJavaBulkExecutor extends AbstractBulkExecutor implements R
 
   @Override
   public CompletableFuture<Void> readAsync(
-      Statement statement, Consumer<? super ReadResult> consumer) throws BulkExecutionException {
+      Statement<?> statement, Consumer<? super ReadResult> consumer) throws BulkExecutionException {
     return readAsync(Flowable.just(statement), consumer);
   }
 
@@ -196,7 +196,7 @@ public class DefaultRxJavaBulkExecutor extends AbstractBulkExecutor implements R
   }
 
   @Override
-  public Flowable<ReadResult> readReactive(Statement statement) {
+  public Flowable<ReadResult> readReactive(Statement<?> statement) {
     Objects.requireNonNull(statement);
     return Flowable.fromPublisher(
         new ReadResultPublisher(

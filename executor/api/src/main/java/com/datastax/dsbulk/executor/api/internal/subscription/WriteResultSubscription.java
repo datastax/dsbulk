@@ -25,7 +25,6 @@ import org.reactivestreams.Subscriber;
 
 public class WriteResultSubscription extends ResultSubscription<WriteResult, AsyncResultSet> {
 
-  @SuppressWarnings("UnstableApiUsage")
   public WriteResultSubscription(
       @NonNull Subscriber<? super WriteResult> subscriber,
       @NonNull Statement<?> statement,

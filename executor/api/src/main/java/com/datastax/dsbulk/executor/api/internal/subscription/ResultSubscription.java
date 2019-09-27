@@ -48,7 +48,6 @@ import org.slf4j.LoggerFactory;
  * @param <R> the result type ({@link com.datastax.dsbulk.executor.api.result.WriteResult} or {@link
  *     com.datastax.dsbulk.executor.api.result.ReadResult}).
  */
-@SuppressWarnings("UnstableApiUsage")
 public abstract class ResultSubscription<R extends Result, P extends AsyncPagingIterable<Row, P>>
     implements Subscription {
 

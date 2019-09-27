@@ -39,7 +39,7 @@ public class ReadResultPublisherTest extends ResultPublisherTestBase<ReadResult>
 
   @Override
   public Publisher<ReadResult> createFailedPublisher() {
-    Statement statement = SimpleStatement.newInstance("irrelevant");
+    Statement<?> statement = SimpleStatement.newInstance("irrelevant");
     CqlSession session = setUpSession(1);
     return new ReadResultPublisher(statement, session, true, FAILED_LISTENER, null, null, null);
   }

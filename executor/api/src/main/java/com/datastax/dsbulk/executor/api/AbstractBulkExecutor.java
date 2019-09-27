@@ -17,7 +17,6 @@ import java.util.Objects;
 import java.util.concurrent.Semaphore;
 
 /** Base class for implementations of {@link BulkExecutor}. */
-@SuppressWarnings("UnstableApiUsage")
 public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseable {
 
   /** The default number of maximum in-flight requests. */

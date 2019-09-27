@@ -22,7 +22,7 @@ public final class DefaultReadResult extends DefaultResult implements ReadResult
   private final Row row;
 
   public DefaultReadResult(
-      @NonNull Statement statement, @NonNull ExecutionInfo executionInfo, @NonNull Row row) {
+      @NonNull Statement<?> statement, @NonNull ExecutionInfo executionInfo, @NonNull Row row) {
     super(statement, executionInfo);
     this.row = row;
   }

@@ -47,7 +47,7 @@ public interface RxJavaBulkWriter extends ReactiveBulkWriter {
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
   @Override
-  Flowable<WriteResult> writeReactive(Statement statement) throws BulkExecutionException;
+  Flowable<WriteResult> writeReactive(Statement<?> statement) throws BulkExecutionException;
 
   /**
    * Executes the given stream of write statements reactively.

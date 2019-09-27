@@ -58,7 +58,7 @@ public class ContinuousRxJavaBulkExecutor extends DefaultRxJavaBulkExecutor
   }
 
   @Override
-  public Flowable<ReadResult> readReactive(Statement statement) {
+  public Flowable<ReadResult> readReactive(Statement<?> statement) {
     Objects.requireNonNull(statement);
     return Flowable.fromPublisher(
         new ContinuousReadResultPublisher(

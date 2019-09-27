@@ -42,7 +42,7 @@ public interface ReactiveBulkWriter extends AutoCloseable {
    * @return A {@link Publisher publisher} that will emit one single write result.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
-  Publisher<WriteResult> writeReactive(Statement statement) throws BulkExecutionException;
+  Publisher<WriteResult> writeReactive(Statement<?> statement) throws BulkExecutionException;
 
   /**
    * Executes the given stream of write statements reactively.

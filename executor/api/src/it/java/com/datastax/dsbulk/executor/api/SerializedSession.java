@@ -45,7 +45,7 @@ public class SerializedSession implements CqlSession, ContinuousSession {
 
   @NonNull
   @Override
-  public CompletionStage<AsyncResultSet> executeAsync(@NonNull Statement statement) {
+  public CompletionStage<AsyncResultSet> executeAsync(@NonNull Statement<?> statement) {
     return chain(session.executeAsync(statement));
   }
 

@@ -28,7 +28,7 @@ import org.reactivestreams.Publisher;
 public interface BulkReader extends SyncBulkReader, AsyncBulkReader, ReactiveBulkReader {
 
   @Override
-  default void readSync(Statement statement, Consumer<? super ReadResult> consumer)
+  default void readSync(Statement<?> statement, Consumer<? super ReadResult> consumer)
       throws BulkExecutionException {
     try {
       Uninterruptibles.getUninterruptibly(readAsync(statement, consumer));

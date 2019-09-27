@@ -26,7 +26,6 @@ import org.reactivestreams.Subscriber;
  *
  * @see com.datastax.dsbulk.executor.api.AbstractBulkExecutor#readReactive(Statement)
  */
-@SuppressWarnings("UnstableApiUsage")
 public class ReadResultPublisher implements Publisher<ReadResult> {
 
   private final Statement<?> statement;

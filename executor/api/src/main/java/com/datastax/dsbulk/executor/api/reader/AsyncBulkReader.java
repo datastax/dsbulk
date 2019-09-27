@@ -50,7 +50,7 @@ public interface AsyncBulkReader extends AutoCloseable {
    *     operation completes.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
-  CompletableFuture<Void> readAsync(Statement statement, Consumer<? super ReadResult> consumer)
+  CompletableFuture<Void> readAsync(Statement<?> statement, Consumer<? super ReadResult> consumer)
       throws BulkExecutionException;
 
   /**

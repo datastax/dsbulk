@@ -74,7 +74,7 @@ public class StatementUtils {
       }
     } else if (stmt instanceof BatchStatement) {
       BatchStatement bs = (BatchStatement) stmt;
-      for (Statement st : bs) {
+      for (Statement<?> st : bs) {
         dataSize += getDataSize(st, version, registry);
       }
     }
