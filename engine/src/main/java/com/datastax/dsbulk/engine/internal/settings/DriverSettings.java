@@ -11,6 +11,8 @@ package com.datastax.dsbulk.engine.internal.settings;
 import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.BULK_LOADER_APPLICATION_NAME;
 import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.clientId;
 import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.getBulkLoaderVersion;
+import static com.datastax.dse.driver.api.core.config.DseDriverOption.CONTINUOUS_PAGING_TIMEOUT_FIRST_PAGE;
+import static com.datastax.dse.driver.api.core.config.DseDriverOption.CONTINUOUS_PAGING_TIMEOUT_OTHER_PAGES;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.ADDRESS_TRANSLATOR_CLASS;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONNECTION_MAX_REQUESTS;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONNECTION_POOL_LOCAL_SIZE;
@@ -199,6 +201,10 @@ public class DriverSettings {
       driverConfig.put(REQUEST_PAGE_SIZE, config.getInt(QUERY_FETCHSIZE));
       driverConfig.put(REQUEST_DEFAULT_IDEMPOTENCE, config.getBoolean(QUERY_IDEMPOTENCE));
       driverConfig.put(REQUEST_TIMEOUT, config.getDuration(SOCKET_READTIMEOUT));
+      driverConfig.put(
+          CONTINUOUS_PAGING_TIMEOUT_FIRST_PAGE, config.getDuration(SOCKET_READTIMEOUT));
+      driverConfig.put(
+          CONTINUOUS_PAGING_TIMEOUT_OTHER_PAGES, config.getDuration(SOCKET_READTIMEOUT));
 
       // validate classes upfront to get a better error message
       driverConfig.put(
