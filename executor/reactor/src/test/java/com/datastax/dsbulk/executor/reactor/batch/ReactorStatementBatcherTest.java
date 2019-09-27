@@ -153,35 +153,14 @@ class ReactorStatementBatcherTest extends StatementBatcherTest {
     assignRoutingTokensWitSize();
     ReactorStatementBatcher batcher = new ReactorStatementBatcher(8L);
     Flux<Statement<?>> statements =
-        batcher.batchByGroupingKey(
-            Flux.just(
-                stmt1WithSize,
-                stmt2WithSize,
-                stmt3WithSize,
-                stmt4WithSize,
-                stmt5WithSize,
-                stmt6WithSize));
+        batcher.batchByGroupingKey(Flux.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6));
     assertThat(statements.collectList().block())
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(stmt1WithSize, stmt2WithSize),
-            tuple(stmt5WithSize, stmt6WithSize),
-            tuple(stmt3WithSize, stmt4WithSize));
-    statements =
-        batcher.batchAll(
-            Flux.just(
-                stmt1WithSize,
-                stmt2WithSize,
-                stmt3WithSize,
-                stmt4WithSize,
-                stmt5WithSize,
-                stmt6WithSize));
+        .contains(tuple(stmt1, stmt2), tuple(stmt5, stmt6), tuple(stmt3, stmt4));
+    statements = batcher.batchAll(Flux.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6));
     assertThat(statements.collectList().block())
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(stmt1WithSize, stmt2WithSize),
-            tuple(stmt5WithSize, stmt6WithSize),
-            tuple(stmt3WithSize, stmt4WithSize));
+        .contains(tuple(stmt1, stmt2), tuple(stmt5, stmt6), tuple(stmt3, stmt4));
   }
 
   @Test
@@ -189,38 +168,14 @@ class ReactorStatementBatcherTest extends StatementBatcherTest {
     assignRoutingTokensWitSize();
     ReactorStatementBatcher batcher = new ReactorStatementBatcher(1000);
     Flux<Statement<?>> statements =
-        batcher.batchByGroupingKey(
-            Flux.just(
-                stmt1WithSize,
-                stmt2WithSize,
-                stmt3WithSize,
-                stmt4WithSize,
-                stmt5WithSize,
-                stmt6WithSize));
+        batcher.batchByGroupingKey(Flux.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6));
     assertThat(statements.collectList().block())
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(stmt1WithSize, stmt2WithSize, stmt5WithSize, stmt6WithSize),
-            tuple(stmt3WithSize, stmt4WithSize));
-    statements =
-        batcher.batchAll(
-            Flux.just(
-                stmt1WithSize,
-                stmt2WithSize,
-                stmt3WithSize,
-                stmt4WithSize,
-                stmt5WithSize,
-                stmt6WithSize));
+        .contains(tuple(stmt1, stmt2, stmt5, stmt6), tuple(stmt3, stmt4));
+    statements = batcher.batchAll(Flux.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6));
     assertThat(statements.collectList().block())
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(
-                stmt1WithSize,
-                stmt2WithSize,
-                stmt3WithSize,
-                stmt4WithSize,
-                stmt5WithSize,
-                stmt6WithSize));
+        .contains(tuple(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6));
   }
 
   @Test
@@ -228,35 +183,14 @@ class ReactorStatementBatcherTest extends StatementBatcherTest {
     assignRoutingTokensWitSize();
     ReactorStatementBatcher batcher = new ReactorStatementBatcher(10, 8L);
     Flux<Statement<?>> statements =
-        batcher.batchByGroupingKey(
-            Flux.just(
-                stmt1WithSize,
-                stmt2WithSize,
-                stmt3WithSize,
-                stmt4WithSize,
-                stmt5WithSize,
-                stmt6WithSize));
+        batcher.batchByGroupingKey(Flux.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6));
     assertThat(statements.collectList().block())
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(stmt1WithSize, stmt2WithSize),
-            tuple(stmt5WithSize, stmt6WithSize),
-            tuple(stmt3WithSize, stmt4WithSize));
-    statements =
-        batcher.batchAll(
-            Flux.just(
-                stmt1WithSize,
-                stmt2WithSize,
-                stmt3WithSize,
-                stmt4WithSize,
-                stmt5WithSize,
-                stmt6WithSize));
+        .contains(tuple(stmt1, stmt2), tuple(stmt5, stmt6), tuple(stmt3, stmt4));
+    statements = batcher.batchAll(Flux.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6));
     assertThat(statements.collectList().block())
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(stmt1WithSize, stmt2WithSize),
-            tuple(stmt5WithSize, stmt6WithSize),
-            tuple(stmt3WithSize, stmt4WithSize));
+        .contains(tuple(stmt1, stmt2), tuple(stmt5, stmt6), tuple(stmt3, stmt4));
   }
 
   @Test
@@ -264,41 +198,16 @@ class ReactorStatementBatcherTest extends StatementBatcherTest {
     assignRoutingTokensWitSize();
     ReactorStatementBatcher batcher = new ReactorStatementBatcher(1, 8L);
     Flux<Statement<?>> statements =
-        batcher.batchByGroupingKey(
-            Flux.just(
-                stmt1WithSize,
-                stmt2WithSize,
-                stmt3WithSize,
-                stmt4WithSize,
-                stmt5WithSize,
-                stmt6WithSize));
+        batcher.batchByGroupingKey(Flux.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6));
     assertThat(statements.collectList().block())
         .extracting(EXTRACTOR)
         .contains(
-            tuple(stmt1WithSize),
-            tuple(stmt2WithSize),
-            tuple(stmt3WithSize),
-            tuple(stmt4WithSize),
-            tuple(stmt5WithSize),
-            tuple(stmt6WithSize));
-    statements =
-        batcher.batchAll(
-            Flux.just(
-                stmt1WithSize,
-                stmt2WithSize,
-                stmt3WithSize,
-                stmt4WithSize,
-                stmt5WithSize,
-                stmt6WithSize));
+            tuple(stmt1), tuple(stmt2), tuple(stmt3), tuple(stmt4), tuple(stmt5), tuple(stmt6));
+    statements = batcher.batchAll(Flux.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6));
     assertThat(statements.collectList().block())
         .extracting(EXTRACTOR)
         .contains(
-            tuple(stmt1WithSize),
-            tuple(stmt2WithSize),
-            tuple(stmt3WithSize),
-            tuple(stmt4WithSize),
-            tuple(stmt5WithSize),
-            tuple(stmt6WithSize));
+            tuple(stmt1), tuple(stmt2), tuple(stmt3), tuple(stmt4), tuple(stmt5), tuple(stmt6));
   }
 
   @Test
@@ -307,38 +216,14 @@ class ReactorStatementBatcherTest extends StatementBatcherTest {
     assignRoutingTokensWitSize();
     ReactorStatementBatcher batcher = new ReactorStatementBatcher(100, 1000);
     Flux<Statement<?>> statements =
-        batcher.batchByGroupingKey(
-            Flux.just(
-                stmt1WithSize,
-                stmt2WithSize,
-                stmt3WithSize,
-                stmt4WithSize,
-                stmt5WithSize,
-                stmt6WithSize));
+        batcher.batchByGroupingKey(Flux.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6));
     assertThat(statements.collectList().block())
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(stmt1WithSize, stmt2WithSize, stmt5WithSize, stmt6WithSize),
-            tuple(stmt3WithSize, stmt4WithSize));
-    statements =
-        batcher.batchAll(
-            Flux.just(
-                stmt1WithSize,
-                stmt2WithSize,
-                stmt3WithSize,
-                stmt4WithSize,
-                stmt5WithSize,
-                stmt6WithSize));
+        .contains(tuple(stmt1, stmt2, stmt5, stmt6), tuple(stmt3, stmt4));
+    statements = batcher.batchAll(Flux.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6));
     assertThat(statements.collectList().block())
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(
-                stmt1WithSize,
-                stmt2WithSize,
-                stmt3WithSize,
-                stmt4WithSize,
-                stmt5WithSize,
-                stmt6WithSize));
+        .contains(tuple(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6));
   }
 
   @Test
@@ -347,37 +232,13 @@ class ReactorStatementBatcherTest extends StatementBatcherTest {
     assignRoutingTokensWitSize();
     ReactorStatementBatcher batcher = new ReactorStatementBatcher(-1, -1);
     Flux<Statement<?>> statements =
-        batcher.batchByGroupingKey(
-            Flux.just(
-                stmt1WithSize,
-                stmt2WithSize,
-                stmt3WithSize,
-                stmt4WithSize,
-                stmt5WithSize,
-                stmt6WithSize));
+        batcher.batchByGroupingKey(Flux.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6));
     assertThat(statements.collectList().block())
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(stmt1WithSize, stmt2WithSize, stmt5WithSize, stmt6WithSize),
-            tuple(stmt3WithSize, stmt4WithSize));
-    statements =
-        batcher.batchAll(
-            Flux.just(
-                stmt1WithSize,
-                stmt2WithSize,
-                stmt3WithSize,
-                stmt4WithSize,
-                stmt5WithSize,
-                stmt6WithSize));
+        .contains(tuple(stmt1, stmt2, stmt5, stmt6), tuple(stmt3, stmt4));
+    statements = batcher.batchAll(Flux.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6));
     assertThat(statements.collectList().block())
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(
-                stmt1WithSize,
-                stmt2WithSize,
-                stmt3WithSize,
-                stmt4WithSize,
-                stmt5WithSize,
-                stmt6WithSize));
+        .contains(tuple(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6));
   }
 }

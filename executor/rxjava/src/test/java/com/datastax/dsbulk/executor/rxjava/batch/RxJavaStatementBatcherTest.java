@@ -164,36 +164,16 @@ class RxJavaStatementBatcherTest extends StatementBatcherTest {
     RxJavaStatementBatcher batcher = new RxJavaStatementBatcher(8L);
     Flowable<Statement<?>> statements =
         Flowable.fromPublisher(
-            batcher.batchByGroupingKey(
-                Flowable.just(
-                    stmt1WithSize,
-                    stmt2WithSize,
-                    stmt3WithSize,
-                    stmt4WithSize,
-                    stmt5WithSize,
-                    stmt6WithSize)));
+            batcher.batchByGroupingKey(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
     assertThat(statements.toList().blockingGet())
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(stmt1WithSize, stmt2WithSize),
-            tuple(stmt5WithSize, stmt6WithSize),
-            tuple(stmt3WithSize, stmt4WithSize));
+        .contains(tuple(stmt1, stmt2), tuple(stmt5, stmt6), tuple(stmt3, stmt4));
     statements =
         Flowable.fromPublisher(
-            batcher.batchAll(
-                Flowable.just(
-                    stmt1WithSize,
-                    stmt2WithSize,
-                    stmt3WithSize,
-                    stmt4WithSize,
-                    stmt5WithSize,
-                    stmt6WithSize)));
+            batcher.batchAll(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
     assertThat(statements.toList().blockingGet())
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(stmt1WithSize, stmt2WithSize),
-            tuple(stmt5WithSize, stmt6WithSize),
-            tuple(stmt3WithSize, stmt4WithSize));
+        .contains(tuple(stmt1, stmt2), tuple(stmt5, stmt6), tuple(stmt3, stmt4));
   }
 
   @Test
@@ -202,39 +182,16 @@ class RxJavaStatementBatcherTest extends StatementBatcherTest {
     RxJavaStatementBatcher batcher = new RxJavaStatementBatcher(1000);
     Flowable<Statement<?>> statements =
         Flowable.fromPublisher(
-            batcher.batchByGroupingKey(
-                Flowable.just(
-                    stmt1WithSize,
-                    stmt2WithSize,
-                    stmt3WithSize,
-                    stmt4WithSize,
-                    stmt5WithSize,
-                    stmt6WithSize)));
+            batcher.batchByGroupingKey(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
     assertThat(statements.toList().blockingGet())
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(stmt1WithSize, stmt2WithSize, stmt5WithSize, stmt6WithSize),
-            tuple(stmt3WithSize, stmt4WithSize));
+        .contains(tuple(stmt1, stmt2, stmt5, stmt6), tuple(stmt3, stmt4));
     statements =
         Flowable.fromPublisher(
-            batcher.batchAll(
-                Flowable.just(
-                    stmt1WithSize,
-                    stmt2WithSize,
-                    stmt3WithSize,
-                    stmt4WithSize,
-                    stmt5WithSize,
-                    stmt6WithSize)));
+            batcher.batchAll(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
     assertThat(statements.toList().blockingGet())
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(
-                stmt1WithSize,
-                stmt2WithSize,
-                stmt3WithSize,
-                stmt4WithSize,
-                stmt5WithSize,
-                stmt6WithSize));
+        .contains(tuple(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6));
   }
 
   @Test
@@ -243,36 +200,16 @@ class RxJavaStatementBatcherTest extends StatementBatcherTest {
     RxJavaStatementBatcher batcher = new RxJavaStatementBatcher(10, 8L);
     Flowable<Statement<?>> statements =
         Flowable.fromPublisher(
-            batcher.batchByGroupingKey(
-                Flowable.just(
-                    stmt1WithSize,
-                    stmt2WithSize,
-                    stmt3WithSize,
-                    stmt4WithSize,
-                    stmt5WithSize,
-                    stmt6WithSize)));
+            batcher.batchByGroupingKey(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
     assertThat(statements.toList().blockingGet())
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(stmt1WithSize, stmt2WithSize),
-            tuple(stmt5WithSize, stmt6WithSize),
-            tuple(stmt3WithSize, stmt4WithSize));
+        .contains(tuple(stmt1, stmt2), tuple(stmt5, stmt6), tuple(stmt3, stmt4));
     statements =
         Flowable.fromPublisher(
-            batcher.batchAll(
-                Flowable.just(
-                    stmt1WithSize,
-                    stmt2WithSize,
-                    stmt3WithSize,
-                    stmt4WithSize,
-                    stmt5WithSize,
-                    stmt6WithSize)));
+            batcher.batchAll(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
     assertThat(statements.toList().blockingGet())
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(stmt1WithSize, stmt2WithSize),
-            tuple(stmt5WithSize, stmt6WithSize),
-            tuple(stmt3WithSize, stmt4WithSize));
+        .contains(tuple(stmt1, stmt2), tuple(stmt5, stmt6), tuple(stmt3, stmt4));
   }
 
   @Test
@@ -281,42 +218,18 @@ class RxJavaStatementBatcherTest extends StatementBatcherTest {
     RxJavaStatementBatcher batcher = new RxJavaStatementBatcher(1, 8L);
     Flowable<Statement<?>> statements =
         Flowable.fromPublisher(
-            batcher.batchByGroupingKey(
-                Flowable.just(
-                    stmt1WithSize,
-                    stmt2WithSize,
-                    stmt3WithSize,
-                    stmt4WithSize,
-                    stmt5WithSize,
-                    stmt6WithSize)));
+            batcher.batchByGroupingKey(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
     assertThat(statements.toList().blockingGet())
         .extracting(EXTRACTOR)
         .contains(
-            tuple(stmt1WithSize),
-            tuple(stmt2WithSize),
-            tuple(stmt3WithSize),
-            tuple(stmt4WithSize),
-            tuple(stmt5WithSize),
-            tuple(stmt6WithSize));
+            tuple(stmt1), tuple(stmt2), tuple(stmt3), tuple(stmt4), tuple(stmt5), tuple(stmt6));
     statements =
         Flowable.fromPublisher(
-            batcher.batchAll(
-                Flowable.just(
-                    stmt1WithSize,
-                    stmt2WithSize,
-                    stmt3WithSize,
-                    stmt4WithSize,
-                    stmt5WithSize,
-                    stmt6WithSize)));
+            batcher.batchAll(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
     assertThat(statements.toList().blockingGet())
         .extracting(EXTRACTOR)
         .contains(
-            tuple(stmt1WithSize),
-            tuple(stmt2WithSize),
-            tuple(stmt3WithSize),
-            tuple(stmt4WithSize),
-            tuple(stmt5WithSize),
-            tuple(stmt6WithSize));
+            tuple(stmt1), tuple(stmt2), tuple(stmt3), tuple(stmt4), tuple(stmt5), tuple(stmt6));
   }
 
   @Test
@@ -326,39 +239,16 @@ class RxJavaStatementBatcherTest extends StatementBatcherTest {
     RxJavaStatementBatcher batcher = new RxJavaStatementBatcher(100, 1000);
     Flowable<Statement<?>> statements =
         Flowable.fromPublisher(
-            batcher.batchByGroupingKey(
-                Flowable.just(
-                    stmt1WithSize,
-                    stmt2WithSize,
-                    stmt3WithSize,
-                    stmt4WithSize,
-                    stmt5WithSize,
-                    stmt6WithSize)));
+            batcher.batchByGroupingKey(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
     assertThat(statements.toList().blockingGet())
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(stmt1WithSize, stmt2WithSize, stmt5WithSize, stmt6WithSize),
-            tuple(stmt3WithSize, stmt4WithSize));
+        .contains(tuple(stmt1, stmt2, stmt5, stmt6), tuple(stmt3, stmt4));
     statements =
         Flowable.fromPublisher(
-            batcher.batchAll(
-                Flowable.just(
-                    stmt1WithSize,
-                    stmt2WithSize,
-                    stmt3WithSize,
-                    stmt4WithSize,
-                    stmt5WithSize,
-                    stmt6WithSize)));
+            batcher.batchAll(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
     assertThat(statements.toList().blockingGet())
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(
-                stmt1WithSize,
-                stmt2WithSize,
-                stmt3WithSize,
-                stmt4WithSize,
-                stmt5WithSize,
-                stmt6WithSize));
+        .contains(tuple(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6));
   }
 
   @Test
@@ -368,38 +258,15 @@ class RxJavaStatementBatcherTest extends StatementBatcherTest {
     RxJavaStatementBatcher batcher = new RxJavaStatementBatcher(-1, -1);
     Flowable<Statement<?>> statements =
         Flowable.fromPublisher(
-            batcher.batchByGroupingKey(
-                Flowable.just(
-                    stmt1WithSize,
-                    stmt2WithSize,
-                    stmt3WithSize,
-                    stmt4WithSize,
-                    stmt5WithSize,
-                    stmt6WithSize)));
+            batcher.batchByGroupingKey(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
     assertThat(statements.toList().blockingGet())
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(stmt1WithSize, stmt2WithSize, stmt5WithSize, stmt6WithSize),
-            tuple(stmt3WithSize, stmt4WithSize));
+        .contains(tuple(stmt1, stmt2, stmt5, stmt6), tuple(stmt3, stmt4));
     statements =
         Flowable.fromPublisher(
-            batcher.batchAll(
-                Flowable.just(
-                    stmt1WithSize,
-                    stmt2WithSize,
-                    stmt3WithSize,
-                    stmt4WithSize,
-                    stmt5WithSize,
-                    stmt6WithSize)));
+            batcher.batchAll(Flowable.just(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6)));
     assertThat(statements.toList().blockingGet())
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(
-                stmt1WithSize,
-                stmt2WithSize,
-                stmt3WithSize,
-                stmt4WithSize,
-                stmt5WithSize,
-                stmt6WithSize));
+        .contains(tuple(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6));
   }
 }

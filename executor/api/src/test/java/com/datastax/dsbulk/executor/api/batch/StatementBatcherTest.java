@@ -9,7 +9,6 @@
 package com.datastax.dsbulk.executor.api.batch;
 
 import static com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode.REPLICA_SET;
-import static com.datastax.oss.driver.api.core.cql.DefaultBatchType.UNLOGGED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.mock;
@@ -65,46 +64,12 @@ public class StatementBatcherTest {
 
   protected final CqlIdentifier ks = CqlIdentifier.fromInternal("ks");
 
-  protected SimpleStatement stmt1 = SimpleStatement.newInstance("stmt1").setKeyspace(ks);
-  protected SimpleStatement stmt2 = SimpleStatement.newInstance("stmt2").setKeyspace(ks);
-  protected SimpleStatement stmt3 = SimpleStatement.newInstance("stmt3").setKeyspace(ks);
-  protected SimpleStatement stmt4 = SimpleStatement.newInstance("stmt4").setKeyspace(ks);
-  protected SimpleStatement stmt5 = SimpleStatement.newInstance("stmt5").setKeyspace(ks);
-  protected SimpleStatement stmt6 = SimpleStatement.newInstance("stmt6").setKeyspace(ks);
-
-  protected SimpleStatement stmt1WithSize =
-      SimpleStatement.newInstance("stmt1", "abcd").setKeyspace("ks");
-  protected SimpleStatement stmt2WithSize =
-      SimpleStatement.newInstance("stmt2", "efgh").setKeyspace("ks");
-  protected SimpleStatement stmt3WithSize =
-      SimpleStatement.newInstance("stmt3", "ijkl").setKeyspace("ks");
-  protected SimpleStatement stmt4WithSize =
-      SimpleStatement.newInstance("stmt4", "jklm").setKeyspace("ks");
-  protected SimpleStatement stmt5WithSize =
-      SimpleStatement.newInstance("stmt5", "klmn").setKeyspace("ks");
-  protected SimpleStatement stmt6WithSize =
-      SimpleStatement.newInstance("stmt6", "lmno").setKeyspace("ks");
-
-  protected BatchStatement batch34WithSize =
-      BatchStatement.newInstance(UNLOGGED).add(stmt3WithSize).add(stmt4WithSize);
-  protected BatchStatement batch56WithSize =
-      BatchStatement.newInstance(UNLOGGED).add(stmt5WithSize).add(stmt6WithSize);
-  protected BatchStatement batch12WithSize =
-      BatchStatement.newInstance(UNLOGGED).add(stmt1WithSize).add(stmt2WithSize);
-  protected BatchStatement batch1256WithSize =
-      BatchStatement.newInstance(UNLOGGED)
-          .add(stmt1WithSize)
-          .add(stmt2WithSize)
-          .add(stmt5WithSize)
-          .add(stmt6WithSize);
-  protected BatchStatement batch123456WithSize =
-      BatchStatement.newInstance(UNLOGGED)
-          .add(stmt1WithSize)
-          .add(stmt2WithSize)
-          .add(stmt3WithSize)
-          .add(stmt4WithSize)
-          .add(stmt5WithSize)
-          .add(stmt6WithSize);
+  protected SimpleStatement stmt1 = SimpleStatement.newInstance("stmt1", "abcd").setKeyspace(ks);
+  protected SimpleStatement stmt2 = SimpleStatement.newInstance("stmt2", "efgh").setKeyspace(ks);
+  protected SimpleStatement stmt3 = SimpleStatement.newInstance("stmt3", "ijkl").setKeyspace(ks);
+  protected SimpleStatement stmt4 = SimpleStatement.newInstance("stmt4", "jklm").setKeyspace(ks);
+  protected SimpleStatement stmt5 = SimpleStatement.newInstance("stmt5", "klmn").setKeyspace(ks);
+  protected SimpleStatement stmt6 = SimpleStatement.newInstance("stmt6", "lmno").setKeyspace(ks);
 
   protected CqlSession session;
 
@@ -269,33 +234,14 @@ public class StatementBatcherTest {
     assignRoutingTokensWitSize();
     StatementBatcher batcher = new StatementBatcher(8L);
     List<Statement<?>> statements =
-        batcher.batchByGroupingKey(
-            stmt1WithSize,
-            stmt2WithSize,
-            stmt3WithSize,
-            stmt4WithSize,
-            stmt5WithSize,
-            stmt6WithSize);
+        batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements)
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(stmt1WithSize, stmt2WithSize),
-            tuple(stmt5WithSize, stmt6WithSize),
-            tuple(stmt3WithSize, stmt4WithSize));
-    statements =
-        batcher.batchAll(
-            stmt1WithSize,
-            stmt2WithSize,
-            stmt3WithSize,
-            stmt4WithSize,
-            stmt5WithSize,
-            stmt6WithSize);
+        .contains(tuple(stmt1, stmt2), tuple(stmt5, stmt6), tuple(stmt3, stmt4));
+    statements = batcher.batchAll(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements)
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(stmt1WithSize, stmt2WithSize),
-            tuple(stmt5WithSize, stmt6WithSize),
-            tuple(stmt3WithSize, stmt4WithSize));
+        .contains(tuple(stmt1, stmt2), tuple(stmt5, stmt6), tuple(stmt3, stmt4));
   }
 
   @Test
@@ -303,36 +249,14 @@ public class StatementBatcherTest {
     assignRoutingTokensWitSize();
     StatementBatcher batcher = new StatementBatcher(1000);
     List<Statement<?>> statements =
-        batcher.batchByGroupingKey(
-            stmt1WithSize,
-            stmt2WithSize,
-            stmt3WithSize,
-            stmt4WithSize,
-            stmt5WithSize,
-            stmt6WithSize);
+        batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements)
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(stmt1WithSize, stmt2WithSize, stmt5WithSize, stmt6WithSize),
-            tuple(stmt3WithSize, stmt4WithSize));
-    statements =
-        batcher.batchAll(
-            stmt1WithSize,
-            stmt2WithSize,
-            stmt3WithSize,
-            stmt4WithSize,
-            stmt5WithSize,
-            stmt6WithSize);
+        .contains(tuple(stmt1, stmt2, stmt5, stmt6), tuple(stmt3, stmt4));
+    statements = batcher.batchAll(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements)
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(
-                stmt1WithSize,
-                stmt2WithSize,
-                stmt3WithSize,
-                stmt4WithSize,
-                stmt5WithSize,
-                stmt6WithSize));
+        .contains(tuple(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6));
   }
 
   @Test
@@ -340,33 +264,14 @@ public class StatementBatcherTest {
     assignRoutingTokensWitSize();
     StatementBatcher batcher = new StatementBatcher(10, 8L);
     List<Statement<?>> statements =
-        batcher.batchByGroupingKey(
-            stmt1WithSize,
-            stmt2WithSize,
-            stmt3WithSize,
-            stmt4WithSize,
-            stmt5WithSize,
-            stmt6WithSize);
+        batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements)
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(stmt1WithSize, stmt2WithSize),
-            tuple(stmt5WithSize, stmt6WithSize),
-            tuple(stmt3WithSize, stmt4WithSize));
-    statements =
-        batcher.batchAll(
-            stmt1WithSize,
-            stmt2WithSize,
-            stmt3WithSize,
-            stmt4WithSize,
-            stmt5WithSize,
-            stmt6WithSize);
+        .contains(tuple(stmt1, stmt2), tuple(stmt5, stmt6), tuple(stmt3, stmt4));
+    statements = batcher.batchAll(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements)
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(stmt1WithSize, stmt2WithSize),
-            tuple(stmt5WithSize, stmt6WithSize),
-            tuple(stmt3WithSize, stmt4WithSize));
+        .contains(tuple(stmt1, stmt2), tuple(stmt5, stmt6), tuple(stmt3, stmt4));
   }
 
   @Test
@@ -374,39 +279,16 @@ public class StatementBatcherTest {
     assignRoutingTokensWitSize();
     StatementBatcher batcher = new StatementBatcher(1, 8L);
     List<Statement<?>> statements =
-        batcher.batchByGroupingKey(
-            stmt1WithSize,
-            stmt2WithSize,
-            stmt3WithSize,
-            stmt4WithSize,
-            stmt5WithSize,
-            stmt6WithSize);
+        batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements)
         .extracting(EXTRACTOR)
         .contains(
-            tuple(stmt1WithSize),
-            tuple(stmt2WithSize),
-            tuple(stmt3WithSize),
-            tuple(stmt4WithSize),
-            tuple(stmt5WithSize),
-            tuple(stmt6WithSize));
-    statements =
-        batcher.batchAll(
-            stmt1WithSize,
-            stmt2WithSize,
-            stmt3WithSize,
-            stmt4WithSize,
-            stmt5WithSize,
-            stmt6WithSize);
+            tuple(stmt1), tuple(stmt2), tuple(stmt3), tuple(stmt4), tuple(stmt5), tuple(stmt6));
+    statements = batcher.batchAll(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements)
         .extracting(EXTRACTOR)
         .contains(
-            tuple(stmt1WithSize),
-            tuple(stmt2WithSize),
-            tuple(stmt3WithSize),
-            tuple(stmt4WithSize),
-            tuple(stmt5WithSize),
-            tuple(stmt6WithSize));
+            tuple(stmt1), tuple(stmt2), tuple(stmt3), tuple(stmt4), tuple(stmt5), tuple(stmt6));
   }
 
   @Test
@@ -414,36 +296,14 @@ public class StatementBatcherTest {
     assignRoutingTokensWitSize();
     StatementBatcher batcher = new StatementBatcher(100, 1000);
     List<Statement<?>> statements =
-        batcher.batchByGroupingKey(
-            stmt1WithSize,
-            stmt2WithSize,
-            stmt3WithSize,
-            stmt4WithSize,
-            stmt5WithSize,
-            stmt6WithSize);
+        batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements)
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(stmt1WithSize, stmt2WithSize, stmt5WithSize, stmt6WithSize),
-            tuple(stmt3WithSize, stmt4WithSize));
-    statements =
-        batcher.batchAll(
-            stmt1WithSize,
-            stmt2WithSize,
-            stmt3WithSize,
-            stmt4WithSize,
-            stmt5WithSize,
-            stmt6WithSize);
+        .contains(tuple(stmt1, stmt2, stmt5, stmt6), tuple(stmt3, stmt4));
+    statements = batcher.batchAll(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements)
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(
-                stmt1WithSize,
-                stmt2WithSize,
-                stmt3WithSize,
-                stmt4WithSize,
-                stmt5WithSize,
-                stmt6WithSize));
+        .contains(tuple(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6));
   }
 
   @Test
@@ -451,36 +311,14 @@ public class StatementBatcherTest {
     assignRoutingTokensWitSize();
     StatementBatcher batcher = new StatementBatcher(-1, -1);
     List<Statement<?>> statements =
-        batcher.batchByGroupingKey(
-            stmt1WithSize,
-            stmt2WithSize,
-            stmt3WithSize,
-            stmt4WithSize,
-            stmt5WithSize,
-            stmt6WithSize);
+        batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements)
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(stmt1WithSize, stmt2WithSize, stmt5WithSize, stmt6WithSize),
-            tuple(stmt3WithSize, stmt4WithSize));
-    statements =
-        batcher.batchAll(
-            stmt1WithSize,
-            stmt2WithSize,
-            stmt3WithSize,
-            stmt4WithSize,
-            stmt5WithSize,
-            stmt6WithSize);
+        .contains(tuple(stmt1, stmt2, stmt5, stmt6), tuple(stmt3, stmt4));
+    statements = batcher.batchAll(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements)
         .extracting(EXTRACTOR)
-        .contains(
-            tuple(
-                stmt1WithSize,
-                stmt2WithSize,
-                stmt3WithSize,
-                stmt4WithSize,
-                stmt5WithSize,
-                stmt6WithSize));
+        .contains(tuple(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6));
   }
 
   protected void assignRoutingKeys() {
@@ -502,11 +340,11 @@ public class StatementBatcherTest {
   }
 
   protected void assignRoutingTokensWitSize() {
-    stmt1WithSize = stmt1WithSize.setRoutingKey((ByteBuffer) null).setRoutingToken(token1);
-    stmt2WithSize = stmt2WithSize.setRoutingKey((ByteBuffer) null).setRoutingToken(token1);
-    stmt3WithSize = stmt3WithSize.setRoutingKey((ByteBuffer) null).setRoutingToken(token2);
-    stmt4WithSize = stmt4WithSize.setRoutingKey((ByteBuffer) null).setRoutingToken(token2);
-    stmt5WithSize = stmt5WithSize.setRoutingKey((ByteBuffer) null).setRoutingToken(token1);
-    stmt6WithSize = stmt6WithSize.setRoutingKey((ByteBuffer) null).setRoutingToken(token1);
+    stmt1 = stmt1.setRoutingKey((ByteBuffer) null).setRoutingToken(token1);
+    stmt2 = stmt2.setRoutingKey((ByteBuffer) null).setRoutingToken(token1);
+    stmt3 = stmt3.setRoutingKey((ByteBuffer) null).setRoutingToken(token2);
+    stmt4 = stmt4.setRoutingKey((ByteBuffer) null).setRoutingToken(token2);
+    stmt5 = stmt5.setRoutingKey((ByteBuffer) null).setRoutingToken(token1);
+    stmt6 = stmt6.setRoutingKey((ByteBuffer) null).setRoutingToken(token1);
   }
 }
