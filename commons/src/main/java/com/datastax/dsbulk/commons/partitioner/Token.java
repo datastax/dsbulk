@@ -8,7 +8,7 @@
  */
 package com.datastax.dsbulk.commons.partitioner;
 
-import org.jetbrains.annotations.NotNull;
+import edu.umd.cs.findbugs.annotations.NonNull;
 
 /**
  * A token in a ring.
@@ -18,6 +18,6 @@ import org.jetbrains.annotations.NotNull;
 public interface Token<T extends Number> extends Comparable<Token<T>> {
 
   /** @return This token's value. */
-  @NotNull
+  @NonNull
   T value();
 }

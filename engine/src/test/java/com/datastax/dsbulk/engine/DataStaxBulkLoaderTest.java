@@ -18,7 +18,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.slf4j.event.Level.ERROR;
 
-import com.datastax.driver.core.policies.TokenAwarePolicy;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
@@ -27,7 +26,7 @@ import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
 import com.datastax.dsbulk.engine.internal.utils.HelpUtils;
-import com.google.common.collect.ImmutableMap;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import java.io.IOException;
@@ -406,8 +405,6 @@ class DataStaxBulkLoaderTest {
               "user",
               "-h",
               "host1, host2",
-              "-lbp",
-              "lbp",
               "-maxRetries",
               "42",
               "-port",
@@ -462,7 +459,6 @@ class DataStaxBulkLoaderTest {
     assertThat(result.getString("driver.auth.password")).isEqualTo("pass");
     assertThat(result.getString("driver.auth.username")).isEqualTo("user");
     assertThat(result.getStringList("driver.hosts")).containsExactly("host1", "host2");
-    assertThat(result.getString("driver.policy.lbp.name")).isEqualTo("lbp");
     assertThat(result.getInt("driver.policy.maxRetries")).isEqualTo(42);
     assertThat(result.getInt("driver.port")).isEqualTo(9876);
     assertThat(result.getString("driver.query.consistency")).isEqualTo("cl");
@@ -584,12 +580,10 @@ class DataStaxBulkLoaderTest {
               "NONE",
               "--driver.pooling.local.connections",
               "2",
-              "--driver.pooling.local.requests",
+              "--driver.pooling.requests",
               "3",
               "--driver.pooling.remote.connections",
               "4",
-              "--driver.pooling.remote.requests",
-              "5",
               "--driver.pooling.heartbeat",
               "6 seconds",
               "--driver.query.consistency",
@@ -640,23 +634,9 @@ class DataStaxBulkLoaderTest {
               "ts-gen",
               "--driver.addressTranslator",
               "address-translator",
-              "--driver.policy.lbp.name",
-              "lbp",
-              "--driver.policy.lbp.dse.childPolicy",
-              "dseChild",
-              "--driver.policy.lbp.dcAwareRoundRobin.localDc",
+              "--driver.policy.lbp.localDc",
               "localDc",
-              "--driver.policy.lbp.dcAwareRoundRobin.allowRemoteDCsForLocalConsistencyLevel",
-              "true",
-              "--driver.policy.lbp.dcAwareRoundRobin.usedHostsPerRemoteDc",
-              "28",
-              "--driver.policy.lbp.tokenAware.childPolicy",
-              "tokenAwareChild",
-              "--driver.policy.lbp.tokenAware.replicaOrdering",
-              "NEUTRAL",
-              "--driver.policy.lbp.whiteList.childPolicy",
-              "whiteListChild",
-              "--driver.policy.lbp.whiteList.hosts",
+              "--driver.policy.lbp.whiteList",
               "wh1, wh2",
               "--driver.policy.maxRetries",
               "29",
@@ -745,9 +725,8 @@ class DataStaxBulkLoaderTest {
     assertThat(result.getInt("driver.port")).isEqualTo(1);
     assertThat(result.getString("driver.protocol.compression")).isEqualTo("NONE");
     assertThat(result.getInt("driver.pooling.local.connections")).isEqualTo(2);
-    assertThat(result.getInt("driver.pooling.local.requests")).isEqualTo(3);
+    assertThat(result.getInt("driver.pooling.requests")).isEqualTo(3);
     assertThat(result.getInt("driver.pooling.remote.connections")).isEqualTo(4);
-    assertThat(result.getInt("driver.pooling.remote.requests")).isEqualTo(5);
     assertThat(result.getString("driver.pooling.heartbeat")).isEqualTo("6 seconds");
     assertThat(result.getString("driver.query.consistency")).isEqualTo("cl");
     assertThat(result.getString("driver.query.serialConsistency")).isEqualTo("serial-cl");
@@ -773,27 +752,8 @@ class DataStaxBulkLoaderTest {
     assertThat(result.getString("driver.ssl.openssl.privateKey")).isEqualTo("key");
     assertThat(result.getString("driver.timestampGenerator")).isEqualTo("ts-gen");
     assertThat(result.getString("driver.addressTranslator")).isEqualTo("address-translator");
-    assertThat(result.getString("driver.policy.lbp.name")).isEqualTo("lbp");
-    assertThat(result.getString("driver.policy.lbp.dse.childPolicy")).isEqualTo("dseChild");
-    assertThat(result.getString("driver.policy.lbp.dcAwareRoundRobin.localDc"))
-        .isEqualTo("localDc");
-    assertThat(
-            result.getBoolean(
-                "driver.policy.lbp.dcAwareRoundRobin.allowRemoteDCsForLocalConsistencyLevel"))
-        .isTrue();
-    assertThat(result.getInt("driver.policy.lbp.dcAwareRoundRobin.usedHostsPerRemoteDc"))
-        .isEqualTo(28);
-    assertThat(result.getString("driver.policy.lbp.tokenAware.childPolicy"))
-        .isEqualTo("tokenAwareChild");
-    assertThat(
-            result.getEnum(
-                TokenAwarePolicy.ReplicaOrdering.class,
-                "driver.policy.lbp.tokenAware.replicaOrdering"))
-        .isEqualTo(TokenAwarePolicy.ReplicaOrdering.NEUTRAL);
-    assertThat(result.getString("driver.policy.lbp.whiteList.childPolicy"))
-        .isEqualTo("whiteListChild");
-    assertThat(result.getStringList("driver.policy.lbp.whiteList.hosts"))
-        .containsExactly("wh1", "wh2");
+    assertThat(result.getString("driver.policy.lbp.localDc")).isEqualTo("localDc");
+    assertThat(result.getStringList("driver.policy.lbp.whiteList")).containsExactly("wh1", "wh2");
     assertThat(result.getInt("driver.policy.maxRetries")).isEqualTo(29);
     assertThat(result.getBoolean("engine.dryRun")).isTrue();
     assertThat(result.getString("engine.executionId")).isEqualTo("MY_EXEC_ID");

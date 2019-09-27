@@ -9,9 +9,9 @@
 package com.datastax.dsbulk.connectors.api.internal;
 
 import com.datastax.dsbulk.connectors.api.IndexedField;
-import com.google.common.base.Preconditions;
+import com.datastax.oss.driver.shaded.guava.common.base.Preconditions;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.util.Objects;
-import org.jetbrains.annotations.NotNull;
 
 public class DefaultIndexedField implements IndexedField {
 
@@ -28,7 +28,7 @@ public class DefaultIndexedField implements IndexedField {
   }
 
   @Override
-  @NotNull
+  @NonNull
   public String getFieldDescription() {
     return Integer.toString(index);
   }

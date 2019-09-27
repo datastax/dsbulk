@@ -8,13 +8,13 @@
  */
 package com.datastax.dsbulk.executor.api.result;
 
-import com.datastax.driver.core.BatchStatement;
-import com.datastax.driver.core.ExecutionInfo;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
+import com.datastax.oss.driver.api.core.cql.BatchStatement;
+import com.datastax.oss.driver.api.core.cql.ExecutionInfo;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.util.Optional;
 import java.util.function.Consumer;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * Common superinterface for {@link ReadResult} and {@link WriteResult}.
@@ -38,10 +38,10 @@ public interface Result {
    *
    * @return the statement that has been executed.
    */
-  @NotNull
-  Statement getStatement();
+  @NonNull
+  Statement<?> getStatement();
 
-  @NotNull
+  @NonNull
   Optional<ExecutionInfo> getExecutionInfo();
 
   /**
@@ -60,7 +60,7 @@ public interface Result {
    *
    * @return an optional {@link BulkExecutionException}.
    */
-  @NotNull
+  @NonNull
   Optional<BulkExecutionException> getError();
 
   /**
@@ -69,7 +69,7 @@ public interface Result {
    * @param consumer block to be executed if an error is present
    * @throws NullPointerException if an error is present and {@code consumer} is null
    */
-  default void ifError(@NotNull Consumer<? super BulkExecutionException> consumer) {
+  default void ifError(@NonNull Consumer<? super BulkExecutionException> consumer) {
     getError().ifPresent(consumer);
   }
 }

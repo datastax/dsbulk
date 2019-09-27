@@ -30,8 +30,9 @@ public class LogInterceptorAssert
         actual.getLoggedMessages().stream().filter(s -> s.contains(fragment)).findAny();
     assertThat(message)
         .overridingErrorMessage(
-            "Expecting logged messages to have a message containing '%s' but they did not",
-            fragment)
+            "Expecting logged messages to have a message containing '%s' "
+                + "but they did not. Logged messages are: \n%s",
+            fragment, String.join("\n", actual.getLoggedMessages()))
         .isPresent();
     return this;
   }
@@ -41,8 +42,9 @@ public class LogInterceptorAssert
         actual.getLoggedMessages().stream().filter(s -> s.contains(fragment)).findAny();
     assertThat(message)
         .overridingErrorMessage(
-            "Expecting logged messages to not have a message containing '%s' but they did",
-            fragment)
+            "Expecting logged messages to not have a message containing '%s' "
+                + "but they did. Logged messages are: \n%s",
+            fragment, String.join("\n", actual.getLoggedMessages()))
         .isNotPresent();
     return this;
   }
@@ -54,7 +56,9 @@ public class LogInterceptorAssert
             .findAny();
     assertThat(message)
         .overridingErrorMessage(
-            "Expecting logged messages to have a message matching '%s' but they did not", regex)
+            "Expecting logged messages to have a message matching '%s' "
+                + "but they did not. Logged messages are: \n%s",
+            regex, String.join("\n", actual.getLoggedMessages()))
         .isPresent();
     return this;
   }
@@ -66,7 +70,9 @@ public class LogInterceptorAssert
             .findAny();
     assertThat(message)
         .overridingErrorMessage(
-            "Expecting logged messages to not have a message matching '%s' but they did", regex)
+            "Expecting logged messages to not have a message matching '%s' "
+                + "but they did. Logged messages are: \n%s",
+            regex, String.join("\n", actual.getLoggedMessages()))
         .isNotPresent();
     return this;
   }
@@ -75,7 +81,9 @@ public class LogInterceptorAssert
     Optional<String> message = actual.getLoggedMessages().stream().filter(predicate).findAny();
     assertThat(message)
         .overridingErrorMessage(
-            "Expecting logged messages to have a satisfying message but they did not")
+            "Expecting logged messages to have a satisfying message "
+                + "but they did not. Logged messages are: \n%s",
+            String.join("\n", actual.getLoggedMessages()))
         .isPresent();
     return this;
   }
@@ -84,7 +92,9 @@ public class LogInterceptorAssert
     Optional<ILoggingEvent> message = actual.getLoggedEvents().stream().filter(predicate).findAny();
     assertThat(message)
         .overridingErrorMessage(
-            "Expecting logged messages to have a satisfying message but they did not")
+            "Expecting logged messages to have a satisfying message "
+                + "but they did not. Logged messages are: \n%s",
+            String.join("\n", actual.getLoggedMessages()))
         .isPresent();
     return this;
   }

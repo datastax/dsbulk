@@ -8,23 +8,28 @@
  */
 package com.datastax.dsbulk.commons.tests.utils;
 
-import com.datastax.driver.core.Metadata;
+import com.datastax.oss.driver.api.core.CqlIdentifier;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 
 public abstract class CQLUtils {
 
   private static final String CREATE_KEYSPACE_SIMPLE_FORMAT =
       "CREATE KEYSPACE %s WITH replication = { 'class' : 'SimpleStrategy', 'replication_factor' : %d }";
 
-  public static String createKeyspaceSimpleStrategy(String keyspace, int replicationFactor) {
-    return String.format(
-        CREATE_KEYSPACE_SIMPLE_FORMAT, Metadata.quoteIfNecessary(keyspace), replicationFactor);
+  public static SimpleStatement createKeyspaceSimpleStrategy(
+      String keyspace, int replicationFactor) {
+    return SimpleStatement.newInstance(
+        String.format(
+            CREATE_KEYSPACE_SIMPLE_FORMAT,
+            CqlIdentifier.fromInternal(keyspace).asCql(true),
+            replicationFactor));
   }
 
-  public static String createKeyspaceNetworkTopologyStrategy(
+  public static SimpleStatement createKeyspaceNetworkTopologyStrategy(
       String keyspace, int... replicationFactors) {
     StringBuilder sb =
         new StringBuilder("CREATE KEYSPACE ")
-            .append(Metadata.quoteIfNecessary(keyspace))
+            .append(CqlIdentifier.fromInternal(keyspace).asCql(true))
             .append(" WITH replication = { 'class' : 'NetworkTopologyStrategy', ");
     for (int i = 0; i < replicationFactors.length; i++) {
       if (i > 0) {
@@ -33,6 +38,6 @@ public abstract class CQLUtils {
       int rf = replicationFactors[i];
       sb.append("'dc").append(i + 1).append("' : ").append(rf);
     }
-    return sb.append('}').toString();
+    return SimpleStatement.newInstance(sb.append('}').toString());
   }
 }

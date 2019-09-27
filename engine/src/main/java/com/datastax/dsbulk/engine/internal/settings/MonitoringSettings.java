@@ -9,14 +9,14 @@
 package com.datastax.dsbulk.engine.internal.settings;
 
 import com.codahale.metrics.MetricRegistry;
-import com.datastax.driver.core.CodecRegistry;
-import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings.Verbosity;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.datastax.oss.driver.api.core.ProtocolVersion;
+import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
+import com.datastax.oss.driver.shaded.guava.common.util.concurrent.ThreadFactoryBuilder;
 import com.typesafe.config.ConfigException;
 import java.nio.file.Path;
 import java.time.Duration;

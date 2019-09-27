@@ -18,11 +18,8 @@ import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.WorkflowType;
-import com.google.common.base.CharMatcher;
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
+import com.datastax.oss.driver.shaded.guava.common.base.CharMatcher;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -36,7 +33,6 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.fusesource.jansi.Ansi;
 import org.fusesource.jansi.AnsiConsole;
-import org.jetbrains.annotations.NotNull;
 
 public class HelpUtils {
 
@@ -108,18 +104,8 @@ public class HelpUtils {
   }
 
   public static String getVersionMessage() {
-    // Get the version of dsbulk from version.txt.
-    String version = "UNKNOWN";
-    try (InputStream versionStream = DataStaxBulkLoader.class.getResourceAsStream("/version.txt")) {
-      if (versionStream != null) {
-        BufferedReader reader =
-            new BufferedReader(new InputStreamReader(versionStream, StandardCharsets.UTF_8));
-        version = reader.readLine();
-      }
-    } catch (Exception e) {
-      // swallow
-    }
-    return String.format("DataStax Bulk Loader v%s", version);
+    String version = WorkflowUtils.getBulkLoaderVersion();
+    return WorkflowUtils.BULK_LOADER_APPLICATION_NAME + " v" + version;
   }
 
   public static int getLineLength() {
@@ -137,7 +123,7 @@ public class HelpUtils {
     return columns;
   }
 
-  @NotNull
+  @NonNull
   private static Set<String> getGroupNames() {
     Set<String> groupNames = GROUPS.keySet();
     groupNames.remove("Common");

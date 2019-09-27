@@ -8,19 +8,19 @@
  */
 package com.datastax.dsbulk.executor.api;
 
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.datastax.dsbulk.executor.api.result.Result;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.cql.Statement;
 
 /** A builder for {@link AbstractBulkExecutor} instances. */
 @SuppressWarnings("WeakerAccess")
 public abstract class AbstractBulkExecutorBuilder<T extends AbstractBulkExecutor> {
 
-  protected final Session session;
+  protected final CqlSession session;
 
   protected boolean failFast = true;
 
@@ -32,7 +32,7 @@ public abstract class AbstractBulkExecutorBuilder<T extends AbstractBulkExecutor
 
   protected ExecutionListener listener;
 
-  protected AbstractBulkExecutorBuilder(Session session) {
+  protected AbstractBulkExecutorBuilder(CqlSession session) {
     this.session = session;
   }
 

@@ -10,6 +10,7 @@ package com.datastax.dsbulk.commons.internal.io;
 
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 
+import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
@@ -33,6 +34,7 @@ public final class IOUtils {
 
   private static final int BUFFER_SIZE = 8192 * 2;
 
+  @SuppressWarnings("WeakerAccess")
   public static BufferedInputStream newBufferedInputStream(URL url) throws IOException {
     InputStream in = url.openStream();
     return in instanceof BufferedInputStream
@@ -40,6 +42,7 @@ public final class IOUtils {
         : new BufferedInputStream(in, BUFFER_SIZE);
   }
 
+  @SuppressWarnings("WeakerAccess")
   public static BufferedOutputStream newBufferedOutputStream(URL url) throws IOException {
     OutputStream out;
     // file URLs do not support writing, only reading,
@@ -84,6 +87,33 @@ public final class IOUtils {
   public static long countReadableFiles(Path root, boolean recursive) throws IOException {
     try (Stream<Path> files = Files.walk(root, recursive ? Integer.MAX_VALUE : 1)) {
       return files.filter(Files::isReadable).filter(Files::isRegularFile).count();
+    }
+  }
+
+  public static void checkReadableFile(Path path) {
+    if (!Files.exists(path)) {
+      throw new BulkConfigurationException("File does not exist: " + path);
+    }
+    if (!Files.isRegularFile(path)) {
+      throw new BulkConfigurationException("File %s is not a regular file" + path);
+    }
+    if (!Files.isReadable(path)) {
+      throw new BulkConfigurationException("File %s is not readable" + path);
+    }
+  }
+
+  public static void assertAccessibleFile(Path filePath, String descriptor) {
+    if (!Files.exists(filePath)) {
+      throw new BulkConfigurationException(
+          String.format("%s %s does not exist", descriptor, filePath));
+    }
+    if (!Files.isRegularFile(filePath)) {
+      throw new BulkConfigurationException(
+          String.format("%s %s is not a file", descriptor, filePath));
+    }
+    if (!Files.isReadable(filePath)) {
+      throw new BulkConfigurationException(
+          String.format("%s %s is not readable", descriptor, filePath));
     }
   }
 }

@@ -8,10 +8,10 @@
  */
 package com.datastax.dsbulk.executor.api.listener;
 
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
-import com.google.common.collect.ImmutableList;
+import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -31,12 +31,12 @@ public class CompositeExecutionListener implements ExecutionListener {
   }
 
   @Override
-  public void onExecutionStarted(Statement statement, ExecutionContext context) {
+  public void onExecutionStarted(Statement<?> statement, ExecutionContext context) {
     listeners.forEach(l -> l.onExecutionStarted(statement, context));
   }
 
   @Override
-  public void onExecutionSuccessful(Statement statement, ExecutionContext context) {
+  public void onExecutionSuccessful(Statement<?> statement, ExecutionContext context) {
     listeners.forEach(l -> l.onExecutionSuccessful(statement, context));
   }
 
@@ -46,32 +46,34 @@ public class CompositeExecutionListener implements ExecutionListener {
   }
 
   @Override
-  public void onWriteRequestStarted(Statement statement, ExecutionContext context) {
+  public void onWriteRequestStarted(Statement<?> statement, ExecutionContext context) {
     listeners.forEach(l -> l.onWriteRequestStarted(statement, context));
   }
 
   @Override
-  public void onWriteRequestSuccessful(Statement statement, ExecutionContext context) {
+  public void onWriteRequestSuccessful(Statement<?> statement, ExecutionContext context) {
     listeners.forEach(l -> l.onWriteRequestSuccessful(statement, context));
   }
 
   @Override
-  public void onWriteRequestFailed(Statement statement, Throwable error, ExecutionContext context) {
+  public void onWriteRequestFailed(
+      Statement<?> statement, Throwable error, ExecutionContext context) {
     listeners.forEach(l -> l.onWriteRequestFailed(statement, error, context));
   }
 
   @Override
-  public void onReadRequestStarted(Statement statement, ExecutionContext context) {
+  public void onReadRequestStarted(Statement<?> statement, ExecutionContext context) {
     listeners.forEach(l -> l.onReadRequestStarted(statement, context));
   }
 
   @Override
-  public void onReadRequestSuccessful(Statement statement, ExecutionContext context) {
+  public void onReadRequestSuccessful(Statement<?> statement, ExecutionContext context) {
     listeners.forEach(l -> l.onReadRequestSuccessful(statement, context));
   }
 
   @Override
-  public void onReadRequestFailed(Statement statement, Throwable error, ExecutionContext context) {
+  public void onReadRequestFailed(
+      Statement<?> statement, Throwable error, ExecutionContext context) {
     listeners.forEach(l -> l.onReadRequestFailed(statement, error, context));
   }
 

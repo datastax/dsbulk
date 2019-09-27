@@ -8,7 +8,7 @@
  */
 package com.datastax.dsbulk.engine.internal.log.threshold;
 
-import org.jetbrains.annotations.NotNull;
+import edu.umd.cs.findbugs.annotations.NonNull;
 
 public class AbsoluteErrorThreshold implements ErrorThreshold {
 
@@ -22,7 +22,7 @@ public class AbsoluteErrorThreshold implements ErrorThreshold {
   }
 
   @Override
-  public boolean checkThresholdExceeded(long errorCount, @NotNull Number totalItems) {
+  public boolean checkThresholdExceeded(long errorCount, @NonNull Number totalItems) {
     return errorCount > maxErrors;
   }
 

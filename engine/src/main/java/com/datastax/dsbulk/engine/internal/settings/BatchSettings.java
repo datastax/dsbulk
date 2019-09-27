@@ -8,13 +8,13 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import com.datastax.driver.core.BatchStatement;
-import com.datastax.driver.core.Cluster;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.executor.api.batch.StatementBatcher;
 import com.datastax.dsbulk.executor.reactor.batch.ReactorStatementBatcher;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.cql.DefaultBatchType;
 import com.typesafe.config.ConfigException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -125,11 +125,11 @@ public class BatchSettings {
     return bufferSize;
   }
 
-  public ReactorStatementBatcher newStatementBatcher(Cluster cluster) {
+  public ReactorStatementBatcher newStatementBatcher(CqlSession session) {
     return new ReactorStatementBatcher(
-        cluster,
+        session,
         mode.asStatementBatcherMode(),
-        BatchStatement.Type.UNLOGGED,
+        DefaultBatchType.UNLOGGED,
         maxBatchStatements,
         maxSizeInBytes);
   }

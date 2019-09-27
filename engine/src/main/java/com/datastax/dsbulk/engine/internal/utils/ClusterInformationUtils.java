@@ -8,10 +8,13 @@
  */
 package com.datastax.dsbulk.engine.internal.utils;
 
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.Host;
-import com.datastax.driver.core.Metadata;
+import com.datastax.dse.driver.api.core.metadata.DseNodeProperties;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.metadata.Metadata;
+import com.datastax.oss.driver.api.core.metadata.Node;
+import com.datastax.oss.driver.api.core.metadata.TokenMap;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -23,63 +26,66 @@ import org.slf4j.LoggerFactory;
 public class ClusterInformationUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterInformationUtils.class);
   static final int LIMIT_NODES_INFORMATION = 100;
-  private static final Comparator<Host> HOST_COMPARATOR = new HostComparator();
+  private static final Comparator<Node> NODE_COMPARATOR = new NodeComparator();
 
-  public static void printDebugInfoAboutCluster(Cluster cluster) {
+  public static void printDebugInfoAboutCluster(CqlSession session) {
     if (LOGGER.isDebugEnabled()) {
-      ClusterInformation infoAboutCluster = getInfoAboutCluster(cluster);
+      ClusterInformation clusterInfor = getInfoAboutCluster(session);
 
-      LOGGER.debug("Partitioner: {}", infoAboutCluster.getPartitioner());
-      LOGGER.debug("Total number of hosts: {}", infoAboutCluster.getNumberOfHosts());
-      LOGGER.debug("DataCenters: {}", infoAboutCluster.getDataCenters());
+      LOGGER.debug("Partitioner: {}", clusterInfor.getPartitioner());
+      LOGGER.debug("Total number of nodes: {}", clusterInfor.getNumberOfNodes());
+      LOGGER.debug("DataCenters: {}", clusterInfor.getDataCenters());
 
-      LOGGER.debug("Hosts:");
-      for (String hostSummary : infoAboutCluster.getHostsInfo()) {
-        LOGGER.debug(hostSummary);
+      LOGGER.debug("Nodes:");
+      for (String nodeSummary : clusterInfor.getNodeInfos()) {
+        LOGGER.debug(nodeSummary);
       }
-      if (infoAboutCluster.isSomeNodesOmitted()) {
+      if (clusterInfor.isSomeNodesOmitted()) {
         LOGGER.debug("(Other nodes omitted)");
       }
     }
   }
 
-  static ClusterInformation getInfoAboutCluster(Cluster cluster) {
+  static ClusterInformation getInfoAboutCluster(CqlSession session) {
 
-    Metadata metadata = cluster.getMetadata();
-    Set<Host> allHosts = metadata.getAllHosts();
+    Metadata metadata = session.getMetadata();
+    Collection<Node> allNodes = metadata.getNodes().values();
 
-    Set<String> dataCenters = getAllDataCenters(allHosts);
+    Set<String> dataCenters = getAllDataCenters(allNodes);
 
     List<String> hostsInfo =
-        allHosts.stream()
-            .sorted(HOST_COMPARATOR)
+        allNodes.stream()
+            .sorted(NODE_COMPARATOR)
             .limit(LIMIT_NODES_INFORMATION)
-            .map(ClusterInformationUtils::getHostInfo)
+            .map(ClusterInformationUtils::getNodeInfo)
             .collect(Collectors.toCollection(ArrayList::new));
     return new ClusterInformation(
-        cluster.getMetadata().getPartitioner(),
-        allHosts.size(),
+        session.getMetadata().getTokenMap().map(TokenMap::getPartitionerName).orElse("?"),
+        allNodes.size(),
         dataCenters,
         hostsInfo,
-        numberOfNodesAboveLimit(allHosts));
+        numberOfNodesAboveLimit(allNodes));
   }
 
-  private static boolean numberOfNodesAboveLimit(Set<Host> allHosts) {
-    return allHosts.size() > LIMIT_NODES_INFORMATION;
+  private static boolean numberOfNodesAboveLimit(Collection<Node> allNodes) {
+    return allNodes.size() > LIMIT_NODES_INFORMATION;
   }
 
-  private static Set<String> getAllDataCenters(Set<Host> allHosts) {
-    return allHosts.stream()
-        .collect(Collectors.groupingBy(Host::getDatacenter))
+  private static Set<String> getAllDataCenters(Collection<Node> allNodes) {
+    return allNodes.stream()
+        .collect(Collectors.groupingBy(Node::getDatacenter))
         .keySet()
         .stream()
         .sorted()
         .collect(Collectors.toCollection(LinkedHashSet::new));
   }
 
-  private static String getHostInfo(Host h) {
+  private static String getNodeInfo(Node h) {
     return String.format(
         "address: %s, dseVersion: %s, cassandraVersion: %s, dataCenter: %s",
-        h.getSocketAddress(), h.getDseVersion(), h.getCassandraVersion(), h.getDatacenter());
+        h.getEndPoint().resolve(),
+        h.getExtras().get(DseNodeProperties.DSE_VERSION),
+        h.getCassandraVersion(),
+        h.getDatacenter());
   }
 }

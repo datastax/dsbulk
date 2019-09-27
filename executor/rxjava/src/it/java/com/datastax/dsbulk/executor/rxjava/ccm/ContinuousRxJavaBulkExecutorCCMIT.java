@@ -10,22 +10,20 @@ package com.datastax.dsbulk.executor.rxjava.ccm;
 
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
 
-import com.datastax.driver.core.ContinuousPagingSession;
-import com.datastax.driver.core.SerializedSession;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMVersionRequirement;
+import com.datastax.dsbulk.executor.api.SerializedSession;
 import com.datastax.dsbulk.executor.api.ccm.BulkExecutorCCMITBase;
 import com.datastax.dsbulk.executor.rxjava.ContinuousRxJavaBulkExecutor;
+import com.datastax.dse.driver.api.core.DseSession;
 import org.junit.jupiter.api.Tag;
 
 @Tag("medium")
-@CCMRequirements(
-    compatibleTypes = DSE,
-    versionRequirements = @CCMVersionRequirement(type = DSE, min = "5.1"))
+@CCMRequirements(versionRequirements = @CCMVersionRequirement(type = DSE, min = "5.1"))
 class ContinuousRxJavaBulkExecutorCCMIT extends BulkExecutorCCMITBase {
 
-  ContinuousRxJavaBulkExecutorCCMIT(CCMCluster ccm, ContinuousPagingSession session) {
+  ContinuousRxJavaBulkExecutorCCMIT(CCMCluster ccm, DseSession session) {
     super(
         ccm,
         session,

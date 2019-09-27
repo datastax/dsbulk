@@ -20,7 +20,7 @@ import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMVersionRequirement;
 import com.datastax.dsbulk.commons.tests.ccm.factory.CCMClusterFactory;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.commons.tests.utils.Version;
-import com.google.common.util.concurrent.Uninterruptibles;
+import com.datastax.oss.driver.shaded.guava.common.util.concurrent.Uninterruptibles;
 import java.lang.reflect.Parameter;
 import java.net.InetAddress;
 import java.util.Arrays;

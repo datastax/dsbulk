@@ -12,7 +12,7 @@ import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.Statist
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.hosts;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.partitions;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.ranges;
-import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;

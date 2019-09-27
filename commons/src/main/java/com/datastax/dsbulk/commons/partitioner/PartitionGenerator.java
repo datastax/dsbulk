@@ -8,10 +8,13 @@
  */
 package com.datastax.dsbulk.commons.partitioner;
 
-import com.datastax.driver.core.Host;
-import com.datastax.driver.core.KeyspaceMetadata;
-import com.datastax.driver.core.Metadata;
-import java.net.InetSocketAddress;
+import com.datastax.oss.driver.api.core.CqlIdentifier;
+import com.datastax.oss.driver.api.core.metadata.EndPoint;
+import com.datastax.oss.driver.api.core.metadata.Node;
+import com.datastax.oss.driver.api.core.metadata.TokenMap;
+import com.datastax.oss.driver.internal.core.metadata.token.Murmur3TokenRange;
+import com.datastax.oss.driver.internal.core.metadata.token.RandomToken;
+import com.datastax.oss.driver.internal.core.metadata.token.RandomTokenRange;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -19,15 +22,15 @@ import java.util.stream.Collectors;
 
 public class PartitionGenerator<V extends Number, T extends Token<V>> {
 
-  private final KeyspaceMetadata keyspace;
-  private final Metadata metadata;
+  private final CqlIdentifier keyspace;
   private final TokenFactory<V, T> tokenFactory;
+  private final TokenMap tokenMap;
 
   public PartitionGenerator(
-      KeyspaceMetadata keyspace, Metadata metadata, TokenFactory<V, T> tokenFactory) {
+      CqlIdentifier keyspace, TokenMap tokenMap, TokenFactory<V, T> tokenFactory) {
     this.keyspace = keyspace;
-    this.metadata = metadata;
     this.tokenFactory = tokenFactory;
+    this.tokenMap = tokenMap;
   }
 
   /**
@@ -50,7 +53,7 @@ public class PartitionGenerator<V extends Number, T extends Token<V>> {
 
   private List<TokenRange<V, T>> describeRing(int splitCount) {
     List<TokenRange<V, T>> ranges =
-        metadata.getTokenRanges().stream().map(this::range).collect(Collectors.toList());
+        tokenMap.getTokenRanges().stream().map(this::range).collect(Collectors.toList());
     if (splitCount == 1) {
       TokenRange<V, T> r = ranges.get(0);
       return Collections.singletonList(
@@ -61,12 +64,24 @@ public class PartitionGenerator<V extends Number, T extends Token<V>> {
     }
   }
 
-  private TokenRange<V, T> range(com.datastax.driver.core.TokenRange range) {
-    T startToken = tokenFactory.tokenFromString(range.getStart().getValue().toString());
-    T endToken = tokenFactory.tokenFromString(range.getEnd().getValue().toString());
-    Set<InetSocketAddress> replicas =
-        metadata.getReplicas(Metadata.quoteIfNecessary(keyspace.getName()), range).stream()
-            .map(Host::getSocketAddress)
+  private TokenRange<V, T> range(com.datastax.oss.driver.api.core.metadata.token.TokenRange range) {
+    T startToken;
+    T endToken;
+    if (range instanceof Murmur3TokenRange) {
+      startToken =
+          tokenFactory.tokenFromString(TokenUtils.getTokenValue(range.getStart()).toString());
+      endToken = tokenFactory.tokenFromString(TokenUtils.getTokenValue(range.getEnd()).toString());
+    } else if (range instanceof RandomTokenRange) {
+      startToken =
+          tokenFactory.tokenFromString(((RandomToken) range.getStart()).getValue().toString());
+      endToken = tokenFactory.tokenFromString(((RandomToken) range.getEnd()).getValue().toString());
+    } else {
+      throw new IllegalArgumentException(
+          "Unsupported token range implementation: " + range.getClass());
+    }
+    Set<EndPoint> replicas =
+        tokenMap.getReplicas(keyspace, range).stream()
+            .map(Node::getEndPoint)
             .collect(Collectors.toSet());
     return new TokenRange<>(startToken, endToken, replicas, tokenFactory);
   }

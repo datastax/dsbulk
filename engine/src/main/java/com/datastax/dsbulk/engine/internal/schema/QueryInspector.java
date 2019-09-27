@@ -39,8 +39,10 @@ import com.datastax.dsbulk.commons.generated.cql3.CqlParser.UpdateStatementConte
 import com.datastax.dsbulk.commons.generated.cql3.CqlParser.UsingClauseDeleteContext;
 import com.datastax.dsbulk.commons.generated.cql3.CqlParser.UsingClauseObjectiveContext;
 import com.datastax.dsbulk.commons.generated.cql3.CqlParser.ValueContext;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSet;
+import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -54,47 +56,43 @@ import org.antlr.v4.runtime.CodePointCharStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
 
-  public static final CQLIdentifier INTERNAL_TIMESTAMP_VARNAME =
-      CQLIdentifier.fromInternal("[timestamp]");
-  public static final CQLIdentifier INTERNAL_TTL_VARNAME = CQLIdentifier.fromInternal("[ttl]");
-  private static final CQLIdentifier INTERNAL_TOKEN_VARNAME =
-      CQLIdentifier.fromInternal("partition key token");
+  public static final CQLWord INTERNAL_TIMESTAMP_VARNAME = CQLWord.fromInternal("[timestamp]");
+  public static final CQLWord INTERNAL_TTL_VARNAME = CQLWord.fromInternal("[ttl]");
+  private static final CQLWord INTERNAL_TOKEN_VARNAME = CQLWord.fromInternal("partition key token");
 
-  private static final CQLIdentifier QUESTION_MARK = CQLIdentifier.fromInternal("?");
-  private static final CQLIdentifier WRITETIME = CQLIdentifier.fromInternal("writetime");
-  private static final CQLIdentifier TTL = CQLIdentifier.fromInternal("ttl");
-  private static final CQLIdentifier SOLR_QUERY = CQLIdentifier.fromInternal("solr_query");
+  private static final CQLWord QUESTION_MARK = CQLWord.fromInternal("?");
+  private static final CQLWord WRITETIME = CQLWord.fromInternal("writetime");
+  private static final CQLWord TTL = CQLWord.fromInternal("ttl");
+  private static final CQLWord SOLR_QUERY = CQLWord.fromInternal("solr_query");
 
   private final String query;
 
   // can't use Guava's immutable builders here as some map keys may appear twice in the query
   private final Map<CQLFragment, CQLFragment> resultSetVariablesBuilder = new LinkedHashMap<>();
-  private final Map<CQLIdentifier, CQLFragment> assignmentsBuilder = new LinkedHashMap<>();
+  private final Map<CQLWord, CQLFragment> assignmentsBuilder = new LinkedHashMap<>();
   private final Set<CQLFragment> writeTimeVariablesBuilder = new LinkedHashSet<>();
 
   private final ImmutableMap<CQLFragment, CQLFragment> resultSetVariables;
-  private final ImmutableMap<CQLIdentifier, CQLFragment> assignments;
+  private final ImmutableMap<CQLWord, CQLFragment> assignments;
   private final ImmutableSet<CQLFragment> writeTimeVariables;
 
-  private CQLIdentifier keyspaceName;
-  private CQLIdentifier tableName;
+  private CQLWord keyspaceName;
+  private CQLWord tableName;
   private int fromClauseStartIndex = -1;
   private int fromClauseEndIndex = -1;
   private boolean hasWhereClause = false;
-  private CQLIdentifier tokenRangeRestrictionStartVariable;
-  private CQLIdentifier tokenRangeRestrictionEndVariable;
+  private CQLWord tokenRangeRestrictionStartVariable;
+  private CQLWord tokenRangeRestrictionEndVariable;
   private int tokenRangeRestrictionVariableIndex = 0;
   private int tokenRangeRestrictionStartVariableIndex = -1;
   private int tokenRangeRestrictionEndVariableIndex = -1;
   private boolean selectStar = false;
   private boolean hasUnsupportedSelectors = false;
-  private CQLIdentifier usingTimestampVariable;
-  private CQLIdentifier usingTTLVariable;
+  private CQLWord usingTimestampVariable;
+  private CQLWord usingTTLVariable;
   private boolean hasSearchClause = false;
 
   public QueryInspector(String query) {
@@ -132,12 +130,12 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   }
 
   /** @return the keyspace name found in the query, or empty if none was found. */
-  public Optional<CQLIdentifier> getKeyspaceName() {
+  public Optional<CQLWord> getKeyspaceName() {
     return Optional.ofNullable(keyspaceName);
   }
 
   /** @return the table name found in the query; never {@code null}. */
-  public CQLIdentifier getTableName() {
+  public CQLWord getTableName() {
     return tableName;
   }
 
@@ -145,7 +143,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
    * @return a map of assignments found in the query, from column to value. Only used for write
    *     queries (INSERT, UPDATE, DELETE).
    */
-  public ImmutableMap<CQLIdentifier, CQLFragment> getAssignments() {
+  public ImmutableMap<CQLWord, CQLFragment> getAssignments() {
     return assignments;
   }
 
@@ -192,7 +190,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
    * @return the variable name used in a USING TIMESTAMP clause; or none if no such clause or no
    *     such variable.
    */
-  public Optional<CQLIdentifier> getUsingTimestampVariable() {
+  public Optional<CQLWord> getUsingTimestampVariable() {
     return Optional.ofNullable(usingTimestampVariable);
   }
 
@@ -200,7 +198,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
    * @return the variable name used in a USING TTL clause; or none if no such clause or no such
    *     variable.
    */
-  public Optional<CQLIdentifier> getUsingTTLVariable() {
+  public Optional<CQLWord> getUsingTTLVariable() {
     return Optional.ofNullable(usingTTLVariable);
   }
 
@@ -234,7 +232,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
    * @return the variable name used to define a token range start, e.g. if the restriction is {@code
    *     token(...) > :start}, this method will report {@code start}.
    */
-  public Optional<CQLIdentifier> getTokenRangeRestrictionStartVariable() {
+  public Optional<CQLWord> getTokenRangeRestrictionStartVariable() {
     return Optional.ofNullable(tokenRangeRestrictionStartVariable);
   }
 
@@ -242,7 +240,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
    * @return the variable name used to define a token range end, e.g. if the restriction is {@code
    *     token(...) <= :end}, this method will report {@code end}.
    */
-  public Optional<CQLIdentifier> getTokenRangeRestrictionEndVariable() {
+  public Optional<CQLWord> getTokenRangeRestrictionEndVariable() {
     return Optional.ofNullable(tokenRangeRestrictionEndVariable);
   }
 
@@ -279,7 +277,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
               ctx.cident().size(), ctx.term().size(), query));
     }
     for (int i = 0; i < ctx.cident().size(); i++) {
-      CQLIdentifier column = visitCident(ctx.cident().get(i));
+      CQLWord column = visitCident(ctx.cident().get(i));
       CQLFragment variable = visitTerm(ctx.term().get(i));
       assignmentsBuilder.put(column, variable == QUESTION_MARK ? column : variable);
     }
@@ -301,7 +299,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   public CQLFragment visitUpdateStatement(UpdateStatementContext ctx) {
     visitColumnFamilyName(ctx.columnFamilyName());
     for (ColumnOperationContext op : ctx.columnOperation()) {
-      CQLIdentifier column = visitCident(op.cident());
+      CQLWord column = visitCident(op.cident());
       CQLFragment variable = visitColumnOperationDifferentiator(op.columnOperationDifferentiator());
       if (variable != null) {
         assignmentsBuilder.put(column, variable == QUESTION_MARK ? column : variable);
@@ -390,12 +388,11 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
       return new FunctionCall(null, TTL, visitCident(ctx.cident()));
     } else if (ctx.functionName() != null) {
       // function calls
-      CQLIdentifier keyspaceName = null;
+      CQLWord keyspaceName = null;
       if (ctx.functionName().keyspaceName() != null) {
         keyspaceName = visitKeyspaceName(ctx.functionName().keyspaceName());
       }
-      CQLIdentifier functionName =
-          visitAllowedFunctionName(ctx.functionName().allowedFunctionName());
+      CQLWord functionName = visitAllowedFunctionName(ctx.functionName().allowedFunctionName());
       List<CQLFragment> args = new ArrayList<>();
       if (ctx.selectionFunctionArgs() != null) {
         for (UnaliasedSelectorContext arg : ctx.selectionFunctionArgs().unaliasedSelector()) {
@@ -445,7 +442,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
         && ctx.getChild(1) instanceof RelationTypeContext
         && ctx.getChild(2) instanceof TermContext
         && ctx.getChild(1).getText().equals("=")) {
-      CQLIdentifier column = visitCident(ctx.cident());
+      CQLWord column = visitCident(ctx.cident());
       if (column.equals(SOLR_QUERY)) {
         hasSearchClause = true;
       }
@@ -453,15 +450,15 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
       assignmentsBuilder.put(column, variable.equals(QUESTION_MARK) ? column : variable);
     } else if (ctx.K_TOKEN() != null) {
       CQLFragment variable = visitTerm(ctx.term().get(0));
-      if (variable instanceof CQLIdentifier) {
+      if (variable instanceof CQLWord) {
         if (variable == QUESTION_MARK) {
           variable = INTERNAL_TOKEN_VARNAME;
         }
         if (ctx.relationType().getText().equals(">")) {
-          tokenRangeRestrictionStartVariable = (CQLIdentifier) variable;
+          tokenRangeRestrictionStartVariable = (CQLWord) variable;
           tokenRangeRestrictionStartVariableIndex = tokenRangeRestrictionVariableIndex++;
         } else if (ctx.relationType().getText().equals("<=")) {
-          tokenRangeRestrictionEndVariable = (CQLIdentifier) variable;
+          tokenRangeRestrictionEndVariable = (CQLWord) variable;
           tokenRangeRestrictionEndVariableIndex = tokenRangeRestrictionVariableIndex++;
         }
       }
@@ -473,7 +470,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   // TERMS AND VALUES
 
   @Override
-  @NotNull
+  @NonNull
   public CQLFragment visitTerm(TermContext ctx) {
     // ( comparator ) term
     while (ctx.term() != null) {
@@ -490,13 +487,13 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   }
 
   @Override
-  @NotNull
+  @NonNull
   public FunctionCall visitFunction(FunctionContext ctx) {
-    CQLIdentifier keyspaceName = null;
+    CQLWord keyspaceName = null;
     if (ctx.functionName().keyspaceName() != null) {
       keyspaceName = visitKeyspaceName(ctx.functionName().keyspaceName());
     }
-    CQLIdentifier functionName = visitAllowedFunctionName(ctx.functionName().allowedFunctionName());
+    CQLWord functionName = visitAllowedFunctionName(ctx.functionName().allowedFunctionName());
     List<CQLFragment> args = new ArrayList<>();
     if (ctx.functionArgs() != null) {
       for (TermContext arg : ctx.functionArgs().term()) {
@@ -514,7 +511,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   }
 
   @Override
-  @NotNull
+  @NonNull
   public CQLFragment visitValue(ValueContext ctx) {
     // value is a positional bind marker
     if (ctx.QMARK() != null) {
@@ -530,7 +527,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   // IDENTIFIERS
 
   @Override
-  @NotNull
+  @NonNull
   public CQLFragment visitColumnFamilyName(ColumnFamilyNameContext ctx) {
     if (ctx.ksName() != null) {
       keyspaceName = visitKsName(ctx.ksName());
@@ -540,57 +537,57 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   }
 
   @Override
-  @NotNull
-  public CQLIdentifier visitAllowedFunctionName(AllowedFunctionNameContext ctx) {
+  @NonNull
+  public CQLWord visitAllowedFunctionName(AllowedFunctionNameContext ctx) {
     if (ctx.QUOTED_NAME() != null) {
-      return CQLIdentifier.fromCql(ctx.getText());
+      return CQLWord.fromCql(ctx.getText());
     } else {
-      return CQLIdentifier.fromInternal(ctx.getText().toLowerCase());
+      return CQLWord.fromInternal(ctx.getText().toLowerCase());
     }
   }
 
   @Override
-  public CQLIdentifier visitKeyspaceName(KeyspaceNameContext ctx) {
+  public CQLWord visitKeyspaceName(KeyspaceNameContext ctx) {
     return visitKsName(ctx.ksName());
   }
 
   @Override
-  @NotNull
-  public CQLIdentifier visitKsName(KsNameContext ctx) {
+  @NonNull
+  public CQLWord visitKsName(KsNameContext ctx) {
     if (ctx.QUOTED_NAME() != null) {
-      return CQLIdentifier.fromCql(ctx.getText());
+      return CQLWord.fromCql(ctx.getText());
     } else {
-      return CQLIdentifier.fromInternal(ctx.getText().toLowerCase());
+      return CQLWord.fromInternal(ctx.getText().toLowerCase());
     }
   }
 
   @Override
-  @NotNull
-  public CQLIdentifier visitCfName(CfNameContext ctx) {
+  @NonNull
+  public CQLWord visitCfName(CfNameContext ctx) {
     if (ctx.QUOTED_NAME() != null) {
-      return CQLIdentifier.fromCql(ctx.getText());
+      return CQLWord.fromCql(ctx.getText());
     } else {
-      return CQLIdentifier.fromInternal(ctx.getText().toLowerCase());
+      return CQLWord.fromInternal(ctx.getText().toLowerCase());
     }
   }
 
   @Override
-  @NotNull
-  public CQLIdentifier visitCident(CidentContext ctx) {
+  @NonNull
+  public CQLWord visitCident(CidentContext ctx) {
     if (ctx.QUOTED_NAME() != null) {
-      return CQLIdentifier.fromCql(ctx.getText());
+      return CQLWord.fromCql(ctx.getText());
     } else {
-      return CQLIdentifier.fromInternal(ctx.getText().toLowerCase());
+      return CQLWord.fromInternal(ctx.getText().toLowerCase());
     }
   }
 
   @Override
-  @NotNull
-  public CQLIdentifier visitNoncolIdent(NoncolIdentContext ctx) {
+  @NonNull
+  public CQLWord visitNoncolIdent(NoncolIdentContext ctx) {
     if (ctx.QUOTED_NAME() != null) {
-      return CQLIdentifier.fromCql(ctx.getText());
+      return CQLWord.fromCql(ctx.getText());
     } else {
-      return CQLIdentifier.fromInternal(ctx.getText().toLowerCase());
+      return CQLWord.fromInternal(ctx.getText().toLowerCase());
     }
   }
 
@@ -614,9 +611,9 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   }
 
   @Nullable
-  private CQLIdentifier visitUsingTimestamp(IntValueContext intValueContext) {
+  private CQLWord visitUsingTimestamp(IntValueContext intValueContext) {
     if (intValueContext.noncolIdent() != null) {
-      CQLIdentifier variable = visitNoncolIdent(intValueContext.noncolIdent());
+      CQLWord variable = visitNoncolIdent(intValueContext.noncolIdent());
       writeTimeVariablesBuilder.add(variable);
       usingTimestampVariable = variable;
     } else if (intValueContext.QMARK() != null) {
@@ -627,7 +624,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   }
 
   @Nullable
-  private CQLIdentifier visitUsingTTL(IntValueContext intValueContext) {
+  private CQLWord visitUsingTTL(IntValueContext intValueContext) {
     if (intValueContext.noncolIdent() != null) {
       usingTTLVariable = visitNoncolIdent(intValueContext.noncolIdent());
     } else if (intValueContext.QMARK() != null) {

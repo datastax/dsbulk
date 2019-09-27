@@ -8,9 +8,9 @@
  */
 package com.datastax.dsbulk.commons.partitioner;
 
-import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newToken;
-import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newTokenRange;
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
+import static com.datastax.dsbulk.commons.tests.driver.DriverUtils.newToken;
+import static com.datastax.dsbulk.commons.tests.driver.DriverUtils.newTokenRange;
 import static java.net.InetSocketAddress.createUnresolved;
 import static java.util.Collections.singleton;
 import static org.assertj.core.api.Assertions.offset;
@@ -19,9 +19,11 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.initMocks;
 
-import com.datastax.driver.core.Host;
-import com.datastax.driver.core.KeyspaceMetadata;
-import com.datastax.driver.core.Metadata;
+import com.datastax.oss.driver.api.core.CqlIdentifier;
+import com.datastax.oss.driver.api.core.metadata.Node;
+import com.datastax.oss.driver.api.core.metadata.TokenMap;
+import com.datastax.oss.driver.api.core.metadata.schema.KeyspaceMetadata;
+import com.datastax.oss.driver.internal.core.metadata.DefaultEndPoint;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,85 +36,92 @@ class PartitionGeneratorTest {
 
   // A typical ring with Murmur3 and 3 nodes, single DC, SimpleStrategy:
 
-  private final com.datastax.driver.core.TokenRange rangeS1 =
+  private final com.datastax.oss.driver.api.core.metadata.token.TokenRange rangeS1 =
       range(-9223372036854775808L, -3074457345618258603L);
 
-  private final com.datastax.driver.core.TokenRange rangeS2 =
+  private final com.datastax.oss.driver.api.core.metadata.token.TokenRange rangeS2 =
       range(-3074457345618258603L, 3074457345618258602L);
 
-  private final com.datastax.driver.core.TokenRange rangeS3 =
+  private final com.datastax.oss.driver.api.core.metadata.token.TokenRange rangeS3 =
       range(3074457345618258602L, -9223372036854775808L);
 
-  private Set<com.datastax.driver.core.TokenRange> singleDCRanges =
+  private Set<com.datastax.oss.driver.api.core.metadata.token.TokenRange> singleDCRanges =
       newLinkedHashSet(rangeS1, rangeS2, rangeS3);
 
   // A typical ring with Murmur3 and 6 nodes, 2 DCs, NetworkTopologyStrategy:
 
-  private final com.datastax.driver.core.TokenRange rangeM1 =
+  private final com.datastax.oss.driver.api.core.metadata.token.TokenRange rangeM1 =
       range(-9223372036854775808L, -9223372036854775708L); // 100
 
-  private final com.datastax.driver.core.TokenRange rangeM2 =
+  private final com.datastax.oss.driver.api.core.metadata.token.TokenRange rangeM2 =
       range(-9223372036854775708L, -3074457345618258603L);
 
-  private final com.datastax.driver.core.TokenRange rangeM3 =
+  private final com.datastax.oss.driver.api.core.metadata.token.TokenRange rangeM3 =
       range(-3074457345618258603L, -3074457345618258503L); // 100
 
-  private final com.datastax.driver.core.TokenRange rangeM4 =
+  private final com.datastax.oss.driver.api.core.metadata.token.TokenRange rangeM4 =
       range(-3074457345618258503L, 3074457345618258602L);
 
-  private final com.datastax.driver.core.TokenRange rangeM5 =
+  private final com.datastax.oss.driver.api.core.metadata.token.TokenRange rangeM5 =
       range(3074457345618258602L, 3074457345618258702L); // 100
 
-  private final com.datastax.driver.core.TokenRange rangeM6 =
+  private final com.datastax.oss.driver.api.core.metadata.token.TokenRange rangeM6 =
       range(3074457345618258702L, -9223372036854775808L);
 
-  private Set<com.datastax.driver.core.TokenRange> multiDCRanges =
+  private Set<com.datastax.oss.driver.api.core.metadata.token.TokenRange> multiDCRanges =
       newLinkedHashSet(rangeM1, rangeM2, rangeM3, rangeM4, rangeM5, rangeM6);
 
   @Mock private KeyspaceMetadata keyspace;
 
-  @Mock private Metadata metadata;
+  @Mock private TokenMap tokenMap;
 
-  @Mock private Host host1;
-  @Mock private Host host2;
-  @Mock private Host host3;
-  @Mock private Host host4;
-  @Mock private Host host5;
-  @Mock private Host host6;
+  @Mock private Node host1;
+  @Mock private Node host2;
+  @Mock private Node host3;
+  @Mock private Node host4;
+  @Mock private Node host5;
+  @Mock private Node host6;
 
   @BeforeEach
   void setUp() {
 
     initMocks(this);
 
-    when(keyspace.getName()).thenReturn("ks");
+    CqlIdentifier ks = CqlIdentifier.fromInternal("ks");
+    when(keyspace.getName()).thenReturn(ks);
 
-    when(metadata.getReplicas("ks", rangeS1)).thenReturn(singleton(host1));
-    when(metadata.getReplicas("ks", rangeS2)).thenReturn(singleton(host2));
-    when(metadata.getReplicas("ks", rangeS3)).thenReturn(singleton(host3));
+    when(tokenMap.getReplicas(ks, rangeS1)).thenReturn(singleton(host1));
+    when(tokenMap.getReplicas(ks, rangeS2)).thenReturn(singleton(host2));
+    when(tokenMap.getReplicas(ks, rangeS3)).thenReturn(singleton(host3));
 
-    when(metadata.getReplicas("ks", rangeM1)).thenReturn(newLinkedHashSet(host2, host4));
-    when(metadata.getReplicas("ks", rangeM2)).thenReturn(newLinkedHashSet(host2, host5));
-    when(metadata.getReplicas("ks", rangeM3)).thenReturn(newLinkedHashSet(host3, host5));
-    when(metadata.getReplicas("ks", rangeM4)).thenReturn(newLinkedHashSet(host3, host6));
-    when(metadata.getReplicas("ks", rangeM5)).thenReturn(newLinkedHashSet(host1, host6));
-    when(metadata.getReplicas("ks", rangeM6)).thenReturn(newLinkedHashSet(host1, host4));
+    when(tokenMap.getReplicas(ks, rangeM1)).thenReturn(newLinkedHashSet(host2, host4));
+    when(tokenMap.getReplicas(ks, rangeM2)).thenReturn(newLinkedHashSet(host2, host5));
+    when(tokenMap.getReplicas(ks, rangeM3)).thenReturn(newLinkedHashSet(host3, host5));
+    when(tokenMap.getReplicas(ks, rangeM4)).thenReturn(newLinkedHashSet(host3, host6));
+    when(tokenMap.getReplicas(ks, rangeM5)).thenReturn(newLinkedHashSet(host1, host6));
+    when(tokenMap.getReplicas(ks, rangeM6)).thenReturn(newLinkedHashSet(host1, host4));
 
-    when(host1.getSocketAddress()).thenReturn(createUnresolved("192.168.1.1", 9042));
-    when(host2.getSocketAddress()).thenReturn(createUnresolved("192.168.1.2", 9042));
-    when(host3.getSocketAddress()).thenReturn(createUnresolved("192.168.1.3", 9042));
-    when(host4.getSocketAddress()).thenReturn(createUnresolved("192.168.1.4", 9042));
-    when(host5.getSocketAddress()).thenReturn(createUnresolved("192.168.1.5", 9042));
-    when(host6.getSocketAddress()).thenReturn(createUnresolved("192.168.1.6", 9042));
+    when(host1.getEndPoint())
+        .thenReturn(new DefaultEndPoint(createUnresolved("192.168.1.1", 9042)));
+    when(host2.getEndPoint())
+        .thenReturn(new DefaultEndPoint(createUnresolved("192.168.1.2", 9042)));
+    when(host3.getEndPoint())
+        .thenReturn(new DefaultEndPoint(createUnresolved("192.168.1.3", 9042)));
+    when(host4.getEndPoint())
+        .thenReturn(new DefaultEndPoint(createUnresolved("192.168.1.4", 9042)));
+    when(host5.getEndPoint())
+        .thenReturn(new DefaultEndPoint(createUnresolved("192.168.1.5", 9042)));
+    when(host6.getEndPoint())
+        .thenReturn(new DefaultEndPoint(createUnresolved("192.168.1.6", 9042)));
   }
 
   @Test
   void should_split_single_dc() {
 
-    given(metadata.getTokenRanges()).willReturn(singleDCRanges);
+    given(tokenMap.getTokenRanges()).willReturn(singleDCRanges);
 
     PartitionGenerator<Long, Token<Long>> generator =
-        new PartitionGenerator<>(keyspace, metadata, tokenFactory);
+        new PartitionGenerator<>(keyspace.getName(), tokenMap, tokenFactory);
     List<TokenRange<Long, Token<Long>>> splits = generator.partition(9);
 
     assertThat(splits.size()).isEqualTo(9);
@@ -177,17 +186,17 @@ class PartitionGeneratorTest {
         .hasReplicas(host3)
         .hasFraction(0.1111111111111111d, offset(.000000001d));
 
-    assertThat(splits.stream().map(TokenRange::fraction).reduce(0d, (f1, f2) -> f1 + f2))
+    assertThat(splits.stream().map(TokenRange::fraction).reduce(0d, Double::sum))
         .isEqualTo(1d, offset(.000000001));
   }
 
   @Test
   void should_split_multi_dc() {
 
-    given(metadata.getTokenRanges()).willReturn(multiDCRanges);
+    given(tokenMap.getTokenRanges()).willReturn(multiDCRanges);
 
     PartitionGenerator<Long, Token<Long>> generator =
-        new PartitionGenerator<>(keyspace, metadata, tokenFactory);
+        new PartitionGenerator<>(keyspace.getName(), tokenMap, tokenFactory);
     List<TokenRange<Long, Token<Long>>> splits = generator.partition(9);
 
     assertThat(splits.size()).isEqualTo(12);
@@ -273,11 +282,11 @@ class PartitionGeneratorTest {
         .hasReplicas(host1, host6)
         .hasFraction(5.421010862427522E-18d, offset(.000000001d));
 
-    assertThat(splits.stream().map(TokenRange::fraction).reduce(0d, (f1, f2) -> f1 + f2))
+    assertThat(splits.stream().map(TokenRange::fraction).reduce(0d, Double::sum))
         .isEqualTo(1d, offset(.000000001));
   }
 
-  private com.datastax.driver.core.TokenRange range(long start, long end) {
+  private com.datastax.oss.driver.api.core.metadata.token.TokenRange range(long start, long end) {
     return newTokenRange(newToken(start), newToken(end));
   }
 }

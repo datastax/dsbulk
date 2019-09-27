@@ -19,10 +19,10 @@ import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.Timer;
 import com.datastax.dsbulk.commons.log.LogSink;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import java.util.SortedMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -8,12 +8,11 @@
  */
 package com.datastax.dsbulk.executor.reactor;
 
-import com.datastax.driver.core.ContinuousPagingOptions;
-import com.datastax.driver.core.ContinuousPagingSession;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.BulkExecutor;
 import com.datastax.dsbulk.executor.api.internal.publisher.ContinuousReadResultPublisher;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
+import com.datastax.dse.driver.api.core.DseSession;
+import com.datastax.oss.driver.api.core.cql.Statement;
 import java.util.Objects;
 import reactor.core.publisher.Flux;
 
@@ -28,63 +27,43 @@ public class ContinuousReactorBulkExecutor extends DefaultReactorBulkExecutor
 
   /**
    * Creates a new builder for {@link ContinuousReactorBulkExecutor} instances using the given
-   * {@link ContinuousPagingSession}.
+   * {@link DseSession}.
    *
-   * @param session the {@link ContinuousPagingSession} to use.
+   * @param session the {@link DseSession} to use.
    * @return a new builder.
    */
-  public static ContinuousReactorBulkExecutorBuilder builder(ContinuousPagingSession session) {
+  public static ContinuousReactorBulkExecutorBuilder builder(DseSession session) {
     return new ContinuousReactorBulkExecutorBuilder(session);
   }
 
-  private final ContinuousPagingSession continuousPagingSession;
-  private final ContinuousPagingOptions continuousPagingOptions;
+  private final DseSession dseSession;
 
   /**
-   * Creates a new instance using the given {@link ContinuousPagingSession} and using defaults for
-   * all parameters.
+   * Creates a new instance using the given {@link DseSession} and using defaults for all
+   * parameters.
    *
-   * <p>If you need to customize your executor, use the {@link #builder(ContinuousPagingSession)
-   * builder} method instead.
+   * <p>If you need to customize your executor, use the {@link #builder(DseSession) builder} method
+   * instead.
    *
-   * @param continuousPagingSession the {@link ContinuousPagingSession} to use.
+   * @param dseSession the {@link DseSession} to use.
    */
-  public ContinuousReactorBulkExecutor(ContinuousPagingSession continuousPagingSession) {
-    this(continuousPagingSession, ContinuousPagingOptions.builder().build());
-  }
-
-  /**
-   * Creates a new instance using the given {@link ContinuousPagingSession}, the given {@link
-   * ContinuousPagingOptions}, and using defaults for all other parameters.
-   *
-   * <p>If you need to customize your executor, use the {@link #builder(ContinuousPagingSession)
-   * builder} method instead.
-   *
-   * @param continuousPagingSession the {@link ContinuousPagingSession} to use.
-   * @param continuousPagingOptions the {@link ContinuousPagingOptions} to use.
-   */
-  public ContinuousReactorBulkExecutor(
-      ContinuousPagingSession continuousPagingSession,
-      ContinuousPagingOptions continuousPagingOptions) {
-    super(continuousPagingSession);
-    this.continuousPagingSession = continuousPagingSession;
-    this.continuousPagingOptions = continuousPagingOptions;
+  public ContinuousReactorBulkExecutor(DseSession dseSession) {
+    super(dseSession);
+    this.dseSession = dseSession;
   }
 
   ContinuousReactorBulkExecutor(ContinuousReactorBulkExecutorBuilder builder) {
     super(builder);
-    this.continuousPagingSession = builder.continuousPagingSession;
-    this.continuousPagingOptions = builder.options;
+    this.dseSession = builder.dseSession;
   }
 
   @Override
-  public Flux<ReadResult> readReactive(Statement statement) {
+  public Flux<ReadResult> readReactive(Statement<?> statement) {
     Objects.requireNonNull(statement);
     return Flux.from(
         new ContinuousReadResultPublisher(
             statement,
-            continuousPagingSession,
-            continuousPagingOptions,
+            dseSession,
             failFast,
             listener,
             maxConcurrentRequests,

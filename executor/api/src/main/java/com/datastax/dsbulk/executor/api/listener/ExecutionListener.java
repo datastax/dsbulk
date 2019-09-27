@@ -8,10 +8,10 @@
  */
 package com.datastax.dsbulk.executor.api.listener;
 
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.AbstractBulkExecutorBuilder;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
+import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.cql.Statement;
 
 /**
  * A listener for bulk executions.
@@ -26,7 +26,7 @@ public interface ExecutionListener {
    * @param statement the statement to execute.
    * @param context the global statement execution context.
    */
-  default void onExecutionStarted(Statement statement, ExecutionContext context) {}
+  default void onExecutionStarted(Statement<?> statement, ExecutionContext context) {}
 
   /**
    * Called when a write request is about to be sent.
@@ -34,7 +34,7 @@ public interface ExecutionListener {
    * @param statement the statement to execute.
    * @param context the local request execution context.
    */
-  default void onWriteRequestStarted(Statement statement, ExecutionContext context) {}
+  default void onWriteRequestStarted(Statement<?> statement, ExecutionContext context) {}
 
   /**
    * Called when a write request has been completed successfully.
@@ -42,7 +42,7 @@ public interface ExecutionListener {
    * @param statement the statement to execute.
    * @param context the local request execution context.
    */
-  default void onWriteRequestSuccessful(Statement statement, ExecutionContext context) {}
+  default void onWriteRequestSuccessful(Statement<?> statement, ExecutionContext context) {}
 
   /**
    * Called when a write request has failed.
@@ -52,7 +52,7 @@ public interface ExecutionListener {
    * @param context the local request execution context.
    */
   default void onWriteRequestFailed(
-      Statement statement, Throwable error, ExecutionContext context) {}
+      Statement<?> statement, Throwable error, ExecutionContext context) {}
 
   /**
    * Called when a read request is about to be sent.
@@ -60,7 +60,7 @@ public interface ExecutionListener {
    * @param statement the statement to execute.
    * @param context the local request execution context.
    */
-  default void onReadRequestStarted(Statement statement, ExecutionContext context) {}
+  default void onReadRequestStarted(Statement<?> statement, ExecutionContext context) {}
 
   /**
    * Called when a read request has been completed successfully.
@@ -68,7 +68,7 @@ public interface ExecutionListener {
    * @param statement the statement to execute.
    * @param context the local request execution context.
    */
-  default void onReadRequestSuccessful(Statement statement, ExecutionContext context) {}
+  default void onReadRequestSuccessful(Statement<?> statement, ExecutionContext context) {}
 
   /**
    * Called when a row has been successfully received. Applicable only for reads.
@@ -89,7 +89,7 @@ public interface ExecutionListener {
    * @param context the local request execution context.
    */
   default void onReadRequestFailed(
-      Statement statement, Throwable error, ExecutionContext context) {}
+      Statement<?> statement, Throwable error, ExecutionContext context) {}
 
   /**
    * Called when a statement has been successfully executed.
@@ -97,7 +97,7 @@ public interface ExecutionListener {
    * @param statement the executed statement.
    * @param context the global statement execution context.
    */
-  default void onExecutionSuccessful(Statement statement, ExecutionContext context) {}
+  default void onExecutionSuccessful(Statement<?> statement, ExecutionContext context) {}
 
   /**
    * Called when a statement execution has failed.

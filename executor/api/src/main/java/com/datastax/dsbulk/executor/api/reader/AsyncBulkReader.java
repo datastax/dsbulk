@@ -8,10 +8,10 @@
  */
 package com.datastax.dsbulk.executor.api.reader;
 
-import com.datastax.driver.core.SimpleStatement;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
+import com.datastax.oss.driver.api.core.cql.Statement;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
@@ -37,7 +37,7 @@ public interface AsyncBulkReader extends AutoCloseable {
    */
   default CompletableFuture<Void> readAsync(String statement, Consumer<? super ReadResult> consumer)
       throws BulkExecutionException {
-    return readAsync(new SimpleStatement(statement), consumer);
+    return readAsync(SimpleStatement.newInstance(statement), consumer);
   }
 
   /**
@@ -50,7 +50,7 @@ public interface AsyncBulkReader extends AutoCloseable {
    *     operation completes.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
-  CompletableFuture<Void> readAsync(Statement statement, Consumer<? super ReadResult> consumer)
+  CompletableFuture<Void> readAsync(Statement<?> statement, Consumer<? super ReadResult> consumer)
       throws BulkExecutionException;
 
   /**

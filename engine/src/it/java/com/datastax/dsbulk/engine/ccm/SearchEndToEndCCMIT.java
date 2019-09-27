@@ -8,23 +8,19 @@
  */
 package com.datastax.dsbulk.engine.ccm;
 
+import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
-import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
-import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
-import static java.nio.file.Files.createTempDirectory;
 import static org.awaitility.Awaitility.await;
 import static org.awaitility.Duration.ONE_MINUTE;
 import static org.slf4j.event.Level.WARN;
 
-import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Workload;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMVersionRequirement;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMWorkload;
-import com.datastax.dsbulk.commons.tests.driver.annotations.SessionConfig;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
@@ -32,12 +28,11 @@ import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.tests.MockConnector;
-import java.io.IOException;
-import java.nio.file.Path;
+import com.datastax.oss.driver.api.core.CqlIdentifier;
+import com.datastax.oss.driver.api.core.CqlSession;
 import java.util.ArrayList;
 import java.util.List;
 import org.assertj.core.data.Index;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -53,30 +48,17 @@ class SearchEndToEndCCMIT extends EndToEndCCMITBase {
 
   private final LogInterceptor logs;
 
-  private Path logDir;
   private List<Record> records;
 
   SearchEndToEndCCMIT(
-      CCMCluster ccm,
-      @SessionConfig Session session,
-      @LogCapture(level = WARN) LogInterceptor logs) {
+      CCMCluster ccm, CqlSession session, @LogCapture(level = WARN) LogInterceptor logs) {
     super(ccm, session);
     this.logs = logs;
   }
 
   @BeforeEach
-  void setUpDirs() throws IOException {
-    logDir = createTempDirectory("logs");
-  }
-
-  @BeforeEach
   void clearLogs() {
     logs.clear();
-  }
-
-  @AfterEach
-  void deleteDirs() {
-    deleteDirectory(logDir);
   }
 
   @BeforeEach
@@ -106,14 +88,16 @@ class SearchEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("unload");
     args.add("--connector.name");
     args.add("mock");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.query");
     args.add(quoteJson(query));
 
-    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
 
     assertThat(logs)
@@ -159,14 +143,16 @@ class SearchEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("unload");
     args.add("--connector.name");
     args.add("mock");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("test_search2");
 
-    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
 
     assertThat(records)

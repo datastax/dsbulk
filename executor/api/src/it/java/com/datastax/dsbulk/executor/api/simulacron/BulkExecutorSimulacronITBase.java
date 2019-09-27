@@ -11,15 +11,18 @@ package com.datastax.dsbulk.executor.api.simulacron;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datastax.dsbulk.commons.tests.simulacron.SimulacronExtension;
+import com.datastax.dsbulk.commons.tests.simulacron.SimulacronUtils;
 import com.datastax.dsbulk.executor.api.BulkExecutor;
 import com.datastax.dsbulk.executor.api.BulkExecutorITBase;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
 import com.datastax.oss.simulacron.common.stubbing.PrimeDsl;
 import com.datastax.oss.simulacron.server.BoundCluster;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,9 +41,18 @@ public abstract class BulkExecutorSimulacronITBase extends BulkExecutorITBase {
 
   @BeforeEach
   void primeQueries() {
+    SimulacronUtils.primeSystemLocal(simulacron, Collections.emptyMap());
+    SimulacronUtils.primeSystemPeers(simulacron);
+    SimulacronUtils.primeSystemPeersV2(simulacron);
     simulacron.prime(PrimeDsl.when(WRITE_QUERY).then(PrimeDsl.noRows()));
     simulacron.prime(PrimeDsl.when(READ_QUERY).then(createReadResult()));
     simulacron.prime(PrimeDsl.when(FAILED_QUERY).then(PrimeDsl.syntaxError("Bad Syntax")));
+  }
+
+  @AfterEach
+  void clearLogs() {
+    simulacron.clearPrimes(true);
+    simulacron.clearLogs();
   }
 
   private static SuccessResult createReadResult() {

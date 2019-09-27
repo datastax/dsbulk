@@ -10,9 +10,10 @@ package com.datastax.dsbulk.connectors.api.internal;
 
 import com.datastax.dsbulk.connectors.api.Field;
 import com.datastax.dsbulk.connectors.api.Record;
-import com.google.common.base.MoreObjects;
-import com.google.common.base.Suppliers;
-import com.google.common.collect.Streams;
+import com.datastax.oss.driver.shaded.guava.common.base.MoreObjects;
+import com.datastax.oss.driver.shaded.guava.common.base.Suppliers;
+import com.datastax.oss.driver.shaded.guava.common.collect.Streams;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.Collection;
@@ -21,7 +22,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
-import org.jetbrains.annotations.NotNull;
 
 public class DefaultRecord extends LinkedHashMap<Field, Object> implements Record {
 
@@ -35,7 +35,7 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
    * @return an indexed record.
    */
   public static DefaultRecord indexed(
-      @NotNull Object source, @NotNull URI resource, long position, Object... values) {
+      @NonNull Object source, @NonNull URI resource, long position, Object... values) {
     return new DefaultRecord(source, resource, position, values);
   }
 
@@ -50,8 +50,8 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
    * @return a mapped record.
    */
   public static DefaultRecord mapped(
-      @NotNull Object source,
-      @NotNull URI resource,
+      @NonNull Object source,
+      @NonNull URI resource,
       long position,
       Field[] keys,
       Object... values) {
@@ -68,8 +68,8 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
    * @return a mapped record.
    */
   public static DefaultRecord mapped(
-      @NotNull Object source,
-      @NotNull URI resource,
+      @NonNull Object source,
+      @NonNull URI resource,
       long position,
       Map<? extends Field, ?> values) {
     return new DefaultRecord(source, resource, position, values);
@@ -137,13 +137,13 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
     putAll(values);
   }
 
-  @NotNull
+  @NonNull
   @Override
   public Object getSource() {
     return source;
   }
 
-  @NotNull
+  @NonNull
   @Override
   public URI getResource() {
     return resource.get();
@@ -154,20 +154,20 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
     return position;
   }
 
-  @NotNull
+  @NonNull
   @Override
   public Set<Field> fields() {
     return keySet();
   }
 
-  @NotNull
+  @NonNull
   @Override
   public Collection<Object> values() {
     return super.values();
   }
 
   @Override
-  public Object getFieldValue(@NotNull Field field) {
+  public Object getFieldValue(@NonNull Field field) {
     return get(field);
   }
 
@@ -177,7 +177,7 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
    * @param field the field to set.
    * @param value The value to set.
    */
-  public void setFieldValue(@NotNull Field field, Object value) {
+  public void setFieldValue(@NonNull Field field, Object value) {
     put(field, value);
   }
 

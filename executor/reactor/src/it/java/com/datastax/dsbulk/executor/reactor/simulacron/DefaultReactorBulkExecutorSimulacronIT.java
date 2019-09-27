@@ -8,15 +8,15 @@
  */
 package com.datastax.dsbulk.executor.reactor.simulacron;
 
-import com.datastax.driver.core.SerializedSession;
-import com.datastax.driver.core.Session;
+import com.datastax.dsbulk.executor.api.SerializedSession;
 import com.datastax.dsbulk.executor.api.simulacron.BulkExecutorSimulacronITBase;
 import com.datastax.dsbulk.executor.reactor.DefaultReactorBulkExecutor;
+import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.simulacron.server.BoundCluster;
 
 class DefaultReactorBulkExecutorSimulacronIT extends BulkExecutorSimulacronITBase {
 
-  DefaultReactorBulkExecutorSimulacronIT(BoundCluster simulacron, Session session) {
+  DefaultReactorBulkExecutorSimulacronIT(BoundCluster simulacron, CqlSession session) {
     super(
         simulacron,
         DefaultReactorBulkExecutor.builder(new SerializedSession(session)).build(),

@@ -8,6 +8,8 @@
  */
 package com.datastax.dsbulk.engine.ccm;
 
+import static com.datastax.dsbulk.commons.codecs.util.OverflowStrategy.REJECT;
+import static com.datastax.dsbulk.commons.codecs.util.OverflowStrategy.TRUNCATE;
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DDAC;
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.createURLFile;
@@ -17,8 +19,6 @@ import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static com.datastax.dsbulk.engine.ccm.CSVConnectorEndToEndCCMIT.assertComplexRows;
 import static com.datastax.dsbulk.engine.ccm.CSVConnectorEndToEndCCMIT.checkNumbersWritten;
 import static com.datastax.dsbulk.engine.ccm.CSVConnectorEndToEndCCMIT.checkTemporalsWritten;
-import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.REJECT;
-import static com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy.TRUNCATE;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createIpByCountryTable;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createWithSpacesTable;
@@ -32,17 +32,17 @@ import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQ
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_UNIQUE_PART_2;
 import static com.datastax.dsbulk.engine.tests.utils.JsonUtils.JSON_RECORDS_WITH_SPACES;
 import static java.math.RoundingMode.UNNECESSARY;
-import static java.nio.file.Files.createTempDirectory;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-import com.datastax.driver.core.Session;
+import com.datastax.dsbulk.commons.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
 import com.datastax.dsbulk.commons.tests.utils.Version;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
-import com.datastax.dsbulk.engine.internal.codecs.util.OverflowStrategy;
+import com.datastax.oss.driver.api.core.CqlIdentifier;
+import com.datastax.oss.driver.api.core.CqlSession;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -56,7 +56,6 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -68,11 +67,9 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   private static final Version V3 = Version.parse("3.0");
   private static final Version V2_1 = Version.parse("2.1");
 
-  private Path unloadDir;
-  private Path logDir;
   private Path urlFile;
 
-  JsonConnectorEndToEndCCMIT(CCMCluster ccm, Session session) {
+  JsonConnectorEndToEndCCMIT(CCMCluster ccm, CqlSession session) {
     super(ccm, session);
   }
 
@@ -82,21 +79,9 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     createWithSpacesTable(session);
   }
 
-  @BeforeEach
-  void setUpDirs() throws IOException {
-    logDir = createTempDirectory("logs");
-    unloadDir = createTempDirectory("unload");
-  }
-
   @AfterEach
   void truncateTable() {
     session.execute("TRUNCATE ip_by_country");
-  }
-
-  @AfterEach
-  void deleteDirs() {
-    deleteDirectory(logDir);
-    deleteDirectory(unloadDir);
   }
 
   @BeforeAll
@@ -115,28 +100,28 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     List<String> args = new ArrayList<>();
     args.add("load");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--connector.name");
     args.add("json");
     args.add("--connector.json.url");
     args.add(quoteJson(JSON_RECORDS_UNIQUE));
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING_NAMED);
 
-    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
     deleteDirectory(logDir);
 
     args = new ArrayList<>();
     args.add("unload");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--connector.name");
     args.add("json");
     args.add("--connector.json.url");
@@ -144,13 +129,17 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--connector.json.maxConcurrentFiles");
     args.add("1");
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING_NAMED);
 
-    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(24, unloadDir);
   }
@@ -160,28 +149,28 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     List<String> args = new ArrayList<>();
     args.add("load");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--connector.name");
     args.add("json");
     args.add("--connector.json.urlfile");
     args.add(quoteJson(urlFile));
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING_NAMED);
 
-    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
     deleteDirectory(logDir);
 
     args = new ArrayList<>();
     args.add("unload");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--connector.name");
     args.add("json");
     args.add("--connector.json.url");
@@ -189,13 +178,17 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--connector.json.maxConcurrentFiles");
     args.add("1");
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING_NAMED);
 
-    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(24, unloadDir);
   }
@@ -212,19 +205,21 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("load");
     args.add("--connector.name");
     args.add("json");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--connector.json.url");
     args.add(quoteJson(ClassLoader.getSystemResource("missing.json")));
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("missing");
     args.add("--connector.json.mode");
     args.add("SINGLE_DOCUMENT");
     args.add("--schema.allowMissingFields");
     args.add("true");
-    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isEqualTo(1);
     validateNumberOfBadRecords(4);
     validateExceptionsLog(
@@ -252,19 +247,21 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("load");
     args.add("--connector.name");
     args.add("json");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--connector.json.url");
     args.add(quoteJson(ClassLoader.getSystemResource("missing-case.json")));
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("missing");
     args.add("--connector.json.mode");
     args.add("SINGLE_DOCUMENT");
     args.add("--schema.allowMissingFields");
     args.add("true");
-    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isEqualTo(1);
     validateNumberOfBadRecords(4);
     validateExceptionsLog(
@@ -286,20 +283,22 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("load");
     args.add("--connector.name");
     args.add("json");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--driver.protocol.compression");
     args.add("LZ4");
     args.add("--connector.json.url");
     args.add(quoteJson(JSON_RECORDS_UNIQUE));
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING_NAMED);
 
-    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
     deleteDirectory(logDir);
@@ -308,8 +307,6 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("unload");
     args.add("--connector.name");
     args.add("json");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--driver.protocol.compression");
     args.add("LZ4");
     args.add("--connector.json.url");
@@ -317,13 +314,17 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--connector.json.maxConcurrentFiles");
     args.add("1");
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING_NAMED);
 
-    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(24, unloadDir);
   }
@@ -336,20 +337,22 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("load");
     args.add("--connector.name");
     args.add("json");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--driver.protocol.compression");
     args.add("SNAPPY");
     args.add("--connector.json.url");
     args.add(quoteJson(JSON_RECORDS_UNIQUE));
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING_NAMED);
 
-    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
     deleteDirectory(logDir);
@@ -358,8 +361,6 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("unload");
     args.add("--connector.name");
     args.add("json");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--driver.protocol.compression");
     args.add("SNAPPY");
     args.add("--connector.json.url");
@@ -367,13 +368,17 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--connector.json.maxConcurrentFiles");
     args.add("1");
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING_NAMED);
 
-    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(24, unloadDir);
   }
@@ -412,8 +417,6 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("load");
     args.add("--connector.name");
     args.add("json");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--connector.json.url");
     args.add(quoteJson(getClass().getResource("/complex.json")));
     args.add("--connector.json.mode");
@@ -421,11 +424,15 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--codec.nullStrings");
     args.add("N/A");
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("complex");
 
-    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
 
     assertComplexRows(session);
@@ -436,8 +443,6 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("unload");
     args.add("--connector.name");
     args.add("json");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--connector.json.url");
     args.add(quoteJson(unloadDir));
     args.add("--connector.json.mode");
@@ -447,11 +452,15 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--codec.nullStrings");
     args.add("N/A");
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("complex");
 
-    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
     // 2 documents + 2 lines for single document mode
     validateOutputFiles(4, unloadDir);
@@ -460,8 +469,6 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("load");
     args.add("--connector.name");
     args.add("json");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--connector.json.url");
     args.add(quoteJson(unloadDir));
     args.add("--connector.json.mode");
@@ -469,11 +476,15 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--codec.nullStrings");
     args.add("N/A");
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("complex");
 
-    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
 
     assertComplexRows(session);
@@ -487,18 +498,20 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("load");
     args.add("--connector.name");
     args.add("json");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--connector.json.url");
     args.add(quoteJson(JSON_RECORDS));
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING_NAMED);
 
-    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(500, "SELECT * FROM ip_by_country");
     deleteDirectory(logDir);
@@ -507,20 +520,22 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("unload");
     args.add("--connector.name");
     args.add("json");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--connector.json.url");
     args.add(quoteJson(unloadDir));
     args.add("--connector.json.maxConcurrentFiles");
     args.add("1");
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING_NAMED);
 
-    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(500, unloadDir);
   }
@@ -537,8 +552,6 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("load");
     args.add("--connector.name");
     args.add("json");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("-url");
     args.add(quoteJson(JSON_RECORDS_WITH_SPACES));
     args.add("--schema.mapping");
@@ -548,7 +561,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("-t");
     args.add("WITH_SPACES");
 
-    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(1, "SELECT * FROM \"MYKS\".\"WITH_SPACES\"");
     deleteDirectory(logDir);
@@ -557,8 +570,6 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("unload");
     args.add("--connector.name");
     args.add("json");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("-url");
     args.add(quoteJson(unloadDir));
     args.add("--connector.json.maxConcurrentFiles");
@@ -570,7 +581,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("-t");
     args.add("WITH_SPACES");
 
-    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(1, unloadDir);
   }
@@ -583,12 +594,14 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("load");
     args.add("--connector.name");
     args.add("json");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--connector.json.url");
     args.add(quoteJson(JSON_RECORDS_SKIP));
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
@@ -600,7 +613,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.allowMissingFields");
     args.add("true");
 
-    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
     validateResultSetSize(21, "SELECT * FROM ip_by_country");
     validateNumberOfBadRecords(3);
@@ -611,20 +624,22 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("unload");
     args.add("--connector.name");
     args.add("json");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--connector.json.url");
     args.add(quoteJson(unloadDir));
     args.add("--connector.json.maxConcurrentFiles");
     args.add("1");
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING_NAMED);
 
-    status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(21, unloadDir);
   }
@@ -641,8 +656,6 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("load");
     args.add("--connector.name");
     args.add("json");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--connector.json.url");
     args.add(quoteJson(ClassLoader.getSystemResource("number.json").toExternalForm()));
     args.add("--connector.json.mode");
@@ -650,13 +663,17 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--codec.overflowStrategy");
     args.add("TRUNCATE");
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("numbers");
     args.add("--schema.mapping");
     args.add("*=*");
 
-    int loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    int loadStatus = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
     checkNumbersWritten(TRUNCATE, UNNECESSARY, session);
     deleteDirectory(logDir);
@@ -665,8 +682,6 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("unload");
     args.add("--connector.name");
     args.add("json");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--connector.json.url");
     args.add(quoteJson(unloadDir));
     args.add("--connector.json.mode");
@@ -676,11 +691,15 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--codec.roundingStrategy");
     args.add("FLOOR");
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.query");
     args.add("SELECT key, vdouble, vdecimal FROM numbers");
 
-    int unloadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    int unloadStatus = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(unloadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
     checkNumbersRead(TRUNCATE, unloadDir);
     deleteDirectory(logDir);
@@ -690,20 +709,22 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("load");
     args.add("--connector.name");
     args.add("json");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--connector.json.url");
     args.add(quoteJson(unloadDir));
     args.add("--codec.overflowStrategy");
     args.add("TRUNCATE");
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("numbers");
     args.add("--schema.mapping");
     args.add("*=*");
 
-    loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    loadStatus = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
     // no rounding possible in json
     checkNumbersWritten(TRUNCATE, UNNECESSARY, session);
@@ -721,8 +742,6 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("load");
     args.add("--connector.name");
     args.add("json");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--connector.json.url");
     args.add(quoteJson(ClassLoader.getSystemResource("number.json").toExternalForm()));
     args.add("--connector.json.mode");
@@ -730,13 +749,17 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--codec.overflowStrategy");
     args.add("REJECT");
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("numbers");
     args.add("--schema.mapping");
     args.add("*=*");
 
-    int loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    int loadStatus = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
     validateExceptionsLog(
         1,
@@ -749,8 +772,6 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("unload");
     args.add("--connector.name");
     args.add("json");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--connector.json.url");
     args.add(quoteJson(unloadDir));
     args.add("--connector.json.mode");
@@ -760,11 +781,15 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--codec.roundingStrategy");
     args.add("UNNECESSARY");
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.query");
     args.add("SELECT key, vdouble, vdecimal FROM numbers");
 
-    int unloadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    int unloadStatus = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(unloadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
     checkNumbersRead(REJECT, unloadDir);
     deleteDirectory(logDir);
@@ -774,20 +799,22 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("load");
     args.add("--connector.name");
     args.add("json");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--connector.json.url");
     args.add(quoteJson(unloadDir));
     args.add("--codec.overflowStrategy");
     args.add("REJECT");
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("numbers");
     args.add("--schema.mapping");
     args.add("*=*");
 
-    loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    loadStatus = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
     checkNumbersWritten(REJECT, UNNECESSARY, session);
   }
@@ -808,8 +835,6 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("load");
     args.add("--connector.name");
     args.add("json");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--connector.json.url");
     args.add(ClassLoader.getSystemResource("temporal.json").toExternalForm());
     args.add("--codec.locale");
@@ -825,13 +850,17 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--codec.unit");
     args.add("SECONDS");
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("temporals");
     args.add("--schema.mapping");
     args.add("*=*");
 
-    int loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    int loadStatus = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
     checkTemporalsWritten(session);
     deleteDirectory(logDir);
@@ -840,8 +869,6 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("unload");
     args.add("--connector.name");
     args.add("json");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--connector.json.url");
     args.add(quoteJson(unloadDir));
     args.add("--codec.locale");
@@ -859,11 +886,15 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--connector.json.maxConcurrentFiles");
     args.add("1");
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.query");
     args.add("SELECT key, vdate, vtime, vtimestamp FROM temporals");
 
-    int unloadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    int unloadStatus = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(unloadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
     checkTemporalsRead(unloadDir);
     deleteDirectory(logDir);
@@ -873,8 +904,6 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("load");
     args.add("--connector.name");
     args.add("json");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--connector.json.url");
     args.add(quoteJson(unloadDir));
     args.add("--codec.locale");
@@ -890,13 +919,17 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--codec.unit");
     args.add("SECONDS");
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("temporals");
     args.add("--schema.mapping");
     args.add("*=*");
 
-    loadStatus = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    loadStatus = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(loadStatus).isEqualTo(DataStaxBulkLoader.STATUS_OK);
     checkTemporalsWritten(session);
   }
@@ -910,20 +943,22 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     List<String> args = new ArrayList<>();
     args.add("load");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--connector.name");
     args.add("json");
     args.add("--connector.json.url");
     args.add(quoteJson(ClassLoader.getSystemResource("numeric-fields.json")));
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("numeric_fields");
     args.add("--schema.mapping");
     args.add("0=pk,1=cc,2=v");
 
-    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
     validateResultSetSize(1, "SELECT * FROM numeric_fields");
   }
@@ -973,8 +1008,6 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     List<String> args = new ArrayList<>();
     args.add("unload");
-    args.add("--log.directory");
-    args.add(quoteJson(logDir));
     args.add("--connector.name");
     args.add("json");
     args.add("--connector.json.url");
@@ -982,11 +1015,15 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--connector.json.maxConcurrentFiles");
     args.add("1");
     args.add("--schema.keyspace");
-    args.add(session.getLoggedKeyspace());
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
     args.add("--schema.table");
     args.add("test_truncation");
 
-    int status = new DataStaxBulkLoader(addContactPointAndPort(args)).run();
+    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
 
     assertThat(readAllLinesInDirectoryAsStream(unloadDir))

@@ -9,12 +9,12 @@
 package com.datastax.dsbulk.engine.internal.schema;
 
 import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
-import org.jetbrains.annotations.NotNull;
+import edu.umd.cs.findbugs.annotations.NonNull;
 
 /** A field in a mapping definition identified by an alphanumeric name. */
 public class MappedMappingField extends DefaultMappedField implements MappingField {
 
-  public MappedMappingField(@NotNull String name) {
+  public MappedMappingField(@NonNull String name) {
     super(name);
   }
 }

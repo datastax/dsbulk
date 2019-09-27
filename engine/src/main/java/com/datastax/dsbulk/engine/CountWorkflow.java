@@ -11,12 +11,11 @@ package com.datastax.dsbulk.engine;
 import static com.datastax.dsbulk.engine.internal.utils.ClusterInformationUtils.printDebugInfoAboutCluster;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
-import com.datastax.driver.core.Statement;
-import com.datastax.driver.dse.DseCluster;
-import com.datastax.driver.dse.DseSession;
+import com.codahale.metrics.MetricRegistry;
+import com.datastax.dsbulk.commons.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
+import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
 import com.datastax.dsbulk.engine.internal.schema.ReadResultCounter;
@@ -32,9 +31,11 @@ import com.datastax.dsbulk.engine.internal.settings.StatsSettings;
 import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.datastax.dsbulk.executor.reactor.reader.ReactorBulkReader;
-import com.google.common.base.Stopwatch;
+import com.datastax.dse.driver.api.core.DseSession;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.api.core.metrics.Metrics;
+import com.datastax.oss.driver.shaded.guava.common.base.Stopwatch;
 import io.netty.util.concurrent.DefaultThreadFactory;
-import java.io.IOException;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -58,9 +59,9 @@ public class CountWorkflow implements Workflow {
   private ReadResultCounter readResultCounter;
   private MetricsManager metricsManager;
   private LogManager logManager;
-  private DseCluster cluster;
+  private DseSession session;
   private ReactorBulkReader executor;
-  private List<? extends Statement> readStatements;
+  private List<? extends Statement<?>> readStatements;
   private volatile boolean success;
   private Function<Flux<ReadResult>, Flux<ReadResult>> totalItemsMonitor;
   private Function<Flux<ReadResult>, Flux<ReadResult>> totalItemsCounter;
@@ -73,7 +74,7 @@ public class CountWorkflow implements Workflow {
   }
 
   @Override
-  public void init() throws IOException {
+  public void init() throws Exception {
     settingsManager.init();
     executionId = settingsManager.getExecutionId();
     LogSettings logSettings = settingsManager.getLogSettings();
@@ -94,18 +95,15 @@ public class CountWorkflow implements Workflow {
     codecSettings.init();
     monitoringSettings.init();
     executorSettings.init();
-    driverSettings.init();
+    driverSettings.init(executorSettings.getExecutorConfig());
     statsSettings.init();
     scheduler =
         Schedulers.newParallel(
             Runtime.getRuntime().availableProcessors(), new DefaultThreadFactory("workflow"));
-    cluster = driverSettings.newCluster();
-    cluster.init();
-    driverSettings.checkProtocolVersion(cluster);
-    printDebugInfoAboutCluster(cluster);
-    schemaSettings.init(WorkflowType.COUNT, cluster, true, true);
-    DseSession session = cluster.connect();
-    logManager = logSettings.newLogManager(WorkflowType.COUNT, cluster);
+    session = driverSettings.newSession(executionId);
+    printDebugInfoAboutCluster(session);
+    schemaSettings.init(WorkflowType.COUNT, session, true, true);
+    logManager = logSettings.newLogManager(WorkflowType.COUNT, session);
     logManager.init();
     metricsManager =
         monitoringSettings.newMetricsManager(
@@ -113,22 +111,20 @@ public class CountWorkflow implements Workflow {
             false,
             logManager.getOperationDirectory(),
             logSettings.getVerbosity(),
-            cluster.getMetrics().getRegistry(),
-            cluster.getConfiguration().getProtocolOptions().getProtocolVersion(),
-            cluster.getConfiguration().getCodecRegistry());
+            session.getMetrics().map(Metrics::getRegistry).orElse(new MetricRegistry()),
+            session.getContext().getProtocolVersion(),
+            session.getContext().getCodecRegistry());
     metricsManager.init();
     executor =
         executorSettings.newReadExecutor(session, metricsManager.getExecutionListener(), false);
     ExtendedCodecRegistry codecRegistry =
         codecSettings.createCodecRegistry(
-            cluster.getConfiguration().getCodecRegistry(),
-            schemaSettings.isAllowExtraFields(),
-            schemaSettings.isAllowMissingFields());
+            schemaSettings.isAllowExtraFields(), schemaSettings.isAllowMissingFields());
     EnumSet<StatsSettings.StatisticsMode> modes = statsSettings.getStatisticsModes();
     int numPartitions = statsSettings.getNumPartitions();
     readResultCounter =
         schemaSettings.createReadResultCounter(session, codecRegistry, modes, numPartitions);
-    readStatements = schemaSettings.createReadStatements(cluster);
+    readStatements = schemaSettings.createReadStatements(session);
     closed.set(false);
     success = false;
     totalItemsMonitor = metricsManager.newTotalItemsMonitor();
@@ -169,13 +165,13 @@ public class CountWorkflow implements Workflow {
     long seconds = timer.elapsed(SECONDS);
     if (logManager.getTotalErrors() == 0) {
       success = true;
-      LOGGER.info("{} completed successfully in {}.", this, WorkflowUtils.formatElapsed(seconds));
+      LOGGER.info("{} completed successfully in {}.", this, StringUtils.formatElapsed(seconds));
     } else {
       LOGGER.warn(
           "{} completed with {} errors in {}.",
           this,
           logManager.getTotalErrors(),
-          WorkflowUtils.formatElapsed(seconds));
+          StringUtils.formatElapsed(seconds));
     }
     return logManager.getTotalErrors() == 0;
   }
@@ -189,7 +185,7 @@ public class CountWorkflow implements Workflow {
       e = WorkflowUtils.closeQuietly(logManager, e);
       e = WorkflowUtils.closeQuietly(scheduler, e);
       e = WorkflowUtils.closeQuietly(executor, e);
-      e = WorkflowUtils.closeQuietly(cluster, e);
+      e = WorkflowUtils.closeQuietly(session, e);
       if (metricsManager != null) {
         metricsManager.reportFinalMetrics();
       }

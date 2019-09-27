@@ -9,25 +9,25 @@
 package com.datastax.dsbulk.connectors.api.internal;
 
 import com.datastax.dsbulk.connectors.api.MappedField;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.util.Objects;
-import org.jetbrains.annotations.NotNull;
 
 public class DefaultMappedField implements MappedField {
 
   private final String name;
 
-  public DefaultMappedField(@NotNull String name) {
+  public DefaultMappedField(@NonNull String name) {
     this.name = name;
   }
 
   @Override
-  @NotNull
+  @NonNull
   public String getFieldDescription() {
     return name;
   }
 
   @Override
-  @NotNull
+  @NonNull
   public String getFieldName() {
     return name;
   }
@@ -51,7 +51,7 @@ public class DefaultMappedField implements MappedField {
   }
 
   @Override
-  @NotNull
+  @NonNull
   public String toString() {
     return getFieldDescription();
   }

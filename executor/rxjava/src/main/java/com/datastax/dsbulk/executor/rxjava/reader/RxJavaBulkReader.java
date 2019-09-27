@@ -8,11 +8,11 @@
  */
 package com.datastax.dsbulk.executor.rxjava.reader;
 
-import com.datastax.driver.core.SimpleStatement;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.reader.ReactiveBulkReader;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
+import com.datastax.oss.driver.api.core.cql.Statement;
 import io.reactivex.Flowable;
 import java.util.stream.Stream;
 import org.reactivestreams.Publisher;
@@ -34,7 +34,7 @@ public interface RxJavaBulkReader extends ReactiveBulkReader {
    */
   @Override
   default Flowable<ReadResult> readReactive(String statement) throws BulkExecutionException {
-    return readReactive(new SimpleStatement(statement));
+    return readReactive(SimpleStatement.newInstance(statement));
   }
 
   /**
@@ -45,7 +45,7 @@ public interface RxJavaBulkReader extends ReactiveBulkReader {
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
   @Override
-  Flowable<ReadResult> readReactive(Statement statement) throws BulkExecutionException;
+  Flowable<ReadResult> readReactive(Statement<?> statement) throws BulkExecutionException;
 
   /**
    * Executes the given stream of read statements reactively.

@@ -8,27 +8,18 @@
  */
 package com.datastax.dsbulk.executor.reactor;
 
-import com.datastax.driver.core.ContinuousPagingOptions;
-import com.datastax.driver.core.ContinuousPagingSession;
 import com.datastax.dsbulk.executor.api.AbstractBulkExecutorBuilder;
+import com.datastax.dse.driver.api.core.DseSession;
 
 /** A builder for {@link ContinuousReactorBulkExecutor} instances. */
 public class ContinuousReactorBulkExecutorBuilder
     extends AbstractBulkExecutorBuilder<ContinuousReactorBulkExecutor> {
 
-  final ContinuousPagingSession continuousPagingSession;
-  ContinuousPagingOptions options = ContinuousPagingOptions.builder().build();
+  final DseSession dseSession;
 
-  ContinuousReactorBulkExecutorBuilder(ContinuousPagingSession continuousPagingSession) {
-    super(continuousPagingSession);
-    this.continuousPagingSession = continuousPagingSession;
-  }
-
-  @SuppressWarnings("UnusedReturnValue")
-  public AbstractBulkExecutorBuilder<ContinuousReactorBulkExecutor> withContinuousPagingOptions(
-      ContinuousPagingOptions options) {
-    this.options = options;
-    return this;
+  ContinuousReactorBulkExecutorBuilder(DseSession dseSession) {
+    super(dseSession);
+    this.dseSession = dseSession;
   }
 
   @Override

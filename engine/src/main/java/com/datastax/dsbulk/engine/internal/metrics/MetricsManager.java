@@ -22,10 +22,6 @@ import com.codahale.metrics.Histogram;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.UniformReservoir;
 import com.codahale.metrics.jmx.JmxReporter;
-import com.datastax.driver.core.BatchStatement;
-import com.datastax.driver.core.CodecRegistry;
-import com.datastax.driver.core.ProtocolVersion;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.commons.log.LogSink;
 import com.datastax.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.dsbulk.engine.WorkflowType;
@@ -36,7 +32,11 @@ import com.datastax.dsbulk.executor.api.listener.MetricsCollectingExecutionListe
 import com.datastax.dsbulk.executor.api.listener.ReadsReportingExecutionListener;
 import com.datastax.dsbulk.executor.api.listener.WritesReportingExecutionListener;
 import com.datastax.dsbulk.executor.api.result.Result;
-import com.google.common.util.concurrent.MoreExecutors;
+import com.datastax.oss.driver.api.core.ProtocolVersion;
+import com.datastax.oss.driver.api.core.cql.BatchStatement;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
+import com.datastax.oss.driver.shaded.guava.common.util.concurrent.MoreExecutors;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
@@ -467,7 +467,7 @@ public class MetricsManager implements AutoCloseable {
             });
   }
 
-  public Function<Flux<Statement>, Flux<Statement>> newBatcherMonitor() {
+  public Function<Flux<Statement<?>>, Flux<Statement<?>>> newBatcherMonitor() {
     return upstream ->
         upstream.doOnNext(
             stmt -> {

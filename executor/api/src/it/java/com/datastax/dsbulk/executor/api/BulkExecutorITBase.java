@@ -13,12 +13,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.MockitoAnnotations.initMocks;
 
-import com.datastax.driver.core.SimpleStatement;
-import com.datastax.driver.core.exceptions.SyntaxError;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.datastax.dsbulk.executor.api.result.Result;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
+import com.datastax.oss.driver.api.core.servererrors.SyntaxError;
 import io.reactivex.Flowable;
 import io.reactivex.plugins.RxJavaPlugins;
 import java.util.Arrays;
@@ -41,13 +41,13 @@ public abstract class BulkExecutorITBase {
 
   protected static final String WRITE_QUERY = "INSERT INTO test_write (pk, v) VALUES (%d, %d)";
   private static final SimpleStatement WRITE_STATEMENT =
-      new SimpleStatement(String.format(WRITE_QUERY, 0, 0));
+      SimpleStatement.newInstance(String.format(WRITE_QUERY, 0, 0));
 
   protected static final String READ_QUERY = "SELECT * FROM test_read";
-  private static final SimpleStatement READ_STATEMENT = new SimpleStatement(READ_QUERY);
+  private static final SimpleStatement READ_STATEMENT = SimpleStatement.newInstance(READ_QUERY);
 
   protected static final String FAILED_QUERY = "should fail";
-  private static final SimpleStatement FAILED_STATEMENT = new SimpleStatement(FAILED_QUERY);
+  private static final SimpleStatement FAILED_STATEMENT = SimpleStatement.newInstance(FAILED_QUERY);
 
   private static final Flowable<String> WRITE_QUERIES =
       Flowable.range(0, 100).map(i -> String.format(WRITE_QUERY, i, i));
@@ -56,7 +56,7 @@ public abstract class BulkExecutorITBase {
       WRITE_QUERIES.skipLast(1).concatWith(Flowable.just(FAILED_QUERY));
 
   private static final Flowable<SimpleStatement> WRITE_STATEMENTS =
-      WRITE_QUERIES.map(SimpleStatement::new);
+      WRITE_QUERIES.map(SimpleStatement::newInstance);
 
   private static final Flowable<SimpleStatement> WRITE_STATEMENTS_WITH_LAST_BAD =
       WRITE_STATEMENTS.skipLast(1).concatWith(Flowable.just(FAILED_STATEMENT));
@@ -1080,13 +1080,13 @@ public abstract class BulkExecutorITBase {
 
   private void verifySuccessfulWriteResult(WriteResult r, String expected) {
     assertThat(r.isSuccess()).isTrue();
-    assertThat(((SimpleStatement) r.getStatement()).getQueryString()).isEqualTo(expected);
+    assertThat(((SimpleStatement) r.getStatement()).getQuery()).isEqualTo(expected);
     assertThat(r.getExecutionInfo().isPresent()).isTrue();
   }
 
   private void verifyFailedWriteResult(WriteResult r) {
     assertThat(r.isSuccess()).isFalse();
-    assertThat(((SimpleStatement) r.getStatement()).getQueryString()).isEqualTo(FAILED_QUERY);
+    assertThat(((SimpleStatement) r.getStatement()).getQuery()).isEqualTo(FAILED_QUERY);
     assertThat(r.getExecutionInfo().isPresent()).isFalse();
   }
 

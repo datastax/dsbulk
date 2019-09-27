@@ -11,7 +11,7 @@ package com.datastax.dsbulk.engine.internal.schema;
 import static com.datastax.dsbulk.engine.internal.schema.CQLRenderMode.VARIABLE;
 
 import com.datastax.dsbulk.connectors.api.Field;
-import org.jetbrains.annotations.NotNull;
+import edu.umd.cs.findbugs.annotations.NonNull;
 
 public class InvalidMappingException extends RuntimeException {
 
@@ -19,8 +19,8 @@ public class InvalidMappingException extends RuntimeException {
     super(msg);
   }
 
-  @NotNull
-  static InvalidMappingException extraneousField(@NotNull Field field) {
+  @NonNull
+  static InvalidMappingException extraneousField(@NonNull Field field) {
     return new InvalidMappingException(
         "Extraneous field "
             + field.getFieldDescription()
@@ -29,9 +29,8 @@ public class InvalidMappingException extends RuntimeException {
             + "or set schema.allowExtraFields to true.");
   }
 
-  @NotNull
-  static InvalidMappingException missingField(
-      @NotNull Field field, @NotNull CQLIdentifier variable) {
+  @NonNull
+  static InvalidMappingException missingField(@NonNull Field field, @NonNull CQLWord variable) {
     return new InvalidMappingException(
         "Required field "
             + field.getFieldDescription()
@@ -42,8 +41,8 @@ public class InvalidMappingException extends RuntimeException {
             + "or set schema.allowMissingFields to true.");
   }
 
-  @NotNull
-  static InvalidMappingException nullPrimaryKey(@NotNull CQLIdentifier variable) {
+  @NonNull
+  static InvalidMappingException nullPrimaryKey(@NonNull CQLWord variable) {
     return new InvalidMappingException(
         "Primary key column "
             + variable.render(VARIABLE)
@@ -51,8 +50,8 @@ public class InvalidMappingException extends RuntimeException {
             + "Check that your settings (schema.mapping or schema.query) match your dataset contents.");
   }
 
-  @NotNull
-  static InvalidMappingException unsetPrimaryKey(@NotNull CQLIdentifier variable) {
+  @NonNull
+  static InvalidMappingException unsetPrimaryKey(@NonNull CQLWord variable) {
     return new InvalidMappingException(
         "Primary key column "
             + variable.render(VARIABLE)

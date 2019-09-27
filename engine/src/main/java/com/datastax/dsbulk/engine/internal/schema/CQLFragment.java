@@ -10,9 +10,9 @@ package com.datastax.dsbulk.engine.internal.schema;
 
 /**
  * A fragment of CQL language included in a mapping definition or in a CQL query. Fragments can be
- * {@linkplain CQLIdentifier CQL identifiers}, {@linkplain FunctionCall function calls}, or
- * {@linkplain CQLLiteral CQL literals}. In a mapping definition, they appear on the right side of a
- * mapping entry.
+ * {@linkplain CQLWord CQL identifiers}, {@linkplain FunctionCall function calls}, or {@linkplain
+ * CQLLiteral CQL literals}. In a mapping definition, they appear on the right side of a mapping
+ * entry.
  */
 public interface CQLFragment extends MappingToken {
 

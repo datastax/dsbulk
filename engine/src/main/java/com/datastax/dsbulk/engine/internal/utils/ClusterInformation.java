@@ -35,7 +35,7 @@ class ClusterInformation {
     return partitioner;
   }
 
-  int getNumberOfHosts() {
+  int getNumberOfNodes() {
     return numberOfHosts;
   }
 
@@ -43,7 +43,7 @@ class ClusterInformation {
     return dataCenters;
   }
 
-  List<String> getHostsInfo() {
+  List<String> getNodeInfos() {
     return hostsInfo;
   }
 

@@ -8,7 +8,7 @@
  */
 package com.datastax.dsbulk.engine.internal.log.threshold;
 
-import org.jetbrains.annotations.NotNull;
+import edu.umd.cs.findbugs.annotations.NonNull;
 
 public interface ErrorThreshold {
 
@@ -45,7 +45,7 @@ public interface ErrorThreshold {
    *     this method.
    * @return {@code true} if the threshold was exceeded, or {@code false} otherwise.
    */
-  boolean checkThresholdExceeded(long errorCount, @NotNull Number totalItems);
+  boolean checkThresholdExceeded(long errorCount, @NonNull Number totalItems);
 
   /**
    * Returns a textual description of this threshold, mainly for informational purposes, e.g. when

@@ -12,7 +12,6 @@ import static com.datastax.dsbulk.commons.config.LoaderConfig.LEAF_ANNOTATION;
 import static com.datastax.dsbulk.commons.config.LoaderConfig.TYPE_ANNOTATION;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigException.Missing;
@@ -20,6 +19,7 @@ import com.typesafe.config.ConfigList;
 import com.typesafe.config.ConfigObject;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -34,7 +34,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
-import org.jetbrains.annotations.NotNull;
 
 public class ConfigUtils {
 
@@ -49,9 +48,9 @@ public class ConfigUtils {
           "The enum class \\w+ has no constant of the name ('.+') \\(should be one of \\[([^]]+)]\\.\\)",
           Pattern.CASE_INSENSITIVE);
 
-  @NotNull
+  @NonNull
   public static BulkConfigurationException configExceptionToBulkConfigurationException(
-      @NotNull ConfigException e, @NotNull String path) {
+      @NonNull ConfigException e, @NonNull String path) {
     if (e instanceof ConfigException.WrongType) {
       // This will happen if a user provides the wrong type, e.g. a string where a number was
       // expected. We remove the origin's description as it is too cryptic for users.
@@ -90,8 +89,8 @@ public class ConfigUtils {
    * @return The resolved {@link Path}, absolute and normalized.
    * @throws InvalidPathException If the path cannot be resolved.
    */
-  @NotNull
-  public static Path resolvePath(@NotNull String path) throws InvalidPathException {
+  @NonNull
+  public static Path resolvePath(@NonNull String path) throws InvalidPathException {
     if (path.startsWith("~")) {
       if (path.equals("~") || path.startsWith("~/")) {
         path = System.getProperty("user.home") + path.substring(1);
@@ -109,7 +108,7 @@ public class ConfigUtils {
    *
    * <p>This method first tries to interpret the input as a valid URL, possibly expanding the
    * special {@code "-"} (single dash) URL into DSBulk's internal {@link
-   * LoaderURLStreamHandlerFactory#STD standard input/output} URL.
+   * com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory#STD standard input/output} URL.
    *
    * <p>If that fails, this method then attempts to interpret the input as a path object. See {@link
    * #resolvePath(String)}.
@@ -119,8 +118,8 @@ public class ConfigUtils {
    * @throws MalformedURLException If the URL cannot be resolved.
    * @throws InvalidPathException If the path cannot be resolved.
    */
-  @NotNull
-  public static URL resolveURL(@NotNull String url)
+  @NonNull
+  public static URL resolveURL(@NonNull String url)
       throws MalformedURLException, InvalidPathException {
     if (url.equals("-")) {
       url = "std:/";
@@ -153,7 +152,7 @@ public class ConfigUtils {
    *     positive.
    * @return The number of threads.
    */
-  public static int resolveThreads(@NotNull String threadsStr) {
+  public static int resolveThreads(@NonNull String threadsStr) {
     int threads;
     try {
       threads = Integer.parseInt(threadsStr);
@@ -187,8 +186,8 @@ public class ConfigUtils {
    * @return the type string
    * @throws ConfigException.Missing if value is absent.
    */
-  @NotNull
-  public static String getTypeString(@NotNull Config config, @NotNull String path) {
+  @NonNull
+  public static String getTypeString(@NonNull Config config, @NonNull String path) {
     ConfigValue value = getNullSafeValue(config, path);
     Optional<String> typeHint = getTypeHint(value);
     if (typeHint.isPresent()) {
@@ -223,8 +222,8 @@ public class ConfigUtils {
    * @return the {@link ConfigValueType value type}.
    * @throws ConfigException.Missing if value is absent.
    */
-  @NotNull
-  public static ConfigValueType getValueType(@NotNull Config config, @NotNull String path) {
+  @NonNull
+  public static ConfigValueType getValueType(@NonNull Config config, @NonNull String path) {
     ConfigValue value = getNullSafeValue(config, path);
     Optional<String> typeHint = getTypeHint(value);
     if (typeHint.isPresent()) {
@@ -254,8 +253,8 @@ public class ConfigUtils {
    * @param value the {@link ConfigValue value} to inspect.
    * @return The type hint, if any, or empty otherwise.
    */
-  @NotNull
-  public static Optional<String> getTypeHint(@NotNull ConfigValue value) {
+  @NonNull
+  public static Optional<String> getTypeHint(@NonNull ConfigValue value) {
     return value.origin().comments().stream()
         .filter(line -> line.contains(TYPE_ANNOTATION))
         .map(line -> line.replace("@type", ""))
@@ -269,8 +268,8 @@ public class ConfigUtils {
    * @param value the {@link ConfigValue value} to inspect.
    * @return The comments associated with the given value
    */
-  @NotNull
-  public static String getComments(@NotNull ConfigValue value) {
+  @NonNull
+  public static String getComments(@NonNull ConfigValue value) {
     return value.origin().comments().stream()
         .filter(line -> !line.contains(TYPE_ANNOTATION))
         .map(String::trim)
@@ -283,8 +282,8 @@ public class ConfigUtils {
    * @param type ConfigValueType to stringify.
    * @return the type string
    */
-  @NotNull
-  private static String getTypeString(@NotNull ConfigValueType type) {
+  @NonNull
+  private static String getTypeString(@NonNull ConfigValueType type) {
     switch (type) {
       case STRING:
         return "string";
@@ -310,7 +309,7 @@ public class ConfigUtils {
    * @param value The value to inspect.
    * @return True if the value is a leaf, false otherwise.
    */
-  public static boolean isLeaf(@NotNull ConfigValue value) {
+  public static boolean isLeaf(@NonNull ConfigValue value) {
     return !(value instanceof ConfigObject)
         || value.origin().comments().stream().anyMatch(line -> line.contains(LEAF_ANNOTATION));
   }
@@ -327,8 +326,8 @@ public class ConfigUtils {
    * @return The {@link ConfigValue value}.
    * @throws Missing If the path is not present in the config object.
    */
-  @NotNull
-  public static ConfigValue getNullSafeValue(@NotNull Config config, @NotNull String path) {
+  @NonNull
+  public static ConfigValue getNullSafeValue(@NonNull Config config, @NonNull String path) {
     int dot = path.indexOf('.');
     if (dot == -1) {
       ConfigValue value = config.root().get(path);

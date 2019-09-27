@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import static com.datastax.driver.core.ProtocolVersion.V4;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -16,14 +15,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.codahale.metrics.MetricRegistry;
-import com.datastax.driver.core.CodecRegistry;
-import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
+import com.datastax.oss.driver.api.core.ProtocolVersion;
+import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
 import com.typesafe.config.ConfigFactory;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -32,8 +31,8 @@ import org.junit.jupiter.api.Test;
 
 class MonitoringSettingsTest {
 
-  private ProtocolVersion protocolVersion = V4;
-  private CodecRegistry codecRegistry = new CodecRegistry();
+  private ProtocolVersion protocolVersion = ProtocolVersion.DEFAULT;
+  private CodecRegistry codecRegistry = CodecRegistry.DEFAULT;
 
   @Test
   void should_create_metrics_manager_with_default_settings() {

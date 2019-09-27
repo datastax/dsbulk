@@ -8,6 +8,7 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
+import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.datastax.dsbulk.engine.WorkflowType.COUNT;
 import static com.datastax.dsbulk.engine.WorkflowType.LOAD;
 import static com.datastax.dsbulk.engine.WorkflowType.UNLOAD;
@@ -16,7 +17,6 @@ import static com.datastax.dsbulk.engine.internal.schema.MappingPreference.MAPPE
 import static com.datastax.dsbulk.engine.internal.schema.MappingPreference.MAPPED_OR_INDEXED;
 import static com.datastax.dsbulk.engine.internal.schema.QueryInspector.INTERNAL_TIMESTAMP_VARNAME;
 import static com.datastax.dsbulk.engine.internal.schema.QueryInspector.INTERNAL_TTL_VARNAME;
-import static com.datastax.dsbulk.engine.tests.EngineAssertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
@@ -34,8 +34,8 @@ class MappingInspectorTest {
                     INTERNAL_TIMESTAMP_VARNAME,
                     INTERNAL_TTL_VARNAME)
                 .getExplicitVariables())
-        .containsEntry(new MappedMappingField("fieldA"), CQLIdentifier.fromCql("col1"))
-        .containsEntry(new MappedMappingField("fieldB"), CQLIdentifier.fromCql("col2"));
+        .containsEntry(new MappedMappingField("fieldA"), CQLWord.fromCql("col1"))
+        .containsEntry(new MappedMappingField("fieldB"), CQLWord.fromCql("col2"));
     assertThat(
             new MappingInspector(
                     "fieldA:col1,fieldB:col2",
@@ -44,8 +44,8 @@ class MappingInspectorTest {
                     INTERNAL_TIMESTAMP_VARNAME,
                     INTERNAL_TTL_VARNAME)
                 .getExplicitVariables())
-        .containsEntry(new MappedMappingField("fieldA"), CQLIdentifier.fromCql("col1"))
-        .containsEntry(new MappedMappingField("fieldB"), CQLIdentifier.fromCql("col2"));
+        .containsEntry(new MappedMappingField("fieldA"), CQLWord.fromCql("col1"))
+        .containsEntry(new MappedMappingField("fieldB"), CQLWord.fromCql("col2"));
     assertThat(
             new MappingInspector(
                     "  fieldA : col1 , fieldB : col2  ",
@@ -54,8 +54,8 @@ class MappingInspectorTest {
                     INTERNAL_TIMESTAMP_VARNAME,
                     INTERNAL_TTL_VARNAME)
                 .getExplicitVariables())
-        .containsEntry(new MappedMappingField("fieldA"), CQLIdentifier.fromCql("col1"))
-        .containsEntry(new MappedMappingField("fieldB"), CQLIdentifier.fromCql("col2"));
+        .containsEntry(new MappedMappingField("fieldA"), CQLWord.fromCql("col1"))
+        .containsEntry(new MappedMappingField("fieldB"), CQLWord.fromCql("col2"));
   }
 
   @Test
@@ -68,8 +68,8 @@ class MappingInspectorTest {
                     INTERNAL_TIMESTAMP_VARNAME,
                     INTERNAL_TTL_VARNAME)
                 .getExplicitVariables())
-        .containsEntry(new IndexedMappingField(0), CQLIdentifier.fromCql("col1"))
-        .containsEntry(new IndexedMappingField(1), CQLIdentifier.fromCql("col2"));
+        .containsEntry(new IndexedMappingField(0), CQLWord.fromCql("col1"))
+        .containsEntry(new IndexedMappingField(1), CQLWord.fromCql("col2"));
     assertThat(
             new MappingInspector(
                     "  col1  ,  col2  ",
@@ -78,8 +78,8 @@ class MappingInspectorTest {
                     INTERNAL_TIMESTAMP_VARNAME,
                     INTERNAL_TTL_VARNAME)
                 .getExplicitVariables())
-        .containsEntry(new IndexedMappingField(0), CQLIdentifier.fromCql("col1"))
-        .containsEntry(new IndexedMappingField(1), CQLIdentifier.fromCql("col2"));
+        .containsEntry(new IndexedMappingField(0), CQLWord.fromCql("col1"))
+        .containsEntry(new IndexedMappingField(1), CQLWord.fromCql("col2"));
   }
 
   @Test
@@ -92,8 +92,8 @@ class MappingInspectorTest {
                     INTERNAL_TIMESTAMP_VARNAME,
                     INTERNAL_TTL_VARNAME)
                 .getExplicitVariables())
-        .containsEntry(new MappedMappingField("col1"), CQLIdentifier.fromCql("col1"))
-        .containsEntry(new MappedMappingField("col2"), CQLIdentifier.fromCql("col2"));
+        .containsEntry(new MappedMappingField("col1"), CQLWord.fromCql("col1"))
+        .containsEntry(new MappedMappingField("col2"), CQLWord.fromCql("col2"));
     assertThat(
             new MappingInspector(
                     "  col1  ,  col2  ",
@@ -102,8 +102,8 @@ class MappingInspectorTest {
                     INTERNAL_TIMESTAMP_VARNAME,
                     INTERNAL_TTL_VARNAME)
                 .getExplicitVariables())
-        .containsEntry(new MappedMappingField("col1"), CQLIdentifier.fromCql("col1"))
-        .containsEntry(new MappedMappingField("col2"), CQLIdentifier.fromCql("col2"));
+        .containsEntry(new MappedMappingField("col1"), CQLWord.fromCql("col1"))
+        .containsEntry(new MappedMappingField("col2"), CQLWord.fromCql("col2"));
   }
 
   @Test
@@ -116,8 +116,8 @@ class MappingInspectorTest {
                     INTERNAL_TIMESTAMP_VARNAME,
                     INTERNAL_TTL_VARNAME)
                 .getExplicitVariables())
-        .containsEntry(new MappedMappingField("col1"), CQLIdentifier.fromCql("col1"))
-        .containsEntry(new MappedMappingField("col2"), CQLIdentifier.fromCql("col2"));
+        .containsEntry(new MappedMappingField("col1"), CQLWord.fromCql("col1"))
+        .containsEntry(new MappedMappingField("col2"), CQLWord.fromCql("col2"));
     assertThat(
             new MappingInspector(
                     "  col1  ,  col2  ",
@@ -126,8 +126,8 @@ class MappingInspectorTest {
                     INTERNAL_TIMESTAMP_VARNAME,
                     INTERNAL_TTL_VARNAME)
                 .getExplicitVariables())
-        .containsEntry(new MappedMappingField("col1"), CQLIdentifier.fromCql("col1"))
-        .containsEntry(new MappedMappingField("col2"), CQLIdentifier.fromCql("col2"));
+        .containsEntry(new MappedMappingField("col1"), CQLWord.fromCql("col1"))
+        .containsEntry(new MappedMappingField("col2"), CQLWord.fromCql("col2"));
   }
 
   @Test
@@ -140,8 +140,8 @@ class MappingInspectorTest {
                     INTERNAL_TIMESTAMP_VARNAME,
                     INTERNAL_TTL_VARNAME)
                 .getExplicitVariables())
-        .containsEntry(new IndexedMappingField(0), CQLIdentifier.fromCql("col1"))
-        .containsEntry(new IndexedMappingField(1), CQLIdentifier.fromCql("col2"));
+        .containsEntry(new IndexedMappingField(0), CQLWord.fromCql("col1"))
+        .containsEntry(new IndexedMappingField(1), CQLWord.fromCql("col2"));
     assertThat(
             new MappingInspector(
                     "  0 = col1  , 1 = col2  ",
@@ -150,8 +150,8 @@ class MappingInspectorTest {
                     INTERNAL_TIMESTAMP_VARNAME,
                     INTERNAL_TTL_VARNAME)
                 .getExplicitVariables())
-        .containsEntry(new IndexedMappingField(0), CQLIdentifier.fromCql("col1"))
-        .containsEntry(new IndexedMappingField(1), CQLIdentifier.fromCql("col2"));
+        .containsEntry(new IndexedMappingField(0), CQLWord.fromCql("col1"))
+        .containsEntry(new IndexedMappingField(1), CQLWord.fromCql("col2"));
     assertThat(
             new MappingInspector(
                     "0=col1,1=col2",
@@ -160,8 +160,8 @@ class MappingInspectorTest {
                     INTERNAL_TIMESTAMP_VARNAME,
                     INTERNAL_TTL_VARNAME)
                 .getExplicitVariables())
-        .containsEntry(new IndexedMappingField(0), CQLIdentifier.fromCql("col1"))
-        .containsEntry(new IndexedMappingField(1), CQLIdentifier.fromCql("col2"));
+        .containsEntry(new IndexedMappingField(0), CQLWord.fromCql("col1"))
+        .containsEntry(new IndexedMappingField(1), CQLWord.fromCql("col2"));
     assertThat(
             new MappingInspector(
                     "  0 = col1  , 1 = col2  ",
@@ -170,8 +170,8 @@ class MappingInspectorTest {
                     INTERNAL_TIMESTAMP_VARNAME,
                     INTERNAL_TTL_VARNAME)
                 .getExplicitVariables())
-        .containsEntry(new IndexedMappingField(0), CQLIdentifier.fromCql("col1"))
-        .containsEntry(new IndexedMappingField(1), CQLIdentifier.fromCql("col2"));
+        .containsEntry(new IndexedMappingField(0), CQLWord.fromCql("col1"))
+        .containsEntry(new IndexedMappingField(1), CQLWord.fromCql("col2"));
   }
 
   @Test
@@ -184,8 +184,8 @@ class MappingInspectorTest {
                     INTERNAL_TIMESTAMP_VARNAME,
                     INTERNAL_TTL_VARNAME)
                 .getExplicitVariables())
-        .containsEntry(new MappedMappingField("0"), CQLIdentifier.fromCql("col1"))
-        .containsEntry(new MappedMappingField("1"), CQLIdentifier.fromCql("col2"));
+        .containsEntry(new MappedMappingField("0"), CQLWord.fromCql("col1"))
+        .containsEntry(new MappedMappingField("1"), CQLWord.fromCql("col2"));
     assertThat(
             new MappingInspector(
                     "  0 = col1  , 1 =  col2  ",
@@ -194,8 +194,8 @@ class MappingInspectorTest {
                     INTERNAL_TIMESTAMP_VARNAME,
                     INTERNAL_TTL_VARNAME)
                 .getExplicitVariables())
-        .containsEntry(new MappedMappingField("0"), CQLIdentifier.fromCql("col1"))
-        .containsEntry(new MappedMappingField("1"), CQLIdentifier.fromCql("col2"));
+        .containsEntry(new MappedMappingField("0"), CQLWord.fromCql("col1"))
+        .containsEntry(new MappedMappingField("1"), CQLWord.fromCql("col2"));
   }
 
   @Test
@@ -208,8 +208,8 @@ class MappingInspectorTest {
                     INTERNAL_TIMESTAMP_VARNAME,
                     INTERNAL_TTL_VARNAME)
                 .getExplicitVariables())
-        .containsEntry(new MappedMappingField("fieldA"), CQLIdentifier.fromInternal(" "))
-        .containsEntry(new MappedMappingField("\"fieldB\""), CQLIdentifier.fromInternal("\""));
+        .containsEntry(new MappedMappingField("fieldA"), CQLWord.fromInternal(" "))
+        .containsEntry(new MappedMappingField("\"fieldB\""), CQLWord.fromInternal("\""));
     assertThat(
             new MappingInspector(
                     "\"fieldA\":\" \",\"\"\"fieldB\"\"\":\"\"\"\"",
@@ -218,8 +218,8 @@ class MappingInspectorTest {
                     INTERNAL_TIMESTAMP_VARNAME,
                     INTERNAL_TTL_VARNAME)
                 .getExplicitVariables())
-        .containsEntry(new MappedMappingField("fieldA"), CQLIdentifier.fromInternal(" "))
-        .containsEntry(new MappedMappingField("\"fieldB\""), CQLIdentifier.fromInternal("\""));
+        .containsEntry(new MappedMappingField("fieldA"), CQLWord.fromInternal(" "))
+        .containsEntry(new MappedMappingField("\"fieldB\""), CQLWord.fromInternal("\""));
     assertThat(
             new MappingInspector(
                     " \"fieldA\" = \" \" , \"\"\"fieldB\"\"\" = \"\"\"\" ",
@@ -228,8 +228,8 @@ class MappingInspectorTest {
                     INTERNAL_TIMESTAMP_VARNAME,
                     INTERNAL_TTL_VARNAME)
                 .getExplicitVariables())
-        .containsEntry(new MappedMappingField("fieldA"), CQLIdentifier.fromInternal(" "))
-        .containsEntry(new MappedMappingField("\"fieldB\""), CQLIdentifier.fromInternal("\""));
+        .containsEntry(new MappedMappingField("fieldA"), CQLWord.fromInternal(" "))
+        .containsEntry(new MappedMappingField("\"fieldB\""), CQLWord.fromInternal("\""));
   }
 
   @Test
@@ -242,7 +242,7 @@ class MappingInspectorTest {
             INTERNAL_TIMESTAMP_VARNAME,
             INTERNAL_TTL_VARNAME);
     assertThat(inspector.getExplicitVariables())
-        .containsEntry(new MappedMappingField("fieldA"), CQLIdentifier.fromCql("col1"));
+        .containsEntry(new MappedMappingField("fieldA"), CQLWord.fromCql("col1"));
     assertThat(inspector.isInferring()).isTrue();
     assertThat(inspector.getExcludedVariables()).isEmpty();
   }
@@ -254,13 +254,13 @@ class MappingInspectorTest {
             "* = -c2", LOAD, MAPPED_ONLY, INTERNAL_TIMESTAMP_VARNAME, INTERNAL_TTL_VARNAME);
     assertThat(inspector.getExplicitVariables()).isEmpty();
     assertThat(inspector.isInferring()).isTrue();
-    assertThat(inspector.getExcludedVariables()).containsOnly(CQLIdentifier.fromInternal("c2"));
+    assertThat(inspector.getExcludedVariables()).containsOnly(CQLWord.fromInternal("c2"));
     inspector =
         new MappingInspector(
             "* = -\"C2\"", LOAD, MAPPED_ONLY, INTERNAL_TIMESTAMP_VARNAME, INTERNAL_TTL_VARNAME);
     assertThat(inspector.getExplicitVariables()).isEmpty();
     assertThat(inspector.isInferring()).isTrue();
-    assertThat(inspector.getExcludedVariables()).containsOnly(CQLIdentifier.fromInternal("C2"));
+    assertThat(inspector.getExcludedVariables()).containsOnly(CQLWord.fromInternal("C2"));
   }
 
   @Test
@@ -275,7 +275,7 @@ class MappingInspectorTest {
     assertThat(inspector.getExplicitVariables()).isEmpty();
     assertThat(inspector.isInferring()).isTrue();
     assertThat(inspector.getExcludedVariables())
-        .containsOnly(CQLIdentifier.fromInternal("c2"), CQLIdentifier.fromInternal("c3"));
+        .containsOnly(CQLWord.fromInternal("c2"), CQLWord.fromInternal("c3"));
     inspector =
         new MappingInspector(
             " * = [ - \"C2\", - \"C3\" ]  ",
@@ -286,7 +286,7 @@ class MappingInspectorTest {
     assertThat(inspector.getExplicitVariables()).isEmpty();
     assertThat(inspector.isInferring()).isTrue();
     assertThat(inspector.getExcludedVariables())
-        .containsOnly(CQLIdentifier.fromInternal("C2"), CQLIdentifier.fromInternal("C3"));
+        .containsOnly(CQLWord.fromInternal("C2"), CQLWord.fromInternal("C3"));
   }
 
   @Test
@@ -329,13 +329,12 @@ class MappingInspectorTest {
             " a = \"MyTTL\", b = \"MyTimestamp\"  ",
             LOAD,
             MAPPED_ONLY,
-            CQLIdentifier.fromInternal("MyTimestamp"),
-            CQLIdentifier.fromInternal("MyTTL"));
+            CQLWord.fromInternal("MyTimestamp"),
+            CQLWord.fromInternal("MyTTL"));
     assertThat(inspector.getExplicitVariables().values())
-        .containsExactly(
-            CQLIdentifier.fromInternal("MyTTL"), CQLIdentifier.fromInternal("MyTimestamp"));
+        .containsExactly(CQLWord.fromInternal("MyTTL"), CQLWord.fromInternal("MyTimestamp"));
     assertThat(inspector.getWriteTimeVariables())
-        .containsExactly(CQLIdentifier.fromInternal("MyTimestamp"));
+        .containsExactly(CQLWord.fromInternal("MyTimestamp"));
   }
 
   @Test
@@ -350,9 +349,7 @@ class MappingInspectorTest {
     assertThat(inspector.getWriteTimeVariables())
         .containsExactly(
             new FunctionCall(
-                null,
-                CQLIdentifier.fromInternal("writetime"),
-                CQLIdentifier.fromInternal("My Col 2")));
+                null, CQLWord.fromInternal("writetime"), CQLWord.fromInternal("My Col 2")));
   }
 
   @Test
@@ -365,23 +362,18 @@ class MappingInspectorTest {
             INTERNAL_TIMESTAMP_VARNAME,
             INTERNAL_TTL_VARNAME);
     assertThat(inspector.getExplicitVariables())
-        .containsEntry(
-            new FunctionCall(null, CQLIdentifier.fromInternal("now")),
-            CQLIdentifier.fromCql("col1"))
+        .containsEntry(new FunctionCall(null, CQLWord.fromInternal("now")), CQLWord.fromCql("col1"))
         .containsEntry(
             new FunctionCall(
                 null,
-                CQLIdentifier.fromInternal("max"),
-                CQLIdentifier.fromCql("col1"),
-                CQLIdentifier.fromCql("col2")),
-            CQLIdentifier.fromCql("col2"))
+                CQLWord.fromInternal("max"),
+                CQLWord.fromCql("col1"),
+                CQLWord.fromCql("col2")),
+            CQLWord.fromCql("col2"))
         .containsEntry(
             new FunctionCall(
-                null,
-                CQLIdentifier.fromInternal("plus"),
-                CQLIdentifier.fromCql("col1"),
-                new CQLLiteral("42")),
-            CQLIdentifier.fromCql("col3"));
+                null, CQLWord.fromInternal("plus"), CQLWord.fromCql("col1"), new CQLLiteral("42")),
+            CQLWord.fromCql("col3"));
   }
 
   @Test
@@ -397,10 +389,10 @@ class MappingInspectorTest {
         .containsEntry(
             new FunctionCall(
                 null,
-                CQLIdentifier.fromInternal("MAX"),
-                CQLIdentifier.fromCql("col1"),
-                CQLIdentifier.fromCql("col2")),
-            CQLIdentifier.fromCql("col2"));
+                CQLWord.fromInternal("MAX"),
+                CQLWord.fromCql("col1"),
+                CQLWord.fromCql("col2")),
+            CQLWord.fromCql("col2"));
   }
 
   @Test
@@ -414,27 +406,23 @@ class MappingInspectorTest {
             INTERNAL_TTL_VARNAME);
     assertThat(inspector.getExplicitVariables())
         .containsEntry(
-            new MappedMappingField("fieldA"),
-            new FunctionCall(null, CQLIdentifier.fromInternal("now")))
+            new MappedMappingField("fieldA"), new FunctionCall(null, CQLWord.fromInternal("now")))
         .containsEntry(
             new MappedMappingField("fieldB"),
             new FunctionCall(
                 null,
-                CQLIdentifier.fromInternal("max"),
-                CQLIdentifier.fromCql("col1"),
-                CQLIdentifier.fromCql("col2")))
+                CQLWord.fromInternal("max"),
+                CQLWord.fromCql("col1"),
+                CQLWord.fromCql("col2")))
         .containsEntry(
             new MappedMappingField("fieldC"),
-            new FunctionCall(
-                null, CQLIdentifier.fromInternal("ttl"), CQLIdentifier.fromInternal("a")))
+            new FunctionCall(null, CQLWord.fromInternal("ttl"), CQLWord.fromInternal("a")))
         .containsEntry(
             new MappedMappingField("fieldD"),
-            new FunctionCall(
-                null, CQLIdentifier.fromInternal("writetime"), CQLIdentifier.fromInternal("a")));
+            new FunctionCall(null, CQLWord.fromInternal("writetime"), CQLWord.fromInternal("a")));
     assertThat(inspector.getWriteTimeVariables())
         .containsExactly(
-            new FunctionCall(
-                null, CQLIdentifier.fromInternal("writetime"), CQLIdentifier.fromInternal("a")));
+            new FunctionCall(null, CQLWord.fromInternal("writetime"), CQLWord.fromInternal("a")));
   }
 
   @Test
@@ -451,9 +439,9 @@ class MappingInspectorTest {
             new MappedMappingField("fieldA"),
             new FunctionCall(
                 null,
-                CQLIdentifier.fromInternal("MAX"),
-                CQLIdentifier.fromInternal("My Col 1"),
-                CQLIdentifier.fromInternal("My Col 2")));
+                CQLWord.fromInternal("MAX"),
+                CQLWord.fromInternal("My Col 1"),
+                CQLWord.fromInternal("My Col 2")));
   }
 
   @Test
@@ -477,14 +465,13 @@ class MappingInspectorTest {
             "a,b,c,now()", UNLOAD, MAPPED_ONLY, INTERNAL_TIMESTAMP_VARNAME, INTERNAL_TTL_VARNAME);
     assertThat(inspector.getExplicitVariables())
         .containsEntry(
-            new MappedMappingField("now()"),
-            new FunctionCall(null, CQLIdentifier.fromInternal("now")));
+            new MappedMappingField("now()"), new FunctionCall(null, CQLWord.fromInternal("now")));
     inspector =
         new MappingInspector(
             "a,b,c,now()", UNLOAD, INDEXED_ONLY, INTERNAL_TIMESTAMP_VARNAME, INTERNAL_TTL_VARNAME);
     assertThat(inspector.getExplicitVariables())
         .containsEntry(
-            new IndexedMappingField(3), new FunctionCall(null, CQLIdentifier.fromInternal("now")));
+            new IndexedMappingField(3), new FunctionCall(null, CQLWord.fromInternal("now")));
   }
 
   @Test
@@ -532,8 +519,8 @@ class MappingInspectorTest {
         new MappingInspector(
             " a = c1, a = c2", LOAD, MAPPED_ONLY, INTERNAL_TIMESTAMP_VARNAME, INTERNAL_TTL_VARNAME);
     assertThat(inspector.getExplicitVariables())
-        .containsEntry(new MappedMappingField("a"), CQLIdentifier.fromInternal("c1"))
-        .containsEntry(new MappedMappingField("a"), CQLIdentifier.fromInternal("c2"));
+        .containsEntry(new MappedMappingField("a"), CQLWord.fromInternal("c1"))
+        .containsEntry(new MappedMappingField("a"), CQLWord.fromInternal("c2"));
   }
 
   @Test
@@ -561,8 +548,8 @@ class MappingInspectorTest {
             INTERNAL_TIMESTAMP_VARNAME,
             INTERNAL_TTL_VARNAME);
     assertThat(inspector.getExplicitVariables())
-        .containsEntry(new MappedMappingField("a"), CQLIdentifier.fromInternal("c1"))
-        .containsEntry(new MappedMappingField("b"), CQLIdentifier.fromInternal("c1"));
+        .containsEntry(new MappedMappingField("a"), CQLWord.fromInternal("c1"))
+        .containsEntry(new MappedMappingField("b"), CQLWord.fromInternal("c1"));
   }
 
   @Test
@@ -598,7 +585,7 @@ class MappingInspectorTest {
             " a = c1, a = c1", LOAD, MAPPED_ONLY, INTERNAL_TIMESTAMP_VARNAME, INTERNAL_TTL_VARNAME);
     assertThat(inspector.getExplicitVariables())
         .hasSize(1)
-        .containsEntry(new MappedMappingField("a"), CQLIdentifier.fromInternal("c1"));
+        .containsEntry(new MappedMappingField("a"), CQLWord.fromInternal("c1"));
     inspector =
         new MappingInspector(
             " a = c1, a = c1",
@@ -608,7 +595,7 @@ class MappingInspectorTest {
             INTERNAL_TTL_VARNAME);
     assertThat(inspector.getExplicitVariables())
         .hasSize(1)
-        .containsEntry(new MappedMappingField("a"), CQLIdentifier.fromInternal("c1"));
+        .containsEntry(new MappedMappingField("a"), CQLWord.fromInternal("c1"));
   }
 
   @Test
@@ -657,7 +644,7 @@ class MappingInspectorTest {
             "f1 = c1, f2 = c2",
             LOAD,
             MAPPED_ONLY,
-            CQLIdentifier.fromInternal("c2"),
+            CQLWord.fromInternal("c2"),
             INTERNAL_TTL_VARNAME);
     assertThat(inspector.hasUsingTimestamp()).isTrue();
   }
@@ -694,7 +681,7 @@ class MappingInspectorTest {
             LOAD,
             MAPPED_ONLY,
             INTERNAL_TIMESTAMP_VARNAME,
-            CQLIdentifier.fromInternal("c2"));
+            CQLWord.fromInternal("c2"));
     assertThat(inspector.hasUsingTTL()).isTrue();
   }
 
@@ -722,9 +709,8 @@ class MappingInspectorTest {
         new MappingInspector("\"MyKs1\".\"NOW\"() = c1", LOAD, MAPPED_ONLY, null, null);
     assertThat(inspector.getExplicitVariables())
         .containsEntry(
-            new FunctionCall(
-                CQLIdentifier.fromInternal("MyKs1"), CQLIdentifier.fromInternal("NOW")),
-            CQLIdentifier.fromInternal("c1"));
+            new FunctionCall(CQLWord.fromInternal("MyKs1"), CQLWord.fromInternal("NOW")),
+            CQLWord.fromInternal("c1"));
     inspector =
         new MappingInspector(
             "f1 = \"MyKs1\".\"PLUS\"(\"C1\",\"C2\")", UNLOAD, MAPPED_ONLY, null, null);
@@ -732,9 +718,9 @@ class MappingInspectorTest {
         .containsEntry(
             new MappedMappingField("f1"),
             new FunctionCall(
-                CQLIdentifier.fromInternal("MyKs1"),
-                CQLIdentifier.fromInternal("PLUS"),
-                CQLIdentifier.fromInternal("C1"),
-                CQLIdentifier.fromInternal("C2")));
+                CQLWord.fromInternal("MyKs1"),
+                CQLWord.fromInternal("PLUS"),
+                CQLWord.fromInternal("C1"),
+                CQLWord.fromInternal("C2")));
   }
 }

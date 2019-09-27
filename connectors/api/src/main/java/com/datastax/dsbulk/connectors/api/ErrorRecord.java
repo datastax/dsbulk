@@ -8,7 +8,7 @@
  */
 package com.datastax.dsbulk.connectors.api;
 
-import org.jetbrains.annotations.NotNull;
+import edu.umd.cs.findbugs.annotations.NonNull;
 
 /**
  * A {@link Record} that could not be properly processed.
@@ -20,7 +20,8 @@ import org.jetbrains.annotations.NotNull;
  *       datasource (but subsequent reads are likely to succeed);
  *   <li>When a {@link Connector} fails to write a record to its external datasource (but subsequent
  *       writes are likely to succeed);
- *   <li>When a database {@link com.datastax.driver.core.Row row} cannot be converted into a record.
+ *   <li>When a database {@linkplain com.datastax.oss.driver.api.core.cql.Row row} cannot be
+ *       converted into a record.
  * </ul>
  */
 public interface ErrorRecord extends Record {
@@ -30,6 +31,6 @@ public interface ErrorRecord extends Record {
    *
    * @return the error that prevented this record from being processed.
    */
-  @NotNull
+  @NonNull
   Throwable getError();
 }

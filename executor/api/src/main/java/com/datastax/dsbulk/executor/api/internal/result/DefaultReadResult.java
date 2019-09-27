@@ -8,31 +8,31 @@
  */
 package com.datastax.dsbulk.executor.api.internal.result;
 
-import com.datastax.driver.core.ExecutionInfo;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
+import com.datastax.oss.driver.api.core.cql.ExecutionInfo;
+import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.util.Objects;
 import java.util.Optional;
-import org.jetbrains.annotations.NotNull;
 
 public final class DefaultReadResult extends DefaultResult implements ReadResult {
 
   private final Row row;
 
   public DefaultReadResult(
-      @NotNull Statement statement, @NotNull ExecutionInfo executionInfo, @NotNull Row row) {
+      @NonNull Statement<?> statement, @NonNull ExecutionInfo executionInfo, @NonNull Row row) {
     super(statement, executionInfo);
     this.row = row;
   }
 
-  public DefaultReadResult(@NotNull BulkExecutionException error) {
+  public DefaultReadResult(@NonNull BulkExecutionException error) {
     super(error);
     row = null;
   }
 
-  @NotNull
+  @NonNull
   @Override
   public Optional<Row> getRow() {
     return Optional.ofNullable(row);

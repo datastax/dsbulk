@@ -8,37 +8,34 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
-import static com.datastax.driver.core.DataType.Name.BIGINT;
-import static com.datastax.driver.core.DataType.timestamp;
-
-import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.TypeCodec;
+import com.datastax.dsbulk.commons.codecs.ConvertingCodec;
+import com.datastax.dsbulk.commons.codecs.ExtendedCodecRegistry;
+import com.datastax.dsbulk.commons.codecs.writetime.WriteTimeCodec;
 import com.datastax.dsbulk.connectors.api.Field;
-import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
-import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
-import com.datastax.dsbulk.engine.internal.codecs.writetime.WriteTimeCodec;
+import com.datastax.oss.driver.api.core.type.DataType;
+import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSet;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSetMultimap;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.google.common.collect.ImmutableMultimap;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.reflect.TypeToken;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.time.Instant;
-import java.util.Collection;
 import java.util.Set;
-import org.jetbrains.annotations.NotNull;
 
 public class DefaultMapping implements Mapping {
 
-  private final ImmutableMultimap<Field, CQLIdentifier> fieldsToVariables;
-  private final ImmutableMultimap<CQLIdentifier, Field> variablesToFields;
+  private final ImmutableSetMultimap<Field, CQLWord> fieldsToVariables;
+  private final ImmutableSetMultimap<CQLWord, Field> variablesToFields;
   private final ExtendedCodecRegistry codecRegistry;
   private final Cache<MappingToken, TypeCodec<?>> variablesToCodecs;
-  private final ImmutableSet<CQLIdentifier> writeTimeVariables;
+  private final ImmutableSet<CQLWord> writeTimeVariables;
 
   public DefaultMapping(
-      ImmutableMultimap<Field, CQLIdentifier> fieldsToVariables,
+      ImmutableSetMultimap<Field, CQLWord> fieldsToVariables,
       ExtendedCodecRegistry codecRegistry,
-      ImmutableSet<CQLIdentifier> writeTimeVariables) {
+      ImmutableSet<CQLWord> writeTimeVariables) {
     this.fieldsToVariables = fieldsToVariables;
     this.codecRegistry = codecRegistry;
     this.writeTimeVariables = writeTimeVariables;
@@ -46,36 +43,36 @@ public class DefaultMapping implements Mapping {
     variablesToFields = fieldsToVariables.inverse();
   }
 
-  @NotNull
+  @NonNull
   @Override
-  public Collection<CQLIdentifier> fieldToVariables(@NotNull Field field) {
+  public Set<CQLWord> fieldToVariables(@NonNull Field field) {
     return fieldsToVariables.get(field);
   }
 
-  @NotNull
+  @NonNull
   @Override
-  public Collection<Field> variableToFields(@NotNull CQLIdentifier variable) {
+  public Set<Field> variableToFields(@NonNull CQLWord variable) {
     return variablesToFields.get(variable);
   }
 
-  @NotNull
+  @NonNull
   @Override
   public Set<Field> fields() {
     return fieldsToVariables.keySet();
   }
 
-  @NotNull
+  @NonNull
   @Override
-  public Set<CQLIdentifier> variables() {
+  public Set<CQLWord> variables() {
     return variablesToFields.keySet();
   }
 
-  @NotNull
+  @NonNull
   @Override
   public <T> TypeCodec<T> codec(
-      @NotNull CQLIdentifier variable,
-      @NotNull DataType cqlType,
-      @NotNull TypeToken<? extends T> javaType) {
+      @NonNull CQLWord variable,
+      @NonNull DataType cqlType,
+      @NonNull GenericType<? extends T> javaType) {
     @SuppressWarnings("unchecked")
     TypeCodec<T> codec =
         (TypeCodec<T>)
@@ -83,12 +80,12 @@ public class DefaultMapping implements Mapping {
                 variable,
                 n -> {
                   if (writeTimeVariables.contains(variable)) {
-                    if (cqlType.getName() != BIGINT) {
+                    if (!cqlType.equals(DataTypes.BIGINT)) {
                       throw new IllegalArgumentException(
                           "Cannot create a WriteTimeCodec for " + cqlType);
                     }
                     ConvertingCodec<T, Instant> innerCodec =
-                        codecRegistry.convertingCodecFor(timestamp(), javaType);
+                        codecRegistry.convertingCodecFor(DataTypes.TIMESTAMP, javaType);
                     return new WriteTimeCodec<>(innerCodec);
                   }
                   return codecRegistry.codecFor(cqlType, javaType);

@@ -8,14 +8,13 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
-import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.TypeCodec;
-import com.datastax.driver.core.exceptions.CodecNotFoundException;
 import com.datastax.dsbulk.connectors.api.Field;
-import com.google.common.reflect.TypeToken;
-import java.util.Collection;
+import com.datastax.oss.driver.api.core.type.DataType;
+import com.datastax.oss.driver.api.core.type.codec.CodecNotFoundException;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.util.Set;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * Defines a bidirectional, one-to-one relationship between record fields and CQL columns.
@@ -32,8 +31,8 @@ public interface Mapping {
    * @return the bound statement variables the given field maps to, or an empty collection if the
    *     field does not map to any known bound statement variable.
    */
-  @NotNull
-  Collection<CQLIdentifier> fieldToVariables(@NotNull Field field);
+  @NonNull
+  Set<CQLWord> fieldToVariables(@NonNull Field field);
 
   /**
    * Maps the given row variable to a field.
@@ -42,8 +41,8 @@ public interface Mapping {
    * @return the fields the given variable maps to, or an empty collection if the variable does not
    *     map to any known field.
    */
-  @NotNull
-  Collection<Field> variableToFields(@NotNull CQLIdentifier variable);
+  @NonNull
+  Set<Field> variableToFields(@NonNull CQLWord variable);
 
   /**
    * Returns the codec to use for the given bound statement or row variable.
@@ -58,11 +57,11 @@ public interface Mapping {
    * @return the codec to use; never {@code null}.
    * @throws CodecNotFoundException if a suitable codec cannot be found.
    */
-  @NotNull
+  @NonNull
   <T> TypeCodec<T> codec(
-      @NotNull CQLIdentifier variable,
-      @NotNull DataType cqlType,
-      @NotNull TypeToken<? extends T> javaType)
+      @NonNull CQLWord variable,
+      @NonNull DataType cqlType,
+      @NonNull GenericType<? extends T> javaType)
       throws CodecNotFoundException;
 
   /**
@@ -70,7 +69,7 @@ public interface Mapping {
    *
    * @return the fields in this mapping.
    */
-  @NotNull
+  @NonNull
   Set<Field> fields();
 
   /**
@@ -78,6 +77,6 @@ public interface Mapping {
    *
    * @return the variables in this mapping.
    */
-  @NotNull
-  Set<CQLIdentifier> variables();
+  @NonNull
+  Set<CQLWord> variables();
 }

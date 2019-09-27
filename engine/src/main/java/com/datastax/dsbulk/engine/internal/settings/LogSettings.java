@@ -16,20 +16,21 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.Appender;
 import ch.qos.logback.core.FileAppender;
 import ch.qos.logback.core.filter.Filter;
-import com.datastax.driver.core.Cluster;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
+import com.datastax.dsbulk.commons.internal.format.row.RowFormatter;
+import com.datastax.dsbulk.commons.internal.format.statement.StatementFormatVerbosity;
+import com.datastax.dsbulk.commons.internal.format.statement.StatementFormatter;
 import com.datastax.dsbulk.engine.WorkflowType;
+import com.datastax.dsbulk.engine.internal.format.statement.BulkBoundStatementPrinter;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
-import com.datastax.dsbulk.engine.internal.log.row.RowFormatter;
-import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatVerbosity;
-import com.datastax.dsbulk.engine.internal.log.statement.StatementFormatter;
 import com.datastax.dsbulk.engine.internal.log.threshold.ErrorThreshold;
 import com.datastax.dsbulk.engine.internal.utils.HelpUtils;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableList;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
+import com.datastax.oss.driver.shaded.guava.common.base.Joiner;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigRenderOptions;
@@ -214,18 +215,19 @@ public class LogSettings {
     }
   }
 
-  public LogManager newLogManager(WorkflowType workflowType, Cluster cluster) {
+  public LogManager newLogManager(WorkflowType workflowType, CqlSession session) {
     StatementFormatter statementFormatter =
         StatementFormatter.builder()
             .withMaxQueryStringLength(maxQueryStringLength)
             .withMaxBoundValueLength(maxBoundValueLength)
             .withMaxBoundValues(maxBoundValues)
             .withMaxInnerStatements(maxInnerStatements)
+            .addStatementPrinters(new BulkBoundStatementPrinter())
             .build();
     RowFormatter rowFormatter = new RowFormatter(maxResultSetValueLength, maxResultSetValues);
     return new LogManager(
         workflowType,
-        cluster,
+        session,
         operationDirectory,
         errorThreshold,
         queryWarningsThreshold,
@@ -282,9 +284,12 @@ public class LogSettings {
     ch.qos.logback.classic.Logger dsbulkLogger =
         (ch.qos.logback.classic.Logger) LoggerFactory.getLogger("com.datastax.dsbulk");
     dsbulkLogger.setLevel(Level.DEBUG);
-    ch.qos.logback.classic.Logger driverLogger =
-        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger("com.datastax.driver");
-    driverLogger.setLevel(Level.INFO);
+    ch.qos.logback.classic.Logger ossDriverLogger =
+        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger("com.datastax.oss.driver");
+    ossDriverLogger.setLevel(Level.INFO);
+    ch.qos.logback.classic.Logger dseDriverLogger =
+        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger("com.datastax.dse.driver");
+    dseDriverLogger.setLevel(Level.INFO);
     ch.qos.logback.classic.Logger nettyLogger =
         (ch.qos.logback.classic.Logger) LoggerFactory.getLogger("io.netty");
     nettyLogger.setLevel(Level.INFO);

@@ -8,27 +8,27 @@
  */
 package com.datastax.dsbulk.executor.api.internal.result;
 
-import com.datastax.driver.core.ExecutionInfo;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.result.Result;
+import com.datastax.oss.driver.api.core.cql.ExecutionInfo;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.util.Objects;
 import java.util.Optional;
-import org.jetbrains.annotations.NotNull;
 
 abstract class DefaultResult implements Result {
 
-  private final Statement statement;
+  private final Statement<?> statement;
   private final ExecutionInfo executionInfo;
   private final BulkExecutionException error;
 
-  protected DefaultResult(@NotNull Statement statement, @NotNull ExecutionInfo executionInfo) {
+  protected DefaultResult(@NonNull Statement<?> statement, @NonNull ExecutionInfo executionInfo) {
     this.statement = statement;
     this.executionInfo = executionInfo;
     this.error = null;
   }
 
-  protected DefaultResult(@NotNull BulkExecutionException error) {
+  protected DefaultResult(@NonNull BulkExecutionException error) {
     this.statement = error.getStatement();
     this.error = error;
     this.executionInfo = null;
@@ -39,19 +39,18 @@ abstract class DefaultResult implements Result {
     return error == null;
   }
 
-  @NotNull
   @Override
-  public Statement getStatement() {
+  public @NonNull Statement<?> getStatement() {
     return statement;
   }
 
-  @NotNull
+  @NonNull
   @Override
   public Optional<BulkExecutionException> getError() {
     return Optional.ofNullable(error);
   }
 
-  @NotNull
+  @NonNull
   @Override
   public Optional<ExecutionInfo> getExecutionInfo() {
     return Optional.ofNullable(executionInfo);
@@ -67,8 +66,8 @@ abstract class DefaultResult implements Result {
     }
     DefaultResult that = (DefaultResult) o;
     return statement.equals(that.statement)
-        && (Objects.equals(executionInfo, that.executionInfo))
-        && (Objects.equals(error, that.error));
+        && Objects.equals(executionInfo, that.executionInfo)
+        && Objects.equals(error, that.error);
   }
 
   @Override
