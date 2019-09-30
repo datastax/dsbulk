@@ -60,21 +60,26 @@ import com.datastax.dsbulk.engine.internal.schema.ReadResultCounter;
 import com.datastax.dsbulk.engine.internal.schema.ReadResultMapper;
 import com.datastax.dsbulk.engine.internal.schema.RecordMapper;
 import com.datastax.dse.driver.api.core.DseProtocolVersion;
+import com.datastax.dse.driver.api.core.metadata.DseNodeProperties;
+import com.datastax.dse.driver.api.core.metadata.schema.DseEdgeMetadata;
+import com.datastax.dse.driver.api.core.metadata.schema.DseGraphKeyspaceMetadata;
+import com.datastax.dse.driver.api.core.metadata.schema.DseGraphTableMetadata;
+import com.datastax.dse.driver.api.core.metadata.schema.DseVertexMetadata;
 import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.DefaultProtocolVersion;
 import com.datastax.oss.driver.api.core.ProtocolVersion;
+import com.datastax.oss.driver.api.core.Version;
 import com.datastax.oss.driver.api.core.context.DriverContext;
 import com.datastax.oss.driver.api.core.cql.BoundStatement;
 import com.datastax.oss.driver.api.core.cql.ColumnDefinitions;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.metadata.Metadata;
+import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.driver.api.core.metadata.schema.ClusteringOrder;
 import com.datastax.oss.driver.api.core.metadata.schema.ColumnMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.IndexMetadata;
-import com.datastax.oss.driver.api.core.metadata.schema.KeyspaceMetadata;
-import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.ViewMetadata;
 import com.datastax.oss.driver.api.core.metadata.token.Token;
 import com.datastax.oss.driver.api.core.metadata.token.TokenRange;
@@ -98,6 +103,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -134,8 +140,8 @@ class SchemaSettingsTest {
   private CqlSession session;
   private DriverContext context;
   private Metadata metadata;
-  private KeyspaceMetadata keyspace;
-  private TableMetadata table;
+  private DseGraphKeyspaceMetadata keyspace;
+  private DseGraphTableMetadata table;
   private PreparedStatement ps;
   private ColumnMetadata col1;
   private ColumnMetadata col2;
@@ -160,8 +166,8 @@ class SchemaSettingsTest {
     when(context.getProtocolVersion()).thenReturn(ProtocolVersion.DEFAULT);
     metadata = mock(Metadata.class);
     DefaultTokenMap tokenMap = mock(DefaultTokenMap.class);
-    keyspace = mock(KeyspaceMetadata.class);
-    table = mock(TableMetadata.class);
+    keyspace = mock(DseGraphKeyspaceMetadata.class);
+    table = mock(DseGraphTableMetadata.class);
     ps = mock(PreparedStatement.class);
     col1 = mock(ColumnMetadata.class);
     col2 = mock(ColumnMetadata.class);
@@ -1563,7 +1569,7 @@ class SchemaSettingsTest {
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
-            "When schema.query is not defined, then schema.keyspace and schema.table must be defined");
+            "When schema.query is not defined, then either schema.keyspace or schema.graph must be defined, and either schema.table, schema.vertex or schema.edge must be defined");
   }
 
   @Test
@@ -1573,7 +1579,7 @@ class SchemaSettingsTest {
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
-            "When schema.query is not defined, then schema.keyspace and schema.table must be defined");
+            "When schema.query is not defined, then either schema.keyspace or schema.graph must be defined, and either schema.table, schema.vertex or schema.edge must be defined");
   }
 
   @Test
@@ -1690,7 +1696,8 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessageContaining("schema.query must not be defined if schema.table is defined");
+        .hasMessageContaining(
+            "schema.query must not be defined if schema.table, schema.vertex or schema.edge are defined");
   }
 
   @Test
@@ -1740,7 +1747,8 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessageContaining("schema.keyspace must be defined if schema.table is defined");
+        .hasMessageContaining(
+            "schema.keyspace or schema.graph must be defined if schema.table, schema.vertex or schema.edge are defined");
   }
 
   @Test
@@ -1811,6 +1819,82 @@ class SchemaSettingsTest {
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
             "Schema mapping entry \"nonExistentCol\" doesn't match any column found in table t1");
+  }
+
+  @Test
+  void should_error_when_graph_options_provided_but_cluster_is_not_compatible() {
+    DseVertexMetadata vertexMetadata = mock(DseVertexMetadata.class);
+    when(table.getVertex()).thenAnswer(x -> Optional.of(vertexMetadata));
+    when(vertexMetadata.getLabelName()).thenReturn(CqlIdentifier.fromInternal("v1"));
+    Node node = mock(Node.class);
+    when(metadata.getNodes()).thenReturn(ImmutableMap.of(UUID.randomUUID(), node));
+
+    Map<String, Object> extras =
+        ImmutableMap.of(DseNodeProperties.DSE_VERSION, Version.parse("6.0.0"));
+    when(node.getExtras()).thenReturn(extras);
+    when(node.toString()).thenReturn("host1");
+    LoaderConfig config = createTestConfig("dsbulk.schema", "graph", "ks", "vertex", "v1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, session, false, true))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Graph operations not available due to incompatible cluster");
+    assertThat(logs)
+        .hasMessageContaining(
+            "Incompatible cluster detected. Graph functionality is only compatible with")
+        .hasMessageContaining("The following nodes do not appear to be running DSE")
+        .hasMessageContaining("host1");
+  }
+
+  @Test
+  void should_error_when_graph_options_provided_but_keyspace_not_graph() {
+    DseVertexMetadata vertexMetadata = mock(DseVertexMetadata.class);
+    when(table.getVertex()).thenAnswer(x -> Optional.of(vertexMetadata));
+    when(vertexMetadata.getLabelName()).thenReturn(CqlIdentifier.fromInternal("v1"));
+    LoaderConfig config = createTestConfig("dsbulk.schema", "graph", "ks", "vertex", "v1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, session, false, true))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Graph operations requested but provided keyspace is not a graph: ks");
+  }
+
+  @Test
+  void should_error_when_graph_options_provided_but_keyspace_not_core_graph() {
+    DseVertexMetadata vertexMetadata = mock(DseVertexMetadata.class);
+    when(table.getVertex()).thenAnswer(x -> Optional.of(vertexMetadata));
+    when(vertexMetadata.getLabelName()).thenReturn(CqlIdentifier.fromInternal("v1"));
+    when(keyspace.getGraphEngine()).thenReturn(Optional.of("Classic"));
+    LoaderConfig config = createTestConfig("dsbulk.schema", "graph", "ks", "vertex", "v1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, session, false, true))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage(
+            "Graph operations requested but provided graph ks was created with an unsupported graph engine: Classic");
+  }
+
+  @Test
+  void should_warn_when_keyspace_is_core_graph_but_non_graph_options_provided() {
+    when(keyspace.getGraphEngine()).thenReturn(Optional.of("Core"));
+    LoaderConfig config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(LOAD, session, true, false);
+    assertThat(logs)
+        .hasMessageContaining(
+            "Provided keyspace is a graph; "
+                + "instead of schema.keyspace and schema.table, please use graph-specific options "
+                + "such as schema.graph, schema.vertex, schema.edge, schema.from and schema.to.");
+  }
+
+  @Test
+  void should_warn_when_keyspace_is_classic_graph_and_workflow_is_load() {
+    when(keyspace.getGraphEngine()).thenReturn(Optional.of("Classic"));
+    LoaderConfig config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(LOAD, session, true, false);
+    assertThat(logs)
+        .hasMessageContaining(
+            "Provided keyspace is a graph created with a legacy graph engine: "
+                + "Classic; attempting to load data into such a keyspace is not supported and "
+                + "may put the graph in an inconsistent state.");
   }
 
   @Test
@@ -2014,6 +2098,60 @@ class SchemaSettingsTest {
   }
 
   @Test
+  void should_error_when_graph_and_keyspace_both_present() {
+    LoaderConfig config = createTestConfig("dsbulk.schema", "keyspace", "ks", "graph", "graph1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("Settings schema.keyspace and schema.graph are mutually exclusive");
+  }
+
+  @Test
+  void should_error_when_table_and_vertex_both_present() {
+    LoaderConfig config = createTestConfig("dsbulk.schema", "table", "t1", "vertex", "v1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("Settings schema.table and schema.vertex are mutually exclusive");
+  }
+
+  @Test
+  void should_error_when_table_and_edge_both_present() {
+    LoaderConfig config = createTestConfig("dsbulk.schema", "table", "t1", "edge", "e1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("Settings schema.table and schema.edge are mutually exclusive");
+  }
+
+  @Test
+  void should_error_when_vertex_and_edge_both_present() {
+    LoaderConfig config = createTestConfig("dsbulk.schema", "vertex", "v1", "edge", "e1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("Settings schema.vertex and schema.edge are mutually exclusive");
+  }
+
+  @Test
+  void should_error_when_edge_without_from_vertex() {
+    LoaderConfig config = createTestConfig("dsbulk.schema", "edge", "e1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("Setting schema.from is required when schema.edge is specified");
+  }
+
+  @Test
+  void should_error_when_edge_without_to_vertex() {
+    LoaderConfig config = createTestConfig("dsbulk.schema", "edge", "e1", "from", "v1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("Setting schema.to is required when schema.edge is specified");
+  }
+
+  @Test
   void should_not_insert_where_clause_in_select_statement_if_already_exists() {
     ColumnDefinitions definitions = mockColumnDefinitions();
     when(ps.getVariableDefinitions()).thenReturn(definitions);
@@ -2149,6 +2287,82 @@ class SchemaSettingsTest {
         C3,
         "solr_query",
         "solr_query");
+  }
+
+  @Test
+  void should_error_when_vertex_non_existent() {
+    LoaderConfig config = createTestConfig("dsbulk.schema", "graph", "ks", "vertex", "v1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("Vertex label v1 does not exist");
+  }
+
+  @Test
+  void should_error_when_vertex_non_existent_but_lower_case_variant_exists() {
+    DseVertexMetadata vertexMetadata = mock(DseVertexMetadata.class);
+    when(table.getVertex()).thenAnswer(x -> Optional.of(vertexMetadata));
+    when(vertexMetadata.getLabelName()).thenReturn(CqlIdentifier.fromInternal("v1"));
+    LoaderConfig config = createTestConfig("dsbulk.schema", "graph", "ks", "vertex", "\"V1\"");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage(
+            "Vertex label \"V1\" does not exist, however a vertex label v1 was found. Did you mean to use -v v1?");
+  }
+
+  @Test
+  void should_error_when_edge_non_existent() {
+    LoaderConfig config =
+        createTestConfig("dsbulk.schema", "graph", "ks", "edge", "e1", "from", "v1", "to", "v2");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage("Edge label e1 from v1 to v2 does not exist");
+  }
+
+  @Test
+  void should_error_when_edge_non_existent_but_lower_case_variant_exists() {
+    DseEdgeMetadata edgeMetadata = mock(DseEdgeMetadata.class);
+    when(table.getEdge()).thenAnswer(x -> Optional.of(edgeMetadata));
+    when(edgeMetadata.getLabelName()).thenReturn(CqlIdentifier.fromInternal("e1"));
+    when(edgeMetadata.getFromLabel()).thenReturn(CqlIdentifier.fromInternal("v1"));
+    when(edgeMetadata.getToLabel()).thenReturn(CqlIdentifier.fromInternal("V2"));
+    LoaderConfig config =
+        createTestConfig(
+            "dsbulk.schema", "graph", "ks", "edge", "\"E1\"", "from", "\"V1\"", "to", "\"V2\"");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessage(
+            "Edge label \"E1\" from \"V1\" to \"V2\" does not exist, however an edge label e1 from v1 to \"V2\" was found. Did you mean to use -e e1 -from v1 -to \"V2\"?");
+  }
+
+  @Test
+  void should_locate_existing_vertex_label() {
+    DseVertexMetadata vertexMetadata = mock(DseVertexMetadata.class);
+    when(table.getVertex()).thenAnswer(v -> Optional.of(vertexMetadata));
+    when(vertexMetadata.getLabelName()).thenReturn(CqlIdentifier.fromInternal("v1"));
+    when(keyspace.getGraphEngine()).thenReturn(Optional.of("Core"));
+    LoaderConfig config = createTestConfig("dsbulk.schema", "graph", "ks", "vertex", "v1");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(LOAD, session, true, false);
+    assertThat(getInternalState(schemaSettings, "table")).isSameAs(table);
+  }
+
+  @Test
+  void should_locate_existing_edge_label() {
+    DseEdgeMetadata edgeMetadata = mock(DseEdgeMetadata.class);
+    when(table.getEdge()).thenAnswer(x -> Optional.of(edgeMetadata));
+    when(edgeMetadata.getLabelName()).thenReturn(CqlIdentifier.fromInternal("e1"));
+    when(edgeMetadata.getFromLabel()).thenReturn(CqlIdentifier.fromInternal("v1"));
+    when(edgeMetadata.getToLabel()).thenReturn(CqlIdentifier.fromInternal("v2"));
+    when(keyspace.getGraphEngine()).thenReturn(Optional.of("Core"));
+    LoaderConfig config =
+        createTestConfig("dsbulk.schema", "graph", "ks", "edge", "e1", "from", "v1", "to", "v2");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(LOAD, session, true, false);
+    assertThat(getInternalState(schemaSettings, "table")).isSameAs(table);
   }
 
   private static void assertMapping(DefaultMapping mapping, Object... fieldsAndVars) {

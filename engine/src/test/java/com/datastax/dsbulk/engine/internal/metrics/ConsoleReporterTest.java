@@ -23,6 +23,7 @@ import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
 import com.datastax.dsbulk.commons.tests.logging.StreamType;
+import com.datastax.dsbulk.engine.internal.settings.RowType;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
@@ -71,6 +72,7 @@ class ConsoleReporterTest {
   static Stream<Arguments> arguments() {
     return Stream.of(
         Arguments.of(
+            RowType.REGULAR,
             false,
             -1,
             false,
@@ -80,6 +82,7 @@ class ConsoleReporterTest {
                 + "100,000 |      1 | 10,000 | 50.00 | 100.00 | 250.00"
                 + System.lineSeparator()),
         Arguments.of(
+            RowType.REGULAR,
             false,
             -1,
             true,
@@ -89,6 +92,7 @@ class ConsoleReporterTest {
                 + "100,000 |      1 | 10,000 | 50.00 | 100.00 | 250.00 |   32.00"
                 + System.lineSeparator()),
         Arguments.of(
+            RowType.REGULAR,
             false,
             100000,
             false,
@@ -98,6 +102,7 @@ class ConsoleReporterTest {
                 + "100,000 |      1 |     100% | 10,000 | 50.00 | 100.00 | 250.00"
                 + System.lineSeparator()),
         Arguments.of(
+            RowType.REGULAR,
             false,
             100000,
             true,
@@ -107,6 +112,7 @@ class ConsoleReporterTest {
                 + "100,000 |      1 |     100% | 10,000 | 50.00 | 100.00 | 250.00 |   32.00"
                 + System.lineSeparator()),
         Arguments.of(
+            RowType.REGULAR,
             true,
             -1,
             false,
@@ -116,6 +122,7 @@ class ConsoleReporterTest {
                 + "100,000 |      1 | 10,000 | 1.00 |   0.10 | 50.00 | 100.00 | 250.00"
                 + System.lineSeparator()),
         Arguments.of(
+            RowType.REGULAR,
             true,
             -1,
             true,
@@ -125,6 +132,7 @@ class ConsoleReporterTest {
                 + "100,000 |      1 | 10,000 | 1.00 |   0.10 | 50.00 | 100.00 | 250.00 |   32.00"
                 + System.lineSeparator()),
         Arguments.of(
+            RowType.REGULAR,
             true,
             100000,
             false,
@@ -134,6 +142,7 @@ class ConsoleReporterTest {
                 + "100,000 |      1 |     100% | 10,000 | 1.00 |   0.10 | 50.00 | 100.00 | 250.00"
                 + System.lineSeparator()),
         Arguments.of(
+            RowType.REGULAR,
             true,
             100000,
             true,
@@ -141,6 +150,169 @@ class ConsoleReporterTest {
                 + "  total | failed | achieved | rows/s | mb/s | kb/row | p50ms |  p99ms | p999ms | batches"
                 + System.lineSeparator()
                 + "100,000 |      1 |     100% | 10,000 | 1.00 |   0.10 | 50.00 | 100.00 | 250.00 |   32.00"
+                + System.lineSeparator()),
+        // Vertices
+        Arguments.of(
+            RowType.VERTEX,
+            false,
+            -1,
+            false,
+            ""
+                + "  total | failed | vertices/s | p50ms |  p99ms | p999ms"
+                + System.lineSeparator()
+                + "100,000 |      1 |     10,000 | 50.00 | 100.00 | 250.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.VERTEX,
+            false,
+            -1,
+            true,
+            ""
+                + "  total | failed | vertices/s | p50ms |  p99ms | p999ms | batches"
+                + System.lineSeparator()
+                + "100,000 |      1 |     10,000 | 50.00 | 100.00 | 250.00 |   32.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.VERTEX,
+            false,
+            100000,
+            false,
+            ""
+                + "  total | failed | achieved | vertices/s | p50ms |  p99ms | p999ms"
+                + System.lineSeparator()
+                + "100,000 |      1 |     100% |     10,000 | 50.00 | 100.00 | 250.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.VERTEX,
+            false,
+            100000,
+            true,
+            ""
+                + "  total | failed | achieved | vertices/s | p50ms |  p99ms | p999ms | batches"
+                + System.lineSeparator()
+                + "100,000 |      1 |     100% |     10,000 | 50.00 | 100.00 | 250.00 |   32.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.VERTEX,
+            true,
+            -1,
+            false,
+            ""
+                + "  total | failed | vertices/s | mb/s | kb/vertex | p50ms |  p99ms | p999ms"
+                + System.lineSeparator()
+                + "100,000 |      1 |     10,000 | 1.00 |      0.10 | 50.00 | 100.00 | 250.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.VERTEX,
+            true,
+            -1,
+            true,
+            ""
+                + "  total | failed | vertices/s | mb/s | kb/vertex | p50ms |  p99ms | p999ms | batches"
+                + System.lineSeparator()
+                + "100,000 |      1 |     10,000 | 1.00 |      0.10 | 50.00 | 100.00 | 250.00 |   32.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.VERTEX,
+            true,
+            100000,
+            false,
+            ""
+                + "  total | failed | achieved | vertices/s | mb/s | kb/vertex | p50ms |  p99ms | p999ms"
+                + System.lineSeparator()
+                + "100,000 |      1 |     100% |     10,000 | 1.00 |      0.10 | 50.00 | 100.00 | 250.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.VERTEX,
+            true,
+            100000,
+            true,
+            ""
+                + "  total | failed | achieved | vertices/s | mb/s | kb/vertex | p50ms |  p99ms | p999ms | batches"
+                + System.lineSeparator()
+                + "100,000 |      1 |     100% |     10,000 | 1.00 |      0.10 | 50.00 | 100.00 | 250.00 |   32.00"
+                + System.lineSeparator()),
+
+        // Edges
+        Arguments.of(
+            RowType.EDGE,
+            false,
+            -1,
+            false,
+            ""
+                + "  total | failed | edges/s | p50ms |  p99ms | p999ms"
+                + System.lineSeparator()
+                + "100,000 |      1 |  10,000 | 50.00 | 100.00 | 250.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.EDGE,
+            false,
+            -1,
+            true,
+            ""
+                + "  total | failed | edges/s | p50ms |  p99ms | p999ms | batches"
+                + System.lineSeparator()
+                + "100,000 |      1 |  10,000 | 50.00 | 100.00 | 250.00 |   32.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.EDGE,
+            false,
+            100000,
+            false,
+            ""
+                + "  total | failed | achieved | edges/s | p50ms |  p99ms | p999ms"
+                + System.lineSeparator()
+                + "100,000 |      1 |     100% |  10,000 | 50.00 | 100.00 | 250.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.EDGE,
+            false,
+            100000,
+            true,
+            ""
+                + "  total | failed | achieved | edges/s | p50ms |  p99ms | p999ms | batches"
+                + System.lineSeparator()
+                + "100,000 |      1 |     100% |  10,000 | 50.00 | 100.00 | 250.00 |   32.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.EDGE,
+            true,
+            -1,
+            false,
+            ""
+                + "  total | failed | edges/s | mb/s | kb/edge | p50ms |  p99ms | p999ms"
+                + System.lineSeparator()
+                + "100,000 |      1 |  10,000 | 1.00 |    0.10 | 50.00 | 100.00 | 250.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.EDGE,
+            true,
+            -1,
+            true,
+            ""
+                + "  total | failed | edges/s | mb/s | kb/edge | p50ms |  p99ms | p999ms | batches"
+                + System.lineSeparator()
+                + "100,000 |      1 |  10,000 | 1.00 |    0.10 | 50.00 | 100.00 | 250.00 |   32.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.EDGE,
+            true,
+            100000,
+            false,
+            ""
+                + "  total | failed | achieved | edges/s | mb/s | kb/edge | p50ms |  p99ms | p999ms"
+                + System.lineSeparator()
+                + "100,000 |      1 |     100% |  10,000 | 1.00 |    0.10 | 50.00 | 100.00 | 250.00"
+                + System.lineSeparator()),
+        Arguments.of(
+            RowType.EDGE,
+            true,
+            100000,
+            true,
+            ""
+                + "  total | failed | achieved | edges/s | mb/s | kb/edge | p50ms |  p99ms | p999ms | batches"
+                + System.lineSeparator()
+                + "100,000 |      1 |     100% |  10,000 | 1.00 |    0.10 | 50.00 | 100.00 | 250.00 |   32.00"
                 + System.lineSeparator()));
   }
 
@@ -158,9 +330,11 @@ class ConsoleReporterTest {
     when(batchSizes.getMean()).thenReturn(32d); // 32 stmts per batch in average
   }
 
-  @ParameterizedTest(name = "[{index}] trackThroughput = {0} expectedTotal = {1} withBatches = {2}")
+  @ParameterizedTest(
+      name = "[{index}] rowType = {0}, trackThroughput = {1} expectedTotal = {2} withBatches = {3}")
   @MethodSource("arguments")
   void should_report_on_console(
+      RowType rowType,
       boolean trackThroughput,
       long expectedTotal,
       boolean withBatches,
@@ -180,7 +354,8 @@ class ConsoleReporterTest {
             SECONDS,
             MILLISECONDS,
             expectedTotal,
-            new ScheduledThreadPoolExecutor(1));
+            new ScheduledThreadPoolExecutor(1),
+            rowType);
 
     // when
     reporter.report();

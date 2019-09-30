@@ -14,7 +14,7 @@
 
   <groupId>com.datastax.dse</groupId>
   <artifactId>dsbulk-parent</artifactId>
-  <version>1.4.2-SNAPSHOT</version>
+  <version>1.4.2-ngdg-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>DataStax Bulk Loader</name>
@@ -41,7 +41,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <java.version>1.8</java.version>
-    <oss.driver.version>4.4.0</oss.driver.version>
+    <oss.driver.version>4.5.0-ngdg+20200124</oss.driver.version>
     <!--
     When upgrading library versions make sure the resulting binary tarball contains only
     required jars, and that no jar has an offending license.
@@ -407,7 +407,7 @@
         <artifactId>zstd-jni</artifactId>
         <version>${compress.zstd.version}</version>
       </dependency>
-      
+
       <dependency>
         <groupId>org.tukaani</groupId>
         <artifactId>xz</artifactId>
@@ -419,7 +419,7 @@
         <artifactId>dec</artifactId>
         <version>${compress.brotli.version}</version>
       </dependency>
-      
+
       <dependency>
         <groupId>com.datastax.oss.simulacron</groupId>
         <artifactId>simulacron-native-server</artifactId>
