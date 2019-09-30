@@ -19,6 +19,7 @@ import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONNEC
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONNECTION_POOL_REMOTE_SIZE;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONTACT_POINTS;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.HEARTBEAT_INTERVAL;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.LOAD_BALANCING_LOCAL_DATACENTER;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.LOAD_BALANCING_POLICY_CLASS;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_CONSISTENCY;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_DEFAULT_IDEMPOTENCE;
@@ -41,6 +42,7 @@ import com.datastax.dse.driver.api.core.DseSession;
 import com.datastax.dse.driver.api.core.DseSessionBuilder;
 import com.datastax.dse.driver.internal.core.config.typesafe.DefaultDseDriverConfigLoader;
 import com.datastax.dse.driver.internal.core.context.DseDriverContext;
+import com.datastax.oss.driver.api.core.ConsistencyLevel;
 import com.datastax.oss.driver.api.core.DefaultConsistencyLevel;
 import com.datastax.oss.driver.api.core.addresstranslation.AddressTranslator;
 import com.datastax.oss.driver.api.core.auth.AuthProvider;
@@ -52,14 +54,18 @@ import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.driver.api.core.session.ProgrammaticArguments;
 import com.datastax.oss.driver.api.core.time.TimestampGenerator;
 import com.datastax.oss.driver.internal.core.ssl.SslHandlerFactory;
+import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.net.UnknownHostException;
 import java.security.GeneralSecurityException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -106,7 +112,7 @@ public class DriverSettings {
 
   private static final String POLICY_MAX_RETRIES = POLICY + '.' + "maxRetries";
   private static final String POLICY_LBP_LOCAL_DC = POLICY + '.' + LBP + '.' + "localDc";
-  private static final String POLICY_LBP_WHITE_LIST = POLICY + '.' + LBP + '.' + "whiteList";
+  private static final String POLICY_LBP_ALLOWED_HOSTS = POLICY + '.' + LBP + '.' + "allowedHosts";
 
   // deprecated settings since DAT-303
 
@@ -133,10 +139,9 @@ public class DriverSettings {
 
   private final LoaderConfig config;
 
-  private Map<DriverOption, Object> driverConfig;
+  @VisibleForTesting Map<DriverOption, Object> driverConfig;
   private AuthProvider authProvider;
   private SslHandlerFactory sslHandlerFactory;
-  private String localDc;
   private Predicate<Node> nodeFilter;
 
   DriverSettings(LoaderConfig config) {
@@ -190,13 +195,11 @@ public class DriverSettings {
       driverConfig.put(HEARTBEAT_INTERVAL, config.getDuration(POOLING_HEARTBEAT));
 
       // validate enums upfront to get a better error message
-      config.getEnum(DefaultConsistencyLevel.class, QUERY_CONSISTENCY);
-      driverConfig.put(
-          REQUEST_CONSISTENCY,
-          config.getEnum(DefaultConsistencyLevel.class, QUERY_CONSISTENCY).name());
-      driverConfig.put(
-          REQUEST_SERIAL_CONSISTENCY,
-          config.getEnum(DefaultConsistencyLevel.class, QUERY_SERIALCONSISTENCY).name());
+      ConsistencyLevel cl = config.getEnum(DefaultConsistencyLevel.class, QUERY_CONSISTENCY);
+      ConsistencyLevel serialCl =
+          config.getEnum(DefaultConsistencyLevel.class, QUERY_SERIALCONSISTENCY);
+      driverConfig.put(REQUEST_CONSISTENCY, cl.name());
+      driverConfig.put(REQUEST_SERIAL_CONSISTENCY, serialCl.name());
 
       driverConfig.put(REQUEST_PAGE_SIZE, config.getInt(QUERY_FETCHSIZE));
       driverConfig.put(REQUEST_DEFAULT_IDEMPOTENCE, config.getBoolean(QUERY_IDEMPOTENCE));
@@ -224,14 +227,6 @@ public class DriverSettings {
       authProvider = AuthProviderFactory.createAuthProvider(config);
       sslHandlerFactory = SslHandlerFactoryFactory.createSslHandlerFactory(config);
 
-      String localDc = null;
-      // Default for localDc is null
-      if (config.hasPath(POLICY_LBP_LOCAL_DC)) {
-        localDc = config.getString(POLICY_LBP_LOCAL_DC);
-      }
-
-      List<String> whiteList = config.getStringList(POLICY_LBP_WHITE_LIST);
-
       if (config.hasPath(POLICY_LBP_NAME)) {
         LOGGER.warn(
             "Driver setting {} is obsolete; please remove it from your configuration",
@@ -252,13 +247,6 @@ public class DriverSettings {
             "Driver setting {} is obsolete; please remove it from your configuration",
             POLICY_LBP_TOKEN_AWARE_REPLICA_ORDERING);
       }
-      if (config.hasPath(POLICY_LBP_DC_AWARE_LOCAL_DC)) {
-        LOGGER.warn(
-            "Driver setting {} is deprecated; please use {} instead",
-            POLICY_LBP_DC_AWARE_LOCAL_DC,
-            POLICY_LBP_LOCAL_DC);
-        localDc = config.getString(POLICY_LBP_DC_AWARE_LOCAL_DC);
-      }
       if (config.hasPath(POLICY_LBP_DC_AWARE_ALLOW_REMOTE)) {
         LOGGER.warn(
             "Driver setting {} is obsolete; please remove it from your configuration",
@@ -274,19 +262,46 @@ public class DriverSettings {
             "Driver setting {} is obsolete; please remove it from your configuration",
             POLICY_LBP_WHITE_LIST_CHILD_POLICY);
       }
+
+      String localDc = null;
+      // Default for localDc is null
+      if (config.hasPath(POLICY_LBP_LOCAL_DC)) {
+        localDc = config.getString(POLICY_LBP_LOCAL_DC);
+      }
+      if (config.hasPath(POLICY_LBP_DC_AWARE_LOCAL_DC)) {
+        LOGGER.warn(
+            "Driver setting {} is deprecated; please use {} instead",
+            POLICY_LBP_DC_AWARE_LOCAL_DC,
+            POLICY_LBP_LOCAL_DC);
+        localDc = config.getString(POLICY_LBP_DC_AWARE_LOCAL_DC);
+      }
+      if (localDc != null) {
+        driverConfig.put(LOAD_BALANCING_LOCAL_DATACENTER, localDc);
+      }
+
+      List<String> whiteList = config.getStringList(POLICY_LBP_ALLOWED_HOSTS);
       if (config.hasPath(POLICY_LBP_WHITE_LIST_HOSTS)) {
         LOGGER.warn(
             "Driver setting {} is deprecated; please use {} instead",
             POLICY_LBP_WHITE_LIST_HOSTS,
-            POLICY_LBP_WHITE_LIST);
+            POLICY_LBP_ALLOWED_HOSTS);
         whiteList = config.getStringList(POLICY_LBP_WHITE_LIST_HOSTS);
       }
-
-      this.localDc = localDc;
-
       if (!whiteList.isEmpty()) {
         ImmutableList<SocketAddress> allowedHosts =
-            config.getStringList(POLICY_LBP_WHITE_LIST).stream()
+            config.getStringList(POLICY_LBP_ALLOWED_HOSTS).stream()
+                .flatMap(
+                    host -> {
+                      try {
+                        return Arrays.stream(InetAddress.getAllByName(host));
+                      } catch (UnknownHostException e) {
+                        String msg =
+                            String.format(
+                                "Could not resolve host: %s, please verify your %s setting",
+                                host, POLICY_LBP_ALLOWED_HOSTS);
+                        throw new BulkConfigurationException(msg, e);
+                      }
+                    })
                 .map(host -> new InetSocketAddress(host, port))
                 .collect(ImmutableList.toImmutableList());
         nodeFilter = node -> allowedHosts.contains(node.getEndPoint().resolve());
@@ -340,9 +355,6 @@ public class DriverSettings {
                     return false;
                   }
                 });
-    if (localDc != null) {
-      sessionBuilder.withLocalDatacenter(localDc);
-    }
     if (nodeFilter != null) {
       sessionBuilder.withNodeFilter(nodeFilter);
     }

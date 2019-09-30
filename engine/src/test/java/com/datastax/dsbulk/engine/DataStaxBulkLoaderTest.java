@@ -636,7 +636,7 @@ class DataStaxBulkLoaderTest {
               "address-translator",
               "--driver.policy.lbp.localDc",
               "localDc",
-              "--driver.policy.lbp.whiteList",
+              "--driver.policy.lbp.allowedHosts",
               "wh1, wh2",
               "--driver.policy.maxRetries",
               "29",
@@ -753,7 +753,8 @@ class DataStaxBulkLoaderTest {
     assertThat(result.getString("driver.timestampGenerator")).isEqualTo("ts-gen");
     assertThat(result.getString("driver.addressTranslator")).isEqualTo("address-translator");
     assertThat(result.getString("driver.policy.lbp.localDc")).isEqualTo("localDc");
-    assertThat(result.getStringList("driver.policy.lbp.whiteList")).containsExactly("wh1", "wh2");
+    assertThat(result.getStringList("driver.policy.lbp.allowedHosts"))
+        .containsExactly("wh1", "wh2");
     assertThat(result.getInt("driver.policy.maxRetries")).isEqualTo(29);
     assertThat(result.getBoolean("engine.dryRun")).isTrue();
     assertThat(result.getString("engine.executionId")).isEqualTo("MY_EXEC_ID");

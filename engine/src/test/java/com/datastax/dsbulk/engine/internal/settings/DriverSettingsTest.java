@@ -11,15 +11,20 @@ package com.datastax.dsbulk.engine.internal.settings;
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.datastax.dsbulk.commons.tests.utils.ReflectionUtils.getInternalState;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONNECTION_MAX_REQUESTS;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.LOAD_BALANCING_POLICY_CLASS;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.slf4j.event.Level.WARN;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.commons.tests.simulacron.SimulacronExtension;
 import com.datastax.dsbulk.commons.tests.simulacron.SimulacronUtils;
 import com.datastax.dsbulk.engine.internal.auth.AuthProviderFactory.KeyTabConfiguration;
@@ -64,6 +69,8 @@ import javax.security.auth.login.Configuration;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 @ExtendWith(LogInterceptingExtension.class)
 @ExtendWith(SimulacronExtension.class)
@@ -118,7 +125,7 @@ class DriverSettingsTest {
     assertThat(profile.getBoolean(DefaultDriverOption.REQUEST_DEFAULT_IDEMPOTENCE)).isTrue();
     assertThat(profile.getInt(DefaultDriverOption.CONNECTION_POOL_LOCAL_SIZE)).isEqualTo(8);
     assertThat(profile.getInt(DefaultDriverOption.CONNECTION_POOL_REMOTE_SIZE)).isEqualTo(1);
-    assertThat(profile.getInt(DefaultDriverOption.CONNECTION_MAX_REQUESTS)).isEqualTo(32768);
+    assertThat(profile.getInt(CONNECTION_MAX_REQUESTS)).isEqualTo(32768);
     assertThat(profile.getDuration(DefaultDriverOption.HEARTBEAT_INTERVAL))
         .isEqualTo(Duration.ofSeconds(30));
     assertThat(profile.getDuration(DefaultDriverOption.REQUEST_TIMEOUT))
@@ -127,7 +134,7 @@ class DriverSettingsTest {
         .isEqualTo(AtomicTimestampGenerator.class.getSimpleName());
     assertThat(profile.getString(DefaultDriverOption.ADDRESS_TRANSLATOR_CLASS))
         .isEqualTo(PassThroughAddressTranslator.class.getSimpleName());
-    assertThat(profile.getString(DefaultDriverOption.LOAD_BALANCING_POLICY_CLASS))
+    assertThat(profile.getString(LOAD_BALANCING_POLICY_CLASS))
         .isEqualTo(DCInferringDseLoadBalancingPolicy.class.getName());
     assertThat(profile.getString(DefaultDriverOption.RETRY_POLICY_CLASS))
         .isEqualTo(MultipleRetryPolicy.class.getName());
@@ -1077,6 +1084,60 @@ class DriverSettingsTest {
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
             "Invalid value at 'pooling.heartbeat': No number in duration value 'NotADuration'");
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "pooling.local.requests,1234,pooling.requests",
+    "policy.lbp.dcAwareRoundRobin.localDc,testDC,policy.lbp.localDc",
+    "policy.lbp.whiteList.hosts,[white-list.com],policy.lbp.allowedHosts",
+  })
+  void should_log_warning_when_deprecated_setting_present(
+      String deprecatedSetting,
+      String value,
+      String newSetting,
+      @LogCapture(level = WARN, value = DriverSettings.class) LogInterceptor logs)
+      throws GeneralSecurityException, IOException {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(deprecatedSetting + " = " + value)
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    settings.init(new HashMap<>());
+    assertThat(logs)
+        .hasMessageContaining(
+            String.format(
+                "Driver setting %s is deprecated; please use %s instead",
+                deprecatedSetting, newSetting));
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "pooling.remote.requests,1234",
+    "policy.lbp.name,FooPolicy",
+    "policy.lbp.dse.childPolicy,tokenAware",
+    "policy.lbp.tokenAware.childPolicy,roundRobin",
+    "policy.lbp.tokenAware.replicaOrdering,NEUTRAL",
+    "policy.lbp.dcAwareRoundRobin.allowRemoteDCsForLocalConsistencyLevel,true",
+    "policy.lbp.dcAwareRoundRobin.usedHostsPerRemoteDc,1",
+    "policy.lbp.whiteList.childPolicy,roundRobin",
+  })
+  void should_log_warning_when_obsolete_setting_present(
+      String setting,
+      String value,
+      @LogCapture(level = WARN, value = DriverSettings.class) LogInterceptor logs)
+      throws GeneralSecurityException, IOException {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(setting + " = " + value)
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    settings.init(new HashMap<>());
+    assertThat(logs)
+        .hasMessageContaining(
+            String.format(
+                "Driver setting %s is obsolete; please remove it from your configuration",
+                setting));
   }
 
   private static Node makeHostWithAddress(String host) {

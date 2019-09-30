@@ -1097,7 +1097,7 @@ The datacenter name (commonly dc1, dc2, etc.) local to the machine on which dsbu
 
 Default: **null**.
 
-#### --driver.policy.lbp.whiteList _&lt;list&gt;_
+#### --driver.policy.lbp.allowedHosts _&lt;list&gt;_
 
 List of hosts to white list. This must be a comma-separated list of hosts, each specified by a host-name or ip address. If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use `localhost` as a host-name (since it resolves to both IPv4 and IPv6 addresses on some platforms). If empty, all hosts will be contacted.
 
