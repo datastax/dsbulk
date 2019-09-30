@@ -14,6 +14,7 @@ import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.DEFAULT_CL
 import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD;
 import static com.datastax.dsbulk.commons.tests.utils.SessionUtils.createSimpleKeyspace;
 import static com.datastax.dsbulk.commons.tests.utils.SessionUtils.useKeyspace;
+import static com.datastax.dse.driver.api.core.config.DseDriverOption.GRAPH_SUB_PROTOCOL;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.AUTH_PROVIDER_CLASS;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.AUTH_PROVIDER_PASSWORD;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.AUTH_PROVIDER_USER_NAME;
@@ -161,7 +162,8 @@ public abstract class SessionFactory {
               .withString(NETTY_IO_SHUTDOWN_UNIT, "SECONDS")
               .withInt(NETTY_ADMIN_SHUTDOWN_QUIET_PERIOD, 0)
               .withInt(NETTY_ADMIN_SHUTDOWN_TIMEOUT, 15)
-              .withString(NETTY_ADMIN_SHUTDOWN_UNIT, "SECONDS");
+              .withString(NETTY_ADMIN_SHUTDOWN_UNIT, "SECONDS")
+              .withString(GRAPH_SUB_PROTOCOL, "graph-binary-1.0");
 
       Config settings = ConfigFactory.empty();
       for (String opt : config.settings()) {

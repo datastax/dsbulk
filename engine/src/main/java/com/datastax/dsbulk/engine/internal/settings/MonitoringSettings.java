@@ -73,7 +73,8 @@ public class MonitoringSettings {
       Verbosity verbosity,
       MetricRegistry registry,
       ProtocolVersion protocolVersion,
-      CodecRegistry codecRegistry) {
+      CodecRegistry codecRegistry,
+      RowType rowType) {
     ThreadFactory threadFactory =
         new ThreadFactoryBuilder()
             .setDaemon(true)
@@ -98,6 +99,7 @@ public class MonitoringSettings {
         reportRate,
         batchingEnabled,
         protocolVersion,
-        codecRegistry);
+        codecRegistry,
+        rowType);
   }
 }

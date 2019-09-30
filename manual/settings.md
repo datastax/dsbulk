@@ -212,13 +212,13 @@ Default: **null**.
 
 #### -k,<br />--schema.keyspace<br />--dsbulk.schema.keyspace _&lt;string&gt;_
 
-Keyspace used for loading or unloading data. Keyspace names should not be quoted and are case-sensitive. `MyKeyspace` will match a keyspace named `MyKeyspace` but not `mykeyspace`. Required option if `schema.query` is not specified; otherwise, optional.
+Keyspace used for loading or unloading data. Keyspace names should not be quoted and are case-sensitive. `MyKeyspace` will match a keyspace named `MyKeyspace` but not `mykeyspace`. Either `keyspace` or `graph` is required if `query` is not specified or is not qualified with a keyspace name.
 
 Default: **null**.
 
 #### -t,<br />--schema.table<br />--dsbulk.schema.table _&lt;string&gt;_
 
-Table used for loading or unloading data. Table names should not be quoted and are case-sensitive. `MyTable` will match a table named `MyTable` but not `mytable`. Required option if `schema.query` is not specified; otherwise, optional.
+Table used for loading or unloading data. Table names should not be quoted and are case-sensitive. `MyTable` will match a table named `MyTable` but not `mytable`. Either `table`, `vertex` or `edge` is required if `query` is not specified.
 
 Default: **null**.
 
@@ -692,13 +692,13 @@ Schema-specific settings.
 
 #### -k,<br />--schema.keyspace<br />--dsbulk.schema.keyspace _&lt;string&gt;_
 
-Keyspace used for loading or unloading data. Keyspace names should not be quoted and are case-sensitive. `MyKeyspace` will match a keyspace named `MyKeyspace` but not `mykeyspace`. Required option if `schema.query` is not specified; otherwise, optional.
+Keyspace used for loading or unloading data. Keyspace names should not be quoted and are case-sensitive. `MyKeyspace` will match a keyspace named `MyKeyspace` but not `mykeyspace`. Either `keyspace` or `graph` is required if `query` is not specified or is not qualified with a keyspace name.
 
 Default: **null**.
 
 #### -t,<br />--schema.table<br />--dsbulk.schema.table _&lt;string&gt;_
 
-Table used for loading or unloading data. Table names should not be quoted and are case-sensitive. `MyTable` will match a table named `MyTable` but not `mytable`. Required option if `schema.query` is not specified; otherwise, optional.
+Table used for loading or unloading data. Table names should not be quoted and are case-sensitive. `MyTable` will match a table named `MyTable` but not `mytable`. Either `table`, `vertex` or `edge` is required if `query` is not specified.
 
 Default: **null**.
 
@@ -741,6 +741,24 @@ This setting is ignored when counting.
 
 Default: **false**.
 
+#### -e,<br />--schema.edge<br />--dsbulk.schema.edge _&lt;string&gt;_
+
+Edge label used for loading or unloading graph data. This option can only be used for modern graphs created with the Native engine (DSE 6.8+). The edge label must correspond to an existing table created with the `WITH EDGE LABEL` option; also, when `edge` is specified, then `from` and `to` must be specified as well. Edge labels should not be quoted and are case-sensitive. `MyEdge` will match a label named `MyEdge` but not `myedge`. Either `table`, `vertex` or `edge` is required if `query` is not specified.
+
+Default: **null**.
+
+#### -from,<br />--schema.from<br />--dsbulk.schema.from _&lt;string&gt;_
+
+The name of the edge's incoming vertex label, for loading or unloading graph data. This option can only be used for modern graphs created with the Native engine (DSE 6.8+). This option is mandatory when `edge` is specified; ignored otherwise. Vertex labels should not be quoted and are case-sensitive. `MyVertex` will match a label named `MyVertex` but not `myvertex`.
+
+Default: **null**.
+
+#### -g,<br />--schema.graph<br />--dsbulk.schema.graph _&lt;string&gt;_
+
+Graph name used for loading or unloading graph data. This option can only be used for modern graphs created with the Native engine (DSE 6.8+). Graph names should not be quoted and are case-sensitive. `MyGraph` will match a graph named `MyGraph` but not `mygraph`. Either `keyspace` or `graph` is required if `query` is not specified or is not qualified with a keyspace name.
+
+Default: **null**.
+
 #### --schema.nullToUnset<br />--dsbulk.schema.nullToUnset _&lt;boolean&gt;_
 
 Specify whether to map `null` input values to "unset" in the database, i.e., don't modify a potentially pre-existing value of this field for this row. Valid for load scenarios, otherwise ignore. Note that setting to false creates tombstones to represent `null`.
@@ -761,9 +779,11 @@ For unloading and counting, the statement can be any regular `SELECT` statement.
 
 Statements can use both named and positional bound variables. Named bound variables should be preferred, unless the protocol version in use does not allow them; they usually have names matching those of the columns in the destination table, but this is not a strict requirement; it is, however, required that their names match those of fields specified in the mapping. Positional variables can also be used, and will be named after their corresponding column in the destination table.
 
+When loading and unloading graph data, the query must be provided in plain CQL; Gremlin queries are not supported.
+
 Note: The query is parsed to discover which bound variables are present, and to map the variables correctly to fields.
 
-See *schema.mapping* setting for more information.
+See *mapping* setting for more information.
 
 Default: **null**.
 
@@ -786,6 +806,18 @@ Default: **-1**.
 The number of token range splits in which to divide the token ring. In other words, this setting determines how many read requests will be generated in order to read an entire table. Only used when unloading and counting; ignored otherwise. Note that the actual number of splits may be slightly greater or lesser than the number specified here, depending on the actual cluster topology and token ownership. Also, it is not possible to generate fewer splits than the total number of primary token ranges in the cluster, so the actual number of splits is always equal to or greater than that number. Set this to higher values if you experience timeouts when reading from DSE, specially if paging is disabled. The special syntax `NC` can be used to specify a number that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 splits.
 
 Default: **"8C"**.
+
+#### -to,<br />--schema.to<br />--dsbulk.schema.to _&lt;string&gt;_
+
+The name of the edge's outgoing vertex label, for loading or unloading graph data. This option can only be used for modern graphs created with the Native engine (DSE 6.8+). This option is mandatory when `edge` is specified; ignored otherwise. Vertex labels should not be quoted and are case-sensitive. `MyVertex` will match a label named `MyVertex` but not `myvertex`.
+
+Default: **null**.
+
+#### -v,<br />--schema.vertex<br />--dsbulk.schema.vertex _&lt;string&gt;_
+
+Vertex label used for loading or unloading graph data. This option can only be used for modern graphs created with the Native engine (DSE 6.8+). The vertex label must correspond to an existing table created with the `WITH VERTEX LABEL` option. Vertex labels should not be quoted and are case-sensitive. `MyVertex` will match a label named `MyVertex` but not `myvertex`. Either `table`, `vertex` or `edge` is required if `query` is not specified.
+
+Default: **null**.
 
 <a name="batch"></a>
 ## Batch Settings

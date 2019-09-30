@@ -48,4 +48,12 @@ public abstract class CQLUtils {
     }
     return SimpleStatement.newInstance(sb.append('}').toString());
   }
+
+  public static SimpleStatement truncateTable(String keyspace, String table) {
+    return SimpleStatement.newInstance(
+        "TRUNCATE "
+            + CqlIdentifier.fromInternal(keyspace).asCql(true)
+            + "."
+            + CqlIdentifier.fromInternal(table).asCql(true));
+  }
 }

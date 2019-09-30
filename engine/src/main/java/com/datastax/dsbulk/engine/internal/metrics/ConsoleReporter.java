@@ -21,6 +21,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.ScheduledReporter;
 import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.Timer;
+import com.datastax.dsbulk.engine.internal.settings.RowType;
 import com.datastax.dsbulk.engine.internal.utils.ConsoleUtils;
 import com.datastax.dsbulk.executor.api.listener.MetricsCollectingExecutionListener;
 import edu.umd.cs.findbugs.annotations.NonNull;
@@ -57,6 +58,7 @@ public class ConsoleReporter extends ScheduledReporter {
   private final InterceptingPrintStream stderr;
   private final String rateUnit;
   private final String durationUnit;
+  private final RowType rowType;
 
   ConsoleReporter(
       MetricRegistry registry,
@@ -69,7 +71,8 @@ public class ConsoleReporter extends ScheduledReporter {
       TimeUnit rateUnit,
       TimeUnit durationUnit,
       long expectedTotal,
-      ScheduledExecutorService scheduler) {
+      ScheduledExecutorService scheduler,
+      RowType rowType) {
     super(registry, REPORTER_NAME, (name, metric) -> true, rateUnit, durationUnit, scheduler);
     this.running = running;
     this.total = total;
@@ -80,6 +83,7 @@ public class ConsoleReporter extends ScheduledReporter {
     this.expectedTotal = expectedTotal;
     this.rateUnit = getAbbreviatedUnit(rateUnit);
     this.durationUnit = getAbbreviatedUnit(durationUnit);
+    this.rowType = rowType;
     // This reporter expects System.err to be an ANSI-ready stream, see LogSettings.
     stderr = new InterceptingPrintStream(System.err);
     System.setErr(stderr);
@@ -170,7 +174,7 @@ public class ConsoleReporter extends ScheduledReporter {
     private void appendThroughputInRows(double throughputInRows) {
       double rowsPerUnit = convertRate(throughputInRows);
       String rowsPerUnitStr = format("%,.0f", rowsPerUnit);
-      String rowsPerUnitLabel = "rows/" + rateUnit;
+      String rowsPerUnitLabel = rowType.plural() + "/" + rateUnit;
       int rowsPerUnitLength = max(rowsPerUnitLabel.length(), rowsPerUnitStr.length());
       header = header.a(" | ").a(leftPad(rowsPerUnitLabel, rowsPerUnitLength));
       message = message.reset().a(" | ").fgGreen().a(leftPad(rowsPerUnitStr, rowsPerUnitLength));
@@ -184,13 +188,13 @@ public class ConsoleReporter extends ScheduledReporter {
       String kbPerRowStr = format("%,.2f", kbPerRow);
       String mbPerRateUnitLabel = "mb/" + rateUnit;
       int mbPerUnitLength = max(mbPerRateUnitLabel.length(), mbPerUnitStr.length());
-      int kbPerRowLength = max("kb/row".length(), kbPerRowStr.length());
+      int kbPerRowLength = max(("kb/" + rowType.singular()).length(), kbPerRowStr.length());
       header =
           header
               .a(" | ")
               .a(leftPad(mbPerRateUnitLabel, mbPerUnitLength))
               .a(" | ")
-              .a(leftPad("kb/row", kbPerRowLength));
+              .a(leftPad("kb/" + rowType.singular(), kbPerRowLength));
       message =
           message
               .reset()

@@ -138,7 +138,8 @@ public class LoadWorkflow implements Workflow {
             logSettings.getVerbosity(),
             session.getMetrics().map(Metrics::getRegistry).orElse(new MetricRegistry()),
             session.getContext().getProtocolVersion(),
-            session.getContext().getCodecRegistry());
+            session.getContext().getCodecRegistry(),
+            schemaSettings.getRowType());
     metricsManager.init();
     executor = executorSettings.newWriteExecutor(session, metricsManager.getExecutionListener());
     ExtendedCodecRegistry codecRegistry =

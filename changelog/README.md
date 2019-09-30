@@ -1,8 +1,11 @@
 ## Changelog
 
-## 1.4.2 (in progress)
+## 1.5.0 (in progress)
 
-- [improvement] DAT-525: Update DSBulk to unified driver
+- [improvement] DAT-525: Update DSBulk to unified driver.
+- [new feature] DAT-354: Add support for DSE Graph to DSBulk.
+- [improvement] DAT-361: Display metrics in vertices or edges per second in graph mode.
+
 
 ## 1.4.1
 
