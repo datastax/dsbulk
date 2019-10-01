@@ -22,9 +22,6 @@ import com.datastax.dse.driver.api.core.data.time.DateRange;
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.protocol.internal.util.Bytes;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import io.netty.util.concurrent.FastThreadLocal;
@@ -1024,27 +1021,6 @@ public class CodecUtils {
     } else {
       return new Locale(language);
     }
-  }
-
-  /**
-   * The object mapper to use for converting Json nodes to and from Java types in Json codecs.
-   *
-   * <p>This is not the object mapper used by the Json connector to read and write Json files.
-   *
-   * @return The object mapper to use for converting Json nodes to and from Java types in Json
-   *     codecs.
-   */
-  @VisibleForTesting
-  public static ObjectMapper getObjectMapper() {
-    ObjectMapper objectMapper = new ObjectMapper();
-    objectMapper.setNodeFactory(JSON_NODE_FACTORY);
-    // create a somewhat lenient mapper that recognizes a slightly relaxed Json syntax when parsing
-    objectMapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
-    objectMapper.configure(JsonParser.Feature.ALLOW_MISSING_VALUES, true);
-    objectMapper.configure(JsonParser.Feature.ALLOW_NON_NUMERIC_NUMBERS, true);
-    objectMapper.configure(JsonParser.Feature.ALLOW_SINGLE_QUOTES, true);
-    objectMapper.configure(DeserializationFeature.FAIL_ON_TRAILING_TOKENS, true);
-    return objectMapper;
   }
 
   public static Map<String, Boolean> getBooleanInputWords(List<String> list) {
