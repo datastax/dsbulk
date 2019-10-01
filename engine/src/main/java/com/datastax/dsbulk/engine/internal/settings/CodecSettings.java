@@ -22,9 +22,10 @@ import com.datastax.dsbulk.engine.internal.codecs.util.TemporalFormat;
 import com.datastax.dsbulk.engine.internal.codecs.util.TimeUUIDGenerator;
 import com.datastax.dsbulk.engine.internal.codecs.util.ToStringNumberFormat;
 import com.datastax.dsbulk.engine.internal.codecs.util.ZonedTemporalFormat;
-import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -285,15 +286,17 @@ public class CodecSettings {
    */
   @VisibleForTesting
   public static ObjectMapper getObjectMapper() {
-    ObjectMapper objectMapper = new ObjectMapper();
-    objectMapper.setNodeFactory(JSON_NODE_FACTORY);
-    // create a somewhat lenient mapper that recognizes a slightly relaxed Json syntax when parsing
-    objectMapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
-    objectMapper.configure(JsonParser.Feature.ALLOW_MISSING_VALUES, true);
-    objectMapper.configure(JsonParser.Feature.ALLOW_NON_NUMERIC_NUMBERS, true);
-    objectMapper.configure(JsonParser.Feature.ALLOW_SINGLE_QUOTES, true);
-    objectMapper.configure(DeserializationFeature.FAIL_ON_TRAILING_TOKENS, true);
-    return objectMapper;
+    return JsonMapper.builder()
+        .nodeFactory(JSON_NODE_FACTORY)
+        // create a somewhat lenient mapper that recognizes a slightly relaxed Json syntax when
+        // parsing
+        .enable(JsonReadFeature.ALLOW_UNQUOTED_FIELD_NAMES)
+        .enable(JsonReadFeature.ALLOW_MISSING_VALUES)
+        .enable(JsonReadFeature.ALLOW_NON_NUMERIC_NUMBERS)
+        .enable(JsonReadFeature.ALLOW_SINGLE_QUOTES)
+        // fail on trailing tokens: the entire input must be parsed
+        .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+        .build();
   }
 
   private static Map<String, Boolean> getBooleanInputWords(List<String> list) {
