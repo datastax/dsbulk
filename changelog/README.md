@@ -1,6 +1,6 @@
 ## Changelog
 
-## 1.4.0
+## 1.4.0 (in progress)
 
 - [improvement] DAT-303: Update DSBulk to Java DSE Driver 2.x.
 
