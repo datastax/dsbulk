@@ -21,7 +21,7 @@ before_install:
   # Require JDK8 for compiling
   - jdk_switcher use openjdk8
 
-install: mvn test-compile -B -V
+install: mvn install -DskipTests -B -V
 
 script: mvn verify -B -V -Dmaven.main.skip=true -Dmaven.test.skip=true
 
