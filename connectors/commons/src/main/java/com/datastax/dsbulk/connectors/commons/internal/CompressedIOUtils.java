@@ -9,7 +9,7 @@
 package com.datastax.dsbulk.connectors.commons.internal;
 
 import com.datastax.dsbulk.commons.internal.io.IOUtils;
-import com.google.common.collect.ImmutableMap;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;

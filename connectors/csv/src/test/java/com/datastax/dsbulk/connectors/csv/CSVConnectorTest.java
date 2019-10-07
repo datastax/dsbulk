@@ -37,7 +37,7 @@ import com.datastax.dsbulk.connectors.api.internal.DefaultIndexedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.datastax.dsbulk.connectors.commons.internal.CompressedIOUtils;
-import com.google.common.base.Charsets;
+import com.datastax.oss.driver.shaded.guava.common.base.Charsets;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.univocity.parsers.common.TextParsingException;
