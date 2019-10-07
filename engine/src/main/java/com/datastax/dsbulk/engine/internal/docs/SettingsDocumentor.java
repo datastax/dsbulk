@@ -17,7 +17,7 @@ import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.datastax.dsbulk.engine.internal.utils.SettingsUtils;
 import com.datastax.dsbulk.engine.internal.utils.SettingsUtils.Group;
-import com.google.common.base.CharMatcher;
+import com.datastax.oss.driver.shaded.guava.common.base.CharMatcher;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
@@ -41,8 +41,7 @@ public class SettingsDocumentor {
     new SettingsDocumentor(Paths.get(args[0]));
   }
 
-  @SuppressWarnings("WeakerAccess")
-  SettingsDocumentor(Path filePath) throws IOException {
+  private SettingsDocumentor(Path filePath) throws IOException {
     Files.createDirectories(filePath.getParent());
     try (PrintWriter out =
         new PrintWriter(

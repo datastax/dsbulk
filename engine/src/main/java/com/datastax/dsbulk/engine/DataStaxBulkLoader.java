@@ -19,12 +19,13 @@ import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.dsbulk.engine.internal.log.TooManyErrorsException;
 import com.datastax.dsbulk.engine.internal.utils.HelpUtils;
 import com.datastax.dsbulk.engine.internal.utils.OptionUtils;
-import com.google.common.base.Joiner;
+import com.datastax.oss.driver.shaded.guava.common.base.Joiner;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigParseOptions;
 import com.typesafe.config.ConfigValueType;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.BufferedWriter;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
@@ -44,7 +45,6 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.UnrecognizedOptionException;
 import org.fusesource.jansi.AnsiConsole;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -248,7 +248,7 @@ public class DataStaxBulkLoader {
     return connectorName;
   }
 
-  static Config parseCommandLine(String subCommand, @NotNull String[] args)
+  static Config parseCommandLine(String subCommand, @NonNull String[] args)
       throws ParseException, GlobalHelpRequestException, SectionHelpRequestException,
           VersionRequestException {
     // Figure out connector-name from config + command line.

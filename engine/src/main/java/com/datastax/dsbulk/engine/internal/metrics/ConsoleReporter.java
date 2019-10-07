@@ -23,6 +23,8 @@ import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.Timer;
 import com.datastax.dsbulk.engine.internal.utils.HelpUtils;
 import com.datastax.dsbulk.executor.api.listener.MetricsCollectingExecutionListener;
+import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.Locale;
@@ -32,8 +34,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import org.fusesource.jansi.Ansi;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * An {@link ScheduledReporter} that reports useful metrics about ongoing operations to the standard
@@ -363,7 +363,7 @@ public class ConsoleReporter extends ScheduledReporter {
     }
 
     @Override
-    public void print(@NotNull char[] s) {
+    public void print(@NonNull char[] s) {
       synchronized (this) {
         super.print(s);
         stale = true;
@@ -443,7 +443,7 @@ public class ConsoleReporter extends ScheduledReporter {
     }
 
     @Override
-    public void println(@NotNull char[] x) {
+    public void println(@NonNull char[] x) {
       synchronized (this) {
         super.println(x);
         stale = true;
@@ -459,7 +459,7 @@ public class ConsoleReporter extends ScheduledReporter {
     }
 
     @Override
-    public PrintStream printf(@NotNull String format, Object... args) {
+    public PrintStream printf(@NonNull String format, Object... args) {
       synchronized (this) {
         super.printf(format, args);
         stale = true;
@@ -468,7 +468,7 @@ public class ConsoleReporter extends ScheduledReporter {
     }
 
     @Override
-    public PrintStream printf(Locale l, @NotNull String format, Object... args) {
+    public PrintStream printf(Locale l, @NonNull String format, Object... args) {
       synchronized (this) {
         super.printf(l, format, args);
         stale = true;
@@ -477,7 +477,7 @@ public class ConsoleReporter extends ScheduledReporter {
     }
 
     @Override
-    public PrintStream format(@NotNull String format, Object... args) {
+    public PrintStream format(@NonNull String format, Object... args) {
       synchronized (this) {
         super.format(format, args);
         stale = true;
@@ -486,7 +486,7 @@ public class ConsoleReporter extends ScheduledReporter {
     }
 
     @Override
-    public PrintStream format(Locale l, @NotNull String format, Object... args) {
+    public PrintStream format(Locale l, @NonNull String format, Object... args) {
       synchronized (this) {
         super.format(l, format, args);
         stale = true;
@@ -503,7 +503,7 @@ public class ConsoleReporter extends ScheduledReporter {
     }
 
     @Override
-    public void write(@NotNull byte[] buf, int off, int len) {
+    public void write(@NonNull byte[] buf, int off, int len) {
       synchronized (this) {
         super.write(buf, off, len);
         stale = true;

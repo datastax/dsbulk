@@ -8,27 +8,26 @@
  */
 package com.datastax.dsbulk.executor.api.internal.subscription;
 
-import com.datastax.driver.core.ResultSet;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.internal.result.DefaultWriteResult;
 import com.datastax.dsbulk.executor.api.listener.ExecutionContext;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
-import com.google.common.util.concurrent.RateLimiter;
+import com.datastax.oss.driver.api.core.cql.AsyncResultSet;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.shaded.guava.common.util.concurrent.RateLimiter;
+import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.concurrent.Semaphore;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.reactivestreams.Subscriber;
 
-public class WriteResultSubscription extends ResultSubscription<WriteResult, ResultSet> {
+public class WriteResultSubscription extends ResultSubscription<WriteResult, AsyncResultSet> {
 
-  @SuppressWarnings("UnstableApiUsage")
   public WriteResultSubscription(
-      @NotNull Subscriber<? super WriteResult> subscriber,
-      @NotNull Statement statement,
+      @NonNull Subscriber<? super WriteResult> subscriber,
+      @NonNull Statement<?> statement,
       @Nullable ExecutionListener listener,
       @Nullable Semaphore maxConcurrentRequests,
       @Nullable Semaphore maxConcurrentQueries,
@@ -45,7 +44,7 @@ public class WriteResultSubscription extends ResultSubscription<WriteResult, Res
   }
 
   @Override
-  Page toPage(ResultSet rs, ExecutionContext local) {
+  Page toPage(AsyncResultSet rs, ExecutionContext local) {
     Iterator<WriteResult> iterator =
         Collections.<WriteResult>singleton(new DefaultWriteResult(statement, rs)).iterator();
     return new Page(iterator, null);
@@ -72,7 +71,7 @@ public class WriteResultSubscription extends ResultSubscription<WriteResult, Res
   }
 
   @Override
-  void onRequestSuccessful(ResultSet rs, ExecutionContext local) {
+  void onRequestSuccessful(AsyncResultSet rs, ExecutionContext local) {
     if (listener != null) {
       listener.onWriteRequestSuccessful(statement, local);
     }
@@ -83,10 +82,5 @@ public class WriteResultSubscription extends ResultSubscription<WriteResult, Res
     if (listener != null) {
       listener.onWriteRequestFailed(statement, t, local);
     }
-  }
-
-  @Override
-  boolean isLastPage(ResultSet page) {
-    return true;
   }
 }

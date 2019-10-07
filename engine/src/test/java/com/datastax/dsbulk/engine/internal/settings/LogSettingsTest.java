@@ -12,19 +12,13 @@ import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.core.joran.spi.JoranException;
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.CodecRegistry;
-import com.datastax.driver.core.Configuration;
-import com.datastax.driver.core.ProtocolOptions;
-import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.tests.driver.DriverUtils;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
@@ -33,6 +27,7 @@ import com.datastax.dsbulk.engine.internal.log.threshold.ErrorThreshold;
 import com.datastax.dsbulk.engine.internal.log.threshold.RatioErrorThreshold;
 import com.datastax.dsbulk.engine.internal.log.threshold.UnlimitedErrorThreshold;
 import com.datastax.dsbulk.engine.tests.utils.LogUtils;
+import com.datastax.oss.driver.api.core.CqlSession;
 import com.typesafe.config.ConfigFactory;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -50,19 +45,13 @@ class LogSettingsTest {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LogSettingsTest.class);
 
-  private Cluster cluster;
+  private CqlSession session;
 
   private Path tempFolder;
 
   @BeforeEach
   void setUp() {
-    cluster = mock(Cluster.class);
-    Configuration configuration = mock(Configuration.class);
-    ProtocolOptions protocolOptions = mock(ProtocolOptions.class);
-    when(cluster.getConfiguration()).thenReturn(configuration);
-    when(configuration.getProtocolOptions()).thenReturn(protocolOptions);
-    when(protocolOptions.getProtocolVersion()).thenReturn(ProtocolVersion.V4);
-    when(configuration.getCodecRegistry()).thenReturn(CodecRegistry.DEFAULT_INSTANCE);
+    session = DriverUtils.mockSession();
   }
 
   @BeforeEach
@@ -88,7 +77,7 @@ class LogSettingsTest {
     LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.log"));
     LogSettings settings = new LogSettings(config, "test");
     settings.init();
-    try (LogManager logManager = settings.newLogManager(WorkflowType.LOAD, cluster)) {
+    try (LogManager logManager = settings.newLogManager(WorkflowType.LOAD, session)) {
       logManager.init();
       assertThat(logManager).isNotNull();
       assertThat(logManager.getOperationDirectory().toFile().getAbsolutePath())
@@ -176,7 +165,7 @@ class LogSettingsTest {
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
     LogSettings settings = new LogSettings(config, "test");
     settings.init();
-    try (LogManager logManager = settings.newLogManager(WorkflowType.LOAD, cluster)) {
+    try (LogManager logManager = settings.newLogManager(WorkflowType.LOAD, session)) {
       logManager.init();
       assertThat(logManager).isNotNull();
       assertThat(logManager.getOperationDirectory().toFile())
@@ -202,8 +191,9 @@ class LogSettingsTest {
       LOGGER.info("this is a test 2");
       LOGGER.debug("this should not appear");
       // driver log level should be WARN
-      LoggerFactory.getLogger("com.datastax.driver").warn("this is a test 3");
-      LoggerFactory.getLogger("com.datastax.driver").info("this should not appear");
+      LoggerFactory.getLogger("com.datastax.oss.driver").warn("this is a test 3");
+      LoggerFactory.getLogger("com.datastax.oss.driver").info("this should not appear");
+      LoggerFactory.getLogger("com.datastax.dse.driver").info("this should not appear");
       Path logFile = tempFolder.resolve("TEST_EXECUTION_ID").resolve("operation.log");
       assertThat(logFile).exists();
       String contents = String.join("", Files.readAllLines(logFile));

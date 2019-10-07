@@ -8,17 +8,16 @@
  */
 package com.datastax.dsbulk.executor.api.internal.publisher;
 
-import com.datastax.driver.core.ContinuousPagingOptions;
-import com.datastax.driver.core.ContinuousPagingSession;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.internal.subscription.ContinuousReadResultSubscription;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
-import com.google.common.util.concurrent.RateLimiter;
+import com.datastax.dse.driver.api.core.cql.continuous.ContinuousSession;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.shaded.guava.common.util.concurrent.RateLimiter;
+import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import java.util.Objects;
 import java.util.concurrent.Semaphore;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 
@@ -27,12 +26,10 @@ import org.reactivestreams.Subscriber;
  *
  * @see com.datastax.dsbulk.executor.api.AbstractBulkExecutor#readReactive(Statement)
  */
-@SuppressWarnings("UnstableApiUsage")
 public class ContinuousReadResultPublisher implements Publisher<ReadResult> {
 
-  private final @NotNull Statement statement;
-  private final @NotNull ContinuousPagingSession session;
-  private final @NotNull ContinuousPagingOptions options;
+  private final @NonNull Statement<?> statement;
+  private final @NonNull ContinuousSession session;
   private final @Nullable ExecutionListener listener;
   private final @Nullable Semaphore maxConcurrentRequests;
   private final @Nullable Semaphore maxConcurrentQueries;
@@ -44,37 +41,19 @@ public class ContinuousReadResultPublisher implements Publisher<ReadResult> {
    * ExecutionListener} and without throughput regulation.
    *
    * @param statement The {@link Statement} to execute.
-   * @param session The {@link ContinuousPagingSession} to use.
+   * @param session The {@link ContinuousSession} to use.
    * @param failFast whether to fail-fast in case of error.
    */
   public ContinuousReadResultPublisher(
-      @NotNull Statement statement, @NotNull ContinuousPagingSession session, boolean failFast) {
-    this(statement, session, ContinuousPagingOptions.builder().build(), failFast);
-  }
-
-  /**
-   * Creates a new {@link ContinuousReadResultPublisher} with the given paging options, without
-   * {@link ExecutionListener} and without throughput regulation.
-   *
-   * @param statement The {@link Statement} to execute.
-   * @param session The {@link ContinuousPagingSession} to use.
-   * @param options The {@link ContinuousPagingOptions} to use.
-   * @param failFast whether to fail-fast in case of error.
-   */
-  public ContinuousReadResultPublisher(
-      @NotNull Statement statement,
-      @NotNull ContinuousPagingSession session,
-      @NotNull ContinuousPagingOptions options,
-      boolean failFast) {
-    this(statement, session, options, failFast, null, null, null, null);
+      @NonNull Statement<?> statement, @NonNull ContinuousSession session, boolean failFast) {
+    this(statement, session, failFast, null, null, null, null);
   }
 
   /**
    * Creates a new {@link ContinuousReadResultPublisher}.
    *
    * @param statement The {@link Statement} to execute.
-   * @param session The {@link ContinuousPagingSession} to use.
-   * @param options The {@link ContinuousPagingOptions} to use.
+   * @param session The {@link ContinuousSession} to use.
    * @param failFast whether to fail-fast in case of error.
    * @param listener The {@link ExecutionListener} to use.
    * @param maxConcurrentRequests The {@link Semaphore} to use to regulate the amount of in-flight
@@ -84,9 +63,8 @@ public class ContinuousReadResultPublisher implements Publisher<ReadResult> {
    * @param rateLimiter The {@link RateLimiter} to use to regulate throughput.
    */
   public ContinuousReadResultPublisher(
-      @NotNull Statement statement,
-      @NotNull ContinuousPagingSession session,
-      @NotNull ContinuousPagingOptions options,
+      @NonNull Statement<?> statement,
+      @NonNull ContinuousSession session,
       boolean failFast,
       @Nullable ExecutionListener listener,
       @Nullable Semaphore maxConcurrentRequests,
@@ -94,7 +72,6 @@ public class ContinuousReadResultPublisher implements Publisher<ReadResult> {
       @Nullable RateLimiter rateLimiter) {
     this.statement = statement;
     this.session = session;
-    this.options = options;
     this.listener = listener;
     this.maxConcurrentRequests = maxConcurrentRequests;
     this.maxConcurrentQueries = maxConcurrentQueries;
@@ -121,7 +98,7 @@ public class ContinuousReadResultPublisher implements Publisher<ReadResult> {
     try {
       subscriber.onSubscribe(subscription);
       // must be called after onSubscribe
-      subscription.start(() -> session.executeContinuouslyAsync(statement, options));
+      subscription.start(() -> session.executeContinuouslyAsync(statement));
     } catch (Throwable t) {
       // As per rule 2.13: In the case that this rule is violated,
       // any associated Subscription to the Subscriber MUST be considered as

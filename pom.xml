@@ -14,7 +14,7 @@
 
   <groupId>com.datastax.dse</groupId>
   <artifactId>dsbulk-parent</artifactId>
-  <version>1.3.5-SNAPSHOT</version>
+  <version>1.4.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>DataStax Bulk Loader</name>
@@ -41,17 +41,18 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <java.version>1.8</java.version>
+    <oss.driver.version>4.2.1+20190926</oss.driver.version>
+    <dse.driver.version>2.2.1</dse.driver.version>
     <!--
     When upgrading library versions make sure the resulting binary tarball contains only
     required jars, and that no jar has an offending license.
     -->
-    <driver.version>1.8.1</driver.version>
     <reactive-streams.version>1.0.2</reactive-streams.version>
     <rx-java.version>2.2.8</rx-java.version>
     <rx-java-extensions.version>0.20.5</rx-java-extensions.version>
     <reactor.version>Californium-RELEASE</reactor.version>
     <config.version>1.3.3</config.version>
-    <guava.version>26.0-jre</guava.version>
+    <guava.version>25.1-jre</guava.version>
     <netty.version>4.1.34.Final</netty.version>
     <caffeine.version>2.7.0</caffeine.version>
     <jctools.version>2.1.2</jctools.version>
@@ -63,8 +64,8 @@
     <lz4.version>1.5.1</lz4.version>
     <snappy.version>1.1.7.3</snappy.version>
     <hdr.version>2.1.11</hdr.version>
-    <jackson.version>2.9.9</jackson.version>
-    <jackson-databind.version>2.9.9.1</jackson-databind.version>
+    <jackson.version>2.10.0.pr3</jackson.version>
+    <jackson-databind.version>2.10.0.pr3</jackson-databind.version>
     <junit.version>5.4.1</junit.version>
     <univocity.version>2.7.6</univocity.version>
     <assertj.version>3.12.2</assertj.version>
@@ -75,7 +76,7 @@
     <compress.zstd.version>1.4.0-1</compress.zstd.version>
     <compress.xz.version>1.8</compress.xz.version>
     <compress.brotli.version>0.1.2</compress.brotli.version>
-    <simulacron.version>0.8.9</simulacron.version>
+    <simulacron.version>0.8.11</simulacron.version>
     <awaitility.version>3.1.6</awaitility.version>
     <surefire.version>2.22.1</surefire.version>
     <antlr4.version>4.7.2</antlr4.version>
@@ -158,13 +159,25 @@
       <dependency>
         <groupId>com.datastax.dse</groupId>
         <artifactId>dse-java-driver-core</artifactId>
-        <version>${driver.version}</version>
+        <version>${dse.driver.version}</version>
       </dependency>
 
       <dependency>
-        <groupId>com.datastax.dse</groupId>
-        <artifactId>dse-java-driver-extras</artifactId>
-        <version>${driver.version}</version>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>java-driver-core</artifactId>
+        <version>${oss.driver.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>java-driver-test-infra</artifactId>
+        <version>${oss.driver.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
 
       <dependency>
@@ -206,8 +219,8 @@
       </dependency>
 
       <dependency>
-        <groupId>com.google.guava</groupId>
-        <artifactId>guava</artifactId>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>java-driver-shaded-guava</artifactId>
         <version>${guava.version}</version>
       </dependency>
 
@@ -344,9 +357,9 @@
       </dependency>
 
       <dependency>
-        <groupId>org.jetbrains</groupId>
-        <artifactId>annotations</artifactId>
-        <version>15.0</version>
+        <groupId>com.github.spotbugs</groupId>
+        <artifactId>spotbugs-annotations</artifactId>
+        <version>3.1.12</version>
       </dependency>
 
       <dependency>
@@ -442,7 +455,7 @@
       <dependency>
         <groupId>io.undertow</groupId>
         <artifactId>undertow-core</artifactId>
-        <version>2.0.22.Final</version>
+        <version>2.0.25.Final</version>
       </dependency>
 
       <dependency>
@@ -492,6 +505,7 @@
             <failOnWarning>false</failOnWarning>
             <compilerId>javac-with-errorprone</compilerId>
             <forceJavacCompilerUse>true</forceJavacCompilerUse>
+            <useIncrementalCompilation>false</useIncrementalCompilation>
           </configuration>
           <dependencies>
             <dependency>

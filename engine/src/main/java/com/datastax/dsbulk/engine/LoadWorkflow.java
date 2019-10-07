@@ -14,13 +14,12 @@ import static com.datastax.dsbulk.engine.internal.utils.ClusterInformationUtils.
 import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.checkProductCompatibility;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
-import com.datastax.driver.core.Statement;
-import com.datastax.driver.dse.DseCluster;
-import com.datastax.driver.dse.DseSession;
+import com.codahale.metrics.MetricRegistry;
+import com.datastax.dsbulk.commons.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.Record;
-import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
 import com.datastax.dsbulk.engine.internal.schema.RecordMapper;
@@ -38,7 +37,11 @@ import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
 import com.datastax.dsbulk.executor.api.internal.result.EmptyWriteResult;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
 import com.datastax.dsbulk.executor.reactor.writer.ReactorBulkWriter;
-import com.google.common.base.Stopwatch;
+import com.datastax.dse.driver.api.core.DseSession;
+import com.datastax.oss.driver.api.core.cql.BatchableStatement;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.api.core.metrics.Metrics;
+import com.datastax.oss.driver.shaded.guava.common.base.Stopwatch;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
@@ -61,7 +64,7 @@ public class LoadWorkflow implements Workflow {
   private Connector connector;
   private MetricsManager metricsManager;
   private LogManager logManager;
-  private DseCluster cluster;
+  private DseSession session;
   private ReactorBulkWriter executor;
   private boolean batchingEnabled;
   private boolean dryRun;
@@ -70,15 +73,17 @@ public class LoadWorkflow implements Workflow {
   private int writeConcurrency;
   private Scheduler scheduler;
 
-  private Function<Record, Statement> mapper;
-  private Function<Flux<Statement>, Flux<Statement>> batcher;
+  private Function<Record, BatchableStatement<?>> mapper;
+  private Function<Flux<BatchableStatement<?>>, Flux<Statement<?>>> batcher;
   private Function<Flux<Record>, Flux<Record>> totalItemsMonitor;
   private Function<Flux<Record>, Flux<Record>> totalItemsCounter;
   private Function<Flux<Record>, Flux<Record>> failedRecordsMonitor;
-  private Function<Flux<Statement>, Flux<Statement>> failedStatementsMonitor;
+  private Function<Flux<BatchableStatement<?>>, Flux<BatchableStatement<?>>>
+      failedStatementsMonitor;
   private Function<Flux<Record>, Flux<Record>> failedRecordsHandler;
-  private Function<Flux<Statement>, Flux<Statement>> unmappableStatementsHandler;
-  private Function<Flux<Statement>, Flux<Statement>> batcherMonitor;
+  private Function<Flux<BatchableStatement<?>>, Flux<BatchableStatement<?>>>
+      unmappableStatementsHandler;
+  private Function<Flux<Statement<?>>, Flux<Statement<?>>> batcherMonitor;
   private Function<Flux<Void>, Flux<Void>> terminationHandler;
   private Function<Flux<WriteResult>, Flux<WriteResult>> failedWritesHandler;
   private Function<Flux<WriteResult>, Flux<Void>> resultPositionsHndler;
@@ -110,23 +115,20 @@ public class LoadWorkflow implements Workflow {
     monitoringSettings.init();
     codecSettings.init();
     batchSettings.init();
-    driverSettings.init();
     executorSettings.init();
     engineSettings.init();
-    cluster = driverSettings.newCluster();
-    cluster.init();
-    checkProductCompatibility(cluster);
-    driverSettings.checkProtocolVersion(cluster);
-    printDebugInfoAboutCluster(cluster);
+    driverSettings.init(executorSettings.getExecutorConfig());
+    session = driverSettings.newSession(executionId);
+    checkProductCompatibility(session);
+    printDebugInfoAboutCluster(session);
     schemaSettings.init(
         WorkflowType.LOAD,
-        cluster,
+        session,
         connector.supports(INDEXED_RECORDS),
         connector.supports(MAPPED_RECORDS));
-    DseSession session = cluster.connect();
     batchingEnabled = batchSettings.isBatchingEnabled();
     batchBufferSize = batchSettings.getBufferSize();
-    logManager = logSettings.newLogManager(WorkflowType.LOAD, cluster);
+    logManager = logSettings.newLogManager(WorkflowType.LOAD, session);
     logManager.init();
     metricsManager =
         monitoringSettings.newMetricsManager(
@@ -134,21 +136,19 @@ public class LoadWorkflow implements Workflow {
             batchingEnabled,
             logManager.getOperationDirectory(),
             logSettings.getVerbosity(),
-            cluster.getMetrics().getRegistry(),
-            cluster.getConfiguration().getProtocolOptions().getProtocolVersion(),
-            cluster.getConfiguration().getCodecRegistry());
+            session.getMetrics().map(Metrics::getRegistry).orElse(new MetricRegistry()),
+            session.getContext().getProtocolVersion(),
+            session.getContext().getCodecRegistry());
     metricsManager.init();
     executor = executorSettings.newWriteExecutor(session, metricsManager.getExecutionListener());
     ExtendedCodecRegistry codecRegistry =
         codecSettings.createCodecRegistry(
-            cluster.getConfiguration().getCodecRegistry(),
-            schemaSettings.isAllowExtraFields(),
-            schemaSettings.isAllowMissingFields());
+            schemaSettings.isAllowExtraFields(), schemaSettings.isAllowMissingFields());
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, connector.getRecordMetadata(), codecRegistry);
     mapper = recordMapper::map;
     if (batchingEnabled) {
-      batcher = batchSettings.newStatementBatcher(cluster)::batchByGroupingKey;
+      batcher = batchSettings.newStatementBatcher(session)::batchByGroupingKey;
     }
     dryRun = engineSettings.isDryRun();
     if (dryRun) {
@@ -194,13 +194,13 @@ public class LoadWorkflow implements Workflow {
     metricsManager.stop();
     long seconds = timer.elapsed(SECONDS);
     if (logManager.getTotalErrors() == 0) {
-      LOGGER.info("{} completed successfully in {}.", this, WorkflowUtils.formatElapsed(seconds));
+      LOGGER.info("{} completed successfully in {}.", this, StringUtils.formatElapsed(seconds));
     } else {
       LOGGER.warn(
           "{} completed with {} errors in {}.",
           this,
           logManager.getTotalErrors(),
-          WorkflowUtils.formatElapsed(seconds));
+          StringUtils.formatElapsed(seconds));
     }
     return logManager.getTotalErrors() == 0;
   }
@@ -209,7 +209,7 @@ public class LoadWorkflow implements Workflow {
     Flux.defer(() -> connector.readByResource())
         .flatMap(
             records -> {
-              Flux<Statement> stmts =
+              Flux<BatchableStatement<?>> stmts =
                   Flux.from(records)
                       .transform(totalItemsMonitor)
                       .transform(totalItemsCounter)
@@ -218,14 +218,13 @@ public class LoadWorkflow implements Workflow {
                       .map(mapper)
                       .transform(failedStatementsMonitor)
                       .transform(unmappableStatementsHandler);
+              Flux<? extends Statement<?>> grouped;
               if (batchingEnabled) {
-                stmts = stmts.window(batchBufferSize).flatMap(batcher).transform(batcherMonitor);
+                grouped = stmts.window(batchBufferSize).flatMap(batcher).transform(batcherMonitor);
+              } else {
+                grouped = stmts;
               }
-              return executeStatements(stmts)
-                  .transform(queryWarningsHandler)
-                  .transform(failedWritesHandler)
-                  .transform(resultPositionsHndler)
-                  .subscribeOn(scheduler);
+              return executeStatements(grouped).subscribeOn(scheduler);
             },
             numCores)
         .transform(terminationHandler)
@@ -237,7 +236,7 @@ public class LoadWorkflow implements Workflow {
         .window(batchingEnabled ? batchBufferSize : Queues.SMALL_BUFFER_SIZE)
         .flatMap(
             records -> {
-              Flux<Statement> stmts =
+              Flux<BatchableStatement<?>> stmts =
                   records
                       .transform(totalItemsMonitor)
                       .transform(totalItemsCounter)
@@ -246,28 +245,30 @@ public class LoadWorkflow implements Workflow {
                       .map(mapper)
                       .transform(failedStatementsMonitor)
                       .transform(unmappableStatementsHandler);
+              Flux<? extends Statement<?>> grouped;
               if (batchingEnabled) {
-                stmts = stmts.transform(batcher).transform(batcherMonitor);
+                grouped = stmts.transform(batcher).transform(batcherMonitor);
+              } else {
+                grouped = stmts;
               }
-              return executeStatements(stmts)
-                  .transform(queryWarningsHandler)
-                  .transform(failedWritesHandler)
-                  .transform(resultPositionsHndler)
-                  .subscribeOn(scheduler);
+              return executeStatements(grouped).subscribeOn(scheduler);
             },
             numCores)
         .transform(terminationHandler)
         .blockLast();
   }
 
-  private Flux<WriteResult> executeStatements(Flux<Statement> stmts) {
+  private Flux<Void> executeStatements(Flux<? extends Statement<?>> stmts) {
     Flux<WriteResult> results;
     if (dryRun) {
       results = stmts.map(EmptyWriteResult::new);
     } else {
       results = stmts.flatMap(executor::writeReactive, writeConcurrency);
     }
-    return results;
+    return results
+        .transform(queryWarningsHandler)
+        .transform(failedWritesHandler)
+        .transform(resultPositionsHndler);
   }
 
   @Override
@@ -279,7 +280,7 @@ public class LoadWorkflow implements Workflow {
       e = WorkflowUtils.closeQuietly(connector, e);
       e = WorkflowUtils.closeQuietly(scheduler, e);
       e = WorkflowUtils.closeQuietly(executor, e);
-      e = WorkflowUtils.closeQuietly(cluster, e);
+      e = WorkflowUtils.closeQuietly(session, e);
       if (metricsManager != null) {
         metricsManager.reportFinalMetrics();
       }

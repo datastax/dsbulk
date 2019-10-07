@@ -14,15 +14,14 @@ import static com.datastax.dsbulk.engine.internal.utils.ClusterInformationUtils.
 import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.TPC_THRESHOLD;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
-import com.datastax.driver.core.Statement;
-import com.datastax.driver.dse.DseCluster;
-import com.datastax.driver.dse.DseSession;
+import com.codahale.metrics.MetricRegistry;
+import com.datastax.dsbulk.commons.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
-import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
 import com.datastax.dsbulk.engine.internal.schema.ReadResultMapper;
@@ -38,12 +37,15 @@ import com.datastax.dsbulk.engine.internal.settings.SettingsManager;
 import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.datastax.dsbulk.executor.reactor.reader.ReactorBulkReader;
-import com.google.common.base.Stopwatch;
+import com.datastax.dse.driver.api.core.DseSession;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.api.core.metrics.Metrics;
+import com.datastax.oss.driver.shaded.guava.common.base.Stopwatch;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
-import org.jetbrains.annotations.NotNull;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,9 +68,9 @@ public class UnloadWorkflow implements Workflow {
   private ReadResultMapper readResultMapper;
   private MetricsManager metricsManager;
   private LogManager logManager;
-  private DseCluster cluster;
+  private DseSession session;
   private ReactorBulkReader executor;
-  private List<? extends Statement> readStatements;
+  private List<? extends Statement<?>> readStatements;
   private Function<? super Publisher<Record>, ? extends Publisher<Record>> writer;
   private Function<Flux<ReadResult>, Flux<ReadResult>> totalItemsMonitor;
   private Function<Flux<Record>, Flux<Record>> failedRecordsMonitor;
@@ -109,21 +111,18 @@ public class UnloadWorkflow implements Workflow {
     codecSettings.init();
     monitoringSettings.init();
     executorSettings.init();
-    driverSettings.init();
+    driverSettings.init(executorSettings.getExecutorConfig());
     connectorSettings.init();
     connector = connectorSettings.getConnector();
     connector.init();
-    cluster = driverSettings.newCluster();
-    cluster.init();
-    driverSettings.checkProtocolVersion(cluster);
-    printDebugInfoAboutCluster(cluster);
+    session = driverSettings.newSession(executionId);
+    printDebugInfoAboutCluster(session);
     schemaSettings.init(
         WorkflowType.UNLOAD,
-        cluster,
+        session,
         connector.supports(INDEXED_RECORDS),
         connector.supports(MAPPED_RECORDS));
-    DseSession session = cluster.connect();
-    logManager = logSettings.newLogManager(WorkflowType.UNLOAD, cluster);
+    logManager = logSettings.newLogManager(WorkflowType.UNLOAD, session);
     logManager.init();
     metricsManager =
         monitoringSettings.newMetricsManager(
@@ -131,19 +130,17 @@ public class UnloadWorkflow implements Workflow {
             false,
             logManager.getOperationDirectory(),
             logSettings.getVerbosity(),
-            cluster.getMetrics().getRegistry(),
-            cluster.getConfiguration().getProtocolOptions().getProtocolVersion(),
-            cluster.getConfiguration().getCodecRegistry());
+            session.getMetrics().map(Metrics::getRegistry).orElse(new MetricRegistry()),
+            session.getContext().getProtocolVersion(),
+            session.getContext().getCodecRegistry());
     metricsManager.init();
     RecordMetadata recordMetadata = connector.getRecordMetadata();
     ExtendedCodecRegistry codecRegistry =
         codecSettings.createCodecRegistry(
-            cluster.getConfiguration().getCodecRegistry(),
-            schemaSettings.isAllowExtraFields(),
-            schemaSettings.isAllowMissingFields());
+            schemaSettings.isAllowExtraFields(), schemaSettings.isAllowMissingFields());
     readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-    readStatements = schemaSettings.createReadStatements(cluster);
+    readStatements = schemaSettings.createReadStatements(session);
     executor =
         executorSettings.newReadExecutor(
             session, metricsManager.getExecutionListener(), schemaSettings.isSearchQuery());
@@ -192,18 +189,18 @@ public class UnloadWorkflow implements Workflow {
     metricsManager.stop();
     long seconds = timer.elapsed(SECONDS);
     if (logManager.getTotalErrors() == 0) {
-      LOGGER.info("{} completed successfully in {}.", this, WorkflowUtils.formatElapsed(seconds));
+      LOGGER.info("{} completed successfully in {}.", this, StringUtils.formatElapsed(seconds));
     } else {
       LOGGER.warn(
           "{} completed with {} errors in {}.",
           this,
           logManager.getTotalErrors(),
-          WorkflowUtils.formatElapsed(seconds));
+          StringUtils.formatElapsed(seconds));
     }
     return logManager.getTotalErrors() == 0;
   }
 
-  @NotNull
+  @NonNull
   private Flux<Record> threadPerCoreFlux() {
     return Flux.fromIterable(readStatements)
         .flatMap(
@@ -222,7 +219,7 @@ public class UnloadWorkflow implements Workflow {
             readConcurrency);
   }
 
-  @NotNull
+  @NonNull
   private Flux<Record> parallelFlux() {
     return Flux.fromIterable(readStatements)
         .flatMap(executor::readReactive, readConcurrency)
@@ -251,7 +248,7 @@ public class UnloadWorkflow implements Workflow {
       e = WorkflowUtils.closeQuietly(connector, e);
       e = WorkflowUtils.closeQuietly(scheduler, e);
       e = WorkflowUtils.closeQuietly(executor, e);
-      e = WorkflowUtils.closeQuietly(cluster, e);
+      e = WorkflowUtils.closeQuietly(session, e);
       if (metricsManager != null) {
         metricsManager.reportFinalMetrics();
       }

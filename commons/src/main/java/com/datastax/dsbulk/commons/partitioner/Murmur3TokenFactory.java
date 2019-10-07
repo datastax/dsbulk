@@ -8,8 +8,8 @@
  */
 package com.datastax.dsbulk.commons.partitioner;
 
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.math.BigInteger;
-import org.jetbrains.annotations.NotNull;
 
 /** A {@link TokenFactory} for the Murmur3 Partitioner. */
 public class Murmur3TokenFactory implements TokenFactory<Long, Token<Long>> {
@@ -25,27 +25,27 @@ public class Murmur3TokenFactory implements TokenFactory<Long, Token<Long>> {
 
   private Murmur3TokenFactory() {}
 
-  @NotNull
+  @NonNull
   @Override
   public Token<Long> minToken() {
     return MIN_TOKEN;
   }
 
-  @NotNull
+  @NonNull
   @Override
   public Token<Long> maxToken() {
     return MAX_TOKEN;
   }
 
-  @NotNull
+  @NonNull
   @Override
   public BigInteger totalTokenCount() {
     return TOTAL_TOKEN_COUNT;
   }
 
-  @NotNull
+  @NonNull
   @Override
-  public BigInteger distance(@NotNull Token<Long> token1, @NotNull Token<Long> token2) {
+  public BigInteger distance(@NonNull Token<Long> token1, @NonNull Token<Long> token2) {
     BigInteger left = BigInteger.valueOf(token1.value());
     BigInteger right = BigInteger.valueOf(token2.value());
     if (right.compareTo(left) > 0) {
@@ -55,15 +55,15 @@ public class Murmur3TokenFactory implements TokenFactory<Long, Token<Long>> {
     }
   }
 
-  @NotNull
+  @NonNull
   @Override
   public TokenRangeSplitter<Long, Token<Long>> splitter() {
     return Murmur3TokenRangeSplitter.INSTANCE;
   }
 
-  @NotNull
+  @NonNull
   @Override
-  public Token<Long> tokenFromString(@NotNull String string) {
+  public Token<Long> tokenFromString(@NonNull String string) {
     return new Murmur3Token(Long.parseLong(string));
   }
 }

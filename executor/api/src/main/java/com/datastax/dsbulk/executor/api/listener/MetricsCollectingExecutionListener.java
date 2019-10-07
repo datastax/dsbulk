@@ -14,16 +14,17 @@ import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
-import com.datastax.driver.core.BatchStatement;
-import com.datastax.driver.core.CodecRegistry;
-import com.datastax.driver.core.ProtocolVersion;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.commons.internal.utils.StatementUtils;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.internal.histogram.HdrHistogramReservoir;
+import com.datastax.dse.driver.api.core.DseProtocolVersion;
+import com.datastax.oss.driver.api.core.ProtocolVersion;
+import com.datastax.oss.driver.api.core.cql.BatchStatement;
+import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import java.util.Optional;
-import org.jetbrains.annotations.Nullable;
 
 /** A {@link ExecutionListener} that records useful metrics about the ongoing bulk operations. */
 public class MetricsCollectingExecutionListener implements ExecutionListener {
@@ -56,11 +57,7 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
 
   /** Creates a new instance using a newly-allocated {@link MetricRegistry}. */
   public MetricsCollectingExecutionListener() {
-    this(
-        new MetricRegistry(),
-        ProtocolVersion.NEWEST_SUPPORTED,
-        CodecRegistry.DEFAULT_INSTANCE,
-        true);
+    this(new MetricRegistry(), DseProtocolVersion.DEFAULT, CodecRegistry.DEFAULT, true);
   }
 
   /**
@@ -290,7 +287,7 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
   }
 
   @Override
-  public void onWriteRequestStarted(Statement statement, ExecutionContext context) {
+  public void onWriteRequestStarted(Statement<?> statement, ExecutionContext context) {
     if (bytesSentMeter != null) {
       long size = StatementUtils.getDataSize(statement, protocolVersion, codecRegistry);
       bytesSentMeter.mark(size);
@@ -299,12 +296,12 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
   }
 
   @Override
-  public void onReadRequestStarted(Statement statement, ExecutionContext context) {
+  public void onReadRequestStarted(Statement<?> statement, ExecutionContext context) {
     inFlightRequestsCounter.inc();
   }
 
   @Override
-  public void onWriteRequestSuccessful(Statement statement, ExecutionContext context) {
+  public void onWriteRequestSuccessful(Statement<?> statement, ExecutionContext context) {
     int delta = delta(statement);
     stop(context, totalWritesTimer, delta);
     stop(context, totalReadsWritesTimer, delta);
@@ -314,7 +311,8 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
   }
 
   @Override
-  public void onWriteRequestFailed(Statement statement, Throwable error, ExecutionContext context) {
+  public void onWriteRequestFailed(
+      Statement<?> statement, Throwable error, ExecutionContext context) {
     int delta = delta(statement);
     stop(context, totalWritesTimer, delta);
     stop(context, totalReadsWritesTimer, delta);
@@ -324,7 +322,7 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
   }
 
   @Override
-  public void onReadRequestSuccessful(Statement statement, ExecutionContext context) {
+  public void onReadRequestSuccessful(Statement<?> statement, ExecutionContext context) {
     inFlightRequestsCounter.dec();
   }
 
@@ -341,7 +339,8 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
   }
 
   @Override
-  public void onReadRequestFailed(Statement statement, Throwable error, ExecutionContext context) {
+  public void onReadRequestFailed(
+      Statement<?> statement, Throwable error, ExecutionContext context) {
     stop(context, totalReadsTimer, 1);
     stop(context, totalReadsWritesTimer, 1);
     failedReadsCounter.inc();
@@ -350,7 +349,7 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
   }
 
   @Override
-  public void onExecutionSuccessful(Statement statement, ExecutionContext context) {
+  public void onExecutionSuccessful(Statement<?> statement, ExecutionContext context) {
     stop(context, totalStatementsTimer, 1);
     successfulStatementsCounter.inc();
   }
@@ -368,7 +367,7 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
     }
   }
 
-  private static int delta(Statement statement) {
+  private static int delta(Statement<?> statement) {
     if (statement instanceof BatchStatement) {
       return ((BatchStatement) statement).size();
     } else {

@@ -8,40 +8,43 @@
  */
 package com.datastax.dsbulk.executor.api.internal.result;
 
-import com.datastax.driver.core.ResultSet;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
+import com.datastax.oss.driver.api.core.cql.AsyncResultSet;
+import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 public final class DefaultWriteResult extends DefaultResult implements WriteResult {
 
-  @Nullable private final ResultSet rs;
+  @Nullable private final AsyncResultSet rs;
+  private boolean wasApplied;
 
-  public DefaultWriteResult(@NotNull Statement statement, @NotNull ResultSet rs) {
+  public DefaultWriteResult(@NonNull Statement<?> statement, @NonNull AsyncResultSet rs) {
     super(statement, rs.getExecutionInfo());
     this.rs = rs;
+    wasApplied = rs.wasApplied();
   }
 
-  public DefaultWriteResult(@NotNull BulkExecutionException error) {
+  public DefaultWriteResult(@NonNull BulkExecutionException error) {
     super(error);
     this.rs = null;
+    wasApplied = false;
   }
 
   @Override
   public boolean wasApplied() {
-    return rs != null && rs.wasApplied();
+    return wasApplied;
   }
 
   @Override
   public Stream<? extends Row> getFailedWrites() {
-    return rs == null || rs.wasApplied()
+    return rs == null || wasApplied
         ? Stream.empty()
-        : StreamSupport.stream(rs.spliterator(), false);
+        : StreamSupport.stream(rs.currentPage().spliterator(), false);
   }
 
   @Override

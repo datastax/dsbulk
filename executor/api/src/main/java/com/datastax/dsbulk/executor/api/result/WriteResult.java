@@ -8,7 +8,7 @@
  */
 package com.datastax.dsbulk.executor.api.result;
 
-import com.datastax.driver.core.Row;
+import com.datastax.oss.driver.api.core.cql.Row;
 import java.util.stream.Stream;
 
 /** Represents the unique result of a write operation. */

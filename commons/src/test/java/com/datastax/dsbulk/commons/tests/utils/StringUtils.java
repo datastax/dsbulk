@@ -8,7 +8,7 @@
  */
 package com.datastax.dsbulk.commons.tests.utils;
 
-import com.google.common.base.CharMatcher;
+import com.datastax.oss.driver.shaded.guava.common.base.CharMatcher;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.concurrent.ConcurrentHashMap;

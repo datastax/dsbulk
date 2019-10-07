@@ -8,16 +8,16 @@
  */
 package com.datastax.dsbulk.engine.tests.utils;
 
-import static com.datastax.driver.core.DataType.bigint;
-import static com.datastax.driver.core.DataType.inet;
-import static com.datastax.driver.core.DataType.varchar;
+import static com.datastax.oss.driver.api.core.type.DataTypes.BIGINT;
+import static com.datastax.oss.driver.api.core.type.DataTypes.INET;
+import static com.datastax.oss.driver.api.core.type.DataTypes.TEXT;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.datastax.driver.core.Session;
 import com.datastax.dsbulk.commons.tests.simulacron.SimulacronUtils;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings;
+import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.simulacron.common.cluster.QueryLog;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
@@ -240,7 +240,11 @@ public class EndToEndUtils {
     List<QueryLog> logs = simulacron.getLogs().getQueryLogs();
     List<QueryLog> ipLogs =
         logs.stream()
-            .filter(l -> !l.getType().equals("PREPARE") && l.getQuery().startsWith(query))
+            .filter(
+                l ->
+                    !l.getType().equals("PREPARE")
+                        && l.getQuery() != null
+                        && l.getQuery().startsWith(query))
             .collect(Collectors.toList());
     assertThat(ipLogs.size()).isEqualTo(numOfQueries);
     for (QueryLog log : ipLogs) {
@@ -264,15 +268,15 @@ public class EndToEndUtils {
             "ks1",
             new SimulacronUtils.Table(
                 "ip_by_country",
-                new SimulacronUtils.Column("country_code", varchar()),
-                new SimulacronUtils.Column("beginning_ip_address", inet()),
-                new SimulacronUtils.Column("country_name", varchar()),
-                new SimulacronUtils.Column("ending_ip_address", inet()),
-                new SimulacronUtils.Column("beginning_ip_number", bigint()),
-                new SimulacronUtils.Column("ending_ip_number", bigint()))));
+                new SimulacronUtils.Column("country_code", TEXT),
+                new SimulacronUtils.Column("beginning_ip_address", INET),
+                new SimulacronUtils.Column("country_name", TEXT),
+                new SimulacronUtils.Column("ending_ip_address", INET),
+                new SimulacronUtils.Column("beginning_ip_number", BIGINT),
+                new SimulacronUtils.Column("ending_ip_number", BIGINT))));
   }
 
-  public static void createIpByCountryTable(Session session) {
+  public static void createIpByCountryTable(CqlSession session) {
     session.execute(
         "CREATE TABLE IF NOT EXISTS ip_by_country ("
             + "country_code varchar,"
@@ -284,7 +288,7 @@ public class EndToEndUtils {
             + "PRIMARY KEY(country_code, beginning_ip_address))");
   }
 
-  public static void createIpByCountryTable(Session session, String keyspace) {
+  public static void createIpByCountryTable(CqlSession session, String keyspace) {
     session.execute(
         "CREATE TABLE IF NOT EXISTS "
             + keyspace
@@ -298,7 +302,7 @@ public class EndToEndUtils {
             + "PRIMARY KEY(country_code, beginning_ip_address))");
   }
 
-  public static void createWithSpacesTable(Session session) {
+  public static void createWithSpacesTable(CqlSession session) {
     session.execute(
         "CREATE KEYSPACE IF NOT EXISTS \"MYKS\" "
             + "WITH replication = { \'class\' : \'SimpleStrategy\', \'replication_factor\' : 3 }");
@@ -307,7 +311,7 @@ public class EndToEndUtils {
             + "key int PRIMARY KEY, \"my destination\" text)");
   }
 
-  public static void createIpByCountryCaseSensitiveTable(Session session) {
+  public static void createIpByCountryCaseSensitiveTable(CqlSession session) {
     session.execute(
         "CREATE KEYSPACE IF NOT EXISTS \"MYKS\" "
             + "WITH replication = { \'class\' : \'SimpleStrategy\', \'replication_factor\' : 3 }");

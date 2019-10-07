@@ -9,17 +9,16 @@
 package com.datastax.dsbulk.executor.api.internal.publisher;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.datastax.driver.core.ExecutionInfo;
-import com.datastax.driver.core.ResultSetFuture;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.SimpleStatement;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
-import java.util.concurrent.Executor;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.cql.AsyncResultSet;
+import com.datastax.oss.driver.api.core.cql.ExecutionInfo;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import java.util.concurrent.CompletableFuture;
 import org.reactivestreams.Publisher;
 
 public class WriteResultPublisherTest extends ResultPublisherTestBase<WriteResult> {
@@ -31,34 +30,23 @@ public class WriteResultPublisherTest extends ResultPublisherTestBase<WriteResul
 
   @Override
   public Publisher<WriteResult> createPublisher(long elements) {
-    Statement statement = new SimpleStatement("irrelevant");
-    Session session = setUpSession();
+    Statement<?> statement = SimpleStatement.newInstance("irrelevant");
+    CqlSession session = setUpSession();
     return new WriteResultPublisher(statement, session, true);
   }
 
   @Override
   public Publisher<WriteResult> createFailedPublisher() {
-    Statement statement = new SimpleStatement("irrelevant");
-    Session session = mock(Session.class);
+    Statement<?> statement = SimpleStatement.newInstance("irrelevant");
+    CqlSession session = mock(CqlSession.class);
     return new WriteResultPublisher(statement, session, true, FAILED_LISTENER, null, null, null);
   }
 
-  private static Session setUpSession() {
-    Session session = mock(Session.class);
-    ResultSetFuture future = mock(ResultSetFuture.class);
+  private static CqlSession setUpSession() {
+    CqlSession session = mock(CqlSession.class);
+    CompletableFuture<AsyncResultSet> future = new CompletableFuture<>();
     ExecutionInfo executionInfo = mock(ExecutionInfo.class);
-    when(future.isDone()).thenReturn(true);
-    try {
-      when(future.get()).thenReturn(new MockResultSet(0, executionInfo, null));
-    } catch (Exception ignored) {
-    }
-    doAnswer(
-            invocation -> {
-              ((Runnable) invocation.getArguments()[0]).run();
-              return null;
-            })
-        .when(future)
-        .addListener(any(Runnable.class), any(Executor.class));
+    future.complete(new MockAsyncResultSet(0, executionInfo, null));
     when(session.executeAsync(any(SimpleStatement.class))).thenReturn(future);
     return session;
   }

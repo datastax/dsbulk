@@ -8,44 +8,47 @@
  */
 package com.datastax.dsbulk.commons.partitioner;
 
-import static com.datastax.driver.core.ConsistencyLevel.ALL;
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
+import static com.datastax.oss.driver.api.core.DefaultConsistencyLevel.ALL;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 import static org.awaitility.Duration.ONE_MINUTE;
 
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.Metadata;
-import com.datastax.driver.core.PreparedStatement;
-import com.datastax.driver.core.ResultSet;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.TableMetadata;
-import com.datastax.driver.core.Token;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.CCMExtension;
 import com.datastax.dsbulk.commons.tests.utils.CQLUtils;
 import com.datastax.dsbulk.commons.tests.utils.StringUtils;
-import com.google.common.util.concurrent.Uninterruptibles;
+import com.datastax.oss.driver.api.core.CqlIdentifier;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.cql.PreparedStatement;
+import com.datastax.oss.driver.api.core.cql.ResultSet;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.api.core.metadata.Metadata;
+import com.datastax.oss.driver.api.core.metadata.TokenMap;
+import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
+import com.datastax.oss.driver.api.core.metadata.token.Token;
+import com.datastax.oss.driver.api.testinfra.session.SessionUtils;
+import com.datastax.oss.driver.shaded.guava.common.util.concurrent.Uninterruptibles;
 import java.util.List;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @ExtendWith(CCMExtension.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 abstract class PartitionerCCMITBase {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PartitionerCCMITBase.class);
   private static final int EXPECTED_TOTAL = 10000;
 
+  @SuppressWarnings({"unused", "FieldCanBeLocal"})
   private final CCMCluster ccm;
-  private final Session session;
+
+  private final CqlSession session;
   private final boolean multiDc;
 
-  PartitionerCCMITBase(CCMCluster ccm, Session session, boolean multiDc) {
+  PartitionerCCMITBase(CCMCluster ccm, CqlSession session, boolean multiDc) {
     this.ccm = ccm;
     this.session = session;
     this.multiDc = multiDc;
@@ -56,21 +59,25 @@ abstract class PartitionerCCMITBase {
   void should_scan_table(int rf) {
     String ks = createSchema(rf);
     populateTable(ks);
-    Cluster cluster = session.getCluster();
-    Metadata metadata = cluster.getMetadata();
+    Metadata metadata = session.getMetadata();
+    TokenMap tokenMap = metadata.getTokenMap().orElseThrow(IllegalStateException::new);
     TableMetadata table =
-        session.getCluster().getMetadata().getKeyspace(ks).getTable("\"MY_TABLE\"");
+        metadata
+            .getKeyspace(ks)
+            .orElseThrow(IllegalStateException::new)
+            .getTable("\"MY_TABLE\"")
+            .orElseThrow(IllegalStateException::new);
     TokenRangeReadStatementGenerator generator =
         new TokenRangeReadStatementGenerator(table, metadata);
-    List<TokenRangeReadStatement> statements =
-        generator.generate(Runtime.getRuntime().availableProcessors());
+    List<Statement<?>> statements = generator.generate(Runtime.getRuntime().availableProcessors());
     int total = 0;
-    for (TokenRangeReadStatement stmt : statements) {
+    for (Statement<?> stmt : statements) {
+      stmt = stmt.setConsistencyLevel(ALL).setExecutionProfile(SessionUtils.slowProfile(session));
       ResultSet rs = session.execute(stmt);
       total += rs.all().size();
       Token token = stmt.getRoutingToken();
-      assertThat(stmt.geTokenRange()).isNotNull().endsWith(token.getValue());
-      assertThat(rs.getExecutionInfo().getQueriedHost()).isIn(metadata.getReplicas(ks, token));
+      assertThat(token).isNotNull();
+      assertThat(rs.getExecutionInfo().getCoordinator()).isIn(tokenMap.getReplicas(ks, token));
     }
     assertThat(total).isEqualTo(EXPECTED_TOTAL);
   }
@@ -78,16 +85,21 @@ abstract class PartitionerCCMITBase {
   private String createSchema(int rf) {
     String ks = StringUtils.uniqueIdentifier("MY_KS");
     if (multiDc) {
-      session.execute(CQLUtils.createKeyspaceNetworkTopologyStrategy(ks, rf, rf));
+      session.execute(
+          CQLUtils.createKeyspaceNetworkTopologyStrategy(ks, rf, rf)
+              .setExecutionProfile(SessionUtils.slowProfile(session)));
     } else {
-      session.execute(CQLUtils.createKeyspaceSimpleStrategy(ks, rf));
+      session.execute(
+          CQLUtils.createKeyspaceSimpleStrategy(ks, rf)
+              .setExecutionProfile(SessionUtils.slowProfile(session)));
     }
-    ks = Metadata.quote(ks);
+    ks = CqlIdentifier.fromInternal(ks).asCql(true);
     session.execute(
-        String.format("CREATE TABLE %s.\"MY_TABLE\" (\"PK\" int PRIMARY KEY, \"V\" int)", ks));
-    await()
-        .atMost(ONE_MINUTE)
-        .until(() -> session.getCluster().getMetadata().checkSchemaAgreement());
+        SimpleStatement.newInstance(
+                String.format(
+                    "CREATE TABLE %s.\"MY_TABLE\" (\"PK\" int PRIMARY KEY, \"V\" int)", ks))
+            .setExecutionProfile(SessionUtils.slowProfile(session)));
+    await().atMost(ONE_MINUTE).until(session::checkSchemaAgreement);
     return ks;
   }
 

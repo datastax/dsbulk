@@ -8,22 +8,21 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
-import static com.datastax.driver.core.DataType.timestamp;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.TypeCodec;
+import com.datastax.dsbulk.commons.codecs.ConvertingCodec;
+import com.datastax.dsbulk.commons.codecs.ExtendedCodecRegistry;
+import com.datastax.dsbulk.commons.codecs.string.StringToInstantCodec;
+import com.datastax.dsbulk.commons.codecs.writetime.WriteTimeCodec;
 import com.datastax.dsbulk.connectors.api.Field;
 import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
-import com.datastax.dsbulk.engine.internal.codecs.ConvertingCodec;
-import com.datastax.dsbulk.engine.internal.codecs.ExtendedCodecRegistry;
-import com.datastax.dsbulk.engine.internal.codecs.string.StringToInstantCodec;
-import com.datastax.dsbulk.engine.internal.codecs.writetime.WriteTimeCodec;
-import com.google.common.collect.ImmutableMultimap;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.reflect.TypeToken;
+import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSet;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSetMultimap;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 
@@ -31,25 +30,24 @@ class DefaultMappingTest {
 
   @Test
   void should_create_mapping() {
-    ImmutableMultimap<Field, CQLIdentifier> fieldsToVariables =
-        ImmutableMultimap.<Field, CQLIdentifier>builder()
-            .put(new DefaultMappedField("f1"), CQLIdentifier.fromInternal("c1"))
+    ImmutableSetMultimap<Field, CQLWord> fieldsToVariables =
+        ImmutableSetMultimap.<Field, CQLWord>builder()
+            .put(new DefaultMappedField("f1"), CQLWord.fromInternal("c1"))
             .build();
     ExtendedCodecRegistry extendedCodecRegistry = mock(ExtendedCodecRegistry.class);
-    when(extendedCodecRegistry.codecFor(DataType.varchar(), TypeToken.of(String.class)))
-        .thenReturn(TypeCodec.varchar());
+
+    when(extendedCodecRegistry.codecFor(DataTypes.TEXT, GenericType.STRING))
+        .thenReturn(TypeCodecs.TEXT);
     DefaultMapping mapping =
         new DefaultMapping(fieldsToVariables, extendedCodecRegistry, ImmutableSet.of());
     assertThat(mapping.fieldToVariables(new MappedMappingField("f1")))
-        .containsExactly(CQLIdentifier.fromInternal("c1"));
+        .containsExactly(CQLWord.fromInternal("c1"));
     assertThat(mapping.fieldToVariables(new MappedMappingField("nonexistent"))).isEmpty();
-    assertThat(mapping.variableToFields(CQLIdentifier.fromInternal("c1")))
+    assertThat(mapping.variableToFields(CQLWord.fromInternal("c1")))
         .containsExactly(new MappedMappingField("f1"));
-    assertThat(mapping.variableToFields(CQLIdentifier.fromInternal("nonexistent"))).isEmpty();
-    assertThat(
-            mapping.codec(
-                CQLIdentifier.fromInternal("f1"), DataType.varchar(), TypeToken.of(String.class)))
-        .isInstanceOf(TypeCodec.varchar().getClass());
+    assertThat(mapping.variableToFields(CQLWord.fromInternal("nonexistent"))).isEmpty();
+    assertThat(mapping.codec(CQLWord.fromInternal("f1"), DataTypes.TEXT, GenericType.STRING))
+        .isInstanceOf(TypeCodecs.TEXT.getClass());
   }
 
   @Test
@@ -57,18 +55,16 @@ class DefaultMappingTest {
     ExtendedCodecRegistry extendedCodecRegistry = mock(ExtendedCodecRegistry.class);
     ConvertingCodec<String, Instant> codec = new StringToInstantCodec(null, null, null, null);
     when(extendedCodecRegistry.<String, Instant>convertingCodecFor(
-            timestamp(), TypeToken.of(String.class)))
+            DataTypes.TIMESTAMP, GenericType.STRING))
         .thenReturn(codec);
     DefaultMapping mapping =
         new DefaultMapping(
-            ImmutableMultimap.of(),
+            ImmutableSetMultimap.of(),
             extendedCodecRegistry,
-            ImmutableSet.of(CQLIdentifier.fromInternal("myWriteTimeVar")));
+            ImmutableSet.of(CQLWord.fromInternal("myWriteTimeVar")));
     assertThat(
             mapping.codec(
-                CQLIdentifier.fromInternal("myWriteTimeVar"),
-                DataType.bigint(),
-                TypeToken.of(String.class)))
+                CQLWord.fromInternal("myWriteTimeVar"), DataTypes.BIGINT, GenericType.STRING))
         .isNotNull()
         .isInstanceOf(WriteTimeCodec.class);
   }

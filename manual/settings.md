@@ -218,6 +218,12 @@ Valid values are: `ANY`, `LOCAL_ONE`, `ONE`, `TWO`, `THREE`, `LOCAL_QUORUM`, `QU
 
 Default: **"LOCAL_ONE"**.
 
+#### -localDc,--driver.policy.lbp.localDc _&lt;string&gt;_
+
+The datacenter name (commonly dc1, dc2, etc.) local to the machine on which dsbulk is running, so that requests are sent to nodes in the local datacenter whenever possible.
+
+Default: **null**.
+
 #### --executor.maxPerSecond _&lt;number&gt;_
 
 The maximum number of concurrent operations per second. When loading, this means the maximum number of write requests per second; when unloading or counting, this means the maximum number of rows per second. This acts as a safeguard to prevent overloading the cluster. Batch statements are counted by the number of statements included. Reduce this setting when the latencies get too high and a remote cluster cannot keep up with throughput, as `dsbulk` requests will eventually time out. Setting this option to any negative value or zero will disable it.
@@ -995,17 +1001,29 @@ Default: **9042**.
 
 The simple or fully-qualified class name of the address translator to use. This is only needed if the nodes are not directly reachable from the machine on which dsbulk is running (for example, the dsbulk machine is in a different network region and needs to use a public IP, or it connects through a proxy).
 
-Default: **"IdentityTranslator"**.
+The driver provides the following implementations out of the box:
+- PassThroughAddressTranslator: returns all addresses unchanged
+
+You can also specify a custom class that implements
+`com.datastax.oss.driver.internal.core.addresstranslation.AddressTranslator` and has a public
+constructor with a `DriverContext` argument.
+
+Default: **"PassThroughAddressTranslator"**.
 
 #### --driver.timestampGenerator _&lt;string&gt;_
 
 The simple or fully-qualified class name of the timestamp generator to use. Built-in options are:
 
-- AtomicMonotonicTimestampGenerator: timestamps are guaranteed to be unique across all client threads.
-- ThreadLocalTimestampGenerator: timestamps are guaranteed to be unique within each thread only.
-- ServerSideTimestampGenerator: do not generate timestamps, let the server assign them.
+- `AtomicTimestampGenerator`: timestamps are guaranteed to be unique across all client threads.
+- `ThreadLocalTimestampGenerator`: timestamps that are guaranteed to be unique within each
+  thread only.
+- `ServerSideTimestampGenerator`: do not generate timestamps, let the server assign them.
 
-Default: **"AtomicMonotonicTimestampGenerator"**.
+You can also specify a custom class that implements
+`com.datastax.oss.driver.internal.core.time.TimestampGenerator` and has a public
+constructor with two arguments: the `DriverContext` and a `String` representing the profile name.
+
+Default: **"AtomicTimestampGenerator"**.
 
 <a name="driver.auth"></a>
 ### Driver Auth Settings
@@ -1034,11 +1052,16 @@ Default: **null**.
 
 The name of the AuthProvider to use. Valid choices are:
 
- - None: no authentication.
- - PlainTextAuthProvider: Uses `com.datastax.driver.core.PlainTextAuthProvider` for authentication. Supports SASL authentication using the `PLAIN` mechanism (plain text authentication).
- - DsePlainTextAuthProvider: Uses `com.datastax.driver.dse.auth.DsePlainTextAuthProvider` for authentication. Supports SASL authentication to DSE clusters using the `PLAIN` mechanism (plain text authentication), and also supports optional proxy authentication; should be preferred to `PlainTextAuthProvider` when connecting to secured DSE clusters.
- - DseGSSAPIAuthProvider: Uses `com.datastax.driver.dse.auth.DseGSSAPIAuthProvider` for authentication. Supports SASL authentication to DSE clusters using the `GSSAPI` mechanism (Kerberos authentication), and also supports optional proxy authentication.
-   - Note: When using this provider you may have to set the `java.security.krb5.conf` system property to point to your `krb5.conf` file (e.g. set the `DSBULK_JAVA_OPTS` environment variable to `-Djava.security.krb5.conf=/home/user/krb5.conf`). See the [Oracle Java Kerberos documentation](https://docs.oracle.com/javase/7/docs/technotes/guides/security/jgss/tutorials/KerberosReq.html) for more details.
+- `None`: no authentication.
+- `PlainTextAuthProvider`: uses plain-text credentials. It requires the `username` and
+  `password` options below. Should be used only when authenticating against Apache
+  Cassandra(R) clusters; not recommended when authenticating against DSE clusters.
+- `DsePlainTextAuthProvider`: provides SASL authentication using the PLAIN mechanism for DSE
+  clusters secured with DseAuthenticator. It requires the `username` and `password` options
+  below, and optionally, an `authorization-id`.
+- `DseGssApiAuthProvider`: provides GSSAPI authentication for DSE clusters secured with
+  DseAuthenticator. Supports SASL authentication to DSE clusters using the `GSSAPI` mechanism (Kerberos authentication), and also supports optional proxy authentication.
+   - Note: When using this provider you may have to set the `java.security.krb5.conf` system property to point to your `krb5.conf` file (e.g. set the `DSBULK_JAVA_OPTS` environment variable to `-Djava.security.krb5.conf=/home/user/krb5.conf`). See the [Oracle Java Kerberos documentation](https://docs.oracle.com/javase/8/docs/technotes/guides/security/jgss/tutorials/KerberosReq.html) for more details.
 
 Default: **"None"**.
 
@@ -1080,70 +1103,15 @@ Default: **"dse"**.
 
 Settings for various driver policies.
 
-#### -lbp,--driver.policy.lbp.name _&lt;string&gt;_
-
-The name of the load balancing policy. Supported policies include: `dse`, `dcAwareRoundRobin`, `roundRobin`, `whiteList`, `tokenAware`. Available options for the policies are listed below as appropriate. For more information, refer to the driver documentation for the policy. If not specified, defaults to the driver's default load balancing policy, which is currently the `DseLoadBalancingPolicy` wrapping a `TokenAwarePolicy`, wrapping a `DcAwareRoundRobinPolicy`.
-
-Note: It is critical for a token-aware policy to be used in the chain in order to benefit from batching by partition key.
-
-Default: **null**.
-
-#### --driver.policy.lbp.dcAwareRoundRobin.allowRemoteDCsForLocalConsistencyLevel _&lt;boolean&gt;_
-
-Enable or disable whether to allow remote datacenters to count for local consistency level in round robin awareness.
-
-*DEPRECATED*: This functionality will be removed in the next major release of DSBulk.
-
-Default: **false**.
-
-#### --driver.policy.lbp.dcAwareRoundRobin.localDc _&lt;string&gt;_
+#### -localDc,--driver.policy.lbp.localDc _&lt;string&gt;_
 
 The datacenter name (commonly dc1, dc2, etc.) local to the machine on which dsbulk is running, so that requests are sent to nodes in the local datacenter whenever possible.
 
 Default: **null**.
 
-#### --driver.policy.lbp.dcAwareRoundRobin.usedHostsPerRemoteDc _&lt;number&gt;_
+#### --driver.policy.lbp.allowedHosts _&lt;list&gt;_
 
-The number of hosts per remote datacenter that the round robin policy should consider.
-
-*DEPRECATED*: This functionality will be removed in the next major release of DSBulk.
-
-Default: **0**.
-
-#### --driver.policy.lbp.dse.childPolicy _&lt;string&gt;_
-
-The child policy that the specified `dse` policy wraps.
-
-Default: **"roundRobin"**.
-
-#### --driver.policy.lbp.tokenAware.childPolicy _&lt;string&gt;_
-
-The child policy that the specified `tokenAware` policy wraps.
-
-Default: **"roundRobin"**.
-
-#### --driver.policy.lbp.tokenAware.replicaOrdering _&lt;string&gt;_
-
-Specify how to order replicas.
-
-Valid values are all `TokenAwarePolicy.ReplicaOrdering` enum constants:
-
-- RANDOM: Return replicas in a different, random order for each query plan. This is the default strategy;
-for loading, it should be preferred has it can improve performance by distributing writes across replicas.
-- TOPOLOGICAL: Order replicas by token ring topology, i.e. always return the "primary" replica first.
-- NEUTRAL: Return the replicas in the exact same order in which they appear in the child policy's query plan.
-
-Default: **"RANDOM"**.
-
-#### --driver.policy.lbp.whiteList.childPolicy _&lt;string&gt;_
-
-The child policy that the specified `whiteList` policy wraps.
-
-Default: **"roundRobin"**.
-
-#### --driver.policy.lbp.whiteList.hosts _&lt;list&gt;_
-
-List of hosts to white list. This must be a comma-separated list of hosts, each specified by a host-name or ip address. If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use `localhost` as a host-name (since it resolves to both IPv4 and IPv6 addresses on some platforms).
+List of hosts to white list. This must be a comma-separated list of hosts, each specified by a host-name or ip address. If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use `localhost` as a host-name (since it resolves to both IPv4 and IPv6 addresses on some platforms). If empty, all hosts will be contacted.
 
 Default: **[]**.
 
@@ -1172,23 +1140,17 @@ The number of connections in the pool for nodes at "local" distance.
 
 Default: **8**.
 
-#### --driver.pooling.local.requests _&lt;number&gt;_
-
-The maximum number of requests (1 to 32768) that can be executed concurrently on a connection. If connecting to legacy clusters using protocol version 1 or 2, any value greater than 128 will be capped at 128 and a warning will be logged.
-
-Default: **32768**.
-
 #### --driver.pooling.remote.connections _&lt;number&gt;_
 
 The number of connections in the pool for remote nodes.
 
 Default: **1**.
 
-#### --driver.pooling.remote.requests _&lt;number&gt;_
+#### --driver.pooling.requests _&lt;number&gt;_
 
-The maximum number of requests (1 to 32768) that can be executed concurrently on a connection. If connecting to legacy clusters using protocol version 1 or 2, any value greater than 128 will be capped at 128 and a warning will be logged.
+The maximum number of requests (1 to 32768) that can be executed concurrently on a connection.
 
-Default: **1024**.
+Default: **32768**.
 
 <a name="driver.protocol"></a>
 ### Driver Protocol Settings
@@ -1217,7 +1179,7 @@ Default: **"LOCAL_ONE"**.
 #### --driver.query.fetchSize _&lt;number&gt;_
 
 The page size, or how many rows will be retrieved simultaneously in a single network round trip. The ideal page size depends on the size of the rows being unloaded: larger page sizes may have a positive impact on throughput for small rows, and vice versa.
-This setting will limit the number of results loaded into memory simultaneously during unloading or counting. Setting this value to any negative value will disable paging, i.e., the entire result set will be retrieved in one pass (not recommended). Not applicable for loading. When connecting with a positive page size to legacy clusters with protocol version 1, which does not support paging, paging will be automatically disabled and a warning will be logged. Note that this setting controls paging for regular queries; to customize the page size for continuous queries, use the `executor.continuousPaging.pageSize` setting instead.
+This setting will limit the number of results loaded into memory simultaneously during unloading or counting. Setting this value to any negative value or zero will disable paging, i.e., the entire result set will be retrieved in one pass (not recommended). Not applicable for loading. Note that this setting controls paging for regular queries; to customize the page size for continuous queries, use the `executor.continuousPaging.pageSize` setting instead.
 
 Default: **5000**.
 

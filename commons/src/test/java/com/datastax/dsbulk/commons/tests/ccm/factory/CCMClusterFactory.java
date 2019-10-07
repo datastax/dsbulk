@@ -15,7 +15,6 @@ import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMFactory;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMFactoryMethod;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMWorkload;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
-import com.datastax.dsbulk.commons.tests.utils.Version;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -34,17 +33,6 @@ public abstract class CCMClusterFactory {
 
   private static final CCMConfig DEFAULT_CCM_CONFIG = Dummy.class.getAnnotation(CCMConfig.class);
 
-  // A mapping of cassandra.yaml config options to their version requirements.
-  // If a config is passed containing one of these options and the version requirement cannot
-  // be met the option is simply filtered.
-  private static final Map<String, Version> CONFIG_VERSION_REQUIREMENTS;
-
-  static {
-    Map<String, Version> map = new HashMap<>(1);
-    map.put("enable_user_defined_functions", Version.parse("2.2.0"));
-    CONFIG_VERSION_REQUIREMENTS = Collections.unmodifiableMap(map);
-  }
-
   private CCMClusterFactory() {}
 
   public static CCMClusterFactory createInstanceForClass(Class<?> testClass) {
@@ -55,7 +43,7 @@ public abstract class CCMClusterFactory {
       if (config != null) {
         throw new IllegalStateException(
             String.format(
-                "%s can be annotated with either @CCMClusterFactory or @CCMFactoryRef, but not both",
+                "%s can be annotated with either @CCMConfig or @CCMFactoryMethod, but not both",
                 testClass));
       }
       return new CCMClusterMethodFactory(factoryRef, testClass);
@@ -72,6 +60,7 @@ public abstract class CCMClusterFactory {
 
     private final int[] numberOfNodes;
     private final boolean ssl;
+    private final boolean hostnameVerification;
     private final boolean auth;
     private final Map<String, Object> cassandraConfig;
     private final Map<String, Object> dseConfig;
@@ -82,6 +71,7 @@ public abstract class CCMClusterFactory {
     private CCMClusterAnnotationFactory(CCMConfig config) {
       this.numberOfNodes = config.numberOfNodes();
       this.ssl = config.ssl();
+      this.hostnameVerification = config.hostnameVerification();
       this.auth = config.auth();
       this.cassandraConfig = toConfigMap(config.config());
       this.dseConfig = toConfigMap(config.dseConfig());
@@ -116,8 +106,7 @@ public abstract class CCMClusterFactory {
       for (int perDc : config.numberOfNodes()) {
         total += perDc;
       }
-      List<CCMCluster.Workload[]> workloads =
-          new ArrayList<>(Collections.<CCMCluster.Workload[]>nCopies(total, null));
+      List<CCMCluster.Workload[]> workloads = new ArrayList<>(Collections.nCopies(total, null));
       CCMWorkload[] annWorkloads = config.workloads();
       for (int i = 0; i < annWorkloads.length; i++) {
         CCMWorkload nodeWorkloads = annWorkloads[i];
@@ -130,7 +119,7 @@ public abstract class CCMClusterFactory {
     public DefaultCCMCluster.Builder createCCMClusterBuilder() {
       DefaultCCMCluster.Builder ccmBuilder = DefaultCCMCluster.builder().withNodes(numberOfNodes);
       if (ssl) {
-        ccmBuilder.withSSL();
+        ccmBuilder.withSSL(hostnameVerification);
       }
       if (auth) {
         ccmBuilder.withAuth();

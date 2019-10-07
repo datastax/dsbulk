@@ -13,8 +13,9 @@ import java.util.Objects;
 /**
  * A closed range, that is, an interval defined by two inclusive bounds.
  *
- * <p>This class is a simplified, mutable version of Guava's {@link com.google.common.collect.Range
- * Range} designed to reduce the allocation rate of Range instances in the {@link PositionsTracker}.
+ * <p>This class is a simplified, mutable version of Guava's {@link
+ * com.datastax.oss.driver.shaded.guava.common.collect.Range Range} designed to reduce the
+ * allocation rate of Range instances in the {@link PositionsTracker}.
  */
 public final class Range {
 

@@ -10,7 +10,7 @@ package com.datastax.dsbulk.commons.tests.assertions;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.google.common.collect.Multimap;
+import com.datastax.oss.driver.shaded.guava.common.collect.Multimap;
 import org.assertj.core.api.AbstractObjectAssert;
 
 @SuppressWarnings("UnusedReturnValue")

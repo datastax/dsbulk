@@ -14,15 +14,15 @@ import static com.datastax.dsbulk.engine.internal.schema.CQLRenderMode.POSITIONA
 import static com.datastax.dsbulk.engine.internal.schema.CQLRenderMode.UNALIASED_SELECTOR;
 import static com.datastax.dsbulk.engine.internal.schema.CQLRenderMode.VARIABLE;
 
-import com.google.common.collect.ImmutableList;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
+import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * A CQL function call as declared in a query or in a mapping entry.
@@ -39,8 +39,8 @@ public class FunctionCall implements MappingField, CQLFragment {
    */
   private static final Collector<CharSequence, ?, String> COMMA = Collectors.joining(", ");
 
-  private final CQLIdentifier keyspaceName;
-  private final CQLIdentifier functionName;
+  private final CQLWord keyspaceName;
+  private final CQLWord functionName;
   private final ImmutableList<CQLFragment> args;
 
   private final String namedAssignment;
@@ -51,23 +51,21 @@ public class FunctionCall implements MappingField, CQLFragment {
   private final String aliasedSelector;
 
   public FunctionCall(
-      @Nullable CQLIdentifier keyspaceName,
-      @NotNull CQLIdentifier functionName,
-      @NotNull CQLFragment... args) {
+      @Nullable CQLWord keyspaceName, @NonNull CQLWord functionName, @NonNull CQLFragment... args) {
     this(keyspaceName, functionName, Arrays.asList(args));
   }
 
   public FunctionCall(
-      @Nullable CQLIdentifier keyspaceName,
-      @NotNull CQLIdentifier functionName,
-      @NotNull List<CQLFragment> args) {
+      @Nullable CQLWord keyspaceName,
+      @NonNull CQLWord functionName,
+      @NonNull List<CQLFragment> args) {
     this.keyspaceName = keyspaceName;
     this.functionName = functionName;
     this.args = ImmutableList.copyOf(args);
     namedAssignment = renderNamedAssignment();
     positionalAssignment = renderPositionalAssignment();
     internal = renderInternal();
-    identifier = CQLIdentifier.fromInternal(internal).render(VARIABLE);
+    identifier = CQLWord.fromInternal(internal).render(VARIABLE);
     unaliasedSelector = renderUnaliasedSelector();
     aliasedSelector = renderAliasedSelector();
   }
@@ -116,23 +114,23 @@ public class FunctionCall implements MappingField, CQLFragment {
     return String.format("%s AS %s", unaliasedSelector, identifier);
   }
 
-  @NotNull
-  public Optional<CQLIdentifier> getKeyspaceName() {
+  @NonNull
+  public Optional<CQLWord> getKeyspaceName() {
     return Optional.ofNullable(keyspaceName);
   }
 
-  @NotNull
-  public CQLIdentifier getFunctionName() {
+  @NonNull
+  public CQLWord getFunctionName() {
     return functionName;
   }
 
   @Override
-  @NotNull
+  @NonNull
   public String getFieldDescription() {
     return render(INTERNAL);
   }
 
-  @NotNull
+  @NonNull
   public ImmutableList<CQLFragment> getArgs() {
     return args;
   }

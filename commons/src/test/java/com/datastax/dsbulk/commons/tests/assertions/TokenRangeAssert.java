@@ -10,15 +10,17 @@ package com.datastax.dsbulk.commons.tests.assertions;
 
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 
-import com.datastax.driver.core.Host;
 import com.datastax.dsbulk.commons.partitioner.Token;
 import com.datastax.dsbulk.commons.partitioner.TokenFactory;
 import com.datastax.dsbulk.commons.partitioner.TokenRange;
+import com.datastax.oss.driver.api.core.metadata.EndPoint;
+import com.datastax.oss.driver.api.core.metadata.Node;
 import java.math.BigInteger;
-import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.assertj.core.api.AbstractObjectAssert;
 import org.assertj.core.data.Offset;
 
@@ -108,13 +110,13 @@ public class TokenRangeAssert<V extends Number, T extends Token<V>>
     return this;
   }
 
-  public TokenRangeAssert<V, T> hasReplicas(Host... hosts) {
-    InetSocketAddress[] expected =
-        Arrays.stream(hosts).map(Host::getSocketAddress).toArray(InetSocketAddress[]::new);
+  public TokenRangeAssert<V, T> hasReplicas(Node... hosts) {
+    Set<EndPoint> expected =
+        Arrays.stream(hosts).map(Node::getEndPoint).collect(Collectors.toSet());
     assertThat(actual.replicas())
         .overridingErrorMessage(
             "Expecting %s to have replicas %s but it had %s", actual, expected, actual.replicas())
-        .containsExactlyInAnyOrder(expected);
+        .isEqualTo(expected);
     return this;
   }
 

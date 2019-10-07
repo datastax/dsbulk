@@ -8,9 +8,9 @@
  */
 package com.datastax.dsbulk.commons.tests.utils;
 
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * This is a simplified version of the driver's VersionNumber class, to avoid references to the
@@ -37,7 +37,7 @@ public class Version implements Comparable<Version> {
     throw new IllegalArgumentException("Invalid version number: " + versionStr);
   }
 
-  public static boolean isWithinRange(Version min, Version max, @NotNull Version def) {
+  public static boolean isWithinRange(Version min, Version max, @NonNull Version def) {
     return ((min == null) && (max == null))
         || (((min == null) || (min.compareTo(def) <= 0))
             && ((max == null) || (max.compareTo(def) > 0)));
@@ -56,7 +56,7 @@ public class Version implements Comparable<Version> {
   }
 
   @Override
-  public int compareTo(@NotNull Version other) {
+  public int compareTo(@NonNull Version other) {
     if (major < other.major) {
       return -1;
     }

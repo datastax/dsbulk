@@ -8,46 +8,56 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
-import static com.datastax.dsbulk.engine.internal.schema.CQLRenderMode.VARIABLE;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.ASCII;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.VARCHAR;
 
-import com.datastax.driver.core.BoundStatement;
-import com.datastax.driver.core.ColumnDefinitions;
-import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.DriverCoreHooks;
-import com.datastax.driver.core.PreparedStatement;
-import com.datastax.driver.core.ProtocolVersion;
-import com.datastax.driver.core.Statement;
-import com.datastax.driver.core.TypeCodec;
 import com.datastax.dsbulk.connectors.api.Field;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.engine.internal.statement.BulkBoundStatement;
 import com.datastax.dsbulk.engine.internal.statement.UnmappableStatement;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.reflect.TypeToken;
+import com.datastax.oss.driver.api.core.CqlIdentifier;
+import com.datastax.oss.driver.api.core.DefaultProtocolVersion;
+import com.datastax.oss.driver.api.core.ProtocolVersion;
+import com.datastax.oss.driver.api.core.cql.BatchableStatement;
+import com.datastax.oss.driver.api.core.cql.BoundStatement;
+import com.datastax.oss.driver.api.core.cql.BoundStatementBuilder;
+import com.datastax.oss.driver.api.core.cql.ColumnDefinitions;
+import com.datastax.oss.driver.api.core.cql.PreparedStatement;
+import com.datastax.oss.driver.api.core.type.DataType;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
+import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSet;
+import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
-import java.util.function.BiFunction;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import java.util.function.Function;
 
 public class DefaultRecordMapper implements RecordMapper {
 
   private final PreparedStatement insertStatement;
-  private final ImmutableSet<CQLIdentifier> primaryKeyVariables;
+  private final ImmutableSet<CQLWord> primaryKeyVariables;
   private final ProtocolVersion protocolVersion;
   private final Mapping mapping;
   private final RecordMetadata recordMetadata;
   private final boolean nullToUnset;
   private final boolean allowExtraFields;
   private final boolean allowMissingFields;
-  private final BiFunction<Record, PreparedStatement, BoundStatement> boundStatementFactory;
+  private final Function<PreparedStatement, BoundStatementBuilder> boundStatementBuilderFactory;
+  private final ImmutableMap<CQLWord, List<Integer>> variablesToIndices;
 
   public DefaultRecordMapper(
       PreparedStatement insertStatement,
-      Set<CQLIdentifier> primaryKeyVariables,
+      Set<CQLWord> primaryKeyVariables,
+      ProtocolVersion protocolVersion,
       Mapping mapping,
       RecordMetadata recordMetadata,
       boolean nullToUnset,
@@ -56,26 +66,26 @@ public class DefaultRecordMapper implements RecordMapper {
     this(
         insertStatement,
         primaryKeyVariables,
-        DriverCoreHooks.protocolVersion(insertStatement.getPreparedId()),
+        protocolVersion,
         mapping,
         recordMetadata,
         nullToUnset,
         allowExtraFields,
         allowMissingFields,
-        BulkBoundStatement::new);
+        ps -> ps.boundStatementBuilder());
   }
 
   @VisibleForTesting
   DefaultRecordMapper(
       PreparedStatement insertStatement,
-      Set<CQLIdentifier> primaryKeyVariables,
+      Set<CQLWord> primaryKeyVariables,
       ProtocolVersion protocolVersion,
       Mapping mapping,
       RecordMetadata recordMetadata,
       boolean nullToUnset,
       boolean allowExtraFields,
       boolean allowMissingFields,
-      BiFunction<Record, PreparedStatement, BoundStatement> boundStatementFactory) {
+      Function<PreparedStatement, BoundStatementBuilder> boundStatementBuilderFactory) {
     this.insertStatement = insertStatement;
     this.primaryKeyVariables = ImmutableSet.copyOf(primaryKeyVariables);
     this.protocolVersion = protocolVersion;
@@ -84,61 +94,66 @@ public class DefaultRecordMapper implements RecordMapper {
     this.nullToUnset = nullToUnset;
     this.allowExtraFields = allowExtraFields;
     this.allowMissingFields = allowMissingFields;
-    this.boundStatementFactory = boundStatementFactory;
+    this.boundStatementBuilderFactory = boundStatementBuilderFactory;
+    this.variablesToIndices = buildVariablesToIndices();
   }
 
-  @NotNull
+  @NonNull
   @Override
-  public Statement map(@NotNull Record record) {
+  public BatchableStatement<?> map(@NonNull Record record) {
     try {
       if (!allowMissingFields) {
         ensureAllFieldsPresent(record.fields());
       }
-      BoundStatement bs = boundStatementFactory.apply(record, insertStatement);
+      BoundStatementBuilder builder = boundStatementBuilderFactory.apply(insertStatement);
+      ColumnDefinitions variableDefinitions = insertStatement.getVariableDefinitions();
       for (Field field : record.fields()) {
-        Collection<CQLIdentifier> variables = mapping.fieldToVariables(field);
+        Set<CQLWord> variables = mapping.fieldToVariables(field);
         if (!variables.isEmpty()) {
-          for (CQLIdentifier variable : variables) {
-            String name = variable.render(VARIABLE);
-            DataType cqlType = insertStatement.getVariables().getType(name);
-            TypeToken<?> fieldType = recordMetadata.getFieldType(field, cqlType);
+          for (CQLWord variable : variables) {
+            CqlIdentifier name = variable.asIdentifier();
+            DataType cqlType = variableDefinitions.get(name).getType();
+            GenericType<?> fieldType = recordMetadata.getFieldType(field, cqlType);
             Object raw = record.getFieldValue(field);
-            bindColumn(bs, variable, name, raw, cqlType, fieldType);
+            builder = bindColumn(builder, variable, raw, cqlType, fieldType);
           }
         } else if (!allowExtraFields) {
           // the field wasn't mapped to any known variable
           throw InvalidMappingException.extraneousField(field);
         }
       }
-      ensurePrimaryKeySet(bs);
-      if (protocolVersion.compareTo(ProtocolVersion.V4) < 0) {
-        ensureAllVariablesSet(bs);
+      ensurePrimaryKeySet(builder);
+      if (protocolVersion.getCode() < DefaultProtocolVersion.V4.getCode()) {
+        ensureAllVariablesSet(builder);
       }
       record.clear();
-      return bs;
+      BoundStatement bs = builder.build();
+      return new BulkBoundStatement<>(record, bs);
     } catch (Exception e) {
       return new UnmappableStatement(record, e);
     }
   }
 
-  private <T> void bindColumn(
-      BoundStatement bs,
-      CQLIdentifier variable,
-      String name,
+  private <T> BoundStatementBuilder bindColumn(
+      BoundStatementBuilder builder,
+      CQLWord variable,
       @Nullable T raw,
       DataType cqlType,
-      TypeToken<? extends T> javaType) {
+      GenericType<? extends T> javaType) {
     TypeCodec<T> codec = mapping.codec(variable, cqlType, javaType);
-    ByteBuffer bb = codec.serialize(raw, protocolVersion);
+    ByteBuffer bb = codec.encode(raw, builder.protocolVersion());
     if (isNull(bb, cqlType)) {
       if (primaryKeyVariables.contains(variable)) {
         throw InvalidMappingException.nullPrimaryKey(variable);
       }
       if (nullToUnset) {
-        return;
+        return builder;
       }
     }
-    bs.setBytesUnsafe(name, bb);
+    for (int index : variablesToIndices.get(variable)) {
+      builder = builder.setBytesUnsafe(index, bb);
+    }
+    return builder;
   }
 
   private boolean isNull(ByteBuffer bb, DataType cqlType) {
@@ -148,8 +163,7 @@ public class DefaultRecordMapper implements RecordMapper {
     if (bb.hasRemaining()) {
       return false;
     }
-    switch (cqlType.getName()) {
-      case TEXT:
+    switch (cqlType.getProtocolCode()) {
       case VARCHAR:
       case ASCII:
         // empty strings are encoded as zero-length buffers,
@@ -161,9 +175,9 @@ public class DefaultRecordMapper implements RecordMapper {
   }
 
   private void ensureAllFieldsPresent(Set<Field> recordFields) {
-    ColumnDefinitions variables = insertStatement.getVariables();
+    ColumnDefinitions variables = insertStatement.getVariableDefinitions();
     for (int i = 0; i < variables.size(); i++) {
-      CQLIdentifier variable = CQLIdentifier.fromInternal(variables.getName(i));
+      CQLWord variable = CQLWord.fromCqlIdentifier(variables.get(i).getName());
       Collection<Field> fields = mapping.variableToFields(variable);
       // Note: in practice, there can be only one field mapped to a given variable when loading
       for (Field field : fields) {
@@ -174,20 +188,33 @@ public class DefaultRecordMapper implements RecordMapper {
     }
   }
 
-  private void ensurePrimaryKeySet(BoundStatement bs) {
-    for (CQLIdentifier variable : primaryKeyVariables) {
-      if (!bs.isSet(variable.render(VARIABLE))) {
-        throw InvalidMappingException.unsetPrimaryKey(variable);
+  private void ensurePrimaryKeySet(BoundStatementBuilder bs) {
+    for (CQLWord variable : primaryKeyVariables) {
+      for (int index : variablesToIndices.get(variable)) {
+        if (!bs.isSet(index)) {
+          throw InvalidMappingException.unsetPrimaryKey(variable);
+        }
       }
     }
   }
 
-  private void ensureAllVariablesSet(BoundStatement bs) {
-    ColumnDefinitions variables = insertStatement.getVariables();
+  private void ensureAllVariablesSet(BoundStatementBuilder bs) {
+    ColumnDefinitions variables = insertStatement.getVariableDefinitions();
     for (int i = 0; i < variables.size(); i++) {
       if (!bs.isSet(i)) {
-        bs.setToNull(i);
+        bs = bs.setToNull(i);
       }
     }
+  }
+
+  private ImmutableMap<CQLWord, List<Integer>> buildVariablesToIndices() {
+    Map<CQLWord, List<Integer>> variablesToIndices = new HashMap<>();
+    ColumnDefinitions variables = insertStatement.getVariableDefinitions();
+    for (int i = 0; i < variables.size(); i++) {
+      CQLWord name = CQLWord.fromCqlIdentifier(variables.get(i).getName());
+      List<Integer> indices = variablesToIndices.computeIfAbsent(name, k -> new ArrayList<>());
+      indices.add(i);
+    }
+    return ImmutableMap.copyOf(variablesToIndices);
   }
 }

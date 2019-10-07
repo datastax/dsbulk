@@ -8,16 +8,19 @@
  */
 package com.datastax.dsbulk.executor.rxjava.batch;
 
-import com.datastax.driver.core.BatchStatement;
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.CodecRegistry;
-import com.datastax.driver.core.ProtocolVersion;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.batch.StatementBatcher;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.ProtocolVersion;
+import com.datastax.oss.driver.api.core.cql.BatchStatement;
+import com.datastax.oss.driver.api.core.cql.BatchType;
+import com.datastax.oss.driver.api.core.cql.BatchableStatement;
+import com.datastax.oss.driver.api.core.cql.DefaultBatchType;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import hu.akarnokd.rxjava2.operators.FlowableTransformers;
 import io.reactivex.Flowable;
-import io.reactivex.functions.Predicate;
-import org.jetbrains.annotations.NotNull;
+import java.util.ArrayList;
 import org.reactivestreams.Publisher;
 
 /** A subclass of {@link StatementBatcher} that adds reactive-style capabilities to it. */
@@ -25,24 +28,23 @@ public class RxJavaStatementBatcher extends StatementBatcher {
 
   /**
    * Creates a new {@link RxJavaStatementBatcher} that produces {@linkplain
-   * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in
-   * {@linkplain com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY
-   * partition key} mode and uses the {@linkplain ProtocolVersion#NEWEST_SUPPORTED latest stable}
-   * protocol version and the default {@link CodecRegistry#DEFAULT_INSTANCE CodecRegistry} instance.
-   * It also uses the default {@linkplain #DEFAULT_MAX_BATCH_STATEMENTS maximum number of
-   * statements} (100) and the default {@linkplain #DEFAULT_MAX_SIZE_BYTES maximum data size in
-   * bytes} (unlimited).
+   * DefaultBatchType#UNLOGGED unlogged} batches, operates in {@linkplain
+   * StatementBatcher.BatchMode#PARTITION_KEY partition key} mode and uses the {@linkplain
+   * ProtocolVersion#DEFAULT latest stable} protocol version and the default {@link
+   * CodecRegistry#DEFAULT CodecRegistry} instance. It also uses the default {@linkplain
+   * #DEFAULT_MAX_BATCH_STATEMENTS maximum number of statements} (100) and the default {@linkplain
+   * #DEFAULT_MAX_SIZE_BYTES maximum data size in bytes} (unlimited).
    */
   public RxJavaStatementBatcher() {}
 
   /**
    * Creates a new {@link RxJavaStatementBatcher} that produces {@linkplain
-   * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in
-   * {@linkplain com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY
-   * partition key} mode and uses the {@linkplain ProtocolVersion#NEWEST_SUPPORTED latest stable}
-   * protocol version and the default {@link CodecRegistry#DEFAULT_INSTANCE CodecRegistry} instance
-   * and the default {@linkplain #DEFAULT_MAX_SIZE_BYTES maximum data size in bytes} (unlimited). It
-   * uses the given maximum number of statements.
+   * DefaultBatchType#UNLOGGED unlogged} batches, operates in {@linkplain
+   * StatementBatcher.BatchMode#PARTITION_KEY partition key} mode and uses the {@linkplain
+   * ProtocolVersion#DEFAULT latest stable} protocol version and the default {@link
+   * CodecRegistry#DEFAULT CodecRegistry} instance and the default {@linkplain
+   * #DEFAULT_MAX_SIZE_BYTES maximum data size in bytes} (unlimited). It uses the given maximum
+   * number of statements.
    *
    * @param maxBatchStatements The maximum number of statements in a batch. If set to zero or any
    *     negative value, the number of statements is considered unlimited.
@@ -53,12 +55,12 @@ public class RxJavaStatementBatcher extends StatementBatcher {
 
   /**
    * Creates a new {@link RxJavaStatementBatcher} that produces {@linkplain
-   * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in
-   * {@linkplain com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY
-   * partition key} mode and uses the {@linkplain ProtocolVersion#NEWEST_SUPPORTED latest stable}
-   * protocol version and the default {@link CodecRegistry#DEFAULT_INSTANCE CodecRegistry} instance
-   * and the default {@linkplain #DEFAULT_MAX_BATCH_STATEMENTS maximum number of statements} (100).
-   * It uses the given maximum data size in bytes.
+   * DefaultBatchType#UNLOGGED unlogged} batches, operates in {@linkplain
+   * StatementBatcher.BatchMode#PARTITION_KEY partition key} mode and uses the {@linkplain
+   * ProtocolVersion#DEFAULT latest stable} protocol version and the default {@link
+   * CodecRegistry#DEFAULT CodecRegistry} instance and the default {@linkplain
+   * #DEFAULT_MAX_BATCH_STATEMENTS maximum number of statements} (100). It uses the given maximum
+   * data size in bytes.
    *
    * @param maxSizeInBytes The maximum number of bytes of data in one batch. If set to zero or any
    *     negative value, the data size is considered unlimited.
@@ -69,11 +71,11 @@ public class RxJavaStatementBatcher extends StatementBatcher {
 
   /**
    * Creates a new {@link RxJavaStatementBatcher} that produces {@linkplain
-   * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in
-   * {@linkplain com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY
-   * partition key} mode and uses the {@linkplain ProtocolVersion#NEWEST_SUPPORTED latest stable}
-   * protocol version and the default {@link CodecRegistry#DEFAULT_INSTANCE CodecRegistry} instance.
-   * It uses the given maximum number of statements and the maximum data size in bytes.
+   * DefaultBatchType#UNLOGGED unlogged} batches, operates in {@linkplain
+   * StatementBatcher.BatchMode#PARTITION_KEY partition key} mode and uses the {@linkplain
+   * ProtocolVersion#DEFAULT latest stable} protocol version and the default {@link
+   * CodecRegistry#DEFAULT CodecRegistry} instance. It uses the given maximum number of statements
+   * and the maximum data size in bytes.
    *
    * @param maxBatchStatements The maximum number of statements in a batch. If set to zero or any
    *     negative value, the number of statements is considered unlimited.
@@ -86,63 +88,63 @@ public class RxJavaStatementBatcher extends StatementBatcher {
 
   /**
    * Creates a new {@link RxJavaStatementBatcher} that produces {@linkplain
-   * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in
-   * {@linkplain com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY
-   * partition key} mode and uses the given {@link Cluster} as its source for the {@linkplain
-   * ProtocolVersion protocol version} and the {@link CodecRegistry} instance to use. It also uses
-   * the default {@linkplain #DEFAULT_MAX_BATCH_STATEMENTS maximum number of statements} (100) and
-   * the default {@linkplain #DEFAULT_MAX_SIZE_BYTES maximum data size in bytes} (unlimited).
+   * DefaultBatchType#UNLOGGED unlogged} batches, operates in {@linkplain
+   * StatementBatcher.BatchMode#PARTITION_KEY partition key} mode and uses the given {@linkplain
+   * CqlSession session} as its source for the {@linkplain ProtocolVersion protocol version} and the
+   * {@link CodecRegistry} instance to use. It also uses the default {@linkplain
+   * #DEFAULT_MAX_BATCH_STATEMENTS maximum number of statements} (100) and the default {@linkplain
+   * #DEFAULT_MAX_SIZE_BYTES maximum data size in bytes} (unlimited).
    *
-   * @param cluster The {@link Cluster} to use; cannot be {@code null}.
+   * @param session The {@linkplain CqlSession session} to use; cannot be {@code null}.
    */
-  public RxJavaStatementBatcher(Cluster cluster) {
-    super(cluster);
+  public RxJavaStatementBatcher(CqlSession session) {
+    super(session);
   }
 
   /**
    * Creates a new {@link RxJavaStatementBatcher} that produces {@linkplain
-   * com.datastax.driver.core.BatchStatement.Type#UNLOGGED unlogged} batches, operates in the
-   * specified {@linkplain com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode batch
-   * mode} and uses the given {@link Cluster} as its source for the {@linkplain ProtocolVersion
+   * DefaultBatchType#UNLOGGED unlogged} batches, operates in the specified {@linkplain
+   * com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode batch mode} and uses the
+   * given {@linkplain CqlSession session} as its source for the {@linkplain ProtocolVersion
    * protocol version} and the {@link CodecRegistry} instance to use. It also uses the default
    * {@linkplain #DEFAULT_MAX_BATCH_STATEMENTS maximum number of statements} (100) and the default
    * {@linkplain #DEFAULT_MAX_SIZE_BYTES maximum data size in bytes} (unlimited).
    *
-   * @param cluster The {@link Cluster} to use; cannot be {@code null}.
+   * @param session The {@linkplain CqlSession session} to use; cannot be {@code null}.
    * @param batchMode The batch mode to use; cannot be {@code null}.
    */
-  public RxJavaStatementBatcher(@NotNull Cluster cluster, @NotNull BatchMode batchMode) {
-    super(cluster, batchMode);
+  public RxJavaStatementBatcher(@NonNull CqlSession session, @NonNull BatchMode batchMode) {
+    super(session, batchMode);
   }
 
   /**
    * Creates a new {@link RxJavaStatementBatcher} that produces batches of the given {@code
-   * batchType}, operates in the specified {@code batchMode} and uses the given {@link Cluster} as
-   * its source for the {@linkplain ProtocolVersion protocol version} and the {@link CodecRegistry}
-   * instance to use. It uses the given maximum number of statements and the default {@linkplain
-   * #DEFAULT_MAX_SIZE_BYTES maximum data size in bytes} (unlimited).
+   * batchType}, operates in the specified {@code batchMode} and uses the given {@linkplain
+   * CqlSession session} as its source for the {@linkplain ProtocolVersion protocol version} and the
+   * {@link CodecRegistry} instance to use. It uses the given maximum number of statements and the
+   * default {@linkplain #DEFAULT_MAX_SIZE_BYTES maximum data size in bytes} (unlimited).
    *
-   * @param cluster The {@link Cluster} to use; cannot be {@code null}.
+   * @param session The {@linkplain CqlSession session} to use; cannot be {@code null}.
    * @param batchMode The batch mode to use; cannot be {@code null}.
    * @param batchType The batch type to use; cannot be {@code null}.
    * @param maxBatchStatements The maximum number of statements in a batch. If set to zero or any
    *     negative value, the number of statements is considered unlimited.
    */
   public RxJavaStatementBatcher(
-      @NotNull Cluster cluster,
-      @NotNull BatchMode batchMode,
-      @NotNull BatchStatement.Type batchType,
+      @NonNull CqlSession session,
+      @NonNull BatchMode batchMode,
+      @NonNull BatchType batchType,
       int maxBatchStatements) {
-    super(cluster, batchMode, batchType, maxBatchStatements);
+    super(session, batchMode, batchType, maxBatchStatements);
   }
 
   /**
    * Creates a new {@link RxJavaStatementBatcher} that produces batches of the given {@code
-   * batchType}, operates in the specified {@code batchMode} and uses the given {@link Cluster} as
-   * its source for the {@linkplain ProtocolVersion protocol version} and the {@link CodecRegistry}
-   * instance to use.
+   * batchType}, operates in the specified {@code batchMode} and uses the given {@linkplain
+   * CqlSession session} as its source for the {@linkplain ProtocolVersion protocol version} and the
+   * {@link CodecRegistry} instance to use.
    *
-   * @param cluster The {@link Cluster} to use; cannot be {@code null}.
+   * @param session The {@linkplain CqlSession session} to use; cannot be {@code null}.
    * @param batchMode The batch mode to use; cannot be {@code null}.
    * @param batchType The batch type to use; cannot be {@code null}.
    * @param maxBatchStatements The maximum number of statements in a batch. If set to zero or any
@@ -151,12 +153,12 @@ public class RxJavaStatementBatcher extends StatementBatcher {
    *     negative value, the data size is considered unlimited.
    */
   public RxJavaStatementBatcher(
-      @NotNull Cluster cluster,
-      @NotNull BatchMode batchMode,
-      @NotNull BatchStatement.Type batchType,
+      @NonNull CqlSession session,
+      @NonNull BatchMode batchMode,
+      @NonNull BatchType batchType,
       int maxBatchStatements,
       long maxSizeInBytes) {
-    super(cluster, batchMode, batchType, maxBatchStatements, maxSizeInBytes);
+    super(session, batchMode, batchType, maxBatchStatements, maxSizeInBytes);
   }
 
   /**
@@ -174,22 +176,21 @@ public class RxJavaStatementBatcher extends StatementBatcher {
    * of statements, or when their total data size is greater than the maximum data size, statements
    * will be split into smaller batches.
    *
-   * <p>When {@link com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#PARTITION_KEY
-   * PARTITION_KEY} is used, the grouping key is the statement's {@linkplain
-   * Statement#getRoutingKey(ProtocolVersion, CodecRegistry) routing key} or {@linkplain
+   * <p>When {@link StatementBatcher.BatchMode#PARTITION_KEY PARTITION_KEY} is used, the grouping
+   * key is the statement's {@linkplain Statement#getRoutingKey() routing key} or {@linkplain
    * Statement#getRoutingToken() routing token}, whichever is available.
    *
    * <p>When {@link com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode#REPLICA_SET
    * REPLICA_SET} is used, the grouping key is the replica set owning the statement's {@linkplain
-   * Statement#getRoutingKey(ProtocolVersion, CodecRegistry) routing key} or {@linkplain
-   * Statement#getRoutingToken() routing token}, whichever is available.
+   * Statement#getRoutingKey() routing key} or {@linkplain Statement#getRoutingToken() routing
+   * token}, whichever is available.
    *
    * @param statements the statements to batch together.
    * @return A {@link Flowable} of batched statements.
    */
-  @NotNull
-  public Flowable<Statement> batchByGroupingKey(
-      @NotNull Publisher<? extends Statement> statements) {
+  @NonNull
+  public Flowable<Statement<?>> batchByGroupingKey(
+      @NonNull Publisher<BatchableStatement<?>> statements) {
     return Flowable.fromPublisher(statements).groupBy(this::groupingKey).flatMap(this::batchAll);
   }
 
@@ -206,32 +207,32 @@ public class RxJavaStatementBatcher extends StatementBatcher {
    * will be split into smaller batches.
    *
    * <p>Use this method with caution; if the given statements do not share the same {@linkplain
-   * Statement#getRoutingKey(ProtocolVersion, CodecRegistry) routing key}, the resulting batch could
-   * lead to write throughput degradation.
+   * Statement#getRoutingKey() routing key}, the resulting batch could lead to write throughput
+   * degradation.
    *
    * @param statements the statements to batch together.
    * @return A {@link Flowable} of batched statements.
    */
-  @NotNull
-  public Flowable<? extends Statement> batchAll(
-      @NotNull Publisher<? extends Statement> statements) {
+  @NonNull
+  public Flowable<Statement<?>> batchAll(@NonNull Publisher<BatchableStatement<?>> statements) {
     return Flowable.fromPublisher(statements)
-        .cast(Statement.class)
-        .compose(FlowableTransformers.bufferUntil(new RxJavaAdaptiveSizingBatchPredicate()))
-        .flatMapMaybe(
+        .compose(FlowableTransformers.windowUntil(new RxJavaAdaptiveSizingBatchPredicate()))
+        .flatMapSingle(
             stmts ->
-                Flowable.fromIterable(stmts)
+                stmts
                     .reduce(
-                        (s1, s2) -> {
-                          if (s1 instanceof BatchStatement) {
-                            ((BatchStatement) s1).add(s2);
-                            return s1;
-                          } else {
-                            return new BatchStatement(batchType).add(s1).add(s2);
-                          }
-                        }));
+                        new ArrayList<BatchableStatement<?>>(),
+                        (children, child) -> {
+                          children.add(child);
+                          return children;
+                        })
+                    .map(
+                        children ->
+                            children.size() == 1
+                                ? children.get(0)
+                                : BatchStatement.newInstance(batchType, children)));
   }
 
   private class RxJavaAdaptiveSizingBatchPredicate extends AdaptiveSizingBatchPredicate
-      implements Predicate<Statement> {}
+      implements io.reactivex.functions.Predicate<BatchableStatement<?>> {}
 }

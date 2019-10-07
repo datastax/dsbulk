@@ -8,20 +8,20 @@
  */
 package com.datastax.dsbulk.executor.api.internal.result;
 
-import com.datastax.driver.core.ExecutionInfo;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
+import com.datastax.oss.driver.api.core.cql.ExecutionInfo;
+import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.cql.Statement;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.util.Optional;
 import java.util.stream.Stream;
-import org.jetbrains.annotations.NotNull;
 
 public class EmptyWriteResult implements WriteResult {
 
-  private final Statement statement;
+  private final Statement<?> statement;
 
-  public EmptyWriteResult(Statement s) {
+  public EmptyWriteResult(Statement<?> s) {
     statement = s;
   }
 
@@ -36,19 +36,18 @@ public class EmptyWriteResult implements WriteResult {
   }
 
   @Override
-  @NotNull
-  public Statement getStatement() {
+  public @NonNull Statement<?> getStatement() {
     return statement;
   }
 
   @Override
-  @NotNull
+  @NonNull
   public Optional<ExecutionInfo> getExecutionInfo() {
     return Optional.empty();
   }
 
   @Override
-  @NotNull
+  @NonNull
   public Optional<BulkExecutionException> getError() {
     return Optional.empty();
   }

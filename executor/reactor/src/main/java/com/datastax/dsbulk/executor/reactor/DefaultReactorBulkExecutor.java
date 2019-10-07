@@ -8,9 +8,6 @@
  */
 package com.datastax.dsbulk.executor.reactor;
 
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.SimpleStatement;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.AbstractBulkExecutor;
 import com.datastax.dsbulk.executor.api.AbstractBulkExecutorBuilder;
 import com.datastax.dsbulk.executor.api.BulkExecutor;
@@ -19,6 +16,9 @@ import com.datastax.dsbulk.executor.api.internal.publisher.ReadResultPublisher;
 import com.datastax.dsbulk.executor.api.internal.publisher.WriteResultPublisher;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
+import com.datastax.oss.driver.api.core.cql.Statement;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
@@ -36,22 +36,23 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
   /**
    * Creates a new builder of {@link DefaultReactorBulkExecutor} instances.
    *
-   * @param session The {@link Session} to use.
+   * @param session The {@link CqlSession} to use.
    * @return a new builder.
    */
-  public static DefaultReactorBulkExecutorBuilder builder(Session session) {
+  public static DefaultReactorBulkExecutorBuilder builder(CqlSession session) {
     return new DefaultReactorBulkExecutorBuilder(session);
   }
 
   /**
-   * Creates a new instance using the given {@link Session} and using defaults for all parameters.
+   * Creates a new instance using the given {@link CqlSession} and using defaults for all
+   * parameters.
    *
-   * <p>If you need to customize your executor, use the {@link #builder(Session) builder} method
+   * <p>If you need to customize your executor, use the {@link #builder(CqlSession) builder} method
    * instead.
    *
-   * @param session the {@link Session} to use.
+   * @param session the {@link CqlSession} to use.
    */
-  public DefaultReactorBulkExecutor(Session session) {
+  public DefaultReactorBulkExecutor(CqlSession session) {
     super(session);
   }
 
@@ -74,7 +75,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
   }
 
   @Override
-  public CompletableFuture<WriteResult> writeAsync(Statement statement) {
+  public CompletableFuture<WriteResult> writeAsync(Statement<?> statement) {
     CompletableFuture<WriteResult> future = new CompletableFuture<>();
     Mono.from(writeReactive(statement))
         .doOnSuccess(future::complete)
@@ -111,7 +112,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
   }
 
   @Override
-  public Mono<WriteResult> writeReactive(Statement statement) {
+  public Mono<WriteResult> writeReactive(Statement<?> statement) {
     Objects.requireNonNull(statement);
     return Mono.from(
         new WriteResultPublisher(
@@ -151,7 +152,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
 
   @Override
   public CompletableFuture<Void> readAsync(
-      Statement statement, Consumer<? super ReadResult> consumer) throws BulkExecutionException {
+      Statement<?> statement, Consumer<? super ReadResult> consumer) throws BulkExecutionException {
     return readAsync(Flux.just(statement), consumer);
   }
 
@@ -191,11 +192,11 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
 
   @Override
   public Flux<ReadResult> readReactive(String statement) throws BulkExecutionException {
-    return readReactive(new SimpleStatement(statement));
+    return readReactive(SimpleStatement.newInstance(statement));
   }
 
   @Override
-  public Flux<ReadResult> readReactive(Statement statement) {
+  public Flux<ReadResult> readReactive(Statement<?> statement) {
     Objects.requireNonNull(statement);
     return Flux.from(
         new ReadResultPublisher(

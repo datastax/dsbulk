@@ -8,7 +8,7 @@
  */
 package com.datastax.dsbulk.connectors.api;
 
-import org.jetbrains.annotations.NotNull;
+import edu.umd.cs.findbugs.annotations.NonNull;
 
 /**
  * A field in a record. Fields can be {@linkplain IndexedField indexed} or {@linkplain MappedField
@@ -20,6 +20,6 @@ public interface Field {
    * @return a generic description of the field, mainly for error reporting purposes; usually its
    *     name or index.
    */
-  @NotNull
+  @NonNull
   String getFieldDescription();
 }

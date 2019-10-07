@@ -5,9 +5,9 @@ schedules:
     matrix:
       exclude:
         - java: ['openjdk11']
-        - cassandra: ['dse-6.8', 'dse-6.7', 'dse-6.0', 'dse-5.1', 'dse-5.0', 'dse-4.8', 'dse-4.7', 'dse-4.6', '3.11', '3.0', '2.2', '2.1', '2.0', '1.2']
+        - cassandra: ['dse-6.8', 'dse-6.7', 'dse-6.0', 'dse-5.1', 'dse-5.0', 'dse-4.8', 'dse-4.7', '3.11', '3.0', '2.2', '2.1']
     env_vars: |
-      TEST_GROUPS="short,medium"
+      TEST_GROUPS="medium"
   nightly:
     # Run full suite nightly on change for all primary branches if they have changes.
     schedule: nightly
@@ -15,7 +15,7 @@ schedules:
       # regex matches primary branch format (1.1, 1.x, 1.1.x, etc).
       include: ["/\\d+(\\.[\\dx]+)+/"]
     env_vars: |
-      TEST_GROUPS="short,medium,long"
+      TEST_GROUPS="medium,long"
   adhoc:
     # Run full suite on demand.
     schedule: adhoc
@@ -23,7 +23,7 @@ schedules:
       exclude:
         - java: ['openjdk11']
     env_vars: |
-      TEST_GROUPS="short,medium,long"
+      TEST_GROUPS="medium,long"
 java:
   - openjdk8
   - openjdk11
@@ -34,10 +34,7 @@ cassandra:
   - 3.0
   - 2.2
   - 2.1
-  - 2.0
-  - 1.2
   - ddac-5.1
-  - dse-4.6
   - dse-4.7
   - dse-4.8
   - dse-5.0

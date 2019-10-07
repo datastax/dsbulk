@@ -10,22 +10,22 @@ package com.datastax.dsbulk.connectors.api.internal;
 
 import com.datastax.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.dsbulk.connectors.api.Field;
-import com.google.common.base.Suppliers;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
+import com.datastax.oss.driver.shaded.guava.common.base.Suppliers;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSet;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.net.URI;
 import java.util.Collection;
 import java.util.Set;
 import java.util.function.Supplier;
-import org.jetbrains.annotations.NotNull;
 
 /** A record that could not be fully parsed from its source. */
 public class DefaultErrorRecord implements ErrorRecord {
 
-  private final @NotNull Object source;
-  private final @NotNull Supplier<URI> resource;
+  private final @NonNull Object source;
+  private final @NonNull Supplier<URI> resource;
   private final long position;
-  private final @NotNull Throwable error;
+  private final @NonNull Throwable error;
 
   /**
    * Creates a new error record.
@@ -36,7 +36,7 @@ public class DefaultErrorRecord implements ErrorRecord {
    * @param error the error.
    */
   public DefaultErrorRecord(
-      @NotNull Object source, @NotNull URI resource, long position, @NotNull Throwable error) {
+      @NonNull Object source, @NonNull URI resource, long position, @NonNull Throwable error) {
     this(source, () -> resource, position, error);
   }
 
@@ -49,23 +49,23 @@ public class DefaultErrorRecord implements ErrorRecord {
    * @param error the error.
    */
   public DefaultErrorRecord(
-      @NotNull Object source,
-      @NotNull Supplier<URI> resource,
+      @NonNull Object source,
+      @NonNull Supplier<URI> resource,
       long position,
-      @NotNull Throwable error) {
+      @NonNull Throwable error) {
     this.source = source;
     this.resource = Suppliers.memoize(resource::get);
     this.position = position;
     this.error = error;
   }
 
-  @NotNull
+  @NonNull
   @Override
   public Object getSource() {
     return source;
   }
 
-  @NotNull
+  @NonNull
   @Override
   public URI getResource() {
     return resource.get();
@@ -76,20 +76,20 @@ public class DefaultErrorRecord implements ErrorRecord {
     return position;
   }
 
-  @NotNull
+  @NonNull
   @Override
   public Set<Field> fields() {
     return ImmutableSet.of();
   }
 
-  @NotNull
+  @NonNull
   @Override
   public Collection<Object> values() {
     return ImmutableList.of();
   }
 
   @Override
-  public Object getFieldValue(@NotNull Field field) {
+  public Object getFieldValue(@NonNull Field field) {
     return null;
   }
 
@@ -98,7 +98,7 @@ public class DefaultErrorRecord implements ErrorRecord {
     // NO-OP
   }
 
-  @NotNull
+  @NonNull
   @Override
   public Throwable getError() {
     return error;

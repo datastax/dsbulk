@@ -8,36 +8,34 @@
  */
 package com.datastax.dsbulk.engine.internal.utils;
 
-import static java.time.Instant.EPOCH;
-import static java.time.ZoneOffset.UTC;
-import static java.time.temporal.ChronoUnit.MICROS;
-import static java.util.concurrent.TimeUnit.HOURS;
-import static java.util.concurrent.TimeUnit.MINUTES;
-import static java.util.concurrent.TimeUnit.SECONDS;
-
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.Host;
-import com.datastax.driver.core.Native;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
+import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
-import com.google.common.base.Splitter;
-import com.google.common.base.Throwables;
-import com.google.common.collect.Iterables;
-import java.lang.management.ManagementFactory;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.Instant;
-import java.time.ZonedDateTime;
+import com.datastax.dse.driver.api.core.metadata.DseNodeProperties;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.metadata.Node;
+import com.datastax.oss.driver.shaded.guava.common.base.Throwables;
+import edu.umd.cs.findbugs.annotations.NonNull;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
+import java.util.Collection;
 import java.util.List;
-import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
 
 public class WorkflowUtils {
+
+  public static final String BULK_LOADER_APPLICATION_NAME = "DataStax Bulk Loader";
+
+  private static final UUID BULK_LOADER_NAMESPACE =
+      UUID.fromString("2505c745-cedf-4714-bcab-0d580270ed95");
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WorkflowUtils.class);
 
@@ -56,67 +54,26 @@ public class WorkflowUtils {
       DateTimeFormatter.ofPattern("uuuuMMdd-HHmmss-SSSSSS");
 
   public static String newExecutionId(WorkflowType workflowType) {
-    return workflowType + "_" + DEFAULT_TIMESTAMP_PATTERN.format(now());
+    return workflowType + "_" + DEFAULT_TIMESTAMP_PATTERN.format(PlatformUtils.now());
   }
 
   public static String newCustomExecutionId(
-      @NotNull String template, @NotNull WorkflowType workflowType) {
+      @NonNull String template, @NonNull WorkflowType workflowType) {
     try {
       // Accepted parameters:
       // 1 : the workflow type
       // 2 : the current time
       // 3 : the JVM process PID, if available
-      String executionId = String.format(template, workflowType, now(), pid());
+      String executionId =
+          String.format(template, workflowType, PlatformUtils.now(), PlatformUtils.pid());
       if (executionId.isEmpty()) {
-        throw new BulkConfigurationException(
-            "Could not generate execution ID with template: '"
-                + template
-                + "': the generated ID is empty.");
+        throw new IllegalStateException("Generated execution ID is empty.");
       }
       return executionId;
     } catch (Exception e) {
       throw new BulkConfigurationException(
           "Could not generate execution ID with template: '" + template + "': " + e.getMessage(),
           e);
-    }
-  }
-
-  public static int pid() {
-    if (Native.isGetpidAvailable()) {
-      return Native.processId();
-    } else {
-      try {
-        String pidJmx =
-            Iterables.get(
-                Splitter.on('@').split(ManagementFactory.getRuntimeMXBean().getName()), 0);
-        return Integer.parseInt(pidJmx);
-      } catch (Exception ignored) {
-        return new java.util.Random(System.currentTimeMillis()).nextInt();
-      }
-    }
-  }
-
-  @NotNull
-  public static ZonedDateTime now() {
-    // Try a native call to gettimeofday first since it has microsecond resolution,
-    // and fall back to System.currentTimeMillis() if that fails
-    if (Native.isGettimeofdayAvailable()) {
-      return EPOCH.plus(Native.currentTimeMicros(), MICROS).atZone(UTC);
-    } else {
-      return Instant.now().atZone(UTC);
-    }
-  }
-
-  public static String formatElapsed(long seconds) {
-    long hr = SECONDS.toHours(seconds);
-    long min = SECONDS.toMinutes(seconds - HOURS.toSeconds(hr));
-    long sec = seconds - HOURS.toSeconds(hr) - MINUTES.toSeconds(min);
-    if (hr > 0) {
-      return String.format("%d hours, %d minutes and %d seconds", hr, min, sec);
-    } else if (min > 0) {
-      return String.format("%d minutes and %d seconds", min, sec);
-    } else {
-      return String.format("%d seconds", sec);
     }
   }
 
@@ -156,37 +113,62 @@ public class WorkflowUtils {
     return suppressed;
   }
 
-  public static void assertAccessibleFile(Path filePath, String descriptor) {
-    if (!Files.exists(filePath)) {
-      throw new BulkConfigurationException(
-          String.format("%s %s does not exist", descriptor, filePath));
-    }
-    if (!Files.isRegularFile(filePath)) {
-      throw new BulkConfigurationException(
-          String.format("%s %s is not a file", descriptor, filePath));
-    }
-    if (!Files.isReadable(filePath)) {
-      throw new BulkConfigurationException(
-          String.format("%s %s is not readable", descriptor, filePath));
-    }
-  }
-
-  public static void checkProductCompatibility(Cluster cluster) {
-    Set<Host> hosts = cluster.getMetadata().getAllHosts();
-    List<Host> nonDseHosts =
+  public static void checkProductCompatibility(CqlSession session) {
+    Collection<Node> hosts = session.getMetadata().getNodes().values();
+    List<Node> nonDseHosts =
         hosts.stream()
             .filter(
                 host ->
-                    host.getDseVersion() == null && host.getCassandraVersion().getDSEPatch() <= 0)
+                    !host.getExtras().containsKey(DseNodeProperties.DSE_VERSION)
+                        && (host.getCassandraVersion() == null
+                            || host.getCassandraVersion().getDSEPatch() <= 0))
             .collect(Collectors.toList());
     if (!nonDseHosts.isEmpty()) {
       LOGGER.error(
           "Incompatible cluster detected. Load functionality is only compatible with a DSE cluster.");
       LOGGER.error("The following nodes do not appear to be running DSE:");
-      for (Host host : nonDseHosts) {
-        LOGGER.error(host.toString());
+      for (Node host : nonDseHosts) {
+        LOGGER.error(host.getHostId() + ": " + host.getEndPoint());
       }
       throw new IllegalStateException("Unable to load data to non DSE cluster");
     }
+  }
+
+  public static String getBulkLoaderVersion() {
+    // Get the version of dsbulk from version.txt.
+    String version = "UNKNOWN";
+    try (InputStream versionStream = WorkflowUtils.class.getResourceAsStream("/version.txt")) {
+      if (versionStream != null) {
+        BufferedReader reader =
+            new BufferedReader(new InputStreamReader(versionStream, StandardCharsets.UTF_8));
+        version = reader.readLine();
+      }
+    } catch (Exception e) {
+      // swallow
+    }
+    return version;
+  }
+
+  public static UUID clientId(String executionId) {
+    byte[] executionIdBytes = executionId.getBytes(StandardCharsets.UTF_8);
+    byte[] concat = new byte[16 + executionIdBytes.length];
+    System.arraycopy(
+        ByteBuffer.allocate(Long.BYTES)
+            .putLong(BULK_LOADER_NAMESPACE.getMostSignificantBits())
+            .array(),
+        0,
+        concat,
+        0,
+        8);
+    System.arraycopy(
+        ByteBuffer.allocate(Long.BYTES)
+            .putLong(BULK_LOADER_NAMESPACE.getLeastSignificantBits())
+            .array(),
+        0,
+        concat,
+        8,
+        8);
+    System.arraycopy(executionIdBytes, 0, concat, 16, executionIdBytes.length);
+    return UUID.nameUUIDFromBytes(concat);
   }
 }

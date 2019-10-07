@@ -8,31 +8,34 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
-import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newColumnDefinitions;
-import static com.datastax.driver.core.DriverCoreCommonsTestHooks.newDefinition;
-import static com.datastax.dsbulk.engine.internal.schema.CQLRenderMode.VARIABLE;
+import static com.datastax.dsbulk.commons.tests.driver.DriverUtils.mockColumnDefinition;
+import static com.datastax.dsbulk.commons.tests.driver.DriverUtils.mockColumnDefinitions;
 import static java.util.Collections.singleton;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.util.Sets.newLinkedHashSet;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.datastax.driver.core.BoundStatement;
-import com.datastax.driver.core.ColumnDefinitions;
-import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.ExecutionInfo;
-import com.datastax.driver.core.Host;
-import com.datastax.driver.core.PreparedStatement;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.TypeCodec;
-import com.datastax.driver.core.exceptions.InvalidTypeException;
 import com.datastax.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.reflect.TypeToken;
+import com.datastax.oss.driver.api.core.CqlIdentifier;
+import com.datastax.oss.driver.api.core.cql.BoundStatement;
+import com.datastax.oss.driver.api.core.cql.ColumnDefinition;
+import com.datastax.oss.driver.api.core.cql.ColumnDefinitions;
+import com.datastax.oss.driver.api.core.cql.ExecutionInfo;
+import com.datastax.oss.driver.api.core.cql.PreparedStatement;
+import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.metadata.Node;
+import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
+import com.datastax.oss.driver.internal.core.metadata.DefaultEndPoint;
+import com.datastax.oss.driver.internal.core.type.codec.registry.DefaultCodecRegistry;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.Optional;
@@ -41,13 +44,9 @@ import org.junit.jupiter.api.Test;
 
 class DefaultReadResultMapperTest {
 
-  private static final String C1 = "col1";
-  private static final String C2 = "col2";
-  private static final String C3 = "My Fancy Column Name";
-
-  private static final CQLIdentifier C1_ID = CQLIdentifier.fromInternal(C1);
-  private static final CQLIdentifier C2_ID = CQLIdentifier.fromInternal(C2);
-  private static final CQLIdentifier C3_ID = CQLIdentifier.fromInternal(C3);
+  private static final CQLWord C1 = CQLWord.fromInternal("col1");
+  private static final CQLWord C2 = CQLWord.fromInternal("col2");
+  private static final CQLWord C3 = CQLWord.fromInternal("My Fancy Column Name");
 
   private static final DefaultMappedField F0 = new DefaultMappedField("f0");
   private static final DefaultMappedField F1 = new DefaultMappedField("f1");
@@ -65,56 +64,58 @@ class DefaultReadResultMapperTest {
         new TestRecordMetadata(
             ImmutableMap.of(
                 F0,
-                TypeToken.of(Integer.class),
+                GenericType.of(Integer.class),
                 F1,
-                TypeToken.of(String.class),
+                GenericType.of(String.class),
                 F2,
-                TypeToken.of(String.class)));
+                GenericType.of(String.class)));
     mapping = mock(Mapping.class);
     row = mock(Row.class);
+    when(row.codecRegistry()).thenReturn(new DefaultCodecRegistry("test"));
     result = mock(ReadResult.class);
-    when(result.getRow()).thenReturn(Optional.ofNullable(row));
-    ColumnDefinitions.Definition c1 = newDefinition(C1, DataType.cint());
-    ColumnDefinitions.Definition c2 = newDefinition(C2, DataType.varchar());
-    ColumnDefinitions.Definition c3 = newDefinition(C3, DataType.varchar());
-    ColumnDefinitions variables = newColumnDefinitions(c1, c2, c3);
+    when(result.getRow()).thenReturn(Optional.of(row));
+    ColumnDefinition c1 = mockColumnDefinition(C1.asIdentifier(), DataTypes.INT);
+    ColumnDefinition c2 = mockColumnDefinition(C2.asIdentifier(), DataTypes.TEXT);
+    ColumnDefinition c3 = mockColumnDefinition(C3.asIdentifier(), DataTypes.TEXT);
+    ColumnDefinitions variables = mockColumnDefinitions(c1, c2, c3);
     when(row.getColumnDefinitions()).thenReturn(variables);
     when(mapping.fields()).thenReturn(newLinkedHashSet(F0, F1, F2));
-    when(mapping.fieldToVariables(F0)).thenReturn(singleton(C1_ID));
-    when(mapping.fieldToVariables(F1)).thenReturn(singleton(C2_ID));
-    when(mapping.fieldToVariables(F2)).thenReturn(singleton(C3_ID));
-    when(mapping.variableToFields(C1_ID)).thenReturn(singleton(F0));
-    when(mapping.variableToFields(C2_ID)).thenReturn(singleton(F1));
-    when(mapping.variableToFields(C3_ID)).thenReturn(singleton(F2));
-    codec1 = TypeCodec.cint();
-    TypeCodec<String> codec2 = TypeCodec.varchar();
-    when(mapping.codec(C1_ID, DataType.cint(), TypeToken.of(Integer.class))).thenReturn(codec1);
-    when(mapping.codec(C2_ID, DataType.varchar(), TypeToken.of(String.class))).thenReturn(codec2);
-    when(mapping.codec(C3_ID, DataType.varchar(), TypeToken.of(String.class))).thenReturn(codec2);
-    when(row.get(C1_ID.render(VARIABLE), codec1)).thenReturn(42);
-    when(row.get(C2_ID.render(VARIABLE), codec2)).thenReturn("foo");
-    when(row.get(C3_ID.render(VARIABLE), codec2)).thenReturn("bar");
+    when(mapping.fieldToVariables(F0)).thenReturn(singleton(C1));
+    when(mapping.fieldToVariables(F1)).thenReturn(singleton(C2));
+    when(mapping.fieldToVariables(F2)).thenReturn(singleton(C3));
+    when(mapping.variableToFields(C1)).thenReturn(singleton(F0));
+    when(mapping.variableToFields(C2)).thenReturn(singleton(F1));
+    when(mapping.variableToFields(C3)).thenReturn(singleton(F2));
+    codec1 = TypeCodecs.INT;
+    TypeCodec<String> codec2 = TypeCodecs.TEXT;
+    when(mapping.codec(C1, DataTypes.INT, GenericType.of(Integer.class))).thenReturn(codec1);
+    when(mapping.codec(C2, DataTypes.TEXT, GenericType.of(String.class))).thenReturn(codec2);
+    when(mapping.codec(C3, DataTypes.TEXT, GenericType.of(String.class))).thenReturn(codec2);
+    when(row.get(C1.asIdentifier(), codec1)).thenReturn(42);
+    when(row.get(C2.asIdentifier(), codec2)).thenReturn("foo");
+    when(row.get(C3.asIdentifier(), codec2)).thenReturn("bar");
 
     // to generate locations
     BoundStatement boundStatement = mock(BoundStatement.class);
     ExecutionInfo executionInfo = mock(ExecutionInfo.class);
-    Host host = mock(Host.class);
+    Node host = mock(Node.class);
     PreparedStatement ps = mock(PreparedStatement.class);
-    when(result.getStatement()).thenReturn(boundStatement);
-    when(result.getExecutionInfo()).thenReturn(Optional.ofNullable(executionInfo));
-    when(executionInfo.getQueriedHost()).thenReturn(host);
-    when(host.getSocketAddress()).thenReturn(new InetSocketAddress("127.0.0.1", 9042));
-    when(boundStatement.preparedStatement()).thenReturn(ps);
-    when(ps.getQueryString()).thenReturn("irrelevant");
-    ColumnDefinitions.Definition start = newDefinition("start", DataType.bigint());
-    ColumnDefinitions.Definition end = newDefinition("end", DataType.bigint());
-    ColumnDefinitions boundVariables = newColumnDefinitions(start, end);
-    when(ps.getVariables()).thenReturn(boundVariables);
-    when(row.getObject(C1_ID.render(VARIABLE))).thenReturn(42);
-    when(row.getObject(C2_ID.render(VARIABLE))).thenReturn("foo");
-    when(row.getObject(C3_ID.render(VARIABLE))).thenReturn("bar");
-    when(boundStatement.getObject("start")).thenReturn(1234L);
-    when(boundStatement.getObject("end")).thenReturn(5678L);
+    when(result.getStatement()).then(args -> boundStatement);
+    when(result.getExecutionInfo()).thenReturn(Optional.of(executionInfo));
+    when(executionInfo.getCoordinator()).thenReturn(host);
+    when(host.getEndPoint())
+        .thenReturn(new DefaultEndPoint(new InetSocketAddress("127.0.0.1", 9042)));
+    when(boundStatement.getPreparedStatement()).thenReturn(ps);
+    when(ps.getQuery()).thenReturn("irrelevant");
+    ColumnDefinition start = mockColumnDefinition("start", DataTypes.BIGINT);
+    ColumnDefinition end = mockColumnDefinition("end", DataTypes.BIGINT);
+    ColumnDefinitions boundVariables = mockColumnDefinitions(start, end);
+    when(ps.getVariableDefinitions()).thenReturn(boundVariables);
+    when(row.getObject(C1.asIdentifier())).thenReturn(42);
+    when(row.getObject(C2.asIdentifier())).thenReturn("foo");
+    when(row.getObject(C3.asIdentifier())).thenReturn("bar");
+    when(boundStatement.getObject(CqlIdentifier.fromInternal("start"))).thenReturn(1234L);
+    when(boundStatement.getObject(CqlIdentifier.fromInternal("end"))).thenReturn(5678L);
   }
 
   @Test
@@ -132,12 +133,12 @@ class DefaultReadResultMapperTest {
     // emulate a bad mapping (bad writetime variable) - see DefaultMapping
     String msg = "Cannot create a WriteTimeCodec for int";
     IllegalArgumentException error = new IllegalArgumentException(msg);
-    when(mapping.codec(C1_ID, DataType.cint(), TypeToken.of(Integer.class))).thenThrow(error);
+    when(mapping.codec(C1, DataTypes.INT, GenericType.INTEGER)).thenThrow(error);
     DefaultReadResultMapper mapper = new DefaultReadResultMapper(mapping, recordMetadata);
     ErrorRecord record = (ErrorRecord) mapper.map(result);
     assertThat(record.getError())
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Could not deserialize column col1 of type int as java.lang.Integer")
+        .hasMessage("Could not deserialize column col1 of type INT as java.lang.Integer")
         .hasCauseInstanceOf(IllegalArgumentException.class);
     Throwable cause = record.getError().getCause();
     assertThat(cause).hasMessage(msg);
@@ -154,16 +155,16 @@ class DefaultReadResultMapperTest {
   void should_map_result_to_error_record_when_deser_fails() {
     // emulate bad byte buffer contents when deserializing a 4-byte integer
     String msg = "Invalid 32-bits integer value, expecting 4 bytes but got 5";
-    InvalidTypeException error = new InvalidTypeException(msg);
-    when(row.get(C1_ID.render(VARIABLE), codec1)).thenThrow(error);
+    IllegalArgumentException error = new IllegalArgumentException(msg);
+    when(row.get(C1.asIdentifier(), codec1)).thenThrow(error);
     byte[] array = {1, 2, 3, 4, 5};
-    when(row.getBytesUnsafe(C1_ID.render(VARIABLE))).thenReturn(ByteBuffer.wrap(array));
+    when(row.getBytesUnsafe(C1.asIdentifier())).thenReturn(ByteBuffer.wrap(array));
     DefaultReadResultMapper mapper = new DefaultReadResultMapper(mapping, recordMetadata);
     ErrorRecord record = (ErrorRecord) mapper.map(result);
     assertThat(record.getError())
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Could not deserialize column col1 of type int as java.lang.Integer")
-        .hasCauseInstanceOf(InvalidTypeException.class);
+        .hasMessage("Could not deserialize column col1 of type INT as java.lang.Integer")
+        .hasCauseInstanceOf(IllegalArgumentException.class);
     Throwable cause = record.getError().getCause();
     assertThat(cause).hasMessage(msg);
     assertThat(record.getSource()).isSameAs(result);

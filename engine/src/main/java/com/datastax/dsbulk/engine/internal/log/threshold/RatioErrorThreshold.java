@@ -8,8 +8,8 @@
  */
 package com.datastax.dsbulk.engine.internal.log.threshold;
 
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.text.DecimalFormat;
-import org.jetbrains.annotations.NotNull;
 
 public class RatioErrorThreshold implements ErrorThreshold {
 
@@ -28,7 +28,7 @@ public class RatioErrorThreshold implements ErrorThreshold {
   }
 
   @Override
-  public boolean checkThresholdExceeded(long errorCount, @NotNull Number totalItems) {
+  public boolean checkThresholdExceeded(long errorCount, @NonNull Number totalItems) {
     long totalSoFar = totalItems.longValue();
     if (totalSoFar >= minSample) {
       float currentRatio = (float) errorCount / totalSoFar;

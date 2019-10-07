@@ -8,10 +8,10 @@
  */
 package com.datastax.dsbulk.executor.api.writer;
 
-import com.datastax.driver.core.SimpleStatement;
-import com.datastax.driver.core.Statement;
 import com.datastax.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
+import com.datastax.oss.driver.api.core.cql.Statement;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
@@ -35,7 +35,7 @@ public interface AsyncBulkWriter extends AutoCloseable {
    */
   default CompletableFuture<WriteResult> writeAsync(String statement)
       throws BulkExecutionException {
-    return writeAsync(new SimpleStatement(statement));
+    return writeAsync(SimpleStatement.newInstance(statement));
   }
 
   /**
@@ -46,7 +46,7 @@ public interface AsyncBulkWriter extends AutoCloseable {
    *     operation completes.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
-  CompletableFuture<WriteResult> writeAsync(Statement statement) throws BulkExecutionException;
+  CompletableFuture<WriteResult> writeAsync(Statement<?> statement) throws BulkExecutionException;
 
   /**
    * Executes the given stream of write statements asynchronously.

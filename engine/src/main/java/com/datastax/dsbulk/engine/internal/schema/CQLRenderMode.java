@@ -19,12 +19,18 @@ public enum CQLRenderMode {
   /**
    * Render the fragment as an assignment to a positional bound variable (for INSERT, UPDATE and
    * DELETE statements). Usually this renders as {@code ?}.
+   *
+   * <p>This render mode is not used anymore and was only useful when connecting with protocol
+   * version 1.
    */
   POSITIONAL_ASSIGNMENT,
 
   /**
    * Render the fragment as an unaliased selector (for SELECT statements). Usually this renders as
    * {@code "MyVar"}.
+   *
+   * <p>This render mode is not used anymore and was only useful when connecting with protocol *
+   * version 1.
    */
   UNALIASED_SELECTOR,
 

@@ -13,13 +13,14 @@ import static java.math.BigInteger.ZERO;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.offset;
 
+import com.datastax.oss.driver.internal.core.metadata.DefaultEndPoint;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -60,7 +61,7 @@ class TokenRangeSplitterTest {
     assertThat(splits.stream().map(TokenRange::size).reduce(ZERO, BigInteger::add))
         .isEqualTo(range.size());
     // check sum(split.fraction) - range.fraction
-    assertThat(splits.stream().map(TokenRange::fraction).reduce(0d, (v1, v2) -> v1 + v2))
+    assertThat(splits.stream().map(TokenRange::fraction).reduce(0d, Double::sum))
         .isEqualTo(range.fraction(), offset(.000000001));
     // check range contiguity
     for (int i = 0; i < splits.size() - 1; i++) {
@@ -94,7 +95,7 @@ class TokenRangeSplitterTest {
     assertThat(splits.stream().map(TokenRange::size).reduce(ZERO, BigInteger::add))
         .isEqualTo(ranges.stream().map(TokenRange::size).reduce(ZERO, BigInteger::add));
     // check sum(split.fraction) - range.fraction
-    assertThat(splits.stream().map(TokenRange::fraction).reduce(0d, (v1, v2) -> v1 + v2))
+    assertThat(splits.stream().map(TokenRange::fraction).reduce(0d, Double::sum))
         .isEqualTo(1.0, offset(.000000001));
     // check range contiguity
     for (int i = 0; i < splits.size() - 1; i++) {
@@ -104,19 +105,21 @@ class TokenRangeSplitterTest {
     }
   }
 
+  @SuppressWarnings("Unused")
   private static Stream<Arguments> singleRangeSplitCases() {
     return Stream.concat(
         singleRangeSplitCases(Murmur3TokenFactory.INSTANCE),
         singleRangeSplitCases(RandomTokenFactory.INSTANCE));
   }
 
+  @SuppressWarnings("Unused")
   private static Stream<Arguments> multipleRangesSplitCases() {
     return Stream.concat(
         multipleRangesSplitCases(Murmur3TokenFactory.INSTANCE),
         multipleRangesSplitCases(RandomTokenFactory.INSTANCE));
   }
 
-  @NotNull
+  @NonNull
   private static <V extends Number, T extends Token<V>> Stream<Arguments> singleRangeSplitCases(
       TokenFactory<V, T> tokenFactory) {
     TokenRangeSplitter<V, T> splitter = tokenFactory.splitter();
@@ -156,7 +159,7 @@ class TokenRangeSplitterTest {
             entireRing.size().divide(_8).add(ONE)));
   }
 
-  @NotNull
+  @NonNull
   private static <V extends Number, T extends Token<V>> Stream<Arguments> multipleRangesSplitCases(
       TokenFactory<V, T> tokenFactory) {
     TokenRangeSplitter<V, T> splitter = tokenFactory.splitter();
@@ -247,7 +250,8 @@ class TokenRangeSplitterTest {
     return new TokenRange<>(
         tokenFactory.tokenFromString(start.toString()),
         tokenFactory.tokenFromString(end.toString()),
-        Collections.singleton(InetSocketAddress.createUnresolved("127.0.0.1", 9042)),
+        Collections.singleton(
+            new DefaultEndPoint(InetSocketAddress.createUnresolved("127.0.0.1", 9042))),
         tokenFactory);
   }
 

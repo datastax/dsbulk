@@ -30,7 +30,7 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.utils.URLUtils;
-import com.google.common.collect.Lists;
+import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import java.io.IOException;
