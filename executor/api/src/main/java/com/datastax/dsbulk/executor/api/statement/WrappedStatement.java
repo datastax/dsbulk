@@ -9,7 +9,7 @@
 package com.datastax.dsbulk.executor.api.statement;
 
 import com.datastax.oss.driver.api.core.CqlIdentifier;
-import com.datastax.oss.driver.api.core.config.DriverConfigProfile;
+import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
 import com.datastax.oss.driver.api.core.context.DriverContext;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.metadata.token.Token;
@@ -33,8 +33,8 @@ public class WrappedStatement<T extends Statement<T>> implements Statement<T> {
 
   @NotNull
   @Override
-  public T setConfigProfile(DriverConfigProfile newProfile) {
-    return wrapped.setConfigProfile(newProfile);
+  public T setConfigProfile(DriverExecutionProfile newProfile) {
+    return wrapped.setExecutionProfile(newProfile);
   }
 
   @NotNull

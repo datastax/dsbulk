@@ -11,12 +11,13 @@ package com.datastax.dsbulk.commons.tests.simulacron;
 import com.datastax.dsbulk.commons.tests.RemoteClusterExtension;
 import com.datastax.dsbulk.commons.tests.simulacron.factory.BoundClusterFactory;
 import com.datastax.dsbulk.commons.tests.utils.NetworkUtils;
+import com.datastax.oss.driver.api.core.metadata.EndPoint;
+import com.datastax.oss.driver.internal.core.metadata.DefaultEndPoint;
 import com.datastax.oss.simulacron.server.BoundCluster;
 import com.datastax.oss.simulacron.server.BoundNode;
 import com.datastax.oss.simulacron.server.Inet4Resolver;
 import com.datastax.oss.simulacron.server.Server;
 import java.lang.reflect.Parameter;
-import java.net.InetAddress;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.extension.AfterEachCallback;
@@ -88,12 +89,13 @@ public class SimulacronExtension extends RemoteClusterExtension implements After
   }
 
   @Override
-  protected List<InetAddress> getContactPoints(ExtensionContext context) {
+  protected List<EndPoint> getContactPoints(ExtensionContext context) {
     return getOrCreateBoundCluster(context)
         .dc(0)
         .getNodes()
         .stream()
-        .map(BoundNode::inet)
+        .map(BoundNode::inetSocketAddress)
+        .map(DefaultEndPoint::new)
         .collect(Collectors.toList());
   }
 
