@@ -79,8 +79,6 @@ public abstract class RemoteClusterExtension implements AfterAllCallback, Parame
 
   protected abstract String getLocalDCName(ExtensionContext context);
 
-  protected abstract int getBinaryPort(ExtensionContext context);
-
   protected abstract List<EndPoint> getContactPoints(ExtensionContext context);
 
   private void registerCloseable(AutoCloseable value, ExtensionContext context) {

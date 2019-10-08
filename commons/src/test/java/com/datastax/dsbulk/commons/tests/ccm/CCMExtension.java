@@ -101,11 +101,6 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
   }
 
   @Override
-  protected int getBinaryPort(ExtensionContext context) {
-    return getOrCreateCCM(context).getBinaryPort();
-  }
-
-  @Override
   protected List<EndPoint> getContactPoints(ExtensionContext context) {
     return getOrCreateCCM(context).getInitialContactPoints();
   }
