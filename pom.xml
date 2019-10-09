@@ -14,7 +14,7 @@
 
   <groupId>com.datastax.dse</groupId>
   <artifactId>dsbulk-parent</artifactId>
-  <version>2.0.5-kafka-SNAPSHOT</version>
+  <version>2.0.5-kafka</version>
   <packaging>pom</packaging>
 
   <name>DataStax Bulk Loader</name>
@@ -970,7 +970,7 @@ https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
     <connection>scm:git:git@github.com:riptano/dsbulk.git</connection>
     <developerConnection>scm:git:git@github.com:riptano/dsbulk.git</developerConnection>
     <url>https://github.com/riptano/dsbulk</url>
-    <tag>HEAD</tag>
+    <tag>2.0.5-kafka</tag>
   </scm>
 
   <developers>
