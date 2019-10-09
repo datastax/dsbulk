@@ -9,9 +9,11 @@
 package com.datastax.dsbulk.commons.tests.utils;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.datastax.oss.driver.api.core.servererrors.AlreadyExistsException;
 import com.datastax.oss.driver.api.core.servererrors.InvalidQueryException;
 import com.google.common.util.concurrent.Uninterruptibles;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
@@ -31,7 +33,9 @@ public class SessionUtils {
   public static void createSimpleKeyspace(CqlSession session, String keyspace) {
     try {
       LOGGER.debug("Using keyspace " + keyspace);
-      session.execute(CQLUtils.createKeyspaceSimpleStrategy(keyspace, 1));
+      session.execute(
+          SimpleStatement.newInstance(CQLUtils.createKeyspaceSimpleStrategy(keyspace, 1))
+              .setTimeout(Duration.ofSeconds(30)));
     } catch (AlreadyExistsException e) {
       LOGGER.warn("Keyspace {} already exists, ignoring", keyspace);
     }
