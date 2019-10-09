@@ -9,9 +9,9 @@
 package com.datastax.dsbulk.commons.tests.ccm;
 
 import com.datastax.dsbulk.commons.tests.utils.Version;
+import com.datastax.oss.driver.api.core.metadata.EndPoint;
 import java.io.Closeable;
 import java.io.File;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
@@ -114,7 +114,7 @@ public interface CCMCluster extends Closeable {
    *
    * @return the initial contact points for the current cluster.
    */
-  List<InetAddress> getInitialContactPoints();
+  List<EndPoint> getInitialContactPoints();
 
   /**
    * Returns the address of the {@code node}th host in the cluster (counting from 1, i.e., {@code

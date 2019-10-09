@@ -11,27 +11,20 @@ package com.datastax.dsbulk.commons.tests.ccm;
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.CCM_TYPE;
 import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.CCM_VERSION;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.RemoteClusterExtension;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMVersionRequirement;
 import com.datastax.dsbulk.commons.tests.ccm.factory.CCMClusterFactory;
-import com.datastax.dsbulk.commons.tests.utils.NetworkUtils;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.commons.tests.utils.Version;
-import com.google.common.base.Splitter;
-import com.typesafe.config.Config;
-import com.typesafe.config.ConfigFactory;
-import java.io.File;
+import com.datastax.oss.driver.api.core.metadata.EndPoint;
+import com.datastax.oss.driver.shaded.guava.common.util.concurrent.Uninterruptibles;
 import java.lang.reflect.Parameter;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.extension.ConditionEvaluationResult;
 import org.junit.jupiter.api.extension.ExecutionCondition;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -108,12 +101,7 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
   }
 
   @Override
-  protected int getBinaryPort(ExtensionContext context) {
-    return getOrCreateCCM(context).getBinaryPort();
-  }
-
-  @Override
-  protected List<InetAddress> getContactPoints(ExtensionContext context) {
+  protected List<EndPoint> getContactPoints(ExtensionContext context) {
     return getOrCreateCCM(context).getInitialContactPoints();
   }
 
@@ -129,20 +117,23 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
         .getOrComputeIfAbsent(
             CCM,
             f -> {
-              String liveClusterConfig = System.getProperty("liveCluster");
-              if (liveClusterConfig != null) {
-                // When using mvn -DliveClusterConfig, we end up with a value
-                // of true rather than empty string.
-                if (liveClusterConfig.equals("true")) {
-                  liveClusterConfig = "";
+              int attempts = 1;
+              while (true) {
+                try {
+                  CCMClusterFactory factory =
+                      CCMClusterFactory.createInstanceForClass(context.getRequiredTestClass());
+                  DefaultCCMCluster ccm = factory.createCCMClusterBuilder().build();
+                  ccm.start();
+                  return ccm;
+                } catch (Exception e) {
+                  if (attempts == 3) {
+                    LOGGER.error("Could not start CCM cluster, giving up", e);
+                    throw e;
+                  }
+                  LOGGER.error("Could not start CCM cluster, retrying", e);
+                  Uninterruptibles.sleepUninterruptibly(10, SECONDS);
                 }
-                return new LiveCCMCluster(liveClusterConfig);
-              } else {
-                CCMClusterFactory factory =
-                    CCMClusterFactory.createInstanceForClass(context.getRequiredTestClass());
-                DefaultCCMCluster ccm = factory.createCCMClusterBuilder().build();
-                ccm.start();
-                return ccm;
+                attempts++;
               }
             },
             CCMCluster.class);
@@ -152,288 +143,6 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
     CCMCluster ccm = context.getStore(TEST_NAMESPACE).remove(CCM, CCMCluster.class);
     if (ccm != null) {
       ccm.stop();
-    }
-  }
-
-  private static class LiveCCMCluster implements CCMCluster {
-    private final Config config;
-    private final List<InetAddress> contactPoints;
-    private final int[] nodesPerDC;
-    private final String ipPrefix;
-    private final Version version;
-    private final Type clusterType;
-
-    LiveCCMCluster(String config) {
-      this.config =
-          ConfigFactory.parseString(config)
-              .withFallback(
-                  ConfigFactory.parseString(
-                      "port=9042, contactPoints=[127.0.0.1], clusterName=preexisting, nodesPerDc=[1], type=DSE"));
-
-      //
-      contactPoints =
-          this.config
-              .getList("contactPoints")
-              .unwrapped()
-              .stream()
-              .map(
-                  addr -> {
-                    try {
-                      return InetAddress.getByName((String) addr);
-                    } catch (UnknownHostException e) {
-                      e.printStackTrace();
-                    }
-                    return null;
-                  })
-              .collect(Collectors.toList());
-
-      //
-      List<Object> nodesPerDCList = this.config.getList("nodesPerDc").unwrapped();
-      nodesPerDC = new int[nodesPerDCList.size()];
-      for (int idx = 0; idx < nodesPerDCList.size(); idx++) {
-        nodesPerDC[idx] = (int) nodesPerDCList.get(idx);
-      }
-
-      //
-      String firstPoint = (String) this.config.getList("contactPoints").get(0).unwrapped();
-      List<String> parts = Splitter.on(".").splitToList(firstPoint);
-      ipPrefix = String.format("%s.%s.%s.", parts.get(0), parts.get(1), parts.get(2));
-
-      //
-      clusterType = this.config.getEnum(Type.class, "type");
-
-      //
-      if (this.config.hasPath("version")) {
-        version = Version.parse(this.config.getString("version"));
-      } else {
-        version = Version.parse(clusterType.getDefaultVersion());
-      }
-    }
-
-    @Override
-    public String getClusterName() {
-      return config.getString("clusterName");
-    }
-
-    @Override
-    public String getIpPrefix() {
-      return ipPrefix;
-    }
-
-    @Override
-    public int getBinaryPort() {
-      return config.getInt("port");
-    }
-
-    @Override
-    public List<InetAddress> getInitialContactPoints() {
-      return contactPoints;
-    }
-
-    @Override
-    public InetSocketAddress addressOfNode(int node) {
-      return new InetSocketAddress(NetworkUtils.addressOfNode(ipPrefix, node), getBinaryPort());
-    }
-
-    @Override
-    public InetSocketAddress addressOfNode(int dc, int node) {
-      return new InetSocketAddress(
-          NetworkUtils.addressOfNode(ipPrefix, nodesPerDC, dc, node), getBinaryPort());
-    }
-
-    @Override
-    public void start() {
-      // no-op
-    }
-
-    @Override
-    public void stop() {
-      // no-op
-    }
-
-    @Override
-    public void close() {
-      // no-op
-    }
-
-    @Override
-    public void start(int node) {
-      // no-op
-    }
-
-    @Override
-    public void stop(int node) {
-      // no-op
-    }
-
-    @Override
-    public boolean isMultiDC() {
-      return nodesPerDC.length > 1;
-    }
-
-    @Override
-    public String getDC(int node) {
-      return clusterType == DSE ? "Cassandra" : "datacenter1";
-    }
-
-    @Override
-    public void startDC(int dc) {
-      // no-op
-    }
-
-    @Override
-    public void stopDC(int dc) {
-      // no-op
-    }
-
-    @Override
-    public void start(int dc, int node) {
-      // no-op
-    }
-
-    @Override
-    public void stop(int dc, int node) {
-      // no-op
-    }
-
-    @Override
-    public void waitForUp(int node) {
-      // no-op
-    }
-
-    @Override
-    public void waitForDown(int node) {
-      // no-op
-    }
-
-    @Override
-    public void waitForUp(int dc, int node) {
-      // no-op
-    }
-
-    @Override
-    public void waitForDown(int dc, int node) {
-      // no-op
-    }
-
-    @Override
-    public Version getVersion() {
-      return version;
-    }
-
-    @Override
-    public File getCcmDir() {
-      return null;
-    }
-
-    @Override
-    public File getClusterDir() {
-      return null;
-    }
-
-    @Override
-    public File getNodeDir(int node) {
-      return null;
-    }
-
-    @Override
-    public File getNodeConfDir(int node) {
-      return null;
-    }
-
-    @Override
-    public int getStoragePort() {
-      return 7000;
-    }
-
-    @Override
-    public int getThriftPort() {
-      return 9160;
-    }
-
-    @Override
-    public Type getClusterType() {
-      return clusterType;
-    }
-
-    @Override
-    public void setKeepLogs() {
-      // no-op
-    }
-
-    @Override
-    public void forceStop() {
-      // no-op
-    }
-
-    @Override
-    public void remove() {
-      // no-op
-    }
-
-    @Override
-    public void updateConfig(Map<String, Object> configs) {
-      // no-op
-    }
-
-    @Override
-    public void updateDSEConfig(Map<String, Object> configs) {
-      // no-op
-    }
-
-    @Override
-    public String checkForErrors() {
-      return null;
-    }
-
-    @Override
-    public void forceStop(int node) {
-      // no-op
-    }
-
-    @Override
-    public void remove(int node) {
-      // no-op
-    }
-
-    @Override
-    public void add(int node) {
-      // no-op
-    }
-
-    @Override
-    public void add(int dc, int node) {
-      // no-op
-    }
-
-    @Override
-    public void decommission(int node) {
-      // no-op
-    }
-
-    @Override
-    public void updateNodeConfig(int node, String key, Object value) {
-      // no-op
-    }
-
-    @Override
-    public void updateNodeConfig(int node, Map<String, Object> configs) {
-      // no-op
-    }
-
-    @Override
-    public void updateDSENodeConfig(int node, String key, Object value) {
-      // no-op
-    }
-
-    @Override
-    public void updateDSENodeConfig(int node, Map<String, Object> configs) {
-      // no-op
-    }
-
-    @Override
-    public void setWorkload(int node, Workload... workload) {
-      // no-op
     }
   }
 }
