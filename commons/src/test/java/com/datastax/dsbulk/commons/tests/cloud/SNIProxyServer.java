@@ -19,22 +19,27 @@ import java.util.List;
  */
 public interface SNIProxyServer extends Closeable {
 
+  /** Starts the cluster and the proxy server. */
   void start();
 
+  /** Stops the cluster and the proxy server. */
   void stop();
 
   /**
-   * Closes the cluster. This is usually a synonym of {@link #stop()} to comply with {@link
-   * Closeable} interface.
+   * Stops the cluster and the proxy server. This is usually a synonym of {@link #stop()} to comply
+   * with {@link Closeable} interface.
    */
   @Override
   default void close() {
     stop();
   }
 
+  /** @return The path to the cloud secure connect bundle to use to connect to this cluster. */
   Path getSecureBundlePath();
 
+  /** @return The endpoints to use to connect to this cluster. */
   List<EndPoint> getContactPoints();
 
+  /** @return The cluster's local DC name. */
   String getLocalDCName();
 }

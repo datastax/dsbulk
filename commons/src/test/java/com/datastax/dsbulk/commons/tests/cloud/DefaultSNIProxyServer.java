@@ -9,16 +9,15 @@
 package com.datastax.dsbulk.commons.tests.cloud;
 
 import com.datastax.oss.driver.api.core.metadata.EndPoint;
-import com.datastax.oss.driver.internal.core.config.cloud.DbaasConfig;
-import com.datastax.oss.driver.internal.core.config.cloud.DbaasConfigUtil;
-import com.datastax.oss.driver.internal.core.metadata.SniEndPoint;
+import com.datastax.oss.driver.internal.core.config.cloud.CloudConfig;
+import com.datastax.oss.driver.internal.core.config.cloud.CloudConfigFactory;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.net.InetSocketAddress;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
+import java.security.GeneralSecurityException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.exec.CommandLine;
@@ -40,6 +39,7 @@ public class DefaultSNIProxyServer implements SNIProxyServer {
   private final Path proxyPath;
 
   private volatile boolean running = false;
+  private CloudConfig config;
 
   public DefaultSNIProxyServer() {
     this(Paths.get(System.getProperty(PROXY_PATH, "./")));
@@ -47,6 +47,13 @@ public class DefaultSNIProxyServer implements SNIProxyServer {
 
   public DefaultSNIProxyServer(@NonNull Path proxyPath) {
     this.proxyPath = proxyPath.toAbsolutePath();
+    try {
+      config =
+          new CloudConfigFactory().createCloudConfig(Files.newInputStream(getSecureBundlePath()));
+    } catch (IOException | GeneralSecurityException e) {
+      // should never happen, the bundle is always present and readable
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
@@ -70,21 +77,12 @@ public class DefaultSNIProxyServer implements SNIProxyServer {
 
   @Override
   public List<EndPoint> getContactPoints() {
-    DbaasConfig config = DbaasConfigUtil.getConfig(getSecureBundlePath().toString());
-    List<EndPoint> endpoints = new ArrayList<>();
-    for (String hostId : config.getHostIds()) {
-      endpoints.add(
-          new SniEndPoint(
-              InetSocketAddress.createUnresolved(config.getSniHost(), config.getSniPort()),
-              hostId));
-    }
-    return endpoints;
+    return config.getEndPoints();
   }
 
   @Override
   public String getLocalDCName() {
-    DbaasConfig config = DbaasConfigUtil.getConfig(getSecureBundlePath().toString());
-    return config.getLocalDataCenter();
+    return config.getLocalDatacenter();
   }
 
   @Override
@@ -95,7 +93,8 @@ public class DefaultSNIProxyServer implements SNIProxyServer {
     // creds-v1-wo-cert.zip
     // creds-v1-wo-creds.zip
     // creds-v1.zip
-    return proxyPath.resolve("certs/bundles/creds-v1.zip");
+    // Use the bundle without credentials, as this is the typical bundle currently in use.
+    return proxyPath.resolve("certs/bundles/creds-v1-wo-creds.zip");
   }
 
   private String execute(CommandLine cli) {

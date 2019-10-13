@@ -78,7 +78,7 @@ public class SNIProxyServerExtension extends RemoteClusterExtension {
     DseSession session =
         sessionFactory
             .createSessionBuilder()
-            .withCloudSecureConnectBundle(proxy.getSecureBundlePath().toString())
+            .withCloudSecureConnectBundle(proxy.getSecureBundlePath())
             .build();
     sessionFactory.configureSession(session);
     return session;
