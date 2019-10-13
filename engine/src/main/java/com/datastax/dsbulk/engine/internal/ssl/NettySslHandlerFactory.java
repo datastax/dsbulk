@@ -15,6 +15,8 @@ import io.netty.channel.Channel;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslHandler;
 import java.net.InetSocketAddress;
+import javax.net.ssl.SSLEngine;
+import javax.net.ssl.SSLParameters;
 
 public class NettySslHandlerFactory implements SslHandlerFactory {
 
@@ -27,7 +29,14 @@ public class NettySslHandlerFactory implements SslHandlerFactory {
   @Override
   public SslHandler newSslHandler(Channel channel, EndPoint remoteEndpoint) {
     InetSocketAddress address = (InetSocketAddress) remoteEndpoint.resolve();
-    return sslContext.newHandler(channel.alloc(), address.getHostName(), address.getPort());
+    SslHandler sslHandler =
+        sslContext.newHandler(channel.alloc(), address.getHostName(), address.getPort());
+    // enable hostname verification
+    SSLEngine sslEngine = sslHandler.engine();
+    SSLParameters sslParameters = sslEngine.getSSLParameters();
+    sslParameters.setEndpointIdentificationAlgorithm("HTTPS");
+    sslEngine.setSSLParameters(sslParameters);
+    return sslHandler;
   }
 
   @Override

@@ -11,6 +11,7 @@ package com.datastax.dsbulk.commons.internal.io;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
+import com.datastax.oss.driver.shaded.guava.common.io.Resources;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
@@ -103,5 +104,13 @@ public final class IOUtils {
       throw new BulkConfigurationException(
           String.format("%s %s is not readable", descriptor, filePath));
     }
+  }
+
+  public static Path copyResourceToTempFile(String resource) throws IOException {
+    Path file = Files.createTempFile("temp", null);
+    try (OutputStream out = Files.newOutputStream(file)) {
+      Resources.copy(IOUtils.class.getResource(resource), out);
+    }
+    return file;
   }
 }

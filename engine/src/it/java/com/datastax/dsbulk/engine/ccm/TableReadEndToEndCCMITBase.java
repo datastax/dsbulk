@@ -183,7 +183,6 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add("mock");
     args.add("--schema.query");
     args.add(quoteJson(String.format("SELECT * FROM \"%s\".\"%s\"", keyspace, table)));
-    args.add(table);
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
@@ -220,7 +219,6 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
                   "SELECT \"PK1\", ttl(v), writetime(v), token(\"PK1\", \"PK2\"), now() FROM \"%s\".\"%s\"",
                   keyspace, table)));
     }
-    args.add(table);
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();

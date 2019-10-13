@@ -10,12 +10,12 @@ package com.datastax.dsbulk.engine.internal.settings;
 
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.datastax.dsbulk.commons.tests.utils.ReflectionUtils.getInternalState;
+import static com.datastax.dsbulk.commons.tests.utils.TestConfigUtils.createTestConfig;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.tests.driver.DriverUtils;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
@@ -29,7 +29,6 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
 import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
 import com.datastax.oss.driver.shaded.guava.common.util.concurrent.RateLimiter;
-import com.typesafe.config.ConfigFactory;
 import java.util.concurrent.Semaphore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,8 +48,7 @@ class ExecutorSettingsTest {
 
   @Test
   void should_create_non_continuous_executor_when_write_workflow() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.executor"));
+    LoaderConfig config = createTestConfig("dsbulk.executor");
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
     ReactiveBulkWriter executor = settings.newWriteExecutor(session, null);
@@ -60,8 +58,7 @@ class ExecutorSettingsTest {
   @Test
   void should_create_non_continuous_executor_when_read_workflow_and_session_not_dse(
       @LogCapture LogInterceptor logs) {
-    LoaderConfig config =
-        new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.executor"));
+    LoaderConfig config = createTestConfig("dsbulk.executor");
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
     ReactiveBulkReader executor = settings.newReadExecutor(session, null, false);
@@ -76,8 +73,7 @@ class ExecutorSettingsTest {
       @LogCapture LogInterceptor logs) {
     DriverExecutionProfile profile = dseSession.getContext().getConfig().getDefaultProfile();
     when(profile.getString(DefaultDriverOption.REQUEST_CONSISTENCY)).thenReturn("TWO");
-    LoaderConfig config =
-        new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.executor"));
+    LoaderConfig config = createTestConfig("dsbulk.executor");
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
     ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null, false);
@@ -89,8 +85,7 @@ class ExecutorSettingsTest {
 
   @Test
   void should_create_continuous_executor_when_read_workflow_and_session_dse() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.executor"));
+    LoaderConfig config = createTestConfig("dsbulk.executor");
     DriverExecutionProfile profile = dseSession.getContext().getConfig().getDefaultProfile();
     when(profile.getString(DefaultDriverOption.REQUEST_CONSISTENCY)).thenReturn("LOCAL_ONE");
     ExecutorSettings settings = new ExecutorSettings(config);
@@ -102,9 +97,7 @@ class ExecutorSettingsTest {
   @Test
   void should_create_non_continuous_executor_when_read_workflow_and_not_enabled() {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("continuousPagingOptions.enabled = false")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.executor")));
+        createTestConfig("dsbulk.executor", "continuousPagingOptions.enabled", false);
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
     ReactiveBulkReader executor = settings.newReadExecutor(session, null, false);
@@ -115,9 +108,7 @@ class ExecutorSettingsTest {
   void should_create_non_continuous_executor_when_read_workflow_and_search_query(
       @LogCapture LogInterceptor logs) {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("continuousPagingOptions.enabled = false")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.executor")));
+        createTestConfig("dsbulk.executor", "continuousPagingOptions.enabled", false);
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
     ReactiveBulkReader executor = settings.newReadExecutor(session, null, true);
@@ -129,10 +120,7 @@ class ExecutorSettingsTest {
 
   @Test
   void should_enable_maxPerSecond() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxPerSecond=100")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.executor")));
+    LoaderConfig config = createTestConfig("dsbulk.executor", "maxPerSecond", 100);
     ExecutorSettings settings = new ExecutorSettings(config);
     DriverExecutionProfile profile = dseSession.getContext().getConfig().getDefaultProfile();
     when(profile.getString(DefaultDriverOption.REQUEST_CONSISTENCY)).thenReturn("ONE");
@@ -143,10 +131,7 @@ class ExecutorSettingsTest {
 
   @Test
   void should_disable_maxPerSecond() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxPerSecond=0")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.executor")));
+    LoaderConfig config = createTestConfig("dsbulk.executor", "maxPerSecond", 0);
     DriverExecutionProfile profile = dseSession.getContext().getConfig().getDefaultProfile();
     when(profile.getString(DefaultDriverOption.REQUEST_CONSISTENCY)).thenReturn("ONE");
     ExecutorSettings settings = new ExecutorSettings(config);
@@ -157,22 +142,17 @@ class ExecutorSettingsTest {
 
   @Test
   void should_throw_exception_when_maxPerSecond_not_a_number() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxPerSecond=NotANumber")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.executor")));
+    LoaderConfig config = createTestConfig("dsbulk.executor", "maxPerSecond", "NotANumber");
     ExecutorSettings settings = new ExecutorSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for executor.maxPerSecond: Expecting NUMBER, got STRING");
+        .hasMessageContaining(
+            "Invalid value for dsbulk.executor.maxPerSecond, expecting NUMBER, got STRING");
   }
 
   @Test
   void should_enable_maxInFlight() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxInFlight=100")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.executor")));
+    LoaderConfig config = createTestConfig("dsbulk.executor", "maxInFlight", 100);
     ExecutorSettings settings = new ExecutorSettings(config);
     DriverExecutionProfile profile = dseSession.getContext().getConfig().getDefaultProfile();
     when(profile.getString(DefaultDriverOption.REQUEST_CONSISTENCY)).thenReturn("ONE");
@@ -184,10 +164,7 @@ class ExecutorSettingsTest {
 
   @Test
   void should_disable_maxInFlight() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxInFlight=0")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.executor")));
+    LoaderConfig config = createTestConfig("dsbulk.executor", "maxInFlight", 0);
     ExecutorSettings settings = new ExecutorSettings(config);
     DriverExecutionProfile profile = dseSession.getContext().getConfig().getDefaultProfile();
     when(profile.getString(DefaultDriverOption.REQUEST_CONSISTENCY)).thenReturn("ONE");
@@ -198,22 +175,18 @@ class ExecutorSettingsTest {
 
   @Test
   void should_throw_exception_when_maxInFlight_not_a_number() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxInFlight=NotANumber")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.executor")));
+    LoaderConfig config = createTestConfig("dsbulk.executor", "maxInFlight", "NotANumber");
     ExecutorSettings settings = new ExecutorSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for executor.maxInFlight: Expecting NUMBER, got STRING");
+        .hasMessageContaining(
+            "Invalid value for dsbulk.executor.maxInFlight, expecting NUMBER, got STRING");
   }
 
   @Test
   void should_enable_maxConcurrentQueries() {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("continuousPaging.maxConcurrentQueries=100")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.executor")));
+        createTestConfig("dsbulk.executor", "continuousPaging.maxConcurrentQueries", 100);
     DriverExecutionProfile profile = dseSession.getContext().getConfig().getDefaultProfile();
     when(profile.getString(DefaultDriverOption.REQUEST_CONSISTENCY)).thenReturn("LOCAL_ONE");
     ExecutorSettings settings = new ExecutorSettings(config);
@@ -226,9 +199,7 @@ class ExecutorSettingsTest {
   @Test
   void should_disable_maxConcurrentQueries() {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("continuousPaging.maxConcurrentQueries=0")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.executor")));
+        createTestConfig("dsbulk.executor", "continuousPaging.maxConcurrentQueries", 0);
     ExecutorSettings settings = new ExecutorSettings(config);
     DriverExecutionProfile profile = dseSession.getContext().getConfig().getDefaultProfile();
     when(profile.getString(DefaultDriverOption.REQUEST_CONSISTENCY)).thenReturn("ONE");
@@ -240,13 +211,11 @@ class ExecutorSettingsTest {
   @Test
   void should_throw_exception_when_maxConcurrentQueries_not_a_number() {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("continuousPaging.maxConcurrentQueries=NotANumber")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.executor")));
+        createTestConfig("dsbulk.executor", "continuousPaging.maxConcurrentQueries", "NotANumber");
     ExecutorSettings settings = new ExecutorSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage(
-            "Invalid value for executor.continuousPaging.maxConcurrentQueries: Expecting NUMBER, got STRING");
+        .hasMessageContaining(
+            "Invalid value for dsbulk.executor.continuousPaging.maxConcurrentQueries, expecting NUMBER, got STRING");
   }
 }

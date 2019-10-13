@@ -18,6 +18,7 @@ import com.datastax.oss.driver.api.core.auth.AuthProvider;
 import com.datastax.oss.driver.internal.core.auth.ProgrammaticPlainTextAuthProvider;
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.Map;
@@ -30,58 +31,44 @@ public class AuthProviderFactory {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AuthProviderFactory.class);
 
-  private static final String AUTH = "auth";
-  private static final String AUTH_PROVIDER = AUTH + '.' + "provider";
-  private static final String AUTH_USERNAME = AUTH + '.' + "username";
-  private static final String AUTH_PASSWORD = AUTH + '.' + "password";
-  private static final String AUTH_PRINCIPAL = AUTH + '.' + "principal";
-  private static final String AUTHORIZATION_ID = AUTH + '.' + "authorizationId";
-  private static final String AUTH_SASL_SERVICE = AUTH + '.' + "saslService";
-  private static final String AUTH_KEYTAB = AUTH + '.' + "keyTab";
-
-  private static final String NONE_AUTH_PROVIDER = "None";
-  private static final String PLAINTEXT_PROVIDER = "PlainTextAuthProvider";
-  private static final String DSE_PLAINTEXT_PROVIDER = "DsePlainTextAuthProvider";
-  private static final String DSE_GSSAPI_PROVIDER = "DseGSSAPIAuthProvider";
-
+  @Nullable
   public static AuthProvider createAuthProvider(LoaderConfig config) {
 
-    String authProvider = config.getString(AUTH_PROVIDER);
+    String authProvider = config.getString("provider");
 
     // If the user specified a username or a password, but no auth provider, infer
-    // DSE_PLAINTEXT_PROVIDER
-    if (authProvider.equals(NONE_AUTH_PROVIDER)
-        && config.hasPath(AUTH_USERNAME)
-        && config.hasPath(AUTH_PASSWORD)) {
+    // DsePlainTextAuthProvider
+    if (authProvider.equals("None") && config.hasPath("username") && config.hasPath("password")) {
       LOGGER.info(
           "Username and password provided but auth provider not specified, inferring DsePlainTextAuthProvider");
-      authProvider = DSE_PLAINTEXT_PROVIDER;
+      authProvider = "DsePlainTextAuthProvider";
     }
 
-    if (authProvider.equals(NONE_AUTH_PROVIDER)) {
+    if (authProvider.equals("None")) {
       return null;
     }
 
     String authorizationId = "";
-    if (config.hasPath(AUTHORIZATION_ID)) {
-      authorizationId = config.getString(AUTHORIZATION_ID);
+    if (config.hasPath("authorizationId")) {
+      authorizationId = config.getString("authorizationId");
     }
 
-    switch (authProvider) {
-      case PLAINTEXT_PROVIDER:
+    switch (authProvider.toLowerCase()) {
+      case "plaintextauthprovider":
         return createPlainTextAuthProvider(config, authProvider);
 
-      case DSE_PLAINTEXT_PROVIDER:
+      case "dseplaintextauthprovider":
         return createDsePlainTextAuthProvider(config, authProvider, authorizationId);
 
-      case DSE_GSSAPI_PROVIDER:
+      case "dsegssapiauthprovider":
         return createGssApiAuthProvider(config, authProvider, authorizationId);
 
       default:
         throw new BulkConfigurationException(
             String.format(
-                "%s is not a valid auth provider. Valid auth providers are %s, %s, or %s",
-                authProvider, PLAINTEXT_PROVIDER, DSE_PLAINTEXT_PROVIDER, DSE_GSSAPI_PROVIDER));
+                "Invalid value for dsbulk.driver.auth.provider, expecting one of "
+                    + "PlainTextAuthProvider, DsePlainTextAuthProvider, or DseGSSAPIAuthProvider, got: '%s'",
+                authProvider));
     }
   }
 
@@ -89,34 +76,36 @@ public class AuthProviderFactory {
       LoaderConfig config, String authProvider) {
     checkHasCredentials(config, authProvider);
     return new ProgrammaticPlainTextAuthProvider(
-        config.getString(AUTH_USERNAME), config.getString(AUTH_PASSWORD));
+        config.getString("username"), config.getString("password"));
   }
 
   private static AuthProvider createDsePlainTextAuthProvider(
       LoaderConfig config, String authProvider, String authorizationId) {
     checkHasCredentials(config, authProvider);
     return new DseProgrammaticPlainTextAuthProvider(
-        config.getString(AUTH_USERNAME), config.getString(AUTH_PASSWORD), authorizationId);
+        config.getString("username"), config.getString("password"), authorizationId);
   }
 
   private static AuthProvider createGssApiAuthProvider(
       LoaderConfig config, String authProvider, String authorizationId) {
-    if (!config.hasPath(AUTH_SASL_SERVICE)) {
+    if (!config.hasPath("saslService")) {
       throw new BulkConfigurationException(
           String.format(
-              "%s must be provided with %s. %s, %s, and %s are optional.",
-              authProvider, AUTH_SASL_SERVICE, AUTH_PRINCIPAL, AUTH_KEYTAB, AUTHORIZATION_ID));
+              "dsbulk.driver.auth.saslService must be provided with %s. "
+                  + "dsbulk.driver.auth.principal, dsbulk.driver.auth.keyTab, and "
+                  + "dsbulk.driver.auth.authorizationId are optional.",
+              authProvider));
     }
-    String authSaslService = config.getString(AUTH_SASL_SERVICE);
+    String authSaslService = config.getString("saslService");
 
     String authPrincipal = null;
-    if (config.hasPath(AUTH_PRINCIPAL)) {
-      authPrincipal = config.getString(AUTH_PRINCIPAL);
+    if (config.hasPath("principal")) {
+      authPrincipal = config.getString("principal");
     }
 
     Path authKeyTab = null;
-    if (config.hasPath(AUTH_KEYTAB)) {
-      authKeyTab = config.getPath(AUTH_KEYTAB);
+    if (config.hasPath("keyTab")) {
+      authKeyTab = config.getPath("keyTab");
       assertAccessibleFile(authKeyTab, "Keytab file");
 
       // When using a keytab, we must have a principal. If the user didn't provide one,
@@ -182,11 +171,10 @@ public class AuthProviderFactory {
   }
 
   private static void checkHasCredentials(LoaderConfig config, String authProvider) {
-    if (!config.hasPath(AUTH_USERNAME) || !config.hasPath(AUTH_PASSWORD)) {
+    if (!config.hasPath("username") || !config.hasPath("password")) {
       throw new BulkConfigurationException(
-          String.format(
-              "%s must be provided with both %s and %s",
-              authProvider, AUTH_USERNAME, AUTH_PASSWORD));
+          "Both dsbulk.driver.auth.username and dsbulk.driver.auth.password must be provided with "
+              + authProvider);
     }
   }
 

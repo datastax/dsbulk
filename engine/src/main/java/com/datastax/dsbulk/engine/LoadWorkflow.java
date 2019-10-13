@@ -104,7 +104,6 @@ public class LoadWorkflow implements Workflow {
     connectorSettings.init();
     connector = connectorSettings.getConnector();
     connector.init();
-    logSettings.logEffectiveSettings(settingsManager.getGlobalConfig());
     DriverSettings driverSettings = settingsManager.getDriverSettings();
     SchemaSettings schemaSettings = settingsManager.getSchemaSettings();
     BatchSettings batchSettings = settingsManager.getBatchSettings();
@@ -112,12 +111,14 @@ public class LoadWorkflow implements Workflow {
     CodecSettings codecSettings = settingsManager.getCodecSettings();
     MonitoringSettings monitoringSettings = settingsManager.getMonitoringSettings();
     EngineSettings engineSettings = settingsManager.getEngineSettings();
+    driverSettings.init(true);
+    logSettings.logEffectiveSettings(
+        settingsManager.getBulkLoaderConfig(), driverSettings.getDriverConfig());
     monitoringSettings.init();
     codecSettings.init();
     batchSettings.init();
     executorSettings.init();
     engineSettings.init();
-    driverSettings.init(true, executorSettings.getExecutorConfig());
     session = driverSettings.newSession(executionId);
     checkProductCompatibility(session);
     printDebugInfoAboutCluster(session);

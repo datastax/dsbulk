@@ -91,11 +91,12 @@ public class CountWorkflow implements Workflow {
       throw new BulkConfigurationException("Dry-run is not supported for count");
     }
     logSettings.init();
-    logSettings.logEffectiveSettings(settingsManager.getGlobalConfig());
+    driverSettings.init(false);
+    logSettings.logEffectiveSettings(
+        settingsManager.getBulkLoaderConfig(), driverSettings.getDriverConfig());
     codecSettings.init();
     monitoringSettings.init();
     executorSettings.init();
-    driverSettings.init(false, executorSettings.getExecutorConfig());
     statsSettings.init();
     scheduler =
         Schedulers.newParallel(

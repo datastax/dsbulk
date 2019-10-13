@@ -40,44 +40,6 @@ public class ConfigUtils {
   private static final Pattern THREADS_PATTERN =
       Pattern.compile("(.+)\\s*C", Pattern.CASE_INSENSITIVE);
 
-  private static final Pattern WRONG_TYPE_PATTERN =
-      Pattern.compile(" has type (\\w+) rather than (\\w+)", Pattern.CASE_INSENSITIVE);
-
-  private static final Pattern ENUM_PATTERN =
-      Pattern.compile(
-          "The enum class \\w+ has no constant of the name ('.+') \\(should be one of \\[([^]]+)]\\.\\)",
-          Pattern.CASE_INSENSITIVE);
-
-  @NonNull
-  public static BulkConfigurationException configExceptionToBulkConfigurationException(
-      @NonNull ConfigException e, @NonNull String path) {
-    if (e instanceof ConfigException.WrongType) {
-      // This will happen if a user provides the wrong type, e.g. a string where a number was
-      // expected. We remove the origin's description as it is too cryptic for users.
-      // Error generated will look like this:
-      // "connector.csv.recursive: Expecting X, got Y."
-      String em = e.getMessage();
-      int startingIndex = e.origin().description().length() + 2;
-      String errorMsg = "Invalid value for " + path + "." + em.substring(startingIndex);
-      Matcher matcher = WRONG_TYPE_PATTERN.matcher(errorMsg);
-      if (matcher.find()) {
-        errorMsg = matcher.replaceAll(": Expecting $2, got $1");
-      }
-      return new BulkConfigurationException(errorMsg, e);
-    } else {
-      // Catch-all for other types of exceptions.
-      // We intercept errors related to unknown enum constants to improve the error message,
-      // which will look like this:
-      // log.stmt.level: 1: Invalid value at 'stmt.level': Expecting one of X, Y, Z, got 'weird'
-      String errorMsg = e.getMessage();
-      Matcher matcher = ENUM_PATTERN.matcher(errorMsg);
-      if (matcher.find()) {
-        errorMsg = matcher.replaceAll("Expecting one of $2, got $1");
-      }
-      return new BulkConfigurationException(errorMsg, e);
-    }
-  }
-
   /**
    * Resolves the given path.
    *
@@ -179,7 +141,8 @@ public class ConfigUtils {
   }
 
   /**
-   * Returns a string representation of the value type at this path.
+   * Returns a string representation of the value type at this path. This is mostly intended for
+   * inclusion in generated documentation.
    *
    * @param config the config.
    * @param path path expression.
@@ -187,26 +150,28 @@ public class ConfigUtils {
    * @throws ConfigException.Missing if value is absent.
    */
   @NonNull
-  public static String getTypeString(@NonNull Config config, @NonNull String path) {
+  public static Optional<String> getTypeString(@NonNull Config config, @NonNull String path) {
     ConfigValue value = getNullSafeValue(config, path);
     Optional<String> typeHint = getTypeHint(value);
     if (typeHint.isPresent()) {
-      return typeHint.get();
+      return typeHint;
     }
     ConfigValueType type = value.valueType();
     if (type == ConfigValueType.LIST) {
       ConfigList list = config.getList(path);
       if (list.isEmpty()) {
-        return "list";
+        return Optional.of("list");
       } else {
-        return "list<" + getTypeString(list.get(0).valueType()) + ">";
+        ConfigValueType elementType = list.get(0).valueType();
+        return getTypeString(elementType).map(str -> "list<" + str + ">");
       }
     } else if (type == ConfigValueType.OBJECT) {
       ConfigObject object = config.getObject(path);
       if (object.isEmpty()) {
-        return "map";
+        return Optional.of("map");
       } else {
-        return "map<string," + getTypeString(object.values().iterator().next().valueType()) + ">";
+        ConfigValueType valueType = object.values().iterator().next().valueType();
+        return getTypeString(valueType).map(str -> "map<string," + str + ">");
       }
     } else {
       return getTypeString(type);
@@ -256,7 +221,7 @@ public class ConfigUtils {
   @NonNull
   public static Optional<String> getTypeHint(@NonNull ConfigValue value) {
     return value.origin().comments().stream()
-        .filter(line -> line.contains(TYPE_ANNOTATION))
+        .filter(ConfigUtils::isTypeHint)
         .map(line -> line.replace("@type", ""))
         .map(String::trim)
         .findFirst();
@@ -271,32 +236,44 @@ public class ConfigUtils {
   @NonNull
   public static String getComments(@NonNull ConfigValue value) {
     return value.origin().comments().stream()
-        .filter(line -> !line.contains(TYPE_ANNOTATION))
+        .filter(line -> !isTypeHint(line))
+        .filter(line -> !isLeaf(line))
         .map(String::trim)
         .collect(Collectors.joining("\n"));
   }
 
   /**
-   * Return a string representation of the given value type.
+   * Checks the given line for the presence of an @type annotation.
+   *
+   * @param line The line to inspect.
+   * @return Returns true if the given line contains a type annotation, false otherwise.
+   */
+  public static boolean isTypeHint(@NonNull String line) {
+    return line.contains(TYPE_ANNOTATION);
+  }
+
+  /**
+   * Returns a string representation of the given value type, or empty if none found. This is mostly
+   * intended for inclusion in generated documentation.
    *
    * @param type ConfigValueType to stringify.
    * @return the type string
    */
   @NonNull
-  private static String getTypeString(@NonNull ConfigValueType type) {
+  private static Optional<String> getTypeString(@NonNull ConfigValueType type) {
     switch (type) {
       case STRING:
-        return "string";
+        return Optional.of("string");
       case LIST:
-        return "list";
+        return Optional.of("list");
       case OBJECT:
-        return "map";
+        return Optional.of("map");
       case NUMBER:
-        return "number";
+        return Optional.of("number");
       case BOOLEAN:
-        return "boolean";
+        return Optional.of("boolean");
       default:
-        return "arg";
+        return Optional.empty();
     }
   }
 
@@ -311,7 +288,17 @@ public class ConfigUtils {
    */
   public static boolean isLeaf(@NonNull ConfigValue value) {
     return !(value instanceof ConfigObject)
-        || value.origin().comments().stream().anyMatch(line -> line.contains(LEAF_ANNOTATION));
+        || value.origin().comments().stream().anyMatch(ConfigUtils::isLeaf);
+  }
+
+  /**
+   * Checks the given line for the presence of an @leaf annotation.
+   *
+   * @param line The line to inspect.
+   * @return Returns true if the given line contains a leaf annotation, false otherwise.
+   */
+  public static boolean isLeaf(@NonNull String line) {
+    return line.contains(LEAF_ANNOTATION);
   }
 
   /**
@@ -403,11 +390,17 @@ public class ConfigUtils {
    * @return {@code true} if the given path has a default value, {@code false} otherwise.
    */
   public static boolean isValueFromReferenceConfig(Config config, String path) {
-    if (config.getIsNull(path)) {
-      // cannot really tell what is the origin of a path that is set to null.
-      return true;
+    if (!config.hasPathOrNull(path)) {
+      return false;
     }
-    String resource = config.getValue(path).origin().resource();
-    return resource != null && resource.equals("reference.conf");
+    ConfigValue value;
+    if (config.getIsNull(path)) {
+      value = getNullSafeValue(config, path);
+    } else {
+      value = config.getValue(path);
+    }
+    String resource = value.origin().resource();
+    // Account for dse-reference.conf and dsbulk-reference.conf
+    return resource != null && resource.endsWith("reference.conf");
   }
 }

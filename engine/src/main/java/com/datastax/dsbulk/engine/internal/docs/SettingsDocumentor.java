@@ -8,46 +8,46 @@
  */
 package com.datastax.dsbulk.engine.internal.docs;
 
-import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.CONFIG_FILE_OPTION;
-import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.DEFAULT;
-import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.GROUPS;
-import static com.datastax.dsbulk.engine.internal.utils.SettingsUtils.LONG_TO_SHORT_OPTIONS;
+import static com.datastax.dsbulk.engine.internal.help.HelpEntryFactory.CONFIG_FILE_OPTION;
 
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
+import com.datastax.dsbulk.commons.internal.config.LoaderConfigFactory;
 import com.datastax.dsbulk.commons.internal.utils.StringUtils;
-import com.datastax.dsbulk.engine.internal.utils.SettingsUtils;
-import com.datastax.dsbulk.engine.internal.utils.SettingsUtils.Group;
+import com.datastax.dsbulk.engine.internal.config.SettingsGroup;
+import com.datastax.dsbulk.engine.internal.config.SettingsGroupFactory;
+import com.datastax.dsbulk.engine.internal.config.ShortcutsFactory;
+import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
 import com.datastax.oss.driver.shaded.guava.common.base.CharMatcher;
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
-import java.io.BufferedWriter;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 public class SettingsDocumentor {
-  private static final String TITLE = "DataStax Bulk Loader Options";
 
   public static void main(String[] args) throws IOException {
-    new SettingsDocumentor(Paths.get(args[0]));
-  }
-
-  private SettingsDocumentor(Path filePath) throws IOException {
+    if (args.length != 1) {
+      throw new IllegalArgumentException(
+          "Usage: ConfigurationFileCreator \"/path/to/destination/file\"");
+    }
+    Path filePath = Paths.get(args[0]);
     Files.createDirectories(filePath.getParent());
     try (PrintWriter out =
         new PrintWriter(
-            new BufferedWriter(
-                new OutputStreamWriter(
-                    new FileOutputStream(filePath.toFile()), StandardCharsets.UTF_8)))) {
+            Files.newBufferedWriter(
+                filePath, StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING))) {
       // Print page title
       out.printf(
           "# %s%n%n"
@@ -56,10 +56,16 @@ public class SettingsDocumentor {
               + "line.%n%n"
               + "A template configuration file can be found [here](./application.template.conf).%n%n"
               + "## Sections%n%n",
-          TITLE);
+          WorkflowUtils.getBulkLoaderNameAndVersion() + " Options");
+
+      ConfigFactory.invalidateCaches();
+      Config referenceConfig = LoaderConfigFactory.createReferenceConfig();
+
+      Map<String, SettingsGroup> groups = SettingsGroupFactory.createGroups(referenceConfig);
+      Map<String, String> longToShortOptions = createLongToShortOptions(referenceConfig);
 
       // Print links to relevant sections.
-      for (String groupName : GROUPS.keySet()) {
+      for (String groupName : groups.keySet()) {
         out.printf(
             "%s<a href=\"#%s\">%s Settings</a><br>%n",
             tocIndent(groupName), groupName, prettifyName(groupName));
@@ -67,13 +73,15 @@ public class SettingsDocumentor {
 
       // Walk through groups, emitting a group title followed by settings
       // for each group.
-      for (Map.Entry<String, Group> groupEntry : GROUPS.entrySet()) {
+      for (Map.Entry<String, SettingsGroup> groupEntry : groups.entrySet()) {
         String groupName = groupEntry.getKey();
         out.printf("<a name=\"%s\"></a>%n", groupName);
         out.printf("%s %s Settings%n%n", titleFormat(groupName), prettifyName(groupName));
         if (!groupName.equals("Common")) {
           out.printf(
-              "%s%n%n", getSanitizedDescription(ConfigUtils.getNullSafeValue(DEFAULT, groupName)));
+              "%s%n%n",
+              getSanitizedDescription(
+                  ConfigUtils.getNullSafeValue(referenceConfig, "dsbulk." + groupName)));
         } else {
           // Emit the help for the "-f" option in the Common section.
           out.printf(
@@ -81,20 +89,34 @@ public class SettingsDocumentor {
               StringUtils.htmlEscape("string"), CONFIG_FILE_OPTION.getDescription());
         }
         for (String settingName : groupEntry.getValue().getSettings()) {
-          ConfigValue settingValue = ConfigUtils.getNullSafeValue(DEFAULT, settingName);
+          ConfigValue settingValue = ConfigUtils.getNullSafeValue(referenceConfig, settingName);
           String shortOpt =
-              LONG_TO_SHORT_OPTIONS.containsKey(settingName)
-                  ? "-" + LONG_TO_SHORT_OPTIONS.get(settingName) + ","
+              longToShortOptions.containsKey(settingName)
+                  ? "-" + longToShortOptions.get(settingName) + ","
                   : "";
           out.printf(
               "#### %s--%s _&lt;%s&gt;_%n%n%s%n%n",
               shortOpt,
-              settingName,
-              StringUtils.htmlEscape(ConfigUtils.getTypeString(DEFAULT, settingName)),
+              settingName.replaceFirst("dsbulk\\.", "[dsbulk.]"),
+              StringUtils.htmlEscape(
+                  ConfigUtils.getTypeString(referenceConfig, settingName).orElse("arg")),
               getSanitizedDescription(settingValue));
         }
       }
     }
+  }
+
+  /** Collect shortcuts for all known connectors. */
+  private static Map<String, String> createLongToShortOptions(Config referenceConfig) {
+    Map<String, String> longToShortOptions = new HashMap<>();
+    for (String connectorName : referenceConfig.getConfig("dsbulk.connector").root().keySet()) {
+      if ("name".equals(connectorName)) {
+        continue;
+      }
+      longToShortOptions.putAll(
+          ShortcutsFactory.createShortcutsMap(referenceConfig, connectorName).inverse());
+    }
+    return longToShortOptions;
   }
 
   /**
@@ -142,7 +164,8 @@ public class SettingsDocumentor {
     // However, each line starts with a single leading space that we want to remove.
     String desc =
         value.origin().comments().stream()
-            .filter(line -> !SettingsUtils.isAnnotation(line))
+            .filter(line -> !ConfigUtils.isTypeHint(line))
+            .filter(line -> !ConfigUtils.isLeaf(line))
             .map(s -> s.length() > 0 ? s.substring(1) : s)
             .collect(Collectors.joining("\n"));
     if (value.valueType() != ConfigValueType.OBJECT) {

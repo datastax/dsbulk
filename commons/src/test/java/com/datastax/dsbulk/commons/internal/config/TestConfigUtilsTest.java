@@ -52,7 +52,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-class ConfigUtilsTest {
+class TestConfigUtilsTest {
 
   static {
     URLUtils.setURLFactoryIfNeeded();
@@ -139,11 +139,11 @@ class ConfigUtilsTest {
                     + "stringListField = [\"v1\", \"v2\"], "
                     + "numberListField = [9, 7], "
                     + "booleanField = false"));
-    assertThat(getTypeString(config, "intField")).isEqualTo("number");
-    assertThat(getTypeString(config, "stringField")).isEqualTo("string");
-    assertThat(getTypeString(config, "stringListField")).isEqualTo("list<string>");
-    assertThat(getTypeString(config, "numberListField")).isEqualTo("list<number>");
-    assertThat(getTypeString(config, "booleanField")).isEqualTo("boolean");
+    assertThat(getTypeString(config, "intField")).contains("number");
+    assertThat(getTypeString(config, "stringField")).contains("string");
+    assertThat(getTypeString(config, "stringListField")).contains("list<string>");
+    assertThat(getTypeString(config, "numberListField")).contains("list<number>");
+    assertThat(getTypeString(config, "booleanField")).contains("boolean");
     assertThatThrownBy(() -> getTypeString(config, "this.path.does.not.exist"))
         .isInstanceOf(ConfigException.Missing.class)
         .hasMessage("No configuration setting found for key 'this.path.does.not.exist'");
@@ -258,9 +258,13 @@ class ConfigUtilsTest {
   @Test
   void should_detect_value_from_reference() {
     Config config =
-        ConfigFactory.parseString("foo = -1").withFallback(ConfigFactory.defaultReference());
-    assertThat(isValueFromReferenceConfig(config, "foo")).isFalse();
-    assertThat(isValueFromReferenceConfig(config, "bar")).isTrue();
+        ConfigFactory.parseString("overriddenInApplication = -1, onlyInApplication = -2")
+            .withFallback(ConfigFactory.defaultReference());
+    assertThat(isValueFromReferenceConfig(config, "overriddenInApplication")).isFalse();
+    assertThat(isValueFromReferenceConfig(config, "onlyInApplication")).isFalse();
+    assertThat(isValueFromReferenceConfig(config, "fromReference")).isTrue();
+    assertThat(isValueFromReferenceConfig(config, "fromReferenceButNull")).isTrue();
+    assertThat(isValueFromReferenceConfig(config, "nonExistent")).isFalse();
   }
 
   static List<Arguments> urlsProvider() throws MalformedURLException {

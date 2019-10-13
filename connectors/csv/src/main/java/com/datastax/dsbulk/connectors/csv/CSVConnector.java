@@ -16,7 +16,6 @@ import static com.datastax.dsbulk.commons.internal.io.IOUtils.countReadableFiles
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.io.CompressedIOUtils;
 import com.datastax.dsbulk.commons.internal.io.IOUtils;
 import com.datastax.dsbulk.commons.internal.reactive.SimpleBackpressureController;
@@ -211,7 +210,7 @@ public class CSVConnector implements Connector {
                 NEWLINE, AUTO_NEWLINE, newline));
       }
     } catch (ConfigException e) {
-      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "connector.csv");
+      throw BulkConfigurationException.fromTypeSafeConfigException(e, "dsbulk.connector.csv");
     }
   }
 

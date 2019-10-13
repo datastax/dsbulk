@@ -11,6 +11,7 @@ package com.datastax.dsbulk.engine.internal.settings;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
+import com.typesafe.config.Config;
 
 public class SettingsManager {
 
@@ -36,7 +37,7 @@ public class SettingsManager {
   }
 
   public void init() {
-    engineSettings = new EngineSettings(config.getConfig("engine"));
+    engineSettings = new EngineSettings(config.getConfig("dsbulk.engine"));
     engineSettings.init();
     String executionIdTemplate = engineSettings.getCustomExecutionIdTemplate();
     if (executionIdTemplate != null && !executionIdTemplate.isEmpty()) {
@@ -44,15 +45,20 @@ public class SettingsManager {
     } else {
       this.executionId = WorkflowUtils.newExecutionId(workflowType);
     }
-    logSettings = new LogSettings(config.getConfig("log"), this.executionId);
-    driverSettings = new DriverSettings(config.getConfig("driver"));
-    connectorSettings = new ConnectorSettings(config.getConfig("connector"), workflowType);
-    batchSettings = new BatchSettings(config.getConfig("batch"));
-    executorSettings = new ExecutorSettings(config.getConfig("executor"));
-    codecSettings = new CodecSettings(config.getConfig("codec"));
-    schemaSettings = new SchemaSettings(config.getConfig("schema"));
-    monitoringSettings = new MonitoringSettings(config.getConfig("monitoring"), this.executionId);
-    statsSettings = new StatsSettings(config.getConfig("stats"));
+    logSettings = new LogSettings(config.getConfig("dsbulk.log"), this.executionId);
+    driverSettings =
+        new DriverSettings(
+            config.getConfig("dsbulk.driver"),
+            config.getConfig("dsbulk.executor.continuousPaging"),
+            config.getConfig("datastax-java-driver"));
+    connectorSettings = new ConnectorSettings(config.getConfig("dsbulk.connector"), workflowType);
+    batchSettings = new BatchSettings(config.getConfig("dsbulk.batch"));
+    executorSettings = new ExecutorSettings(config.getConfig("dsbulk.executor"));
+    codecSettings = new CodecSettings(config.getConfig("dsbulk.codec"));
+    schemaSettings = new SchemaSettings(config.getConfig("dsbulk.schema"));
+    monitoringSettings =
+        new MonitoringSettings(config.getConfig("dsbulk.monitoring"), this.executionId);
+    statsSettings = new StatsSettings(config.getConfig("dsbulk.stats"));
   }
 
   public String getExecutionId() {
@@ -99,20 +105,23 @@ public class SettingsManager {
     return statsSettings;
   }
 
-  public LoaderConfig getGlobalConfig() {
+  public Config getBulkLoaderConfig() {
     // must be called after connector settings initialized
-    LoaderConfig global =
+    Config dsbulkConfig =
         config
+            .getConfig("dsbulk")
             .withoutPath("metaSettings")
             // limit connector configuration to the selected connector
             .withoutPath("connector");
     if (connectorSettings.getConnectorConfig() != null) {
-      global =
-          global.withFallback(
-              connectorSettings
-                  .getConnectorConfig()
-                  .atPath("connector." + connectorSettings.getConnectorName()));
+      dsbulkConfig =
+          dsbulkConfig
+              .withFallback(
+                  connectorSettings
+                      .getConnectorConfig()
+                      .atPath("connector." + connectorSettings.getConnectorName()))
+              .withoutPath("config");
     }
-    return global;
+    return dsbulkConfig;
   }
 }

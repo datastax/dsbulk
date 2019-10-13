@@ -10,7 +10,6 @@ package com.datastax.dsbulk.engine.internal.settings;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.executor.api.batch.StatementBatcher;
 import com.datastax.dsbulk.executor.reactor.batch.ReactorStatementBatcher;
 import com.datastax.oss.driver.api.core.CqlSession;
@@ -113,7 +112,7 @@ public class BatchSettings {
                 bufferSize, maxBatchStatements));
       }
     } catch (ConfigException e) {
-      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "batch");
+      throw BulkConfigurationException.fromTypeSafeConfigException(e, "dsbulk.batch");
     }
   }
 

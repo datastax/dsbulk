@@ -37,6 +37,7 @@ abstract class EndToEndCCMITBase {
   final CCMCluster ccm;
   final CqlSession session;
   final ProtocolVersion protocolVersion;
+  private final InetSocketAddress contactPoint;
 
   Path logDir;
   Path unloadDir;
@@ -45,6 +46,7 @@ abstract class EndToEndCCMITBase {
     this.ccm = ccm;
     this.session = session;
     this.protocolVersion = session.getContext().getProtocolVersion();
+    contactPoint = (InetSocketAddress) ccm.getInitialContactPoints().get(0).resolve();
   }
 
   @BeforeEach
@@ -73,15 +75,10 @@ abstract class EndToEndCCMITBase {
   String[] addCommonSettings(List<String> args) {
     args.add("--log.directory");
     args.add(quoteJson(logDir));
-    args.add("--driver.pooling.local.connections");
+    args.add("--driver.advanced.connection.pool.local.size");
     args.add("1");
-    args.add("--driver.hosts");
-    args.add(
-        ((InetSocketAddress) ccm.getInitialContactPoints().get(0).resolve())
-            .getAddress()
-            .getHostAddress());
-    args.add("--driver.port");
-    args.add(Integer.toString(ccm.getBinaryPort()));
+    args.add("-cp");
+    args.add(quoteJson(contactPoint.getHostName() + ':' + contactPoint.getPort()));
     return args.toArray(new String[0]);
   }
 }

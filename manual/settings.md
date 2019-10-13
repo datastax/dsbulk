@@ -1,4 +1,4 @@
-# DataStax Bulk Loader Options
+# DataStax Bulk Loader v1.4.0-SNAPSHOT Options
 
 *NOTE:* The long options described here can be persisted in `conf/application.conf` and thus permanently override defaults and avoid specifying options on the command line.
 
@@ -15,7 +15,6 @@ A template configuration file can be found [here](./application.template.conf).
 <a href="#codec">Codec Settings</a><br>
 <a href="#driver">Driver Settings</a><br>
 &nbsp;&nbsp;&nbsp;<a href="#driver.auth">Driver Auth Settings</a><br>
-&nbsp;&nbsp;&nbsp;<a href="#driver.cloud">Driver Cloud Settings</a><br>
 &nbsp;&nbsp;&nbsp;<a href="#driver.policy">Driver Policy Settings</a><br>
 &nbsp;&nbsp;&nbsp;<a href="#driver.pooling">Driver Pooling Settings</a><br>
 &nbsp;&nbsp;&nbsp;<a href="#driver.protocol">Driver Protocol Settings</a><br>
@@ -34,13 +33,13 @@ A template configuration file can be found [here](./application.template.conf).
 
 Load options from the given file rather than from `<dsbulk_home>/conf/application.conf`.
 
-#### -c,--connector.name _&lt;string&gt;_
+#### -c,--[dsbulk.]connector.name _&lt;string&gt;_
 
 The name of the connector to use.
 
 Default: **"csv"**.
 
-#### -url,--connector.csv.url _&lt;string&gt;_
+#### -url,--[dsbulk.]connector.csv.url _&lt;string&gt;_
 
 The URL or path of the resource(s) to read from or write to.
 
@@ -70,13 +69,13 @@ The default value is `-` (read from `stdin` / write to `stdout`).
 
 Default: **"-"**.
 
-#### -delim,--connector.csv.delimiter _&lt;string&gt;_
+#### -delim,--[dsbulk.]connector.csv.delimiter _&lt;string&gt;_
 
 The character to use as field delimiter.
 
 Default: **","**.
 
-#### -header,--connector.csv.header _&lt;boolean&gt;_
+#### -header,--[dsbulk.]connector.csv.header _&lt;boolean&gt;_
 
 Enable or disable whether the files to read or write begin with a header line. If enabled for loading, the first non-empty line in every file will assign field names for each record column, in lieu of `schema.mapping`, `fieldA = col1, fieldB = col2, fieldC = col3`. If disabled for loading, records will not contain fields names, only field indexes, `0 = col1, 1 = col2, 2 = col3`. For unloading, if this setting is enabled, each file will begin with a header line, and if disabled, each file will not contain a header line.
 
@@ -84,19 +83,19 @@ Note: This option will apply to all files loaded or unloaded.
 
 Default: **true**.
 
-#### -skipRecords,--connector.csv.skipRecords _&lt;number&gt;_
+#### -skipRecords,--[dsbulk.]connector.csv.skipRecords _&lt;number&gt;_
 
 The number of records to skip from each input file before the parser can begin to execute. Note that if the file contains a header line, that line is not counted as a valid record. This setting is ignored when writing.
 
 Default: **0**.
 
-#### -maxRecords,--connector.csv.maxRecords _&lt;number&gt;_
+#### -maxRecords,--[dsbulk.]connector.csv.maxRecords _&lt;number&gt;_
 
 The maximum number of records to read from or write to each file. When reading, all records past this number will be discarded. When writing, a file will contain at most this number of records; if more records remain to be written, a new file will be created using the *fileNameFormat* setting. Note that when writing to anything other than a directory, this setting is ignored. This setting takes into account the *header* setting: if a file begins with a header line, that line is not counted as a record. This feature is disabled by default (indicated by its `-1` value).
 
 Default: **-1**.
 
-#### -url,--connector.json.url _&lt;string&gt;_
+#### -url,--[dsbulk.]connector.json.url _&lt;string&gt;_
 
 The URL or path of the resource(s) to read from or write to.
 
@@ -126,31 +125,31 @@ The default value is `-` (read from `stdin` / write to `stdout`).
 
 Default: **"-"**.
 
-#### -skipRecords,--connector.json.skipRecords _&lt;number&gt;_
+#### -skipRecords,--[dsbulk.]connector.json.skipRecords _&lt;number&gt;_
 
 The number of JSON records to skip from each input file before the parser can begin to execute. This setting is ignored when writing.
 
 Default: **0**.
 
-#### -maxRecords,--connector.json.maxRecords _&lt;number&gt;_
+#### -maxRecords,--[dsbulk.]connector.json.maxRecords _&lt;number&gt;_
 
 The maximum number of records to read from or write to each file. When reading, all records past this number will be discarded. When writing, a file will contain at most this number of records; if more records remain to be written, a new file will be created using the *fileNameFormat* setting. Note that when writing to anything other than a directory, this setting is ignored. This feature is disabled by default (indicated by its `-1` value).
 
 Default: **-1**.
 
-#### -k,--schema.keyspace _&lt;string&gt;_
+#### -k,--[dsbulk.]schema.keyspace _&lt;string&gt;_
 
 Keyspace used for loading or unloading data. Keyspace names should not be quoted and are case-sensitive. `MyKeyspace` will match a keyspace named `MyKeyspace` but not `mykeyspace`. Required option if `schema.query` is not specified; otherwise, optional.
 
 Default: **null**.
 
-#### -t,--schema.table _&lt;string&gt;_
+#### -t,--[dsbulk.]schema.table _&lt;string&gt;_
 
 Table used for loading or unloading data. Table names should not be quoted and are case-sensitive. `MyTable` will match a table named `MyTable` but not `mytable`. Required option if `schema.query` is not specified; otherwise, optional.
 
 Default: **null**.
 
-#### -m,--schema.mapping _&lt;string&gt;_
+#### -m,--[dsbulk.]schema.mapping _&lt;string&gt;_
 
 The field-to-column mapping to use, that applies to both loading and unloading; ignored when counting. If not specified, the loader will apply a strict one-to-one mapping between the source fields and the database table. If that is not what you want, then you must supply an explicit mapping. Mappings should be specified as a map of the following form:
 
@@ -173,85 +172,31 @@ The exact type of mapping to use depends on the connector being used. Some conne
 
 Default: **null**.
 
-#### -dryRun,--engine.dryRun _&lt;boolean&gt;_
+#### -dryRun,--[dsbulk.]engine.dryRun _&lt;boolean&gt;_
 
 Enable or disable dry-run mode, a test mode that runs the command but does not load data. Not applicable for unloading nor counting.
 
 Default: **false**.
 
-#### -h,--driver.hosts _&lt;list&lt;string&gt;&gt;_
-
-The contact points to use for the initial connection to the cluster. This must be a comma-separated list of hosts, each specified by a host-name or ip address. If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use `localhost` as a host-name (since it resolves to both IPv4 and IPv6 addresses on some platforms). The port for all hosts must be specified with `driver.port`.
-
-This setting is ignored if `driver.cloud.secureConnectBundle` is provided, since this information is part of the bundle's data.
-
-Default: **["127.0.0.1"]**.
-
-#### -port,--driver.port _&lt;number&gt;_
-
-The native transport port to connect to. This must match DSE's [native_transport_port](https://docs.datastax.com/en/cassandra/2.1/cassandra/configuration/configCassandra_yaml_r.html#configCassandra_yaml_r__native_transport_port) configuration option.
-
-Note that all nodes in a cluster must accept connections on the same port number. Mixed-port clusters are not supported.
-
-This setting is ignored if `driver.cloud.secureConnectBundle` is provided, since this information is part of the bundle's data.
-
-Default: **9042**.
-
-#### -u,--driver.auth.username _&lt;string&gt;_
-
-The username to use. Providers that accept this setting:
-
- - `PlainTextAuthProvider`
- - `DsePlainTextAuthProvider`
-
-Default: **null**.
-
-#### -p,--driver.auth.password _&lt;string&gt;_
-
-The password to use. Providers that accept this setting:
-
- - `PlainTextAuthProvider`
- - `DsePlainTextAuthProvider`
-
-Default: **null**.
-
-#### -cl,--driver.query.consistency _&lt;string&gt;_
-
-The consistency level to use for all queries. Note that stronger consistency levels usually result in reduced throughput. In addition, any level higher than `ONE` will automatically disable continuous paging, which can dramatically reduce read throughput.
-
-Valid values are: `ANY`, `LOCAL_ONE`, `ONE`, `TWO`, `THREE`, `LOCAL_QUORUM`, `QUORUM`, `EACH_QUORUM`, `ALL`.
-
-Note: on Cloud deployments, the only accepted consistency level when writing is `LOCAL_QUORUM`. Therefore, the default value is `LOCAL_ONE`, except when loding in Cloud deployments, in which case the default is changed to `LOCAL_QUORUM`.
-
-Default: **"LOCAL_ONE"**.
-
-#### -localDc,--driver.policy.lbp.localDc _&lt;string&gt;_
-
-The datacenter name (commonly dc1, dc2, etc.) local to the machine on which dsbulk is running, so that requests are sent to nodes in the local datacenter whenever possible.
-
-This setting is ignored if `driver.cloud.secureConnectBundle` is provided, since this information is part of the bundle's data.
-
-Default: **null**.
-
-#### --executor.maxPerSecond _&lt;number&gt;_
+#### --[dsbulk.]executor.maxPerSecond _&lt;number&gt;_
 
 The maximum number of concurrent operations per second. When loading, this means the maximum number of write requests per second; when unloading or counting, this means the maximum number of rows per second. This acts as a safeguard to prevent overloading the cluster. Batch statements are counted by the number of statements included. Reduce this setting when the latencies get too high and a remote cluster cannot keep up with throughput, as `dsbulk` requests will eventually time out. Setting this option to any negative value or zero will disable it.
 
 Default: **-1**.
 
-#### -maxErrors,--log.maxErrors _&lt;number&gt;_
+#### -maxErrors,--[dsbulk.]log.maxErrors _&lt;number&gt;_
 
 The maximum number of errors to tolerate before aborting the entire operation. This can be expressed either as an absolute number of errors – in which case, set this to an integer greater than or equal to zero; or as a percentage of total rows processed so far – in which case, set this to a string of the form `N%`, where `N` is a decimal number between 0 and 100 exclusive (e.g. "20%"). Setting this value to any negative integer disables this feature (not recommended).
 
 Default: **100**.
 
-#### -logDir,--log.directory _&lt;string&gt;_
+#### -logDir,--[dsbulk.]log.directory _&lt;string&gt;_
 
 The writable directory where all log files will be stored; if the directory specified does not exist, it will be created. URLs are not acceptable (not even `file:/` URLs). Log files for a specific run, or execution, will be located in a sub-directory under the specified directory. Each execution generates a sub-directory identified by an "execution ID". See `engine.executionId` for more information about execution IDs. Relative paths will be resolved against the current working directory. Also, for convenience, if the path begins with a tilde (`~`), that symbol will be expanded to the current user's home directory.
 
 Default: **"./logs"**.
 
-#### -verbosity,--log.verbosity _&lt;number&gt;_
+#### -verbosity,--[dsbulk.]log.verbosity _&lt;number&gt;_
 
 The desired level of verbosity. Valid values are:
 
@@ -261,7 +206,7 @@ The desired level of verbosity. Valid values are:
 
 Default: **1**.
 
-#### -reportRate,--monitoring.reportRate _&lt;string&gt;_
+#### -reportRate,--[dsbulk.]monitoring.reportRate _&lt;string&gt;_
 
 The report interval. DSBulk will print useful metrics about the ongoing operation at this rate. Durations lesser than one second will be rounded up to 1 second.
 
@@ -274,7 +219,7 @@ Connector-specific settings. This section contains settings for the connector to
 
 This setting is ignored when counting.
 
-#### -c,--connector.name _&lt;string&gt;_
+#### -c,--[dsbulk.]connector.name _&lt;string&gt;_
 
 The name of the connector to use.
 
@@ -285,7 +230,7 @@ Default: **"csv"**.
 
 CSV Connector configuration.
 
-#### -url,--connector.csv.url _&lt;string&gt;_
+#### -url,--[dsbulk.]connector.csv.url _&lt;string&gt;_
 
 The URL or path of the resource(s) to read from or write to.
 
@@ -315,13 +260,13 @@ The default value is `-` (read from `stdin` / write to `stdout`).
 
 Default: **"-"**.
 
-#### -delim,--connector.csv.delimiter _&lt;string&gt;_
+#### -delim,--[dsbulk.]connector.csv.delimiter _&lt;string&gt;_
 
 The character to use as field delimiter.
 
 Default: **","**.
 
-#### -header,--connector.csv.header _&lt;boolean&gt;_
+#### -header,--[dsbulk.]connector.csv.header _&lt;boolean&gt;_
 
 Enable or disable whether the files to read or write begin with a header line. If enabled for loading, the first non-empty line in every file will assign field names for each record column, in lieu of `schema.mapping`, `fieldA = col1, fieldB = col2, fieldC = col3`. If disabled for loading, records will not contain fields names, only field indexes, `0 = col1, 1 = col2, 2 = col3`. For unloading, if this setting is enabled, each file will begin with a header line, and if disabled, each file will not contain a header line.
 
@@ -329,55 +274,55 @@ Note: This option will apply to all files loaded or unloaded.
 
 Default: **true**.
 
-#### -skipRecords,--connector.csv.skipRecords _&lt;number&gt;_
+#### -skipRecords,--[dsbulk.]connector.csv.skipRecords _&lt;number&gt;_
 
 The number of records to skip from each input file before the parser can begin to execute. Note that if the file contains a header line, that line is not counted as a valid record. This setting is ignored when writing.
 
 Default: **0**.
 
-#### -maxRecords,--connector.csv.maxRecords _&lt;number&gt;_
+#### -maxRecords,--[dsbulk.]connector.csv.maxRecords _&lt;number&gt;_
 
 The maximum number of records to read from or write to each file. When reading, all records past this number will be discarded. When writing, a file will contain at most this number of records; if more records remain to be written, a new file will be created using the *fileNameFormat* setting. Note that when writing to anything other than a directory, this setting is ignored. This setting takes into account the *header* setting: if a file begins with a header line, that line is not counted as a record. This feature is disabled by default (indicated by its `-1` value).
 
 Default: **-1**.
 
-#### -quote,--connector.csv.quote _&lt;string&gt;_
+#### -quote,--[dsbulk.]connector.csv.quote _&lt;string&gt;_
 
 The character used for quoting fields when the field delimiter is part of the field value. Only one character can be specified. Note that this setting applies to all files to be read or written.
 
 Default: **"\""**.
 
-#### -comment,--connector.csv.comment _&lt;string&gt;_
+#### -comment,--[dsbulk.]connector.csv.comment _&lt;string&gt;_
 
 The character that represents a line comment when found in the beginning of a line of text. Only one character can be specified. Note that this setting applies to all files to be read or written. This feature is disabled by default (indicated by its `null` character value).
 
 Default: **"\u0000"**.
 
-#### --connector.csv.compression _&lt;string&gt;_
+#### --[dsbulk.]connector.csv.compression _&lt;string&gt;_
 
 The compression that will be used for writing or reading files. Supported values are (for both reading and writing): `none`, `xz`, `gzip`, `bzip2`, `zstd`, `lz4`, `lzma`, `snappy`, `deflate`.  For reading only, supported values are: `brotli`, `z`, `deflate64`.
 
 Default: **"none"**.
 
-#### --connector.csv.emptyValue _&lt;string&gt;_
+#### --[dsbulk.]connector.csv.emptyValue _&lt;string&gt;_
 
 Sets the String representation of an empty value. When reading, if the parser does not read any character from the input, and the input is within quotes, this value will be used instead. This setting is ignored when writing. The default is `""` (empty string).
 
 Default: **&lt;unspecified&gt;**.
 
-#### -encoding,--connector.csv.encoding _&lt;string&gt;_
+#### -encoding,--[dsbulk.]connector.csv.encoding _&lt;string&gt;_
 
 The file encoding to use for all read or written files.
 
 Default: **"UTF-8"**.
 
-#### -escape,--connector.csv.escape _&lt;string&gt;_
+#### -escape,--[dsbulk.]connector.csv.escape _&lt;string&gt;_
 
 The character used for escaping quotes inside an already quoted value. Only one character can be specified. Note that this setting applies to all files to be read or written.
 
 Default: **"\\"**.
 
-#### --connector.csv.fileNameFormat _&lt;string&gt;_
+#### --[dsbulk.]connector.csv.fileNameFormat _&lt;string&gt;_
 
 The file name format to use when writing. This setting is ignored when reading and for non-file URLs. The file name must comply with the formatting rules of `String.format()`, and must contain a `%d` format specifier that will be used to increment file name counters.
 
@@ -385,7 +330,7 @@ If compression is enabled, the default value for this setting will be modified t
 
 Default: **"output-%06d.csv"**.
 
-#### --connector.csv.fileNamePattern _&lt;string&gt;_
+#### --[dsbulk.]connector.csv.fileNamePattern _&lt;string&gt;_
 
 The glob pattern to use when searching for files to read. The syntax to use is the glob syntax, as described in `java.nio.file.FileSystem.getPathMatcher()`. This setting is ignored when writing and for non-file URLs. Only applicable when the *url* setting points to a directory on a known filesystem, ignored otherwise.
 
@@ -393,73 +338,73 @@ If compression is enabled, the default value for this setting will be modified t
 
 Default: **"\*\*/\*.csv"**.
 
-#### --connector.csv.ignoreLeadingWhitespaces _&lt;boolean&gt;_
+#### --[dsbulk.]connector.csv.ignoreLeadingWhitespaces _&lt;boolean&gt;_
 
 Defines whether or not leading whitespaces from values being read/written should be skipped. This setting is honored when reading and writing. Default value is false.
 
 Default: **false**.
 
-#### --connector.csv.ignoreLeadingWhitespacesInQuotes _&lt;boolean&gt;_
+#### --[dsbulk.]connector.csv.ignoreLeadingWhitespacesInQuotes _&lt;boolean&gt;_
 
 Defines whether or not trailing whitespaces from quoted values should be skipped. This setting is only honored when reading; it is ignored when writing. Default value is false.
 
 Default: **false**.
 
-#### --connector.csv.ignoreTrailingWhitespaces _&lt;boolean&gt;_
+#### --[dsbulk.]connector.csv.ignoreTrailingWhitespaces _&lt;boolean&gt;_
 
 Defines whether or not trailing whitespaces from values being read/written should be skipped. This setting is honored when reading and writing. Default value is false.
 
 Default: **false**.
 
-#### --connector.csv.ignoreTrailingWhitespacesInQuotes _&lt;boolean&gt;_
+#### --[dsbulk.]connector.csv.ignoreTrailingWhitespacesInQuotes _&lt;boolean&gt;_
 
 Defines whether or not leading whitespaces from quoted values should be skipped. This setting is only honored when reading; it is ignored when writing. Default value is false.
 
 Default: **false**.
 
-#### --connector.csv.maxCharsPerColumn _&lt;number&gt;_
+#### --[dsbulk.]connector.csv.maxCharsPerColumn _&lt;number&gt;_
 
 The maximum number of characters that a field can contain. This setting is used to size internal buffers and to avoid out-of-memory problems. If set to -1, internal buffers will be resized dynamically. While convenient, this can lead to memory problems. It could also hurt throughput, if some large fields require constant resizing; if this is the case, set this value to a fixed positive number that is big enough to contain all field values.
 
 Default: **4096**.
 
-#### --connector.csv.maxColumns _&lt;number&gt;_
+#### --[dsbulk.]connector.csv.maxColumns _&lt;number&gt;_
 
 The maximum number of columns that a record can contain. This setting is used to size internal buffers and to avoid out-of-memory problems.
 
 Default: **512**.
 
-#### -maxConcurrentFiles,--connector.csv.maxConcurrentFiles _&lt;string&gt;_
+#### -maxConcurrentFiles,--[dsbulk.]connector.csv.maxConcurrentFiles _&lt;string&gt;_
 
 The maximum number of files that can be written simultaneously. This setting is ignored when reading and when the output URL is anything other than a directory on a filesystem. The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 
 Default: **"0.25C"**.
 
-#### -newline,--connector.csv.newline _&lt;string&gt;_
+#### -newline,--[dsbulk.]connector.csv.newline _&lt;string&gt;_
 
 The character(s) that represent a line ending. When set to the special value `auto` (default), the system's line separator, as determined by `System.lineSeparator()`, will be used when writing, and auto-detection of line endings will be enabled when reading. Only one or two characters can be specified; beware that most typical line separator characters need to be escaped, e.g. one should specify `\r\n` for the typical line ending on Windows systems (carriage return followed by a new line).
 
 Default: **"auto"**.
 
-#### --connector.csv.normalizeLineEndingsInQuotes _&lt;boolean&gt;_
+#### --[dsbulk.]connector.csv.normalizeLineEndingsInQuotes _&lt;boolean&gt;_
 
 Defines whether or not line separators should be replaced by a normalized line separator '\n' inside quoted values. This setting is honored when reading and writing. Note: due to a bug in the CSV parsing library, on Windows systems, the line ending detection mechanism may not function properly when this setting is false; in case of problem, set this to true. Default value is false.
 
 Default: **false**.
 
-#### --connector.csv.nullValue _&lt;string&gt;_
+#### --[dsbulk.]connector.csv.nullValue _&lt;string&gt;_
 
 Sets the String representation of a null value. When reading, if the parser does not read any character from the input, this value will be used instead. When writing, if the writer has a null object to write to the output, this value will be used instead. The default value is `null`, which means that, when reading, the parser will emit a `null`, and when writing, the writer won't write any character at all to the output.
 
 Default: **null**.
 
-#### --connector.csv.recursive _&lt;boolean&gt;_
+#### --[dsbulk.]connector.csv.recursive _&lt;boolean&gt;_
 
 Enable or disable scanning for files in the root's subdirectories. Only applicable when *url* is set to a directory on a known filesystem. Used for loading only.
 
 Default: **false**.
 
-#### --connector.csv.urlfile _&lt;string&gt;_
+#### --[dsbulk.]connector.csv.urlfile _&lt;string&gt;_
 
 The URL or path of the file that contains the list of resources to read from.
 
@@ -501,7 +446,7 @@ Default: **&lt;unspecified&gt;**.
 
 JSON Connector configuration.
 
-#### -url,--connector.json.url _&lt;string&gt;_
+#### -url,--[dsbulk.]connector.json.url _&lt;string&gt;_
 
 The URL or path of the resource(s) to read from or write to.
 
@@ -531,19 +476,19 @@ The default value is `-` (read from `stdin` / write to `stdout`).
 
 Default: **"-"**.
 
-#### -skipRecords,--connector.json.skipRecords _&lt;number&gt;_
+#### -skipRecords,--[dsbulk.]connector.json.skipRecords _&lt;number&gt;_
 
 The number of JSON records to skip from each input file before the parser can begin to execute. This setting is ignored when writing.
 
 Default: **0**.
 
-#### -maxRecords,--connector.json.maxRecords _&lt;number&gt;_
+#### -maxRecords,--[dsbulk.]connector.json.maxRecords _&lt;number&gt;_
 
 The maximum number of records to read from or write to each file. When reading, all records past this number will be discarded. When writing, a file will contain at most this number of records; if more records remain to be written, a new file will be created using the *fileNameFormat* setting. Note that when writing to anything other than a directory, this setting is ignored. This feature is disabled by default (indicated by its `-1` value).
 
 Default: **-1**.
 
-#### --connector.json.mode _&lt;string&gt;_
+#### --[dsbulk.]connector.json.mode _&lt;string&gt;_
 
 The mode for loading and unloading JSON documents. Valid values are:
 
@@ -552,25 +497,25 @@ The mode for loading and unloading JSON documents. Valid values are:
 
 Default: **"MULTI_DOCUMENT"**.
 
-#### --connector.json.compression _&lt;string&gt;_
+#### --[dsbulk.]connector.json.compression _&lt;string&gt;_
 
 The compression that will be used for writing or reading files. Supported values are (for both reading and writing): `none`, `xz`, `gzip`, `bzip2`, `zstd`, `lz4`, `lzma`, `snappy`, `deflate`.  For reading only, supported values are: `brotli`, `z`, `deflate64`.
 
 Default: **"none"**.
 
-#### --connector.json.deserializationFeatures _&lt;map&lt;string,boolean&gt;&gt;_
+#### --[dsbulk.]connector.json.deserializationFeatures _&lt;map&lt;string,boolean&gt;&gt;_
 
 A map of JSON deserialization features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.databind.DeserializationFeature`. The default value is the only way to guarantee that floating point numbers will not have their precision truncated when parsed, but can result in slightly slower parsing. Used for loading only.
 
 Note that some Jackson features might not be supported, in particular features that operate on the resulting Json tree by filtering elements or altering their contents, since such features conflict with dsbulk's own filtering and formatting capabilities. Instead of trying to modify the resulting tree using Jackson features, you should try to achieve the same result using the settings available under the `codec` and `schema` sections.
 
-#### -encoding,--connector.json.encoding _&lt;string&gt;_
+#### -encoding,--[dsbulk.]connector.json.encoding _&lt;string&gt;_
 
 The file encoding to use for all read or written files.
 
 Default: **"UTF-8"**.
 
-#### --connector.json.fileNameFormat _&lt;string&gt;_
+#### --[dsbulk.]connector.json.fileNameFormat _&lt;string&gt;_
 
 The file name format to use when writing. This setting is ignored when reading and for non-file URLs. The file name must comply with the formatting rules of `String.format()`, and must contain a `%d` format specifier that will be used to increment file name counters.
 
@@ -578,7 +523,7 @@ If compression is enabled, the default value for this setting will be modified t
 
 Default: **"output-%06d.json"**.
 
-#### --connector.json.fileNamePattern _&lt;string&gt;_
+#### --[dsbulk.]connector.json.fileNamePattern _&lt;string&gt;_
 
 The glob pattern to use when searching for files to read. The syntax to use is the glob syntax, as described in `java.nio.file.FileSystem.getPathMatcher()`. This setting is ignored when writing and for non-file URLs. Only applicable when the *url* setting points to a directory on a known filesystem, ignored otherwise.
 
@@ -586,25 +531,25 @@ If compression is enabled, the default value for this setting will be modified t
 
 Default: **"\*\*/\*.json"**.
 
-#### --connector.json.generatorFeatures _&lt;map&lt;string,boolean&gt;&gt;_
+#### --[dsbulk.]connector.json.generatorFeatures _&lt;map&lt;string,boolean&gt;&gt;_
 
 JSON generator features to enable. Valid values are all the enum constants defined in `com.fasterxml.jackson.core.JsonGenerator.Feature`. For example, a value of `{ ESCAPE_NON_ASCII : true, QUOTE_FIELD_NAMES : true }` will configure the generator to escape all characters beyond 7-bit ASCII and quote field names when writing JSON output. Used for unloading only.
 
 Note that some Jackson features might not be supported, in particular features that operate on the resulting Json tree by filtering elements or altering their contents, since such features conflict with dsbulk's own filtering and formatting capabilities. Instead of trying to modify the resulting tree using Jackson features, you should try to achieve the same result using the settings available under the `codec` and `schema` sections.
 
-#### -maxConcurrentFiles,--connector.json.maxConcurrentFiles _&lt;string&gt;_
+#### -maxConcurrentFiles,--[dsbulk.]connector.json.maxConcurrentFiles _&lt;string&gt;_
 
 The maximum number of files that can be written simultaneously. This setting is ignored when reading and when the output URL is anything other than a directory on a filesystem. The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 
 Default: **"0.25C"**.
 
-#### --connector.json.parserFeatures _&lt;map&lt;string,boolean&gt;&gt;_
+#### --[dsbulk.]connector.json.parserFeatures _&lt;map&lt;string,boolean&gt;&gt;_
 
 JSON parser features to enable. Valid values are all the enum constants defined in `com.fasterxml.jackson.core.JsonParser.Feature`. For example, a value of `{ ALLOW_COMMENTS : true, ALLOW_SINGLE_QUOTES : true }` will configure the parser to allow the use of comments and single-quoted strings in JSON data. Used for loading only.
 
 Note that some Jackson features might not be supported, in particular features that operate on the resulting Json tree by filtering elements or altering their contents, since such features conflict with dsbulk's own filtering and formatting capabilities. Instead of trying to modify the resulting tree using Jackson features, you should try to achieve the same result using the settings available under the `codec` and `schema` sections.
 
-#### --connector.json.prettyPrint _&lt;boolean&gt;_
+#### --[dsbulk.]connector.json.prettyPrint _&lt;boolean&gt;_
 
 Enable or disable pretty printing. When enabled, JSON records are written with indents. Used for unloading only.
 
@@ -612,25 +557,25 @@ Note: Can result in much bigger records.
 
 Default: **false**.
 
-#### --connector.json.recursive _&lt;boolean&gt;_
+#### --[dsbulk.]connector.json.recursive _&lt;boolean&gt;_
 
 Enable or disable scanning for files in the root's subdirectories. Only applicable when *url* is set to a directory on a known filesystem. Used for loading only.
 
 Default: **false**.
 
-#### --connector.json.serializationFeatures _&lt;map&lt;string,boolean&gt;&gt;_
+#### --[dsbulk.]connector.json.serializationFeatures _&lt;map&lt;string,boolean&gt;&gt;_
 
 A map of JSON serialization features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.databind.SerializationFeature`. Used for unloading only.
 
 Note that some Jackson features might not be supported, in particular features that operate on the resulting Json tree by filtering elements or altering their contents, since such features conflict with dsbulk's own filtering and formatting capabilities. Instead of trying to modify the resulting tree using Jackson features, you should try to achieve the same result using the settings available under the `codec` and `schema` sections.
 
-#### --connector.json.serializationStrategy _&lt;string&gt;_
+#### --[dsbulk.]connector.json.serializationStrategy _&lt;string&gt;_
 
 The strategy to use for filtering out entries when formatting output. Valid values are enum constants defined in `com.fasterxml.jackson.annotation.JsonInclude.Include` (but beware that the `CUSTOM` strategy cannot be honored). Used for unloading only.
 
 Default: **"ALWAYS"**.
 
-#### --connector.json.urlfile _&lt;string&gt;_
+#### --[dsbulk.]connector.json.urlfile _&lt;string&gt;_
 
 The URL or path of the file that contains the list of resources to read from.
 
@@ -672,19 +617,19 @@ Default: **&lt;unspecified&gt;**.
 
 Schema-specific settings.
 
-#### -k,--schema.keyspace _&lt;string&gt;_
+#### -k,--[dsbulk.]schema.keyspace _&lt;string&gt;_
 
 Keyspace used for loading or unloading data. Keyspace names should not be quoted and are case-sensitive. `MyKeyspace` will match a keyspace named `MyKeyspace` but not `mykeyspace`. Required option if `schema.query` is not specified; otherwise, optional.
 
 Default: **null**.
 
-#### -t,--schema.table _&lt;string&gt;_
+#### -t,--[dsbulk.]schema.table _&lt;string&gt;_
 
 Table used for loading or unloading data. Table names should not be quoted and are case-sensitive. `MyTable` will match a table named `MyTable` but not `mytable`. Required option if `schema.query` is not specified; otherwise, optional.
 
 Default: **null**.
 
-#### -m,--schema.mapping _&lt;string&gt;_
+#### -m,--[dsbulk.]schema.mapping _&lt;string&gt;_
 
 The field-to-column mapping to use, that applies to both loading and unloading; ignored when counting. If not specified, the loader will apply a strict one-to-one mapping between the source fields and the database table. If that is not what you want, then you must supply an explicit mapping. Mappings should be specified as a map of the following form:
 
@@ -707,7 +652,7 @@ The exact type of mapping to use depends on the connector being used. Some conne
 
 Default: **null**.
 
-#### --schema.allowExtraFields _&lt;boolean&gt;_
+#### --[dsbulk.]schema.allowExtraFields _&lt;boolean&gt;_
 
 Specify whether or not to accept records that contain extra fields that are not declared in the mapping. For example, if a record contains three fields A, B, and C, but the mapping only declares fields A and B, then if this option is true, C will be silently ignored and the record will be considered valid, and if false, the record will be rejected. This setting also applies to user-defined types and tuples. Only applicable for loading, ignored otherwise.
 
@@ -715,7 +660,7 @@ This setting is ignored when counting.
 
 Default: **true**.
 
-#### --schema.allowMissingFields _&lt;boolean&gt;_
+#### --[dsbulk.]schema.allowMissingFields _&lt;boolean&gt;_
 
 Specify whether or not to accept records that are missing fields declared in the mapping. For example, if the mapping declares three fields A, B, and C, but a record contains only fields A and B, then if this option is true, C will be silently assigned null and the record will be considered valid, and if false, the record will be rejected. If the missing field is mapped to a primary key column, the record will always be rejected, since the database will reject the record. This setting also applies to user-defined types and tuples. Only applicable for loading, ignored otherwise.
 
@@ -723,7 +668,7 @@ This setting is ignored when counting.
 
 Default: **false**.
 
-#### --schema.nullToUnset _&lt;boolean&gt;_
+#### --[dsbulk.]schema.nullToUnset _&lt;boolean&gt;_
 
 Specify whether to map `null` input values to "unset" in the database, i.e., don't modify a potentially pre-existing value of this field for this row. Valid for load scenarios, otherwise ignore. Note that setting to false creates tombstones to represent `null`.
 
@@ -733,7 +678,7 @@ This setting is ignored when counting. When set to true but the protocol version
 
 Default: **true**.
 
-#### -query,--schema.query _&lt;string&gt;_
+#### -query,--[dsbulk.]schema.query _&lt;string&gt;_
 
 The query to use. If not specified, then *schema.keyspace* and *schema.table* must be specified, and dsbulk will infer the appropriate statement based on the table's metadata, using all available columns. If `schema.keyspace` is provided, the query need not include the keyspace to qualify the table reference.
 
@@ -749,7 +694,7 @@ See *schema.mapping* setting for more information.
 
 Default: **null**.
 
-#### --schema.queryTimestamp _&lt;string&gt;_
+#### --[dsbulk.]schema.queryTimestamp _&lt;string&gt;_
 
 The timestamp of inserted/updated cells during load; otherwise, the current time of the system running the tool is used. Not applicable to unloading nor counting. Ignored when `schema.query` is provided. The value must be expressed in [`ISO_ZONED_DATE_TIME`](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#ISO_ZONED_DATE_TIME) format.
 
@@ -757,13 +702,13 @@ Query timestamps for DSE have microsecond resolution; any sub-microsecond inform
 
 Default: **null**.
 
-#### --schema.queryTtl _&lt;number&gt;_
+#### --[dsbulk.]schema.queryTtl _&lt;number&gt;_
 
 The Time-To-Live (TTL) of inserted/updated cells during load (seconds); a value of -1 means there is no TTL. Not applicable to unloading nor counting. Ignored when `schema.query` is provided. For more information, see the [CQL Reference](https://docs.datastax.com/en/dse/6.0/cql/cql/cql_reference/cql_commands/cqlInsert.html#cqlInsert__ime-value), [Setting the time-to-live (TTL) for value](http://docs.datastax.com/en/dse/6.0/cql/cql/cql_using/useTTL.html), and [Expiring data with time-to-live](http://docs.datastax.com/en/dse/6.0/cql/cql/cql_using/useExpire.html).
 
 Default: **-1**.
 
-#### --schema.splits _&lt;string&gt;_
+#### --[dsbulk.]schema.splits _&lt;string&gt;_
 
 The number of token range splits in which to divide the token ring. In other words, this setting determines how many read requests will be generated in order to read an entire table. Only used when unloading and counting; ignored otherwise. Note that the actual number of splits may be slightly greater or lesser than the number specified here, depending on the actual cluster topology and token ownership. Also, it is not possible to generate fewer splits than the total number of primary token ranges in the cluster, so the actual number of splits is always equal to or greater than that number. Set this to higher values if you experience timeouts when reading from DSE, specially if paging is disabled. The special syntax `NC` can be used to specify a number that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 splits.
 
@@ -778,19 +723,19 @@ These settings control how the workflow engine groups together statements before
 
 Only applicable for loading.
 
-#### --batch.bufferSize _&lt;number&gt;_
+#### --[dsbulk.]batch.bufferSize _&lt;number&gt;_
 
 The buffer size to use for flushing batched statements. Should be set to a multiple of `maxBatchStatements`, e.g. 2 or 4 times that value; higher values consume more memory and usually do not incur in any noticeable performance gain. When set to a value lesser than or equal to zero, the buffer size is implicitly set to 4 times `maxBatchStatments`.
 
 Default: **-1**.
 
-#### --batch.maxBatchSize _&lt;arg&gt;_
+#### --[dsbulk.]batch.maxBatchSize _&lt;number&gt;_
 
-Deprecated - use `maxBatchStatements` instead.
+**DEPRECATED**. Use `maxBatchStatements` instead.
 
 Default: **null**.
 
-#### --batch.maxBatchStatements _&lt;number&gt;_
+#### --[dsbulk.]batch.maxBatchStatements _&lt;number&gt;_
 
 The maximum number of statements that a batch can contain. The ideal value depends on two factors:
 - The data being loaded: the larger the data, the smaller the batches should be.
@@ -799,13 +744,13 @@ When set to a value lesser than or equal to zero, the maximum number of statemen
 
 Default: **32**.
 
-#### --batch.maxSizeInBytes _&lt;number&gt;_
+#### --[dsbulk.]batch.maxSizeInBytes _&lt;number&gt;_
 
 The maximum data size that a batch can hold. This is the number of bytes required to encode all the data to be persisted, without counting the overhead generated by the native protocol (headers, frames, etc.). The value specified here should be lesser than or equal to the value that has been configured server-side for the option `batch_size_fail_threshold_in_kb` in cassandra.yaml, but note that the heuristic used to compute data sizes is not 100% accurate and sometimes underestimates the actual size. See the documentation for the [https://docs.datastax.com/en/dse/6.0/dse-dev/datastax_enterprise/config/configCassandra_yaml.html#configCassandra_yaml__advProps](cassandra.yaml configuration file) for more information. When set to a value lesser than or equal to zero, the maximum data size is considered unlimited. At least one of `maxBatchStatements` or `maxSizeInBytes` must be set to a positive value when batching is enabled.
 
 Default: **-1**.
 
-#### --batch.mode _&lt;string&gt;_
+#### --[dsbulk.]batch.mode _&lt;string&gt;_
 
 The grouping mode. Valid values are:
 - `DISABLED`: batching is disabled.
@@ -831,19 +776,19 @@ When unloading, these settings determine how row cells emitted by DSE are format
 
 When counting, these settings are ignored.
 
-#### --codec.booleanNumbers _&lt;list&lt;number&gt;&gt;_
+#### --[dsbulk.]codec.booleanNumbers _&lt;list&lt;number&gt;&gt;_
 
 Set how true and false representations of numbers are interpreted. The representation is of the form `true_value,false_value`. The mapping is reciprocal, so that numbers are mapping to Boolean and vice versa. All numbers unspecified in this setting are rejected.
 
 Default: **[1,0]**.
 
-#### --codec.booleanStrings _&lt;list&lt;string&gt;&gt;_
+#### --[dsbulk.]codec.booleanStrings _&lt;list&lt;string&gt;&gt;_
 
 Specify how true and false representations can be used by dsbulk. Each representation is of the form `true_value:false_value`, case-insensitive. For loading, all representations are honored: when a record field value exactly matches one of the specified strings, the value is replaced with `true` of `false` before writing to DSE. For unloading, this setting is only applicable for string-based connectors, such as the CSV connector: the first representation will be used to format booleans before they are written out, and all others are ignored.
 
 Default: **["1:0","Y:N","T:F","YES:NO","TRUE:FALSE"]**.
 
-#### --codec.date _&lt;string&gt;_
+#### --[dsbulk.]codec.date _&lt;string&gt;_
 
 The temporal pattern to use for `String` to CQL `date` conversion. Valid choices:
 
@@ -857,7 +802,7 @@ For more information about CQL date, time and timestamp literals, see [Date, tim
 
 Default: **"ISO_LOCAL_DATE"**.
 
-#### --codec.epoch _&lt;string&gt;_
+#### --[dsbulk.]codec.epoch _&lt;string&gt;_
 
 This setting is used in the following situations:
 
@@ -869,19 +814,19 @@ The value must be expressed in [`ISO_ZONED_DATE_TIME`](https://docs.oracle.com/j
 
 Default: **"1970-01-01T00:00:00Z"**.
 
-#### --codec.formatNumbers _&lt;boolean&gt;_
+#### --[dsbulk.]codec.formatNumbers _&lt;boolean&gt;_
 
 Whether or not to use the `codec.number` pattern to format numeric output. When set to `true`, the numeric pattern defined by `codec.number` will be applied. This allows for nicely-formatted output, but may result in rounding (see `codec.roundingStrategy`), or alteration of the original decimal's scale. When set to `false`, numbers will be stringified using the `toString()` method, and will never result in rounding or scale alteration. Only applicable when unloading, and only if the connector in use requires stringification, because the connector, such as the CSV connector, does not handle raw numeric data; ignored otherwise.
 
 Default: **false**.
 
-#### -locale,--codec.locale _&lt;string&gt;_
+#### -locale,--[dsbulk.]codec.locale _&lt;string&gt;_
 
 The locale to use for locale-sensitive conversions.
 
 Default: **"en_US"**.
 
-#### -nullStrings,--codec.nullStrings _&lt;list&gt;_
+#### -nullStrings,--[dsbulk.]codec.nullStrings _&lt;list&gt;_
 
 Comma-separated list of case-sensitive strings that should be mapped to `null`. For loading, when a record field value exactly matches one of the specified strings, the value is replaced with `null` before writing to DSE. For unloading, this setting is only applicable for string-based connectors, such as the CSV connector: the first string specified will be used to change a row cell containing `null` to the specified string when written out.
 
@@ -897,7 +842,7 @@ This setting is applied before `schema.nullToUnset`, hence any `null` produced b
 
 Default: **[]**.
 
-#### --codec.number _&lt;string&gt;_
+#### --[dsbulk.]codec.number _&lt;string&gt;_
 
 The `DecimalFormat` pattern to use for conversions between `String` and CQL numeric types.
 
@@ -907,7 +852,7 @@ Most inputs are recognized: optional localized thousands separator, localized de
 
 Default: **"#,###.##"**.
 
-#### --codec.overflowStrategy _&lt;string&gt;_
+#### --[dsbulk.]codec.overflowStrategy _&lt;string&gt;_
 
 This setting can mean one of three possibilities:
 
@@ -926,7 +871,7 @@ Only applicable for loading, when parsing numeric inputs; it does not apply for 
 
 Default: **"REJECT"**.
 
-#### --codec.roundingStrategy _&lt;string&gt;_
+#### --[dsbulk.]codec.roundingStrategy _&lt;string&gt;_
 
 The rounding strategy to use for conversions from CQL numeric types to `String`.
 
@@ -936,7 +881,7 @@ Only applicable when unloading, if `codec.formatNumbers` is true and if the conn
 
 Default: **"UNNECESSARY"**.
 
-#### --codec.time _&lt;string&gt;_
+#### --[dsbulk.]codec.time _&lt;string&gt;_
 
 The temporal pattern to use for `String` to CQL `time` conversion. Valid choices:
 
@@ -950,13 +895,13 @@ For more information about CQL date, time and timestamp literals, see [Date, tim
 
 Default: **"ISO_LOCAL_TIME"**.
 
-#### -timeZone,--codec.timeZone _&lt;string&gt;_
+#### -timeZone,--[dsbulk.]codec.timeZone _&lt;string&gt;_
 
 The time zone to use for temporal conversions. When loading, the time zone will be used to obtain a timestamp from inputs that do not convey any explicit time zone information. When unloading, the time zone will be used to format all timestamps.
 
 Default: **"UTC"**.
 
-#### --codec.timestamp _&lt;string&gt;_
+#### --[dsbulk.]codec.timestamp _&lt;string&gt;_
 
 The temporal pattern to use for `String` to CQL `timestamp` conversion. Valid choices:
 
@@ -973,7 +918,7 @@ The default value is the special `CQL_TIMESTAMP` value. When parsing, this forma
 
 Default: **"CQL_TIMESTAMP"**.
 
-#### --codec.unit _&lt;string&gt;_
+#### --[dsbulk.]codec.unit _&lt;string&gt;_
 
 This setting is used in the following situations:
 
@@ -984,7 +929,7 @@ All `TimeUnit` enum constants are valid choices.
 
 Default: **"MILLISECONDS"**.
 
-#### --codec.uuidStrategy _&lt;string&gt;_
+#### --[dsbulk.]codec.uuidStrategy _&lt;string&gt;_
 
 Strategy to use when generating time-based (version 1) UUIDs from timestamps. Clock sequence and node ID parts of generated UUIDs are determined on a best-effort basis and are not fully compliant with RFC 4122. Valid values are:
 
@@ -1000,139 +945,133 @@ Default: **"RANDOM"**.
 
 Driver-specific configuration.
 
-#### -h,--driver.hosts _&lt;list&lt;string&gt;&gt;_
+**DEPRECATED**. This entire section is deprecated since DSBulk 1.4.0. Please configure the Java driver directly using the `datastax-java-driver` configuration namespace. Refer to the [DataStax Java Driver documentation](https://docs.datastax.com/en/developer/java-driver/4.3/) for more information.
+
+#### --[dsbulk.]driver.addressTranslator _&lt;string&gt;_
+
+The name of the address translator to use. This is only needed if the nodes are not directly reachable from the machine on which dsbulk is running (for example, the dsbulk machine is in a different network region and needs to use a public IP, or it connects through a proxy).
+
+This setting has no effect when connecting to an Apollo database with a secure connect bundle.
+
+**DEPRECATED**. Use `datastax-java-driver.advanced.address-translator.class`. The only currently supported value is the default one, `IdentityTranslator`.
+
+Default: **"IdentityTranslator"**.
+
+#### -h,--[dsbulk.]driver.hosts _&lt;list&lt;string&gt;&gt;_
 
 The contact points to use for the initial connection to the cluster. This must be a comma-separated list of hosts, each specified by a host-name or ip address. If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use `localhost` as a host-name (since it resolves to both IPv4 and IPv6 addresses on some platforms). The port for all hosts must be specified with `driver.port`.
 
-This setting is ignored if `driver.cloud.secureConnectBundle` is provided, since this information is part of the bundle's data.
+This setting has no effect when connecting to an Apollo database with a secure connect bundle.
+
+**DEPRECATED**. Use `datastax-java-driver.basic.contact-points` instead.
 
 Default: **["127.0.0.1"]**.
 
-#### -port,--driver.port _&lt;number&gt;_
+#### -port,--[dsbulk.]driver.port _&lt;number&gt;_
 
 The native transport port to connect to. This must match DSE's [native_transport_port](https://docs.datastax.com/en/cassandra/2.1/cassandra/configuration/configCassandra_yaml_r.html#configCassandra_yaml_r__native_transport_port) configuration option.
 
 Note that all nodes in a cluster must accept connections on the same port number. Mixed-port clusters are not supported.
 
-This setting is ignored if `driver.cloud.secureConnectBundle` is provided, since this information is part of the bundle's data.
+This setting has no effect when connecting to an Apollo database with a secure connect bundle.
+
+**DEPRECATED**. Use `datastax-java-driver.basic.contact-points` instead.
 
 Default: **9042**.
 
-#### --driver.addressTranslator _&lt;string&gt;_
+#### --[dsbulk.]driver.timestampGenerator _&lt;string&gt;_
 
-The simple or fully-qualified class name of the address translator to use. This is only needed if the nodes are not directly reachable from the machine on which dsbulk is running (for example, the dsbulk machine is in a different network region and needs to use a public IP, or it connects through a proxy).
+The name of the timestamp generator to use. Only the following built-in options are supported:
 
-The driver provides the following implementations out of the box:
-- PassThroughAddressTranslator: returns all addresses unchanged
+- AtomicMonotonicTimestampGenerator: timestamps are guaranteed to be unique across all client threads.
+- ThreadLocalTimestampGenerator: timestamps are guaranteed to be unique within each thread only.
+- ServerSideTimestampGenerator: do not generate timestamps, let the server assign them.
 
-You can also specify a custom class that implements
-`com.datastax.oss.driver.internal.core.addresstranslation.AddressTranslator` and has a public
-constructor with a `DriverContext` argument.
+**DEPRECATED**. Use `datastax-java-driver.advanced.timestamp-generator.class`.
 
-This setting is ignored if `driver.cloud.secureConnectBundle` is provided, since this information is part of the bundle's data.
-
-Default: **"PassThroughAddressTranslator"**.
-
-#### --driver.timestampGenerator _&lt;string&gt;_
-
-The simple or fully-qualified class name of the timestamp generator to use. Built-in options are:
-
-- `AtomicTimestampGenerator`: timestamps are guaranteed to be unique across all client threads.
-- `ThreadLocalTimestampGenerator`: timestamps that are guaranteed to be unique within each
-  thread only.
-- `ServerSideTimestampGenerator`: do not generate timestamps, let the server assign them.
-
-You can also specify a custom class that implements
-`com.datastax.oss.driver.internal.core.time.TimestampGenerator` and has a public
-constructor with two arguments: the `DriverContext` and a `String` representing the profile name.
-
-Default: **"AtomicTimestampGenerator"**.
+Default: **"AtomicMonotonicTimestampGenerator"**.
 
 <a name="driver.auth"></a>
 ### Driver Auth Settings
 
 Authentication settings.
 
-#### -u,--driver.auth.username _&lt;string&gt;_
+**DEPRECATED**. see [the driver documentation page on authentication](https://docs.datastax.com/en/developer/java-driver/4.2/manual/core/authentication/) for more information.
 
-The username to use. Providers that accept this setting:
-
- - `PlainTextAuthProvider`
- - `DsePlainTextAuthProvider`
-
-Default: **null**.
-
-#### -p,--driver.auth.password _&lt;string&gt;_
-
-The password to use. Providers that accept this setting:
-
- - `PlainTextAuthProvider`
- - `DsePlainTextAuthProvider`
-
-Default: **null**.
-
-#### --driver.auth.provider _&lt;string&gt;_
-
-The name of the AuthProvider to use. Valid choices are:
-
-- `None`: no authentication.
-- `PlainTextAuthProvider`: uses plain-text credentials. It requires the `username` and
-  `password` options below. Should be used only when authenticating against Apache
-  Cassandra(R) clusters; not recommended when authenticating against DSE clusters.
-- `DsePlainTextAuthProvider`: provides SASL authentication using the PLAIN mechanism for DSE
-  clusters secured with DseAuthenticator. It requires the `username` and `password` options
-  below, and optionally, an `authorization-id`.
-- `DseGssApiAuthProvider`: provides GSSAPI authentication for DSE clusters secured with
-  DseAuthenticator. Supports SASL authentication to DSE clusters using the `GSSAPI` mechanism (Kerberos authentication), and also supports optional proxy authentication.
-   - Note: When using this provider you may have to set the `java.security.krb5.conf` system property to point to your `krb5.conf` file (e.g. set the `DSBULK_JAVA_OPTS` environment variable to `-Djava.security.krb5.conf=/home/user/krb5.conf`). See the [Oracle Java Kerberos documentation](https://docs.oracle.com/javase/8/docs/technotes/guides/security/jgss/tutorials/KerberosReq.html) for more details.
-
-Default: **"None"**.
-
-#### --driver.auth.authorizationId _&lt;string&gt;_
+#### --[dsbulk.]driver.auth.authorizationId _&lt;string&gt;_
 
 An authorization ID allows the currently authenticated user to act as a different user (proxy authentication). Providers that accept this setting:
 
  - `DsePlainTextAuthProvider`
  - `DseGSSAPIAuthProvider`
 
+**DEPRECATED**. Use `datastax-java-driver.advanced.auth-provider.authorization-id` instead.
+
 Default: **null**.
 
-#### --driver.auth.keyTab _&lt;string&gt;_
+#### --[dsbulk.]driver.auth.keyTab _&lt;string&gt;_
 
 The path of the Kerberos keytab file to use for authentication. If left unspecified, authentication uses a ticket cache. Providers that accept this setting:
 
  - `DseGSSAPIAuthProvider`
 
+**DEPRECATED**. Use `datastax-java-driver.advanced.auth-provider.login-configuration.keyTab` instead.
+
 Default: **null**.
 
-#### --driver.auth.principal _&lt;string&gt;_
+#### --[dsbulk.]driver.auth.password _&lt;string&gt;_
+
+The password to use. Providers that accept this setting:
+
+ - `PlainTextAuthProvider`
+ - `DsePlainTextAuthProvider`
+
+**DEPRECATED**. Use `datastax-java-driver.advanced.auth-provider.password` instead.
+
+Default: **null**.
+
+#### --[dsbulk.]driver.auth.principal _&lt;string&gt;_
 
 The Kerberos principal to use. For example, `user@datastax.com`. If left unspecified, the principal is chosen from the first key in the ticket cache or keytab. Providers that accept this setting:
 
  - `DseGSSAPIAuthProvider`
 
+**DEPRECATED**. Use `datastax-java-driver.advanced.auth-provider.login-configuration.principal` instead.
+
 Default: **null**.
 
-#### --driver.auth.saslService _&lt;string&gt;_
+#### --[dsbulk.]driver.auth.provider _&lt;string&gt;_
+
+The name of the AuthProvider to use. Valid choices are:
+
+ - None: no authentication.
+ - PlainTextAuthProvider: Uses `com.datastax.driver.core.PlainTextAuthProvider` for authentication. Supports SASL authentication using the `PLAIN` mechanism (plain text authentication).
+ - DsePlainTextAuthProvider: Uses `com.datastax.driver.dse.auth.DsePlainTextAuthProvider` for authentication. Supports SASL authentication to DSE clusters using the `PLAIN` mechanism (plain text authentication), and also supports optional proxy authentication; should be preferred to `PlainTextAuthProvider` when connecting to secured DSE clusters.
+ - DseGSSAPIAuthProvider: Uses `com.datastax.driver.dse.auth.DseGSSAPIAuthProvider` for authentication. Supports SASL authentication to DSE clusters using the `GSSAPI` mechanism (Kerberos authentication), and also supports optional proxy authentication.
+   - Note: When using this provider you may have to set the `java.security.krb5.conf` system property to point to your `krb5.conf` file (e.g. set the `DSBULK_JAVA_OPTS` environment variable to `-Djava.security.krb5.conf=/home/user/krb5.conf`). See the [Oracle Java Kerberos documentation](https://docs.oracle.com/javase/7/docs/technotes/guides/security/jgss/tutorials/KerberosReq.html) for more details.
+
+**DEPRECATED**. Use `datastax-java-driver.advanced.auth-provider.class` instead.
+
+Default: **"None"**.
+
+#### --[dsbulk.]driver.auth.saslService _&lt;string&gt;_
 
 The SASL service name to use. This value should match the username of the Kerberos service principal used by the DSE server. This information is specified in the `dse.yaml` file by the *service_principal* option under the *kerberos_options* section, and may vary from one DSE installation to another - especially if you installed DSE with an automated package installer. Providers that accept this setting:
 
  - `DseGSSAPIAuthProvider`
 
+**DEPRECATED**. Use `datastax-java-driver.advanced.auth-provider.service` instead.
+
 Default: **"dse"**.
 
-<a name="driver.cloud"></a>
-### Driver Cloud Settings
+#### --[dsbulk.]driver.auth.username _&lt;string&gt;_
 
-Cloud-specific (DataStax Constellation) settings.
+The username to use. Providers that accept this setting:
 
-#### -b,--driver.cloud.secureConnectBundle _&lt;string&gt;_
+ - `PlainTextAuthProvider`
+ - `DsePlainTextAuthProvider`
 
-The URL or path of the secure connect bundle used to connect to Datastax Apache Cassandra as a service.
-
-To connect to a Cloud database, you must first download the secure connect bundle from the DataStax Constellation console, then enter its location here. You will also need to set up authentication accordingly. For more information, please refer to the DataStax Constellation documentation.
-
-Note that if the value specified here does not have a protocol, then it is assumed to be a file protocol. Relative URLs will be resolved against the current working directory. Also, for convenience, if the path begins with a tilde (`~`), that symbol will be expanded to the current user's home directory.
+**DEPRECATED**. Use `datastax-java-driver.advanced.auth-provider.username` instead.
 
 Default: **null**.
 
@@ -1141,25 +1080,92 @@ Default: **null**.
 
 Settings for various driver policies.
 
-#### -localDc,--driver.policy.lbp.localDc _&lt;string&gt;_
+#### --[dsbulk.]driver.policy.lbp.dcAwareRoundRobin.allowRemoteDCsForLocalConsistencyLevel _&lt;boolean&gt;_
+
+Enable or disable whether to allow remote datacenters to count for local consistency level in round robin awareness.
+
+**OBSOLETE**. This setting is not honored anymore.
+
+Default: **false**.
+
+#### --[dsbulk.]driver.policy.lbp.dcAwareRoundRobin.localDc _&lt;string&gt;_
 
 The datacenter name (commonly dc1, dc2, etc.) local to the machine on which dsbulk is running, so that requests are sent to nodes in the local datacenter whenever possible.
 
-This setting is ignored if `driver.cloud.secureConnectBundle` is provided, since this information is part of the bundle's data.
+This setting has no effect when connecting to an Apollo database with a secure connect bundle.
+
+**DEPRECATED**. Use `datastax-java-driver.basic.load-balancing-policy.local-datacenter` instead.
 
 Default: **null**.
 
-#### --driver.policy.lbp.allowedHosts _&lt;list&gt;_
+#### --[dsbulk.]driver.policy.lbp.dcAwareRoundRobin.usedHostsPerRemoteDc _&lt;number&gt;_
 
-List of hosts to white list. This must be a comma-separated list of hosts, each specified by a host-name or ip address. If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use `localhost` as a host-name (since it resolves to both IPv4 and IPv6 addresses on some platforms). If empty, all hosts will be contacted.
+The number of hosts per remote datacenter that the round robin policy should consider.
 
-This setting is ignored if `driver.cloud.secureConnectBundle` is provided, since this information is part of the bundle's data.
+**OBSOLETE**. This setting is not honored anymore.
+
+Default: **0**.
+
+#### --[dsbulk.]driver.policy.lbp.dse.childPolicy _&lt;string&gt;_
+
+The child policy that the specified `dse` policy wraps.
+
+**OBSOLETE**. This setting is not honored anymore.
+
+Default: **"roundRobin"**.
+
+#### --[dsbulk.]driver.policy.lbp.name _&lt;string&gt;_
+
+The name of the load balancing policy.
+
+**OBSOLETE**. This setting is not honored anymore. To specify a load balancing policy, use `datastax-java-driver.basic.load-balancing-policy.class`.
+
+Default: **null**.
+
+#### --[dsbulk.]driver.policy.lbp.tokenAware.childPolicy _&lt;string&gt;_
+
+The child policy that the specified `tokenAware` policy wraps.
+
+**OBSOLETE**. This setting is not honored anymore.
+
+Default: **"roundRobin"**.
+
+#### --[dsbulk.]driver.policy.lbp.tokenAware.replicaOrdering _&lt;string&gt;_
+
+Specify how to order replicas.
+
+Valid values are all `TokenAwarePolicy.ReplicaOrdering` enum constants:
+
+- RANDOM: Return replicas in a different, random order for each query plan. This is the default strategy;
+for loading, it should be preferred has it can improve performance by distributing writes across replicas.
+- TOPOLOGICAL: Order replicas by token ring topology, i.e. always return the "primary" replica first.
+- NEUTRAL: Return the replicas in the exact same order in which they appear in the child policy's query plan.
+
+**OBSOLETE**. This setting is not honored anymore.
+
+Default: **"RANDOM"**.
+
+#### --[dsbulk.]driver.policy.lbp.whiteList.childPolicy _&lt;string&gt;_
+
+The child policy that the specified `whiteList` policy wraps.
+
+**OBSOLETE**. This setting is not honored anymore.
+
+Default: **"roundRobin"**.
+
+#### --[dsbulk.]driver.policy.lbp.whiteList.hosts _&lt;list&gt;_
+
+List of hosts to white list. This must be a comma-separated list of hosts, each specified by a host-name or ip address. If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use `localhost` as a host-name (since it resolves to both IPv4 and IPv6 addresses on some platforms).
+
+**DEPRECATED**. Use `datastax-java-driver.basic.load-balancing-policy.filter.class` instead.
 
 Default: **[]**.
 
-#### -maxRetries,--driver.policy.maxRetries _&lt;number&gt;_
+#### --[dsbulk.]driver.policy.maxRetries _&lt;number&gt;_
 
 Maximum number of retries for a timed-out request.
+
+**DEPRECATED**. Use `datastax-java-driver.advanced.retry-policy.max-retries`.
 
 Default: **10**.
 
@@ -1170,38 +1176,56 @@ Pooling-specific settings.
 
 The driver maintains a connection pool to each node, according to the distance assigned to it by the load balancing policy. If the distance is `IGNORED`, no connections are maintained.
 
-#### --driver.pooling.heartbeat _&lt;string&gt;_
+#### --[dsbulk.]driver.pooling.heartbeat _&lt;string&gt;_
 
 The heartbeat interval. If a connection stays idle for that duration (no reads), the driver sends a dummy message on it to make sure it's still alive. If not, the connection is trashed and replaced.
 
+**DEPRECATED**. Use `datastax-java-driver.advanced.heartbeat.interval` instead.
+
 Default: **"30 seconds"**.
 
-#### --driver.pooling.local.connections _&lt;number&gt;_
+#### --[dsbulk.]driver.pooling.local.connections _&lt;number&gt;_
 
 The number of connections in the pool for nodes at "local" distance.
 
+**DEPRECATED**. Use `datastax-java-driver.advanced.connection.pool.local.size` instead.
+
 Default: **8**.
 
-#### --driver.pooling.remote.connections _&lt;number&gt;_
+#### --[dsbulk.]driver.pooling.local.requests _&lt;number&gt;_
+
+The maximum number of requests (1 to 32768) that can be executed concurrently on a connection. If connecting to legacy clusters using protocol version 1 or 2, any value greater than 128 will be capped at 128 and a warning will be logged.
+
+**DEPRECATED**. Use `datastax-java-driver.advanced.connection.max-requests-per-connection` instead.
+
+Default: **32768**.
+
+#### --[dsbulk.]driver.pooling.remote.connections _&lt;number&gt;_
 
 The number of connections in the pool for remote nodes.
 
+**DEPRECATED**. Use `datastax-java-driver.advanced.connection.pool.remote.size` instead.
+
 Default: **1**.
 
-#### --driver.pooling.requests _&lt;number&gt;_
+#### --[dsbulk.]driver.pooling.remote.requests _&lt;number&gt;_
 
-The maximum number of requests (1 to 32768) that can be executed concurrently on a connection.
+The maximum number of requests (1 to 32768) that can be executed concurrently on a connection. If connecting to legacy clusters using protocol version 1 or 2, any value greater than 128 will be capped at 128 and a warning will be logged.
 
-Default: **32768**.
+**DEPRECATED**. Use `datastax-java-driver.advanced.connection.max-requests-per-connection` instead.
+
+Default: **1024**.
 
 <a name="driver.protocol"></a>
 ### Driver Protocol Settings
 
 Native Protocol-specific settings.
 
-#### --driver.protocol.compression _&lt;string&gt;_
+#### --[dsbulk.]driver.protocol.compression _&lt;string&gt;_
 
 Specify the compression algorithm to use. Valid values are: `NONE`, `LZ4`, `SNAPPY`.
+
+**DEPRECATED**. Use `datastax-java-driver.advanced.protocol.compression` instead.
 
 Default: **"NONE"**.
 
@@ -1210,7 +1234,7 @@ Default: **"NONE"**.
 
 Query-related settings.
 
-#### -cl,--driver.query.consistency _&lt;string&gt;_
+#### --[dsbulk.]driver.query.consistency _&lt;string&gt;_
 
 The consistency level to use for all queries. Note that stronger consistency levels usually result in reduced throughput. In addition, any level higher than `ONE` will automatically disable continuous paging, which can dramatically reduce read throughput.
 
@@ -1218,24 +1242,32 @@ Valid values are: `ANY`, `LOCAL_ONE`, `ONE`, `TWO`, `THREE`, `LOCAL_QUORUM`, `QU
 
 Note: on Cloud deployments, the only accepted consistency level when writing is `LOCAL_QUORUM`. Therefore, the default value is `LOCAL_ONE`, except when loding in Cloud deployments, in which case the default is changed to `LOCAL_QUORUM`.
 
+**DEPRECATED**. Use `datastax-java-driver.basic.request.consistency` instead.
+
 Default: **"LOCAL_ONE"**.
 
-#### --driver.query.fetchSize _&lt;number&gt;_
+#### --[dsbulk.]driver.query.fetchSize _&lt;number&gt;_
 
 The page size, or how many rows will be retrieved simultaneously in a single network round trip. The ideal page size depends on the size of the rows being unloaded: larger page sizes may have a positive impact on throughput for small rows, and vice versa.
 This setting will limit the number of results loaded into memory simultaneously during unloading or counting. Setting this value to any negative value or zero will disable paging, i.e., the entire result set will be retrieved in one pass (not recommended). Not applicable for loading. Note that this setting controls paging for regular queries; to customize the page size for continuous queries, use the `executor.continuousPaging.pageSize` setting instead.
 
+**DEPRECATED**. Use `datastax-java-driver.basic.request.page-size` instead.
+
 Default: **5000**.
 
-#### --driver.query.idempotence _&lt;boolean&gt;_
+#### --[dsbulk.]driver.query.idempotence _&lt;boolean&gt;_
 
 The default idempotence of statements generated by the loader.
 
+**DEPRECATED**. Use `datastax-java-driver.basic.request.default-idempotence` instead.
+
 Default: **true**.
 
-#### --driver.query.serialConsistency _&lt;string&gt;_
+#### --[dsbulk.]driver.query.serialConsistency _&lt;string&gt;_
 
 The serial consistency level to use for writes. Only applicable if the data is inserted using lightweight transactions, ignored otherwise. Valid values are: `SERIAL` and `LOCAL_SERIAL`.
+
+**DEPRECATED**. Use `datastax-java-driver.basic.request.serial-consistency` instead.
 
 Default: **"LOCAL_SERIAL"**.
 
@@ -1244,9 +1276,11 @@ Default: **"LOCAL_SERIAL"**.
 
 Socket-related settings.
 
-#### --driver.socket.readTimeout _&lt;string&gt;_
+#### --[dsbulk.]driver.socket.readTimeout _&lt;string&gt;_
 
 The time the driver waits for a request to complete. This is a global limit on the duration of a `session.execute()` call, including any internal retries the driver might do.
+
+**DEPRECATED**. Use `datastax-java-driver.basic.request.timeout` instead.
 
 Default: **"60 seconds"**.
 
@@ -1257,9 +1291,11 @@ Encryption-specific settings.
 
 For more information about how to configure this section, see the Java Secure Socket Extension (JSSE) Reference Guide: http://docs.oracle.com/javase/6/docs/technotes/guides/security/jsse/JSSERefGuide.html. You can also check the DataStax Java driver documentation on SSL: http://docs.datastax.com/en/developer/java-driver-dse/latest/manual/ssl/
 
-This entire section is ignored if `driver.cloud.secureConnectBundle` is provided, since this information is part of the bundle's data.
+This setting has no effect when connecting to an Apollo database with a secure connect bundle.
 
-#### --driver.ssl.cipherSuites _&lt;list&gt;_
+**DEPRECATED**. see [the driver documentation page on SSL](https://docs.datastax.com/en/developer/java-driver/4.2/manual/core/ssl/) for more information.
+
+#### --[dsbulk.]driver.ssl.cipherSuites _&lt;list&gt;_
 
 The cipher suites to enable. For example:
 
@@ -1267,39 +1303,47 @@ The cipher suites to enable. For example:
 
 This property is optional. If it is not present, the driver won't explicitly enable cipher suites, which according to the JDK documentation results in "a minimum quality of service".
 
+**DEPRECATED**. Use `datastax-java-driver.advanced.ssl-engine-factory.cipher-suites` instead.
+
 Default: **[]**.
 
-#### --driver.ssl.keystore.algorithm _&lt;string&gt;_
+#### --[dsbulk.]driver.ssl.keystore.algorithm _&lt;string&gt;_
 
 The algorithm to use for the SSL keystore. Valid values are: `SunX509`, `NewSunX509`.
 
+**DEPRECATED**. Provide a custom implementation in `datastax-java-driver.advanced.ssl-engine-factory.class` if you need to change this; otherwise the driver now uses `TrustManagerFactory.getDefaultAlgorithm()` by default.
+
 Default: **"SunX509"**.
 
-#### --driver.ssl.keystore.password _&lt;string&gt;_
+#### --[dsbulk.]driver.ssl.keystore.password _&lt;string&gt;_
 
 The keystore password.
 
 Default: **null**.
 
-#### --driver.ssl.keystore.path _&lt;string&gt;_
+#### --[dsbulk.]driver.ssl.keystore.path _&lt;string&gt;_
 
 The path of the keystore file. This setting is optional. If left unspecified, no client authentication will be used.
 
 Default: **null**.
 
-#### --driver.ssl.openssl.keyCertChain _&lt;string&gt;_
+#### --[dsbulk.]driver.ssl.openssl.keyCertChain _&lt;string&gt;_
 
 The path of the certificate chain file. This setting is optional. If left unspecified, no client authentication will be used.
 
+**DEPRECATED**. Using OpenSSL is now considered a driver advanced feature; see [this documentation page](https://docs.datastax.com/en/developer/java-driver/4.2/manual/core/ssl/#netty) for more information.
+
 Default: **null**.
 
-#### --driver.ssl.openssl.privateKey _&lt;string&gt;_
+#### --[dsbulk.]driver.ssl.openssl.privateKey _&lt;string&gt;_
 
 The path of the private key file.
 
+**DEPRECATED**. Using OpenSSL is now considered a driver advanced feature; see [this documentation page](https://docs.datastax.com/en/developer/java-driver/4.2/manual/core/ssl/#netty) for more information.
+
 Default: **null**.
 
-#### --driver.ssl.provider _&lt;string&gt;_
+#### --[dsbulk.]driver.ssl.provider _&lt;string&gt;_
 
 The SSL provider to use. Valid values are:
 
@@ -1307,23 +1351,31 @@ The SSL provider to use. Valid values are:
 - **JDK**: uses the JDK SSLContext
 - **OpenSSL**: uses Netty's native support for OpenSSL. It provides better performance and generates less garbage. This is the recommended provider when using SSL.
 
+**DEPRECATED**. Use `datastax-java-driver.advanced.ssl-engine-factory.class` instead. Also, note that SSL contexts created with any of these deprecated providers will always have hostname verification enabled. If you want to disable hostname verification, configure your SSL context directly through the driver and set the `datastax-java-driver.advanced.ssl-engine-factory.hostname-validation` option accordingly.
+
 Default: **"None"**.
 
-#### --driver.ssl.truststore.algorithm _&lt;string&gt;_
+#### --[dsbulk.]driver.ssl.truststore.algorithm _&lt;string&gt;_
 
 The algorithm to use for the SSL truststore. Valid values are: `PKIX`, `SunX509`.
 
+**DEPRECATED**. Use `datastax-java-driver.advanced.ssl-engine-factory.truststore-password` instead.
+
 Default: **"SunX509"**.
 
-#### --driver.ssl.truststore.password _&lt;string&gt;_
+#### --[dsbulk.]driver.ssl.truststore.password _&lt;string&gt;_
 
 The truststore password.
 
+**DEPRECATED**. Use `datastax-java-driver.advanced.ssl-engine-factory.truststore-password` instead.
+
 Default: **null**.
 
-#### --driver.ssl.truststore.path _&lt;string&gt;_
+#### --[dsbulk.]driver.ssl.truststore.path _&lt;string&gt;_
 
 The path of the truststore file. This setting is optional. If left unspecified, server certificates will not be validated.
+
+**DEPRECATED**. Use `datastax-java-driver.advanced.ssl-engine-factory.truststore-path` instead.
 
 Default: **null**.
 
@@ -1332,13 +1384,13 @@ Default: **null**.
 
 Workflow Engine-specific settings.
 
-#### -dryRun,--engine.dryRun _&lt;boolean&gt;_
+#### -dryRun,--[dsbulk.]engine.dryRun _&lt;boolean&gt;_
 
 Enable or disable dry-run mode, a test mode that runs the command but does not load data. Not applicable for unloading nor counting.
 
 Default: **false**.
 
-#### --engine.executionId _&lt;string&gt;_
+#### --[dsbulk.]engine.executionId _&lt;string&gt;_
 
 A unique identifier to attribute to each execution. When unspecified or empty, the engine will automatically generate identifiers of the following form: *workflow*_*timestamp*, where :
 
@@ -1358,49 +1410,57 @@ Default: **null**.
 
 Executor-specific settings.
 
-#### --executor.maxPerSecond _&lt;number&gt;_
+#### --[dsbulk.]executor.maxPerSecond _&lt;number&gt;_
 
 The maximum number of concurrent operations per second. When loading, this means the maximum number of write requests per second; when unloading or counting, this means the maximum number of rows per second. This acts as a safeguard to prevent overloading the cluster. Batch statements are counted by the number of statements included. Reduce this setting when the latencies get too high and a remote cluster cannot keep up with throughput, as `dsbulk` requests will eventually time out. Setting this option to any negative value or zero will disable it.
 
 Default: **-1**.
 
-#### --executor.continuousPaging.enabled _&lt;boolean&gt;_
+#### --[dsbulk.]executor.continuousPaging.enabled _&lt;boolean&gt;_
 
 Enable or disable continuous paging. If the target cluster does not support continuous paging or if `driver.query.consistency` is not `ONE` or `LOCAL_ONE`, traditional paging will be used regardless of this setting.
 
 Default: **true**.
 
-#### --executor.continuousPaging.maxConcurrentQueries _&lt;number&gt;_
+#### --[dsbulk.]executor.continuousPaging.maxConcurrentQueries _&lt;number&gt;_
 
 The maximum number of concurrent continuous paging queries that should be carried in parallel. Set this number to a value equal to or lesser than the value configured server-side for `continuous_paging.max_concurrent_sessions` in the cassandra.yaml configuration file (60 by default); otherwise some requests might be rejected. Settting this option to any negative value or zero will disable it.
 
 Default: **60**.
 
-#### --executor.continuousPaging.maxPages _&lt;number&gt;_
+#### --[dsbulk.]executor.continuousPaging.maxPages _&lt;number&gt;_
 
 The maximum number of pages to retrieve. Setting this value to zero retrieves all pages available.
 
+**DEPRECATED**. Use `datastax-java-driver.advanced.continuous-paging.max-pages` instead.
+
 Default: **0**.
 
-#### --executor.continuousPaging.maxPagesPerSecond _&lt;number&gt;_
+#### --[dsbulk.]executor.continuousPaging.maxPagesPerSecond _&lt;number&gt;_
 
 The maximum number of pages per second. Setting this value to zero indicates no limit.
 
+**DEPRECATED**. Use `datastax-java-driver.advanced.continuous-paging.max-pages-per-second` instead.
+
 Default: **0**.
 
-#### --executor.continuousPaging.pageSize _&lt;number&gt;_
+#### --[dsbulk.]executor.continuousPaging.pageSize _&lt;number&gt;_
 
 The size of the page. The unit to use is determined by the `pageUnit` setting. The ideal page size depends on the size of the rows being unloaded: larger page sizes may have a positive impact on throughput for small rows, and vice versa.
 
+**DEPRECATED**. Use `datastax-java-driver.advanced.continuous-paging.page-size` instead.
+
 Default: **5000**.
 
-#### --executor.continuousPaging.pageUnit _&lt;string&gt;_
+#### --[dsbulk.]executor.continuousPaging.pageUnit _&lt;string&gt;_
 
 The unit to use for the `pageSize` setting. Possible values are: `ROWS`, `BYTES`.
 
+**DEPRECATED**. Use `datastax-java-driver.advanced.continuous-paging.page-size-in-bytes` instead.
+
 Default: **"ROWS"**.
 
-#### --executor.maxInFlight _&lt;number&gt;_
+#### --[dsbulk.]executor.maxInFlight _&lt;number&gt;_
 
 The maximum number of "in-flight" requests, or maximum number of concurrent requests waiting for a response from the server. This acts as a safeguard to prevent more requests than the cluster can handle. Batch statements count as one request. Reduce this value when the throughput for reads and writes cannot match the throughput of mappers; this is usually a sign that the workflow engine is not well calibrated and will eventually run out of memory. Setting this option to any negative value or zero will disable it.
 
@@ -1411,19 +1471,19 @@ Default: **1024**.
 
 Log and error management settings.
 
-#### -maxErrors,--log.maxErrors _&lt;number&gt;_
+#### -maxErrors,--[dsbulk.]log.maxErrors _&lt;number&gt;_
 
 The maximum number of errors to tolerate before aborting the entire operation. This can be expressed either as an absolute number of errors – in which case, set this to an integer greater than or equal to zero; or as a percentage of total rows processed so far – in which case, set this to a string of the form `N%`, where `N` is a decimal number between 0 and 100 exclusive (e.g. "20%"). Setting this value to any negative integer disables this feature (not recommended).
 
 Default: **100**.
 
-#### -logDir,--log.directory _&lt;string&gt;_
+#### -logDir,--[dsbulk.]log.directory _&lt;string&gt;_
 
 The writable directory where all log files will be stored; if the directory specified does not exist, it will be created. URLs are not acceptable (not even `file:/` URLs). Log files for a specific run, or execution, will be located in a sub-directory under the specified directory. Each execution generates a sub-directory identified by an "execution ID". See `engine.executionId` for more information about execution IDs. Relative paths will be resolved against the current working directory. Also, for convenience, if the path begins with a tilde (`~`), that symbol will be expanded to the current user's home directory.
 
 Default: **"./logs"**.
 
-#### -verbosity,--log.verbosity _&lt;number&gt;_
+#### -verbosity,--[dsbulk.]log.verbosity _&lt;number&gt;_
 
 The desired level of verbosity. Valid values are:
 
@@ -1433,7 +1493,7 @@ The desired level of verbosity. Valid values are:
 
 Default: **1**.
 
-#### --log.ansiMode _&lt;string&gt;_
+#### --[dsbulk.]log.ansiMode _&lt;string&gt;_
 
 Whether or not to use ANSI colors and other escape sequences in log messages printed to the console. Valid values are:
 
@@ -1447,13 +1507,13 @@ Note to Windows users: ANSI support on Windows works best when the Microsoft Vis
 
 Default: **"normal"**.
 
-#### --log.maxQueryWarnings _&lt;number&gt;_
+#### --[dsbulk.]log.maxQueryWarnings _&lt;number&gt;_
 
 The maximum number of query warnings to log before muting them. Query warnings are sent by the server (for example, if the number of statements in a batch is greater than the warning threshold configured on the server). They are useful to diagnose suboptimal configurations but tend to be too invasive, which is why DSBulk by default will only log the 50 first query warnings; any subsequent warnings will be muted and won't be logged at all. Setting this value to any negative integer disables this feature (not recommended).
 
 Default: **50**.
 
-#### --log.row.maxResultSetValueLength _&lt;number&gt;_
+#### --[dsbulk.]log.row.maxResultSetValueLength _&lt;number&gt;_
 
 The maximum length for a result set value. Result set values longer than this value will be truncated.
 
@@ -1461,7 +1521,7 @@ Setting this value to `-1` makes the maximum length for a result set value unlim
 
 Default: **50**.
 
-#### --log.row.maxResultSetValues _&lt;number&gt;_
+#### --[dsbulk.]log.row.maxResultSetValues _&lt;number&gt;_
 
 The maximum number of result set values to print. If the row has more result set values than this limit, the exceeding values will not be printed.
 
@@ -1469,7 +1529,7 @@ Setting this value to `-1` makes the maximum number of result set values unlimit
 
 Default: **50**.
 
-#### --log.stmt.level _&lt;string&gt;_
+#### --[dsbulk.]log.stmt.level _&lt;string&gt;_
 
 The desired log level. Valid values are:
 
@@ -1479,7 +1539,7 @@ The desired log level. Valid values are:
 
 Default: **"EXTENDED"**.
 
-#### --log.stmt.maxBoundValueLength _&lt;number&gt;_
+#### --[dsbulk.]log.stmt.maxBoundValueLength _&lt;number&gt;_
 
 The maximum length for a bound value. Bound values longer than this value will be truncated.
 
@@ -1487,7 +1547,7 @@ Setting this value to `-1` makes the maximum length for a bound value unlimited 
 
 Default: **50**.
 
-#### --log.stmt.maxBoundValues _&lt;number&gt;_
+#### --[dsbulk.]log.stmt.maxBoundValues _&lt;number&gt;_
 
 The maximum number of bound values to print. If the statement has more bound values than this limit, the exceeding values will not be printed.
 
@@ -1495,7 +1555,7 @@ Setting this value to `-1` makes the maximum number of bound values unlimited (n
 
 Default: **50**.
 
-#### --log.stmt.maxInnerStatements _&lt;number&gt;_
+#### --[dsbulk.]log.stmt.maxInnerStatements _&lt;number&gt;_
 
 The maximum number of inner statements to print for a batch statement. Only applicable for batch statements, ignored otherwise. If the batch statement has more children than this value, the exceeding child statements will not be printed.
 
@@ -1503,7 +1563,7 @@ Setting this value to `-1` disables this feature (not recommended).
 
 Default: **10**.
 
-#### --log.stmt.maxQueryStringLength _&lt;number&gt;_
+#### --[dsbulk.]log.stmt.maxQueryStringLength _&lt;number&gt;_
 
 The maximum length for a query string. Query strings longer than this value will be truncated.
 
@@ -1516,49 +1576,49 @@ Default: **500**.
 
 Monitoring-specific settings.
 
-#### -reportRate,--monitoring.reportRate _&lt;string&gt;_
+#### -reportRate,--[dsbulk.]monitoring.reportRate _&lt;string&gt;_
 
 The report interval. DSBulk will print useful metrics about the ongoing operation at this rate. Durations lesser than one second will be rounded up to 1 second.
 
 Default: **"5 seconds"**.
 
-#### --monitoring.csv _&lt;boolean&gt;_
+#### --[dsbulk.]monitoring.csv _&lt;boolean&gt;_
 
 Enable or disable CSV reporting. If enabled, CSV files containing metrics will be generated in the designated log directory.
 
 Default: **false**.
 
-#### --monitoring.durationUnit _&lt;string&gt;_
+#### --[dsbulk.]monitoring.durationUnit _&lt;string&gt;_
 
 The time unit used when printing latency durations. Valid values: all `TimeUnit` enum constants.
 
 Default: **"MILLISECONDS"**.
 
-#### --monitoring.expectedReads _&lt;number&gt;_
+#### --[dsbulk.]monitoring.expectedReads _&lt;number&gt;_
 
 The expected total number of reads. Optional, but if set, the console reporter will also print the overall achievement percentage. Setting this value to `-1` disables this feature.
 
 Default: **-1**.
 
-#### --monitoring.expectedWrites _&lt;number&gt;_
+#### --[dsbulk.]monitoring.expectedWrites _&lt;number&gt;_
 
 The expected total number of writes. Optional, but if set, the console reporter will also print the overall achievement percentage. Setting this value to `-1` disables this feature.
 
 Default: **-1**.
 
-#### -jmx,--monitoring.jmx _&lt;boolean&gt;_
+#### -jmx,--[dsbulk.]monitoring.jmx _&lt;boolean&gt;_
 
 Enable or disable JMX reporting. Note that to enable remote JMX reporting, several properties must also be set in the JVM during launch. This is accomplished via the `DSBULK_JAVA_OPTS` environment variable.
 
 Default: **true**.
 
-#### --monitoring.rateUnit _&lt;string&gt;_
+#### --[dsbulk.]monitoring.rateUnit _&lt;string&gt;_
 
 The time unit used when printing throughput rates. Valid values: all `TimeUnit` enum constants.
 
 Default: **"SECONDS"**.
 
-#### --monitoring.trackBytes _&lt;boolean&gt;_
+#### --[dsbulk.]monitoring.trackBytes _&lt;boolean&gt;_
 
 Whether or not to track the throughput in bytes. When enabled, DSBulk will track and display the number of bytes sent or received per second. While useful to evaluate how much data is actually being transferred, computing such metrics is CPU-intensive and may slow down the operation. This is why it is disabled by default. Also note that the heuristic used to compute data sizes is not 100% accurate and sometimes underestimates the actual size.
 
@@ -1569,7 +1629,7 @@ Default: **false**.
 
 Settings applicable for the count workflow, ignored otherwise.
 
-#### -stats,--stats.modes _&lt;list&lt;string&gt;&gt;_
+#### -stats,--[dsbulk.]stats.modes _&lt;list&lt;string&gt;&gt;_
 
 Which kind(s) of statistics to compute. Only applicaple for the count workflow, ignored otherwise. Possible values are:
 * `global`: count the total number of rows in the table.
@@ -1580,7 +1640,7 @@ The default value is `[global]`.
 
 Default: **["global"]**.
 
-#### -partitions,--stats.numPartitions _&lt;number&gt;_
+#### -partitions,--[dsbulk.]stats.numPartitions _&lt;number&gt;_
 
 The number of distinct partitions to count rows for. Only applicaple for the count workflow when `stats.mode` is `partitions`, ignored otherwise.
 

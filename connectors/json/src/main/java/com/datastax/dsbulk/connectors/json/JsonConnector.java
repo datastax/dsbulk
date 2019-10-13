@@ -16,7 +16,6 @@ import static com.datastax.dsbulk.commons.internal.io.IOUtils.countReadableFiles
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.io.CompressedIOUtils;
 import com.datastax.dsbulk.commons.internal.io.IOUtils;
 import com.datastax.dsbulk.commons.internal.reactive.SimpleBackpressureController;
@@ -195,7 +194,7 @@ public class JsonConnector implements Connector {
       serializationStrategy = settings.getEnum(JsonInclude.Include.class, SERIALIZATION_STRATEGY);
       prettyPrint = settings.getBoolean(PRETTY_PRINT);
     } catch (ConfigException e) {
-      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "connector.json");
+      throw BulkConfigurationException.fromTypeSafeConfigException(e, "dsbulk.connector.json");
     }
   }
 

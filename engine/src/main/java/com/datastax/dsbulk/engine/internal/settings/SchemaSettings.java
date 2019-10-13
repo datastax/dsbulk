@@ -30,7 +30,6 @@ import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import com.datastax.dsbulk.commons.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.partitioner.TokenRangeReadStatementGenerator;
 import com.datastax.dsbulk.connectors.api.Field;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
@@ -334,7 +333,7 @@ public class SchemaSettings {
       splits = config.getThreads(SPLITS);
 
     } catch (ConfigException e) {
-      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "schema");
+      throw BulkConfigurationException.fromTypeSafeConfigException(e, "dsbulk.schema");
     }
   }
 

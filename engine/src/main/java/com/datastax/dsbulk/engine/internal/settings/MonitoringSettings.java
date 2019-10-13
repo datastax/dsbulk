@@ -9,8 +9,8 @@
 package com.datastax.dsbulk.engine.internal.settings;
 
 import com.codahale.metrics.MetricRegistry;
+import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings.Verbosity;
@@ -62,7 +62,7 @@ public class MonitoringSettings {
       jmx = config.getBoolean(JMX);
       csv = config.getBoolean(CSV);
     } catch (ConfigException e) {
-      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "monitoring");
+      throw BulkConfigurationException.fromTypeSafeConfigException(e, "dsbulk.monitoring");
     }
   }
 

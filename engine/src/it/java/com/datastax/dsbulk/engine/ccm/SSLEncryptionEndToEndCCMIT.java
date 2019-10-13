@@ -10,12 +10,12 @@ package com.datastax.dsbulk.engine.ccm;
 
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DDAC;
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
-import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.DEFAULT_CLIENT_CERT_CHAIN_PATH;
+import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.DEFAULT_CLIENT_CERT_CHAIN_FILE;
+import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.DEFAULT_CLIENT_KEYSTORE_FILE;
 import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.DEFAULT_CLIENT_KEYSTORE_PASSWORD;
-import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.DEFAULT_CLIENT_KEYSTORE_PATH;
-import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.DEFAULT_CLIENT_PRIVATE_KEY_PATH;
+import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.DEFAULT_CLIENT_PRIVATE_KEY_FILE;
+import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_FILE;
 import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD;
-import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PATH;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
@@ -31,9 +31,7 @@ import com.datastax.dsbulk.commons.tests.driver.annotations.SessionConfig;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.CqlSession;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.nio.file.Paths;
+import com.datastax.oss.driver.internal.core.ssl.DefaultSslEngineFactory;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -41,12 +39,14 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
-@CCMConfig(ssl = true)
+@CCMConfig(ssl = true, hostnameVerification = true, auth = true)
 @Tag("medium")
 @CCMRequirements(compatibleTypes = {DSE, DDAC})
 class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
 
-  SSLEncryptionEndToEndCCMIT(CCMCluster ccm, @SessionConfig(ssl = true) CqlSession session) {
+  SSLEncryptionEndToEndCCMIT(
+      CCMCluster ccm,
+      @SessionConfig(ssl = true, hostnameVerification = true, auth = true) CqlSession session) {
     super(ccm, session);
   }
 
@@ -79,15 +79,19 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("ip_by_country");
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
-    args.add("--driver.ssl.provider");
-    args.add("JDK");
-    args.add("--driver.ssl.keystore.path");
-    args.add(getAbsoluteKeystorePath());
-    args.add("--driver.ssl.keystore.password");
+    args.add("--datastax-java-driver.advanced.auth-provider.username");
+    args.add("cassandra");
+    args.add("--datastax-java-driver.advanced.auth-provider.password");
+    args.add("cassandra");
+    args.add("--driver.advanced.ssl-engine-factory.class");
+    args.add(DefaultSslEngineFactory.class.getSimpleName());
+    args.add("--driver.advanced.ssl-engine-factory.keystore-path");
+    args.add(DEFAULT_CLIENT_KEYSTORE_FILE.toString());
+    args.add("--driver.advanced.ssl-engine-factory.keystore-password");
     args.add(DEFAULT_CLIENT_KEYSTORE_PASSWORD);
-    args.add("--driver.ssl.truststore.path");
-    args.add(getAbsoluteTrustStorePath());
-    args.add("--driver.ssl.truststore.password");
+    args.add("--driver.advanced.ssl-engine-factory.truststore-path");
+    args.add(DEFAULT_CLIENT_TRUSTSTORE_FILE.toString());
+    args.add("--driver.advanced.ssl-engine-factory.truststore-password");
     args.add(DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
@@ -113,15 +117,19 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("ip_by_country");
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
-    args.add("--driver.ssl.provider");
-    args.add("JDK");
-    args.add("--driver.ssl.keystore.path");
-    args.add(getAbsoluteKeystorePath());
-    args.add("--driver.ssl.keystore.password");
+    args.add("--datastax-java-driver.advanced.auth-provider.username");
+    args.add("cassandra");
+    args.add("--datastax-java-driver.advanced.auth-provider.password");
+    args.add("cassandra");
+    args.add("--driver.advanced.ssl-engine-factory.class");
+    args.add(DefaultSslEngineFactory.class.getSimpleName());
+    args.add("--driver.advanced.ssl-engine-factory.keystore-path");
+    args.add(DEFAULT_CLIENT_KEYSTORE_FILE.toString());
+    args.add("--driver.advanced.ssl-engine-factory.keystore-password");
     args.add(DEFAULT_CLIENT_KEYSTORE_PASSWORD);
-    args.add("--driver.ssl.truststore.path");
-    args.add(getAbsoluteTrustStorePath());
-    args.add("--driver.ssl.truststore.password");
+    args.add("--driver.advanced.ssl-engine-factory.truststore-path");
+    args.add(DEFAULT_CLIENT_TRUSTSTORE_FILE.toString());
+    args.add("--driver.advanced.ssl-engine-factory.truststore-password");
     args.add(DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
@@ -130,7 +138,7 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   @Test
-  void full_load_unload_openssl() throws Exception {
+  void full_load_unload_jdk_legacy_settings() throws Exception {
 
     List<String> args = new ArrayList<>();
     args.add("load");
@@ -148,14 +156,18 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("ip_by_country");
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
+    args.add("--driver.auth.username");
+    args.add("cassandra");
+    args.add("--driver.auth.password");
+    args.add("cassandra");
     args.add("--driver.ssl.provider");
-    args.add("OpenSSL");
-    args.add("--driver.ssl.openssl.keyCertChain");
-    args.add(getAbsoluteClientCertPath());
-    args.add("--driver.ssl.openssl.privateKey");
-    args.add(getAbsoluteClientKeyPath());
+    args.add("JDK");
+    args.add("--driver.ssl.keystore.path");
+    args.add(DEFAULT_CLIENT_KEYSTORE_FILE.toString());
+    args.add("--driver.ssl.keystore.password");
+    args.add(DEFAULT_CLIENT_KEYSTORE_PASSWORD);
     args.add("--driver.ssl.truststore.path");
-    args.add(getAbsoluteTrustStorePath());
+    args.add(DEFAULT_CLIENT_TRUSTSTORE_FILE.toString());
     args.add("--driver.ssl.truststore.password");
     args.add(DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
@@ -182,14 +194,18 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("ip_by_country");
     args.add("--schema.mapping");
     args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
+    args.add("--driver.auth.username");
+    args.add("cassandra");
+    args.add("--driver.auth.password");
+    args.add("cassandra");
     args.add("--driver.ssl.provider");
-    args.add("OpenSSL");
-    args.add("--driver.ssl.openssl.keyCertChain");
-    args.add(getAbsoluteClientCertPath());
-    args.add("--driver.ssl.openssl.privateKey");
-    args.add(getAbsoluteClientKeyPath());
+    args.add("JDK");
+    args.add("--driver.ssl.keystore.path");
+    args.add(DEFAULT_CLIENT_KEYSTORE_FILE.toString());
+    args.add("--driver.ssl.keystore.password");
+    args.add(DEFAULT_CLIENT_KEYSTORE_PASSWORD);
     args.add("--driver.ssl.truststore.path");
-    args.add(getAbsoluteTrustStorePath());
+    args.add(DEFAULT_CLIENT_TRUSTSTORE_FILE.toString());
     args.add("--driver.ssl.truststore.password");
     args.add(DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
@@ -198,28 +214,80 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     validateOutputFiles(24, unloadDir);
   }
 
-  private static String getAbsoluteKeystorePath() {
-    return getAbsoluteKeystorePath(DEFAULT_CLIENT_KEYSTORE_PATH);
-  }
+  @Test
+  void full_load_unload_openssl_legacy_settings() throws Exception {
 
-  private static String getAbsoluteClientCertPath() {
-    return getAbsoluteKeystorePath(DEFAULT_CLIENT_CERT_CHAIN_PATH);
-  }
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--connector.csv.url");
+    args.add(quoteJson(CSV_RECORDS_UNIQUE));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--schema.keyspace");
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
+    args.add("--schema.table");
+    args.add("ip_by_country");
+    args.add("--schema.mapping");
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
+    args.add("--driver.auth.username");
+    args.add("cassandra");
+    args.add("--driver.auth.password");
+    args.add("cassandra");
+    args.add("--driver.ssl.provider");
+    args.add("OpenSSL");
+    args.add("--driver.ssl.openssl.keyCertChain");
+    args.add(DEFAULT_CLIENT_CERT_CHAIN_FILE.toString());
+    args.add("--driver.ssl.openssl.privateKey");
+    args.add(DEFAULT_CLIENT_PRIVATE_KEY_FILE.toString());
+    args.add("--driver.ssl.truststore.path");
+    args.add(DEFAULT_CLIENT_TRUSTSTORE_FILE.toString());
+    args.add("--driver.ssl.truststore.password");
+    args.add(DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
-  private static String getAbsoluteClientKeyPath() {
-    return getAbsoluteKeystorePath(DEFAULT_CLIENT_PRIVATE_KEY_PATH);
-  }
+    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertThat(status).isZero();
+    validateResultSetSize(24, "SELECT * FROM ip_by_country");
+    deleteDirectory(logDir);
 
-  private static String getAbsoluteTrustStorePath() {
-    return getAbsoluteKeystorePath(DEFAULT_CLIENT_TRUSTSTORE_PATH);
-  }
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--connector.csv.url");
+    args.add(quoteJson(unloadDir));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--connector.csv.maxConcurrentFiles");
+    args.add("1");
+    args.add("--schema.keyspace");
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
+    args.add("--schema.table");
+    args.add("ip_by_country");
+    args.add("--schema.mapping");
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
+    args.add("--driver.auth.username");
+    args.add("cassandra");
+    args.add("--driver.auth.password");
+    args.add("cassandra");
+    args.add("--driver.ssl.provider");
+    args.add("OpenSSL");
+    args.add("--driver.ssl.openssl.keyCertChain");
+    args.add(DEFAULT_CLIENT_CERT_CHAIN_FILE.toString());
+    args.add("--driver.ssl.openssl.privateKey");
+    args.add(DEFAULT_CLIENT_PRIVATE_KEY_FILE.toString());
+    args.add("--driver.ssl.truststore.path");
+    args.add(DEFAULT_CLIENT_TRUSTSTORE_FILE.toString());
+    args.add("--driver.ssl.truststore.password");
+    args.add(DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
-  private static String getAbsoluteKeystorePath(String path) {
-    URL resource = SSLEncryptionEndToEndCCMIT.class.getResource(path);
-    try {
-      return Paths.get(resource.toURI()).normalize().toAbsolutePath().toString();
-    } catch (URISyntaxException e) {
-      throw new AssertionError(e);
-    }
+    status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertThat(status).isZero();
+    validateOutputFiles(24, unloadDir);
   }
 }

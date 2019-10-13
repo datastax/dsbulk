@@ -106,9 +106,7 @@ class EndToEndCloudIT {
   void full_load_unload_default_CL() throws Exception {
     String bundlePath = proxy.getSecureBundlePath().toString();
     performLoad("-b", bundlePath);
-    assertThat(logs)
-        .hasMessageContaining(
-            "Changing default consistency level to LOCAL_QUORUM for Cloud deployments");
+    assertThat(logs).hasMessageContaining("changing default consistency level to LOCAL_QUORUM");
     performUnload("-b", bundlePath);
   }
 
@@ -122,18 +120,16 @@ class EndToEndCloudIT {
                     .withHeader("Content-Type", "application/octet-stream")
                     .withBody(Files.readAllBytes(proxy.getSecureBundlePath()))));
     String bundleUrl = server.baseUrl() + "/creds.zip";
-    performLoad("-b", bundleUrl);
-    assertThat(logs)
-        .hasMessageContaining(
-            "Changing default consistency level to LOCAL_QUORUM for Cloud deployments");
-    performUnload("-b", bundleUrl);
+    performLoad("-b", quoteJson(bundleUrl));
+    assertThat(logs).hasMessageContaining("changing default consistency level to LOCAL_QUORUM");
+    performUnload("-b", quoteJson(bundleUrl));
   }
 
   @Test
   void full_load_unload_forced_CL() throws Exception {
     String bundlePath = proxy.getSecureBundlePath().toString();
     performLoad("-b", bundlePath, "-cl", "LOCAL_QUORUM");
-    assertThat(logs.getLoggedEvents()).isEmpty();
+    assertThat(logs).hasMessageContaining("ignoring all explicit contact points");
     performUnload("-b", bundlePath);
   }
 
@@ -141,9 +137,7 @@ class EndToEndCloudIT {
   void full_load_unload_forced_wrong_CL() throws Exception {
     String bundlePath = proxy.getSecureBundlePath().toString();
     performLoad("-b", bundlePath, "-cl", "LOCAL_ONE");
-    assertThat(logs)
-        .hasMessageContaining(
-            "Cloud deployments reject consistency level LOCAL_ONE when writing; forcing LOCAL_QUORUM");
+    assertThat(logs).hasMessageContaining("forcing default consistency level to LOCAL_QUORUM");
     performUnload("-b", bundlePath);
   }
 
@@ -199,13 +193,13 @@ class EndToEndCloudIT {
     return Lists.newArrayList(
         "--log.directory",
         quoteJson(logDir),
-        "--driver.pooling.local.connections",
+        "--datastax-java-driver.advanced.connection.pool.local.size",
         "1",
-        "--driver.auth.provider",
+        "--datastax-java-driver.advanced.auth-provider.class",
         "DsePlainTextAuthProvider",
-        "--driver.auth.username",
+        "--datastax-java-driver.advanced.auth-provider.username",
         "cassandra",
-        "--driver.auth.password",
+        "--datastax-java-driver.advanced.auth-provider.password",
         "cassandra");
   }
 }

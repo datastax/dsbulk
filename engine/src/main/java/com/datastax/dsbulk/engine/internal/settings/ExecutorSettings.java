@@ -8,8 +8,8 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
+import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.executor.api.AbstractBulkExecutor;
 import com.datastax.dsbulk.executor.api.AbstractBulkExecutorBuilder;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
@@ -23,39 +23,20 @@ import com.datastax.dsbulk.executor.reactor.reader.ReactorBulkReader;
 import com.datastax.dsbulk.executor.reactor.writer.ReactorBulkWriter;
 import com.datastax.dse.driver.api.core.DseProtocolVersion;
 import com.datastax.dse.driver.api.core.DseSession;
-import com.datastax.dse.driver.api.core.config.DseDriverOption;
 import com.datastax.dse.driver.api.core.cql.continuous.ContinuousSession;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.DefaultConsistencyLevel;
 import com.datastax.oss.driver.api.core.ProtocolVersion;
 import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
-import com.datastax.oss.driver.api.core.config.DriverOption;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ExecutorSettings {
 
-  enum PageUnit {
-    ROWS,
-    BYTES
-  }
-
   private static final Logger LOGGER = LoggerFactory.getLogger(ExecutorSettings.class);
-
-  private static final String MAX_PER_SECOND = "maxPerSecond";
-  private static final String MAX_IN_FLIGHT = "maxInFlight";
-  private static final String CONTINUOUS_PAGING = "continuousPaging";
-  private static final String ENABLED = "enabled";
-  private static final String PAGE_SIZE = "pageSize";
-  private static final String PAGE_UNIT = "pageUnit";
-  private static final String MAX_PAGES = "maxPages";
-  private static final String MAX_PAGES_PER_SECOND = "maxPagesPerSecond";
-  private static final String MAX_CONCURRENT_REQUESTS = "maxConcurrentQueries";
 
   private final LoaderConfig config;
 
@@ -64,44 +45,29 @@ public class ExecutorSettings {
   private boolean continuousPagingEnabled;
   private int maxConcurrentQueries;
 
-  private Map<DriverOption, Object> executorConfig;
-
   ExecutorSettings(LoaderConfig config) {
     this.config = config;
   }
 
   public void init() {
     try {
-      maxPerSecond = config.getInt(MAX_PER_SECOND);
-      maxInFlight = config.getInt(MAX_IN_FLIGHT);
+      maxPerSecond = config.getInt("maxPerSecond");
+      maxInFlight = config.getInt("maxInFlight");
     } catch (ConfigException e) {
-      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "executor");
+      throw BulkConfigurationException.fromTypeSafeConfigException(e, "dsbulk.executor");
     }
+    Config continuousPagingConfig = config.getConfig("continuousPaging");
     try {
-      Config continuousPagingConfig = config.getConfig(CONTINUOUS_PAGING);
-      continuousPagingEnabled = continuousPagingConfig.getBoolean(ENABLED);
-      executorConfig = new HashMap<>();
+      continuousPagingEnabled = continuousPagingConfig.getBoolean("enabled");
+      // deprecated continuous paging options are now parsed in DriverSettings where they are
+      // converted into driver options
       if (continuousPagingEnabled) {
-        executorConfig.put(
-            DseDriverOption.CONTINUOUS_PAGING_PAGE_SIZE, continuousPagingConfig.getInt(PAGE_SIZE));
-        PageUnit pageUnit = continuousPagingConfig.getEnum(PageUnit.class, PAGE_UNIT);
-        executorConfig.put(
-            DseDriverOption.CONTINUOUS_PAGING_PAGE_SIZE_BYTES, pageUnit == PageUnit.BYTES);
-        executorConfig.put(
-            DseDriverOption.CONTINUOUS_PAGING_MAX_PAGES, continuousPagingConfig.getInt(MAX_PAGES));
-        executorConfig.put(
-            DseDriverOption.CONTINUOUS_PAGING_MAX_PAGES_PER_SECOND,
-            continuousPagingConfig.getInt(MAX_PAGES_PER_SECOND));
-        maxConcurrentQueries = continuousPagingConfig.getInt(MAX_CONCURRENT_REQUESTS);
+        maxConcurrentQueries = continuousPagingConfig.getInt("maxConcurrentQueries");
       }
-
     } catch (ConfigException e) {
-      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "executor.continuousPaging");
+      throw BulkConfigurationException.fromTypeSafeConfigException(
+          e, "dsbulk.executor.continuousPaging");
     }
-  }
-
-  public Map<DriverOption, Object> getExecutorConfig() {
-    return executorConfig;
   }
 
   public Optional<Integer> getMaxInFlight() {

@@ -107,14 +107,15 @@ public class UnloadWorkflow implements Workflow {
     }
     // No logs should be produced until the following statement returns
     logSettings.init();
-    logSettings.logEffectiveSettings(settingsManager.getGlobalConfig());
-    codecSettings.init();
-    monitoringSettings.init();
-    executorSettings.init();
-    driverSettings.init(false, executorSettings.getExecutorConfig());
     connectorSettings.init();
     connector = connectorSettings.getConnector();
     connector.init();
+    driverSettings.init(false);
+    logSettings.logEffectiveSettings(
+        settingsManager.getBulkLoaderConfig(), driverSettings.getDriverConfig());
+    codecSettings.init();
+    monitoringSettings.init();
+    executorSettings.init();
     session = driverSettings.newSession(executionId);
     printDebugInfoAboutCluster(session);
     schemaSettings.init(

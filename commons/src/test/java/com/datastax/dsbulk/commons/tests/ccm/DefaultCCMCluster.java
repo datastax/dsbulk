@@ -14,6 +14,7 @@ import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.OSS;
 import static com.datastax.dsbulk.commons.tests.utils.NetworkUtils.DEFAULT_IP_PREFIX;
 import static com.datastax.dsbulk.commons.tests.utils.NetworkUtils.findAvailablePort;
 
+import com.datastax.dsbulk.commons.internal.io.IOUtils;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.commons.tests.utils.MemoryUtils;
@@ -23,17 +24,13 @@ import com.datastax.dsbulk.commons.tests.utils.Version;
 import com.datastax.oss.driver.api.core.metadata.EndPoint;
 import com.datastax.oss.driver.internal.core.metadata.DefaultEndPoint;
 import com.datastax.oss.driver.shaded.guava.common.base.Joiner;
-import com.datastax.oss.driver.shaded.guava.common.io.ByteStreams;
 import com.datastax.oss.driver.shaded.guava.common.io.Closer;
 import com.datastax.oss.driver.shaded.guava.common.io.Files;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.UncheckedIOException;
@@ -50,7 +47,6 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.exec.DefaultExecutor;
 import org.apache.commons.exec.ExecuteStreamHandler;
@@ -77,16 +73,13 @@ public class DefaultCCMCluster implements CCMCluster {
   private static final String DEFAULT_SERVER_TRUSTSTORE_PASSWORD = "cassandra1sfun";
   private static final String DEFAULT_SERVER_KEYSTORE_PASSWORD = "cassandra1sfun";
 
-  public static final String DEFAULT_CLIENT_TRUSTSTORE_PATH = "/client.truststore";
-  public static final String DEFAULT_CLIENT_KEYSTORE_PATH = "/client.keystore";
   public static final File DEFAULT_CLIENT_TRUSTSTORE_FILE = createTempStore("/client.truststore");
   public static final File DEFAULT_CLIENT_KEYSTORE_FILE = createTempStore("/client.keystore");
 
   // Contain the same keypair as the client keystore, but in format usable by OpenSSL
-  public static final String DEFAULT_CLIENT_CERT_CHAIN_PATH = "/client.crt";
-  public static final String DEFAULT_CLIENT_PRIVATE_KEY_PATH = "/client.key";
-  public static final File DEFAULT_CLIENT_PRIVATE_KEY_FILE = createTempStore("/client.key");
   public static final File DEFAULT_CLIENT_CERT_CHAIN_FILE = createTempStore("/client.crt");
+  public static final File DEFAULT_CLIENT_PRIVATE_KEY_FILE = createTempStore("/client.key");
+
   private static final File DEFAULT_SERVER_TRUSTSTORE_FILE = createTempStore("/server.truststore");
   private static final File DEFAULT_SERVER_KEYSTORE_FILE = createTempStore("/server.keystore");
   private static final File DEFAULT_SERVER_LOCALHOST_KEYSTORE_FILE =
@@ -222,27 +215,12 @@ public class DefaultCCMCluster implements CCMCluster {
     return new Builder();
   }
 
-  private static File createTempStore(String storePath) {
-    File f = null;
-    Closer closer = Closer.create();
+  private static File createTempStore(String resource) {
     try {
-      InputStream trustStoreIs = DefaultCCMCluster.class.getResourceAsStream(storePath);
-      closer.register(trustStoreIs);
-      f = File.createTempFile("server", ".store");
-      LOGGER.debug("Created store file {} for {}.", f, storePath);
-      OutputStream trustStoreOs = new FileOutputStream(f);
-      closer.register(trustStoreOs);
-      ByteStreams.copy(trustStoreIs, trustStoreOs);
+      return IOUtils.copyResourceToTempFile(resource).toFile();
     } catch (IOException e) {
-      LOGGER.warn("Failure to write keystore, SSL-enabled servers may fail to start.", e);
-    } finally {
-      try {
-        closer.close();
-      } catch (IOException e) {
-        LOGGER.warn("Failure closing streams.", e);
-      }
+      throw new UncheckedIOException("Failure to write keystore from resource: " + resource, e);
     }
-    return f;
   }
 
   @Override
@@ -318,9 +296,8 @@ public class DefaultCCMCluster implements CCMCluster {
 
   @Override
   public List<EndPoint> getInitialContactPoints() {
-    return NetworkUtils.allContactPoints(DEFAULT_IP_PREFIX, nodesPerDC).stream()
-        .map(addr -> new DefaultEndPoint(new InetSocketAddress(addr, getBinaryPort())))
-        .collect(Collectors.toList());
+    return Collections.singletonList(
+        new DefaultEndPoint(new InetSocketAddress("127.0.0.1", getBinaryPort())));
   }
 
   @Override
@@ -796,9 +773,11 @@ public class DefaultCCMCluster implements CCMCluster {
       return this;
     }
 
-    /** Enables client authentication. This also enables encryption ({@link #withSSL(boolean)}. */
+    /**
+     * Enables client authentication. This should also require encryption ({@link
+     * #withSSL(boolean)}.
+     */
     public Builder withAuth() {
-      withSSL(false);
       cassandraConfiguration.put("client_encryption_options.require_client_auth", "true");
       cassandraConfiguration.put(
           "client_encryption_options.truststore", DEFAULT_SERVER_TRUSTSTORE_FILE.getAbsolutePath());

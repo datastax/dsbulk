@@ -51,7 +51,7 @@
     <rx-java.version>2.2.8</rx-java.version>
     <rx-java-extensions.version>0.20.5</rx-java-extensions.version>
     <reactor.version>Californium-RELEASE</reactor.version>
-    <config.version>1.3.3</config.version>
+    <config.version>1.4.0</config.version>
     <guava.version>25.1-jre</guava.version>
     <netty.version>4.1.34.Final</netty.version>
     <caffeine.version>2.7.0</caffeine.version>
@@ -71,7 +71,6 @@
     <assertj.version>3.12.2</assertj.version>
     <mockito.version>2.28.2</mockito.version>
     <commons-exec.version>1.3</commons-exec.version>
-    <commons-cli.version>1.4</commons-cli.version>
     <commons-compress.version>1.19</commons-compress.version>
     <compress.zstd.version>1.4.3-1</compress.zstd.version>
     <compress.xz.version>1.8</compress.xz.version>
@@ -396,12 +395,6 @@
         <groupId>io.netty</groupId>
         <artifactId>netty-tcnative-boringssl-static</artifactId>
         <version>2.0.25.Final</version>
-      </dependency>
-
-      <dependency>
-        <groupId>commons-cli</groupId>
-        <artifactId>commons-cli</artifactId>
-        <version>${commons-cli.version}</version>
       </dependency>
 
       <dependency>

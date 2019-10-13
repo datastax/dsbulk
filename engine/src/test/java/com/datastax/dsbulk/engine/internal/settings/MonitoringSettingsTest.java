@@ -8,6 +8,7 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
+import static com.datastax.dsbulk.commons.tests.utils.TestConfigUtils.createTestConfig;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -17,13 +18,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.codahale.metrics.MetricRegistry;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
 import com.datastax.oss.driver.api.core.ProtocolVersion;
 import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
-import com.typesafe.config.ConfigFactory;
 import java.nio.file.Path;
 import java.time.Duration;
 import org.assertj.core.util.Files;
@@ -36,8 +35,7 @@ class MonitoringSettingsTest {
 
   @Test
   void should_create_metrics_manager_with_default_settings() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.monitoring"));
+    LoaderConfig config = createTestConfig("dsbulk.monitoring");
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     settings.init();
     MetricsManager metricsManager =
@@ -65,16 +63,24 @@ class MonitoringSettingsTest {
   void should_create_metrics_manager_with_user_supplied_settings() {
     Path tmpPath = Files.temporaryFolder().toPath();
     LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                "rateUnit = MINUTES, "
-                    + "durationUnit = SECONDS, "
-                    + "reportRate = 30 minutes, "
-                    + "expectedWrites = 1000, "
-                    + "expectedReads = 50, "
-                    + "trackBytes = true, "
-                    + "jmx = false,"
-                    + "csv = true"));
+        createTestConfig(
+            "dsbulk.monitoring",
+            "rateUnit",
+            "MINUTES",
+            "durationUnit",
+            "SECONDS",
+            "reportRate",
+            "30 minutes",
+            "expectedWrites",
+            1000,
+            "expectedReads",
+            50,
+            "trackBytes",
+            true,
+            "jmx",
+            false,
+            "csv",
+            true);
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     settings.init();
     MetricsManager metricsManager =
@@ -101,88 +107,71 @@ class MonitoringSettingsTest {
 
   @Test
   void should_throw_exception_when_expectedWrites_not_a_number() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("expectedWrites = NotANumber")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.monitoring")));
+    LoaderConfig config = createTestConfig("dsbulk.monitoring", "expectedWrites", "NotANumber");
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for monitoring.expectedWrites: Expecting NUMBER, got STRING");
+        .hasMessageContaining(
+            "Invalid value for dsbulk.monitoring.expectedWrites, expecting NUMBER, got STRING");
   }
 
   @Test
   void should_throw_exception_when_expectedReads_not_a_number() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("expectedReads = NotANumber")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.monitoring")));
+    LoaderConfig config = createTestConfig("dsbulk.monitoring", "expectedReads", "NotANumber");
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for monitoring.expectedReads: Expecting NUMBER, got STRING");
+        .hasMessageContaining(
+            "Invalid value for dsbulk.monitoring.expectedReads, expecting NUMBER, got STRING");
   }
 
   @Test
   void should_throw_exception_when_trackBytes_not_a_boolean() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("trackBytes = NotABoolean")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.monitoring")));
+    LoaderConfig config = createTestConfig("dsbulk.monitoring", "trackBytes", "NotABoolean");
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for monitoring.trackBytes: Expecting BOOLEAN, got STRING");
+        .hasMessageContaining(
+            "Invalid value for dsbulk.monitoring.trackBytes, expecting BOOLEAN, got STRING");
   }
 
   @Test
   void should_throw_exception_when_jmx_not_a_boolean() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("jmx = NotABoolean")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.monitoring")));
+    LoaderConfig config = createTestConfig("dsbulk.monitoring", "jmx", "NotABoolean");
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for monitoring.jmx: Expecting BOOLEAN, got STRING");
+        .hasMessageContaining(
+            "Invalid value for dsbulk.monitoring.jmx, expecting BOOLEAN, got STRING");
   }
 
   @Test
   void should_throw_exception_when_rateUnit_not_a_boolean() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("rateUnit = NotAUnit")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.monitoring")));
+    LoaderConfig config = createTestConfig("dsbulk.monitoring", "rateUnit", "NotAUnit");
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
-            "Invalid value at 'rateUnit': Expecting one of NANOSECONDS, MICROSECONDS, MILLISECONDS, SECONDS, MINUTES, HOURS, DAYS, got 'NotAUnit'");
+            "Invalid value for dsbulk.monitoring.rateUnit, expecting one of NANOSECONDS, MICROSECONDS, MILLISECONDS, SECONDS, MINUTES, HOURS, DAYS, got: 'NotAUnit'");
   }
 
   @Test
   void should_throw_exception_when_durationUnit_not_a_boolean() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("durationUnit = NotAUnit")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.monitoring")));
+    LoaderConfig config = createTestConfig("dsbulk.monitoring", "durationUnit", "NotAUnit");
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
-            "Invalid value at 'durationUnit': Expecting one of NANOSECONDS, MICROSECONDS, MILLISECONDS, SECONDS, MINUTES, HOURS, DAYS, got 'NotAUnit'");
+            "Invalid value for dsbulk.monitoring.durationUnit, expecting one of NANOSECONDS, MICROSECONDS, MILLISECONDS, SECONDS, MINUTES, HOURS, DAYS, got: 'NotAUnit'");
   }
 
   @Test
   void should_throw_exception_when_reportRate_not_a_duration() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("reportRate = NotADuration")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.monitoring")));
+    LoaderConfig config = createTestConfig("dsbulk.monitoring", "reportRate", "NotADuration");
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
-            "Invalid value at 'reportRate': No number in duration value 'NotADuration'");
+            "Invalid value for dsbulk.monitoring.reportRate: No number in duration value 'NotADuration'");
   }
 }

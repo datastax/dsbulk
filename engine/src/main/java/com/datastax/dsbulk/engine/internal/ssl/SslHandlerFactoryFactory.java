@@ -38,43 +38,22 @@ import javax.net.ssl.TrustManagerFactory;
 
 public class SslHandlerFactoryFactory {
 
-  private static final String TRUSTSTORE = "truststore";
-  private static final String KEYSTORE = "keystore";
-  private static final String OPENSSL = "openssl";
-
-  private static final String SSL = "ssl";
-  private static final String SSL_PROVIDER = SSL + '.' + "provider";
-  private static final String SSL_CIPHER_SUITES = SSL + '.' + "cipherSuites";
-  private static final String SSL_TRUSTSTORE_PATH = SSL + '.' + TRUSTSTORE + '.' + "path";
-  private static final String SSL_TRUSTSTORE_PASSWORD = SSL + '.' + TRUSTSTORE + '.' + "password";
-  private static final String SSL_KEYSTORE_PATH = SSL + '.' + KEYSTORE + '.' + "path";
-  private static final String SSL_KEYSTORE_PASSWORD = SSL + '.' + KEYSTORE + '.' + "password";
-  private static final String SSL_TRUSTSTORE_ALGORITHM = SSL + '.' + TRUSTSTORE + '.' + "algorithm";
-  private static final String SSL_OPENSSL_KEYCERTCHAIN = SSL + '.' + OPENSSL + '.' + "keyCertChain";
-  private static final String SSL_OPENSSL_PRIVATE_KEY = SSL + '.' + OPENSSL + '.' + "privateKey";
-
-  private enum SSLProvider {
-    None,
-    JDK,
-    OpenSSL
-  }
-
   @Nullable
   public static SslHandlerFactory createSslHandlerFactory(LoaderConfig config)
       throws GeneralSecurityException, IOException {
-    SSLProvider sslProvider = config.getEnum(SSLProvider.class, SSL_PROVIDER);
-    switch (sslProvider) {
-      case None:
+    String sslProvider = config.getString("provider");
+    switch (sslProvider.toLowerCase()) {
+      case "none":
         return null;
-      case JDK:
+      case "jdk":
         return createJdkSslHandlerFactory(config);
-      case OpenSSL:
+      case "openssl":
         return createNettySslHandlerFactory(config);
       default:
         throw new BulkConfigurationException(
             String.format(
-                "%s is not a valid SSL provider. Valid auth providers are %s, %s, or %s",
-                sslProvider, SSLProvider.None, SSLProvider.JDK, SSLProvider.OpenSSL));
+                "Invalid value for dsbulk.driver.ssl.provider, expecting None, JDK, or OpenSSL, got: '%s'",
+                sslProvider));
     }
   }
 
@@ -87,35 +66,36 @@ public class SslHandlerFactoryFactory {
         kmf != null ? kmf.getKeyManagers() : null,
         tmf != null ? tmf.getTrustManagers() : null,
         new SecureRandom());
-    List<String> cipherSuites = config.getStringList(SSL_CIPHER_SUITES);
+    List<String> cipherSuites = config.getStringList("cipherSuites");
     SslEngineFactory sslEngineFactory =
-        new ProgrammaticSslEngineFactory(sslContext, cipherSuites.toArray(new String[0]));
+        new ProgrammaticSslEngineFactory(
+            sslContext, cipherSuites.isEmpty() ? null : cipherSuites.toArray(new String[0]), true);
     return new JdkSslHandlerFactory(sslEngineFactory);
   }
 
   private static SslHandlerFactory createNettySslHandlerFactory(LoaderConfig config)
       throws GeneralSecurityException, IOException {
-    if (config.hasPath(SSL_OPENSSL_KEYCERTCHAIN) != config.hasPath(SSL_OPENSSL_PRIVATE_KEY)) {
+    if (config.hasPath("openssl.keyCertChain") != config.hasPath("openssl.privateKey")) {
       throw new BulkConfigurationException(
           "Settings "
-              + SSL_OPENSSL_KEYCERTCHAIN
+              + "dsbulk.driver.ssl.openssl.keyCertChain"
               + " and "
-              + SSL_OPENSSL_PRIVATE_KEY
-              + " must be provided together or not at all when using the openssl Provider");
+              + "dsbulk.driver.ssl.openssl.privateKey"
+              + " must be provided together or not at all when using the OpenSSL provider");
     }
     TrustManagerFactory tmf = createTrustManagerFactory(config);
     SslContextBuilder builder =
         SslContextBuilder.forClient().sslProvider(SslProvider.OPENSSL).trustManager(tmf);
-    if (config.hasPath(SSL_OPENSSL_KEYCERTCHAIN)) {
-      Path sslOpenSslKeyCertChain = config.getPath(SSL_OPENSSL_KEYCERTCHAIN);
-      Path sslOpenSslPrivateKey = config.getPath(SSL_OPENSSL_PRIVATE_KEY);
+    if (config.hasPath("openssl.keyCertChain")) {
+      Path sslOpenSslKeyCertChain = config.getPath("openssl.keyCertChain");
+      Path sslOpenSslPrivateKey = config.getPath("openssl.privateKey");
       assertAccessibleFile(sslOpenSslKeyCertChain, "OpenSSL key certificate chain file");
       assertAccessibleFile(sslOpenSslPrivateKey, "OpenSSL private key file");
       builder.keyManager(
           new BufferedInputStream(new FileInputStream(sslOpenSslKeyCertChain.toFile())),
           new BufferedInputStream(new FileInputStream(sslOpenSslPrivateKey.toFile())));
     }
-    List<String> cipherSuites = config.getStringList(SSL_CIPHER_SUITES);
+    List<String> cipherSuites = config.getStringList("cipherSuites");
     if (!cipherSuites.isEmpty()) {
       builder.ciphers(cipherSuites);
     }
@@ -125,22 +105,22 @@ public class SslHandlerFactoryFactory {
 
   private static TrustManagerFactory createTrustManagerFactory(LoaderConfig config)
       throws KeyStoreException, IOException, NoSuchAlgorithmException, CertificateException {
-    if (config.hasPath(SSL_TRUSTSTORE_PATH) != config.hasPath(SSL_TRUSTSTORE_PASSWORD)) {
+    if (config.hasPath("truststore.path") != config.hasPath("truststore.password")) {
       throw new BulkConfigurationException(
           "Settings "
-              + SSL_TRUSTSTORE_PATH
+              + "dsbulk.driver.ssl.truststore.path"
               + ", "
-              + SSL_TRUSTSTORE_PASSWORD
+              + "dsbulk.driver.ssl.truststore.password"
               + " and "
-              + SSL_TRUSTSTORE_ALGORITHM
+              + "dsbulk.driver.ssl.truststore.algorithm"
               + " must be provided together or not at all");
     }
     TrustManagerFactory tmf = null;
-    if (config.hasPath(SSL_TRUSTSTORE_PATH)) {
-      Path sslTrustStorePath = config.getPath(SSL_TRUSTSTORE_PATH);
+    if (config.hasPath("truststore.path")) {
+      Path sslTrustStorePath = config.getPath("truststore.path");
       assertAccessibleFile(sslTrustStorePath, "SSL truststore file");
-      String sslTrustStorePassword = config.getString(SSL_TRUSTSTORE_PASSWORD);
-      String sslTrustStoreAlgorithm = config.getString(SSL_TRUSTSTORE_ALGORITHM);
+      String sslTrustStorePassword = config.getString("truststore.password");
+      String sslTrustStoreAlgorithm = config.getString("truststore.algorithm");
       KeyStore ks = KeyStore.getInstance("JKS");
       ks.load(
           new BufferedInputStream(new FileInputStream(sslTrustStorePath.toFile())),
@@ -154,23 +134,23 @@ public class SslHandlerFactoryFactory {
   private static KeyManagerFactory createKeyManagerFactory(LoaderConfig config)
       throws KeyStoreException, IOException, NoSuchAlgorithmException, CertificateException,
           UnrecoverableKeyException {
-    if (config.hasPath(SSL_KEYSTORE_PATH) != config.hasPath(SSL_KEYSTORE_PASSWORD)) {
+    if (config.hasPath("keystore.path") != config.hasPath("keystore.password")) {
       throw new BulkConfigurationException(
           "Settings "
-              + SSL_KEYSTORE_PATH
+              + "dsbulk.driver.ssl.keystore.path"
               + ", "
-              + SSL_KEYSTORE_PASSWORD
+              + "dsbulk.driver.ssl.keystore.password"
               + " and "
-              + SSL_TRUSTSTORE_ALGORITHM
-              + " must be provided together or not at all when using the JDK SSL Provider");
+              + "dsbulk.driver.ssl.truststore.algorithm"
+              + " must be provided together or not at all when using the JDK SSL provider");
     }
 
     KeyManagerFactory kmf = null;
-    if (config.hasPath(SSL_KEYSTORE_PATH)) {
-      Path sslKeyStorePath = config.getPath(SSL_KEYSTORE_PATH);
+    if (config.hasPath("keystore.path")) {
+      Path sslKeyStorePath = config.getPath("keystore.path");
       assertAccessibleFile(sslKeyStorePath, "SSL keystore file");
-      String sslKeyStorePassword = config.getString(SSL_KEYSTORE_PASSWORD);
-      String sslTrustStoreAlgorithm = config.getString(SSL_TRUSTSTORE_ALGORITHM);
+      String sslKeyStorePassword = config.getString("keystore.password");
+      String sslTrustStoreAlgorithm = config.getString("truststore.algorithm");
       KeyStore ks = KeyStore.getInstance("JKS");
       ks.load(
           new BufferedInputStream(new FileInputStream(sslKeyStorePath.toFile())),

@@ -12,7 +12,7 @@ import com.datastax.oss.driver.api.core.config.DriverOption;
 import edu.umd.cs.findbugs.annotations.NonNull;
 
 public enum BulkDriverOption implements DriverOption {
-  RETRY_POLICY_MAX_RETRIES("advanced.connection.retry-policy.max-retries"),
+  RETRY_POLICY_MAX_RETRIES("advanced.retry-policy.max-retries"),
   ;
 
   private final String path;

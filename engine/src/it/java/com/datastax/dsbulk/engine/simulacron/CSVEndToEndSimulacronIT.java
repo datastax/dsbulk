@@ -326,7 +326,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "false",
       "--connector.csv.url",
       quoteJson(CSV_RECORDS_ERROR),
-      "--driver.policy.maxRetries",
+      "--driver.advanced.retry-policy.max-retries",
       "1",
       "--schema.keyspace",
       "ks1",

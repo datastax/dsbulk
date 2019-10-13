@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.tests.utils.TestConfigUtils;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.csv.CSVConnector;
 import com.datastax.dsbulk.connectors.json.JsonConnector;
@@ -25,7 +26,7 @@ import org.junit.jupiter.api.Test;
 class ConnectorSettingsTest {
 
   private static final Config CONNECTOR_DEFAULT_SETTINGS =
-      ConfigFactory.load().getConfig("dsbulk.connector");
+      TestConfigUtils.createTestConfig("dsbulk.connector");
 
   @Test
   void should_find_csv_connector_short_name() {
