@@ -79,6 +79,7 @@ public class SNIProxyServerExtension extends RemoteClusterExtension {
         sessionFactory
             .createSessionBuilder()
             .withCloudSecureConnectBundle(proxy.getSecureBundlePath())
+            .withAuthCredentials("cassandra", "cassandra")
             .build();
     sessionFactory.configureSession(session);
     return session;

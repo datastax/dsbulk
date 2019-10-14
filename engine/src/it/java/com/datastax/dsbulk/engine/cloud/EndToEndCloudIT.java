@@ -173,6 +173,12 @@ class EndToEndCloudIT {
         quoteJson(logDir),
         "--driver.pooling.local.connections",
         "1",
+        "--driver.auth.provider",
+        "DsePlainTextAuthProvider",
+        "--driver.auth.username",
+        "cassandra",
+        "--driver.auth.password",
+        "cassandra",
         "--driver.cloud.secureConnectBundle",
         proxy.getSecureBundlePath().toString());
     return args.toArray(new String[0]);
