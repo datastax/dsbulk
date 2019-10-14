@@ -87,7 +87,7 @@ public class SimulacronExtension extends RemoteClusterExtension implements After
   }
 
   @Override
-  protected String getLocalDCName(ExtensionContext context) {
+  protected String getLocalDatacenter(ExtensionContext context) {
     return getOrCreateBoundCluster(context).dc(0).getName();
   }
 

@@ -81,7 +81,7 @@ public class DefaultSNIProxyServer implements SNIProxyServer {
   }
 
   @Override
-  public String getLocalDCName() {
+  public String getLocalDatacenter() {
     return config.getLocalDatacenter();
   }
 

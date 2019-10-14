@@ -68,8 +68,8 @@ public class SNIProxyServerExtension extends RemoteClusterExtension {
   }
 
   @Override
-  protected String getLocalDCName(ExtensionContext context) {
-    return getOrCreateSNIProxyServer(context).getLocalDCName();
+  protected String getLocalDatacenter(ExtensionContext context) {
+    return getOrCreateSNIProxyServer(context).getLocalDatacenter();
   }
 
   @Override

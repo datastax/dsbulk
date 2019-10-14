@@ -46,5 +46,5 @@ public interface SNIProxyServer extends Closeable {
   List<EndPoint> getContactPoints();
 
   /** @return The cluster's local DC name. */
-  String getLocalDCName();
+  String getLocalDatacenter();
 }

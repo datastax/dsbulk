@@ -106,7 +106,7 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
   }
 
   @Override
-  protected String getLocalDCName(ExtensionContext context) {
+  protected String getLocalDatacenter(ExtensionContext context) {
     CCMCluster ccm = getOrCreateCCM(context);
     try {
       return ccm.getDC(1);

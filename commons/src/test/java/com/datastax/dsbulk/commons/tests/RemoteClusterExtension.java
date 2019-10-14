@@ -65,7 +65,7 @@ public abstract class RemoteClusterExtension implements AfterAllCallback, Parame
     Class<?> testClass = context.getRequiredTestClass();
     SessionFactory sessionFactory =
         SessionFactory.createInstanceForAnnotatedElement(
-            parameter, testClass, getLocalDCName(context));
+            parameter, testClass, getLocalDatacenter(context));
     return createSession(sessionFactory, context);
   }
 
@@ -77,7 +77,7 @@ public abstract class RemoteClusterExtension implements AfterAllCallback, Parame
     return session;
   }
 
-  protected abstract String getLocalDCName(ExtensionContext context);
+  protected abstract String getLocalDatacenter(ExtensionContext context);
 
   protected abstract List<EndPoint> getContactPoints(ExtensionContext context);
 
