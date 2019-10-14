@@ -14,8 +14,13 @@ import java.nio.file.Path;
 import java.util.List;
 
 /**
- * An abstraction around a Cassandra or DSE cluster managed by the <a
- * href="https://github.com/pcmanus/ccm">CCM tool</a>.
+ * An abstraction around an SNI Proxy server acting as an entry point to a DataStax Apollo Cloud
+ * database.
+ *
+ * <p>The SNI proxy server Docker image must be previously installed prior to using this
+ * abstraction.
+ *
+ * @see <a href="https://github.com/riptano/sni_single_endpoint">SNI single endpoint Github repo</a>
  */
 public interface SNIProxyServer extends Closeable {
 
