@@ -47,13 +47,6 @@ public class DefaultSNIProxyServer implements SNIProxyServer {
 
   public DefaultSNIProxyServer(@NonNull Path proxyPath) {
     this.proxyPath = proxyPath.toAbsolutePath();
-    try {
-      config =
-          new CloudConfigFactory().createCloudConfig(Files.newInputStream(getSecureBundlePath()));
-    } catch (IOException | GeneralSecurityException e) {
-      // should never happen, the bundle is always present and readable
-      throw new RuntimeException(e);
-    }
   }
 
   @Override
@@ -61,6 +54,13 @@ public class DefaultSNIProxyServer implements SNIProxyServer {
     CommandLine run = CommandLine.parse(proxyPath.resolve("run.sh").toString());
     execute(run);
     running = true;
+    try {
+      config =
+          new CloudConfigFactory().createCloudConfig(Files.newInputStream(getSecureBundlePath()));
+    } catch (IOException | GeneralSecurityException e) {
+      // should never happen, the bundle is always present and readable once the proxy is started
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
