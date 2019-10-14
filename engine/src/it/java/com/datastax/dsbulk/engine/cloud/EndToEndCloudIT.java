@@ -116,8 +116,7 @@ class EndToEndCloudIT {
     performLoad(Lists.newArrayList("--driver.query.consistency", "LOCAL_ONE"));
     assertThat(logs)
         .hasMessageContaining(
-            "Consistency level LOCAL_ONE was specified, but Cloud deployments only accept "
-                + "LOCAL_QUORUM when writing; forcing LOCAL_QUORUM");
+            "Cloud deployments reject consistency level LOCAL_ONE when writing; forcing LOCAL_QUORUM");
     performUnload();
   }
 
