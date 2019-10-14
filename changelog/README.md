@@ -3,6 +3,7 @@
 ## 1.4.0 (in progress)
 
 - [improvement] DAT-303: Update DSBulk to Java DSE Driver 2.x.
+- [improvement] DAT-449: Add support for loading and unloading from/to compressed files.
 
 
 ### 1.3.4
@@ -15,7 +16,6 @@
 - [improvement] DAT-435: Make connectors accept a list of URLs when loading.
 - [improvement] DAT-443: Default output file name format should not include thousands separator.
 - [improvement] DAT-428: Add support for UNITS_SINCE_EPOCH to CQL date and time.
-- [improvement] DAT-449: Add support for loading and unloading from/to compressed files.
 - [improvement] DAT-451: Driver query warnings should not spam the console.
 - [task] DAT-455: Update jackson-databind to 2.9.9.1 to fix CVE-2019-12814.
 - [improvement] DAT-432: Ability to disable bytes/sec metrics.
