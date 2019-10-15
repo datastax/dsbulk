@@ -1112,6 +1112,7 @@ The URL or path of the secure connect bundle used to connect to Datastax Apache 
 
 To connect to a Cloud database, you must first download the secure connect bundle from the DataStax Constellation console, then enter its location here. You will also need to set up authentication accordingly. For more information, please refer to the DataStax Constellation documentation.
 
+Note that if the value specified here does not have a protocol, then it is assumed to be a file protocol. Relative URLs will be resolved against the current working directory. Also, for convenience, if the path begins with a tilde (`~`), that symbol will be expanded to the current user's home directory.
 
 Default: **null**.
 
