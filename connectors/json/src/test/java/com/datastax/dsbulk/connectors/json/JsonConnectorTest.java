@@ -12,6 +12,9 @@ import static com.datastax.dsbulk.commons.tests.utils.FileUtils.createURLFile;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readFile;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.any;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static java.nio.charset.StandardCharsets.ISO_8859_1;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -22,7 +25,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
-import com.datastax.dsbulk.commons.tests.HttpTestServer;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
@@ -35,9 +37,9 @@ import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.github.tomakehurst.wiremock.WireMockServer;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
-import io.undertow.util.Headers;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -60,8 +62,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.event.Level;
 import reactor.core.publisher.Flux;
+import ru.lanwen.wiremock.ext.WiremockResolver;
+import ru.lanwen.wiremock.ext.WiremockResolver.Wiremock;
 
 @ExtendWith(LogInterceptingExtension.class)
+@ExtendWith(WiremockResolver.class)
 class JsonConnectorTest {
 
   static {
@@ -829,33 +834,30 @@ class JsonConnectorTest {
   }
 
   @Test
-  void should_read_from_http_url() throws Exception {
-    HttpTestServer server = new HttpTestServer();
-    try {
-      server.start(
-          exchange -> {
-            exchange.getResponseHeaders().add(Headers.CONTENT_TYPE, "text/json");
-            exchange.getResponseSender().send(readFile(path("/single_doc.json")));
-          });
-      JsonConnector connector = new JsonConnector();
-      LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString(
-                      String.format(
-                          "url = \"http://localhost:%d/file.json\", "
-                              + "mode = SINGLE_DOCUMENT, "
-                              + "parserFeatures = {ALLOW_COMMENTS:true}, "
-                              + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}",
-                          server.getPort()))
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
-      connector.configure(settings, true);
-      connector.init();
-      List<Record> actual = Flux.from(connector.read()).collectList().block();
-      verifyRecords(actual);
-      connector.close();
-    } finally {
-      server.stop();
-    }
+  void should_read_from_http_url(@Wiremock WireMockServer server) throws Exception {
+    server.givenThat(
+        any(urlPathEqualTo("/file.json"))
+            .willReturn(
+                aResponse()
+                    .withStatus(200)
+                    .withHeader("Content-Type", "text/json")
+                    .withBody(readFile(path("/single_doc.json")))));
+    JsonConnector connector = new JsonConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = \"%s/file.json\", "
+                            + "mode = SINGLE_DOCUMENT, "
+                            + "parserFeatures = {ALLOW_COMMENTS:true}, "
+                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}",
+                        server.baseUrl()))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    List<Record> actual = Flux.from(connector.read()).collectList().block();
+    verifyRecords(actual);
+    connector.close();
   }
 
   @Test
