@@ -16,6 +16,9 @@ import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createIpByCountryTable;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validatePositionsFile;
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.any;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static java.nio.file.Files.createTempDirectory;
 import static org.slf4j.event.Level.INFO;
 
@@ -32,11 +35,12 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
+import com.github.tomakehurst.wiremock.WireMockServer;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -45,9 +49,12 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
+import ru.lanwen.wiremock.ext.WiremockResolver;
+import ru.lanwen.wiremock.ext.WiremockResolver.Wiremock;
 
 @ExtendWith(LogInterceptingExtension.class)
 @ExtendWith(SNIProxyServerExtension.class)
+@ExtendWith(WiremockResolver.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Tag("long")
 class EndToEndCloudIT {
@@ -97,30 +104,50 @@ class EndToEndCloudIT {
 
   @Test
   void full_load_unload_default_CL() throws Exception {
-    performLoad(new ArrayList<>());
+    String bundlePath = proxy.getSecureBundlePath().toString();
+    performLoad("-b", bundlePath);
     assertThat(logs)
         .hasMessageContaining(
             "Changing default consistency level to LOCAL_QUORUM for Cloud deployments");
-    performUnload();
+    performUnload("-b", bundlePath);
+  }
+
+  @Test
+  void full_load_unload_http_bundle(@Wiremock WireMockServer server) throws Exception {
+    server.givenThat(
+        any(urlPathEqualTo("/creds.zip"))
+            .willReturn(
+                aResponse()
+                    .withStatus(200)
+                    .withHeader("Content-Type", "application/octet-stream")
+                    .withBody(Files.readAllBytes(proxy.getSecureBundlePath()))));
+    String bundleUrl = server.baseUrl() + "/creds.zip";
+    performLoad("-b", bundleUrl);
+    assertThat(logs)
+        .hasMessageContaining(
+            "Changing default consistency level to LOCAL_QUORUM for Cloud deployments");
+    performUnload("-b", bundleUrl);
   }
 
   @Test
   void full_load_unload_forced_CL() throws Exception {
-    performLoad(Lists.newArrayList("--driver.query.consistency", "LOCAL_QUORUM"));
+    String bundlePath = proxy.getSecureBundlePath().toString();
+    performLoad("-b", bundlePath, "-cl", "LOCAL_QUORUM");
     assertThat(logs.getLoggedEvents()).isEmpty();
-    performUnload();
+    performUnload("-b", bundlePath);
   }
 
   @Test
   void full_load_unload_forced_wrong_CL() throws Exception {
-    performLoad(Lists.newArrayList("--driver.query.consistency", "LOCAL_ONE"));
+    String bundlePath = proxy.getSecureBundlePath().toString();
+    performLoad("-b", bundlePath, "-cl", "LOCAL_ONE");
     assertThat(logs)
         .hasMessageContaining(
             "Cloud deployments reject consistency level LOCAL_ONE when writing; forcing LOCAL_QUORUM");
-    performUnload();
+    performUnload("-b", bundlePath);
   }
 
-  private void performLoad(List<String> initialArgs) throws IOException, URISyntaxException {
+  private void performLoad(String... specificArgs) throws IOException, URISyntaxException {
     List<String> loadArgs =
         Lists.newArrayList(
             "load",
@@ -134,8 +161,9 @@ class EndToEndCloudIT {
             "ip_by_country",
             "--schema.mapping",
             IP_BY_COUNTRY_MAPPING_INDEXED);
-    loadArgs.addAll(initialArgs);
-    int status = new DataStaxBulkLoader(addCommonSettings(loadArgs)).run();
+    loadArgs.addAll(Arrays.asList(specificArgs));
+    loadArgs.addAll(commonArgs());
+    int status = new DataStaxBulkLoader(loadArgs.toArray(new String[0])).run();
     assertThat(status).isZero();
     ResultSet set = session.execute("SELECT * FROM ip_by_country");
     List<Row> results = set.all();
@@ -144,7 +172,7 @@ class EndToEndCloudIT {
     deleteDirectory(logDir);
   }
 
-  private void performUnload() throws IOException {
+  private void performUnload(String... specificArgs) throws IOException {
     List<String> unloadArgs =
         Lists.newArrayList(
             "unload",
@@ -160,14 +188,15 @@ class EndToEndCloudIT {
             "ip_by_country",
             "--schema.mapping",
             IP_BY_COUNTRY_MAPPING_INDEXED);
-    int status = new DataStaxBulkLoader(addCommonSettings(unloadArgs)).run();
+    unloadArgs.addAll(Arrays.asList(specificArgs));
+    unloadArgs.addAll(commonArgs());
+    int status = new DataStaxBulkLoader(unloadArgs.toArray(new String[0])).run();
     assertThat(status).isZero();
     validateOutputFiles(24, unloadDir);
   }
 
-  private String[] addCommonSettings(List<String> args) {
-    Collections.addAll(
-        args,
+  private List<String> commonArgs() {
+    return Lists.newArrayList(
         "--log.directory",
         quoteJson(logDir),
         "--driver.pooling.local.connections",
@@ -177,9 +206,6 @@ class EndToEndCloudIT {
         "--driver.auth.username",
         "cassandra",
         "--driver.auth.password",
-        "cassandra",
-        "--driver.cloud.secureConnectBundle",
-        proxy.getSecureBundlePath().toString());
-    return args.toArray(new String[0]);
+        "cassandra");
   }
 }

@@ -1,15 +1,12 @@
 ## Changelog
 
-## DataStax Cloud (in progress)
-
-- [new feature] DAT-412: Add support for DataStax Cloud.
-- [improvement] DAT-492: Add CLI shortcut for secure connect bundle.
-
-
 ## 1.4.0 (in progress)
 
 - [improvement] DAT-303: Update DSBulk to Java DSE Driver 2.x.
 - [improvement] DAT-449: Add support for loading and unloading from/to compressed files.
+- [new feature] DAT-412: Add support for DataStax Cloud.
+- [improvement] DAT-492: Add CLI shortcut for secure connect bundle.
+- [improvement] DAT-490: Allow secure connect bundle to be provided from external URL.
 
 
 ### 1.3.4

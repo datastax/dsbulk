@@ -66,8 +66,8 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.net.URL;
 import java.net.UnknownHostException;
-import java.nio.file.Path;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -167,16 +167,15 @@ public class DriverSettings {
 
       int port = config.getInt(PORT);
 
-      Path secureBundleLocation = null;
+      URL secureBundleLocation = null;
       if (config.hasPath(SECURE_CONNECT_BUNDLE_PATH)) {
-        secureBundleLocation = config.getPath(SECURE_CONNECT_BUNDLE_PATH);
+        secureBundleLocation = config.getURL(SECURE_CONNECT_BUNDLE_PATH);
       }
 
       boolean cloud = secureBundleLocation != null;
 
       if (cloud) {
-        driverConfig.put(
-            CLOUD_SECURE_CONNECT_BUNDLE, secureBundleLocation.toAbsolutePath().toString());
+        driverConfig.put(CLOUD_SECURE_CONNECT_BUNDLE, secureBundleLocation.toExternalForm());
       } else {
         List<String> hosts = config.getStringList(HOSTS);
         if (hosts.isEmpty()) {
