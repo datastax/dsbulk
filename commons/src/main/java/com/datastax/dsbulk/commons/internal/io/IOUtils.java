@@ -90,18 +90,6 @@ public final class IOUtils {
     }
   }
 
-  public static void checkReadableFile(Path path) {
-    if (!Files.exists(path)) {
-      throw new BulkConfigurationException("File does not exist: " + path);
-    }
-    if (!Files.isRegularFile(path)) {
-      throw new BulkConfigurationException("File %s is not a regular file" + path);
-    }
-    if (!Files.isReadable(path)) {
-      throw new BulkConfigurationException("File %s is not readable" + path);
-    }
-  }
-
   public static void assertAccessibleFile(Path filePath, String descriptor) {
     if (!Files.exists(filePath)) {
       throw new BulkConfigurationException(
