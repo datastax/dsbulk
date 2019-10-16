@@ -1142,8 +1142,6 @@ class JsonConnectorTest {
         .hasRootCauseExactlyInstanceOf(IOException.class)
         .satisfies(
             t ->
-                // TODO: fix it correctly after Tomasz's changes
-                // logs.getLoggedMessages().forEach(System.out::println);
                 assertThat(getRootCause(t))
                     .hasMessageContaining("Stream is not in the BZip2 format"));
     connector.close();
