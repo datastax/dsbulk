@@ -45,6 +45,7 @@ import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validatePosit
 import static com.datastax.dsbulk.engine.tests.utils.RecordUtils.mappedCSV;
 import static java.math.RoundingMode.FLOOR;
 import static java.math.RoundingMode.UNNECESSARY;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.createTempDirectory;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
@@ -64,6 +65,7 @@ import com.datastax.dsbulk.commons.tests.utils.CQLUtils;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.commons.tests.utils.Version;
 import com.datastax.dsbulk.connectors.api.Record;
+import com.datastax.dsbulk.connectors.commons.internal.CompressedIOUtils;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.tests.MockConnector;
 import com.datastax.dsbulk.engine.tests.utils.RecordUtils;
@@ -77,6 +79,7 @@ import com.datastax.oss.driver.shaded.guava.common.base.Splitter;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import java.io.IOException;
+import java.io.LineNumberReader;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.net.URI;
@@ -337,6 +340,60 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isZero();
     validateOutputFiles(24, unloadDir);
+  }
+
+  /** Simple test case which attempts to load and unload data using ccm and compressed files. */
+  @Test
+  void full_load_unload_compressed_file() throws Exception {
+
+    URL resource = getClass().getResource("/ip-by-country-unique.csv.gz");
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--connector.csv.url");
+    args.add(quoteJson(resource));
+    args.add("--connector.csv.compression");
+    args.add("gzip");
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--schema.keyspace");
+    args.add(session.getKeyspace().get().asInternal());
+    args.add("--schema.table");
+    args.add("ip_by_country");
+    args.add("--schema.mapping");
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
+
+    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertThat(status).isZero();
+    validateResultSetSize(24, "SELECT * FROM ip_by_country");
+    validatePositionsFile(resource, 24);
+    deleteDirectory(logDir);
+
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--connector.csv.url");
+    args.add(quoteJson(unloadDir));
+    args.add("--connector.csv.compression");
+    args.add("deflate");
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--connector.csv.maxConcurrentFiles");
+    args.add("1");
+    args.add("--schema.keyspace");
+    args.add(session.getKeyspace().get().asInternal());
+    args.add("--schema.table");
+    args.add("ip_by_country");
+    args.add("--schema.mapping");
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
+
+    status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertThat(status).isZero();
+    Path destinationFile = unloadDir.resolve("output-000001.csv.deflate");
+    assertThat(destinationFile).exists();
+    try (LineNumberReader reader =
+        CompressedIOUtils.newBufferedReader(destinationFile.toUri().toURL(), UTF_8, "deflate")) {
+      assertThat(reader.lines()).hasSize(24);
+    }
   }
 
   /**
