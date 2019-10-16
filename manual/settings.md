@@ -1104,12 +1104,14 @@ Default: **"dse"**.
 <a name="driver.cloud"></a>
 ### Driver Cloud Settings
 
-Cloud-specific settings.
+Cloud-specific (DataStax Constellation) settings.
 
 #### -b,--driver.cloud.secureConnectBundle _&lt;string&gt;_
 
-The location of the cloud secure bundle used to connect to Datastax Apache Cassandra as a
-service.
+The URL or path of the secure connect bundle used to connect to Datastax Apache Cassandra as a service.
+
+To connect to a Cloud database, you must first download the secure connect bundle from the DataStax Constellation console, then enter its location here. You will also need to set up authentication accordingly. For more information, please refer to the DataStax Constellation documentation.
+
 
 Default: **null**.
 
