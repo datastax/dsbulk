@@ -34,13 +34,18 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.stream.Stream;
 import org.apache.commons.cli.ParseException;
+import org.assertj.core.util.Lists;
 import org.fusesource.jansi.AnsiConsole;
 import org.fusesource.jansi.AnsiString;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 @ExtendWith(StreamInterceptingExtension.class)
 @ExtendWith(LogInterceptingExtension.class)
@@ -387,170 +392,93 @@ class DataStaxBulkLoaderTest {
         .contains("List should have ended with ] or had a comma");
   }
 
-  @Test
-  void should_process_short_options() throws Exception {
-    Config result =
-        DataStaxBulkLoader.parseCommandLine(
-            "load",
-            new String[] {
-              "-locale",
-              "locale",
-              "-timeZone",
-              "tz",
-              "-c",
-              "csv",
-              "-p",
-              "pass",
-              "-u",
-              "user",
-              "-h",
-              "host1, host2",
-              "-maxRetries",
-              "42",
-              "-port",
-              "9876",
-              "-cl",
-              "cl",
-              "-maxErrors",
-              "123",
-              "-logDir",
-              "logdir",
-              "-jmx",
-              "false",
-              "-reportRate",
-              "456",
-              "-k",
-              "ks",
-              "-m",
-              "{0:\"f1\", 1:\"f2\"}",
-              "-nullStrings",
-              "[nil, nada]",
-              "-query",
-              "INSERT INTO foo",
-              "-t",
-              "table",
-              "-dryRun",
-              "true",
-              // CSV-specific options
-              "-comment",
-              "comment",
-              "-delim",
-              "|",
-              "-encoding",
-              "enc",
-              "-escape",
-              "^",
-              "-header",
-              "header",
-              "-skipRecords",
-              "3",
-              "-maxRecords",
-              "111",
-              "-maxConcurrentFiles",
-              "222",
-              "-quote",
-              "'",
-              "-url",
-              "http://findit"
-            });
-    assertThat(result.getString("codec.locale")).isEqualTo("locale");
-    assertThat(result.getString("codec.timeZone")).isEqualTo("tz");
-    assertThat(result.getString("connector.name")).isEqualTo("csv");
-    assertThat(result.getString("driver.auth.password")).isEqualTo("pass");
-    assertThat(result.getString("driver.auth.username")).isEqualTo("user");
-    assertThat(result.getStringList("driver.hosts")).containsExactly("host1", "host2");
-    assertThat(result.getInt("driver.policy.maxRetries")).isEqualTo(42);
-    assertThat(result.getInt("driver.port")).isEqualTo(9876);
-    assertThat(result.getString("driver.query.consistency")).isEqualTo("cl");
-    assertThat(result.getBoolean("engine.dryRun")).isTrue();
-    assertThat(result.getInt("log.maxErrors")).isEqualTo(123);
-    assertThat(result.getString("log.directory")).isEqualTo("logdir");
-    assertThat(result.getBoolean("monitoring.jmx")).isFalse();
-    assertThat(result.getInt("monitoring.reportRate")).isEqualTo(456);
-    assertThat(result.getString("schema.keyspace")).isEqualTo("ks");
-    assertThat(result.getString("schema.mapping")).isEqualTo("{0:f1, 1:f2}");
-    assertThat(result.getStringList("codec.nullStrings")).containsExactly("nil", "nada");
-    assertThat(result.getString("schema.query")).isEqualTo("INSERT INTO foo");
-    assertThat(result.getString("schema.table")).isEqualTo("table");
-
-    // CSV short options
-    assertThat(result.getString("connector.csv.comment")).isEqualTo("comment");
-    assertThat(result.getString("connector.csv.delimiter")).isEqualTo("|");
-    assertThat(result.getString("connector.csv.encoding")).isEqualTo("enc");
-    assertThat(result.getString("connector.csv.escape")).isEqualTo("^");
-    assertThat(result.getString("connector.csv.header")).isEqualTo("header");
-    assertThat(result.getInt("connector.csv.skipRecords")).isEqualTo(3);
-    assertThat(result.getInt("connector.csv.maxRecords")).isEqualTo(111);
-    assertThat(result.getInt("connector.csv.maxConcurrentFiles")).isEqualTo(222);
-    assertThat(result.getString("connector.csv.quote")).isEqualTo("'");
-    assertThat(result.getString("connector.csv.url")).isEqualTo("http://findit");
+  @SuppressWarnings("unused")
+  private static Stream<Arguments> should_process_short_options() {
+    return Stream.of(
+        Arguments.of("-locale", "locale", "codec.locale", "locale"),
+        Arguments.of("-timeZone", "tz", "codec.timeZone", "tz"),
+        Arguments.of("-c", "csv", "connector.name", "csv"),
+        Arguments.of("-p", "pass", "driver.auth.password", "pass"),
+        Arguments.of("-u", "user", "driver.auth.username", "user"),
+        Arguments.of("-h", "host1, host2", "driver.hosts", Lists.newArrayList("host1", "host2")),
+        Arguments.of("-maxRetries", "42", "driver.policy.maxRetries", 42),
+        Arguments.of("-port", "9876", "driver.port", 9876),
+        Arguments.of("-cl", "cl", "driver.query.consistency", "cl"),
+        Arguments.of(
+            "-b", "secureConnectBundle", "driver.cloud.secureConnectBundle", "secureConnectBundle"),
+        Arguments.of("-maxErrors", "123", "log.maxErrors", 123),
+        Arguments.of("-logDir", "logdir", "log.directory", "logdir"),
+        Arguments.of("-jmx", "false", "monitoring.jmx", false),
+        Arguments.of("-reportRate", "10 seconds", "monitoring.reportRate", "10 seconds"),
+        Arguments.of("-k", "ks", "schema.keyspace", "ks"),
+        Arguments.of(
+            "-m",
+            "{0:\"f1\", 1:\"f2\"}",
+            "schema.mapping",
+            "{0:f1, 1:f2}"), // type is forced to string
+        Arguments.of(
+            "-nullStrings", "[nil, nada]", "codec.nullStrings", Lists.newArrayList("nil", "nada")),
+        Arguments.of("-query", "INSERT INTO foo", "schema.query", "INSERT INTO foo"),
+        Arguments.of("-t", "table", "schema.table", "table"),
+        Arguments.of("-dryRun", "true", "engine.dryRun", true));
   }
 
-  @Test
-  void should_process_csv_short_options_by_default() throws Exception {
+  @ParameterizedTest
+  @MethodSource
+  void should_process_short_options(
+      String shortOptionName, String shortOptionValue, String setting, Object expected)
+      throws Exception {
     Config result =
         DataStaxBulkLoader.parseCommandLine(
-            "load",
-            new String[] {
-              "-comment",
-              "comment",
-              "-delim",
-              "|",
-              "-encoding",
-              "enc",
-              "-escape",
-              "^",
-              "-header",
-              "header",
-              "-skipRecords",
-              "3",
-              "-maxRecords",
-              "111",
-              "-maxConcurrentFiles",
-              "222",
-              "-quote",
-              "'",
-              "-url",
-              "http://findit"
-            });
-
-    assertThat(result.getString("connector.csv.comment")).isEqualTo("comment");
-    assertThat(result.getString("connector.csv.delimiter")).isEqualTo("|");
-    assertThat(result.getString("connector.csv.encoding")).isEqualTo("enc");
-    assertThat(result.getString("connector.csv.escape")).isEqualTo("^");
-    assertThat(result.getString("connector.csv.header")).isEqualTo("header");
-    assertThat(result.getInt("connector.csv.skipRecords")).isEqualTo(3);
-    assertThat(result.getInt("connector.csv.maxRecords")).isEqualTo(111);
-    assertThat(result.getInt("connector.csv.maxConcurrentFiles")).isEqualTo(222);
-    assertThat(result.getString("connector.csv.quote")).isEqualTo("'");
-    assertThat(result.getString("connector.csv.url")).isEqualTo("http://findit");
+            "load", new String[] {shortOptionName, shortOptionValue});
+    assertThat(result.getAnyRef(setting)).isEqualTo(expected);
   }
 
-  @Test
-  void should_process_json_short_options() throws Exception {
+  @SuppressWarnings("unused")
+  private static Stream<Arguments> should_process_csv_short_options() {
+    return Stream.of(
+        Arguments.of("-comment", "comment", "connector.csv.comment", "comment"),
+        Arguments.of("-delim", "|", "connector.csv.delimiter", "|"),
+        Arguments.of("-encoding", "enc", "connector.csv.encoding", "enc"),
+        Arguments.of("-header", "header", "connector.csv.header", "header"),
+        Arguments.of("-escape", "^", "connector.csv.escape", "^"),
+        Arguments.of("-skipRecords", "3", "connector.csv.skipRecords", 3),
+        Arguments.of("-maxRecords", "111", "connector.csv.maxRecords", 111),
+        Arguments.of("-maxConcurrentFiles", "2C", "connector.csv.maxConcurrentFiles", "2C"),
+        Arguments.of("-quote", "'", "connector.csv.quote", "'"),
+        Arguments.of("-url", "http://findit", "connector.csv.url", "http://findit"));
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  void should_process_csv_short_options(
+      String shortOptionName, String shortOptionValue, String setting, Object expected)
+      throws Exception {
     Config result =
         DataStaxBulkLoader.parseCommandLine(
-            "load",
-            new String[] {
-              "-c",
-              "json",
-              "-encoding",
-              "enc",
-              "-skipRecords",
-              "3",
-              "-maxRecords",
-              "111",
-              "-maxConcurrentFiles",
-              "222",
-              "-url",
-              "http://findit"
-            });
+            "load", new String[] {shortOptionName, shortOptionValue});
+    assertThat(result.getAnyRef(setting)).isEqualTo(expected);
+  }
 
-    assertThat(result.getString("connector.json.encoding")).isEqualTo("enc");
-    assertThat(result.getInt("connector.json.skipRecords")).isEqualTo(3);
-    assertThat(result.getInt("connector.json.maxRecords")).isEqualTo(111);
-    assertThat(result.getInt("connector.json.maxConcurrentFiles")).isEqualTo(222);
-    assertThat(result.getString("connector.json.url")).isEqualTo("http://findit");
+  @SuppressWarnings("unused")
+  private static Stream<Arguments> should_process_json_short_options() {
+    return Stream.of(
+        Arguments.of("-encoding", "enc", "connector.json.encoding", "enc"),
+        Arguments.of("-skipRecords", "3", "connector.json.skipRecords", 3),
+        Arguments.of("-maxRecords", "111", "connector.json.maxRecords", 111),
+        Arguments.of("-maxConcurrentFiles", "2C", "connector.json.maxConcurrentFiles", "2C"),
+        Arguments.of("-url", "http://findit", "connector.json.url", "http://findit"));
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  void should_process_json_short_options(
+      String shortOptionName, String shortOptionValue, String setting, Object expected)
+      throws Exception {
+    Config result =
+        DataStaxBulkLoader.parseCommandLine(
+            "load", new String[] {"-c", "json", shortOptionName, shortOptionValue});
+    assertThat(result.getAnyRef(setting)).isEqualTo(expected);
   }
 
   @Test
@@ -566,284 +494,166 @@ class DataStaxBulkLoaderTest {
         "Unrecognized option: -kks");
   }
 
-  @Test
-  void should_process_core_long_options() throws Exception {
-    Config result =
-        DataStaxBulkLoader.parseCommandLine(
-            "load",
-            new String[] {
-              "--driver.hosts",
-              "host1, host2",
-              "--driver.port",
-              "1",
-              "--driver.protocol.compression",
-              "NONE",
-              "--driver.pooling.local.connections",
-              "2",
-              "--driver.pooling.requests",
-              "3",
-              "--driver.pooling.remote.connections",
-              "4",
-              "--driver.pooling.heartbeat",
-              "6 seconds",
-              "--driver.query.consistency",
-              "cl",
-              "--driver.query.serialConsistency",
-              "serial-cl",
-              "--driver.query.fetchSize",
-              "7",
-              "--driver.query.idempotence",
-              "false",
-              "--driver.socket.readTimeout",
-              "8 seconds",
-              "--driver.auth.provider",
-              "myauth",
-              "--driver.auth.username",
-              "user",
-              "--driver.auth.password",
-              "pass",
-              "--driver.auth.authorizationId",
-              "authid",
-              "--driver.auth.principal",
-              "user@foo.com",
-              "--driver.auth.keyTab",
-              "mykeytab",
-              "--driver.auth.saslService",
-              "sasl",
-              "--driver.ssl.provider",
-              "myssl",
-              "--driver.ssl.cipherSuites",
-              "[TLS]",
-              "--driver.ssl.truststore.path",
-              "trust-path",
-              "--driver.ssl.truststore.password",
-              "trust-pass",
-              "--driver.ssl.truststore.algorithm",
-              "trust-alg",
-              "--driver.ssl.keystore.path",
-              "keystore-path",
-              "--driver.ssl.keystore.password",
-              "keystore-pass",
-              "--driver.ssl.keystore.algorithm",
-              "keystore-alg",
-              "--driver.ssl.openssl.keyCertChain",
-              "key-cert-chain",
-              "--driver.ssl.openssl.privateKey",
-              "key",
-              "--driver.timestampGenerator",
-              "ts-gen",
-              "--driver.addressTranslator",
-              "address-translator",
-              "--driver.policy.lbp.localDc",
-              "localDc",
-              "--driver.policy.lbp.allowedHosts",
-              "wh1, wh2",
-              "--driver.policy.maxRetries",
-              "29",
-              "--engine.dryRun",
-              "true",
-              "--engine.executionId",
-              "MY_EXEC_ID",
-              "--batch.mode",
-              "batch-mode",
-              "--batch.bufferSize",
-              "9",
-              "--batch.maxBatchSize",
-              "10",
-              "--executor.maxInFlight",
-              "12",
-              "--executor.maxPerSecond",
-              "13",
-              "--executor.continuousPaging.pageUnit",
-              "BYTES",
-              "--executor.continuousPaging.pageSize",
-              "14",
-              "--executor.continuousPaging.maxPages",
-              "15",
-              "--executor.continuousPaging.maxPagesPerSecond",
-              "16",
-              "--log.directory",
-              "log-out",
-              "--log.maxErrors",
-              "18",
-              "--log.stmt.level",
-              "NORMAL",
-              "--log.stmt.maxQueryStringLength",
-              "19",
-              "--log.stmt.maxBoundValues",
-              "20",
-              "--log.stmt.maxBoundValueLength",
-              "21",
-              "--log.stmt.maxInnerStatements",
-              "22",
-              "--codec.locale",
-              "locale",
-              "--codec.timeZone",
-              "tz",
-              "--codec.booleanStrings",
-              "[\"Si\", \"No\"]",
-              "--codec.number",
-              "codec-number",
-              "--codec.timestamp",
-              "codec-ts",
-              "--codec.date",
-              "codec-date",
-              "--codec.time",
-              "codec-time",
-              "--monitoring.reportRate",
-              "23 sec",
-              "--monitoring.rateUnit",
-              "rate-unit",
-              "--monitoring.durationUnit",
-              "duration-unit",
-              "--monitoring.expectedWrites",
-              "24",
-              "--monitoring.expectedReads",
-              "25",
-              "--monitoring.jmx",
-              "false",
-              "--schema.keyspace",
-              "ks",
-              "--schema.table",
-              "table",
-              "--schema.query",
-              "SELECT JUNK",
-              "--schema.queryTimestamp",
-              "2018-05-18T15:00:00Z",
-              "--schema.queryTtl",
-              "28",
-              "--codec.nullStrings",
-              "[NIL, NADA]",
-              "--schema.nullToUnset",
-              "false",
-              "--schema.mapping",
-              "{0:\"f1\", 1:\"f2\"}",
-              "--connector.name",
-              "conn"
-            });
-    assertThat(result.getStringList("driver.hosts")).containsExactly("host1", "host2");
-    assertThat(result.getInt("driver.port")).isEqualTo(1);
-    assertThat(result.getString("driver.protocol.compression")).isEqualTo("NONE");
-    assertThat(result.getInt("driver.pooling.local.connections")).isEqualTo(2);
-    assertThat(result.getInt("driver.pooling.requests")).isEqualTo(3);
-    assertThat(result.getInt("driver.pooling.remote.connections")).isEqualTo(4);
-    assertThat(result.getString("driver.pooling.heartbeat")).isEqualTo("6 seconds");
-    assertThat(result.getString("driver.query.consistency")).isEqualTo("cl");
-    assertThat(result.getString("driver.query.serialConsistency")).isEqualTo("serial-cl");
-    assertThat(result.getInt("driver.query.fetchSize")).isEqualTo(7);
-    assertThat(result.getBoolean("driver.query.idempotence")).isFalse();
-    assertThat(result.getString("driver.socket.readTimeout")).isEqualTo("8 seconds");
-    assertThat(result.getString("driver.auth.provider")).isEqualTo("myauth");
-    assertThat(result.getString("driver.auth.username")).isEqualTo("user");
-    assertThat(result.getString("driver.auth.password")).isEqualTo("pass");
-    assertThat(result.getString("driver.auth.authorizationId")).isEqualTo("authid");
-    assertThat(result.getString("driver.auth.principal")).isEqualTo("user@foo.com");
-    assertThat(result.getString("driver.auth.keyTab")).isEqualTo("mykeytab");
-    assertThat(result.getString("driver.auth.saslService")).isEqualTo("sasl");
-    assertThat(result.getString("driver.ssl.provider")).isEqualTo("myssl");
-    assertThat(result.getStringList("driver.ssl.cipherSuites")).containsExactly("TLS");
-    assertThat(result.getString("driver.ssl.truststore.path")).isEqualTo("trust-path");
-    assertThat(result.getString("driver.ssl.truststore.password")).isEqualTo("trust-pass");
-    assertThat(result.getString("driver.ssl.truststore.algorithm")).isEqualTo("trust-alg");
-    assertThat(result.getString("driver.ssl.keystore.path")).isEqualTo("keystore-path");
-    assertThat(result.getString("driver.ssl.keystore.password")).isEqualTo("keystore-pass");
-    assertThat(result.getString("driver.ssl.keystore.algorithm")).isEqualTo("keystore-alg");
-    assertThat(result.getString("driver.ssl.openssl.keyCertChain")).isEqualTo("key-cert-chain");
-    assertThat(result.getString("driver.ssl.openssl.privateKey")).isEqualTo("key");
-    assertThat(result.getString("driver.timestampGenerator")).isEqualTo("ts-gen");
-    assertThat(result.getString("driver.addressTranslator")).isEqualTo("address-translator");
-    assertThat(result.getString("driver.policy.lbp.localDc")).isEqualTo("localDc");
-    assertThat(result.getStringList("driver.policy.lbp.allowedHosts"))
-        .containsExactly("wh1", "wh2");
-    assertThat(result.getInt("driver.policy.maxRetries")).isEqualTo(29);
-    assertThat(result.getBoolean("engine.dryRun")).isTrue();
-    assertThat(result.getString("engine.executionId")).isEqualTo("MY_EXEC_ID");
-    assertThat(result.getString("batch.mode")).isEqualTo("batch-mode");
-    assertThat(result.getInt("batch.bufferSize")).isEqualTo(9);
-    assertThat(result.getInt("batch.maxBatchSize")).isEqualTo(10);
-    assertThat(result.getInt("executor.maxInFlight")).isEqualTo(12);
-    assertThat(result.getInt("executor.maxPerSecond")).isEqualTo(13);
-    assertThat(result.getString("executor.continuousPaging.pageUnit")).isEqualTo("BYTES");
-    assertThat(result.getInt("executor.continuousPaging.pageSize")).isEqualTo(14);
-    assertThat(result.getInt("executor.continuousPaging.maxPages")).isEqualTo(15);
-    assertThat(result.getInt("executor.continuousPaging.maxPagesPerSecond")).isEqualTo(16);
-    assertThat(result.getString("log.directory")).isEqualTo("log-out");
-    assertThat(result.getInt("log.maxErrors")).isEqualTo(18);
-    assertThat(result.getString("log.stmt.level")).isEqualTo("NORMAL");
-    assertThat(result.getInt("log.stmt.maxQueryStringLength")).isEqualTo(19);
-    assertThat(result.getInt("log.stmt.maxBoundValues")).isEqualTo(20);
-    assertThat(result.getInt("log.stmt.maxBoundValueLength")).isEqualTo(21);
-    assertThat(result.getInt("log.stmt.maxInnerStatements")).isEqualTo(22);
-    assertThat(result.getString("codec.locale")).isEqualTo("locale");
-    assertThat(result.getString("codec.timeZone")).isEqualTo("tz");
-    assertThat(result.getStringList("codec.booleanStrings")).containsExactly("Si", "No");
-    assertThat(result.getString("codec.number")).isEqualTo("codec-number");
-    assertThat(result.getString("codec.timestamp")).isEqualTo("codec-ts");
-    assertThat(result.getString("codec.date")).isEqualTo("codec-date");
-    assertThat(result.getString("codec.time")).isEqualTo("codec-time");
-    assertThat(result.getString("monitoring.reportRate")).isEqualTo("23 sec");
-    assertThat(result.getString("monitoring.rateUnit")).isEqualTo("rate-unit");
-    assertThat(result.getString("monitoring.durationUnit")).isEqualTo("duration-unit");
-    assertThat(result.getInt("monitoring.expectedWrites")).isEqualTo(24);
-    assertThat(result.getInt("monitoring.expectedReads")).isEqualTo(25);
-    assertThat(result.getBoolean("monitoring.jmx")).isFalse();
-    assertThat(result.getString("schema.keyspace")).isEqualTo("ks");
-    assertThat(result.getString("schema.table")).isEqualTo("table");
-    assertThat(result.getString("schema.query")).isEqualTo("SELECT JUNK");
-    assertThat(result.getString("schema.queryTimestamp")).isEqualTo("2018-05-18T15:00:00Z");
-    assertThat(result.getInt("schema.queryTtl")).isEqualTo(28);
-    assertThat(result.getStringList("codec.nullStrings")).containsExactly("NIL", "NADA");
-    assertThat(result.getString("schema.nullToUnset")).isEqualTo("false");
-    assertThat(result.getString("schema.mapping")).isEqualTo("{0:f1, 1:f2}");
-    assertThat(result.getString("connector.name")).isEqualTo("conn");
+  @SuppressWarnings("unused")
+  private static Stream<Arguments> should_process_long_options() {
+    return Stream.of(
+        Arguments.of("driver.hosts", "host1, host2", Lists.newArrayList("host1", "host2")),
+        Arguments.of("driver.port", "1", 1),
+        Arguments.of("driver.protocol.compression", "NONE", "NONE"),
+        Arguments.of("driver.pooling.local.connections", "2", 2),
+        Arguments.of("driver.pooling.remote.connections", "3", 3),
+        Arguments.of("driver.pooling.requests", "4", 4),
+        Arguments.of("driver.pooling.heartbeat", "6 seconds", "6 seconds"),
+        Arguments.of("driver.query.consistency", "cl", "cl"),
+        Arguments.of("driver.query.serialConsistency", "serial-cl", "serial-cl"),
+        Arguments.of("driver.query.fetchSize", "7", 7),
+        Arguments.of("driver.query.idempotence", "false", false),
+        Arguments.of("driver.socket.readTimeout", "8 seconds", "8 seconds"),
+        Arguments.of("driver.auth.provider", "myauth", "myauth"),
+        Arguments.of("driver.auth.username", "user", "user"),
+        Arguments.of("driver.auth.password", "pass", "pass"),
+        Arguments.of("driver.auth.authorizationId", "authid", "authid"),
+        Arguments.of("driver.auth.principal", "user@foo.com", "user@foo.com"),
+        Arguments.of("driver.auth.keyTab", "mykeytab", "mykeytab"),
+        Arguments.of("driver.auth.saslService", "sasl", "sasl"),
+        Arguments.of("driver.ssl.provider", "myssl", "myssl"),
+        Arguments.of("driver.ssl.cipherSuites", "[TLS]", Lists.newArrayList("TLS")),
+        Arguments.of("driver.ssl.truststore.path", "trust-path", "trust-path"),
+        Arguments.of("driver.ssl.truststore.password", "trust-pass", "trust-pass"),
+        Arguments.of("driver.ssl.truststore.algorithm", "trust-alg", "trust-alg"),
+        Arguments.of("driver.ssl.keystore.path", "keystore-path", "keystore-path"),
+        Arguments.of("driver.ssl.keystore.password", "keystore-pass", "keystore-pass"),
+        Arguments.of("driver.ssl.keystore.algorithm", "keystore-alg", "keystore-alg"),
+        Arguments.of("driver.ssl.openssl.keyCertChain", "key-cert-chain", "key-cert-chain"),
+        Arguments.of("driver.ssl.openssl.privateKey", "key", "key"),
+        Arguments.of("driver.timestampGenerator", "ts-gen", "ts-gen"),
+        Arguments.of("driver.addressTranslator", "address-translator", "address-translator"),
+        Arguments.of("driver.policy.lbp.localDc", "localDc", "localDc"),
+        Arguments.of(
+            "driver.policy.lbp.allowedHosts", "wh1, wh2", Lists.newArrayList("wh1", "wh2")),
+        Arguments.of("driver.policy.maxRetries", "29", 29),
+        Arguments.of(
+            "driver.cloud.secureConnectBundle", "secureConnectBundle", "secureConnectBundle"),
+        Arguments.of("engine.dryRun", "true", true),
+        Arguments.of("engine.executionId", "MY_EXEC_ID", "MY_EXEC_ID"),
+        Arguments.of("batch.mode", "batch-mode", "batch-mode"),
+        Arguments.of("batch.bufferSize", "9", 9),
+        Arguments.of("batch.maxBatchSize", "10", 10),
+        Arguments.of("executor.maxInFlight", "12", 12),
+        Arguments.of("executor.maxPerSecond", "13", 13),
+        Arguments.of("executor.continuousPaging.pageUnit", "BYTES", "BYTES"),
+        Arguments.of("executor.continuousPaging.pageSize", "14", 14),
+        Arguments.of("executor.continuousPaging.maxPages", "15", 15),
+        Arguments.of("executor.continuousPaging.maxPagesPerSecond", "16", 16),
+        Arguments.of("log.directory", "log-out", "log-out"),
+        Arguments.of("log.maxErrors", "18", 18),
+        Arguments.of("log.stmt.level", "NORMAL", "NORMAL"),
+        Arguments.of("log.stmt.maxQueryStringLength", "19", 19),
+        Arguments.of("log.stmt.maxBoundValues", "20", 20),
+        Arguments.of("log.stmt.maxBoundValueLength", "21", 21),
+        Arguments.of("log.stmt.maxInnerStatements", "22", 22),
+        Arguments.of("codec.locale", "locale", "locale"),
+        Arguments.of("codec.timeZone", "tz", "tz"),
+        Arguments.of("codec.booleanStrings", "[\"Si\", \"No\"]", Lists.newArrayList("Si", "No")),
+        Arguments.of("codec.number", "codec-number", "codec-number"),
+        Arguments.of("codec.timestamp", "codec-ts", "codec-ts"),
+        Arguments.of("codec.date", "codec-date", "codec-date"),
+        Arguments.of("codec.time", "codec-time", "codec-time"),
+        Arguments.of("monitoring.reportRate", "23 sec", "23 sec"),
+        Arguments.of("monitoring.rateUnit", "rate-unit", "rate-unit"),
+        Arguments.of("monitoring.durationUnit", "duration-unit", "duration-unit"),
+        Arguments.of("monitoring.expectedWrites", "24", 24),
+        Arguments.of("monitoring.expectedReads", "25", 25),
+        Arguments.of("monitoring.jmx", "false", false),
+        Arguments.of("schema.keyspace", "ks", "ks"),
+        Arguments.of("schema.table", "table", "table"),
+        Arguments.of("schema.query", "SELECT JUNK", "SELECT JUNK"),
+        Arguments.of("schema.queryTimestamp", "2018-05-18T15:00:00Z", "2018-05-18T15:00:00Z"),
+        Arguments.of("schema.queryTtl", "28", 28),
+        Arguments.of("codec.nullStrings", "[NIL, NADA]", Lists.newArrayList("NIL", "NADA")),
+        Arguments.of("schema.nullToUnset", "false", false),
+        Arguments.of(
+            "schema.mapping", "{0:\"f1\", 1:\"f2\"}", "{0:f1, 1:f2}"), // type is forced to string
+        Arguments.of("connector.name", "conn", "conn"));
   }
 
-  @Test
-  void should_process_csv_long_options() throws Exception {
+  @ParameterizedTest
+  @MethodSource
+  void should_process_long_options(String settingName, String settingValue, Object expected)
+      throws Exception {
     Config result =
         DataStaxBulkLoader.parseCommandLine(
-            "load",
-            new String[] {
-              "--connector.csv.url",
-              "url",
-              "--connector.csv.fileNamePattern",
-              "pat",
-              "--connector.csv.fileNameFormat",
-              "fmt",
-              "--connector.csv.recursive",
-              "true",
-              "--connector.csv.maxConcurrentFiles",
-              "1",
-              "--connector.csv.encoding",
-              "enc",
-              "--connector.csv.header",
-              "false",
-              "--connector.csv.delimiter",
-              "|",
-              "--connector.csv.quote",
-              "'",
-              "--connector.csv.escape",
-              "*",
-              "--connector.csv.comment",
-              "#",
-              "--connector.csv.skipRecords",
-              "2",
-              "--connector.csv.maxRecords",
-              "3"
-            });
-    assertThat(result.getString("connector.csv.url")).isEqualTo("url");
-    assertThat(result.getString("connector.csv.fileNamePattern")).isEqualTo("pat");
-    assertThat(result.getString("connector.csv.fileNameFormat")).isEqualTo("fmt");
-    assertThat(result.getBoolean("connector.csv.recursive")).isTrue();
-    assertThat(result.getInt("connector.csv.maxConcurrentFiles")).isEqualTo(1);
-    assertThat(result.getString("connector.csv.encoding")).isEqualTo("enc");
-    assertThat(result.getBoolean("connector.csv.header")).isFalse();
-    assertThat(result.getString("connector.csv.delimiter")).isEqualTo("|");
-    assertThat(result.getString("connector.csv.quote")).isEqualTo("'");
-    assertThat(result.getString("connector.csv.escape")).isEqualTo("*");
-    assertThat(result.getString("connector.csv.comment")).isEqualTo("#");
-    assertThat(result.getInt("connector.csv.skipRecords")).isEqualTo(2);
-    assertThat(result.getInt("connector.csv.maxRecords")).isEqualTo(3);
+            "load", new String[] {"--" + settingName, settingValue});
+    assertThat(result.getAnyRef(settingName)).isEqualTo(expected);
+  }
+
+  @SuppressWarnings("unused")
+  private static Stream<Arguments> should_process_csv_long_options() {
+    return Stream.of(
+        Arguments.of("connector.csv.url", "url", "url"),
+        Arguments.of("connector.csv.fileNamePattern", "pat", "pat"),
+        Arguments.of("connector.csv.fileNameFormat", "fmt", "fmt"),
+        Arguments.of("connector.csv.recursive", "true", true),
+        Arguments.of("connector.csv.maxConcurrentFiles", "2C", "2C"),
+        Arguments.of("connector.csv.encoding", "enc", "enc"),
+        Arguments.of("connector.csv.header", "false", false),
+        Arguments.of("connector.csv.delimiter", "|", "|"),
+        Arguments.of("connector.csv.quote", "'", "'"),
+        Arguments.of("connector.csv.escape", "*", "*"),
+        Arguments.of("connector.csv.comment", "#", "#"),
+        Arguments.of("connector.csv.skipRecords", "2", 2),
+        Arguments.of("connector.csv.maxRecords", "3", 3));
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  void should_process_csv_long_options(String settingName, String settingValue, Object expected)
+      throws Exception {
+    Config result =
+        DataStaxBulkLoader.parseCommandLine(
+            "load", new String[] {"--" + settingName, settingValue});
+    assertThat(result.getAnyRef(settingName)).isEqualTo(expected);
+  }
+
+  @SuppressWarnings("unused")
+  private static Stream<Arguments> should_process_json_long_options() {
+    return Stream.of(
+        Arguments.of("connector.json.url", "url", "url"),
+        Arguments.of("connector.json.fileNamePattern", "pat", "pat"),
+        Arguments.of("connector.json.fileNameFormat", "fmt", "fmt"),
+        Arguments.of("connector.json.recursive", "true", true),
+        Arguments.of("connector.json.maxConcurrentFiles", "2C", "2C"),
+        Arguments.of("connector.json.encoding", "enc", "enc"),
+        Arguments.of("connector.json.skipRecords", "2", 2),
+        Arguments.of("connector.json.maxRecords", "3", 3),
+        Arguments.of("connector.json.mode", "SINGLE_DOCUMENT", "SINGLE_DOCUMENT"),
+        Arguments.of(
+            "connector.json.parserFeatures",
+            "{f1 = true, f2 = false}",
+            ImmutableMap.of("f1", true, "f2", false)),
+        Arguments.of(
+            "connector.json.generatorFeatures",
+            "{g1 = true, g2 = false}",
+            ImmutableMap.of("g1", true, "g2", false)),
+        Arguments.of(
+            "connector.json.serializationFeatures",
+            "{s1 = true, s2 = false}",
+            ImmutableMap.of("s1", true, "s2", false)),
+        Arguments.of(
+            "connector.json.deserializationFeatures",
+            "{d1 = true, d2 = false}",
+            ImmutableMap.of("d1", true, "d2", false)),
+        Arguments.of("connector.json.prettyPrint", "true", true));
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  void should_process_json_long_options(String settingName, String settingValue, Object expected)
+      throws Exception {
+    Config result =
+        DataStaxBulkLoader.parseCommandLine(
+            "load", new String[] {"--" + settingName, settingValue});
+    assertThat(result.getAnyRef(settingName)).isEqualTo(expected);
   }
 
   @Test
@@ -889,64 +699,6 @@ class DataStaxBulkLoaderTest {
                     + "If you are using \\ (backslash) to define a path, "
                     + "escape it with \\\\ or use / (forward slash) instead.",
                 badJson));
-  }
-
-  @Test
-  void should_process_json_long_options() throws Exception {
-    DataStaxBulkLoader.DEFAULT = ConfigFactory.load().getConfig("dsbulk");
-    Config result =
-        DataStaxBulkLoader.parseCommandLine(
-            "load",
-            new String[] {
-              "-c",
-              "json",
-              "--connector.json.url",
-              "url",
-              "--connector.json.mode",
-              "SINGLE_DOCUMENT",
-              "--connector.json.fileNamePattern",
-              "pat",
-              "--connector.json.fileNameFormat",
-              "fmt",
-              "--connector.json.recursive",
-              "true",
-              "--connector.json.maxConcurrentFiles",
-              "1",
-              "--connector.json.encoding",
-              "enc",
-              "--connector.json.skipRecords",
-              "2",
-              "--connector.json.maxRecords",
-              "3",
-              "--connector.json.parserFeatures",
-              "{f1 = true, f2 = false}",
-              "--connector.json.generatorFeatures",
-              "{g1 = true, g2 = false}",
-              "--connector.json.serializationFeatures",
-              "{s1 = true, s2 = false}",
-              "--connector.json.deserializationFeatures",
-              "{d1 = true, d2 = false}",
-              "--connector.json.prettyPrint",
-              "true",
-            });
-    assertThat(result.getString("connector.json.url")).isEqualTo("url");
-    assertThat(result.getString("connector.json.mode")).isEqualTo("SINGLE_DOCUMENT");
-    assertThat(result.getString("connector.json.fileNamePattern")).isEqualTo("pat");
-    assertThat(result.getString("connector.json.fileNameFormat")).isEqualTo("fmt");
-    assertThat(result.getBoolean("connector.json.recursive")).isTrue();
-    assertThat(result.getInt("connector.json.maxConcurrentFiles")).isEqualTo(1);
-    assertThat(result.getString("connector.json.encoding")).isEqualTo("enc");
-    assertThat(result.getInt("connector.json.skipRecords")).isEqualTo(2);
-    assertThat(result.getInt("connector.json.maxRecords")).isEqualTo(3);
-    assertThat(result.getObject("connector.json.parserFeatures").unwrapped())
-        .isEqualTo(ImmutableMap.of("f1", true, "f2", false));
-    assertThat(result.getObject("connector.json.generatorFeatures").unwrapped())
-        .isEqualTo(ImmutableMap.of("g1", true, "g2", false));
-    assertThat(result.getObject("connector.json.serializationFeatures").unwrapped())
-        .isEqualTo(ImmutableMap.of("s1", true, "s2", false));
-    assertThat(result.getObject("connector.json.deserializationFeatures").unwrapped())
-        .isEqualTo(ImmutableMap.of("d1", true, "d2", false));
-    assertThat(result.getBoolean("connector.json.prettyPrint")).isTrue();
   }
 
   private void assertGlobalHelp(boolean jsonOnly) {

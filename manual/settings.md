@@ -1106,7 +1106,7 @@ Default: **"dse"**.
 
 Cloud-specific settings.
 
-#### --driver.cloud.secureConnectBundle _&lt;string&gt;_
+#### -b,--driver.cloud.secureConnectBundle _&lt;string&gt;_
 
 The location of the cloud secure bundle used to connect to Datastax Apache Cassandra as a
 service.
