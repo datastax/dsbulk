@@ -257,7 +257,8 @@ class ConfigUtilsTest {
 
   @Test
   void should_detect_value_from_reference() {
-    Config config = ConfigFactory.parseString("foo = -1").withFallback(ConfigFactory.defaultReference());
+    Config config =
+        ConfigFactory.parseString("foo = -1").withFallback(ConfigFactory.defaultReference());
     assertThat(isValueFromReferenceConfig(config, "foo")).isFalse();
     assertThat(isValueFromReferenceConfig(config, "bar")).isTrue();
   }
