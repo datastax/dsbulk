@@ -6,9 +6,8 @@
  * and will post the amended terms at
  * https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
  */
-package com.datastax.dsbulk.connectors.commons.internal;
+package com.datastax.dsbulk.commons.internal.io;
 
-import com.datastax.dsbulk.commons.internal.io.IOUtils;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import java.io.BufferedWriter;
 import java.io.IOException;

@@ -52,6 +52,7 @@ import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.datastax.dsbulk.commons.codecs.util.OverflowStrategy;
+import com.datastax.dsbulk.commons.internal.io.CompressedIOUtils;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
@@ -65,7 +66,6 @@ import com.datastax.dsbulk.commons.tests.utils.CQLUtils;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
 import com.datastax.dsbulk.commons.tests.utils.Version;
 import com.datastax.dsbulk.connectors.api.Record;
-import com.datastax.dsbulk.connectors.commons.internal.CompressedIOUtils;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.dsbulk.engine.tests.MockConnector;
 import com.datastax.dsbulk.engine.tests.utils.RecordUtils;
