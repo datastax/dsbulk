@@ -1161,7 +1161,8 @@ class DriverSettingsTest {
     assertThat(logs)
         .hasMessageContaining(
             "Changing default consistency level to LOCAL_QUORUM for Cloud deployments");
-    assertThat(settings.driverConfig).containsEntry(CLOUD_SECURE_CONNECT_BUNDLE, "/path/to/bundle");
+    assertThat(settings.driverConfig)
+        .containsEntry(CLOUD_SECURE_CONNECT_BUNDLE, "file:/path/to/bundle");
   }
 
   @ParameterizedTest
@@ -1185,7 +1186,8 @@ class DriverSettingsTest {
             String.format(
                 "Cloud deployments reject consistency level %s when writing; forcing LOCAL_QUORUM",
                 level));
-    assertThat(settings.driverConfig).containsEntry(CLOUD_SECURE_CONNECT_BUNDLE, "/path/to/bundle");
+    assertThat(settings.driverConfig)
+        .containsEntry(CLOUD_SECURE_CONNECT_BUNDLE, "file:/path/to/bundle");
     assertThat(settings.driverConfig).containsEntry(REQUEST_CONSISTENCY, "LOCAL_QUORUM");
   }
 
@@ -1206,7 +1208,8 @@ class DriverSettingsTest {
     DriverSettings settings = new DriverSettings(config);
     settings.init(true, new HashMap<>());
     assertThat(logs.getLoggedEvents()).isEmpty();
-    assertThat(settings.driverConfig).containsEntry(CLOUD_SECURE_CONNECT_BUNDLE, "/path/to/bundle");
+    assertThat(settings.driverConfig)
+        .containsEntry(CLOUD_SECURE_CONNECT_BUNDLE, "file:/path/to/bundle");
     assertThat(settings.driverConfig).containsEntry(REQUEST_CONSISTENCY, level.name());
   }
 
@@ -1237,7 +1240,8 @@ class DriverSettingsTest {
     DriverSettings settings = new DriverSettings(config);
     settings.init(false, new HashMap<>());
     assertThat(logs.getLoggedEvents()).isEmpty();
-    assertThat(settings.driverConfig).containsEntry(CLOUD_SECURE_CONNECT_BUNDLE, "/path/to/bundle");
+    assertThat(settings.driverConfig)
+        .containsEntry(CLOUD_SECURE_CONNECT_BUNDLE, "file:/path/to/bundle");
     assertThat(settings.driverConfig).containsEntry(REQUEST_CONSISTENCY, level.name());
   }
 
