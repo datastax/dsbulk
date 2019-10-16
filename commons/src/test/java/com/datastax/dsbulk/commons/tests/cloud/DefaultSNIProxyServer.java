@@ -39,7 +39,7 @@ public class DefaultSNIProxyServer implements SNIProxyServer {
   private final Path proxyPath;
 
   private volatile boolean running = false;
-  private CloudConfig config;
+  private volatile CloudConfig config;
 
   public DefaultSNIProxyServer() {
     this(Paths.get(System.getProperty(PROXY_PATH, "./")));
@@ -87,7 +87,7 @@ public class DefaultSNIProxyServer implements SNIProxyServer {
 
   @Override
   public Path getSecureBundlePath() {
-    // Bundles currently available as of 2019-09:
+    // Bundles currently available as of 2019-10:
     // creds-v1-invalid-ca.zip
     // creds-v1-unreachable.zip
     // creds-v1-wo-cert.zip

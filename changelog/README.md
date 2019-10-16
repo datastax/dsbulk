@@ -3,6 +3,7 @@
 ## DataStax Cloud (in progress)
 
 - [new feature] DAT-412: Add support for DataStax Cloud.
+- [improvement] DAT-492: Add CLI shortcut for secure connect bundle.
 
 
 ## 1.4.0 (in progress)
