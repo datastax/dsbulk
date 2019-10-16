@@ -11,6 +11,7 @@ package com.datastax.dsbulk.connectors.csv;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.getURLsFromFile;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isPathAbsentOrEmpty;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isPathPresentAndNotEmpty;
+import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isValueFromReferenceConfig;
 import static com.datastax.dsbulk.commons.internal.io.IOUtils.countReadableFiles;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
@@ -164,8 +165,6 @@ public class CSVConnector implements Connector {
       urls = loadURLs(settings);
       roots = new ArrayList<>();
       files = new ArrayList<>();
-      pattern = settings.getString(FILE_NAME_PATTERN);
-      encoding = settings.getCharset(ENCODING);
       compression = settings.getString(COMPRESSION);
       if (!CompressedIOUtils.isSupportedCompression(compression, read)) {
         throw new BulkConfigurationException(
@@ -175,6 +174,12 @@ public class CSVConnector implements Connector {
                 String.join(",", CompressedIOUtils.getSupportedCompressions(read)),
                 compression));
       }
+      pattern = settings.getString(FILE_NAME_PATTERN);
+      if (!CompressedIOUtils.isNoneCompression(compression)
+          && isValueFromReferenceConfig(settings, FILE_NAME_PATTERN)) {
+        pattern = pattern + CompressedIOUtils.getCompressionSuffix(compression);
+      }
+      encoding = settings.getCharset(ENCODING);
       delimiter = settings.getChar(DELIMITER);
       quote = settings.getChar(QUOTE);
       escape = settings.getChar(ESCAPE);
@@ -186,7 +191,7 @@ public class CSVConnector implements Connector {
       header = settings.getBoolean(HEADER);
       fileNameFormat = settings.getString(FILE_NAME_FORMAT);
       if (!CompressedIOUtils.isNoneCompression(compression)
-          && fileNameFormat.toLowerCase().endsWith(".csv")) {
+          && isValueFromReferenceConfig(settings, FILE_NAME_FORMAT)) {
         fileNameFormat = fileNameFormat + CompressedIOUtils.getCompressionSuffix(compression);
       }
       maxCharsPerColumn = settings.getInt(MAX_CHARS_PER_COLUMN);
@@ -443,13 +448,10 @@ public class CSVConnector implements Connector {
             if (countReadableFiles(root, recursive) == 0) {
               LOGGER.warn("Directory {} has no readable files.", root);
             } else {
-              String formatString =
-                  "No files in directory {} matched the connector.csv.fileNamePattern of \"{}\".";
-              if (!CompressedIOUtils.isNoneCompression(compression)) {
-                formatString =
-                    formatString + " Adjust it if connector.csv.compression is specified!";
-              }
-              LOGGER.warn(formatString, root, pattern);
+              LOGGER.warn(
+                  "No files in directory {} matched the connector.csv.fileNamePattern of \"{}\".",
+                  root,
+                  pattern);
             }
           }
           resourceCount += inDirectoryResourceCount;

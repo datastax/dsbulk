@@ -8,22 +8,17 @@
  */
 package com.datastax.dsbulk.connectors.commons.internal;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.datastax.oss.driver.shaded.guava.common.base.Charsets;
-import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.LineNumberReader;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -38,11 +33,12 @@ class CompressedIOUtilsTest {
   @ParameterizedTest(name = "[{index}] Compression {0} has correct file extension: {1}")
   @MethodSource
   @DisplayName("Should get correct file extension")
-  void getCompressionSuffix(final String compType, final String fileExtension) {
-    assertEquals(fileExtension, CompressedIOUtils.getCompressionSuffix(compType));
+  void should_get_correct_file_extension(String compression, String fileExtension) {
+    assertThat(CompressedIOUtils.getCompressionSuffix(compression)).isEqualTo(fileExtension);
   }
 
-  private static Stream<Arguments> getCompressionSuffix() {
+  @SuppressWarnings("unused")
+  private static Stream<Arguments> should_get_correct_file_extension() {
     return Stream.of(
         arguments(CompressedIOUtils.GZIP_COMPRESSION, ".gz"),
         arguments(CompressedIOUtils.XZ_COMPRESSION, ".xz"),
@@ -58,11 +54,12 @@ class CompressedIOUtilsTest {
   @ParameterizedTest(name = "[{index}] Is Compression {0} supported for write? {1}")
   @MethodSource
   @DisplayName("Compression should be supported for write")
-  void isSupportedWriteCompression(final String compType, boolean supported) {
-    assertEquals(supported, CompressedIOUtils.isSupportedCompression(compType, false));
+  void should_support_compression_when_writing(String compression, boolean supported) {
+    assertThat(CompressedIOUtils.isSupportedCompression(compression, false)).isEqualTo(supported);
   }
 
-  private static Stream<Arguments> isSupportedWriteCompression() {
+  @SuppressWarnings("unused")
+  private static Stream<Arguments> should_support_compression_when_writing() {
     return Stream.of(
         arguments(CompressedIOUtils.GZIP_COMPRESSION, true),
         arguments(CompressedIOUtils.XZ_COMPRESSION, true),
@@ -82,11 +79,12 @@ class CompressedIOUtilsTest {
   @ParameterizedTest(name = "[{index}] Is Compression {0} supported for read? {1}")
   @MethodSource
   @DisplayName("Compression should be supported for read")
-  void isSupportedReadCompression(final String compType, boolean supported) {
-    assertEquals(supported, CompressedIOUtils.isSupportedCompression(compType, true));
+  void should_support_compression_when_reading(String compression, boolean supported) {
+    assertThat(CompressedIOUtils.isSupportedCompression(compression, true)).isEqualTo(supported);
   }
 
-  private static Stream<Arguments> isSupportedReadCompression() {
+  @SuppressWarnings("unused")
+  private static Stream<Arguments> should_support_compression_when_reading() {
     return Stream.of(
         arguments(CompressedIOUtils.GZIP_COMPRESSION, true),
         arguments(CompressedIOUtils.XZ_COMPRESSION, true),
@@ -104,38 +102,20 @@ class CompressedIOUtilsTest {
   }
 
   @Test
-  void isNoneCompression() {
-    assertTrue(CompressedIOUtils.isNoneCompression("none"));
-  }
-
-  private static final ImmutableList<String> CONTENT =
-      ImmutableList.of("this is", "a", "test file");
-
-  boolean canReadContent(final String name, final String compression) throws IOException {
-    Path path = Paths.get("src/test/resources/compression").resolve(name);
-    return canReadContent(path, compression);
-  }
-
-  boolean canReadContent(final Path path, final String compression) throws IOException {
-    URL url = path.toUri().toURL();
-    LineNumberReader reader = CompressedIOUtils.newBufferedReader(url, Charsets.UTF_8, compression);
-    List<String> lines = reader.lines().collect(Collectors.toList());
-    assertNotNull(lines);
-    assertFalse(lines.isEmpty());
-    assertEquals(3, lines.size());
-    assertEquals(CONTENT, lines);
-
-    return true;
+  void should_detect_no_compression() {
+    assertThat(CompressedIOUtils.isNoneCompression("none")).isTrue();
   }
 
   @ParameterizedTest(name = "[{index}] Should read file {0} with compression {1}")
   @MethodSource
   @DisplayName("Should read compressed file")
-  void testReaderSupported(final String filename, final String compType) throws IOException {
-    assertTrue(canReadContent(filename, compType));
+  void should_read_compressed_file(String filename, String compression) throws IOException {
+    URL url = getClass().getResource("/compression/" + filename);
+    assertCanReadCompressed(url, compression);
   }
 
-  private static Stream<Arguments> testReaderSupported() {
+  @SuppressWarnings("unused")
+  private static Stream<Arguments> should_read_compressed_file() {
     return Stream.of(
         arguments("test-file", CompressedIOUtils.NONE_COMPRESSION),
         arguments("test.gz", CompressedIOUtils.GZIP_COMPRESSION),
@@ -153,52 +133,30 @@ class CompressedIOUtilsTest {
       name = "[{index}] Should throw exception when reading {0} with compression {1}")
   @MethodSource
   @DisplayName("Should throw exception when reading compressed file")
-  void testReaderExceptions(
-      final String filename,
-      final String compMethod,
-      final String description,
-      final String exceptionMessage) {
-    IOException thrown =
-        assertThrows(IOException.class, () -> canReadContent(filename, compMethod), description);
-    assertTrue(thrown.getMessage().contains(exceptionMessage));
+  void should_throw_IOE_when_reading_compressed_file(
+      String filename, String compression, String exceptionMessage) {
+    URL url = getClass().getResource("/compression/" + filename);
+    Throwable error = catchThrowable(() -> readCompressed(url, compression));
+    assertThat(error).isInstanceOf(IOException.class).hasMessageContaining(exceptionMessage);
   }
 
-  private static Stream<Arguments> testReaderExceptions() {
+  @SuppressWarnings("unused")
+  private static Stream<Arguments> should_throw_IOE_when_reading_compressed_file() {
     return Stream.of(
-        arguments(
-            "test-file",
-            "unknown",
-            "Expected error when reading with 'unknown'",
-            "Unsupported compression format: unknown"),
-        arguments(
-            "test.gz",
-            "xz",
-            "Expected error when reading gzip file as XZ compressed",
-            "Can't instantiate class for compression: xz"));
+        arguments("test-file", "unknown", "Unsupported compression format: unknown"),
+        arguments("test.gz", "xz", "Can't instantiate class for compression: xz"));
   }
 
   @ParameterizedTest(name = "[{index}] Should write file with compression {0}")
   @MethodSource
   @DisplayName("Should be able to write compressed file")
-  void testWriterSupported(final String compMethod) throws IOException {
-    Path path =
-        Files.createTempFile(
-            "dsbulk-", "-compress" + CompressedIOUtils.getCompressionSuffix(compMethod));
-    Files.deleteIfExists(path);
-    try (BufferedWriter writer =
-        CompressedIOUtils.newBufferedWriter(path.toUri().toURL(), Charsets.UTF_8, compMethod)) {
-      for (String line : CONTENT) {
-        writer.write(line);
-        writer.newLine();
-      }
-      writer.close();
-      assertTrue(canReadContent(path, compMethod));
-    } finally {
-      Files.deleteIfExists(path);
-    }
+  void should_write_compressed_file(String compression) throws IOException {
+    URL url = writeCompressed(compression);
+    assertCanReadCompressed(url, compression);
   }
 
-  private static Stream<Arguments> testWriterSupported() {
+  @SuppressWarnings("unused")
+  private static Stream<Arguments> should_write_compressed_file() {
     return Stream.of(
         arguments("none"),
         arguments("gzip"),
@@ -211,17 +169,56 @@ class CompressedIOUtilsTest {
         arguments("deflate"));
   }
 
-  @Test
-  void testWriterExceptions() throws IOException {
+  @ParameterizedTest(
+      name = "[{index}] Should throw exception when writing {0} with compression {1}")
+  @MethodSource
+  @DisplayName("Should throw exception when writing compressed file")
+  void should_throw_IOE_when_writing_compressed_file(String compression, String exceptionMessage)
+      throws IOException {
     Path path = Files.createTempFile("dsbulk-", "-compress");
-    IOException thrown =
-        assertThrows(
-            IOException.class,
-            () ->
-                CompressedIOUtils.newBufferedWriter(
-                    path.toUri().toURL(), Charsets.UTF_8, "unknown"),
-            "Expected error when writing with 'unknown'");
-    assertTrue(thrown.getMessage().contains("Unsupported compression format: unknown"));
-    Files.deleteIfExists(path);
+    Files.delete(path);
+    URL url = path.toUri().toURL();
+    Throwable error =
+        catchThrowable(() -> CompressedIOUtils.newBufferedWriter(url, Charsets.UTF_8, compression));
+    assertThat(error).isInstanceOf(IOException.class).hasMessageContaining(exceptionMessage);
+  }
+
+  @SuppressWarnings("unused")
+  private static Stream<Arguments> should_throw_IOE_when_writing_compressed_file() {
+    return Stream.of(
+        arguments("unknown", "Unsupported compression format: unknown"),
+        arguments("z", "Unsupported compression format: z"));
+  }
+
+  private static void assertCanReadCompressed(URL url, String compression) throws IOException {
+    List<String> lines = readCompressed(url, compression);
+    assertThat(lines)
+        .isNotNull()
+        .isNotEmpty()
+        .hasSize(3)
+        .containsExactly("this is", "a", "test file");
+  }
+
+  private static List<String> readCompressed(URL url, String compression) throws IOException {
+    LineNumberReader reader = CompressedIOUtils.newBufferedReader(url, Charsets.UTF_8, compression);
+    return reader.lines().collect(Collectors.toList());
+  }
+
+  private static URL writeCompressed(String compression) throws IOException {
+    Path path =
+        Files.createTempFile(
+            "dsbulk-", "-compress" + CompressedIOUtils.getCompressionSuffix(compression));
+    Files.delete(path);
+    URL url = path.toUri().toURL();
+    try (BufferedWriter writer =
+        CompressedIOUtils.newBufferedWriter(url, Charsets.UTF_8, compression)) {
+      writer.write("this is");
+      writer.newLine();
+      writer.write("a");
+      writer.newLine();
+      writer.write("test file");
+      writer.newLine();
+    }
+    return url;
   }
 }

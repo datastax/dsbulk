@@ -372,11 +372,15 @@ Default: **"\\"**.
 
 The file name format to use when writing. This setting is ignored when reading and for non-file URLs. The file name must comply with the formatting rules of `String.format()`, and must contain a `%d` format specifier that will be used to increment file name counters.
 
+If compression is enabled, the default value for this setting will be modified to include the default suffix for the selected compression method. For example, if compression is `gzip`, the default file name format will be `output-%06d.csv.gz`.
+
 Default: **"output-%06d.csv"**.
 
 #### --connector.csv.fileNamePattern _&lt;string&gt;_
 
 The glob pattern to use when searching for files to read. The syntax to use is the glob syntax, as described in `java.nio.file.FileSystem.getPathMatcher()`. This setting is ignored when writing and for non-file URLs. Only applicable when the *url* setting points to a directory on a known filesystem, ignored otherwise.
+
+If compression is enabled, the default value for this setting will be modified to include the default suffix for the selected compression method. For example, if compression is `gzip`, the default glob pattern will be `**/*.csv.gz`.
 
 Default: **"\*\*/\*.csv"**.
 
@@ -561,11 +565,15 @@ Default: **"UTF-8"**.
 
 The file name format to use when writing. This setting is ignored when reading and for non-file URLs. The file name must comply with the formatting rules of `String.format()`, and must contain a `%d` format specifier that will be used to increment file name counters.
 
+If compression is enabled, the default value for this setting will be modified to include the default suffix for the selected compression method. For example, if compression is `gzip`, the default file name format will be `output-%06d.json.gz`.
+
 Default: **"output-%06d.json"**.
 
 #### --connector.json.fileNamePattern _&lt;string&gt;_
 
 The glob pattern to use when searching for files to read. The syntax to use is the glob syntax, as described in `java.nio.file.FileSystem.getPathMatcher()`. This setting is ignored when writing and for non-file URLs. Only applicable when the *url* setting points to a directory on a known filesystem, ignored otherwise.
+
+If compression is enabled, the default value for this setting will be modified to include the default suffix for the selected compression method. For example, if compression is `gzip`, the default glob pattern will be `**/*.json.gz`.
 
 Default: **"\*\*/\*.json"**.
 

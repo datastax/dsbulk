@@ -107,7 +107,7 @@ class JsonConnectorTest {
   @ParameterizedTest(name = "[{index}] read multi doc file {0} with compression {1}")
   @MethodSource
   @DisplayName("Should read multidoc file with given compression")
-  void should_read_single_file_multi_doc(final String fileName, final String compMethod)
+  void should_read_single_file_multi_doc(final String fileName, final String compression)
       throws Exception {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
@@ -117,7 +117,7 @@ class JsonConnectorTest {
                         "url = %s, parserFeatures = {ALLOW_COMMENTS:true}, "
                             + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}"
                             + " , compression = \"%s\"",
-                        url("/" + fileName), compMethod))
+                        url("/" + fileName), compression))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
@@ -377,12 +377,8 @@ class JsonConnectorTest {
     }
   }
 
-  @ParameterizedTest(name = "[{index}] Should get correct message when compression {0} is used")
-  @MethodSource
-  @DisplayName("Should get correct exception message when there are no matching files")
-  void should_warn_when_no_files_matched(
-      final String compMethod, final String addText, @LogCapture LogInterceptor logs)
-      throws Exception {
+  @Test
+  void should_warn_when_no_files_matched(@LogCapture LogInterceptor logs) throws Exception {
     JsonConnector connector = new JsonConnector();
     Path rootPath = Files.createTempDirectory("empty");
     Files.createTempFile(rootPath, "test", ".txt");
@@ -391,17 +387,15 @@ class JsonConnectorTest {
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
                       String.format(
-                          "url = %s, recursive = true, fileNamePattern = \"**/part-*\""
-                              + ", compression = \"%s\"",
-                          quoteJson(rootPath), compMethod))
+                          "url = %s, recursive = true, fileNamePattern = \"**/part-*\"",
+                          quoteJson(rootPath)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);
       connector.init();
       assertThat(logs.getLoggedMessages())
           .contains(
               String.format(
-                  "No files in directory %s matched the connector.json.fileNamePattern of \"**/part-*\"."
-                      + addText,
+                  "No files in directory %s matched the connector.json.fileNamePattern of \"**/part-*\".",
                   rootPath));
       connector.close();
     } finally {
@@ -409,12 +403,47 @@ class JsonConnectorTest {
     }
   }
 
-  private static Stream<Arguments> should_warn_when_no_files_matched() {
+  @ParameterizedTest(name = "[{index}] Should get correct message when compression {0} is used")
+  @MethodSource
+  @DisplayName(
+      "Should get correct exception message when there are no matching files with compression enabled")
+  void should_warn_when_no_files_matched_and_compression_enabled(
+      String compression, @LogCapture LogInterceptor logs) throws Exception {
+    JsonConnector connector = new JsonConnector();
+    Path rootPath = Files.createTempDirectory("empty");
+    Files.createTempFile(rootPath, "test", ".txt");
+    try {
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = %s, recursive = true, compression = \"%s\"",
+                          quoteJson(rootPath), compression))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, true);
+      connector.init();
+      assertThat(logs.getLoggedMessages())
+          .contains(
+              String.format(
+                  "No files in directory %s matched the connector.json.fileNamePattern of \"**/*.json%s\".",
+                  rootPath, CompressedIOUtils.getCompressionSuffix(compression)));
+      connector.close();
+    } finally {
+      deleteDirectory(rootPath);
+    }
+  }
+
+  @SuppressWarnings("unused")
+  private static Stream<Arguments> should_warn_when_no_files_matched_and_compression_enabled() {
     return Stream.of(
-        arguments(
-            CompressedIOUtils.GZIP_COMPRESSION,
-            " Adjust it if connector.json.compression is specified!"),
-        arguments(CompressedIOUtils.NONE_COMPRESSION, ""));
+        arguments(CompressedIOUtils.GZIP_COMPRESSION),
+        arguments(CompressedIOUtils.XZ_COMPRESSION),
+        arguments(CompressedIOUtils.BZIP2_COMPRESSION),
+        arguments(CompressedIOUtils.LZMA_COMPRESSION),
+        arguments(CompressedIOUtils.ZSTD_COMPRESSION),
+        arguments(CompressedIOUtils.LZ4_COMPRESSION),
+        arguments(CompressedIOUtils.SNAPPY_COMPRESSION),
+        arguments(CompressedIOUtils.DEFLATE_COMPRESSION));
   }
 
   @Test
@@ -493,8 +522,7 @@ class JsonConnectorTest {
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
                       String.format(
-                          "url = %s, escape = \"\\\"\", compression = \"gzip\", maxConcurrentFiles = 1, mode = SINGLE_DOCUMENT"
-                              + ", fileNamePattern = \"**/*.json.gz\"",
+                          "url = %s, escape = \"\\\"\", compression = \"gzip\", maxConcurrentFiles = 1, mode = SINGLE_DOCUMENT",
                           quoteJson(out)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, false);
@@ -502,6 +530,47 @@ class JsonConnectorTest {
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
       connector.close();
       Path outPath = out.resolve("output-000001.json.gz");
+      BufferedReader reader =
+          new BufferedReader(
+              new InputStreamReader(
+                  new GZIPInputStream(Files.newInputStream(outPath)), Charsets.UTF_8));
+      List<String> actual = reader.lines().collect(Collectors.toList());
+      reader.close();
+      assertThat(actual).hasSize(7);
+      assertThat(actual)
+          .containsExactly(
+              "[",
+              "{\"Year\":1997,\"Make\":\"Ford\",\"Model\":\"E350\",\"Description\":\"ac, abs, moon\",\"Price\":3000.0},",
+              "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0},",
+              "{\"Year\":1996,\"Make\":\"Jeep\",\"Model\":\"Grand Cherokee\",\"Description\":\"MUST SELL!\\nair, moon roof, loaded\",\"Price\":4799.0},",
+              "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition, Very Large\\\"\",\"Description\":null,\"Price\":5000.0},",
+              "{\"Year\":null,\"Make\":null,\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}",
+              "]");
+    } finally {
+      deleteDirectory(dir);
+    }
+  }
+
+  @Test
+  void should_write_single_file_single_doc_compressed_gzip_custom_file_format() throws Exception {
+    JsonConnector connector = new JsonConnector();
+    // test directory creation
+    Path dir = Files.createTempDirectory("test");
+    Path out = dir.resolve("nonexistent");
+    try {
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      "url = "
+                          + quoteJson(out)
+                          + ", escape = \"\\\"\", compression = \"gzip\", "
+                          + "fileNameFormat = file%d, maxConcurrentFiles = 1, mode = SINGLE_DOCUMENT")
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, false);
+      connector.init();
+      Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
+      connector.close();
+      Path outPath = out.resolve("file1");
       BufferedReader reader =
           new BufferedReader(
               new InputStreamReader(

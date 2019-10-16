@@ -11,6 +11,7 @@ package com.datastax.dsbulk.connectors.json;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.getURLsFromFile;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isPathAbsentOrEmpty;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isPathPresentAndNotEmpty;
+import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isValueFromReferenceConfig;
 import static com.datastax.dsbulk.commons.internal.io.IOUtils.countReadableFiles;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
@@ -159,9 +160,6 @@ public class JsonConnector implements Connector {
       urls = loadURLs(settings);
       roots = new ArrayList<>();
       files = new ArrayList<>();
-      mode = settings.getEnum(DocumentMode.class, MODE);
-      pattern = settings.getString(FILE_NAME_PATTERN);
-      encoding = settings.getCharset(ENCODING);
       compression = settings.getString(COMPRESSION);
       if (!CompressedIOUtils.isSupportedCompression(compression, read)) {
         throw new BulkConfigurationException(
@@ -171,13 +169,20 @@ public class JsonConnector implements Connector {
                 String.join(",", CompressedIOUtils.getSupportedCompressions(read)),
                 compression));
       }
+      mode = settings.getEnum(DocumentMode.class, MODE);
+      pattern = settings.getString(FILE_NAME_PATTERN);
+      if (!CompressedIOUtils.isNoneCompression(compression)
+          && isValueFromReferenceConfig(settings, FILE_NAME_PATTERN)) {
+        pattern = pattern + CompressedIOUtils.getCompressionSuffix(compression);
+      }
+      encoding = settings.getCharset(ENCODING);
       skipRecords = settings.getLong(SKIP_RECORDS);
       maxRecords = settings.getLong(MAX_RECORDS);
       maxConcurrentFiles = settings.getThreads(MAX_CONCURRENT_FILES);
       recursive = settings.getBoolean(RECURSIVE);
       fileNameFormat = settings.getString(FILE_NAME_FORMAT);
       if (!CompressedIOUtils.isNoneCompression(compression)
-          && fileNameFormat.toLowerCase().endsWith(".json")) {
+          && isValueFromReferenceConfig(settings, FILE_NAME_FORMAT)) {
         fileNameFormat = fileNameFormat + CompressedIOUtils.getCompressionSuffix(compression);
       }
       parserFeatures = getFeatureMap(settings.getConfig(PARSER_FEATURES), JsonParser.Feature.class);
@@ -406,13 +411,10 @@ public class JsonConnector implements Connector {
             if (countReadableFiles(root, recursive) == 0) {
               LOGGER.warn("Directory {} has no readable files.", root);
             } else {
-              String formatString =
-                  "No files in directory {} matched the connector.json.fileNamePattern of \"{}\".";
-              if (!CompressedIOUtils.isNoneCompression(compression)) {
-                formatString =
-                    formatString + " Adjust it if connector.json.compression is specified!";
-              }
-              LOGGER.warn(formatString, root, pattern);
+              LOGGER.warn(
+                  "No files in directory {} matched the connector.json.fileNamePattern of \"{}\".",
+                  root,
+                  pattern);
             }
           }
           resourceCount += inDirectoryResourceCount;

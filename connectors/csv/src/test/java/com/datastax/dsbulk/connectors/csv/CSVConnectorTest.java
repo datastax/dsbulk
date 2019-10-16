@@ -105,7 +105,7 @@ class CSVConnectorTest {
   @ParameterizedTest(name = "[{index}] read {0} with compression {1}")
   @MethodSource
   @DisplayName("Should read single file with given compression")
-  void should_read_single_file(final String fileName, final String compMethod) throws Exception {
+  void should_read_single_file(String fileName, String compMethod) throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
@@ -121,6 +121,7 @@ class CSVConnectorTest {
     connector.close();
   }
 
+  @SuppressWarnings("unused")
   private static Stream<Arguments> should_read_single_file() {
     return Stream.of(
         arguments("sample.csv", CompressedIOUtils.NONE_COMPRESSION),
@@ -418,12 +419,8 @@ class CSVConnectorTest {
     }
   }
 
-  @ParameterizedTest(name = "[{index}] Should get correct message when compression {0} is used")
-  @MethodSource
-  @DisplayName("Should get correct exception message when there are no matching files")
-  void should_warn_when_no_files_matched(
-      final String compMethod, final String addText, @LogCapture LogInterceptor logs)
-      throws Exception {
+  @Test
+  void should_warn_when_no_files_matched(@LogCapture LogInterceptor logs) throws Exception {
     CSVConnector connector = new CSVConnector();
     Path rootPath = Files.createTempDirectory("empty");
     Files.createTempFile(rootPath, "test", ".txt");
@@ -432,17 +429,15 @@ class CSVConnectorTest {
           new DefaultLoaderConfig(
               ConfigFactory.parseString(
                       String.format(
-                          "url = %s, recursive = true, fileNamePattern = \"**/part-*\""
-                              + ", compression = \"%s\"",
-                          quoteJson(rootPath), compMethod))
+                          "url = %s, recursive = true, fileNamePattern = \"**/part-*\"",
+                          quoteJson(rootPath)))
                   .withFallback(CONNECTOR_DEFAULT_SETTINGS));
       connector.configure(settings, true);
       connector.init();
       assertThat(logs.getLoggedMessages())
           .contains(
               String.format(
-                  "No files in directory %s matched the connector.csv.fileNamePattern of \"**/part-*\"."
-                      + addText,
+                  "No files in directory %s matched the connector.csv.fileNamePattern of \"**/part-*\".",
                   rootPath));
       connector.close();
     } finally {
@@ -450,12 +445,47 @@ class CSVConnectorTest {
     }
   }
 
-  private static Stream<Arguments> should_warn_when_no_files_matched() {
+  @ParameterizedTest(name = "[{index}] Should get correct message when compression {0} is used")
+  @MethodSource
+  @DisplayName(
+      "Should get correct exception message when there are no matching files with compression enabled")
+  void should_warn_when_no_files_matched_and_compression_enabled(
+      String compression, @LogCapture LogInterceptor logs) throws Exception {
+    CSVConnector connector = new CSVConnector();
+    Path rootPath = Files.createTempDirectory("empty");
+    Files.createTempFile(rootPath, "test", ".txt");
+    try {
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = %s, recursive = true, compression = \"%s\"",
+                          quoteJson(rootPath), compression))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, true);
+      connector.init();
+      assertThat(logs.getLoggedMessages())
+          .contains(
+              String.format(
+                  "No files in directory %s matched the connector.csv.fileNamePattern of \"**/*.csv%s\".",
+                  rootPath, CompressedIOUtils.getCompressionSuffix(compression)));
+      connector.close();
+    } finally {
+      deleteDirectory(rootPath);
+    }
+  }
+
+  @SuppressWarnings("unused")
+  private static Stream<Arguments> should_warn_when_no_files_matched_and_compression_enabled() {
     return Stream.of(
-        arguments(
-            CompressedIOUtils.GZIP_COMPRESSION,
-            " Adjust it if connector.csv.compression is specified!"),
-        arguments(CompressedIOUtils.NONE_COMPRESSION, ""));
+        arguments(CompressedIOUtils.GZIP_COMPRESSION),
+        arguments(CompressedIOUtils.XZ_COMPRESSION),
+        arguments(CompressedIOUtils.BZIP2_COMPRESSION),
+        arguments(CompressedIOUtils.LZMA_COMPRESSION),
+        arguments(CompressedIOUtils.ZSTD_COMPRESSION),
+        arguments(CompressedIOUtils.LZ4_COMPRESSION),
+        arguments(CompressedIOUtils.SNAPPY_COMPRESSION),
+        arguments(CompressedIOUtils.DEFLATE_COMPRESSION));
   }
 
   @Test
@@ -510,6 +540,46 @@ class CSVConnectorTest {
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
       connector.close();
       Path outPath = out.resolve("output-000001.csv.gz");
+      BufferedReader reader =
+          new BufferedReader(
+              new InputStreamReader(
+                  new GZIPInputStream(Files.newInputStream(outPath)), Charsets.UTF_8));
+      List<String> actual = reader.lines().collect(Collectors.toList());
+      reader.close();
+      assertThat(actual).hasSize(7);
+      assertThat(actual)
+          .containsExactly(
+              "Year,Make,Model,Description,Price",
+              "1997,Ford,E350,\"  ac, abs, moon  \",3000.00",
+              "1999,Chevy,\"Venture \"\"Extended Edition\"\"\",,4900.00",
+              "1996,Jeep,Grand Cherokee,\"MUST SELL!",
+              "air, moon roof, loaded\",4799.00",
+              "1999,Chevy,\"Venture \"\"Extended Edition, Very Large\"\"\",,5000.00",
+              ",,\"Venture \"\"Extended Edition\"\"\",,4900.00");
+    } finally {
+      deleteDirectory(dir);
+    }
+  }
+
+  @Test
+  void should_write_single_file_compressed_gzip_custom_file_format() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    // test directory creation
+    Path dir = Files.createTempDirectory("test");
+    Path out = dir.resolve("nonexistent");
+    try {
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      "url = "
+                          + quoteJson(out)
+                          + ", escape = \"\\\"\", maxConcurrentFiles = 1, compression = \"gzip\", fileNameFormat = file%d")
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, false);
+      connector.init();
+      Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
+      connector.close();
+      Path outPath = out.resolve("file1");
       BufferedReader reader =
           new BufferedReader(
               new InputStreamReader(
