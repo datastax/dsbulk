@@ -392,4 +392,22 @@ public class ConfigUtils {
   public static boolean isPathPresentAndNotEmpty(Config config, String path) {
     return config.hasPath(path) && !config.getString(path).isEmpty();
   }
+
+  /**
+   * Checks whether the given path has a default value or not.
+   *
+   * <p>A default value is the value defined in reference.conf.
+   *
+   * @param config The config.
+   * @param path The path expression.
+   * @return {@code true} if the given path has a default value, {@code false} otherwise.
+   */
+  public static boolean isValueFromReferenceConfig(Config config, String path) {
+    if (config.getIsNull(path)) {
+      // cannot really tell what is the origin of a path that is set to null.
+      return true;
+    }
+    String resource = config.getValue(path).origin().resource();
+    return resource != null && resource.equals("reference.conf");
+  }
 }

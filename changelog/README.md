@@ -6,6 +6,7 @@
 - [new feature] DAT-412: Add support for DataStax Cloud.
 - [improvement] DAT-492: Add CLI shortcut for secure connect bundle.
 - [improvement] DAT-490: Allow secure connect bundle to be provided from external URL.
+- [improvement] DAT-449: Add support for loading and unloading from/to compressed files.
 
 
 ### 1.3.4
@@ -44,12 +45,6 @@
 - [improvement] DAT-388: Revisit "parallel" flows.
 - [bug] DAT-392: Setting executor.maxInFlight to a negative value triggers fatal error.
 - [improvement] DAT-384: Improve support for lightweight transactions.
-
-
-### 1.3.0
-### 2.0.0-alpha1 (in progress)
-
-- [improvement] DAT-303: Update DSBulk to use Java DSE Driver 2.0.
 
 
 ### 1.3.0 (in progress)

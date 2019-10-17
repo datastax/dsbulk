@@ -13,6 +13,7 @@ import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.getNullSaf
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.getTypeHint;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.getTypeString;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.getValueType;
+import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isValueFromReferenceConfig;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.resolvePath;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.resolveThreads;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.resolveURL;
@@ -31,6 +32,7 @@ import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.utils.URLUtils;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
+import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import java.io.IOException;
@@ -251,6 +253,14 @@ class ConfigUtilsTest {
     assertThat(urlsFromFile).containsExactly(new URL("http://foo.com/bar?param=καλημέρα"));
 
     Files.delete(urlFile);
+  }
+
+  @Test
+  void should_detect_value_from_reference() {
+    Config config =
+        ConfigFactory.parseString("foo = -1").withFallback(ConfigFactory.defaultReference());
+    assertThat(isValueFromReferenceConfig(config, "foo")).isFalse();
+    assertThat(isValueFromReferenceConfig(config, "bar")).isTrue();
   }
 
   static List<Arguments> urlsProvider() throws MalformedURLException {
