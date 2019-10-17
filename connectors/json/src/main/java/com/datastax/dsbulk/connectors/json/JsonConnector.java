@@ -11,11 +11,13 @@ package com.datastax.dsbulk.connectors.json;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.getURLsFromFile;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isPathAbsentOrEmpty;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isPathPresentAndNotEmpty;
+import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isValueFromReferenceConfig;
 import static com.datastax.dsbulk.commons.internal.io.IOUtils.countReadableFiles;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
+import com.datastax.dsbulk.commons.internal.io.CompressedIOUtils;
 import com.datastax.dsbulk.commons.internal.io.IOUtils;
 import com.datastax.dsbulk.commons.internal.reactive.SimpleBackpressureController;
 import com.datastax.dsbulk.connectors.api.CommonConnectorFeature;
@@ -108,6 +110,7 @@ public class JsonConnector implements Connector {
   private static final String MODE = "mode";
   private static final String FILE_NAME_PATTERN = "fileNamePattern";
   private static final String ENCODING = "encoding";
+  private static final String COMPRESSION = "compression";
   private static final String SKIP_RECORDS = "skipRecords";
   private static final String MAX_RECORDS = "maxRecords";
   private static final String MAX_CONCURRENT_FILES = "maxConcurrentFiles";
@@ -130,6 +133,7 @@ public class JsonConnector implements Connector {
   private List<URL> files;
   private String pattern;
   private Charset encoding;
+  private String compression;
   private long skipRecords;
   private long maxRecords;
   private int maxConcurrentFiles;
@@ -156,14 +160,31 @@ public class JsonConnector implements Connector {
       urls = loadURLs(settings);
       roots = new ArrayList<>();
       files = new ArrayList<>();
+      compression = settings.getString(COMPRESSION);
+      if (!CompressedIOUtils.isSupportedCompression(compression, read)) {
+        throw new BulkConfigurationException(
+            String.format(
+                "Invalid value for connector.json.%s, valid values: %s, got: '%s'",
+                COMPRESSION,
+                String.join(",", CompressedIOUtils.getSupportedCompressions(read)),
+                compression));
+      }
       mode = settings.getEnum(DocumentMode.class, MODE);
       pattern = settings.getString(FILE_NAME_PATTERN);
+      if (!CompressedIOUtils.isNoneCompression(compression)
+          && isValueFromReferenceConfig(settings, FILE_NAME_PATTERN)) {
+        pattern = pattern + CompressedIOUtils.getCompressionSuffix(compression);
+      }
       encoding = settings.getCharset(ENCODING);
       skipRecords = settings.getLong(SKIP_RECORDS);
       maxRecords = settings.getLong(MAX_RECORDS);
       maxConcurrentFiles = settings.getThreads(MAX_CONCURRENT_FILES);
       recursive = settings.getBoolean(RECURSIVE);
       fileNameFormat = settings.getString(FILE_NAME_FORMAT);
+      if (!CompressedIOUtils.isNoneCompression(compression)
+          && isValueFromReferenceConfig(settings, FILE_NAME_FORMAT)) {
+        fileNameFormat = fileNameFormat + CompressedIOUtils.getCompressionSuffix(compression);
+      }
       parserFeatures = getFeatureMap(settings.getConfig(PARSER_FEATURES), JsonParser.Feature.class);
       generatorFeatures =
           getFeatureMap(settings.getConfig(GENERATOR_FEATURES), JsonGenerator.Feature.class);
@@ -442,7 +463,8 @@ public class JsonConnector implements Connector {
               // DAT-177: Do not call sink.onDispose nor sink.onCancel,
               // as doing so seems to prevent the flow from completing in rare occasions.
               JsonFactory factory = objectMapper.getFactory();
-              try (BufferedReader r = IOUtils.newBufferedReader(url, encoding);
+              try (BufferedReader r =
+                      CompressedIOUtils.newBufferedReader(url, encoding, compression);
                   JsonParser parser = factory.createParser(r)) {
                 if (mode == DocumentMode.SINGLE_DOCUMENT) {
                   do {
@@ -587,7 +609,8 @@ public class JsonConnector implements Connector {
 
   private JsonGenerator createJsonWriter(URL url) throws IOException {
     JsonFactory factory = objectMapper.getFactory();
-    JsonGenerator writer = factory.createGenerator(IOUtils.newBufferedWriter(url, encoding));
+    JsonGenerator writer =
+        factory.createGenerator(CompressedIOUtils.newBufferedWriter(url, encoding, compression));
     writer.setRootValueSeparator(new SerializedString(System.lineSeparator()));
     return writer;
   }

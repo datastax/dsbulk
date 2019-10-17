@@ -11,11 +11,13 @@ package com.datastax.dsbulk.connectors.csv;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.getURLsFromFile;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isPathAbsentOrEmpty;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isPathPresentAndNotEmpty;
+import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isValueFromReferenceConfig;
 import static com.datastax.dsbulk.commons.internal.io.IOUtils.countReadableFiles;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
+import com.datastax.dsbulk.commons.internal.io.CompressedIOUtils;
 import com.datastax.dsbulk.commons.internal.io.IOUtils;
 import com.datastax.dsbulk.commons.internal.reactive.SimpleBackpressureController;
 import com.datastax.dsbulk.connectors.api.CommonConnectorFeature;
@@ -96,6 +98,7 @@ public class CSVConnector implements Connector {
   private static final String URLFILE = "urlfile";
   private static final String FILE_NAME_PATTERN = "fileNamePattern";
   private static final String ENCODING = "encoding";
+  private static final String COMPRESSION = "compression";
   private static final String DELIMITER = "delimiter";
   private static final String QUOTE = "quote";
   private static final String ESCAPE = "escape";
@@ -126,6 +129,7 @@ public class CSVConnector implements Connector {
   private List<URL> files;
   private String pattern;
   private Charset encoding;
+  private String compression;
   private char delimiter;
   private char quote;
   private char escape;
@@ -161,7 +165,20 @@ public class CSVConnector implements Connector {
       urls = loadURLs(settings);
       roots = new ArrayList<>();
       files = new ArrayList<>();
+      compression = settings.getString(COMPRESSION);
+      if (!CompressedIOUtils.isSupportedCompression(compression, read)) {
+        throw new BulkConfigurationException(
+            String.format(
+                "Invalid value for connector.csv.%s, valid values: %s, got: '%s'",
+                COMPRESSION,
+                String.join(",", CompressedIOUtils.getSupportedCompressions(read)),
+                compression));
+      }
       pattern = settings.getString(FILE_NAME_PATTERN);
+      if (!CompressedIOUtils.isNoneCompression(compression)
+          && isValueFromReferenceConfig(settings, FILE_NAME_PATTERN)) {
+        pattern = pattern + CompressedIOUtils.getCompressionSuffix(compression);
+      }
       encoding = settings.getCharset(ENCODING);
       delimiter = settings.getChar(DELIMITER);
       quote = settings.getChar(QUOTE);
@@ -173,6 +190,10 @@ public class CSVConnector implements Connector {
       recursive = settings.getBoolean(RECURSIVE);
       header = settings.getBoolean(HEADER);
       fileNameFormat = settings.getString(FILE_NAME_FORMAT);
+      if (!CompressedIOUtils.isNoneCompression(compression)
+          && isValueFromReferenceConfig(settings, FILE_NAME_FORMAT)) {
+        fileNameFormat = fileNameFormat + CompressedIOUtils.getCompressionSuffix(compression);
+      }
       maxCharsPerColumn = settings.getInt(MAX_CHARS_PER_COLUMN);
       maxColumns = settings.getInt(MAX_COLUMNS);
       newline = settings.getString(NEWLINE);
@@ -480,7 +501,7 @@ public class CSVConnector implements Connector {
               long recordNumber = 1;
               LOGGER.debug("Reading {}", url);
               URI resource = URI.create(url.toExternalForm());
-              try (Reader r = IOUtils.newBufferedReader(url, encoding)) {
+              try (Reader r = CompressedIOUtils.newBufferedReader(url, encoding, compression)) {
                 parser.beginParsing(r);
                 ParsingContext context = parser.getContext();
                 MappedField[] fieldNames = null;
@@ -621,7 +642,9 @@ public class CSVConnector implements Connector {
     private void open() throws IOException {
       url = getOrCreateDestinationURL();
       try {
-        writer = new CsvWriter(IOUtils.newBufferedWriter(url, encoding), writerSettings);
+        writer =
+            new CsvWriter(
+                CompressedIOUtils.newBufferedWriter(url, encoding, compression), writerSettings);
         LOGGER.debug("Writing {}", url);
       } catch (ClosedChannelException e) {
         // OK, happens when the channel was closed due to interruption

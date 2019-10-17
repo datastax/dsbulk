@@ -22,10 +22,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.util.Throwables.getRootCause;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.internal.io.CompressedIOUtils;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
@@ -37,14 +39,17 @@ import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultIndexedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
+import com.datastax.oss.driver.shaded.guava.common.base.Charsets;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.univocity.parsers.common.TextParsingException;
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -57,11 +62,17 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.zip.GZIPInputStream;
 import org.assertj.core.util.Throwables;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.event.Level;
 import reactor.core.publisher.Flux;
 import ru.lanwen.wiremock.ext.WiremockResolver;
@@ -96,21 +107,38 @@ class CSVConnectorTest {
     Files.delete(MULTIPLE_URLS_FILE);
   }
 
-  @Test
-  void should_read_single_file() throws Exception {
+  @ParameterizedTest(name = "[{index}] read {0} with compression {1}")
+  @MethodSource
+  @DisplayName("Should read single file with given compression")
+  void should_read_single_file(String fileName, String compMethod) throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
-                        "url = %s, normalizeLineEndingsInQuotes = true, escape = \"\\\"\", comment = \"#\"",
-                        url("/sample.csv")))
+                        "url = %s, normalizeLineEndingsInQuotes = true, escape = \"\\\"\", comment = \"#\", compression = \"%s\"",
+                        url("/" + fileName), compMethod))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
     List<Record> actual = Flux.from(connector.read()).collectList().block();
     assertRecords(actual);
     connector.close();
+  }
+
+  @SuppressWarnings("unused")
+  private static Stream<Arguments> should_read_single_file() {
+    return Stream.of(
+        arguments("sample.csv", CompressedIOUtils.NONE_COMPRESSION),
+        arguments("sample.csv.gz", CompressedIOUtils.GZIP_COMPRESSION),
+        arguments("sample.csv.bz2", CompressedIOUtils.BZIP2_COMPRESSION),
+        arguments("sample.csv.lz4", CompressedIOUtils.LZ4_COMPRESSION),
+        arguments("sample.csv.snappy", CompressedIOUtils.SNAPPY_COMPRESSION),
+        arguments("sample.csv.z", CompressedIOUtils.Z_COMPRESSION),
+        arguments("sample.csv.br", CompressedIOUtils.BROTLI_COMPRESSION),
+        arguments("sample.csv.lzma", CompressedIOUtils.LZMA_COMPRESSION),
+        arguments("sample.csv.xz", CompressedIOUtils.XZ_COMPRESSION),
+        arguments("sample.csv.zstd", CompressedIOUtils.ZSTD_COMPRESSION));
   }
 
   @Test
@@ -422,6 +450,49 @@ class CSVConnectorTest {
     }
   }
 
+  @ParameterizedTest(name = "[{index}] Should get correct message when compression {0} is used")
+  @MethodSource
+  @DisplayName(
+      "Should get correct exception message when there are no matching files with compression enabled")
+  void should_warn_when_no_files_matched_and_compression_enabled(
+      String compression, @LogCapture LogInterceptor logs) throws Exception {
+    CSVConnector connector = new CSVConnector();
+    Path rootPath = Files.createTempDirectory("empty");
+    Files.createTempFile(rootPath, "test", ".txt");
+    try {
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = %s, recursive = true, compression = \"%s\"",
+                          quoteJson(rootPath), compression))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, true);
+      connector.init();
+      assertThat(logs.getLoggedMessages())
+          .contains(
+              String.format(
+                  "No files in directory %s matched the connector.csv.fileNamePattern of \"**/*.csv%s\".",
+                  rootPath, CompressedIOUtils.getCompressionSuffix(compression)));
+      connector.close();
+    } finally {
+      deleteDirectory(rootPath);
+    }
+  }
+
+  @SuppressWarnings("unused")
+  private static Stream<Arguments> should_warn_when_no_files_matched_and_compression_enabled() {
+    return Stream.of(
+        arguments(CompressedIOUtils.GZIP_COMPRESSION),
+        arguments(CompressedIOUtils.XZ_COMPRESSION),
+        arguments(CompressedIOUtils.BZIP2_COMPRESSION),
+        arguments(CompressedIOUtils.LZMA_COMPRESSION),
+        arguments(CompressedIOUtils.ZSTD_COMPRESSION),
+        arguments(CompressedIOUtils.LZ4_COMPRESSION),
+        arguments(CompressedIOUtils.SNAPPY_COMPRESSION),
+        arguments(CompressedIOUtils.DEFLATE_COMPRESSION));
+  }
+
   @Test
   void should_write_single_file() throws Exception {
     CSVConnector connector = new CSVConnector();
@@ -440,6 +511,86 @@ class CSVConnectorTest {
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
       connector.close();
       List<String> actual = Files.readAllLines(out.resolve("output-000001.csv"));
+      assertThat(actual).hasSize(7);
+      assertThat(actual)
+          .containsExactly(
+              "Year,Make,Model,Description,Price",
+              "1997,Ford,E350,\"  ac, abs, moon  \",3000.00",
+              "1999,Chevy,\"Venture \"\"Extended Edition\"\"\",,4900.00",
+              "1996,Jeep,Grand Cherokee,\"MUST SELL!",
+              "air, moon roof, loaded\",4799.00",
+              "1999,Chevy,\"Venture \"\"Extended Edition, Very Large\"\"\",,5000.00",
+              ",,\"Venture \"\"Extended Edition\"\"\",,4900.00");
+    } finally {
+      deleteDirectory(dir);
+    }
+  }
+
+  @Test
+  void should_write_single_file_compressed_gzip() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    // test directory creation
+    Path dir = Files.createTempDirectory("test");
+    Path out = dir.resolve("nonexistent");
+    try {
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = %s, escape = \"\\\"\", maxConcurrentFiles = 1, compression = \"gzip\"",
+                          quoteJson(out)))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, false);
+      connector.init();
+      Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
+      connector.close();
+      Path outPath = out.resolve("output-000001.csv.gz");
+      BufferedReader reader =
+          new BufferedReader(
+              new InputStreamReader(
+                  new GZIPInputStream(Files.newInputStream(outPath)), Charsets.UTF_8));
+      List<String> actual = reader.lines().collect(Collectors.toList());
+      reader.close();
+      assertThat(actual).hasSize(7);
+      assertThat(actual)
+          .containsExactly(
+              "Year,Make,Model,Description,Price",
+              "1997,Ford,E350,\"  ac, abs, moon  \",3000.00",
+              "1999,Chevy,\"Venture \"\"Extended Edition\"\"\",,4900.00",
+              "1996,Jeep,Grand Cherokee,\"MUST SELL!",
+              "air, moon roof, loaded\",4799.00",
+              "1999,Chevy,\"Venture \"\"Extended Edition, Very Large\"\"\",,5000.00",
+              ",,\"Venture \"\"Extended Edition\"\"\",,4900.00");
+    } finally {
+      deleteDirectory(dir);
+    }
+  }
+
+  @Test
+  void should_write_single_file_compressed_gzip_custom_file_format() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    // test directory creation
+    Path dir = Files.createTempDirectory("test");
+    Path out = dir.resolve("nonexistent");
+    try {
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      "url = "
+                          + quoteJson(out)
+                          + ", escape = \"\\\"\", maxConcurrentFiles = 1, compression = \"gzip\", fileNameFormat = file%d")
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, false);
+      connector.init();
+      Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
+      connector.close();
+      Path outPath = out.resolve("file1");
+      BufferedReader reader =
+          new BufferedReader(
+              new InputStreamReader(
+                  new GZIPInputStream(Files.newInputStream(outPath)), Charsets.UTF_8));
+      List<String> actual = reader.lines().collect(Collectors.toList());
+      reader.close();
       assertThat(actual).hasSize(7);
       assertThat(actual)
           .containsExactly(
@@ -1271,6 +1422,39 @@ class CSVConnectorTest {
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage("Invalid value for connector.csv.comment: Expecting single char, got ''");
+    connector.close();
+  }
+
+  @Test()
+  void should_error_when_compression_is_wrong() {
+    CSVConnector connector = new CSVConnector();
+    // empty string test
+    LoaderConfig settings1 =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("compression = \"abc\"")
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    assertThrows(BulkConfigurationException.class, () -> connector.configure(settings1, false));
+  }
+
+  @Test
+  void should_throw_IOE_when_read_wrong_compression(@LogCapture LogInterceptor logs)
+      throws Exception {
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = %s, escape = \"\\\"\", comment = \"#\", compression = \"bzip2\"",
+                        url("/sample.csv.gz")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    assertThatThrownBy(() -> Flux.from(connector.read()).collectList().block())
+        .hasRootCauseExactlyInstanceOf(IOException.class)
+        .satisfies(
+            t -> {
+              assertThat(getRootCause(t)).hasMessageContaining("Stream is not in the BZip2 format");
+            });
     connector.close();
   }
 

@@ -344,6 +344,12 @@ The character that represents a line comment when found in the beginning of a li
 
 Default: **"\u0000"**.
 
+#### --connector.csv.compression _&lt;string&gt;_
+
+The compression that will be used for writing or reading files. Supported values are (for both reading and writing): `none`, `xz`, `gzip`, `bzip2`, `zstd`, `lz4`, `lzma`, `snappy`, `deflate`.  For reading only, supported values are: `brotli`, `z`, `deflate64`.
+
+Default: **"none"**.
+
 #### --connector.csv.emptyValue _&lt;string&gt;_
 
 Sets the String representation of an empty value. When reading, if the parser does not read any character from the input, and the input is within quotes, this value will be used instead. This setting is ignored when writing. The default is `""` (empty string).
@@ -366,11 +372,15 @@ Default: **"\\"**.
 
 The file name format to use when writing. This setting is ignored when reading and for non-file URLs. The file name must comply with the formatting rules of `String.format()`, and must contain a `%d` format specifier that will be used to increment file name counters.
 
+If compression is enabled, the default value for this setting will be modified to include the default suffix for the selected compression method. For example, if compression is `gzip`, the default file name format will be `output-%06d.csv.gz`.
+
 Default: **"output-%06d.csv"**.
 
 #### --connector.csv.fileNamePattern _&lt;string&gt;_
 
 The glob pattern to use when searching for files to read. The syntax to use is the glob syntax, as described in `java.nio.file.FileSystem.getPathMatcher()`. This setting is ignored when writing and for non-file URLs. Only applicable when the *url* setting points to a directory on a known filesystem, ignored otherwise.
+
+If compression is enabled, the default value for this setting will be modified to include the default suffix for the selected compression method. For example, if compression is `gzip`, the default glob pattern will be `**/*.csv.gz`.
 
 Default: **"\*\*/\*.csv"**.
 
@@ -533,6 +543,12 @@ The mode for loading and unloading JSON documents. Valid values are:
 
 Default: **"MULTI_DOCUMENT"**.
 
+#### --connector.json.compression _&lt;string&gt;_
+
+The compression that will be used for writing or reading files. Supported values are (for both reading and writing): `none`, `xz`, `gzip`, `bzip2`, `zstd`, `lz4`, `lzma`, `snappy`, `deflate`.  For reading only, supported values are: `brotli`, `z`, `deflate64`.
+
+Default: **"none"**.
+
 #### --connector.json.deserializationFeatures _&lt;map&lt;string,boolean&gt;&gt;_
 
 A map of JSON deserialization features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.databind.DeserializationFeature`. The default value is the only way to guarantee that floating point numbers will not have their precision truncated when parsed, but can result in slightly slower parsing. Used for loading only.
@@ -549,11 +565,15 @@ Default: **"UTF-8"**.
 
 The file name format to use when writing. This setting is ignored when reading and for non-file URLs. The file name must comply with the formatting rules of `String.format()`, and must contain a `%d` format specifier that will be used to increment file name counters.
 
+If compression is enabled, the default value for this setting will be modified to include the default suffix for the selected compression method. For example, if compression is `gzip`, the default file name format will be `output-%06d.json.gz`.
+
 Default: **"output-%06d.json"**.
 
 #### --connector.json.fileNamePattern _&lt;string&gt;_
 
 The glob pattern to use when searching for files to read. The syntax to use is the glob syntax, as described in `java.nio.file.FileSystem.getPathMatcher()`. This setting is ignored when writing and for non-file URLs. Only applicable when the *url* setting points to a directory on a known filesystem, ignored otherwise.
+
+If compression is enabled, the default value for this setting will be modified to include the default suffix for the selected compression method. For example, if compression is `gzip`, the default glob pattern will be `**/*.json.gz`.
 
 Default: **"\*\*/\*.json"**.
 

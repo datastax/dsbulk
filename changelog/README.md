@@ -3,6 +3,7 @@
 ## 1.4.0 (in progress)
 
 - [improvement] DAT-303: Update DSBulk to Java DSE Driver 2.x.
+- [improvement] DAT-449: Add support for loading and unloading from/to compressed files.
 
 
 ### 1.3.4

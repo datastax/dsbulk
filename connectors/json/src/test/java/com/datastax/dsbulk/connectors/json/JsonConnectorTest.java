@@ -21,10 +21,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.util.Throwables.getRootCause;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.internal.io.CompressedIOUtils;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
@@ -34,16 +36,19 @@ import com.datastax.dsbulk.connectors.api.Field;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
+import com.datastax.oss.driver.shaded.guava.common.base.Charsets;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -55,11 +60,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.zip.GZIPInputStream;
 import org.assertj.core.util.Throwables;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.event.Level;
 import reactor.core.publisher.Flux;
 import ru.lanwen.wiremock.ext.WiremockResolver;
@@ -98,22 +109,40 @@ class JsonConnectorTest {
     Files.delete(MULTIPLE_URLS_FILE);
   }
 
-  @Test
-  void should_read_single_file_multi_doc() throws Exception {
+  @ParameterizedTest(name = "[{index}] read multi doc file {0} with compression {1}")
+  @MethodSource
+  @DisplayName("Should read multidoc file with given compression")
+  void should_read_single_file_multi_doc(final String fileName, final String compression)
+      throws Exception {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
         new DefaultLoaderConfig(
             ConfigFactory.parseString(
                     String.format(
                         "url = %s, parserFeatures = {ALLOW_COMMENTS:true}, "
-                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}",
-                        url("/multi_doc.json")))
+                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}"
+                            + " , compression = \"%s\"",
+                        url("/" + fileName), compression))
                 .withFallback(CONNECTOR_DEFAULT_SETTINGS));
     connector.configure(settings, true);
     connector.init();
     List<Record> actual = Flux.from(connector.read()).collectList().block();
     verifyRecords(actual);
     connector.close();
+  }
+
+  private static Stream<Arguments> should_read_single_file_multi_doc() {
+    return Stream.of(
+        arguments("multi_doc.json", CompressedIOUtils.NONE_COMPRESSION),
+        arguments("multi_doc.json.gz", CompressedIOUtils.GZIP_COMPRESSION),
+        arguments("multi_doc.json.bz2", CompressedIOUtils.BZIP2_COMPRESSION),
+        arguments("multi_doc.json.lz4", CompressedIOUtils.LZ4_COMPRESSION),
+        arguments("multi_doc.json.snappy", CompressedIOUtils.SNAPPY_COMPRESSION),
+        arguments("multi_doc.json.z", CompressedIOUtils.Z_COMPRESSION),
+        arguments("multi_doc.json.br", CompressedIOUtils.BROTLI_COMPRESSION),
+        arguments("multi_doc.json.lzma", CompressedIOUtils.LZMA_COMPRESSION),
+        arguments("multi_doc.json.xz", CompressedIOUtils.XZ_COMPRESSION),
+        arguments("multi_doc.json.zstd", CompressedIOUtils.ZSTD_COMPRESSION));
   }
 
   @Test
@@ -379,6 +408,49 @@ class JsonConnectorTest {
     }
   }
 
+  @ParameterizedTest(name = "[{index}] Should get correct message when compression {0} is used")
+  @MethodSource
+  @DisplayName(
+      "Should get correct exception message when there are no matching files with compression enabled")
+  void should_warn_when_no_files_matched_and_compression_enabled(
+      String compression, @LogCapture LogInterceptor logs) throws Exception {
+    JsonConnector connector = new JsonConnector();
+    Path rootPath = Files.createTempDirectory("empty");
+    Files.createTempFile(rootPath, "test", ".txt");
+    try {
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = %s, recursive = true, compression = \"%s\"",
+                          quoteJson(rootPath), compression))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, true);
+      connector.init();
+      assertThat(logs.getLoggedMessages())
+          .contains(
+              String.format(
+                  "No files in directory %s matched the connector.json.fileNamePattern of \"**/*.json%s\".",
+                  rootPath, CompressedIOUtils.getCompressionSuffix(compression)));
+      connector.close();
+    } finally {
+      deleteDirectory(rootPath);
+    }
+  }
+
+  @SuppressWarnings("unused")
+  private static Stream<Arguments> should_warn_when_no_files_matched_and_compression_enabled() {
+    return Stream.of(
+        arguments(CompressedIOUtils.GZIP_COMPRESSION),
+        arguments(CompressedIOUtils.XZ_COMPRESSION),
+        arguments(CompressedIOUtils.BZIP2_COMPRESSION),
+        arguments(CompressedIOUtils.LZMA_COMPRESSION),
+        arguments(CompressedIOUtils.ZSTD_COMPRESSION),
+        arguments(CompressedIOUtils.LZ4_COMPRESSION),
+        arguments(CompressedIOUtils.SNAPPY_COMPRESSION),
+        arguments(CompressedIOUtils.DEFLATE_COMPRESSION));
+  }
+
   @Test
   void should_write_single_file_multi_doc() throws Exception {
     JsonConnector connector = new JsonConnector();
@@ -429,6 +501,87 @@ class JsonConnectorTest {
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
       connector.close();
       List<String> actual = Files.readAllLines(out.resolve("output-000001.json"));
+      assertThat(actual).hasSize(7);
+      assertThat(actual)
+          .containsExactly(
+              "[",
+              "{\"Year\":1997,\"Make\":\"Ford\",\"Model\":\"E350\",\"Description\":\"ac, abs, moon\",\"Price\":3000.0},",
+              "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0},",
+              "{\"Year\":1996,\"Make\":\"Jeep\",\"Model\":\"Grand Cherokee\",\"Description\":\"MUST SELL!\\nair, moon roof, loaded\",\"Price\":4799.0},",
+              "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition, Very Large\\\"\",\"Description\":null,\"Price\":5000.0},",
+              "{\"Year\":null,\"Make\":null,\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}",
+              "]");
+    } finally {
+      deleteDirectory(dir);
+    }
+  }
+
+  @Test
+  void should_write_single_file_single_doc_compressed_gzip() throws Exception {
+    JsonConnector connector = new JsonConnector();
+    // test directory creation
+    Path dir = Files.createTempDirectory("test");
+    Path out = dir.resolve("nonexistent");
+    try {
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      String.format(
+                          "url = %s, escape = \"\\\"\", compression = \"gzip\", maxConcurrentFiles = 1, mode = SINGLE_DOCUMENT",
+                          quoteJson(out)))
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, false);
+      connector.init();
+      Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
+      connector.close();
+      Path outPath = out.resolve("output-000001.json.gz");
+      BufferedReader reader =
+          new BufferedReader(
+              new InputStreamReader(
+                  new GZIPInputStream(Files.newInputStream(outPath)), Charsets.UTF_8));
+      List<String> actual = reader.lines().collect(Collectors.toList());
+      reader.close();
+      assertThat(actual).hasSize(7);
+      assertThat(actual)
+          .containsExactly(
+              "[",
+              "{\"Year\":1997,\"Make\":\"Ford\",\"Model\":\"E350\",\"Description\":\"ac, abs, moon\",\"Price\":3000.0},",
+              "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0},",
+              "{\"Year\":1996,\"Make\":\"Jeep\",\"Model\":\"Grand Cherokee\",\"Description\":\"MUST SELL!\\nair, moon roof, loaded\",\"Price\":4799.0},",
+              "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition, Very Large\\\"\",\"Description\":null,\"Price\":5000.0},",
+              "{\"Year\":null,\"Make\":null,\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}",
+              "]");
+    } finally {
+      deleteDirectory(dir);
+    }
+  }
+
+  @Test
+  void should_write_single_file_single_doc_compressed_gzip_custom_file_format() throws Exception {
+    JsonConnector connector = new JsonConnector();
+    // test directory creation
+    Path dir = Files.createTempDirectory("test");
+    Path out = dir.resolve("nonexistent");
+    try {
+      LoaderConfig settings =
+          new DefaultLoaderConfig(
+              ConfigFactory.parseString(
+                      "url = "
+                          + quoteJson(out)
+                          + ", escape = \"\\\"\", compression = \"gzip\", "
+                          + "fileNameFormat = file%d, maxConcurrentFiles = 1, mode = SINGLE_DOCUMENT")
+                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      connector.configure(settings, false);
+      connector.init();
+      Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
+      connector.close();
+      Path outPath = out.resolve("file1");
+      BufferedReader reader =
+          new BufferedReader(
+              new InputStreamReader(
+                  new GZIPInputStream(Files.newInputStream(outPath)), Charsets.UTF_8));
+      List<String> actual = reader.lines().collect(Collectors.toList());
+      reader.close();
       assertThat(actual).hasSize(7);
       assertThat(actual)
           .containsExactly(
@@ -958,6 +1111,41 @@ class JsonConnectorTest {
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
             "Invalid value for connector.json.encoding: Expecting valid charset name, got 'NotAnEncoding'");
+    connector.close();
+  }
+
+  @Test()
+  void should_throw_exception_when_compression_is_wrong() {
+    JsonConnector connector = new JsonConnector();
+    // empty string test
+    LoaderConfig settings1 =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("compression = \"abc\"")
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    assertThrows(BulkConfigurationException.class, () -> connector.configure(settings1, false));
+  }
+
+  @Test
+  void should_throw_exception_when_doc_compression_is_wrong(@LogCapture LogInterceptor logs)
+      throws Exception {
+    JsonConnector connector = new JsonConnector();
+    LoaderConfig settings =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "url = %s, compression = \"gzip\", parserFeatures = {ALLOW_COMMENTS:true}, "
+                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}"
+                            + ", compression = \"bzip2\"",
+                        url("/multi_doc.json.gz")))
+                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    connector.configure(settings, true);
+    connector.init();
+    assertThatThrownBy(() -> Flux.from(connector.read()).collectList().block())
+        .hasRootCauseExactlyInstanceOf(IOException.class)
+        .satisfies(
+            t ->
+                assertThat(getRootCause(t))
+                    .hasMessageContaining("Stream is not in the BZip2 format"));
     connector.close();
   }
 
