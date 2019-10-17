@@ -44,12 +44,6 @@
 - [improvement] DAT-384: Improve support for lightweight transactions.
 
 
-### 1.3.0
-### 2.0.0-alpha1 (in progress)
-
-- [improvement] DAT-303: Update DSBulk to use Java DSE Driver 2.0.
-
-
 ### 1.3.0 (in progress)
 
 - [bug] DAT-334: Murmur3TokenRangeSplitter should allow long overflows when splitting ranges.
