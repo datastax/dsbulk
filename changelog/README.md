@@ -4,6 +4,7 @@
 
 - [improvement] DAT-303: Update DSBulk to Java DSE Driver 2.x.
 - [improvement] DAT-449: Add support for loading and unloading from/to compressed files.
+- [improvement] DAT-481: Improve NodeComparator algorithm.
 
 
 ### 1.3.4
