@@ -28,6 +28,7 @@ import org.apache.commons.compress.compressors.CompressorStreamFactory;
 public final class CompressedIOUtils {
 
   private static final int BUFFER_SIZE = 8192 * 2;
+
   public static final String NONE_COMPRESSION = "none";
   public static final String XZ_COMPRESSION = "xz";
   public static final String GZIP_COMPRESSION = "gzip";
