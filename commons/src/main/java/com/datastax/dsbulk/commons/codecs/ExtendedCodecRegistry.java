@@ -263,7 +263,7 @@ public class ExtendedCodecRegistry extends DefaultCodecRegistry {
   }
 
   @Nullable
-  private ConvertingCodec<?, ?> maybeCreateConvertingCodec(
+  protected ConvertingCodec<?, ?> maybeCreateConvertingCodec(
       @NonNull DataType cqlType, @NonNull GenericType<?> javaType) {
     if (GenericType.STRING.equals(javaType)) {
       return createStringConvertingCodec(cqlType, true);
