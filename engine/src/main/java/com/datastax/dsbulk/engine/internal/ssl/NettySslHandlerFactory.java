@@ -10,6 +10,7 @@ package com.datastax.dsbulk.engine.internal.ssl;
 
 import com.datastax.oss.driver.api.core.metadata.EndPoint;
 import com.datastax.oss.driver.internal.core.ssl.SslHandlerFactory;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import io.netty.channel.Channel;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslHandler;
@@ -19,7 +20,7 @@ public class NettySslHandlerFactory implements SslHandlerFactory {
 
   private final SslContext sslContext;
 
-  NettySslHandlerFactory(SslContext sslContext) {
+  NettySslHandlerFactory(@NonNull SslContext sslContext) {
     this.sslContext = sslContext;
   }
 

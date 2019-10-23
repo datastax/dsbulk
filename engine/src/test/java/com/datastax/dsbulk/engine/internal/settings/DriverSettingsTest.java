@@ -34,13 +34,12 @@ import com.datastax.dsbulk.commons.tests.simulacron.SimulacronExtension;
 import com.datastax.dsbulk.commons.tests.simulacron.SimulacronUtils;
 import com.datastax.dsbulk.engine.internal.auth.AuthProviderFactory.KeyTabConfiguration;
 import com.datastax.dsbulk.engine.internal.auth.AuthProviderFactory.TicketCacheConfiguration;
-import com.datastax.dsbulk.engine.internal.policies.lbp.DCInferringDseLoadBalancingPolicy;
 import com.datastax.dsbulk.engine.internal.policies.retry.MultipleRetryPolicy;
-import com.datastax.dsbulk.engine.internal.ssl.JdkSslEngineFactory;
 import com.datastax.dsbulk.engine.internal.ssl.NettySslHandlerFactory;
 import com.datastax.dse.driver.api.core.DseSession;
 import com.datastax.dse.driver.internal.core.auth.DseGssApiAuthProvider;
 import com.datastax.dse.driver.internal.core.auth.DsePlainTextAuthProvider;
+import com.datastax.dse.driver.internal.core.loadbalancing.DseDcInferringLoadBalancingPolicy;
 import com.datastax.dse.driver.internal.core.loadbalancing.DseLoadBalancingPolicy;
 import com.datastax.oss.driver.api.core.AllNodesFailedException;
 import com.datastax.oss.driver.api.core.DefaultConsistencyLevel;
@@ -50,6 +49,7 @@ import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
 import com.datastax.oss.driver.api.core.context.DriverContext;
 import com.datastax.oss.driver.api.core.loadbalancing.LoadBalancingPolicy;
 import com.datastax.oss.driver.api.core.metadata.Node;
+import com.datastax.oss.driver.api.core.ssl.ProgrammaticSslEngineFactory;
 import com.datastax.oss.driver.internal.core.addresstranslation.PassThroughAddressTranslator;
 import com.datastax.oss.driver.internal.core.auth.PlainTextAuthProvider;
 import com.datastax.oss.driver.internal.core.context.InternalDriverContext;
@@ -142,7 +142,7 @@ class DriverSettingsTest {
     assertThat(profile.getString(DefaultDriverOption.ADDRESS_TRANSLATOR_CLASS))
         .isEqualTo(PassThroughAddressTranslator.class.getSimpleName());
     assertThat(profile.getString(LOAD_BALANCING_POLICY_CLASS))
-        .isEqualTo(DCInferringDseLoadBalancingPolicy.class.getName());
+        .isEqualTo(DseDcInferringLoadBalancingPolicy.class.getName());
     assertThat(profile.getString(DefaultDriverOption.RETRY_POLICY_CLASS))
         .isEqualTo(MultipleRetryPolicy.class.getName());
     assertThat(profile.getInt(BulkDriverOption.RETRY_POLICY_MAX_RETRIES)).isEqualTo(10);
@@ -152,7 +152,7 @@ class DriverSettingsTest {
     assertThat(context.getAddressTranslator()).isInstanceOf(PassThroughAddressTranslator.class);
     assertThat(context.getTimestampGenerator()).isInstanceOf(AtomicTimestampGenerator.class);
     assertThat(context.getLoadBalancingPolicy(DriverExecutionProfile.DEFAULT_NAME))
-        .isInstanceOf(DCInferringDseLoadBalancingPolicy.class);
+        .isInstanceOf(DseDcInferringLoadBalancingPolicy.class);
     assertThat(context.getRetryPolicy(DriverExecutionProfile.DEFAULT_NAME))
         .isInstanceOf(MultipleRetryPolicy.class);
     assertThat(context.getAuthProvider()).isEmpty();
@@ -416,7 +416,7 @@ class DriverSettingsTest {
     assertThat(context.getSslEngineFactory()).isEmpty();
     assertThat(context.getSslHandlerFactory()).isPresent();
     SslHandlerFactory sslHandlerFactory = context.getSslHandlerFactory().get();
-    assertThat(sslHandlerFactory).isInstanceOf(JdkSslEngineFactory.class);
+    assertThat(sslHandlerFactory).isInstanceOf(ProgrammaticSslEngineFactory.class);
     assertThat(getInternalState(sslHandlerFactory, "cipherSuites"))
         .isEqualTo(new String[] {"TLS_RSA_WITH_AES_128_CBC_SHA", "TLS_RSA_WITH_AES_256_CBC_SHA"});
   }

@@ -36,13 +36,13 @@ import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.internal.auth.AuthProviderFactory;
-import com.datastax.dsbulk.engine.internal.policies.lbp.DCInferringDseLoadBalancingPolicy;
 import com.datastax.dsbulk.engine.internal.policies.retry.MultipleRetryPolicy;
 import com.datastax.dsbulk.engine.internal.ssl.SslHandlerFactoryFactory;
 import com.datastax.dse.driver.api.core.DseSession;
 import com.datastax.dse.driver.api.core.DseSessionBuilder;
 import com.datastax.dse.driver.internal.core.config.typesafe.DefaultDseDriverConfigLoader;
 import com.datastax.dse.driver.internal.core.context.DseDriverContext;
+import com.datastax.dse.driver.internal.core.loadbalancing.DseDcInferringLoadBalancingPolicy;
 import com.datastax.oss.driver.api.core.ConsistencyLevel;
 import com.datastax.oss.driver.api.core.DefaultConsistencyLevel;
 import com.datastax.oss.driver.api.core.addresstranslation.AddressTranslator;
@@ -252,7 +252,7 @@ public class DriverSettings {
       }
 
       driverConfig.put(
-          LOAD_BALANCING_POLICY_CLASS, DCInferringDseLoadBalancingPolicy.class.getName());
+          LOAD_BALANCING_POLICY_CLASS, DseDcInferringLoadBalancingPolicy.class.getName());
       driverConfig.put(RETRY_POLICY_CLASS, MultipleRetryPolicy.class.getName());
       driverConfig.put(
           BulkDriverOption.RETRY_POLICY_MAX_RETRIES, config.getInt(POLICY_MAX_RETRIES));

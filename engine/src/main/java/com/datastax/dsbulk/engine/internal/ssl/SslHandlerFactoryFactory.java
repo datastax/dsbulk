@@ -12,6 +12,7 @@ import static com.datastax.dsbulk.commons.internal.io.IOUtils.assertAccessibleFi
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.oss.driver.api.core.ssl.ProgrammaticSslEngineFactory;
 import com.datastax.oss.driver.api.core.ssl.SslEngineFactory;
 import com.datastax.oss.driver.internal.core.ssl.JdkSslHandlerFactory;
 import com.datastax.oss.driver.internal.core.ssl.SslHandlerFactory;
@@ -87,7 +88,8 @@ public class SslHandlerFactoryFactory {
         tmf != null ? tmf.getTrustManagers() : null,
         new SecureRandom());
     List<String> cipherSuites = config.getStringList(SSL_CIPHER_SUITES);
-    SslEngineFactory sslEngineFactory = new JdkSslEngineFactory(sslContext, cipherSuites);
+    SslEngineFactory sslEngineFactory =
+        new ProgrammaticSslEngineFactory(sslContext, cipherSuites.toArray(new String[0]));
     return new JdkSslHandlerFactory(sslEngineFactory);
   }
 
