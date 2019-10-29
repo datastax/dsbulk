@@ -11,6 +11,7 @@ package com.datastax.dsbulk.engine.ccm;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static java.nio.file.Files.createTempDirectory;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import ch.qos.logback.core.joran.spi.JoranException;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
@@ -21,9 +22,9 @@ import com.datastax.oss.driver.api.core.ProtocolVersion;
 import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.Row;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.file.Path;
 import java.util.List;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInstance;
@@ -66,7 +67,7 @@ abstract class EndToEndCCMITBase {
   void validateResultSetSize(int numOfQueries, String statement) {
     ResultSet set = session.execute(statement);
     List<Row> results = set.all();
-    Assertions.assertThat(results.size()).isEqualTo(numOfQueries);
+    assertThat(results.size()).isEqualTo(numOfQueries);
   }
 
   String[] addCommonSettings(List<String> args) {
@@ -75,7 +76,10 @@ abstract class EndToEndCCMITBase {
     args.add("--driver.pooling.local.connections");
     args.add("1");
     args.add("--driver.hosts");
-    args.add(ccm.getInitialContactPoints().get(0).getHostAddress());
+    args.add(
+        ((InetSocketAddress) ccm.getInitialContactPoints().get(0).resolve())
+            .getAddress()
+            .getHostAddress());
     args.add("--driver.port");
     args.add(Integer.toString(ccm.getBinaryPort()));
     return args.toArray(new String[0]);

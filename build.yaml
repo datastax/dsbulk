@@ -52,6 +52,7 @@ build:
       com.datastax.dsbulk.commons.tests.ccm.CCM_IS_DSE=$CCM_IS_DSE
       com.datastax.dsbulk.commons.tests.ccm.JAVA_HOME=$CCM_JAVA_HOME
       com.datastax.dsbulk.commons.tests.ccm.PATH=$CCM_JAVA_HOME/bin
+      com.datastax.dsbulk.commons.tests.cloud.PROXY_PATH=$HOME/proxy
       failIfNoTests=false
       maven.test.failure.ignore=true
       maven.javadoc.skip=true

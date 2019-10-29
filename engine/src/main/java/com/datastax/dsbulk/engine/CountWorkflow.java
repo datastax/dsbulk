@@ -95,7 +95,7 @@ public class CountWorkflow implements Workflow {
     codecSettings.init();
     monitoringSettings.init();
     executorSettings.init();
-    driverSettings.init(executorSettings.getExecutorConfig());
+    driverSettings.init(false, executorSettings.getExecutorConfig());
     statsSettings.init();
     scheduler =
         Schedulers.newParallel(

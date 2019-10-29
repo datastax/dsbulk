@@ -11,17 +11,22 @@ package com.datastax.dsbulk.engine.internal.settings;
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.datastax.dsbulk.commons.tests.utils.ReflectionUtils.getInternalState;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CLOUD_SECURE_CONNECT_BUNDLE;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONNECTION_MAX_REQUESTS;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.LOAD_BALANCING_POLICY_CLASS;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_CONSISTENCY;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.slf4j.event.Level.INFO;
 import static org.slf4j.event.Level.WARN;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
+import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
@@ -29,20 +34,22 @@ import com.datastax.dsbulk.commons.tests.simulacron.SimulacronExtension;
 import com.datastax.dsbulk.commons.tests.simulacron.SimulacronUtils;
 import com.datastax.dsbulk.engine.internal.auth.AuthProviderFactory.KeyTabConfiguration;
 import com.datastax.dsbulk.engine.internal.auth.AuthProviderFactory.TicketCacheConfiguration;
-import com.datastax.dsbulk.engine.internal.policies.lbp.DCInferringDseLoadBalancingPolicy;
 import com.datastax.dsbulk.engine.internal.policies.retry.MultipleRetryPolicy;
-import com.datastax.dsbulk.engine.internal.ssl.JdkSslEngineFactory;
 import com.datastax.dsbulk.engine.internal.ssl.NettySslHandlerFactory;
 import com.datastax.dse.driver.api.core.DseSession;
 import com.datastax.dse.driver.internal.core.auth.DseGssApiAuthProvider;
 import com.datastax.dse.driver.internal.core.auth.DsePlainTextAuthProvider;
+import com.datastax.dse.driver.internal.core.loadbalancing.DseDcInferringLoadBalancingPolicy;
 import com.datastax.dse.driver.internal.core.loadbalancing.DseLoadBalancingPolicy;
+import com.datastax.oss.driver.api.core.AllNodesFailedException;
+import com.datastax.oss.driver.api.core.DefaultConsistencyLevel;
 import com.datastax.oss.driver.api.core.auth.AuthProvider;
 import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
 import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
 import com.datastax.oss.driver.api.core.context.DriverContext;
 import com.datastax.oss.driver.api.core.loadbalancing.LoadBalancingPolicy;
 import com.datastax.oss.driver.api.core.metadata.Node;
+import com.datastax.oss.driver.api.core.ssl.ProgrammaticSslEngineFactory;
 import com.datastax.oss.driver.internal.core.addresstranslation.PassThroughAddressTranslator;
 import com.datastax.oss.driver.internal.core.auth.PlainTextAuthProvider;
 import com.datastax.oss.driver.internal.core.context.InternalDriverContext;
@@ -79,13 +86,13 @@ class DriverSettingsTest {
   @Test
   void should_not_create_session_when_contact_points_not_provided() {
     assertThrows(
-        BulkConfigurationException.class,
+        AllNodesFailedException.class,
         () -> {
           LoaderConfig config =
               new DefaultLoaderConfig(
-                  new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.batch")));
+                  new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.driver")));
           DriverSettings driverSettings = new DriverSettings(config);
-          driverSettings.init(new HashMap<>());
+          driverSettings.init(true, new HashMap<>());
           driverSettings.newSession("test");
         });
   }
@@ -108,7 +115,7 @@ class DriverSettingsTest {
             ConfigFactory.parseString(String.format("port = %d, hosts = [%s]", port, hostAddress))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config);
-    driverSettings.init(new HashMap<>());
+    driverSettings.init(true, new HashMap<>());
     DseSession session = driverSettings.newSession("test");
     assertThat(session).isNotNull();
 
@@ -118,7 +125,7 @@ class DriverSettingsTest {
     assertThat(contactPoints).containsExactly(String.format("%s:%d", hostAddress, port));
 
     assertThat(profile.isDefined(DefaultDriverOption.PROTOCOL_COMPRESSION)).isFalse();
-    assertThat(profile.getString(DefaultDriverOption.REQUEST_CONSISTENCY)).isEqualTo("LOCAL_ONE");
+    assertThat(profile.getString(REQUEST_CONSISTENCY)).isEqualTo("LOCAL_ONE");
     assertThat(profile.getString(DefaultDriverOption.REQUEST_SERIAL_CONSISTENCY))
         .isEqualTo("LOCAL_SERIAL");
     assertThat(profile.getInt(DefaultDriverOption.REQUEST_PAGE_SIZE)).isEqualTo(5000);
@@ -135,7 +142,7 @@ class DriverSettingsTest {
     assertThat(profile.getString(DefaultDriverOption.ADDRESS_TRANSLATOR_CLASS))
         .isEqualTo(PassThroughAddressTranslator.class.getSimpleName());
     assertThat(profile.getString(LOAD_BALANCING_POLICY_CLASS))
-        .isEqualTo(DCInferringDseLoadBalancingPolicy.class.getName());
+        .isEqualTo(DseDcInferringLoadBalancingPolicy.class.getName());
     assertThat(profile.getString(DefaultDriverOption.RETRY_POLICY_CLASS))
         .isEqualTo(MultipleRetryPolicy.class.getName());
     assertThat(profile.getInt(BulkDriverOption.RETRY_POLICY_MAX_RETRIES)).isEqualTo(10);
@@ -145,7 +152,7 @@ class DriverSettingsTest {
     assertThat(context.getAddressTranslator()).isInstanceOf(PassThroughAddressTranslator.class);
     assertThat(context.getTimestampGenerator()).isInstanceOf(AtomicTimestampGenerator.class);
     assertThat(context.getLoadBalancingPolicy(DriverExecutionProfile.DEFAULT_NAME))
-        .isInstanceOf(DCInferringDseLoadBalancingPolicy.class);
+        .isInstanceOf(DseDcInferringLoadBalancingPolicy.class);
     assertThat(context.getRetryPolicy(DriverExecutionProfile.DEFAULT_NAME))
         .isInstanceOf(MultipleRetryPolicy.class);
     assertThat(context.getAuthProvider()).isEmpty();
@@ -161,7 +168,7 @@ class DriverSettingsTest {
                     " auth { provider = PlainTextAuthProvider, username = alice, password = s3cr3t }")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config);
-    driverSettings.init(new HashMap<>());
+    driverSettings.init(true, new HashMap<>());
     DseSession session = driverSettings.newSession("test");
     assertThat(session).isNotNull();
     DriverContext context = session.getContext();
@@ -181,7 +188,7 @@ class DriverSettingsTest {
                     " auth { provider = DsePlainTextAuthProvider, username = alice, password = s3cr3t, authorizationId = bob }")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config);
-    driverSettings.init(new HashMap<>());
+    driverSettings.init(true, new HashMap<>());
     DseSession session = driverSettings.newSession("test");
     assertThat(session).isNotNull();
     DriverContext context = session.getContext();
@@ -202,7 +209,7 @@ class DriverSettingsTest {
                     " auth { username = alice, password = s3cr3t, authorizationId = bob }")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config);
-    driverSettings.init(new HashMap<>());
+    driverSettings.init(true, new HashMap<>());
     DseSession session = driverSettings.newSession("test");
     assertThat(session).isNotNull();
     DriverContext context = session.getContext();
@@ -230,7 +237,7 @@ class DriverSettingsTest {
                         quoteJson(keyTab)))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config);
-    driverSettings.init(new HashMap<>());
+    driverSettings.init(true, new HashMap<>());
     DseSession session = driverSettings.newSession("test");
     assertThat(session).isNotNull();
     DriverContext context = session.getContext();
@@ -266,7 +273,7 @@ class DriverSettingsTest {
                         quoteJson(keyTab)))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config);
-    driverSettings.init(new HashMap<>());
+    driverSettings.init(true, new HashMap<>());
     DseSession session = driverSettings.newSession("test");
     assertThat(session).isNotNull();
     DriverContext context = session.getContext();
@@ -304,7 +311,7 @@ class DriverSettingsTest {
                         quoteJson(keyTab)))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config);
-    driverSettings.init(new HashMap<>());
+    driverSettings.init(true, new HashMap<>());
     DseSession session = driverSettings.newSession("test");
     assertThat(session).isNotNull();
     DriverContext context = session.getContext();
@@ -334,7 +341,7 @@ class DriverSettingsTest {
                         + "saslService = foo }")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config);
-    driverSettings.init(new HashMap<>());
+    driverSettings.init(true, new HashMap<>());
     DseSession session = driverSettings.newSession("test");
     assertThat(session).isNotNull();
     DriverContext context = session.getContext();
@@ -363,7 +370,7 @@ class DriverSettingsTest {
                         + "saslService = foo }")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config);
-    driverSettings.init(new HashMap<>());
+    driverSettings.init(true, new HashMap<>());
     DseSession session = driverSettings.newSession("test");
     assertThat(session).isNotNull();
     DriverContext context = session.getContext();
@@ -402,14 +409,14 @@ class DriverSettingsTest {
                         quoteJson(keystore), quoteJson(truststore)))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config);
-    driverSettings.init(new HashMap<>());
+    driverSettings.init(true, new HashMap<>());
     DseSession session = driverSettings.newSession("test");
     assertThat(session).isNotNull();
     InternalDriverContext context = (InternalDriverContext) session.getContext();
     assertThat(context.getSslEngineFactory()).isEmpty();
     assertThat(context.getSslHandlerFactory()).isPresent();
     SslHandlerFactory sslHandlerFactory = context.getSslHandlerFactory().get();
-    assertThat(sslHandlerFactory).isInstanceOf(JdkSslEngineFactory.class);
+    assertThat(sslHandlerFactory).isInstanceOf(ProgrammaticSslEngineFactory.class);
     assertThat(getInternalState(sslHandlerFactory, "cipherSuites"))
         .isEqualTo(new String[] {"TLS_RSA_WITH_AES_128_CBC_SHA", "TLS_RSA_WITH_AES_256_CBC_SHA"});
   }
@@ -439,7 +446,7 @@ class DriverSettingsTest {
                         quoteJson(keyCertChain), quoteJson(privateKey), quoteJson(truststore)))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config);
-    driverSettings.init(new HashMap<>());
+    driverSettings.init(true, new HashMap<>());
     DseSession session = driverSettings.newSession("test");
     assertThat(session).isNotNull();
     InternalDriverContext context = (InternalDriverContext) session.getContext();
@@ -467,7 +474,7 @@ class DriverSettingsTest {
                         + "}")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings driverSettings = new DriverSettings(config);
-    driverSettings.init(new HashMap<>());
+    driverSettings.init(true, new HashMap<>());
     DseSession session = driverSettings.newSession("test");
     assertThat(session).isNotNull();
 
@@ -496,7 +503,7 @@ class DriverSettingsTest {
             ConfigFactory.parseString("hosts = []")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
+    assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
             "driver.hosts is mandatory. Please set driver.hosts and try again. "
@@ -510,7 +517,7 @@ class DriverSettingsTest {
             ConfigFactory.parseString("socket.readTimeout=\"I am not a duration\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
+    assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining("Invalid value at 'socket.readTimeout'");
   }
@@ -522,7 +529,7 @@ class DriverSettingsTest {
             ConfigFactory.parseString("auth.provider = InvalidAuthProvider")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
+    assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining("InvalidAuthProvider is not a valid auth provider");
   }
@@ -534,7 +541,7 @@ class DriverSettingsTest {
             ConfigFactory.parseString("auth.provider=PlainTextAuthProvider, auth.username = \"\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
+    assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining("must be provided with both auth.username and auth.password");
   }
@@ -547,7 +554,7 @@ class DriverSettingsTest {
                     "auth.provider=DsePlainTextAuthProvider, auth.password = \"\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
+    assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining("must be provided with both auth.username and auth.password");
   }
@@ -560,7 +567,7 @@ class DriverSettingsTest {
                     "auth.provider = DseGSSAPIAuthProvider, auth.keyTab = noexist.keytab")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
+    assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageMatching(".*Keytab file .*noexist.keytab does not exist.*");
   }
@@ -572,7 +579,7 @@ class DriverSettingsTest {
             ConfigFactory.parseString("auth.provider = DseGSSAPIAuthProvider, auth.keyTab = \".\"")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
+    assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageMatching(".*Keytab file .* is not a file.*");
   }
@@ -588,7 +595,7 @@ class DriverSettingsTest {
                           + quoteJson(keytabPath))
                   .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
       DriverSettings settings = new DriverSettings(config);
-      assertThatThrownBy(() -> settings.init(new HashMap<>()))
+      assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
           .isInstanceOf(BulkConfigurationException.class)
           .hasMessageMatching(".*Could not find any principals in.*");
     } finally {
@@ -604,7 +611,7 @@ class DriverSettingsTest {
                     "auth.provider = DseGSSAPIAuthProvider, auth.saslService = null")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
+    assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
             "DseGSSAPIAuthProvider must be provided with auth.saslService. "
@@ -621,7 +628,7 @@ class DriverSettingsTest {
                       "ssl.provider = JDK, ssl.keystore.path = " + quoteJson(keystore))
                   .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
       DriverSettings settings = new DriverSettings(config);
-      assertThatThrownBy(() -> settings.init(new HashMap<>()))
+      assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
           .isInstanceOf(BulkConfigurationException.class)
           .hasMessageContaining(
               "ssl.keystore.path, ssl.keystore.password and ssl.truststore.algorithm must be provided together");
@@ -637,7 +644,7 @@ class DriverSettingsTest {
             ConfigFactory.parseString("ssl.provider = JDK, ssl.keystore.password = mypass")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
+    assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
             "ssl.keystore.path, ssl.keystore.password and ssl.truststore.algorithm must be provided together");
@@ -653,7 +660,7 @@ class DriverSettingsTest {
                       "ssl.provider = OpenSSL, ssl.openssl.keyCertChain = " + quoteJson(chain))
                   .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
       DriverSettings settings = new DriverSettings(config);
-      assertThatThrownBy(() -> settings.init(new HashMap<>()))
+      assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
           .isInstanceOf(BulkConfigurationException.class)
           .hasMessageContaining(
               "ssl.openssl.keyCertChain and ssl.openssl.privateKey must be provided together");
@@ -672,7 +679,7 @@ class DriverSettingsTest {
                       "ssl.provider = OpenSSL, ssl.openssl.privateKey = " + quoteJson(key))
                   .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
       DriverSettings settings = new DriverSettings(config);
-      assertThatThrownBy(() -> settings.init(new HashMap<>()))
+      assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
           .isInstanceOf(BulkConfigurationException.class)
           .hasMessageContaining(
               "ssl.openssl.keyCertChain and ssl.openssl.privateKey must be provided together");
@@ -691,7 +698,7 @@ class DriverSettingsTest {
                       "ssl.provider = JDK, ssl.truststore.path = " + quoteJson(truststore))
                   .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
       DriverSettings settings = new DriverSettings(config);
-      assertThatThrownBy(() -> settings.init(new HashMap<>()))
+      assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
           .isInstanceOf(BulkConfigurationException.class)
           .hasMessageContaining(
               "ssl.truststore.path, ssl.truststore.password and ssl.truststore.algorithm must be provided");
@@ -707,7 +714,7 @@ class DriverSettingsTest {
             ConfigFactory.parseString("ssl.provider = JDK, ssl.truststore.password = mypass")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
+    assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
             "ssl.truststore.path, ssl.truststore.password and ssl.truststore.algorithm must be provided together");
@@ -723,7 +730,7 @@ class DriverSettingsTest {
                         + "ssl.truststore.password = mypass")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
+    assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageMatching(".*SSL truststore file .*noexist.truststore does not exist.*");
   }
@@ -738,7 +745,7 @@ class DriverSettingsTest {
                         + "ssl.truststore.password = mypass")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
+    assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageMatching(".*SSL truststore file .* is not a file.*");
   }
@@ -754,7 +761,7 @@ class DriverSettingsTest {
                           + quoteJson(truststore))
                   .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
       DriverSettings settings = new DriverSettings(config);
-      settings.init(new HashMap<>());
+      settings.init(true, new HashMap<>());
     } finally {
       Files.delete(truststore);
     }
@@ -770,7 +777,7 @@ class DriverSettingsTest {
                         + "ssl.keystore.password = mypass")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
+    assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageMatching(".*SSL keystore file .*noexist.keystore does not exist.*");
   }
@@ -785,7 +792,7 @@ class DriverSettingsTest {
                         + "ssl.keystore.password = mypass")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
+    assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageMatching(".*SSL keystore file .* is not a file.*");
   }
@@ -800,7 +807,7 @@ class DriverSettingsTest {
                       "ssl.keystore.password = mypass, ssl.keystore.path = " + quoteJson(keystore))
                   .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
       DriverSettings settings = new DriverSettings(config);
-      settings.init(new HashMap<>());
+      settings.init(true, new HashMap<>());
     } finally {
       Files.delete(keystore);
     }
@@ -819,7 +826,7 @@ class DriverSettingsTest {
                           + quoteJson(key))
                   .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
       DriverSettings settings = new DriverSettings(config);
-      assertThatThrownBy(() -> settings.init(new HashMap<>()))
+      assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
           .isInstanceOf(BulkConfigurationException.class)
           .hasMessageMatching(
               ".*OpenSSL key certificate chain file .*noexist.chain does not exist.*");
@@ -841,7 +848,7 @@ class DriverSettingsTest {
                           + quoteJson(key))
                   .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
       DriverSettings settings = new DriverSettings(config);
-      assertThatThrownBy(() -> settings.init(new HashMap<>()))
+      assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
           .isInstanceOf(BulkConfigurationException.class)
           .hasMessageMatching(".*OpenSSL key certificate chain file .* is not a file.*");
     } finally {
@@ -864,7 +871,7 @@ class DriverSettingsTest {
                         + quoteJson(key))
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    settings.init(new HashMap<>());
+    settings.init(true, new HashMap<>());
   }
 
   @Test
@@ -880,7 +887,7 @@ class DriverSettingsTest {
                           + quoteJson(chain))
                   .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
       DriverSettings settings = new DriverSettings(config);
-      assertThatThrownBy(() -> settings.init(new HashMap<>()))
+      assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
           .isInstanceOf(BulkConfigurationException.class)
           .hasMessageMatching(".*OpenSSL private key file .*noexist.key does not exist.*");
     } finally {
@@ -901,7 +908,7 @@ class DriverSettingsTest {
                           + quoteJson(chain))
                   .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
       DriverSettings settings = new DriverSettings(config);
-      assertThatThrownBy(() -> settings.init(new HashMap<>()))
+      assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
           .isInstanceOf(BulkConfigurationException.class)
           .hasMessageMatching(".*OpenSSL private key file .* is not a file.*");
     } finally {
@@ -916,7 +923,7 @@ class DriverSettingsTest {
             ConfigFactory.parseString("port = NotANumber")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
+    assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage("Invalid value for driver.port: Expecting NUMBER, got STRING");
   }
@@ -928,7 +935,7 @@ class DriverSettingsTest {
             ConfigFactory.parseString("pooling.local.connections = NotANumber")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
+    assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
             "Invalid value for driver.pooling.local.connections: Expecting NUMBER, got STRING");
@@ -941,7 +948,7 @@ class DriverSettingsTest {
             ConfigFactory.parseString("pooling.remote.connections = NotANumber")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
+    assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
             "Invalid value for driver.pooling.remote.connections: Expecting NUMBER, got STRING");
@@ -954,7 +961,7 @@ class DriverSettingsTest {
             ConfigFactory.parseString("pooling.requests = NotANumber")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
+    assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage("Invalid value for driver.pooling.requests: Expecting NUMBER, got STRING");
   }
@@ -966,7 +973,7 @@ class DriverSettingsTest {
             ConfigFactory.parseString("query.fetchSize = NotANumber")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
+    assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage("Invalid value for driver.query.fetchSize: Expecting NUMBER, got STRING");
   }
@@ -978,7 +985,7 @@ class DriverSettingsTest {
             ConfigFactory.parseString("policy.maxRetries = NotANumber")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
+    assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage("Invalid value for driver.policy.maxRetries: Expecting NUMBER, got STRING");
   }
@@ -990,7 +997,7 @@ class DriverSettingsTest {
             ConfigFactory.parseString("query.idempotence = NotABoolean")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
+    assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage("Invalid value for driver.query.idempotence: Expecting BOOLEAN, got STRING");
   }
@@ -1002,7 +1009,7 @@ class DriverSettingsTest {
             ConfigFactory.parseString("timestampGenerator = Unknown")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
+    assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
             "Invalid value for driver.timestampGenerator: Expecting FQCN or short class name, got 'Unknown'");
@@ -1015,7 +1022,7 @@ class DriverSettingsTest {
             ConfigFactory.parseString("addressTranslator = Unknown")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
+    assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessage(
             "Invalid value for driver.addressTranslator: Expecting FQCN or short class name, got 'Unknown'");
@@ -1028,7 +1035,7 @@ class DriverSettingsTest {
             ConfigFactory.parseString("protocol.compression = Unknown")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
+    assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
             "Invalid value at 'protocol.compression': Expecting one of NONE, SNAPPY, LZ4, got 'Unknown'");
@@ -1041,7 +1048,7 @@ class DriverSettingsTest {
             ConfigFactory.parseString("query.consistency = Unknown")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
+    assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
             "Invalid value at 'query.consistency': Expecting one of ANY, ONE, TWO, THREE, QUORUM, ALL, LOCAL_ONE, LOCAL_QUORUM, EACH_QUORUM, SERIAL, LOCAL_SERIAL, got 'Unknown'");
@@ -1054,7 +1061,7 @@ class DriverSettingsTest {
             ConfigFactory.parseString("query.serialConsistency = Unknown")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
+    assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
             "Invalid value at 'query.serialConsistency': Expecting one of ANY, ONE, TWO, THREE, QUORUM, ALL, LOCAL_ONE, LOCAL_QUORUM, EACH_QUORUM, SERIAL, LOCAL_SERIAL, got 'Unknown'");
@@ -1067,7 +1074,7 @@ class DriverSettingsTest {
             ConfigFactory.parseString("socket.readTimeout = NotADuration")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
+    assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
             "Invalid value at 'socket.readTimeout': No number in duration value 'NotADuration'");
@@ -1080,7 +1087,7 @@ class DriverSettingsTest {
             ConfigFactory.parseString("pooling.heartbeat = NotADuration")
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    assertThatThrownBy(() -> settings.init(new HashMap<>()))
+    assertThatThrownBy(() -> settings.init(true, new HashMap<>()))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
             "Invalid value at 'pooling.heartbeat': No number in duration value 'NotADuration'");
@@ -1103,7 +1110,7 @@ class DriverSettingsTest {
             ConfigFactory.parseString(deprecatedSetting + " = " + value)
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    settings.init(new HashMap<>());
+    settings.init(true, new HashMap<>());
     assertThat(logs)
         .hasMessageContaining(
             String.format(
@@ -1132,12 +1139,110 @@ class DriverSettingsTest {
             ConfigFactory.parseString(setting + " = " + value)
                 .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
     DriverSettings settings = new DriverSettings(config);
-    settings.init(new HashMap<>());
+    settings.init(true, new HashMap<>());
     assertThat(logs)
         .hasMessageContaining(
             String.format(
                 "Driver setting %s is obsolete; please remove it from your configuration",
                 setting));
+  }
+
+  @Test
+  void should_log_info_when_cloud_and_write_and_default_CL_implicitly_changed(
+      @LogCapture(level = INFO, value = DriverSettings.class) LogInterceptor logs)
+      throws GeneralSecurityException, IOException {
+    assumeFalse(PlatformUtils.isWindows());
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString("cloud.secureConnectBundle = /path/to/bundle")
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    settings.init(true, new HashMap<>());
+    assertThat(logs)
+        .hasMessageContaining(
+            "Changing default consistency level to LOCAL_QUORUM for Cloud deployments");
+    assertThat(settings.driverConfig)
+        .containsEntry(CLOUD_SECURE_CONNECT_BUNDLE, "file:/path/to/bundle");
+  }
+
+  @ParameterizedTest
+  @CsvSource({"ANY", "LOCAL_ONE", "ONE"})
+  void should_log_warning_when_cloud_and_write_and_incompatible_CL_explicitly_set(
+      DefaultConsistencyLevel level,
+      @LogCapture(level = WARN, value = DriverSettings.class) LogInterceptor logs)
+      throws GeneralSecurityException, IOException {
+    assumeFalse(PlatformUtils.isWindows());
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    "cloud.secureConnectBundle = /path/to/bundle, "
+                        + "query.consistency = "
+                        + level)
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    settings.init(true, new HashMap<>());
+    assertThat(logs)
+        .hasMessageContaining(
+            String.format(
+                "Cloud deployments reject consistency level %s when writing; forcing LOCAL_QUORUM",
+                level));
+    assertThat(settings.driverConfig)
+        .containsEntry(CLOUD_SECURE_CONNECT_BUNDLE, "file:/path/to/bundle");
+    assertThat(settings.driverConfig).containsEntry(REQUEST_CONSISTENCY, "LOCAL_QUORUM");
+  }
+
+  @ParameterizedTest
+  @CsvSource({"TWO", "THREE", "LOCAL_QUORUM", "QUORUM", "EACH_QUORUM", "ALL"})
+  void should_not_log_warning_when_cloud_and_write_and_compatible_CL_explicitly_set(
+      DefaultConsistencyLevel level,
+      @LogCapture(level = WARN, value = DriverSettings.class) LogInterceptor logs)
+      throws GeneralSecurityException, IOException {
+    assumeFalse(PlatformUtils.isWindows());
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    "cloud.secureConnectBundle = /path/to/bundle, "
+                        + "query.consistency = "
+                        + level)
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    settings.init(true, new HashMap<>());
+    assertThat(logs.getLoggedEvents()).isEmpty();
+    assertThat(settings.driverConfig)
+        .containsEntry(CLOUD_SECURE_CONNECT_BUNDLE, "file:/path/to/bundle");
+    assertThat(settings.driverConfig).containsEntry(REQUEST_CONSISTENCY, level.name());
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "ANY",
+    "LOCAL_ONE",
+    "ONE",
+    "TWO",
+    "THREE",
+    "LOCAL_QUORUM",
+    "QUORUM",
+    "EACH_QUORUM",
+    "ALL"
+  })
+  void should_not_log_warning_when_cloud_and_read_and_any_CL_explicitly_set(
+      DefaultConsistencyLevel level,
+      @LogCapture(level = WARN, value = DriverSettings.class) LogInterceptor logs)
+      throws GeneralSecurityException, IOException {
+    assumeFalse(PlatformUtils.isWindows());
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    "cloud.secureConnectBundle = /path/to/bundle, "
+                        + "query.consistency = "
+                        + level)
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    settings.init(false, new HashMap<>());
+    assertThat(logs.getLoggedEvents()).isEmpty();
+    assertThat(settings.driverConfig)
+        .containsEntry(CLOUD_SECURE_CONNECT_BUNDLE, "file:/path/to/bundle");
+    assertThat(settings.driverConfig).containsEntry(REQUEST_CONSISTENCY, level.name());
   }
 
   private static Node makeHostWithAddress(String host) {

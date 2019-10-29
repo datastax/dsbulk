@@ -20,6 +20,8 @@ import com.datastax.dsbulk.commons.tests.utils.MemoryUtils;
 import com.datastax.dsbulk.commons.tests.utils.NetworkUtils;
 import com.datastax.dsbulk.commons.tests.utils.StringUtils;
 import com.datastax.dsbulk.commons.tests.utils.Version;
+import com.datastax.oss.driver.api.core.metadata.EndPoint;
+import com.datastax.oss.driver.internal.core.metadata.DefaultEndPoint;
 import com.datastax.oss.driver.shaded.guava.common.base.Joiner;
 import com.datastax.oss.driver.shaded.guava.common.io.ByteStreams;
 import com.datastax.oss.driver.shaded.guava.common.io.Closer;
@@ -35,7 +37,6 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.UncheckedIOException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -49,6 +50,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.exec.DefaultExecutor;
 import org.apache.commons.exec.ExecuteStreamHandler;
@@ -315,8 +317,10 @@ public class DefaultCCMCluster implements CCMCluster {
   }
 
   @Override
-  public List<InetAddress> getInitialContactPoints() {
-    return NetworkUtils.allContactPoints(DEFAULT_IP_PREFIX, nodesPerDC);
+  public List<EndPoint> getInitialContactPoints() {
+    return NetworkUtils.allContactPoints(DEFAULT_IP_PREFIX, nodesPerDC).stream()
+        .map(addr -> new DefaultEndPoint(new InetSocketAddress(addr, getBinaryPort())))
+        .collect(Collectors.toList());
   }
 
   @Override
@@ -333,8 +337,8 @@ public class DefaultCCMCluster implements CCMCluster {
       try {
         execute(CCM_COMMAND + " start " + jvmArgs);
         LOGGER.debug("Waiting for binary protocol to show up");
-        for (InetAddress node : getInitialContactPoints()) {
-          NetworkUtils.waitUntilPortIsUp(new InetSocketAddress(node, getBinaryPort()));
+        for (EndPoint node : getInitialContactPoints()) {
+          NetworkUtils.waitUntilPortIsUp((InetSocketAddress) node.resolve());
         }
       } catch (CCMException e) {
         LOGGER.error("Could not start " + this, e);

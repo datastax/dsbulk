@@ -10,13 +10,11 @@ package com.datastax.dsbulk.commons.tests;
 
 import com.datastax.dsbulk.commons.tests.driver.factory.SessionFactory;
 import com.datastax.dse.driver.api.core.DseSession;
+import com.datastax.oss.driver.api.core.metadata.EndPoint;
 import java.lang.reflect.Parameter;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
@@ -63,30 +61,25 @@ public abstract class RemoteClusterExtension implements AfterAllCallback, Parame
     closeCloseables(context);
   }
 
-  private DseSession createSession(Parameter parameter, ExtensionContext context) {
+  protected DseSession createSession(Parameter parameter, ExtensionContext context) {
     Class<?> testClass = context.getRequiredTestClass();
     SessionFactory sessionFactory =
         SessionFactory.createInstanceForAnnotatedElement(
-            parameter, testClass, getLocalDCName(context));
+            parameter, testClass, getLocalDatacenter(context));
     return createSession(sessionFactory, context);
   }
 
-  private DseSession createSession(SessionFactory sessionFactory, ExtensionContext context) {
-    List<InetSocketAddress> contactPoints =
-        getContactPoints(context).stream()
-            .map(addr -> new InetSocketAddress(addr, getBinaryPort(context)))
-            .collect(Collectors.toList());
+  protected DseSession createSession(SessionFactory sessionFactory, ExtensionContext context) {
+    List<EndPoint> contactPoints = getContactPoints(context);
     DseSession session =
-        sessionFactory.createSessionBuilder().addContactPoints(contactPoints).build();
+        sessionFactory.createSessionBuilder().addContactEndPoints(contactPoints).build();
     sessionFactory.configureSession(session);
     return session;
   }
 
-  protected abstract String getLocalDCName(ExtensionContext context);
+  protected abstract String getLocalDatacenter(ExtensionContext context);
 
-  protected abstract int getBinaryPort(ExtensionContext context);
-
-  protected abstract List<InetAddress> getContactPoints(ExtensionContext context);
+  protected abstract List<EndPoint> getContactPoints(ExtensionContext context);
 
   private void registerCloseable(AutoCloseable value, ExtensionContext context) {
     ExtensionContext.Store store = context.getStore(TEST_NAMESPACE);
