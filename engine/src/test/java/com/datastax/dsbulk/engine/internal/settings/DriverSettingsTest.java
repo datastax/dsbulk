@@ -1114,7 +1114,7 @@ class DriverSettingsTest {
     assertThat(logs)
         .hasMessageContaining(
             String.format(
-                "Setting driver.%s is deprecated; please use %s instead",
+                "Setting driver.%s is deprecated and will be removed in a future release; please use %s instead",
                 deprecatedSetting, newSetting));
   }
 
@@ -1143,7 +1143,7 @@ class DriverSettingsTest {
     assertThat(logs)
         .hasMessageContaining(
             String.format(
-                "Setting driver.%s is obsolete; please remove it from your configuration",
+                "Setting driver.%s is obsolete and isn't honored anymore; please remove it from your configuration",
                 setting));
   }
 

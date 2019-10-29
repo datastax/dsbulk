@@ -362,11 +362,18 @@ public class DriverSettings {
   }
 
   private void warnDeprecatedSetting(String deprecated, String replacement) {
-    LOGGER.warn("Setting driver.{} is deprecated; please use {} instead.", deprecated, replacement);
+    LOGGER.warn(
+        "Setting driver.{} is deprecated and will be removed in a future release; "
+            + "please use {} instead.",
+        deprecated,
+        replacement);
   }
 
   private void warnObsoleteSetting(String path) {
-    LOGGER.warn("Setting driver.{} is obsolete; please remove it from your configuration.", path);
+    LOGGER.warn(
+        "Setting driver.{} is obsolete and isn't honored anymore; "
+            + "please remove it from your configuration.",
+        path);
   }
 
   private boolean isCLCloudCompatible(boolean write, ConsistencyLevel cl) {
