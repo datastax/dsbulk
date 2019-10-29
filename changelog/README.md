@@ -7,6 +7,7 @@
 - [new feature] DAT-412: Add support for DataStax Cloud.
 - [improvement] DAT-492: Add CLI shortcut for secure connect bundle.
 - [improvement] DAT-490: Allow secure connect bundle to be provided from external URL.
+- [improvement] DAT-481: Improve NodeComparator algorithm.
 
 
 ### 1.3.4
