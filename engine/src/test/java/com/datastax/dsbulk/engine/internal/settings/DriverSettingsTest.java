@@ -1114,7 +1114,7 @@ class DriverSettingsTest {
     assertThat(logs)
         .hasMessageContaining(
             String.format(
-                "Driver setting %s is deprecated; please use %s instead",
+                "Setting driver.%s is deprecated and will be removed in a future release; please use %s instead",
                 deprecatedSetting, newSetting));
   }
 
@@ -1143,7 +1143,7 @@ class DriverSettingsTest {
     assertThat(logs)
         .hasMessageContaining(
             String.format(
-                "Driver setting %s is obsolete; please remove it from your configuration",
+                "Setting driver.%s is obsolete and isn't honored anymore; please remove it from your configuration",
                 setting));
   }
 
@@ -1243,6 +1243,36 @@ class DriverSettingsTest {
     assertThat(settings.driverConfig)
         .containsEntry(CLOUD_SECURE_CONNECT_BUNDLE, "file:/path/to/bundle");
     assertThat(settings.driverConfig).containsEntry(REQUEST_CONSISTENCY, level.name());
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "hosts,host.com",
+    "port,1234",
+    "addressTranslator,MyAddressTranslator",
+    "policy.lbp.localDc,MyDC",
+    "policy.lbp.allowedHosts,host.com",
+    "ssl.provider,OpenSSL",
+  })
+  void should_log_warning_when_incompatible_cloud_setting_present(
+      String incompatibleSetting,
+      String value,
+      @LogCapture(level = WARN, value = DriverSettings.class) LogInterceptor logs)
+      throws GeneralSecurityException, IOException {
+    LoaderConfig config =
+        new DefaultLoaderConfig(
+            ConfigFactory.parseString(
+                    String.format(
+                        "%s = %s, cloud.secureConnectBundle = /path/to/bundle",
+                        incompatibleSetting, value))
+                .withFallback(ConfigFactory.load().getConfig("dsbulk.driver")));
+    DriverSettings settings = new DriverSettings(config);
+    settings.init(true, new HashMap<>());
+    assertThat(logs)
+        .hasMessageContaining(
+            String.format(
+                "Setting driver.%s is incompatible with Cloud deployments and will be ignored.",
+                incompatibleSetting));
   }
 
   private static Node makeHostWithAddress(String host) {

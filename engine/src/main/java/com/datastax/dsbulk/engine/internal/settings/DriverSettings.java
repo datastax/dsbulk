@@ -8,6 +8,7 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
+import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isValueFromReferenceConfig;
 import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.BULK_LOADER_APPLICATION_NAME;
 import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.clientId;
 import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.getBulkLoaderVersion;
@@ -62,6 +63,7 @@ import com.datastax.oss.protocol.internal.ProtocolConstants;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
+import com.typesafe.config.ConfigObject;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -122,6 +124,8 @@ public class DriverSettings {
   private static final String POLICY_LBP_LOCAL_DC = POLICY + '.' + LBP + '.' + "localDc";
   private static final String POLICY_LBP_ALLOWED_HOSTS = POLICY + '.' + LBP + '.' + "allowedHosts";
 
+  private static final String SSL = "ssl";
+
   // deprecated settings since DAT-303
 
   private static final String POOLING_LOCAL_REQUESTS = POOLING + '.' + LOCAL + '.' + "requests";
@@ -176,6 +180,7 @@ public class DriverSettings {
 
       if (cloud) {
         driverConfig.put(CLOUD_SECURE_CONNECT_BUNDLE, secureBundleLocation.toExternalForm());
+        checkIncompatibleCloudSettings();
       } else {
         List<String> hosts = config.getStringList(HOSTS);
         if (hosts.isEmpty()) {
@@ -199,16 +204,11 @@ public class DriverSettings {
 
       int maxRequests = config.getInt(POOLING_REQUESTS);
       if (config.hasPath(POOLING_LOCAL_REQUESTS)) {
-        LOGGER.warn(
-            "Driver setting {} is deprecated; please use {} instead",
-            POOLING_LOCAL_REQUESTS,
-            POOLING_REQUESTS);
+        warnDeprecatedSetting(POOLING_LOCAL_REQUESTS, POOLING_REQUESTS);
         maxRequests = config.getInt(POOLING_LOCAL_REQUESTS);
       }
       if (config.hasPath(POOLING_REMOTE_REQUESTS)) {
-        LOGGER.warn(
-            "Driver setting {} is obsolete; please remove it from your configuration",
-            POOLING_REMOTE_REQUESTS);
+        warnObsoleteSetting(POOLING_REMOTE_REQUESTS);
       }
       driverConfig.put(CONNECTION_MAX_REQUESTS, maxRequests);
 
@@ -218,13 +218,12 @@ public class DriverSettings {
       ConsistencyLevel cl = config.getEnum(DefaultConsistencyLevel.class, QUERY_CONSISTENCY);
       ConsistencyLevel serialCl =
           config.getEnum(DefaultConsistencyLevel.class, QUERY_SERIALCONSISTENCY);
-      if (cloud && !isCloudCompatible(write, cl)) {
-        String resource = config.getValue(QUERY_CONSISTENCY).origin().resource();
-        if (resource != null && resource.equals("reference.conf")) {
-          LOGGER.info("Changing default consistency level to LOCAL_QUORUM for Cloud deployments");
+      if (cloud && !isCLCloudCompatible(write, cl)) {
+        if (isValueFromReferenceConfig(config, QUERY_CONSISTENCY)) {
+          LOGGER.info("Changing default consistency level to LOCAL_QUORUM for Cloud deployments.");
         } else {
           LOGGER.warn(
-              "Cloud deployments reject consistency level {} when writing; forcing LOCAL_QUORUM",
+              "Cloud deployments reject consistency level {} when writing; forcing LOCAL_QUORUM.",
               cl);
         }
         cl = DefaultConsistencyLevel.LOCAL_QUORUM;
@@ -263,39 +262,25 @@ public class DriverSettings {
       }
 
       if (config.hasPath(POLICY_LBP_NAME)) {
-        LOGGER.warn(
-            "Driver setting {} is obsolete; please remove it from your configuration",
-            POLICY_LBP_NAME);
+        warnObsoleteSetting(POLICY_LBP_NAME);
       }
       if (config.hasPath(POLICY_LBP_DSE_CHILD_POLICY)) {
-        LOGGER.warn(
-            "Driver setting {} is obsolete; please remove it from your configuration",
-            POLICY_LBP_DSE_CHILD_POLICY);
+        warnObsoleteSetting(POLICY_LBP_DSE_CHILD_POLICY);
       }
       if (config.hasPath(POLICY_LBP_TOKEN_AWARE_CHILD_POLICY)) {
-        LOGGER.warn(
-            "Driver setting {} is obsolete; please remove it from your configuration",
-            POLICY_LBP_TOKEN_AWARE_CHILD_POLICY);
+        warnObsoleteSetting(POLICY_LBP_TOKEN_AWARE_CHILD_POLICY);
       }
       if (config.hasPath(POLICY_LBP_TOKEN_AWARE_REPLICA_ORDERING)) {
-        LOGGER.warn(
-            "Driver setting {} is obsolete; please remove it from your configuration",
-            POLICY_LBP_TOKEN_AWARE_REPLICA_ORDERING);
+        warnObsoleteSetting(POLICY_LBP_TOKEN_AWARE_REPLICA_ORDERING);
       }
       if (config.hasPath(POLICY_LBP_DC_AWARE_ALLOW_REMOTE)) {
-        LOGGER.warn(
-            "Driver setting {} is obsolete; please remove it from your configuration",
-            POLICY_LBP_DC_AWARE_ALLOW_REMOTE);
+        warnObsoleteSetting(POLICY_LBP_DC_AWARE_ALLOW_REMOTE);
       }
       if (config.hasPath(POLICY_LBP_DC_AWARE_REMOTE_HOSTS)) {
-        LOGGER.warn(
-            "Driver setting {} is obsolete; please remove it from your configuration",
-            POLICY_LBP_DC_AWARE_REMOTE_HOSTS);
+        warnObsoleteSetting(POLICY_LBP_DC_AWARE_REMOTE_HOSTS);
       }
       if (config.hasPath(POLICY_LBP_WHITE_LIST_CHILD_POLICY)) {
-        LOGGER.warn(
-            "Driver setting {} is obsolete; please remove it from your configuration",
-            POLICY_LBP_WHITE_LIST_CHILD_POLICY);
+        warnObsoleteSetting(POLICY_LBP_WHITE_LIST_CHILD_POLICY);
       }
 
       if (!cloud) {
@@ -305,10 +290,7 @@ public class DriverSettings {
           localDc = config.getString(POLICY_LBP_LOCAL_DC);
         }
         if (config.hasPath(POLICY_LBP_DC_AWARE_LOCAL_DC)) {
-          LOGGER.warn(
-              "Driver setting {} is deprecated; please use {} instead",
-              POLICY_LBP_DC_AWARE_LOCAL_DC,
-              POLICY_LBP_LOCAL_DC);
+          warnDeprecatedSetting(POLICY_LBP_DC_AWARE_LOCAL_DC, POLICY_LBP_LOCAL_DC);
           localDc = config.getString(POLICY_LBP_DC_AWARE_LOCAL_DC);
         }
         if (localDc != null) {
@@ -317,10 +299,7 @@ public class DriverSettings {
 
         List<String> whiteList = config.getStringList(POLICY_LBP_ALLOWED_HOSTS);
         if (config.hasPath(POLICY_LBP_WHITE_LIST_HOSTS)) {
-          LOGGER.warn(
-              "Driver setting {} is deprecated; please use {} instead",
-              POLICY_LBP_WHITE_LIST_HOSTS,
-              POLICY_LBP_ALLOWED_HOSTS);
+          warnDeprecatedSetting(POLICY_LBP_WHITE_LIST_HOSTS, POLICY_LBP_ALLOWED_HOSTS);
           whiteList = config.getStringList(POLICY_LBP_WHITE_LIST_HOSTS);
         }
         if (!whiteList.isEmpty()) {
@@ -349,7 +328,55 @@ public class DriverSettings {
     }
   }
 
-  private boolean isCloudCompatible(boolean write, ConsistencyLevel cl) {
+  private void checkIncompatibleCloudSettings() {
+    if (!isValueFromReferenceConfig(config, HOSTS)) {
+      warnIncompatibleCloudSetting(HOSTS);
+    }
+    if (!isValueFromReferenceConfig(config, PORT)) {
+      warnIncompatibleCloudSetting(PORT);
+    }
+    if (!isValueFromReferenceConfig(config, ADDRESS_TRANSLATOR)) {
+      warnIncompatibleCloudSetting(ADDRESS_TRANSLATOR);
+    }
+    if (!isValueFromReferenceConfig(config, POLICY_LBP_LOCAL_DC)) {
+      warnIncompatibleCloudSetting(POLICY_LBP_LOCAL_DC);
+    }
+    if (!isValueFromReferenceConfig(config, POLICY_LBP_ALLOWED_HOSTS)) {
+      warnIncompatibleCloudSetting(POLICY_LBP_ALLOWED_HOSTS);
+    }
+    ConfigObject value = config.getObject(SSL);
+    for (String path : value.keySet()) {
+      if (!isValueFromReferenceConfig(config, SSL + '.' + path)) {
+        warnIncompatibleCloudSetting(SSL + '.' + path);
+      }
+    }
+  }
+
+  private void warnIncompatibleCloudSetting(String path) {
+    LOGGER.warn(
+        "Setting driver.{} is incompatible with Cloud deployments and will be ignored. "
+            + "Please remove this setting, or alternatively, leave driver.{} "
+            + "unset if you are not connecting to a Cloud database.",
+        path,
+        SECURE_CONNECT_BUNDLE_PATH);
+  }
+
+  private void warnDeprecatedSetting(String deprecated, String replacement) {
+    LOGGER.warn(
+        "Setting driver.{} is deprecated and will be removed in a future release; "
+            + "please use {} instead.",
+        deprecated,
+        replacement);
+  }
+
+  private void warnObsoleteSetting(String path) {
+    LOGGER.warn(
+        "Setting driver.{} is obsolete and isn't honored anymore; "
+            + "please remove it from your configuration.",
+        path);
+  }
+
+  private boolean isCLCloudCompatible(boolean write, ConsistencyLevel cl) {
     if (write) {
       int protocolCode = cl.getProtocolCode();
       return protocolCode != ProtocolConstants.ConsistencyLevel.ANY
