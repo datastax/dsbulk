@@ -18,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import edu.umd.cs.findbugs.annotations.NonNull;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -40,10 +41,12 @@ class CqlTemporalFormatTest {
   void should_parse_from_valid_cql_literal(String input, TemporalAccessor expected, ZoneId zone) {
     CqlTemporalFormat format = new CqlTemporalFormat(zone);
     TemporalAccessor actual = format.parse(input);
-    assertThat(toSeconds(actual))
+    long actualSeconds = toSeconds(actual);
+    long expectedSeconds = toSeconds(expected);
+    assertThat(actualSeconds)
         .overridingErrorMessage(
             "Expecting %s to be same instant as %s but it was not", actual, expected)
-        .isEqualTo(toSeconds(expected));
+        .isEqualTo(expectedSeconds);
   }
 
   @ParameterizedTest(name = "{0} with zone {2} should format to \"{1}\"")
@@ -137,11 +140,11 @@ class CqlTemporalFormatTest {
     public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
       List<Arguments> args = new ArrayList<>();
       for (ZoneId zone : ZONES) {
-        ZonedDateTime now = ZonedDateTime.now(zone);
+        ZonedDateTime zdt = Instant.parse("2019-08-01T12:34:56Z").atZone(zone);
         for (String pattern : PATTERNS) {
           if (checkZone(pattern, zone)) {
             DateTimeFormatter f = createFormatter(pattern, zone);
-            String input = f.format(now);
+            String input = f.format(zdt);
             // f has an overriding time zone, but it's ok since it's the same one in input
             TemporalAccessor expected = f.parse(input);
             args.add(Arguments.of(input, expected, zone));
@@ -180,9 +183,9 @@ class CqlTemporalFormatTest {
     public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
       List<Arguments> args = new ArrayList<>();
       for (ZoneId zone : ZONES) {
-        ZonedDateTime now = ZonedDateTime.now(zone);
+        ZonedDateTime zdt = Instant.parse("2019-08-01T12:34:56Z").atZone(zone);
         DateTimeFormatter f = ISO_OFFSET_DATE_TIME.withZone(zone);
-        args.add(Arguments.of(now, f.format(now), zone));
+        args.add(Arguments.of(zdt, f.format(zdt), zone));
       }
       return args.stream();
     }
