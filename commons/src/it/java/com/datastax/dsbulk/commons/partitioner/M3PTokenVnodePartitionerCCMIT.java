@@ -10,7 +10,6 @@ package com.datastax.dsbulk.commons.partitioner;
 
 import static com.datastax.dsbulk.commons.tests.driver.annotations.SessionConfig.UseKeyspaceMode.NONE;
 
-import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
 import com.datastax.dsbulk.commons.tests.driver.annotations.SessionConfig;
 import com.datastax.oss.driver.api.core.CqlSession;
@@ -20,8 +19,7 @@ import org.junit.jupiter.api.Tag;
 @Tag("long")
 class M3PTokenVnodePartitionerCCMIT extends PartitionerCCMITBase {
 
-  M3PTokenVnodePartitionerCCMIT(
-      CCMCluster ccm, @SessionConfig(useKeyspace = NONE) CqlSession session) {
-    super(ccm, session, false);
+  M3PTokenVnodePartitionerCCMIT(@SessionConfig(useKeyspace = NONE) CqlSession session) {
+    super(session, false);
   }
 }

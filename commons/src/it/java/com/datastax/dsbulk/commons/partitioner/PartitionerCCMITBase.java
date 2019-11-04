@@ -14,7 +14,6 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 import static org.awaitility.Duration.ONE_MINUTE;
 
-import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.CCMExtension;
 import com.datastax.dsbulk.commons.tests.utils.CQLUtils;
 import com.datastax.dsbulk.commons.tests.utils.StringUtils;
@@ -31,6 +30,7 @@ import com.datastax.oss.driver.api.core.metadata.token.Token;
 import com.datastax.oss.driver.api.testinfra.session.SessionUtils;
 import com.datastax.oss.driver.shaded.guava.common.util.concurrent.Uninterruptibles;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -41,15 +41,12 @@ import org.junit.jupiter.params.provider.ValueSource;
 abstract class PartitionerCCMITBase {
 
   private static final int EXPECTED_TOTAL = 10000;
-
-  @SuppressWarnings({"unused", "FieldCanBeLocal"})
-  private final CCMCluster ccm;
+  private static final CqlIdentifier TABLE_NAME = CqlIdentifier.fromInternal("MY_TABLE");
 
   private final CqlSession session;
   private final boolean multiDc;
 
-  PartitionerCCMITBase(CCMCluster ccm, CqlSession session, boolean multiDc) {
-    this.ccm = ccm;
+  PartitionerCCMITBase(CqlSession session, boolean multiDc) {
     this.session = session;
     this.multiDc = multiDc;
   }
@@ -57,16 +54,11 @@ abstract class PartitionerCCMITBase {
   @ParameterizedTest(name = "[{index}] rf {0}")
   @ValueSource(ints = {1, 2, 3})
   void should_scan_table(int rf) {
-    String ks = createSchema(rf);
+    CqlIdentifier ks = createSchema(rf);
     populateTable(ks);
     Metadata metadata = session.getMetadata();
     TokenMap tokenMap = metadata.getTokenMap().orElseThrow(IllegalStateException::new);
-    TableMetadata table =
-        metadata
-            .getKeyspace(ks)
-            .orElseThrow(IllegalStateException::new)
-            .getTable("\"MY_TABLE\"")
-            .orElseThrow(IllegalStateException::new);
+    TableMetadata table = getTable(ks).orElseThrow(IllegalStateException::new);
     TokenRangeReadStatementGenerator generator =
         new TokenRangeReadStatementGenerator(table, metadata);
     List<Statement<?>> statements = generator.generate(Runtime.getRuntime().availableProcessors());
@@ -82,8 +74,8 @@ abstract class PartitionerCCMITBase {
     assertThat(total).isEqualTo(EXPECTED_TOTAL);
   }
 
-  private String createSchema(int rf) {
-    String ks = StringUtils.uniqueIdentifier("MY_KS");
+  private CqlIdentifier createSchema(int rf) {
+    CqlIdentifier ks = CqlIdentifier.fromInternal(StringUtils.uniqueIdentifier("MY_KS"));
     if (multiDc) {
       session.execute(
           CQLUtils.createKeyspaceNetworkTopologyStrategy(ks, rf, rf)
@@ -93,25 +85,37 @@ abstract class PartitionerCCMITBase {
           CQLUtils.createKeyspaceSimpleStrategy(ks, rf)
               .setExecutionProfile(SessionUtils.slowProfile(session)));
     }
-    ks = CqlIdentifier.fromInternal(ks).asCql(true);
+    await().atMost(ONE_MINUTE).until(session::checkSchemaAgreement);
+    await().atMost(ONE_MINUTE).until(() -> session.getMetadata().getKeyspace(ks).isPresent());
     session.execute(
         SimpleStatement.newInstance(
                 String.format(
-                    "CREATE TABLE %s.\"MY_TABLE\" (\"PK\" int PRIMARY KEY, \"V\" int)", ks))
+                    "CREATE TABLE %s.%s (\"PK\" int PRIMARY KEY, \"V\" int)",
+                    ks.asCql(true), TABLE_NAME.asCql(true)))
             .setExecutionProfile(SessionUtils.slowProfile(session)));
     await().atMost(ONE_MINUTE).until(session::checkSchemaAgreement);
+    await().atMost(ONE_MINUTE).until(() -> getTable(ks).isPresent());
     return ks;
   }
 
-  private void populateTable(String ks) {
+  private Optional<TableMetadata> getTable(CqlIdentifier ks) {
+    return session.getMetadata().getKeyspace(ks).flatMap(k -> k.getTable(TABLE_NAME));
+  }
+
+  private void populateTable(CqlIdentifier ks) {
     PreparedStatement ps =
         session.prepare(
-            String.format("INSERT INTO %s.\"MY_TABLE\" (\"PK\", \"V\") VALUES (?, 1)", ks));
+            String.format(
+                "INSERT INTO %s.%s (\"PK\", \"V\") VALUES (?, 1)",
+                ks.asCql(true), TABLE_NAME.asCql(true)));
     for (int i = 1; i <= EXPECTED_TOTAL; i++) {
       int attempts = 1;
       while (true) {
         try {
-          session.execute(ps.bind(i).setConsistencyLevel(ALL));
+          session.execute(
+              ps.bind(i)
+                  .setConsistencyLevel(ALL)
+                  .setExecutionProfile(SessionUtils.slowProfile(session)));
           break;
         } catch (RuntimeException e) {
           if (attempts == 3) {

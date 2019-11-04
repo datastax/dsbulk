@@ -21,6 +21,6 @@ import org.junit.jupiter.api.Tag;
 class M3PTokenPartitionerCCMIT extends PartitionerCCMITBase {
 
   M3PTokenPartitionerCCMIT(CCMCluster ccm, @SessionConfig(useKeyspace = NONE) CqlSession session) {
-    super(ccm, session, false);
+    super(session, false);
   }
 }

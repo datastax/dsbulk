@@ -18,18 +18,26 @@ public abstract class CQLUtils {
 
   public static SimpleStatement createKeyspaceSimpleStrategy(
       String keyspace, int replicationFactor) {
+    return createKeyspaceSimpleStrategy(CqlIdentifier.fromInternal(keyspace), replicationFactor);
+  }
+
+  public static SimpleStatement createKeyspaceSimpleStrategy(
+      CqlIdentifier keyspace, int replicationFactor) {
     return SimpleStatement.newInstance(
-        String.format(
-            CREATE_KEYSPACE_SIMPLE_FORMAT,
-            CqlIdentifier.fromInternal(keyspace).asCql(true),
-            replicationFactor));
+        String.format(CREATE_KEYSPACE_SIMPLE_FORMAT, keyspace.asCql(true), replicationFactor));
   }
 
   public static SimpleStatement createKeyspaceNetworkTopologyStrategy(
       String keyspace, int... replicationFactors) {
+    return createKeyspaceNetworkTopologyStrategy(
+        CqlIdentifier.fromInternal(keyspace), replicationFactors);
+  }
+
+  public static SimpleStatement createKeyspaceNetworkTopologyStrategy(
+      CqlIdentifier keyspace, int... replicationFactors) {
     StringBuilder sb =
         new StringBuilder("CREATE KEYSPACE ")
-            .append(CqlIdentifier.fromInternal(keyspace).asCql(true))
+            .append(keyspace.asCql(true))
             .append(" WITH replication = { 'class' : 'NetworkTopologyStrategy', ");
     for (int i = 0; i < replicationFactors.length; i++) {
       if (i > 0) {
