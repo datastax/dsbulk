@@ -21,12 +21,10 @@ import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.cql.ResultSet;
+import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.datastax.oss.driver.api.core.cql.Statement;
-import com.datastax.oss.driver.api.core.metadata.Metadata;
-import com.datastax.oss.driver.api.core.metadata.TokenMap;
 import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
-import com.datastax.oss.driver.api.core.metadata.token.Token;
 import com.datastax.oss.driver.api.testinfra.session.SessionUtils;
 import com.datastax.oss.driver.shaded.guava.common.util.concurrent.Uninterruptibles;
 import java.util.List;
@@ -40,7 +38,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 abstract class PartitionerCCMITBase {
 
-  private static final int EXPECTED_TOTAL = 10000;
+  private static final int EXPECTED_TOTAL = 10_000;
   private static final CqlIdentifier TABLE_NAME = CqlIdentifier.fromInternal("MY_TABLE");
 
   private final CqlSession session;
@@ -56,20 +54,17 @@ abstract class PartitionerCCMITBase {
   void should_scan_table(int rf) {
     CqlIdentifier ks = createSchema(rf);
     populateTable(ks);
-    Metadata metadata = session.getMetadata();
-    TokenMap tokenMap = metadata.getTokenMap().orElseThrow(IllegalStateException::new);
     TableMetadata table = getTable(ks).orElseThrow(IllegalStateException::new);
     TokenRangeReadStatementGenerator generator =
-        new TokenRangeReadStatementGenerator(table, metadata);
+        new TokenRangeReadStatementGenerator(table, session.getMetadata());
     List<Statement<?>> statements = generator.generate(Runtime.getRuntime().availableProcessors());
     int total = 0;
     for (Statement<?> stmt : statements) {
       stmt = stmt.setConsistencyLevel(ALL).setExecutionProfile(SessionUtils.slowProfile(session));
       ResultSet rs = session.execute(stmt);
-      total += rs.all().size();
-      Token token = stmt.getRoutingToken();
-      assertThat(token).isNotNull();
-      assertThat(rs.getExecutionInfo().getCoordinator()).isIn(tokenMap.getReplicas(ks, token));
+      for (Row ignored : rs) {
+        total++;
+      }
     }
     assertThat(total).isEqualTo(EXPECTED_TOTAL);
   }
