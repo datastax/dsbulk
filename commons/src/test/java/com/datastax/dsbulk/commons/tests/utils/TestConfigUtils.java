@@ -24,7 +24,7 @@ public class TestConfigUtils {
    * provided additional arguments to emulate command line arguments.
    *
    * @param path The root path of the configuration.
-   * @param additionalArgs Additional arguments to be emulated as comamnd line arguments.
+   * @param additionalArgs Additional arguments to be emulated as command line arguments.
    * @return A test configuration containing all the settings under the section 'path'.
    */
   public static LoaderConfig createTestConfig(String path, Object... additionalArgs) {
