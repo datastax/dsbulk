@@ -18,6 +18,8 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -98,6 +100,28 @@ public class NetworkUtils {
       n += nodesPerDC[i - 1];
     }
     return n + node;
+  }
+
+  /**
+   * Returns all contact points for a given IP prefix and given numbers of nodes per DC.
+   *
+   * <p>The returned addresses can be used as contact points for clients wishing to connect to the
+   * remote cluster, e.g. when building a {@code Session} instance with the DataStax Java driver.
+   *
+   * @param ipPrefix The IP prefix to use (e.g. {@code 127.0.1.}).
+   * @param nodesPerDC the number of nodes in each DC.
+   * @return the contact points for the remote cluster.
+   */
+  public static List<InetAddress> allContactPoints(String ipPrefix, int[] nodesPerDC) {
+    List<InetAddress> contactPoints = new ArrayList<>();
+    for (int dc = 1; dc <= nodesPerDC.length; dc++) {
+      int nodesInDc = nodesPerDC[dc - 1];
+      for (int n = 1; n <= nodesInDc; n++) {
+        InetAddress address = addressOfNode(ipPrefix, nodesPerDC, dc, n);
+        contactPoints.add(address);
+      }
+    }
+    return contactPoints;
   }
 
   /**

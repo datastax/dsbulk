@@ -24,6 +24,7 @@ import com.datastax.dsbulk.commons.tests.utils.Version;
 import com.datastax.oss.driver.api.core.metadata.EndPoint;
 import com.datastax.oss.driver.internal.core.metadata.DefaultEndPoint;
 import com.datastax.oss.driver.shaded.guava.common.base.Joiner;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
 import com.datastax.oss.driver.shaded.guava.common.io.Closer;
 import com.datastax.oss.driver.shaded.guava.common.io.Files;
 import java.io.BufferedReader;
@@ -296,8 +297,9 @@ public class DefaultCCMCluster implements CCMCluster {
 
   @Override
   public List<EndPoint> getInitialContactPoints() {
-    return Collections.singletonList(
-        new DefaultEndPoint(new InetSocketAddress("127.0.0.1", getBinaryPort())));
+    return NetworkUtils.allContactPoints(DEFAULT_IP_PREFIX, nodesPerDC).stream()
+        .map(addr -> new DefaultEndPoint(new InetSocketAddress(addr, getBinaryPort())))
+        .collect(ImmutableList.toImmutableList());
   }
 
   @Override
