@@ -70,6 +70,13 @@ public class BulkConfigurationException extends RuntimeException {
       basePath = basePath + '.';
     }
     try {
+
+      // 1) we don't log error messages because we are returning a BulkConfigurationException that
+      // will be thrown and so its error message is already destined to be logged by the caller.
+      // 2) we don't chain the returned BulkConfigurationException to the original ConfigException
+      // because they contain the same message expressed in 2 different ways, and so we don't need
+      // to log both.
+
       if (e instanceof ConfigException.WrongType) {
         // This will happen if a user provides the wrong type, e.g. a string where a number was
         // expected. Sanitized message will look like this:
