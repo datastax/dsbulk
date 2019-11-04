@@ -272,6 +272,7 @@ public class ConfigUtils {
         return Optional.of("number");
       case BOOLEAN:
         return Optional.of("boolean");
+      case NULL:
       default:
         return Optional.empty();
     }
