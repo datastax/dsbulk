@@ -19,7 +19,6 @@ import com.datastax.dsbulk.engine.internal.config.ShortcutsFactory;
 import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
 import com.datastax.oss.driver.shaded.guava.common.base.CharMatcher;
 import com.typesafe.config.Config;
-import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
@@ -58,7 +57,6 @@ public class SettingsDocumentor {
               + "## Sections%n%n",
           WorkflowUtils.getBulkLoaderNameAndVersion() + " Options");
 
-      ConfigFactory.invalidateCaches();
       Config referenceConfig = LoaderConfigFactory.createReferenceConfig();
 
       Map<String, SettingsGroup> groups = SettingsGroupFactory.createGroups(referenceConfig);

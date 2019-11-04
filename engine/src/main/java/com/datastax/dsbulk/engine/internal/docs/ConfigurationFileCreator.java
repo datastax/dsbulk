@@ -14,7 +14,6 @@ import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.datastax.dsbulk.engine.internal.config.SettingsGroup;
 import com.datastax.dsbulk.engine.internal.config.SettingsGroupFactory;
 import com.typesafe.config.Config;
-import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;
 import java.io.IOException;
@@ -67,7 +66,6 @@ public class ConfigurationFileCreator {
       pw.println("dsbulk {");
       pw.println("");
 
-      ConfigFactory.invalidateCaches();
       Config referenceConfig = LoaderConfigFactory.createReferenceConfig();
       Map<String, SettingsGroup> groups = SettingsGroupFactory.createGroups(referenceConfig);
 

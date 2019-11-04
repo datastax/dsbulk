@@ -74,11 +74,8 @@ public class CommandLineParser {
 
     checkHelpRequest(connectorName);
 
-    ConfigFactory.invalidateCaches();
-
     Config referenceConfig = LoaderConfigFactory.createReferenceConfig();
-    Config applicationConfig =
-        LoaderConfigFactory.createApplicationConfig(applicationPath, referenceConfig);
+    Config applicationConfig = LoaderConfigFactory.createApplicationConfig(applicationPath);
 
     Map<String, String> shortcuts =
         ShortcutsFactory.createShortcutsMap(

@@ -28,11 +28,7 @@ public class TestConfigUtils {
    * @return A test configuration containing all the settings under the section 'path'.
    */
   public static LoaderConfig createTestConfig(String path, Object... additionalArgs) {
-    ConfigFactory.invalidateCaches();
-    Config baseConfig =
-        LoaderConfigFactory.createApplicationConfig(
-                null, LoaderConfigFactory.createReferenceConfig())
-            .getConfig(path);
+    Config baseConfig = LoaderConfigFactory.createApplicationConfig(null).getConfig(path);
     if (additionalArgs != null && additionalArgs.length != 0) {
       Iterator<Object> it = Arrays.asList(additionalArgs).iterator();
       while (it.hasNext()) {

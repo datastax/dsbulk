@@ -19,7 +19,6 @@ import com.datastax.dsbulk.engine.internal.config.ShortcutsFactory;
 import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
 import com.datastax.oss.driver.shaded.guava.common.base.CharMatcher;
 import com.typesafe.config.Config;
-import com.typesafe.config.ConfigFactory;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import java.util.LinkedHashSet;
@@ -39,7 +38,6 @@ public class HelpEmitter {
 
   public static void emitGlobalHelp(@Nullable String connectorName) {
 
-    ConfigFactory.invalidateCaches();
     Config referenceConfig = LoaderConfigFactory.createReferenceConfig();
 
     Map<String, SettingsGroup> groups = SettingsGroupFactory.createGroups(referenceConfig);
@@ -110,7 +108,6 @@ public class HelpEmitter {
 
   public static void emitSectionHelp(@NonNull String sectionName, @Nullable String connectorName) {
 
-    ConfigFactory.invalidateCaches();
     Config referenceConfig = LoaderConfigFactory.createReferenceConfig();
 
     Map<String, SettingsGroup> groups = SettingsGroupFactory.createGroups(referenceConfig);
