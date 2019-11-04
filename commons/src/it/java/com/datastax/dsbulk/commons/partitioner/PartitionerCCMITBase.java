@@ -9,12 +9,16 @@
 package com.datastax.dsbulk.commons.partitioner;
 
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
+import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
+import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.OSS;
 import static com.datastax.oss.driver.api.core.DefaultConsistencyLevel.ALL;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 import static org.awaitility.Duration.ONE_MINUTE;
 
 import com.datastax.dsbulk.commons.tests.ccm.CCMExtension;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMVersionRequirement;
 import com.datastax.dsbulk.commons.tests.utils.CQLUtils;
 import com.datastax.dsbulk.commons.tests.utils.StringUtils;
 import com.datastax.oss.driver.api.core.CqlIdentifier;
@@ -36,6 +40,12 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 @ExtendWith(CCMExtension.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+// restrict the matrix to avoid utilizing too many resources on CI
+@CCMRequirements(
+    versionRequirements = {
+      @CCMVersionRequirement(type = DSE, min = "5.1"),
+      @CCMVersionRequirement(type = OSS, min = "3.11")
+    })
 abstract class PartitionerCCMITBase {
 
   private static final int EXPECTED_TOTAL = 10_000;

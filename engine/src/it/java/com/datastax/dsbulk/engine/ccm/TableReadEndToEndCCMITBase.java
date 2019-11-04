@@ -10,6 +10,8 @@ package com.datastax.dsbulk.engine.ccm;
 
 import static com.datastax.dsbulk.commons.partitioner.TokenUtils.getTokenValue;
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
+import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
+import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.OSS;
 import static com.datastax.dsbulk.commons.tests.utils.CQLUtils.createKeyspaceSimpleStrategy;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.global;
@@ -23,6 +25,8 @@ import static org.awaitility.Duration.ONE_MINUTE;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
+import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMVersionRequirement;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
@@ -65,6 +69,12 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 @ExtendWith(LogInterceptingExtension.class)
 @ExtendWith(StreamInterceptingExtension.class)
+// restrict the matrix to avoid utilizing too many resources on CI
+@CCMRequirements(
+    versionRequirements = {
+      @CCMVersionRequirement(type = DSE, min = "5.1"),
+      @CCMVersionRequirement(type = OSS, min = "3.11")
+    })
 abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
 
   private static final Version V3 = Version.parse("3.0");
