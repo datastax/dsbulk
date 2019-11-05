@@ -8,6 +8,10 @@
  */
 package com.datastax.dsbulk.engine.internal.docs;
 
+import static java.nio.file.StandardOpenOption.CREATE;
+import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
+import static java.nio.file.StandardOpenOption.WRITE;
+
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.config.LoaderConfigFactory;
 import com.datastax.dsbulk.commons.internal.utils.StringUtils;
@@ -22,7 +26,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.Map;
 import org.apache.commons.text.WordUtils;
 
@@ -43,7 +46,7 @@ public class ConfigurationFileCreator {
       PrintWriter pw =
           new PrintWriter(
               Files.newBufferedWriter(
-                  dest, StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING));
+                  dest, StandardCharsets.UTF_8, WRITE, CREATE, TRUNCATE_EXISTING));
 
       String rowOfHashes = StringUtils.nCopies("#", LINE_LENGTH);
       String indentedRowOfHashes =

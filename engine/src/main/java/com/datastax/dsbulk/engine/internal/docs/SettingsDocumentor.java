@@ -9,6 +9,9 @@
 package com.datastax.dsbulk.engine.internal.docs;
 
 import static com.datastax.dsbulk.engine.internal.help.HelpEntryFactory.CONFIG_FILE_OPTION;
+import static java.nio.file.StandardOpenOption.CREATE;
+import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
+import static java.nio.file.StandardOpenOption.WRITE;
 
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.config.LoaderConfigFactory;
@@ -28,7 +31,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -46,7 +48,7 @@ public class SettingsDocumentor {
     try (PrintWriter out =
         new PrintWriter(
             Files.newBufferedWriter(
-                filePath, StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING))) {
+                filePath, StandardCharsets.UTF_8, WRITE, CREATE, TRUNCATE_EXISTING))) {
       // Print page title
       out.printf(
           "# %s%n%n"
