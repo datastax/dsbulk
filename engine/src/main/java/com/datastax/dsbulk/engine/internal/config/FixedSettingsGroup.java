@@ -16,19 +16,15 @@ import java.util.TreeSet;
 /** A group of particular settings. */
 class FixedSettingsGroup implements SettingsGroup {
 
-  private final Set<String> desiredSettings;
   private final Set<String> settings;
 
-  FixedSettingsGroup(List<String> commonSettings) {
-    desiredSettings = new HashSet<>(commonSettings);
-    settings = new TreeSet<>(new SettingsComparator(commonSettings));
+  FixedSettingsGroup(List<String> fixedSettings) {
+    settings = new TreeSet<>(new SettingsComparator(fixedSettings));
+    settings.addAll(fixedSettings);
   }
 
   @Override
   public boolean addSetting(String settingName) {
-    if (desiredSettings.contains(settingName)) {
-      settings.add(settingName);
-    }
     // Always return false because we want other groups to have a chance to add this
     // setting as well.
     return false;

@@ -66,22 +66,23 @@ public class SettingsDocumentor {
 
       // Print links to relevant sections.
       for (String groupName : groups.keySet()) {
+        String noPrefix = removePrefix(groupName);
         out.printf(
             "%s<a href=\"#%s\">%s Settings</a><br>%n",
-            tocIndent(groupName), groupName, prettifyName(groupName));
+            tocIndent(noPrefix), noPrefix, prettifyName(noPrefix));
       }
 
       // Walk through groups, emitting a group title followed by settings
       // for each group.
       for (Map.Entry<String, SettingsGroup> groupEntry : groups.entrySet()) {
         String groupName = groupEntry.getKey();
-        out.printf("<a name=\"%s\"></a>%n", groupName);
-        out.printf("%s %s Settings%n%n", titleFormat(groupName), prettifyName(groupName));
+        String noPrefix = removePrefix(groupName);
+        out.printf("<a name=\"%s\"></a>%n", noPrefix);
+        out.printf("%s %s Settings%n%n", titleFormat(noPrefix), prettifyName(noPrefix));
         if (!groupName.equals("Common")) {
           out.printf(
               "%s%n%n",
-              getSanitizedDescription(
-                  ConfigUtils.getNullSafeValue(referenceConfig, "dsbulk." + groupName)));
+              getSanitizedDescription(ConfigUtils.getNullSafeValue(referenceConfig, groupName)));
         } else {
           // Emit the help for the "-f" option in the Common section.
           out.printf(
@@ -176,5 +177,9 @@ public class SettingsDocumentor {
       desc += String.format("%n%nDefault: **%s**.", defaultValue);
     }
     return desc;
+  }
+
+  private static String removePrefix(String s) {
+    return s.replaceFirst(".*?\\.", "");
   }
 }

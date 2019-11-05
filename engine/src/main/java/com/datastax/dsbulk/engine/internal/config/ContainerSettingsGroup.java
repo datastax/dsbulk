@@ -26,7 +26,7 @@ class ContainerSettingsGroup implements SettingsGroup {
   private final boolean includeDescendants;
 
   ContainerSettingsGroup(String path, boolean includeDescendants, List<String> preferredSettings) {
-    prefix = "dsbulk." + path + ".";
+    prefix = path + ".";
     this.includeDescendants = includeDescendants;
     settings = new TreeSet<>(new SettingsComparator(preferredSettings));
   }

@@ -24,20 +24,33 @@ import java.util.function.BiConsumer;
 
 public class SettingsGroupFactory {
 
+  /**
+   * A String comparator that places the following 3 sections on top of generated documentation:
+   *
+   * <ol>
+   *   <li>Common settings
+   *   <li>Connector settings
+   *   <li>Schema settings
+   * </ol>
+   */
+  private static final SettingsComparator POPULAR_SECTIONS_FIRST =
+      new SettingsComparator("Common", "dsbulk.connector", "dsbulk.schema");
+
   public static Map<String, SettingsGroup> createGroups(@NonNull Config referenceConfig) {
-    Map<String, SettingsGroup> groups =
-        new TreeMap<>(new SettingsComparator("Common", "connector", "schema"));
     List<String> commonSettings = parseCommonSettings(referenceConfig);
     List<String> preferredSettings = parsePreferredSettings(referenceConfig, commonSettings);
 
-    // First add a group for the "commonly used settings". Want to show that first in our
-    // doc.
+    Map<String, SettingsGroup> groups = new TreeMap<>(POPULAR_SECTIONS_FIRST);
+
+    // First add a group for the "commonly used settings". Want to show that first in our doc.
     groups.put("Common", new FixedSettingsGroup(commonSettings));
-    // Now add groups for every top-level setting section + driver.*.
+
+    // Now add groups for every top-level setting section in DSBulk config
     ConfigObject dsbulkRoot = referenceConfig.getConfig("dsbulk").root();
     addGroups(groups, dsbulkRoot, preferredSettings);
     // Now add settings to groups
     addSettings(groups, dsbulkRoot, "dsbulk");
+
     return groups;
   }
 
@@ -98,18 +111,20 @@ public class SettingsGroupFactory {
         // particular connector.
         // "driver" group is also special because it's really large.
         // We subdivide each one level further.
-        groups.put(key, new ContainerSettingsGroup(key, false, preferredSettings));
+        groups.put(
+            "dsbulk." + key, new ContainerSettingsGroup("dsbulk." + key, false, preferredSettings));
         for (Map.Entry<String, ConfigValue> nonLeafEntry :
             ((ConfigObject) entry.getValue()).entrySet()) {
           if (nonLeafEntry.getValue().valueType() == ConfigValueType.OBJECT) {
             groups.put(
-                key + "." + nonLeafEntry.getKey(),
+                "dsbulk." + key + "." + nonLeafEntry.getKey(),
                 new ContainerSettingsGroup(
-                    key + "." + nonLeafEntry.getKey(), true, preferredSettings));
+                    "dsbulk." + key + "." + nonLeafEntry.getKey(), true, preferredSettings));
           }
         }
       } else {
-        groups.put(key, new ContainerSettingsGroup(key, true, preferredSettings));
+        groups.put(
+            "dsbulk." + key, new ContainerSettingsGroup("dsbulk." + key, true, preferredSettings));
       }
     }
   }

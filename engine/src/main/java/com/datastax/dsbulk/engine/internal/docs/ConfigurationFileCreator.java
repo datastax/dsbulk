@@ -79,7 +79,7 @@ public class ConfigurationFileCreator {
           continue;
         }
         pw.println(indentedRowOfHashes);
-        referenceConfig.getConfig("dsbulk." + section).root().origin().comments().stream()
+        referenceConfig.getConfig(section).root().origin().comments().stream()
             .filter(line -> !ConfigUtils.isTypeHint(line))
             .filter(line -> !ConfigUtils.isLeaf(line))
             .forEach(
