@@ -72,6 +72,11 @@ class BulkConfigurationExceptionTest {
             catchThrowable(() -> ConfigFactory.parseString("key=[ParseError").getStringList("key")),
             "base.path",
             "List should have ended with ] or had a comma"),
+        // base path empty
+        Arguments.of(
+            catchThrowable(() -> ConfigFactory.parseString("key=NotANumber").getInt("key")),
+            "",
+            "Invalid value for key, expecting NUMBER, got STRING [at: String: 1]"),
         // ConfigException.Other
         Arguments.of(new BadBean("Not a standard message"), "base.path", "Not a standard message"));
   }
