@@ -270,7 +270,7 @@
             <configuration>
               <mainClass>com.datastax.dsbulk.engine.internal.docs.ConfigurationFileCreator</mainClass>
               <arguments>
-                <argument>${project.basedir}/../manual/application.template.conf</argument>
+                <argument>${project.basedir}/../manual/</argument>
               </arguments>
             </configuration>
           </execution>

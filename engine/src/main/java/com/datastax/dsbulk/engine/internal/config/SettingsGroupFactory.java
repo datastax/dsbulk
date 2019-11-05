@@ -36,7 +36,10 @@ public class SettingsGroupFactory {
   private static final SettingsComparator POPULAR_SECTIONS_FIRST =
       new SettingsComparator("Common", "dsbulk.connector", "dsbulk.schema");
 
-  public static Map<String, SettingsGroup> createGroups(@NonNull Config referenceConfig) {
+  /**
+   * Creates the configuration sections for DSBulk.
+   */
+  public static Map<String, SettingsGroup> createDSBulkConfigurationGroups(@NonNull Config referenceConfig) {
     List<String> commonSettings = parseCommonSettings(referenceConfig);
     List<String> preferredSettings = parsePreferredSettings(referenceConfig, commonSettings);
 

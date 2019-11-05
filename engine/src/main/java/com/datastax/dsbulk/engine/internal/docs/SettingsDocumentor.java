@@ -61,14 +61,14 @@ public class SettingsDocumentor {
 
       Config referenceConfig = LoaderConfigFactory.createReferenceConfig();
 
-      Map<String, SettingsGroup> groups = SettingsGroupFactory.createGroups(referenceConfig);
+      Map<String, SettingsGroup> groups = SettingsGroupFactory.createDSBulkConfigurationGroups(referenceConfig);
       Map<String, String> longToShortOptions = createLongToShortOptions(referenceConfig);
 
       // Print links to relevant sections.
       for (String groupName : groups.keySet()) {
         String noPrefix = removePrefix(groupName);
         out.printf(
-            "%s<a href=\"#%s\">%s Settings</a><br>%n",
+            "%s<a href=\"#%s\">%s</a><br>%n",
             tocIndent(noPrefix), noPrefix, prettifyName(noPrefix));
       }
 
@@ -78,7 +78,7 @@ public class SettingsDocumentor {
         String groupName = groupEntry.getKey();
         String noPrefix = removePrefix(groupName);
         out.printf("<a name=\"%s\"></a>%n", noPrefix);
-        out.printf("%s %s Settings%n%n", titleFormat(noPrefix), prettifyName(noPrefix));
+        out.printf("%s %s%n%n", titleFormat(noPrefix), prettifyName(noPrefix));
         if (!groupName.equals("Common")) {
           out.printf(
               "%s%n%n",
@@ -149,9 +149,13 @@ public class SettingsDocumentor {
    * @return pretty representation of the group name.
    */
   private static String prettifyName(String groupName) {
-    return Arrays.stream(groupName.split("\\."))
+    String title = Arrays.stream(groupName.split("\\."))
         .map(StringUtils::ucfirst)
-        .collect(Collectors.joining(" "));
+        .collect(Collectors.joining(" ")) + " Settings";
+    if (title.contains("Driver")) {
+      title += " (Deprecated)";
+    }
+    return title;
   }
 
   /**

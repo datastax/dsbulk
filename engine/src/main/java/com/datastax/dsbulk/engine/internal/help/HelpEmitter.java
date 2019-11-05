@@ -40,7 +40,7 @@ public class HelpEmitter {
 
     Config referenceConfig = LoaderConfigFactory.createReferenceConfig();
 
-    Map<String, SettingsGroup> groups = SettingsGroupFactory.createGroups(referenceConfig);
+    Map<String, SettingsGroup> groups = SettingsGroupFactory.createDSBulkConfigurationGroups(referenceConfig);
 
     Map<String, String> longToShortOptions =
         ShortcutsFactory.createShortcutsMap(referenceConfig, connectorName).inverse();
@@ -110,7 +110,7 @@ public class HelpEmitter {
 
     Config referenceConfig = LoaderConfigFactory.createReferenceConfig();
 
-    Map<String, SettingsGroup> groups = SettingsGroupFactory.createGroups(referenceConfig);
+    Map<String, SettingsGroup> groups = SettingsGroupFactory.createDSBulkConfigurationGroups(referenceConfig);
 
     if (!groups.containsKey(sectionName)) {
       // Write error message, available group names, raise as error.
