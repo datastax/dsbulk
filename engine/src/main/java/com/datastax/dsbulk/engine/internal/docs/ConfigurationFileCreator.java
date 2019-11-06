@@ -105,7 +105,7 @@ public class ConfigurationFileCreator {
     pw.println("# You can also consult the Java Driver online documentation for more details:");
     pw.println("# https://docs.datastax.com/en/developer/java-driver/latest/");
     pw.println("# https://docs.datastax.com/en/developer/java-driver-dse/latest/");
-    pw.println("include url(\"file:./driver.conf\")");
+    pw.println("include classpath(\"driver.conf\")");
     pw.println(ROW_OF_HASHES);
     pw.println();
     pw.println(ROW_OF_HASHES);
