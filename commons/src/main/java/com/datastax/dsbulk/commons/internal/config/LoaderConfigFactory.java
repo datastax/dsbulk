@@ -18,18 +18,18 @@ import java.nio.file.Path;
 public class LoaderConfigFactory {
 
   /**
-   * Invalidates caches and creates a resolved reference config for DSBulk, not including the driver
-   * reference.
+   * Invalidates caches and creates a resolved config containing only the driver settings that
+   * DSBulk overrides.
    *
-   * <p>The reference config is obtained from all classpath resources named dsbulk-reference.conf.
+   * <p>The reference config is obtained from all classpath resources named driver-reference.conf.
    *
    * <p>This method is only useful for documentation purposes.
    *
-   * @return a resolved reference config for DSBulk, not including the driver reference.
+   * @return a resolved reference config containing only the driver settings that DSBulk overrides.
    */
-  public static Config standaloneDSBulkReference() {
+  public static Config standaloneDriverReference() {
     ConfigFactory.invalidateCaches();
-    return ConfigFactory.parseResourcesAnySyntax("dsbulk-reference").resolve();
+    return ConfigFactory.parseResourcesAnySyntax("driver-reference").resolve();
   }
 
   /**
@@ -49,7 +49,7 @@ public class LoaderConfigFactory {
   @NonNull
   public static Config createReferenceConfig() {
     // parse errors should not happen here
-    return standaloneDSBulkReference()
+    return ConfigFactory.parseResourcesAnySyntax("dsbulk-reference")
         .withFallback(ConfigFactory.parseResourcesAnySyntax("dse-reference"))
         .withFallback(ConfigFactory.defaultReference())
         .resolve();

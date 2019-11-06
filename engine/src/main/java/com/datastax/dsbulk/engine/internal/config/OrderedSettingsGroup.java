@@ -8,25 +8,17 @@
  */
 package com.datastax.dsbulk.engine.internal.config;
 
-import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Set;
-import java.util.TreeSet;
 
-/** A group of particular settings. */
-class FixedSettingsGroup implements SettingsGroup {
+/** A Group that contains settings ordered in the order they were added. */
+class OrderedSettingsGroup implements SettingsGroup {
 
-  private final Set<String> settings;
-
-  FixedSettingsGroup(List<String> fixedSettings) {
-    settings = new TreeSet<>(new SettingsComparator(fixedSettings));
-    settings.addAll(fixedSettings);
-  }
+  private final Set<String> settings = new LinkedHashSet<>();
 
   @Override
   public boolean addSetting(String settingName) {
-    // Always return false because we want other groups to have a chance to add this
-    // setting as well.
-    return false;
+    return settings.add(settingName);
   }
 
   @Override

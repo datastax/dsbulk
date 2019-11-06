@@ -164,9 +164,6 @@ public class CommandLineParser {
           // consider the next remaining arg as the section to show help for,
           // and ignore the rest of the command line
           String sectionName = it.next();
-          if (sectionName.startsWith("dsbulk.")) {
-            sectionName = sectionName.substring("dsbulk.".length());
-          }
           throw new SectionHelpRequestException(sectionName, connectorName);
         }
         // no more args: the help request was for the global help

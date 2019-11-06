@@ -14,16 +14,19 @@ import edu.umd.cs.findbugs.annotations.Nullable;
 public class HelpEntry {
 
   @Nullable private final String shortOption;
+  @Nullable private final String abbreviatedOption;
   @Nullable private final String longOption;
   @Nullable private final String argumentType;
   @NonNull private final String description;
 
   public HelpEntry(
       @Nullable String shortOption,
+      @Nullable String abbreviatedOption,
       @Nullable String longOption,
       @Nullable String argumentType,
       @NonNull String description) {
     this.shortOption = shortOption;
+    this.abbreviatedOption = abbreviatedOption;
     this.longOption = longOption;
     this.argumentType = argumentType;
     this.description = description;
@@ -32,6 +35,11 @@ public class HelpEntry {
   @Nullable
   public String getShortOption() {
     return shortOption;
+  }
+
+  @Nullable
+  public String getAbbreviatedOption() {
+    return abbreviatedOption;
   }
 
   @Nullable

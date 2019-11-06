@@ -110,13 +110,13 @@ class DataStaxBulkLoaderTest {
 
   @Test
   void should_show_section_help_when_help_opt_arg() {
-    new DataStaxBulkLoader("--help", "driver.auth").run();
+    new DataStaxBulkLoader("--help", "dsbulk.batch").run();
     assertSectionHelp();
   }
 
   @Test
   void should_show_section_help_when_help_subcommand() {
-    new DataStaxBulkLoader("help", "driver.auth").run();
+    new DataStaxBulkLoader("help", "dsbulk.batch").run();
     assertSectionHelp();
   }
 
@@ -136,13 +136,13 @@ class DataStaxBulkLoaderTest {
 
   @Test
   void should_show_section_help_when_help_opt_arg_with_connector() {
-    new DataStaxBulkLoader("--help", "-c", "json", "driver.auth").run();
+    new DataStaxBulkLoader("--help", "-c", "json", "dsbulk.batch").run();
     assertSectionHelp();
   }
 
   @Test
   void should_show_section_help_when_help_subcommand_with_connector() {
-    new DataStaxBulkLoader("help", "-c", "json", "driver.auth").run();
+    new DataStaxBulkLoader("help", "-c", "json", "dsbulk.batch").run();
     assertSectionHelp();
   }
 
@@ -175,12 +175,14 @@ class DataStaxBulkLoaderTest {
     assertThat(stdErr.getStreamAsString())
         .contains(logs.getLoggedMessages())
         .contains("noexist is not a valid section. Available sections include")
-        .contains("driver.auth");
+        .contains("dsbulk.connector.csv")
+        .contains("dsbulk.batch")
+        .contains("driver");
   }
 
   @Test
   void should_show_section_help() {
-    new DataStaxBulkLoader("help", "batch").run();
+    new DataStaxBulkLoader("help", "dsbulk.batch").run();
     String out = stdOut.getStreamAsString();
     assertThat(out)
         .contains("--[dsbulk.]batch.mode")
@@ -189,17 +191,18 @@ class DataStaxBulkLoaderTest {
 
   @Test
   void should_show_section_help_with_subsection_pointers() {
-    new DataStaxBulkLoader("help", "driver").run();
+    new DataStaxBulkLoader("help", "dsbulk.connector").run();
     String out = stdOut.getStreamAsString();
     assertThat(out)
-        .contains("--[dsbulk.]driver.hosts")
+        .contains("--[dsbulk.]connector.name")
         .contains("This section has the following subsections")
-        .contains("driver.auth");
+        .contains("connector.csv")
+        .contains("connector.json");
   }
 
   @Test
   void should_show_section_help_with_connector_shortcuts() {
-    new DataStaxBulkLoader("help", "connector.csv").run();
+    new DataStaxBulkLoader("help", "dsbulk.connector.csv").run();
     CharSequence out = new AnsiString(stdOut.getStreamAsString()).getPlain();
     assertThat(out).contains("-url, --[dsbulk.]connector.csv.url");
   }
@@ -410,10 +413,13 @@ class DataStaxBulkLoaderTest {
         Arguments.of("-p", "pass", "datastax-java-driver.advanced.auth-provider.password", "pass"),
         Arguments.of("-u", "user", "datastax-java-driver.advanced.auth-provider.username", "user"),
         Arguments.of(
-            "-h", "host1, host2", "dsbulk.driver.hosts", Lists.newArrayList("host1", "host2")),
+            "-h",
+            "host1, host2",
+            "datastax-java-driver.basic.contact-points",
+            Lists.newArrayList("host1", "host2")),
         Arguments.of(
             "-maxRetries", "42", "datastax-java-driver.advanced.retry-policy.max-retries", 42),
-        Arguments.of("-port", "9876", "dsbulk.driver.port", 9876),
+        Arguments.of("-port", "9876", "datastax-java-driver.basic.default-port", 9876),
         Arguments.of("-cl", "cl", "datastax-java-driver.basic.request.consistency", "cl"),
         Arguments.of(
             "-dc",
@@ -762,6 +768,6 @@ class DataStaxBulkLoaderTest {
     assertThat(out).doesNotContain("--[dsbulk.]connector.json.url");
     assertThat(out).doesNotContain("--[dsbulk.]connector.csv.url");
 
-    assertThat(out).contains("--[dsbulk.]driver.auth.password");
+    assertThat(out).contains("--[dsbulk.]batch.mode");
   }
 }

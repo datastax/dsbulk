@@ -9,14 +9,19 @@
 package com.datastax.dsbulk.engine.internal.config;
 
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
+import com.datastax.dsbulk.commons.internal.config.LoaderConfigFactory;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigObject;
+import com.typesafe.config.ConfigOrigin;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
 import edu.umd.cs.findbugs.annotations.NonNull;
+import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -37,12 +42,37 @@ public class SettingsGroupFactory {
       new SettingsComparator("Common", "dsbulk.connector", "dsbulk.schema");
 
   /**
-   * Creates the configuration sections for DSBulk.
+   * A comparator for configuration entries that preserves the original order in which they are
+   * found in the configuration file. Used for the driver section only.
    */
-  public static Map<String, SettingsGroup> createDSBulkConfigurationGroups(@NonNull Config referenceConfig) {
+  public static final Comparator<Entry<String, ConfigValue>> ORIGIN_COMPARATOR =
+      (e1, e2) -> {
+        if (e1.getKey().equals(e2.getKey())) {
+          return 0;
+        }
+        ConfigOrigin o1 = e1.getValue().origin();
+        ConfigOrigin o2 = e2.getValue().origin();
+        int positionComparison = Integer.compare(o1.lineNumber(), o2.lineNumber());
+        if (positionComparison != 0) {
+          return positionComparison;
+        }
+        // compare keys alphabetically
+        return e1.getKey().compareTo(e2.getKey());
+      };
+
+  /**
+   * Creates the configuration sections for DSBulk. The sections created here are used by the {@link
+   * com.datastax.dsbulk.engine.internal.help.HelpEmitter} and by generation tools, such as {@link
+   * com.datastax.dsbulk.engine.internal.docs.SettingsDocumentor} and {@link
+   * com.datastax.dsbulk.engine.internal.docs.ConfigurationFileCreator}.
+   *
+   * @param includeDriver Whether to include a driver section or not.
+   */
+  public static Map<String, SettingsGroup> createDSBulkConfigurationGroups(boolean includeDriver) {
+    Config referenceConfig = LoaderConfigFactory.createReferenceConfig();
     List<String> commonSettings = parseCommonSettings(referenceConfig);
     List<String> preferredSettings = parsePreferredSettings(referenceConfig, commonSettings);
-
+    SettingsComparator comparator = new SettingsComparator(preferredSettings);
     Map<String, SettingsGroup> groups = new TreeMap<>(POPULAR_SECTIONS_FIRST);
 
     // First add a group for the "commonly used settings". Want to show that first in our doc.
@@ -50,15 +80,21 @@ public class SettingsGroupFactory {
 
     // Now add groups for every top-level setting section in DSBulk config
     ConfigObject dsbulkRoot = referenceConfig.getConfig("dsbulk").root();
-    addGroups(groups, dsbulkRoot, preferredSettings);
-    // Now add settings to groups
-    addSettings(groups, dsbulkRoot, "dsbulk");
+    addDsbulkSections(groups, dsbulkRoot, comparator);
+    // Now add settings to DSBulk groups
+    populateDsbulkSettings(groups, dsbulkRoot, "dsbulk");
 
+    if (includeDriver) {
+      Config driverConfig =
+          LoaderConfigFactory.standaloneDriverReference().getConfig("datastax-java-driver");
+      SettingsGroup driverGroup = createDriverGroup(driverConfig);
+      groups.put("datastax-java-driver", driverGroup);
+    }
     return groups;
   }
 
   @NonNull
-  public static List<String> parseCommonSettings(@NonNull Config referenceConfig) {
+  private static List<String> parseCommonSettings(@NonNull Config referenceConfig) {
     // Common settings (both global and those from connectors).
     List<String> commonSettings = new ArrayList<>();
     // Add connector-specific common settings, after connector.name.
@@ -100,42 +136,46 @@ public class SettingsGroupFactory {
     return preferredSettings;
   }
 
-  private static void addGroups(
+  private static void addDsbulkSections(
       @NonNull Map<String, SettingsGroup> groups,
       @NonNull ConfigObject root,
-      @NonNull List<String> preferredSettings) {
+      @NonNull Comparator<String> comparator) {
     for (Map.Entry<String, ConfigValue> entry : root.entrySet()) {
       String key = entry.getKey();
-      if (key.equals("metaSettings")) {
-        continue;
-      }
-      if (key.equals("connector") || key.equals("driver")) {
-        // "connector" group is special because we want a sub-section for each
-        // particular connector.
-        // "driver" group is also special because it's really large.
-        // We subdivide each one level further.
-        groups.put(
-            "dsbulk." + key, new ContainerSettingsGroup("dsbulk." + key, false, preferredSettings));
-        for (Map.Entry<String, ConfigValue> nonLeafEntry :
-            ((ConfigObject) entry.getValue()).entrySet()) {
-          if (nonLeafEntry.getValue().valueType() == ConfigValueType.OBJECT) {
-            groups.put(
-                "dsbulk." + key + "." + nonLeafEntry.getKey(),
-                new ContainerSettingsGroup(
-                    "dsbulk." + key + "." + nonLeafEntry.getKey(), true, preferredSettings));
+      switch (key) {
+        case "metaSettings":
+          // never print meta-settings
+          break;
+        case "driver":
+          // deprecated as of 1.4.0
+          break;
+        case "connector":
+          // "connector" group is special because we want a sub-section for each
+          // particular connector. We subdivide each one level further.
+          groups.put(
+              "dsbulk." + key, new ContainerSettingsGroup("dsbulk." + key, false, comparator));
+          for (Map.Entry<String, ConfigValue> child :
+              ((ConfigObject) entry.getValue()).entrySet()) {
+            if (!ConfigUtils.isLeaf(child.getValue())) {
+              groups.put(
+                  "dsbulk." + key + "." + child.getKey(),
+                  new ContainerSettingsGroup(
+                      "dsbulk." + key + "." + child.getKey(), true, comparator));
+            }
           }
-        }
-      } else {
-        groups.put(
-            "dsbulk." + key, new ContainerSettingsGroup("dsbulk." + key, true, preferredSettings));
+          break;
+        default:
+          groups.put(
+              "dsbulk." + key, new ContainerSettingsGroup("dsbulk." + key, true, comparator));
+          break;
       }
     }
   }
 
-  private static void addSettings(
+  private static void populateDsbulkSettings(
       @NonNull Map<String, SettingsGroup> groups,
       @NonNull ConfigObject root,
-      @NonNull String keyPrefix) {
+      @NonNull String rootPath) {
     for (Map.Entry<String, ConfigValue> entry : root.entrySet()) {
       String key = entry.getKey();
       // Never add a setting under "metaSettings".
@@ -143,7 +183,7 @@ public class SettingsGroupFactory {
         continue;
       }
       ConfigValue value = entry.getValue();
-      String fullKey = keyPrefix.isEmpty() ? key : keyPrefix + '.' + key;
+      String fullKey = rootPath.isEmpty() ? key : rootPath + '.' + key;
       if (ConfigUtils.isLeaf(value)) {
         // Add the setting name to the first group that accepts it.
         for (SettingsGroup group : groups.values()) {
@@ -153,9 +193,26 @@ public class SettingsGroupFactory {
           }
         }
       } else {
-        addSettings(groups, (ConfigObject) value, fullKey);
+        populateDsbulkSettings(groups, (ConfigObject) value, fullKey);
       }
     }
+  }
+
+  private static SettingsGroup createDriverGroup(@NonNull Config driverConfig) {
+    Set<Entry<String, ConfigValue>> entries = new TreeSet<>(ORIGIN_COMPARATOR);
+    for (Entry<String, ConfigValue> entry : driverConfig.entrySet()) {
+      String key = entry.getKey();
+      ConfigValue settingValue = ConfigUtils.getNullSafeValue(driverConfig, key);
+      if (ConfigUtils.isLeaf(settingValue)) {
+        String fullKey = "datastax-java-driver." + key;
+        entries.add(new SimpleEntry<>(fullKey, settingValue));
+      }
+    }
+    SettingsGroup driverGroup = new OrderedSettingsGroup();
+    for (Entry<String, ConfigValue> entry : entries) {
+      driverGroup.addSetting(entry.getKey());
+    }
+    return driverGroup;
   }
 
   /**

@@ -97,8 +97,10 @@ class EndToEndSimulacronITBase {
         new String[] {
           "--log.directory",
           quoteJson(logDir),
-          "-cp",
-          quoteJson(hostname + ':' + port),
+          "-h",
+          hostname,
+          "-port",
+          port,
           "-dc",
           "dc1",
           "-cl",

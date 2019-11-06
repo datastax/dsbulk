@@ -8,6 +8,7 @@
  */
 package com.datastax.dsbulk.engine.internal.docs;
 
+import static com.datastax.dsbulk.engine.internal.config.SettingsGroupFactory.ORIGIN_COMPARATOR;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
@@ -22,12 +23,12 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigObject;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Comparator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -44,13 +45,6 @@ public class ConfigurationFileCreator {
   private static final String INDENTED_ROW_OF_HASHES =
       LINE_INDENT + StringUtils.nCopies("#", LINE_LENGTH - INDENT_LENGTH);
   private static final String ROW_OF_HASHES = StringUtils.nCopies("#", LINE_LENGTH);
-
-  private static final Comparator<Entry<String, ConfigValue>> ORIGIN_COMPARATOR =
-      (e1, e2) -> {
-        String s1 = e1.getValue().origin().description();
-        String s2 = e2.getValue().origin().description();
-        return s1.compareTo(s2);
-      };
 
   public static void main(String[] args) throws IOException {
     try {
@@ -96,16 +90,44 @@ public class ConfigurationFileCreator {
                 + "/conf directory, it will be automatically picked up and used by default. "
                 + "To use other file names see the -f command-line option."));
     pw.println(ROW_OF_HASHES);
-    pw.println("");
-    pw.println("# Java Driver settings");
+    pw.println();
+    pw.println(ROW_OF_HASHES);
+    pw.println("# DataStax Java Driver settings.");
+    pw.println("#");
+    pw.println(
+        wrapLines(
+            "# Settings for the Java Driver are declared in the driver.conf file located "
+                + "in the same directory. Use this file to configure the driver directly, "
+                + "for example, to define contact points, provide authentication and encryption "
+                + "settings, modify timeouts, consistency levels, page sizes, policies, "
+                + "and much more."));
+    pw.println();
+    pw.println("# You can also consult the Java Driver online documentation for more details:");
+    pw.println("# https://docs.datastax.com/en/developer/java-driver/latest/");
+    pw.println("# https://docs.datastax.com/en/developer/java-driver-dse/latest/");
     pw.println("include url(\"file:./driver.conf\")");
-    pw.println("");
+    pw.println(ROW_OF_HASHES);
+    pw.println();
+    pw.println(ROW_OF_HASHES);
+    pw.println("# DataStax Bulk Loader settings.");
+    pw.println("#");
+    pw.println(
+        wrapLines(
+            "# Settings for the DataStax Bulk Loader (DSBulk) are declared below. Use this "
+                + "file, for example, to define which connector to use and how, to customize "
+                + "logging, monitoring, codecs, to specify schema settings and mappings, "
+                + "and much more."));
+    pw.println();
+    pw.println(
+        "# You can also consult the DataStax Bulk Loader online documentation for more details:");
+    pw.println("# https://docs.datastax.com/en/dsbulk/doc/");
+    pw.println(ROW_OF_HASHES);
     pw.println("dsbulk {");
-    pw.println("");
+    pw.println();
 
     Config referenceConfig = LoaderConfigFactory.createReferenceConfig();
-    Map<String, SettingsGroup> groups =
-        SettingsGroupFactory.createDSBulkConfigurationGroups(referenceConfig);
+
+    Map<String, SettingsGroup> groups = SettingsGroupFactory.createDSBulkConfigurationGroups(false);
 
     for (Map.Entry<String, SettingsGroup> groupEntry : groups.entrySet()) {
       String section = groupEntry.getKey();
@@ -156,12 +178,13 @@ public class ConfigurationFileCreator {
     pw.println("# Java Driver configuration for DSBulk.");
     pw.println("#");
     pw.println(
-        "# The settings below are just a subset of all the configurable options of the driver, and provide");
-    pw.println(
-        "# an optimal driver configuration for DSBulk for most use cases. See the Java Driver configuration");
-    pw.println("# reference for instructions on how to configure the driver properly:");
-    pw.println(
-        "# https://docs.datastax.com/en/developer/java-driver/4.3/manual/core/configuration");
+        wrapLines(
+            "# The settings below are just a subset of all the configurable options of the "
+                + "driver, and provide an optimal driver configuration for DSBulk for most use cases. "
+                + "See the Java Driver configuration reference for instructions on how to configure "
+                + "the driver properly:"));
+    pw.println("# https://docs.datastax.com/en/developer/java-driver/latest/");
+    pw.println("# https://docs.datastax.com/en/developer/java-driver-dse/latest/");
     pw.println("#");
     pw.println("# This file is written in HOCON format; see");
     pw.println("# https://github.com/typesafehub/config/blob/master/HOCON.md");
@@ -176,61 +199,57 @@ public class ConfigurationFileCreator {
     pw.println("");
     pw.println("datastax-java-driver {");
     pw.println("");
-    Config dsbulkStandaloneConfig = LoaderConfigFactory.standaloneDSBulkReference();
-    Config driverConfig = dsbulkStandaloneConfig.getConfig("datastax-java-driver");
-    Set<Entry<String, ConfigValue>> entries = new TreeSet<>(ORIGIN_COMPARATOR);
-    entries.addAll(driverConfig.root().entrySet());
-    for (Entry<String, ConfigValue> groupEntry : entries) {
-      printDriverSetting(pw, driverConfig, groupEntry, 1);
-    }
+    Config driverConfig =
+        LoaderConfigFactory.standaloneDriverReference().getConfig("datastax-java-driver");
+    printDriverSettings(pw, driverConfig.root(), 1);
     pw.println("}");
   }
 
-  private static void printDriverSetting(
-      PrintWriter pw, Config driverConfig, Entry<String, ConfigValue> groupEntry, int indentation) {
-    String settingName = groupEntry.getKey();
-    ConfigValue value = ConfigUtils.getNullSafeValue(driverConfig, settingName);
-    String spaces = StringUtils.nCopies(" ", INDENT_LENGTH * indentation);
-    if (ConfigUtils.isLeaf(value)) {
-      value.origin().comments().stream()
-          .filter(line -> !ConfigUtils.isTypeHint(line))
-          .filter(line -> !ConfigUtils.isLeaf(line))
-          .forEach(
-              l -> {
-                pw.print(spaces + "# ");
-                pw.println(wrapIndentedLines(l, indentation));
-              });
-      pw.print(spaces + "# Type: ");
-      pw.println(ConfigUtils.getTypeString(driverConfig, settingName).orElse("arg"));
-      pw.print(spaces + "# Default value: ");
-      pw.println(value.render(ConfigRenderOptions.concise()));
-      pw.print(spaces);
-      pw.print("#");
-      pw.print(settingName);
-      pw.print(" = ");
-      pw.println(value.render(ConfigRenderOptions.concise()));
-      pw.println();
-    } else {
-      value.origin().comments().stream()
-          .filter(line -> !ConfigUtils.isTypeHint(line))
-          .filter(line -> !ConfigUtils.isLeaf(line))
-          .forEach(
-              l -> {
-                pw.print(spaces + "# ");
-                pw.println(wrapIndentedLines(l, indentation));
-              });
-      pw.print(spaces);
-      pw.print(settingName);
-      pw.println(" {");
-      pw.println();
-      Set<Entry<String, ConfigValue>> entries = new TreeSet<>(ORIGIN_COMPARATOR);
-      entries.addAll(((ConfigObject) value).entrySet());
-      for (Entry<String, ConfigValue> e : entries) {
-        printDriverSetting(pw, ((ConfigObject) value).toConfig(), e, indentation + 1);
+  private static void printDriverSettings(
+      @NonNull PrintWriter pw, @NonNull ConfigObject root, int indentation) {
+    Set<Entry<String, ConfigValue>> entries = new TreeSet<>(ORIGIN_COMPARATOR);
+    entries.addAll(root.entrySet());
+    for (Entry<String, ConfigValue> entry : entries) {
+      String key = entry.getKey();
+      ConfigValue value = ConfigUtils.getNullSafeValue(root.toConfig(), key);
+      String spaces = StringUtils.nCopies(" ", INDENT_LENGTH * indentation);
+      if (ConfigUtils.isLeaf(value)) {
+        value.origin().comments().stream()
+            .filter(line -> !ConfigUtils.isTypeHint(line))
+            .filter(line -> !ConfigUtils.isLeaf(line))
+            .forEach(
+                l -> {
+                  pw.print(spaces + "# ");
+                  pw.println(wrapIndentedLines(l, indentation));
+                });
+        pw.print(spaces + "# Type: ");
+        pw.println(ConfigUtils.getTypeString(root.toConfig(), key).orElse("arg"));
+        pw.print(spaces + "# Default value: ");
+        pw.println(value.render(ConfigRenderOptions.concise()));
+        pw.print(spaces);
+        pw.print("#");
+        pw.print(key);
+        pw.print(" = ");
+        pw.println(value.render(ConfigRenderOptions.concise()));
+        pw.println();
+      } else {
+        value.origin().comments().stream()
+            .filter(line -> !ConfigUtils.isTypeHint(line))
+            .filter(line -> !ConfigUtils.isLeaf(line))
+            .forEach(
+                l -> {
+                  pw.print(spaces + "# ");
+                  pw.println(wrapIndentedLines(l, indentation));
+                });
+        pw.print(spaces);
+        pw.print(key);
+        pw.println(" {");
+        pw.println();
+        printDriverSettings(pw, ((ConfigObject) value), indentation + 1);
+        pw.print(spaces);
+        pw.println("}");
+        pw.println();
       }
-      pw.print(spaces);
-      pw.println("}");
-      pw.println();
     }
   }
 

@@ -31,6 +31,9 @@ public class DefaultLoaderConfig implements LoaderConfig {
   private final Config delegate;
 
   public DefaultLoaderConfig(Config delegate) {
+    while (delegate instanceof DefaultLoaderConfig) {
+      delegate = ((DefaultLoaderConfig) delegate).delegate;
+    }
     this.delegate = delegate;
   }
 
@@ -46,7 +49,7 @@ public class DefaultLoaderConfig implements LoaderConfig {
 
   @Override
   public LoaderConfig withFallback(ConfigMergeable other) {
-    if (other instanceof DefaultLoaderConfig) {
+    while (other instanceof DefaultLoaderConfig) {
       // DefaultLoaderConfig does not implement ConfigMergeable
       other = ((DefaultLoaderConfig) other).delegate;
     }

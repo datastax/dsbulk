@@ -8,7 +8,7 @@
  */
 package com.datastax.dsbulk.engine.internal.config;
 
-import java.util.List;
+import java.util.Comparator;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -25,10 +25,10 @@ class ContainerSettingsGroup implements SettingsGroup {
   // as opposed to just immediate children.
   private final boolean includeDescendants;
 
-  ContainerSettingsGroup(String path, boolean includeDescendants, List<String> preferredSettings) {
+  ContainerSettingsGroup(String path, boolean includeDescendants, Comparator<String> comparator) {
     prefix = path + ".";
     this.includeDescendants = includeDescendants;
-    settings = new TreeSet<>(new SettingsComparator(preferredSettings));
+    settings = new TreeSet<>(comparator);
   }
 
   @Override

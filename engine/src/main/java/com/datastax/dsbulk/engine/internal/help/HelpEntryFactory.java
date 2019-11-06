@@ -12,6 +12,7 @@ import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -23,30 +24,35 @@ public class HelpEntryFactory {
       new HelpEntry(
           "f",
           null,
+          null,
           "string",
           "Load options from the given file rather than from `<dsbulk_home>/conf/application.conf`.");
 
-  public static final HelpEntry HELP_OPTION =
+  static final HelpEntry HELP_OPTION =
       new HelpEntry(
+          null,
           null,
           "help",
           null,
           "This help text. May be combined with -c <connectorName> to see short options for a "
               + "particular connector.");
 
-  public static final HelpEntry VERSION_OPTION =
-      new HelpEntry("v", "version", null, "Show program's version number and exit.");
+  static final HelpEntry VERSION_OPTION =
+      new HelpEntry("v", null, "version", null, "Show program's version number and exit.");
 
-  public static List<HelpEntry> createEntries(
+  static List<HelpEntry> createEntries(
       Collection<String> settings, Map<String, String> longToShortOptions, Config referenceConfig) {
     List<HelpEntry> entries = new ArrayList<>();
     for (String setting : settings) {
       String argumentType = ConfigUtils.getTypeString(referenceConfig, setting).orElse("arg");
       ConfigValue value = ConfigUtils.getNullSafeValue(referenceConfig, setting);
+      String longOptionName = createLongOptionName(setting);
+      String abbreviatedOptionName = createAbbreviatedOptionName(setting);
       HelpEntry entry =
           new HelpEntry(
               longToShortOptions.get(setting),
-              createLongOptionName(setting),
+              abbreviatedOptionName,
+              longOptionName,
               argumentType,
               getSanitizedDescription(value));
       entries.add(entry);
@@ -58,6 +64,16 @@ public class HelpEntryFactory {
     return setting
         // the prefix "dsbulk." is optional
         .replaceFirst("dsbulk\\.", "[dsbulk.]");
+  }
+
+  @Nullable
+  private static String createAbbreviatedOptionName(String setting) {
+    if (setting.startsWith("datastax-java-driver.")) {
+      return setting
+          // the prefix "datastax-java-driver." can be abbreviated to "driver."
+          .replaceFirst("datastax-java-driver\\.", "driver.");
+    }
+    return null;
   }
 
   /**

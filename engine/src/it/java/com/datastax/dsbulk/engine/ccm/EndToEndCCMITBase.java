@@ -77,7 +77,7 @@ abstract class EndToEndCCMITBase {
     args.add(quoteJson(logDir));
     args.add("--driver.advanced.connection.pool.local.size");
     args.add("1");
-    args.add("-cp");
+    args.add("-h");
     args.add(quoteJson(contactPoint.getHostName() + ':' + contactPoint.getPort()));
     return args.toArray(new String[0]);
   }

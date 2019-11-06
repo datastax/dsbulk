@@ -21,6 +21,7 @@ import com.datastax.oss.driver.shaded.guava.common.base.CharMatcher;
 import com.typesafe.config.Config;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -40,7 +41,7 @@ public class HelpEmitter {
 
     Config referenceConfig = LoaderConfigFactory.createReferenceConfig();
 
-    Map<String, SettingsGroup> groups = SettingsGroupFactory.createDSBulkConfigurationGroups(referenceConfig);
+    Map<String, SettingsGroup> groups = SettingsGroupFactory.createDSBulkConfigurationGroups(false);
 
     Map<String, String> longToShortOptions =
         ShortcutsFactory.createShortcutsMap(referenceConfig, connectorName).inverse();
@@ -93,15 +94,18 @@ public class HelpEmitter {
     Ansi options = Ansi.ansi().a("Common options:").reset().newline();
     System.out.println(options);
 
+    printAbbreviatedDsbulkOptionNote();
+    printAbbreviatedDriverOptionNote();
+
     renderHelpEntries(entries);
 
     String footer =
         "GETTING MORE HELP\n\nThere are many more settings/options that may be used to "
             + "customize behavior. Run the `help` command with one of the following section "
             + "names for more details:\n    "
-            + String.join("\n    ", getGroupNamesWithoutCommon(groups))
+            + String.join("\n    ", getSectionNames(groups))
             + "\n\nYou can also find more help at "
-            + "https://docs.datastax.com/en/dsbulk/doc/index.html.";
+            + "https://docs.datastax.com/en/dsbulk/doc.";
 
     renderWrappedTextPreformatted(footer);
   }
@@ -110,19 +114,24 @@ public class HelpEmitter {
 
     Config referenceConfig = LoaderConfigFactory.createReferenceConfig();
 
-    Map<String, SettingsGroup> groups = SettingsGroupFactory.createDSBulkConfigurationGroups(referenceConfig);
+    if (sectionName.equals("driver")) {
+      sectionName = "datastax-java-driver";
+    }
+    Map<String, SettingsGroup> groups =
+        SettingsGroupFactory.createDSBulkConfigurationGroups(
+            sectionName.equals("datastax-java-driver"));
 
     if (!groups.containsKey(sectionName)) {
       // Write error message, available group names, raise as error.
       throw new IllegalArgumentException(
           String.format(
               "%s is not a valid section. Available sections include the following:%n    %s",
-              sectionName, String.join("\n    ", getGroupNamesWithoutCommon(groups))));
+              sectionName, String.join("\n    ", getSectionNames(groups))));
     }
 
     // derive connector name from section name if section is a connector
-    if (sectionName.startsWith("connector.")) {
-      connectorName = sectionName.substring("connector.".length());
+    if (sectionName.startsWith("dsbulk.connector.")) {
+      connectorName = sectionName.substring("dsbulk.connector.".length());
     }
 
     Map<String, String> longToShortOptions =
@@ -131,11 +140,6 @@ public class HelpEmitter {
     List<HelpEntry> entries =
         HelpEntryFactory.createEntries(
             groups.get(sectionName).getSettings(), longToShortOptions, referenceConfig);
-
-    Set<String> subSections =
-        groups.keySet().stream()
-            .filter(s -> s.startsWith(sectionName + "."))
-            .collect(Collectors.toSet());
 
     System.out.println(WorkflowUtils.getBulkLoaderNameAndVersion());
 
@@ -148,29 +152,80 @@ public class HelpEmitter {
             .a(" (run `dsbulk help` to get the global help).")
             .newline();
     System.out.println(header);
+
     Ansi options = Ansi.ansi().a("Options in this section:").reset().newline();
     System.out.println(options);
 
+    if (sectionName.equals("datastax-java-driver")) {
+      printAbbreviatedDriverOptionNote();
+    } else {
+      printAbbreviatedDsbulkOptionNote();
+    }
+
     renderHelpEntries(entries);
 
+    Set<String> subSections = new HashSet<>();
+    for (String s : groups.keySet()) {
+      if (s.startsWith(sectionName + ".")) {
+        subSections.add(s);
+      }
+    }
     if (!subSections.isEmpty()) {
       String footer =
           "This section has the following subsections you may be interested in:\n    "
               + String.join("\n    ", subSections);
       renderWrappedTextPreformatted(footer);
     }
+
+    if (sectionName.equals("datastax-java-driver")) {
+      renderWrappedTextPreformatted(
+          "The settings above are just a subset of all the configurable options of the "
+              + "driver. See the Java Driver configuration reference for instructions on how to configure "
+              + "the driver properly:");
+      renderWrappedTextPreformatted("https://docs.datastax.com/en/developer/java-driver/latest/");
+      renderWrappedTextPreformatted(
+          "https://docs.datastax.com/en/developer/java-driver-dse/latest/");
+      renderWrappedTextPreformatted(
+          "Any valid driver setting can be specified on the command line; for example, "
+              + "datastax-java-driver.advanced.reconnection-policy.max-delay can be specified as:");
+      renderWrappedTextPreformatted(
+          "--datastax-java-driver.advanced.reconnection-policy.max-delay \"60 seconds\"");
+      renderWrappedTextPreformatted("or:");
+      renderWrappedTextPreformatted(
+          "--driver.advanced.reconnection-policy.max-delay \"60 seconds\"");
+    }
+  }
+
+  private static void printAbbreviatedDsbulkOptionNote() {
+    Ansi note =
+        renderWrappedText(
+            Ansi.ansi(),
+            "Note: on the command line, long options referring to DSBulk configuration "
+                + "settings can have their prefix 'dsbulk' omitted.");
+    System.out.println(note);
+  }
+
+  private static void printAbbreviatedDriverOptionNote() {
+    Ansi note =
+        renderWrappedText(
+            Ansi.ansi(),
+            "Note: on the command line, long options referring to driver configuration "
+                + "settings can be introduced by the prefix 'datastax-java-driver' or just 'driver'.");
+    System.out.println(note);
   }
 
   @NonNull
-  private static Set<String> getGroupNamesWithoutCommon(Map<String, SettingsGroup> groups) {
+  private static Set<String> getSectionNames(Map<String, SettingsGroup> groups) {
     Set<String> groupNames = new LinkedHashSet<>(groups.keySet());
     groupNames.remove("Common");
+    groupNames.add("driver");
     return groupNames;
   }
 
   private static void renderHelpEntries(List<HelpEntry> entries) {
     for (HelpEntry option : entries) {
       String shortOpt = option.getShortOption();
+      String abbreviatedLongOpt = option.getAbbreviatedOption();
       String longOpt = option.getLongOption();
       String argumentType = option.getArgumentType();
       Ansi message = Ansi.ansi();
@@ -180,7 +235,9 @@ public class HelpEmitter {
           message = message.reset().a(", ");
         }
       }
-      if (longOpt != null) {
+      if (abbreviatedLongOpt != null) {
+        message = message.fgGreen().a("--").a(abbreviatedLongOpt).reset();
+      } else if (longOpt != null) {
         message = message.fgGreen().a("--").a(longOpt).reset();
       }
       if (argumentType != null) {

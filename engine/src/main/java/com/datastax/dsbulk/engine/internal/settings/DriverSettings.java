@@ -21,19 +21,25 @@ import static com.datastax.dse.driver.api.core.config.DseDriverOption.CONTINUOUS
 import static com.datastax.dse.driver.api.core.config.DseDriverOption.CONTINUOUS_PAGING_TIMEOUT_OTHER_PAGES;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.ADDRESS_TRANSLATOR_CLASS;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CLOUD_SECURE_CONNECT_BUNDLE;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONFIG_RELOAD_INTERVAL;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONNECTION_INIT_QUERY_TIMEOUT;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONNECTION_MAX_REQUESTS;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONNECTION_POOL_LOCAL_SIZE;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONNECTION_POOL_REMOTE_SIZE;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONNECTION_SET_KEYSPACE_TIMEOUT;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONTACT_POINTS;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONTROL_CONNECTION_TIMEOUT;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.HEARTBEAT_INTERVAL;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.LOAD_BALANCING_FILTER_CLASS;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.LOAD_BALANCING_LOCAL_DATACENTER;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.PROTOCOL_COMPRESSION;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_CONSISTENCY;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_DEFAULT_IDEMPOTENCE;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_LOG_WARNINGS;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_PAGE_SIZE;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_SERIAL_CONSISTENCY;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_TIMEOUT;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_WARN_IF_SET_KEYSPACE;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.TIMESTAMP_GENERATOR_CLASS;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
@@ -63,6 +69,7 @@ import com.datastax.oss.driver.internal.core.time.ThreadLocalTimestampGenerator;
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.base.Joiner;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.protocol.internal.ProtocolConstants;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
@@ -87,6 +94,7 @@ import org.slf4j.LoggerFactory;
 public class DriverSettings {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DriverSettings.class);
+  private static final Duration ONE_MINUTE = Duration.ofSeconds(60);
 
   private final LoaderConfig deprecatedDriverConfig;
   private final LoaderConfig deprecatedContinuousPagingConfig;
@@ -95,6 +103,7 @@ public class DriverSettings {
   private LoaderConfig convertedConfig;
   private LoaderConfig mergedDriverConfig;
 
+  private int defaultPort;
   private AuthProvider authProvider;
   @VisibleForTesting SslHandlerFactory sslHandlerFactory;
   private Predicate<Node> nodeFilter;
@@ -121,26 +130,29 @@ public class DriverSettings {
           e, "dsbulk.executor.continuousPaging");
     }
     mergedDriverConfig =
-        new DefaultLoaderConfig(convertedConfig.withFallback(newDriverConfig).resolve());
-    checkCloudCompatibility(write);
+        new DefaultLoaderConfig(convertedConfig.withFallback(newDriverConfig)).resolve();
+    processCloudSettings(write);
+    processContactPointSettings();
+    processForcedSettings();
   }
 
   private void convertDriverDeprecatedConfig() throws GeneralSecurityException, IOException {
 
     convertedConfig = new DefaultLoaderConfig(ConfigFactory.empty());
 
-    int port;
     if (isUserDefined(deprecatedDriverConfig, "port")) {
-      port = deprecatedDriverConfig.getInt("port");
+      defaultPort = deprecatedDriverConfig.getInt("port");
       warnDeprecatedSetting("dsbulk.driver.port", CONTACT_POINTS);
+    } else if (newDriverConfig.hasPath("basic.default-port")) {
+      defaultPort = newDriverConfig.getInt("basic.default-port");
     } else {
-      port = 9042;
+      defaultPort = 9042;
     }
 
     if (isUserDefined(deprecatedDriverConfig, "hosts")) {
       List<String> hosts = deprecatedDriverConfig.getStringList("hosts");
       List<String> contactPoints =
-          hosts.stream().map(host -> host + ':' + port).collect(Collectors.toList());
+          hosts.stream().map(host -> host + ':' + defaultPort).collect(Collectors.toList());
       convertedConfig = addConfigValue(convertedConfig, CONTACT_POINTS, contactPoints);
       warnDeprecatedSetting("dsbulk.driver.hosts", CONTACT_POINTS);
     }
@@ -363,7 +375,7 @@ public class DriverSettings {
                           throw new BulkConfigurationException(msg, e);
                         }
                       })
-                  .map(host -> new InetSocketAddress(host, port))
+                  .map(host -> new InetSocketAddress(host, defaultPort))
                   .collect(ImmutableList.toImmutableList());
           nodeFilter = node -> allowedHosts.contains(node.getEndPoint().resolve());
         }
@@ -429,7 +441,7 @@ public class DriverSettings {
     }
   }
 
-  private void checkCloudCompatibility(boolean write) {
+  private void processCloudSettings(boolean write) {
     boolean cloud = mergedDriverConfig.hasPath(CLOUD_SECURE_CONNECT_BUNDLE.getPath());
     if (cloud) {
       if (mergedDriverConfig.hasPath(CONTACT_POINTS.getPath())) {
@@ -481,7 +493,51 @@ public class DriverSettings {
     }
   }
 
-  public Config getDriverConfig() {
+  private void processContactPointSettings() {
+    if (mergedDriverConfig.hasPath(CONTACT_POINTS.getPath())) {
+      // otherwise if the new driver config has contact points, process them now since
+      // DSBulk allows contact points to be specified without port.
+      List<String> hosts = mergedDriverConfig.getStringList(CONTACT_POINTS.getPath());
+      List<String> contactPoints =
+          hosts.stream()
+              .map(
+                  host -> {
+                    if (host.indexOf(':') == -1) {
+                      host = host + ':' + defaultPort;
+                    }
+                    return host;
+                  })
+              .collect(Collectors.toList());
+      mergedDriverConfig = addConfigValue(mergedDriverConfig, CONTACT_POINTS, contactPoints);
+    }
+  }
+
+  private void processForcedSettings() {
+    Duration timeout = mergedDriverConfig.getDuration("basic.request.timeout");
+    if (timeout.compareTo(ONE_MINUTE) < 0) {
+      timeout = ONE_MINUTE;
+    }
+    // The following settings should not be modified by users so we force them
+    Config forcedSettings =
+        ConfigFactory.parseMap(
+            ImmutableMap.<String, Object>builder()
+                .put(CONFIG_RELOAD_INTERVAL.getPath(), 0)
+                // query warnings are handled by DSBulk in LogManager
+                .put(REQUEST_LOG_WARNINGS.getPath(), false)
+                // DSBulk sometimes issues USE requests
+                .put(REQUEST_WARN_IF_SET_KEYSPACE.getPath(), false)
+                // These timeouts are set to basic.request.timeout, unless it's less than
+                // one
+                // minute
+                .put(CONNECTION_INIT_QUERY_TIMEOUT.getPath(), timeout)
+                .put(CONNECTION_SET_KEYSPACE_TIMEOUT.getPath(), timeout)
+                .put(CONTROL_CONNECTION_TIMEOUT.getPath(), timeout)
+                .build(),
+            "DSBulk forced driver settings");
+    mergedDriverConfig = new DefaultLoaderConfig(forcedSettings).withFallback(mergedDriverConfig);
+  }
+
+  public LoaderConfig getDriverConfig() {
     return mergedDriverConfig;
   }
 
@@ -500,11 +556,12 @@ public class DriverSettings {
   }
 
   private static LoaderConfig addConfigValue(
-      LoaderConfig converted, DriverOption option, Object value) {
-    return converted.withValue(option.getPath(), ConfigValueFactory.fromAnyRef(value));
+      LoaderConfig config, DriverOption option, Object value) {
+    return config.withValue(
+        option.getPath(), ConfigValueFactory.fromAnyRef(value, "DSBulk converted driver settings"));
   }
 
-  private static boolean isUserDefined(LoaderConfig config, String path) {
+  private static boolean isUserDefined(Config config, String path) {
     return config.hasPath(path) && !isValueFromReferenceConfig(config, path);
   }
 
