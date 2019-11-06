@@ -1261,7 +1261,7 @@ Default: **10**.
 
 The settings below are just a subset of all the configurable options of the driver, and provide an optimal driver configuration for DSBulk for most use cases.
 
-See the [Java Driver configuration reference](https://docs.datastax.com/en/developer/java-driver/4.3/manual/core/configuration) for instructions on how to configure the driver properly.
+See the [Java Driver configuration reference](https://docs.datastax.com/en/developer/java-driver/latest/manual/core/configuration) for instructions on how to configure the driver properly.
 
 Note: driver settings always start with prefix `datastax-java-driver`; on the command line only, it is possible to abbreviate this prefix to just `driver`, as shown below.
 
@@ -1287,11 +1287,7 @@ Default: **9042**.
 
 #### --driver.basic.request.timeout<br />--datastax-java-driver.basic.request.timeout _&lt;string&gt;_
 
-How long the driver waits for a request to complete. This is a global limit on the duration of a session.execute() call, including any internal retries the driver might do.
-
-By default, this value is set pretty high to ensure that DDL queries don't time out, in order to provide the best experience for new users trying the driver with the out-of-the-box configuration. For any serious deployment, we recommend that you use separate configuration profiles for DDL and DML; you can then set the DML timeout much lower (down to a few milliseconds if needed).
-
-Note that, because timeouts are scheduled on the driver's timer thread, the duration specified here must be greater than the timer tick duration defined by the `advanced.netty.timer.tick-duration` setting (see below). If that is not the case, timeouts will not be triggered as timely as desired.
+How long the driver waits for a request to complete. This is a global limit on the duration of a session.execute() call, including any internal retries the driver might do. By default, this value is set very high because DSBulk is optimized for good throughput, rahter than good latencies.
 
 Default: **"60 seconds"**.
 
@@ -1374,6 +1370,16 @@ Default: **"com.datastax.dsbulk.engine.internal.policies.retry.MultipleRetryPoli
 How many times to retry a failed query. Only valid for use with DSBulk's default retry policy (`MultipleRetryPolicy`).
 
 Default: **10**.
+
+#### --driver.advanced.resolve-contact-points<br />--datastax-java-driver.advanced.resolve-contact-points _&lt;boolean&gt;_
+
+Whether to resolve the addresses passed to `basic.contact-points`.
+
+If this is true, addresses are created with `InetSocketAddress(String, int)`: the host name will be resolved the first time, and the driver will use the resolved IP address for all subsequent connection attempts. If this is false, addresses are created with `InetSocketAddress.createUnresolved()`: the host name will be resolved again every time the driver opens a new connection. This is useful for containerized environments where DNS records are more likely to change over time (note that the JVM and OS have their own DNS caching mechanisms, so you might need additional configuration beyond the driver).
+
+This option only applies to the contact points specified in the configuration. It has no effect on dynamically discovered peers: the driver relies on Cassandra system tables, which expose raw IP addresses. Use a custom address translator (see `advanced.address-translator`) to convert them to unresolved addresses (if you're in a containerized environment, you probably already need address translation anyway).
+
+Default: **true**.
 
 #### --driver.advanced.address-translator.class<br />--datastax-java-driver.advanced.address-translator.class _&lt;string&gt;_
 
