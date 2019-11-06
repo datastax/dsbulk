@@ -52,8 +52,7 @@ class DriverSettingsTest {
   @Test
   void should_crate_valid_contact_points_legacy() throws GeneralSecurityException, IOException {
     LoaderConfig oldConfig =
-        createTestConfig(
-            "dsbulk.driver", "hosts", "[host1.com,host2.com]", "port", 1234);
+        createTestConfig("dsbulk.driver", "hosts", "[host1.com,host2.com]", "port", 1234);
     LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
     LoaderConfig newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig);
@@ -268,7 +267,7 @@ class DriverSettingsTest {
     "addressTranslator,IdentityTranslator,advanced.address-translator.class",
     "policy.maxRetries,100,advanced.retry-policy.max-retries",
     "policy.lbp.dcAwareRoundRobin.localDc,testDC,basic.load-balancing-policy.local-datacenter",
-    "policy.lbp.whiteList.hosts,[host.com],basic.load-balancing-policy.filter.class",
+    "policy.lbp.whiteList.hosts,[127.0.0.1],basic.load-balancing-policy.filter.class",
   })
   void should_log_warning_when_deprecated_driver_setting_present(
       String deprecatedSetting,
