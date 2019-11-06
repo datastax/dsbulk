@@ -54,6 +54,6 @@
   <!-- test-specific loggers -->
   <logger name="com.datastax.oss.simulacron" level="ERROR"/>
   <logger name="com.datastax.dsbulk.commons.tests.ccm" level="ERROR"/>
-  <logger name="com.datastax.dsbulk.commons.tests.cloud" level="TRACE"/>
+  <logger name="com.datastax.dsbulk.commons.tests.cloud" level="ERROR"/>
 
 </configuration>
