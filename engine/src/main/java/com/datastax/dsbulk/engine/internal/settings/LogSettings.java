@@ -77,7 +77,7 @@ public class LogSettings {
           "5",
           // packages to exclude from stack traces
           "reactor.core",
-          "com.google",
+          "com.datastax.oss.driver.shaded",
           "io.netty",
           "java.util.concurrent");
 
