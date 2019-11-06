@@ -150,6 +150,25 @@ The default port to use for `basic.contact-points`, when a host is specified wit
 
 Default: **9042**.
 
+#### -b,<br />--driver.basic.cloud.secure-connect-bundle<br />--datastax-java-driver.basic.cloud.secure-connect-bundle _&lt;string&gt;_
+
+The location of the secure bundle used to connect to a Datastax Apollo database. This setting must be a path on the local filesystem or a valid URL. The following examples are valid:
+
+- `"/a/path/to/bundle.zip"` (path on *Nix systems)
+- `"C:\\a\\path\\to\\bundle.zip"` (path on Windows systems, note that you need to escape backslashes in HOCON)
+- `"file:/a/path/to/bundle.zip"` (URL with file protocol)
+- `"http://host.com/a/path/to/bundle.zip"` (URL with HTTP protocol)
+
+Note: if you set this to a non-null value, DSBulk assumes that you are connecting to an DataStax Apollo database; in this case, you should not set any of the following settings because they are not compatible with Cloud deployments:
+
+- `datastax-java-driver.basic.contact-points`
+- `datastax-java-driver.basic.request.consistency`
+- `datastax-java-driver.advanced.ssl-engine-factory.*`
+
+If you do so, a log will be emitted and the setting will be ignored.
+
+Default: **null**.
+
 #### -u,<br />--driver.advanced.auth-provider.username<br />--datastax-java-driver.advanced.auth-provider.username _&lt;string&gt;_
 
 The username to use to authenticate against a cluster with authentication enabled. Providers that accept this setting:

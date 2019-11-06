@@ -11,11 +11,13 @@ package com.datastax.dsbulk.engine.internal.settings;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
+import com.datastax.oss.driver.shaded.guava.common.collect.BiMap;
 import com.typesafe.config.Config;
 
 public class SettingsManager {
 
   private final LoaderConfig config;
+  private final BiMap<String, String> shortcuts;
   private final WorkflowType workflowType;
 
   private String executionId;
@@ -31,8 +33,10 @@ public class SettingsManager {
   private EngineSettings engineSettings;
   private StatsSettings statsSettings;
 
-  public SettingsManager(LoaderConfig config, WorkflowType workflowType) {
+  public SettingsManager(
+      LoaderConfig config, BiMap<String, String> shortcuts, WorkflowType workflowType) {
     this.config = config;
+    this.shortcuts = shortcuts;
     this.workflowType = workflowType;
   }
 
@@ -50,7 +54,8 @@ public class SettingsManager {
         new DriverSettings(
             config.getConfig("dsbulk.driver"),
             config.getConfig("dsbulk.executor.continuousPaging"),
-            config.getConfig("datastax-java-driver"));
+            config.getConfig("datastax-java-driver"),
+            shortcuts);
     connectorSettings = new ConnectorSettings(config.getConfig("dsbulk.connector"), workflowType);
     batchSettings = new BatchSettings(config.getConfig("dsbulk.batch"));
     executorSettings = new ExecutorSettings(config.getConfig("dsbulk.executor"));

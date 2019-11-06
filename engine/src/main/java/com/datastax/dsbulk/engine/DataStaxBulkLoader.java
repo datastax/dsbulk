@@ -23,6 +23,7 @@ import com.datastax.dsbulk.engine.internal.cli.VersionRequestException;
 import com.datastax.dsbulk.engine.internal.help.HelpEmitter;
 import com.datastax.dsbulk.engine.internal.log.TooManyErrorsException;
 import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
+import com.datastax.oss.driver.shaded.guava.common.collect.BiMap;
 import java.io.BufferedWriter;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
@@ -64,7 +65,8 @@ public class DataStaxBulkLoader {
 
       ParsedCommandLine result = new CommandLineParser(args).parse();
       LoaderConfig config = result.getConfig();
-      workflow = result.getWorkflowType().newWorkflow(config);
+      BiMap<String, String> shortcuts = result.getShortcuts();
+      workflow = result.getWorkflowType().newWorkflow(config, shortcuts);
 
       WorkflowThread workflowThread = new WorkflowThread(workflow);
       Runtime.getRuntime().addShutdownHook(new CleanupThread(workflow, workflowThread));

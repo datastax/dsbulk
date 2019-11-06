@@ -24,6 +24,13 @@ public class ShortcutsFactory {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ShortcutsFactory.class);
 
+  /**
+   * Creates a BiMap where keys are shortcuts and values are settings.
+   *
+   * @param referenceConfig The reference config to use.
+   * @param connectorName The connector name to use.
+   * @return a BiMap where keys are shortcuts and values are settings.
+   */
   @NonNull
   public static BiMap<String, String> createShortcutsMap(
       @NonNull Config referenceConfig, @Nullable String connectorName) {

@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.engine.internal.settings;
 
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isValueFromReferenceConfig;
+import static com.datastax.dsbulk.engine.internal.settings.BulkDriverOption.DEFAULT_PORT;
 import static com.datastax.dsbulk.engine.internal.settings.BulkDriverOption.RETRY_POLICY_MAX_RETRIES;
 import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.BULK_LOADER_APPLICATION_NAME;
 import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.clientId;
@@ -68,6 +69,7 @@ import com.datastax.oss.driver.internal.core.time.ServerSideTimestampGenerator;
 import com.datastax.oss.driver.internal.core.time.ThreadLocalTimestampGenerator;
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.base.Joiner;
+import com.datastax.oss.driver.shaded.guava.common.collect.BiMap;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.protocol.internal.ProtocolConstants;
@@ -98,6 +100,7 @@ public class DriverSettings {
 
   private final LoaderConfig deprecatedDriverConfig;
   private final LoaderConfig deprecatedContinuousPagingConfig;
+  private final BiMap<String, String> shortcuts;
 
   private LoaderConfig newDriverConfig;
   private LoaderConfig convertedConfig;
@@ -111,10 +114,12 @@ public class DriverSettings {
   DriverSettings(
       LoaderConfig deprecatedDriverConfig,
       LoaderConfig deprecatedContinuousPagingConfig,
-      LoaderConfig newDriverConfig) {
+      LoaderConfig newDriverConfig,
+      BiMap<String, String> shortcuts) {
     this.newDriverConfig = newDriverConfig;
     this.deprecatedDriverConfig = deprecatedDriverConfig;
     this.deprecatedContinuousPagingConfig = deprecatedContinuousPagingConfig;
+    this.shortcuts = shortcuts.inverse();
   }
 
   public void init(boolean write) throws GeneralSecurityException, IOException {
@@ -142,7 +147,7 @@ public class DriverSettings {
 
     if (isUserDefined(deprecatedDriverConfig, "port")) {
       defaultPort = deprecatedDriverConfig.getInt("port");
-      warnDeprecatedSetting("dsbulk.driver.port", CONTACT_POINTS);
+      warnDeprecatedSetting("dsbulk.driver.port", DEFAULT_PORT);
     } else if (newDriverConfig.hasPath("basic.default-port")) {
       defaultPort = newDriverConfig.getInt("basic.default-port");
     } else {
@@ -495,8 +500,8 @@ public class DriverSettings {
 
   private void processContactPointSettings() {
     if (mergedDriverConfig.hasPath(CONTACT_POINTS.getPath())) {
-      // otherwise if the new driver config has contact points, process them now since
-      // DSBulk allows contact points to be specified without port.
+      // If the new driver config has contact points, process them now since
+      // DSBulk allows contact points to be specified without port, but the driver doesn't.
       List<String> hosts = mergedDriverConfig.getStringList(CONTACT_POINTS.getPath());
       List<String> contactPoints =
           hosts.stream()
@@ -527,8 +532,7 @@ public class DriverSettings {
                 // DSBulk sometimes issues USE requests
                 .put(REQUEST_WARN_IF_SET_KEYSPACE.getPath(), false)
                 // These timeouts are set to basic.request.timeout, unless it's less than
-                // one
-                // minute
+                // one minute
                 .put(CONNECTION_INIT_QUERY_TIMEOUT.getPath(), timeout)
                 .put(CONNECTION_SET_KEYSPACE_TIMEOUT.getPath(), timeout)
                 .put(CONTROL_CONNECTION_TIMEOUT.getPath(), timeout)
@@ -565,23 +569,34 @@ public class DriverSettings {
     return config.hasPath(path) && !isValueFromReferenceConfig(config, path);
   }
 
-  private static void warnDeprecatedSetting(String deprecated, DriverOption replacement) {
+  private void warnDeprecatedSetting(String deprecated, DriverOption replacement) {
     warnDeprecatedSetting(deprecated, replacement.getPath());
   }
 
-  private static void warnDeprecatedSetting(String deprecated, String replacement) {
-    LOGGER.warn(
-        "Setting {} is deprecated and will be removed in a future release; "
-            + "please configure the driver directly using datastax-java-driver.{} instead.",
-        deprecated,
-        replacement);
+  private void warnDeprecatedSetting(String deprecated, String replacement) {
+    if (shortcuts.containsKey("datastax-java-driver." + replacement)) {
+      String shortcut = shortcuts.get("datastax-java-driver." + replacement);
+      LOGGER.warn(
+          "Setting {} is deprecated and will be removed in a future release; "
+              + "please configure the driver directly using --datastax-java-driver.{} "
+              + "(or -{}) instead.",
+          deprecated,
+          replacement,
+          shortcut);
+    } else {
+      LOGGER.warn(
+          "Setting {} is deprecated and will be removed in a future release; "
+              + "please configure the driver directly using --datastax-java-driver.{} instead.",
+          deprecated,
+          replacement);
+    }
   }
 
   private static void warnObsoleteLBPSetting(String deprecated) {
     LOGGER.warn(
         "Setting dsbulk.driver.policy.lbp.{} has been removed and is not honored anymore; "
             + "please remove it from your configuration. "
-            + "To configure the load balancing policy, use datastax-java-driver.basic.load-balancing-policy.* instead",
+            + "To configure the load balancing policy, use --datastax-java-driver.basic.load-balancing-policy.* instead",
         deprecated);
   }
 

@@ -16,6 +16,7 @@ import com.datastax.dsbulk.commons.internal.io.IOUtils;
 import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.config.ShortcutsFactory;
+import com.datastax.oss.driver.shaded.guava.common.collect.BiMap;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSet;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import com.typesafe.config.Config;
@@ -77,7 +78,7 @@ public class CommandLineParser {
     Config referenceConfig = LoaderConfigFactory.createReferenceConfig();
     Config applicationConfig = LoaderConfigFactory.createApplicationConfig(applicationPath);
 
-    Map<String, String> shortcuts =
+    BiMap<String, String> shortcuts =
         ShortcutsFactory.createShortcutsMap(
             referenceConfig, connectorName == null ? "csv" : connectorName);
 
@@ -85,7 +86,7 @@ public class CommandLineParser {
 
     Config finalConfig = parseArguments(referenceConfig, applicationConfig, shortcuts);
 
-    return new ParsedCommandLine(workflowType, new DefaultLoaderConfig(finalConfig));
+    return new ParsedCommandLine(workflowType, new DefaultLoaderConfig(finalConfig), shortcuts);
   }
 
   /**

@@ -56,4 +56,7 @@
   <logger name="io.netty" level="WARN"/>
   <logger name="reactor.core" level="WARN"/>
 
+  <!-- suppress warnings about Tinkerpop not found -->
+  <logger name="com.datastax.dse.driver.api.core.DseSessionBuilderBase" level="ERROR"/>
+
 </configuration>

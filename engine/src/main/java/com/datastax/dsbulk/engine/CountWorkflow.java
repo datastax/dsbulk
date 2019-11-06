@@ -35,6 +35,7 @@ import com.datastax.dse.driver.api.core.DseSession;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.metrics.Metrics;
 import com.datastax.oss.driver.shaded.guava.common.base.Stopwatch;
+import com.datastax.oss.driver.shaded.guava.common.collect.BiMap;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import java.util.EnumSet;
 import java.util.List;
@@ -69,8 +70,8 @@ public class CountWorkflow implements Workflow {
   private Function<Flux<ReadResult>, Flux<ReadResult>> failedReadsHandler;
   private Function<Flux<Void>, Flux<Void>> terminationHandler;
 
-  CountWorkflow(LoaderConfig config) {
-    settingsManager = new SettingsManager(config, WorkflowType.COUNT);
+  CountWorkflow(LoaderConfig config, BiMap<String, String> shortcuts) {
+    settingsManager = new SettingsManager(config, shortcuts, WorkflowType.COUNT);
   }
 
   @Override
