@@ -33,6 +33,36 @@ import org.junit.jupiter.params.provider.CsvSource;
 class DriverSettingsTest {
 
   @Test
+  void should_crate_valid_contact_points() throws GeneralSecurityException, IOException {
+    LoaderConfig oldConfig = createTestConfig("dsbulk.driver");
+    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    LoaderConfig newConfig =
+        createTestConfig(
+            "datastax-java-driver",
+            "basic.contact-points",
+            "[host1.com,host2.com]",
+            "basic.default-port",
+            1234);
+    DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig);
+    settings.init(true);
+    assertThat(settings.getDriverConfig().getStringList("basic.contact-points"))
+        .containsExactly("host1.com:1234", "host2.com:1234");
+  }
+
+  @Test
+  void should_crate_valid_contact_points_legacy() throws GeneralSecurityException, IOException {
+    LoaderConfig oldConfig =
+        createTestConfig(
+            "dsbulk.driver", "hosts", "[host1.com,host2.com]", "port", 1234);
+    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    LoaderConfig newConfig = createTestConfig("datastax-java-driver");
+    DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig);
+    settings.init(true);
+    assertThat(settings.getDriverConfig().getStringList("basic.contact-points"))
+        .containsExactly("host1.com:1234", "host2.com:1234");
+  }
+
+  @Test
   void should_throw_exception_when_port_not_a_number() {
     LoaderConfig oldConfig = createTestConfig("dsbulk.driver", "port", "NotANumber");
     LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
