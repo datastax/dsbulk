@@ -25,16 +25,38 @@ dsbulk unload <options>
 dsbulk count <options>
 ``` 
 
-All arguments are optional in that values fall back to defaults or
-are inferred from the input data (when performing a load). However, some connectors have 
-required settings of their own and those must be set as well. For example, the csv connector
-requires the `connector.csv.url` setting to specify the source path/url of the csv data to 
-load (or path/url where to send unloaded data).
+### Long options
 
-See the [Settings page](settings.md) or the [template configuration file]
-for details.
+Any DSBulk or Java Driver setting can be entered on the command line as a long-option argument of
+the following general form:
 
-### Shortcuts
+    --full.path.of.setting "some-value"
+    
+DSBulk settings always start with `dsbulk.`; for convenience, this prefix can be omitted in a long
+option argument, so the following two options are equivalent and both map to DSBulk's 
+`dsbulk.batch.mode` setting:
+
+    --dsbulk.batch.mode PARTITION_KEY
+    --batch.mode PARTITION_KEY
+    
+Java Driver settings always start with `datastax-java-driver.`; for convenience, this prefix can be
+shortened to `driver.` in a long option argument, so the following two options are equivalent and 
+both map to the driver's `datastax-java-driver.basic.cloud.secure-connect-bundle` setting:
+
+    --datastax-java-driver.basic.cloud.secure-connect-bundle /path/to/bundle
+    --driver.basic.cloud.secure-connect-bundle /path/to/bundle
+    
+Most settings have default values, or values that can be inferred from the input data. However, 
+sometimes the default value is not suitable for you, in which case you will have to specify the
+desired value either in the application configuration file (see below), or on the command line. 
+
+For example, the default value for `connector.csv.url` is to read from standard input or write to 
+standard output; if that does not work for you, you need to override this value and specify the 
+source path/url of the csv data to load (or path/url where to send unloaded data).
+
+See the [Settings page](settings.md) or the [template configuration file] for details.
+
+### Short options (Shortcuts)
 
 For convenience, many options (prefaced with `--`), have shortcut variants (prefaced with `-`).
 For example, `--connector.name` has an equivalent short option `-c`. 
