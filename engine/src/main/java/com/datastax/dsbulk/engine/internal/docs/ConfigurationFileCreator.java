@@ -101,7 +101,7 @@ public class ConfigurationFileCreator {
                 + "for example, to define contact points, provide authentication and encryption "
                 + "settings, modify timeouts, consistency levels, page sizes, policies, "
                 + "and much more."));
-    pw.println();
+    pw.println("#");
     pw.println("# You can also consult the Java Driver online documentation for more details:");
     pw.println("# https://docs.datastax.com/en/developer/java-driver/latest/");
     pw.println("# https://docs.datastax.com/en/developer/java-driver-dse/latest/");
