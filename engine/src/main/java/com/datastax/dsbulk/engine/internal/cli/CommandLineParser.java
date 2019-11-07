@@ -164,16 +164,7 @@ public class CommandLineParser {
         if (skipConnector(it)) {
           // consider the next remaining arg as the section to show help for,
           // and ignore the rest of the command line
-          String sectionName = it.next();
-          // handle abbreviated section names:
-          if (sectionName.startsWith("driver")) {
-            // driver -> datastax-java-driver
-            sectionName = sectionName.replaceFirst("driver", "datastax-java-driver");
-          } else if (!sectionName.startsWith("datastax-java-driver")
-              && !sectionName.startsWith("dsbulk")) {
-            // foo -> dsbulk.foo
-            sectionName = "dsbulk." + sectionName;
-          }
+          String sectionName = sanitizeSectionName(it.next());
           throw new SectionHelpRequestException(sectionName, connectorName);
         }
         // no more args: the help request was for the global help
@@ -204,6 +195,20 @@ public class CommandLineParser {
     return it.hasNext();
   }
 
+  @NonNull
+  private String sanitizeSectionName(@NonNull String sectionName) {
+    if (sectionName.startsWith("driver")) {
+      // driver -> datastax-java-driver
+      sectionName = sectionName.replaceFirst("driver", "datastax-java-driver");
+    } else if (!sectionName.startsWith("datastax-java-driver")
+        && !sectionName.startsWith("dsbulk")) {
+      // foo -> dsbulk.foo
+      sectionName = "dsbulk." + sectionName;
+    }
+    return sectionName;
+  }
+
+  @NonNull
   private WorkflowType resolveWorkflowType() throws ParseException {
     if (!args.isEmpty()) {
       String workflowType = args.remove(0);
@@ -217,6 +222,7 @@ public class CommandLineParser {
             "First argument must be subcommand \"%s\", or \"help\"", getAvailableCommands()));
   }
 
+  @NonNull
   private String getAvailableCommands() {
     return Arrays.stream(WorkflowType.values())
         .map(Enum::name)
@@ -224,6 +230,7 @@ public class CommandLineParser {
         .collect(Collectors.joining("\", \""));
   }
 
+  @NonNull
   private Config parseArguments(
       Config referenceConfig, Config currentConfig, Map<String, String> shortcuts)
       throws ParseException {
@@ -409,6 +416,7 @@ public class CommandLineParser {
     return optionName;
   }
 
+  @NonNull
   private String shortcutToOptionName(String arg, String shortcut, Map<String, String> shortcuts)
       throws ParseException {
     if (!shortcuts.containsKey(shortcut)) {
@@ -433,6 +441,7 @@ public class CommandLineParser {
    * not properly quoted; it can only perform a shallow fix for the common use cases mentioned
    * above.
    */
+  @NonNull
   private String sanitizeValue(String optionValue, ConfigValueType optionType) {
     String formatted = optionValue;
     if (optionType == ConfigValueType.STRING) {
