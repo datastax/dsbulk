@@ -74,7 +74,7 @@ public class LogSettings {
   public static final ImmutableList<String> STACK_TRACE_PRINTER_OPTIONS =
       ImmutableList.of(
           // number of stack elements to print
-          "5",
+          "10",
           // packages to exclude from stack traces
           "reactor.core",
           "com.datastax.oss.driver.shaded",
