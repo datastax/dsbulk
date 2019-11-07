@@ -1304,6 +1304,25 @@ The default port to use for `basic.contact-points`, when a host is specified wit
 
 Default: **9042**.
 
+#### -b,<br />--driver.basic.cloud.secure-connect-bundle<br />--datastax-java-driver.basic.cloud.secure-connect-bundle _&lt;string&gt;_
+
+The location of the secure bundle used to connect to a Datastax Apollo database. This setting must be a path on the local filesystem or a valid URL. The following examples are valid:
+
+- `"/a/path/to/bundle.zip"` (path on *Nix systems)
+- `"C:\\a\\path\\to\\bundle.zip"` (path on Windows systems, note that you need to escape backslashes in HOCON)
+- `"file:/a/path/to/bundle.zip"` (URL with file protocol)
+- `"http://host.com/a/path/to/bundle.zip"` (URL with HTTP protocol)
+
+Note: if you set this to a non-null value, DSBulk assumes that you are connecting to an DataStax Apollo database; in this case, you should not set any of the following settings because they are not compatible with Cloud deployments:
+
+- `datastax-java-driver.basic.contact-points`
+- `datastax-java-driver.basic.request.consistency`
+- `datastax-java-driver.advanced.ssl-engine-factory.*`
+
+If you do so, a log will be emitted and the setting will be ignored.
+
+Default: **null**.
+
 #### --driver.basic.request.timeout<br />--datastax-java-driver.basic.request.timeout _&lt;string&gt;_
 
 How long the driver waits for a request to complete. This is a global limit on the duration of a session.execute() call, including any internal retries the driver might do. By default, this value is set very high because DSBulk is optimized for good throughput, rahter than good latencies.
@@ -1346,6 +1365,18 @@ DSBulk uses a special policy that infers the local datacenter from the contact p
 
 Default: **"com.datastax.dse.driver.internal.core.loadbalancing.DseDcInferringLoadBalancingPolicy"**.
 
+#### -dc,<br />--driver.basic.load-balancing-policy.local-datacenter<br />--datastax-java-driver.basic.load-balancing-policy.local-datacenter _&lt;string&gt;_
+
+The datacenter that is considered "local": the default load balancing policy will only include nodes from this datacenter in its query plans. Set this to a non-null value if you want to force the local datacenter; otherwise, the `DseDcInferringLoadBalancingPolicy` used by default by DSBulk will infer the local datacenter from the provided contact points.
+
+Default: **null**.
+
+#### --driver.advanced.protocol.version<br />--datastax-java-driver.advanced.protocol.version _&lt;string&gt;_
+
+The native protocol version to use. If this option is absent, the driver looks up the versions of the nodes at startup (by default in `system.peers.release_version`), and chooses the highest common protocol version. For example, if you have a mixed cluster with Apache Cassandra 2.1 nodes (protocol v3) and Apache Cassandra 3.0 nodes (protocol v3 and v4), then protocol v3 is chosen. If the nodes don't have a common protocol version, initialization fails. If this option is set, then the given version will be used for all connections, without any negotiation or downgrading. If any of the contact points doesn't support it, that contact point will be skipped. Once the protocol version is set, it can't change for the rest of the driver's lifetime; if an incompatible node joins the cluster later, connection will fail and the driver will force it down (i.e. never try to connect to it again).
+
+Default: **null**.
+
 #### --driver.advanced.protocol.compression<br />--datastax-java-driver.advanced.protocol.compression _&lt;string&gt;_
 
 The name of the algorithm used to compress protocol frames. The possible values are: `lz4`, `snappy` or `none` to indicate no compression (this is functionally equivalent to omitting the option).
@@ -1370,11 +1401,86 @@ The maximum number of requests that can be executed concurrently on a connection
 
 Default: **32768**.
 
+#### --driver.advanced.auth-provider.class<br />--datastax-java-driver.advanced.auth-provider.class _&lt;arg&gt;_
+
+The class of the authentication provider. If it is not qualified, the driver assumes that it resides in one of the following packages:
+- `com.datastax.oss.driver.internal.core.auth`
+- `com.datastax.dse.driver.internal.core.auth`
+
+The DSE driver provides 3 implementations out of the box:
+- `PlainTextAuthProvider`: uses plain-text credentials. It requires the `username` and `password` options. Should be used only when authenticating against Apache Cassandra(R) clusters; not recommended when authenticating against DSE clusters.
+- `DsePlainTextAuthProvider`: provides SASL authentication using the PLAIN mechanism for DSE clusters secured with DseAuthenticator. It requires the `username` and `password` options, and optionally, an `authorization-id`.
+- `DseGssApiAuthProvider`: provides GSSAPI authentication for DSE clusters secured with `DseAuthenticator`. Read the javadocs of this authenticator for detailed instructions.
+
+You can also specify a custom class that implements `AuthProvider` and has a public constructor with a `DriverContext` argument (to simplify this, the driver provides two abstract classes that can be extended: `DsePlainTextAuthProviderBase` and `DseGssApiAuthProviderBase`).
+
+You can also specify a custom class that implements AuthProvider and has a public constructor with a DriverContext argument.
+
+Default: **null**.
+
+#### -u,<br />--driver.advanced.auth-provider.username<br />--datastax-java-driver.advanced.auth-provider.username _&lt;string&gt;_
+
+The username to use to authenticate against a cluster with authentication enabled. Providers that accept this setting:
+
+ - `PlainTextAuthProvider`
+ - `DsePlainTextAuthProvider`
+
+
+Default: **null**.
+
+#### -p,<br />--driver.advanced.auth-provider.password<br />--datastax-java-driver.advanced.auth-provider.password _&lt;string&gt;_
+
+The password to use to authenticate against a cluster with authentication enabled. Providers that accept this setting:
+
+ - `PlainTextAuthProvider`
+ - `DsePlainTextAuthProvider`
+
+
+Default: **null**.
+
+#### --driver.advanced.ssl-engine-factory.class<br />--datastax-java-driver.advanced.ssl-engine-factory.class _&lt;string&gt;_
+
+The class of the SSL engine factory. If it is not qualified, the driver assumes that it resides in the package `com.datastax.oss.driver.internal.core.ssl`. The driver provides a single implementation out of the box: `DefaultSslEngineFactory`, that uses the JDK's built-in SSL implementation.
+
+You can also specify a custom class that implements `SslEngineFactory` and has a public constructor with a `DriverContext` argument.
+
+Default: **null**.
+
+#### --driver.advanced.ssl-engine-factory.cipher-suites<br />--datastax-java-driver.advanced.ssl-engine-factory.cipher-suites _&lt;list&lt;string&gt;&gt;_
+
+The cipher suites to enable when creating an SSLEngine for a connection. This setting is only required when using the default SSL factory. If it is not present, the driver won't explicitly enable cipher suites on the engine, which according to the JDK documentations results in "a minimum quality of service".
+
+Default: **null**.
+
 #### --driver.advanced.ssl-engine-factory.hostname-validation<br />--datastax-java-driver.advanced.ssl-engine-factory.hostname-validation _&lt;boolean&gt;_
 
 Whether or not to require validation that the hostname of the server certificate's common name matches the hostname of the server being connected to. This setting is only required when using the default SSL factory. If not set, defaults to true.
 
 Default: **true**.
+
+#### --driver.advanced.ssl-engine-factory.truststore-path<br />--datastax-java-driver.advanced.ssl-engine-factory.truststore-path _&lt;string&gt;_
+
+The locations used to access truststore contents. If either truststore-path or keystore-path are specified, the driver builds an SSLContext from these files. This setting is only required when using the default SSL factory. This setting is only required when using the default SSL factory. If neither option is specified, the default SSLContext is used, which is based on system property configuration.
+
+Default: **null**.
+
+#### --driver.advanced.ssl-engine-factory.truststore-password<br />--datastax-java-driver.advanced.ssl-engine-factory.truststore-password _&lt;string&gt;_
+
+The password used to access truststore contents. This setting is only required when using the default SSL factory.
+
+Default: **null**.
+
+#### --driver.advanced.ssl-engine-factory.keystore-path<br />--datastax-java-driver.advanced.ssl-engine-factory.keystore-path _&lt;string&gt;_
+
+The locations used to access keystore contents. If either truststore-path or keystore-path are specified, the driver builds an SSLContext from these files. This setting is only required when using the default SSL factory. If neither option is specified, the default SSLContext is used, which is based on system property configuration.
+
+Default: **null**.
+
+#### --driver.advanced.ssl-engine-factory.keystore-password<br />--datastax-java-driver.advanced.ssl-engine-factory.keystore-password _&lt;string&gt;_
+
+The password used to access keystore contents. This setting is only required when using the default SSL factory.
+
+Default: **null**.
 
 #### --driver.advanced.retry-policy.class<br />--datastax-java-driver.advanced.retry-policy.class _&lt;string&gt;_
 

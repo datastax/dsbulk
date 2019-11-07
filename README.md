@@ -118,7 +118,7 @@ dsbulk.connector.csv.delimiter = "\t"
 
 You can split your configuration in more than one file using file inclusions; see the HOCON
 documentation for details. The default configuration file includes another file called 
-`driver.conf`, also located in the `.conf/` directory. This file should be used to configure 
+`driver.conf`, also located in the `conf` directory. This file should be used to configure 
 the Java Driver for DSBulk. This file is empty as well; users can customize it to their needs. 
 A [driver template configuration file](manual/driver.template.conf) can serve as a starting 
 point for further customization.

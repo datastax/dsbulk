@@ -16,7 +16,6 @@ import com.typesafe.config.ConfigOrigin;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
 import edu.umd.cs.findbugs.annotations.NonNull;
-import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -87,7 +86,8 @@ public class SettingsGroupFactory {
     if (includeDriver) {
       Config driverConfig =
           LoaderConfigFactory.standaloneDriverReference().getConfig("datastax-java-driver");
-      SettingsGroup driverGroup = createDriverGroup(driverConfig);
+      SettingsGroup driverGroup = new OrderedSettingsGroup();
+      populateDriverGroup(driverGroup, driverConfig.root(), "datastax-java-driver");
       groups.put("datastax-java-driver", driverGroup);
     }
     return groups;
@@ -198,21 +198,20 @@ public class SettingsGroupFactory {
     }
   }
 
-  private static SettingsGroup createDriverGroup(@NonNull Config driverConfig) {
+  private static void populateDriverGroup(
+      @NonNull SettingsGroup driverGroup, @NonNull ConfigObject root, @NonNull String path) {
     Set<Entry<String, ConfigValue>> entries = new TreeSet<>(ORIGIN_COMPARATOR);
-    for (Entry<String, ConfigValue> entry : driverConfig.entrySet()) {
+    entries.addAll(root.entrySet());
+    for (Entry<String, ConfigValue> entry : entries) {
       String key = entry.getKey();
-      ConfigValue settingValue = ConfigUtils.getNullSafeValue(driverConfig, key);
-      if (ConfigUtils.isLeaf(settingValue)) {
-        String fullKey = "datastax-java-driver." + key;
-        entries.add(new SimpleEntry<>(fullKey, settingValue));
+      String fullKey = path.isEmpty() ? key : path + '.' + key;
+      ConfigValue value = ConfigUtils.getNullSafeValue(root.toConfig(), key);
+      if (ConfigUtils.isLeaf(value)) {
+        driverGroup.addSetting(fullKey);
+      } else {
+        populateDriverGroup(driverGroup, ((ConfigObject) value), fullKey);
       }
     }
-    SettingsGroup driverGroup = new OrderedSettingsGroup();
-    for (Entry<String, ConfigValue> entry : entries) {
-      driverGroup.addSetting(entry.getKey());
-    }
-    return driverGroup;
   }
 
   /**
