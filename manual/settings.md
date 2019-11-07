@@ -26,13 +26,13 @@ A template configuration file can be found [here](./application.template.conf).
 
 Load options from the given file rather than from `<dsbulk_home>/conf/application.conf`.
 
-#### -c,<br />--[dsbulk.]connector.name _&lt;string&gt;_
+#### -c,<br />--connector.name<br />--dsbulk.connector.name _&lt;string&gt;_
 
 The name of the connector to use.
 
 Default: **"csv"**.
 
-#### -url,<br />--[dsbulk.]connector.csv.url _&lt;string&gt;_
+#### -url,<br />--connector.csv.url<br />--dsbulk.connector.csv.url _&lt;string&gt;_
 
 The URL or path of the resource(s) to read from or write to.
 
@@ -62,13 +62,13 @@ The default value is `-` (read from `stdin` / write to `stdout`).
 
 Default: **"-"**.
 
-#### -delim,<br />--[dsbulk.]connector.csv.delimiter _&lt;string&gt;_
+#### -delim,<br />--connector.csv.delimiter<br />--dsbulk.connector.csv.delimiter _&lt;string&gt;_
 
 The character to use as field delimiter.
 
 Default: **","**.
 
-#### -header,<br />--[dsbulk.]connector.csv.header _&lt;boolean&gt;_
+#### -header,<br />--connector.csv.header<br />--dsbulk.connector.csv.header _&lt;boolean&gt;_
 
 Enable or disable whether the files to read or write begin with a header line. If enabled for loading, the first non-empty line in every file will assign field names for each record column, in lieu of `schema.mapping`, `fieldA = col1, fieldB = col2, fieldC = col3`. If disabled for loading, records will not contain fields names, only field indexes, `0 = col1, 1 = col2, 2 = col3`. For unloading, if this setting is enabled, each file will begin with a header line, and if disabled, each file will not contain a header line.
 
@@ -76,19 +76,19 @@ Note: This option will apply to all files loaded or unloaded.
 
 Default: **true**.
 
-#### -skipRecords,<br />--[dsbulk.]connector.csv.skipRecords _&lt;number&gt;_
+#### -skipRecords,<br />--connector.csv.skipRecords<br />--dsbulk.connector.csv.skipRecords _&lt;number&gt;_
 
 The number of records to skip from each input file before the parser can begin to execute. Note that if the file contains a header line, that line is not counted as a valid record. This setting is ignored when writing.
 
 Default: **0**.
 
-#### -maxRecords,<br />--[dsbulk.]connector.csv.maxRecords _&lt;number&gt;_
+#### -maxRecords,<br />--connector.csv.maxRecords<br />--dsbulk.connector.csv.maxRecords _&lt;number&gt;_
 
 The maximum number of records to read from or write to each file. When reading, all records past this number will be discarded. When writing, a file will contain at most this number of records; if more records remain to be written, a new file will be created using the *fileNameFormat* setting. Note that when writing to anything other than a directory, this setting is ignored. This setting takes into account the *header* setting: if a file begins with a header line, that line is not counted as a record. This feature is disabled by default (indicated by its `-1` value).
 
 Default: **-1**.
 
-#### -url,<br />--[dsbulk.]connector.json.url _&lt;string&gt;_
+#### -url,<br />--connector.json.url<br />--dsbulk.connector.json.url _&lt;string&gt;_
 
 The URL or path of the resource(s) to read from or write to.
 
@@ -118,13 +118,13 @@ The default value is `-` (read from `stdin` / write to `stdout`).
 
 Default: **"-"**.
 
-#### -skipRecords,<br />--[dsbulk.]connector.json.skipRecords _&lt;number&gt;_
+#### -skipRecords,<br />--connector.json.skipRecords<br />--dsbulk.connector.json.skipRecords _&lt;number&gt;_
 
 The number of JSON records to skip from each input file before the parser can begin to execute. This setting is ignored when writing.
 
 Default: **0**.
 
-#### -maxRecords,<br />--[dsbulk.]connector.json.maxRecords _&lt;number&gt;_
+#### -maxRecords,<br />--connector.json.maxRecords<br />--dsbulk.connector.json.maxRecords _&lt;number&gt;_
 
 The maximum number of records to read from or write to each file. When reading, all records past this number will be discarded. When writing, a file will contain at most this number of records; if more records remain to be written, a new file will be created using the *fileNameFormat* setting. Note that when writing to anything other than a directory, this setting is ignored. This feature is disabled by default (indicated by its `-1` value).
 
@@ -205,19 +205,19 @@ The datacenter that is considered "local": the default load balancing policy wil
 
 Default: **null**.
 
-#### -k,<br />--[dsbulk.]schema.keyspace _&lt;string&gt;_
+#### -k,<br />--schema.keyspace<br />--dsbulk.schema.keyspace _&lt;string&gt;_
 
 Keyspace used for loading or unloading data. Keyspace names should not be quoted and are case-sensitive. `MyKeyspace` will match a keyspace named `MyKeyspace` but not `mykeyspace`. Required option if `schema.query` is not specified; otherwise, optional.
 
 Default: **null**.
 
-#### -t,<br />--[dsbulk.]schema.table _&lt;string&gt;_
+#### -t,<br />--schema.table<br />--dsbulk.schema.table _&lt;string&gt;_
 
 Table used for loading or unloading data. Table names should not be quoted and are case-sensitive. `MyTable` will match a table named `MyTable` but not `mytable`. Required option if `schema.query` is not specified; otherwise, optional.
 
 Default: **null**.
 
-#### -m,<br />--[dsbulk.]schema.mapping _&lt;string&gt;_
+#### -m,<br />--schema.mapping<br />--dsbulk.schema.mapping _&lt;string&gt;_
 
 The field-to-column mapping to use, that applies to both loading and unloading; ignored when counting. If not specified, the loader will apply a strict one-to-one mapping between the source fields and the database table. If that is not what you want, then you must supply an explicit mapping. Mappings should be specified as a map of the following form:
 
@@ -240,31 +240,31 @@ The exact type of mapping to use depends on the connector being used. Some conne
 
 Default: **null**.
 
-#### -dryRun,<br />--[dsbulk.]engine.dryRun _&lt;boolean&gt;_
+#### -dryRun,<br />--engine.dryRun<br />--dsbulk.engine.dryRun _&lt;boolean&gt;_
 
 Enable or disable dry-run mode, a test mode that runs the command but does not load data. Not applicable for unloading nor counting.
 
 Default: **false**.
 
-#### --[dsbulk.]executor.maxPerSecond _&lt;number&gt;_
+#### --executor.maxPerSecond<br />--dsbulk.executor.maxPerSecond _&lt;number&gt;_
 
 The maximum number of concurrent operations per second. When loading, this means the maximum number of write requests per second; when unloading or counting, this means the maximum number of rows per second. This acts as a safeguard to prevent overloading the cluster. Batch statements are counted by the number of statements included. Reduce this setting when the latencies get too high and a remote cluster cannot keep up with throughput, as `dsbulk` requests will eventually time out. Setting this option to any negative value or zero will disable it.
 
 Default: **-1**.
 
-#### -maxErrors,<br />--[dsbulk.]log.maxErrors _&lt;number&gt;_
+#### -maxErrors,<br />--log.maxErrors<br />--dsbulk.log.maxErrors _&lt;number&gt;_
 
-The maximum number of errors to tolerate before aborting the entire operation. This can be expressed either as an absolute number of errors – in which case, set this to an integer greater than or equal to zero; or as a percentage of total rows processed so far – in which case, set this to a string of the form `N%`, where `N` is a decimal number between 0 and 100 exclusive (e.g. "20%"). Setting this value to any negative integer disables this feature (not recommended).
+The maximum number of errors to tolerate before aborting the entire operation. This can be expressed either as an absolute number of errors - in which case, set this to an integer greater than or equal to zero; or as a percentage of total rows processed so far - in which case, set this to a string of the form `N%`, where `N` is a decimal number between 0 and 100 exclusive (e.g. "20%"). Setting this value to any negative integer disables this feature (not recommended).
 
 Default: **100**.
 
-#### -logDir,<br />--[dsbulk.]log.directory _&lt;string&gt;_
+#### -logDir,<br />--log.directory<br />--dsbulk.log.directory _&lt;string&gt;_
 
 The writable directory where all log files will be stored; if the directory specified does not exist, it will be created. URLs are not acceptable (not even `file:/` URLs). Log files for a specific run, or execution, will be located in a sub-directory under the specified directory. Each execution generates a sub-directory identified by an "execution ID". See `engine.executionId` for more information about execution IDs. Relative paths will be resolved against the current working directory. Also, for convenience, if the path begins with a tilde (`~`), that symbol will be expanded to the current user's home directory.
 
 Default: **"./logs"**.
 
-#### -verbosity,<br />--[dsbulk.]log.verbosity _&lt;number&gt;_
+#### -verbosity,<br />--log.verbosity<br />--dsbulk.log.verbosity _&lt;number&gt;_
 
 The desired level of verbosity. Valid values are:
 
@@ -274,7 +274,7 @@ The desired level of verbosity. Valid values are:
 
 Default: **1**.
 
-#### -reportRate,<br />--[dsbulk.]monitoring.reportRate _&lt;string&gt;_
+#### -reportRate,<br />--monitoring.reportRate<br />--dsbulk.monitoring.reportRate _&lt;string&gt;_
 
 The report interval. DSBulk will print useful metrics about the ongoing operation at this rate. Durations lesser than one second will be rounded up to 1 second.
 
@@ -287,7 +287,7 @@ Connector-specific settings. This section contains settings for the connector to
 
 This setting is ignored when counting.
 
-#### -c,<br />--[dsbulk.]connector.name _&lt;string&gt;_
+#### -c,<br />--connector.name<br />--dsbulk.connector.name _&lt;string&gt;_
 
 The name of the connector to use.
 
@@ -298,7 +298,7 @@ Default: **"csv"**.
 
 CSV Connector configuration.
 
-#### -url,<br />--[dsbulk.]connector.csv.url _&lt;string&gt;_
+#### -url,<br />--connector.csv.url<br />--dsbulk.connector.csv.url _&lt;string&gt;_
 
 The URL or path of the resource(s) to read from or write to.
 
@@ -328,13 +328,13 @@ The default value is `-` (read from `stdin` / write to `stdout`).
 
 Default: **"-"**.
 
-#### -delim,<br />--[dsbulk.]connector.csv.delimiter _&lt;string&gt;_
+#### -delim,<br />--connector.csv.delimiter<br />--dsbulk.connector.csv.delimiter _&lt;string&gt;_
 
 The character to use as field delimiter.
 
 Default: **","**.
 
-#### -header,<br />--[dsbulk.]connector.csv.header _&lt;boolean&gt;_
+#### -header,<br />--connector.csv.header<br />--dsbulk.connector.csv.header _&lt;boolean&gt;_
 
 Enable or disable whether the files to read or write begin with a header line. If enabled for loading, the first non-empty line in every file will assign field names for each record column, in lieu of `schema.mapping`, `fieldA = col1, fieldB = col2, fieldC = col3`. If disabled for loading, records will not contain fields names, only field indexes, `0 = col1, 1 = col2, 2 = col3`. For unloading, if this setting is enabled, each file will begin with a header line, and if disabled, each file will not contain a header line.
 
@@ -342,55 +342,55 @@ Note: This option will apply to all files loaded or unloaded.
 
 Default: **true**.
 
-#### -skipRecords,<br />--[dsbulk.]connector.csv.skipRecords _&lt;number&gt;_
+#### -skipRecords,<br />--connector.csv.skipRecords<br />--dsbulk.connector.csv.skipRecords _&lt;number&gt;_
 
 The number of records to skip from each input file before the parser can begin to execute. Note that if the file contains a header line, that line is not counted as a valid record. This setting is ignored when writing.
 
 Default: **0**.
 
-#### -maxRecords,<br />--[dsbulk.]connector.csv.maxRecords _&lt;number&gt;_
+#### -maxRecords,<br />--connector.csv.maxRecords<br />--dsbulk.connector.csv.maxRecords _&lt;number&gt;_
 
 The maximum number of records to read from or write to each file. When reading, all records past this number will be discarded. When writing, a file will contain at most this number of records; if more records remain to be written, a new file will be created using the *fileNameFormat* setting. Note that when writing to anything other than a directory, this setting is ignored. This setting takes into account the *header* setting: if a file begins with a header line, that line is not counted as a record. This feature is disabled by default (indicated by its `-1` value).
 
 Default: **-1**.
 
-#### -quote,<br />--[dsbulk.]connector.csv.quote _&lt;string&gt;_
+#### -quote,<br />--connector.csv.quote<br />--dsbulk.connector.csv.quote _&lt;string&gt;_
 
 The character used for quoting fields when the field delimiter is part of the field value. Only one character can be specified. Note that this setting applies to all files to be read or written.
 
 Default: **"\""**.
 
-#### -comment,<br />--[dsbulk.]connector.csv.comment _&lt;string&gt;_
+#### -comment,<br />--connector.csv.comment<br />--dsbulk.connector.csv.comment _&lt;string&gt;_
 
 The character that represents a line comment when found in the beginning of a line of text. Only one character can be specified. Note that this setting applies to all files to be read or written. This feature is disabled by default (indicated by its `null` character value).
 
 Default: **"\u0000"**.
 
-#### --[dsbulk.]connector.csv.compression _&lt;string&gt;_
+#### --connector.csv.compression<br />--dsbulk.connector.csv.compression _&lt;string&gt;_
 
 The compression that will be used for writing or reading files. Supported values are (for both reading and writing): `none`, `xz`, `gzip`, `bzip2`, `zstd`, `lz4`, `lzma`, `snappy`, `deflate`.  For reading only, supported values are: `brotli`, `z`, `deflate64`.
 
 Default: **"none"**.
 
-#### --[dsbulk.]connector.csv.emptyValue _&lt;string&gt;_
+#### --connector.csv.emptyValue<br />--dsbulk.connector.csv.emptyValue _&lt;string&gt;_
 
 Sets the String representation of an empty value. When reading, if the parser does not read any character from the input, and the input is within quotes, this value will be used instead. This setting is ignored when writing. The default is `""` (empty string).
 
 Default: **&lt;unspecified&gt;**.
 
-#### -encoding,<br />--[dsbulk.]connector.csv.encoding _&lt;string&gt;_
+#### -encoding,<br />--connector.csv.encoding<br />--dsbulk.connector.csv.encoding _&lt;string&gt;_
 
 The file encoding to use for all read or written files.
 
 Default: **"UTF-8"**.
 
-#### -escape,<br />--[dsbulk.]connector.csv.escape _&lt;string&gt;_
+#### -escape,<br />--connector.csv.escape<br />--dsbulk.connector.csv.escape _&lt;string&gt;_
 
 The character used for escaping quotes inside an already quoted value. Only one character can be specified. Note that this setting applies to all files to be read or written.
 
 Default: **"\\"**.
 
-#### --[dsbulk.]connector.csv.fileNameFormat _&lt;string&gt;_
+#### --connector.csv.fileNameFormat<br />--dsbulk.connector.csv.fileNameFormat _&lt;string&gt;_
 
 The file name format to use when writing. This setting is ignored when reading and for non-file URLs. The file name must comply with the formatting rules of `String.format()`, and must contain a `%d` format specifier that will be used to increment file name counters.
 
@@ -398,7 +398,7 @@ If compression is enabled, the default value for this setting will be modified t
 
 Default: **"output-%06d.csv"**.
 
-#### --[dsbulk.]connector.csv.fileNamePattern _&lt;string&gt;_
+#### --connector.csv.fileNamePattern<br />--dsbulk.connector.csv.fileNamePattern _&lt;string&gt;_
 
 The glob pattern to use when searching for files to read. The syntax to use is the glob syntax, as described in `java.nio.file.FileSystem.getPathMatcher()`. This setting is ignored when writing and for non-file URLs. Only applicable when the *url* setting points to a directory on a known filesystem, ignored otherwise.
 
@@ -406,73 +406,73 @@ If compression is enabled, the default value for this setting will be modified t
 
 Default: **"\*\*/\*.csv"**.
 
-#### --[dsbulk.]connector.csv.ignoreLeadingWhitespaces _&lt;boolean&gt;_
+#### --connector.csv.ignoreLeadingWhitespaces<br />--dsbulk.connector.csv.ignoreLeadingWhitespaces _&lt;boolean&gt;_
 
 Defines whether or not leading whitespaces from values being read/written should be skipped. This setting is honored when reading and writing. Default value is false.
 
 Default: **false**.
 
-#### --[dsbulk.]connector.csv.ignoreLeadingWhitespacesInQuotes _&lt;boolean&gt;_
+#### --connector.csv.ignoreLeadingWhitespacesInQuotes<br />--dsbulk.connector.csv.ignoreLeadingWhitespacesInQuotes _&lt;boolean&gt;_
 
 Defines whether or not trailing whitespaces from quoted values should be skipped. This setting is only honored when reading; it is ignored when writing. Default value is false.
 
 Default: **false**.
 
-#### --[dsbulk.]connector.csv.ignoreTrailingWhitespaces _&lt;boolean&gt;_
+#### --connector.csv.ignoreTrailingWhitespaces<br />--dsbulk.connector.csv.ignoreTrailingWhitespaces _&lt;boolean&gt;_
 
 Defines whether or not trailing whitespaces from values being read/written should be skipped. This setting is honored when reading and writing. Default value is false.
 
 Default: **false**.
 
-#### --[dsbulk.]connector.csv.ignoreTrailingWhitespacesInQuotes _&lt;boolean&gt;_
+#### --connector.csv.ignoreTrailingWhitespacesInQuotes<br />--dsbulk.connector.csv.ignoreTrailingWhitespacesInQuotes _&lt;boolean&gt;_
 
 Defines whether or not leading whitespaces from quoted values should be skipped. This setting is only honored when reading; it is ignored when writing. Default value is false.
 
 Default: **false**.
 
-#### --[dsbulk.]connector.csv.maxCharsPerColumn _&lt;number&gt;_
+#### --connector.csv.maxCharsPerColumn<br />--dsbulk.connector.csv.maxCharsPerColumn _&lt;number&gt;_
 
 The maximum number of characters that a field can contain. This setting is used to size internal buffers and to avoid out-of-memory problems. If set to -1, internal buffers will be resized dynamically. While convenient, this can lead to memory problems. It could also hurt throughput, if some large fields require constant resizing; if this is the case, set this value to a fixed positive number that is big enough to contain all field values.
 
 Default: **4096**.
 
-#### --[dsbulk.]connector.csv.maxColumns _&lt;number&gt;_
+#### --connector.csv.maxColumns<br />--dsbulk.connector.csv.maxColumns _&lt;number&gt;_
 
 The maximum number of columns that a record can contain. This setting is used to size internal buffers and to avoid out-of-memory problems.
 
 Default: **512**.
 
-#### -maxConcurrentFiles,<br />--[dsbulk.]connector.csv.maxConcurrentFiles _&lt;string&gt;_
+#### -maxConcurrentFiles,<br />--connector.csv.maxConcurrentFiles<br />--dsbulk.connector.csv.maxConcurrentFiles _&lt;string&gt;_
 
 The maximum number of files that can be written simultaneously. This setting is ignored when reading and when the output URL is anything other than a directory on a filesystem. The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 
 Default: **"0.25C"**.
 
-#### -newline,<br />--[dsbulk.]connector.csv.newline _&lt;string&gt;_
+#### -newline,<br />--connector.csv.newline<br />--dsbulk.connector.csv.newline _&lt;string&gt;_
 
 The character(s) that represent a line ending. When set to the special value `auto` (default), the system's line separator, as determined by `System.lineSeparator()`, will be used when writing, and auto-detection of line endings will be enabled when reading. Only one or two characters can be specified; beware that most typical line separator characters need to be escaped, e.g. one should specify `\r\n` for the typical line ending on Windows systems (carriage return followed by a new line).
 
 Default: **"auto"**.
 
-#### --[dsbulk.]connector.csv.normalizeLineEndingsInQuotes _&lt;boolean&gt;_
+#### --connector.csv.normalizeLineEndingsInQuotes<br />--dsbulk.connector.csv.normalizeLineEndingsInQuotes _&lt;boolean&gt;_
 
 Defines whether or not line separators should be replaced by a normalized line separator '\n' inside quoted values. This setting is honored when reading and writing. Note: due to a bug in the CSV parsing library, on Windows systems, the line ending detection mechanism may not function properly when this setting is false; in case of problem, set this to true. Default value is false.
 
 Default: **false**.
 
-#### --[dsbulk.]connector.csv.nullValue _&lt;string&gt;_
+#### --connector.csv.nullValue<br />--dsbulk.connector.csv.nullValue _&lt;string&gt;_
 
 Sets the String representation of a null value. When reading, if the parser does not read any character from the input, this value will be used instead. When writing, if the writer has a null object to write to the output, this value will be used instead. The default value is `null`, which means that, when reading, the parser will emit a `null`, and when writing, the writer won't write any character at all to the output.
 
 Default: **null**.
 
-#### --[dsbulk.]connector.csv.recursive _&lt;boolean&gt;_
+#### --connector.csv.recursive<br />--dsbulk.connector.csv.recursive _&lt;boolean&gt;_
 
 Enable or disable scanning for files in the root's subdirectories. Only applicable when *url* is set to a directory on a known filesystem. Used for loading only.
 
 Default: **false**.
 
-#### --[dsbulk.]connector.csv.urlfile _&lt;string&gt;_
+#### --connector.csv.urlfile<br />--dsbulk.connector.csv.urlfile _&lt;string&gt;_
 
 The URL or path of the file that contains the list of resources to read from.
 
@@ -514,7 +514,7 @@ Default: **&lt;unspecified&gt;**.
 
 JSON Connector configuration.
 
-#### -url,<br />--[dsbulk.]connector.json.url _&lt;string&gt;_
+#### -url,<br />--connector.json.url<br />--dsbulk.connector.json.url _&lt;string&gt;_
 
 The URL or path of the resource(s) to read from or write to.
 
@@ -544,19 +544,19 @@ The default value is `-` (read from `stdin` / write to `stdout`).
 
 Default: **"-"**.
 
-#### -skipRecords,<br />--[dsbulk.]connector.json.skipRecords _&lt;number&gt;_
+#### -skipRecords,<br />--connector.json.skipRecords<br />--dsbulk.connector.json.skipRecords _&lt;number&gt;_
 
 The number of JSON records to skip from each input file before the parser can begin to execute. This setting is ignored when writing.
 
 Default: **0**.
 
-#### -maxRecords,<br />--[dsbulk.]connector.json.maxRecords _&lt;number&gt;_
+#### -maxRecords,<br />--connector.json.maxRecords<br />--dsbulk.connector.json.maxRecords _&lt;number&gt;_
 
 The maximum number of records to read from or write to each file. When reading, all records past this number will be discarded. When writing, a file will contain at most this number of records; if more records remain to be written, a new file will be created using the *fileNameFormat* setting. Note that when writing to anything other than a directory, this setting is ignored. This feature is disabled by default (indicated by its `-1` value).
 
 Default: **-1**.
 
-#### --[dsbulk.]connector.json.mode _&lt;string&gt;_
+#### --connector.json.mode<br />--dsbulk.connector.json.mode _&lt;string&gt;_
 
 The mode for loading and unloading JSON documents. Valid values are:
 
@@ -565,25 +565,25 @@ The mode for loading and unloading JSON documents. Valid values are:
 
 Default: **"MULTI_DOCUMENT"**.
 
-#### --[dsbulk.]connector.json.compression _&lt;string&gt;_
+#### --connector.json.compression<br />--dsbulk.connector.json.compression _&lt;string&gt;_
 
 The compression that will be used for writing or reading files. Supported values are (for both reading and writing): `none`, `xz`, `gzip`, `bzip2`, `zstd`, `lz4`, `lzma`, `snappy`, `deflate`.  For reading only, supported values are: `brotli`, `z`, `deflate64`.
 
 Default: **"none"**.
 
-#### --[dsbulk.]connector.json.deserializationFeatures _&lt;map&lt;string,boolean&gt;&gt;_
+#### --connector.json.deserializationFeatures<br />--dsbulk.connector.json.deserializationFeatures _&lt;map&lt;string,boolean&gt;&gt;_
 
 A map of JSON deserialization features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.databind.DeserializationFeature`. The default value is the only way to guarantee that floating point numbers will not have their precision truncated when parsed, but can result in slightly slower parsing. Used for loading only.
 
 Note that some Jackson features might not be supported, in particular features that operate on the resulting Json tree by filtering elements or altering their contents, since such features conflict with dsbulk's own filtering and formatting capabilities. Instead of trying to modify the resulting tree using Jackson features, you should try to achieve the same result using the settings available under the `codec` and `schema` sections.
 
-#### -encoding,<br />--[dsbulk.]connector.json.encoding _&lt;string&gt;_
+#### -encoding,<br />--connector.json.encoding<br />--dsbulk.connector.json.encoding _&lt;string&gt;_
 
 The file encoding to use for all read or written files.
 
 Default: **"UTF-8"**.
 
-#### --[dsbulk.]connector.json.fileNameFormat _&lt;string&gt;_
+#### --connector.json.fileNameFormat<br />--dsbulk.connector.json.fileNameFormat _&lt;string&gt;_
 
 The file name format to use when writing. This setting is ignored when reading and for non-file URLs. The file name must comply with the formatting rules of `String.format()`, and must contain a `%d` format specifier that will be used to increment file name counters.
 
@@ -591,7 +591,7 @@ If compression is enabled, the default value for this setting will be modified t
 
 Default: **"output-%06d.json"**.
 
-#### --[dsbulk.]connector.json.fileNamePattern _&lt;string&gt;_
+#### --connector.json.fileNamePattern<br />--dsbulk.connector.json.fileNamePattern _&lt;string&gt;_
 
 The glob pattern to use when searching for files to read. The syntax to use is the glob syntax, as described in `java.nio.file.FileSystem.getPathMatcher()`. This setting is ignored when writing and for non-file URLs. Only applicable when the *url* setting points to a directory on a known filesystem, ignored otherwise.
 
@@ -599,25 +599,25 @@ If compression is enabled, the default value for this setting will be modified t
 
 Default: **"\*\*/\*.json"**.
 
-#### --[dsbulk.]connector.json.generatorFeatures _&lt;map&lt;string,boolean&gt;&gt;_
+#### --connector.json.generatorFeatures<br />--dsbulk.connector.json.generatorFeatures _&lt;map&lt;string,boolean&gt;&gt;_
 
 JSON generator features to enable. Valid values are all the enum constants defined in `com.fasterxml.jackson.core.JsonGenerator.Feature`. For example, a value of `{ ESCAPE_NON_ASCII : true, QUOTE_FIELD_NAMES : true }` will configure the generator to escape all characters beyond 7-bit ASCII and quote field names when writing JSON output. Used for unloading only.
 
 Note that some Jackson features might not be supported, in particular features that operate on the resulting Json tree by filtering elements or altering their contents, since such features conflict with dsbulk's own filtering and formatting capabilities. Instead of trying to modify the resulting tree using Jackson features, you should try to achieve the same result using the settings available under the `codec` and `schema` sections.
 
-#### -maxConcurrentFiles,<br />--[dsbulk.]connector.json.maxConcurrentFiles _&lt;string&gt;_
+#### -maxConcurrentFiles,<br />--connector.json.maxConcurrentFiles<br />--dsbulk.connector.json.maxConcurrentFiles _&lt;string&gt;_
 
 The maximum number of files that can be written simultaneously. This setting is ignored when reading and when the output URL is anything other than a directory on a filesystem. The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 
 Default: **"0.25C"**.
 
-#### --[dsbulk.]connector.json.parserFeatures _&lt;map&lt;string,boolean&gt;&gt;_
+#### --connector.json.parserFeatures<br />--dsbulk.connector.json.parserFeatures _&lt;map&lt;string,boolean&gt;&gt;_
 
 JSON parser features to enable. Valid values are all the enum constants defined in `com.fasterxml.jackson.core.JsonParser.Feature`. For example, a value of `{ ALLOW_COMMENTS : true, ALLOW_SINGLE_QUOTES : true }` will configure the parser to allow the use of comments and single-quoted strings in JSON data. Used for loading only.
 
 Note that some Jackson features might not be supported, in particular features that operate on the resulting Json tree by filtering elements or altering their contents, since such features conflict with dsbulk's own filtering and formatting capabilities. Instead of trying to modify the resulting tree using Jackson features, you should try to achieve the same result using the settings available under the `codec` and `schema` sections.
 
-#### --[dsbulk.]connector.json.prettyPrint _&lt;boolean&gt;_
+#### --connector.json.prettyPrint<br />--dsbulk.connector.json.prettyPrint _&lt;boolean&gt;_
 
 Enable or disable pretty printing. When enabled, JSON records are written with indents. Used for unloading only.
 
@@ -625,25 +625,25 @@ Note: Can result in much bigger records.
 
 Default: **false**.
 
-#### --[dsbulk.]connector.json.recursive _&lt;boolean&gt;_
+#### --connector.json.recursive<br />--dsbulk.connector.json.recursive _&lt;boolean&gt;_
 
 Enable or disable scanning for files in the root's subdirectories. Only applicable when *url* is set to a directory on a known filesystem. Used for loading only.
 
 Default: **false**.
 
-#### --[dsbulk.]connector.json.serializationFeatures _&lt;map&lt;string,boolean&gt;&gt;_
+#### --connector.json.serializationFeatures<br />--dsbulk.connector.json.serializationFeatures _&lt;map&lt;string,boolean&gt;&gt;_
 
 A map of JSON serialization features to set. Map keys should be enum constants defined in `com.fasterxml.jackson.databind.SerializationFeature`. Used for unloading only.
 
 Note that some Jackson features might not be supported, in particular features that operate on the resulting Json tree by filtering elements or altering their contents, since such features conflict with dsbulk's own filtering and formatting capabilities. Instead of trying to modify the resulting tree using Jackson features, you should try to achieve the same result using the settings available under the `codec` and `schema` sections.
 
-#### --[dsbulk.]connector.json.serializationStrategy _&lt;string&gt;_
+#### --connector.json.serializationStrategy<br />--dsbulk.connector.json.serializationStrategy _&lt;string&gt;_
 
 The strategy to use for filtering out entries when formatting output. Valid values are enum constants defined in `com.fasterxml.jackson.annotation.JsonInclude.Include` (but beware that the `CUSTOM` strategy cannot be honored). Used for unloading only.
 
 Default: **"ALWAYS"**.
 
-#### --[dsbulk.]connector.json.urlfile _&lt;string&gt;_
+#### --connector.json.urlfile<br />--dsbulk.connector.json.urlfile _&lt;string&gt;_
 
 The URL or path of the file that contains the list of resources to read from.
 
@@ -685,19 +685,19 @@ Default: **&lt;unspecified&gt;**.
 
 Schema-specific settings.
 
-#### -k,<br />--[dsbulk.]schema.keyspace _&lt;string&gt;_
+#### -k,<br />--schema.keyspace<br />--dsbulk.schema.keyspace _&lt;string&gt;_
 
 Keyspace used for loading or unloading data. Keyspace names should not be quoted and are case-sensitive. `MyKeyspace` will match a keyspace named `MyKeyspace` but not `mykeyspace`. Required option if `schema.query` is not specified; otherwise, optional.
 
 Default: **null**.
 
-#### -t,<br />--[dsbulk.]schema.table _&lt;string&gt;_
+#### -t,<br />--schema.table<br />--dsbulk.schema.table _&lt;string&gt;_
 
 Table used for loading or unloading data. Table names should not be quoted and are case-sensitive. `MyTable` will match a table named `MyTable` but not `mytable`. Required option if `schema.query` is not specified; otherwise, optional.
 
 Default: **null**.
 
-#### -m,<br />--[dsbulk.]schema.mapping _&lt;string&gt;_
+#### -m,<br />--schema.mapping<br />--dsbulk.schema.mapping _&lt;string&gt;_
 
 The field-to-column mapping to use, that applies to both loading and unloading; ignored when counting. If not specified, the loader will apply a strict one-to-one mapping between the source fields and the database table. If that is not what you want, then you must supply an explicit mapping. Mappings should be specified as a map of the following form:
 
@@ -720,7 +720,7 @@ The exact type of mapping to use depends on the connector being used. Some conne
 
 Default: **null**.
 
-#### --[dsbulk.]schema.allowExtraFields _&lt;boolean&gt;_
+#### --schema.allowExtraFields<br />--dsbulk.schema.allowExtraFields _&lt;boolean&gt;_
 
 Specify whether or not to accept records that contain extra fields that are not declared in the mapping. For example, if a record contains three fields A, B, and C, but the mapping only declares fields A and B, then if this option is true, C will be silently ignored and the record will be considered valid, and if false, the record will be rejected. This setting also applies to user-defined types and tuples. Only applicable for loading, ignored otherwise.
 
@@ -728,7 +728,7 @@ This setting is ignored when counting.
 
 Default: **true**.
 
-#### --[dsbulk.]schema.allowMissingFields _&lt;boolean&gt;_
+#### --schema.allowMissingFields<br />--dsbulk.schema.allowMissingFields _&lt;boolean&gt;_
 
 Specify whether or not to accept records that are missing fields declared in the mapping. For example, if the mapping declares three fields A, B, and C, but a record contains only fields A and B, then if this option is true, C will be silently assigned null and the record will be considered valid, and if false, the record will be rejected. If the missing field is mapped to a primary key column, the record will always be rejected, since the database will reject the record. This setting also applies to user-defined types and tuples. Only applicable for loading, ignored otherwise.
 
@@ -736,7 +736,7 @@ This setting is ignored when counting.
 
 Default: **false**.
 
-#### --[dsbulk.]schema.nullToUnset _&lt;boolean&gt;_
+#### --schema.nullToUnset<br />--dsbulk.schema.nullToUnset _&lt;boolean&gt;_
 
 Specify whether to map `null` input values to "unset" in the database, i.e., don't modify a potentially pre-existing value of this field for this row. Valid for load scenarios, otherwise ignore. Note that setting to false creates tombstones to represent `null`.
 
@@ -746,7 +746,7 @@ This setting is ignored when counting. When set to true but the protocol version
 
 Default: **true**.
 
-#### -query,<br />--[dsbulk.]schema.query _&lt;string&gt;_
+#### -query,<br />--schema.query<br />--dsbulk.schema.query _&lt;string&gt;_
 
 The query to use. If not specified, then *schema.keyspace* and *schema.table* must be specified, and dsbulk will infer the appropriate statement based on the table's metadata, using all available columns. If `schema.keyspace` is provided, the query need not include the keyspace to qualify the table reference.
 
@@ -762,7 +762,7 @@ See *schema.mapping* setting for more information.
 
 Default: **null**.
 
-#### --[dsbulk.]schema.queryTimestamp _&lt;string&gt;_
+#### --schema.queryTimestamp<br />--dsbulk.schema.queryTimestamp _&lt;string&gt;_
 
 The timestamp of inserted/updated cells during load; otherwise, the current time of the system running the tool is used. Not applicable to unloading nor counting. Ignored when `schema.query` is provided. The value must be expressed in [`ISO_ZONED_DATE_TIME`](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#ISO_ZONED_DATE_TIME) format.
 
@@ -770,13 +770,13 @@ Query timestamps for DSE have microsecond resolution; any sub-microsecond inform
 
 Default: **null**.
 
-#### --[dsbulk.]schema.queryTtl _&lt;number&gt;_
+#### --schema.queryTtl<br />--dsbulk.schema.queryTtl _&lt;number&gt;_
 
 The Time-To-Live (TTL) of inserted/updated cells during load (seconds); a value of -1 means there is no TTL. Not applicable to unloading nor counting. Ignored when `schema.query` is provided. For more information, see the [CQL Reference](https://docs.datastax.com/en/dse/6.0/cql/cql/cql_reference/cql_commands/cqlInsert.html#cqlInsert__ime-value), [Setting the time-to-live (TTL) for value](http://docs.datastax.com/en/dse/6.0/cql/cql/cql_using/useTTL.html), and [Expiring data with time-to-live](http://docs.datastax.com/en/dse/6.0/cql/cql/cql_using/useExpire.html).
 
 Default: **-1**.
 
-#### --[dsbulk.]schema.splits _&lt;string&gt;_
+#### --schema.splits<br />--dsbulk.schema.splits _&lt;string&gt;_
 
 The number of token range splits in which to divide the token ring. In other words, this setting determines how many read requests will be generated in order to read an entire table. Only used when unloading and counting; ignored otherwise. Note that the actual number of splits may be slightly greater or lesser than the number specified here, depending on the actual cluster topology and token ownership. Also, it is not possible to generate fewer splits than the total number of primary token ranges in the cluster, so the actual number of splits is always equal to or greater than that number. Set this to higher values if you experience timeouts when reading from DSE, specially if paging is disabled. The special syntax `NC` can be used to specify a number that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 splits.
 
@@ -791,19 +791,19 @@ These settings control how the workflow engine groups together statements before
 
 Only applicable for loading.
 
-#### --[dsbulk.]batch.bufferSize _&lt;number&gt;_
+#### --batch.bufferSize<br />--dsbulk.batch.bufferSize _&lt;number&gt;_
 
 The buffer size to use for flushing batched statements. Should be set to a multiple of `maxBatchStatements`, e.g. 2 or 4 times that value; higher values consume more memory and usually do not incur in any noticeable performance gain. When set to a value lesser than or equal to zero, the buffer size is implicitly set to 4 times `maxBatchStatments`.
 
 Default: **-1**.
 
-#### --[dsbulk.]batch.maxBatchSize _&lt;number&gt;_
+#### --batch.maxBatchSize<br />--dsbulk.batch.maxBatchSize _&lt;number&gt;_
 
 **DEPRECATED**. Use `maxBatchStatements` instead.
 
 Default: **null**.
 
-#### --[dsbulk.]batch.maxBatchStatements _&lt;number&gt;_
+#### --batch.maxBatchStatements<br />--dsbulk.batch.maxBatchStatements _&lt;number&gt;_
 
 The maximum number of statements that a batch can contain. The ideal value depends on two factors:
 - The data being loaded: the larger the data, the smaller the batches should be.
@@ -812,13 +812,13 @@ When set to a value lesser than or equal to zero, the maximum number of statemen
 
 Default: **32**.
 
-#### --[dsbulk.]batch.maxSizeInBytes _&lt;number&gt;_
+#### --batch.maxSizeInBytes<br />--dsbulk.batch.maxSizeInBytes _&lt;number&gt;_
 
 The maximum data size that a batch can hold. This is the number of bytes required to encode all the data to be persisted, without counting the overhead generated by the native protocol (headers, frames, etc.). The value specified here should be lesser than or equal to the value that has been configured server-side for the option `batch_size_fail_threshold_in_kb` in cassandra.yaml, but note that the heuristic used to compute data sizes is not 100% accurate and sometimes underestimates the actual size. See the documentation for the [cassandra.yaml configuration file](https://docs.datastax.com/en/dse/6.0/dse-dev/datastax_enterprise/config/configCassandra_yaml.html#configCassandra_yaml__advProps) for more information. When set to a value lesser than or equal to zero, the maximum data size is considered unlimited. At least one of `maxBatchStatements` or `maxSizeInBytes` must be set to a positive value when batching is enabled.
 
 Default: **-1**.
 
-#### --[dsbulk.]batch.mode _&lt;string&gt;_
+#### --batch.mode<br />--dsbulk.batch.mode _&lt;string&gt;_
 
 The grouping mode. Valid values are:
 - `DISABLED`: batching is disabled.
@@ -844,19 +844,19 @@ When unloading, these settings determine how row cells emitted by DSE are format
 
 When counting, these settings are ignored.
 
-#### --[dsbulk.]codec.booleanNumbers _&lt;list&lt;number&gt;&gt;_
+#### --codec.booleanNumbers<br />--dsbulk.codec.booleanNumbers _&lt;list&lt;number&gt;&gt;_
 
 Set how true and false representations of numbers are interpreted. The representation is of the form `true_value,false_value`. The mapping is reciprocal, so that numbers are mapping to Boolean and vice versa. All numbers unspecified in this setting are rejected.
 
 Default: **[1,0]**.
 
-#### --[dsbulk.]codec.booleanStrings _&lt;list&lt;string&gt;&gt;_
+#### --codec.booleanStrings<br />--dsbulk.codec.booleanStrings _&lt;list&lt;string&gt;&gt;_
 
 Specify how true and false representations can be used by dsbulk. Each representation is of the form `true_value:false_value`, case-insensitive. For loading, all representations are honored: when a record field value exactly matches one of the specified strings, the value is replaced with `true` of `false` before writing to DSE. For unloading, this setting is only applicable for string-based connectors, such as the CSV connector: the first representation will be used to format booleans before they are written out, and all others are ignored.
 
 Default: **["1:0","Y:N","T:F","YES:NO","TRUE:FALSE"]**.
 
-#### --[dsbulk.]codec.date _&lt;string&gt;_
+#### --codec.date<br />--dsbulk.codec.date _&lt;string&gt;_
 
 The temporal pattern to use for `String` to CQL `date` conversion. Valid choices:
 
@@ -870,7 +870,7 @@ For more information about CQL date, time and timestamp literals, see [Date, tim
 
 Default: **"ISO_LOCAL_DATE"**.
 
-#### --[dsbulk.]codec.epoch _&lt;string&gt;_
+#### --codec.epoch<br />--dsbulk.codec.epoch _&lt;string&gt;_
 
 This setting is used in the following situations:
 
@@ -882,19 +882,19 @@ The value must be expressed in [`ISO_ZONED_DATE_TIME`](https://docs.oracle.com/j
 
 Default: **"1970-01-01T00:00:00Z"**.
 
-#### --[dsbulk.]codec.formatNumbers _&lt;boolean&gt;_
+#### --codec.formatNumbers<br />--dsbulk.codec.formatNumbers _&lt;boolean&gt;_
 
 Whether or not to use the `codec.number` pattern to format numeric output. When set to `true`, the numeric pattern defined by `codec.number` will be applied. This allows for nicely-formatted output, but may result in rounding (see `codec.roundingStrategy`), or alteration of the original decimal's scale. When set to `false`, numbers will be stringified using the `toString()` method, and will never result in rounding or scale alteration. Only applicable when unloading, and only if the connector in use requires stringification, because the connector, such as the CSV connector, does not handle raw numeric data; ignored otherwise.
 
 Default: **false**.
 
-#### -locale,<br />--[dsbulk.]codec.locale _&lt;string&gt;_
+#### -locale,<br />--codec.locale<br />--dsbulk.codec.locale _&lt;string&gt;_
 
 The locale to use for locale-sensitive conversions.
 
 Default: **"en_US"**.
 
-#### -nullStrings,<br />--[dsbulk.]codec.nullStrings _&lt;list&gt;_
+#### -nullStrings,<br />--codec.nullStrings<br />--dsbulk.codec.nullStrings _&lt;list&gt;_
 
 Comma-separated list of case-sensitive strings that should be mapped to `null`. For loading, when a record field value exactly matches one of the specified strings, the value is replaced with `null` before writing to DSE. For unloading, this setting is only applicable for string-based connectors, such as the CSV connector: the first string specified will be used to change a row cell containing `null` to the specified string when written out.
 
@@ -910,7 +910,7 @@ This setting is applied before `schema.nullToUnset`, hence any `null` produced b
 
 Default: **[]**.
 
-#### --[dsbulk.]codec.number _&lt;string&gt;_
+#### --codec.number<br />--dsbulk.codec.number _&lt;string&gt;_
 
 The `DecimalFormat` pattern to use for conversions between `String` and CQL numeric types.
 
@@ -920,7 +920,7 @@ Most inputs are recognized: optional localized thousands separator, localized de
 
 Default: **"#,###.##"**.
 
-#### --[dsbulk.]codec.overflowStrategy _&lt;string&gt;_
+#### --codec.overflowStrategy<br />--dsbulk.codec.overflowStrategy _&lt;string&gt;_
 
 This setting can mean one of three possibilities:
 
@@ -939,7 +939,7 @@ Only applicable for loading, when parsing numeric inputs; it does not apply for 
 
 Default: **"REJECT"**.
 
-#### --[dsbulk.]codec.roundingStrategy _&lt;string&gt;_
+#### --codec.roundingStrategy<br />--dsbulk.codec.roundingStrategy _&lt;string&gt;_
 
 The rounding strategy to use for conversions from CQL numeric types to `String`.
 
@@ -949,7 +949,7 @@ Only applicable when unloading, if `codec.formatNumbers` is true and if the conn
 
 Default: **"UNNECESSARY"**.
 
-#### --[dsbulk.]codec.time _&lt;string&gt;_
+#### --codec.time<br />--dsbulk.codec.time _&lt;string&gt;_
 
 The temporal pattern to use for `String` to CQL `time` conversion. Valid choices:
 
@@ -963,13 +963,13 @@ For more information about CQL date, time and timestamp literals, see [Date, tim
 
 Default: **"ISO_LOCAL_TIME"**.
 
-#### -timeZone,<br />--[dsbulk.]codec.timeZone _&lt;string&gt;_
+#### -timeZone,<br />--codec.timeZone<br />--dsbulk.codec.timeZone _&lt;string&gt;_
 
 The time zone to use for temporal conversions. When loading, the time zone will be used to obtain a timestamp from inputs that do not convey any explicit time zone information. When unloading, the time zone will be used to format all timestamps.
 
 Default: **"UTC"**.
 
-#### --[dsbulk.]codec.timestamp _&lt;string&gt;_
+#### --codec.timestamp<br />--dsbulk.codec.timestamp _&lt;string&gt;_
 
 The temporal pattern to use for `String` to CQL `timestamp` conversion. Valid choices:
 
@@ -986,7 +986,7 @@ The default value is the special `CQL_TIMESTAMP` value. When parsing, this forma
 
 Default: **"CQL_TIMESTAMP"**.
 
-#### --[dsbulk.]codec.unit _&lt;string&gt;_
+#### --codec.unit<br />--dsbulk.codec.unit _&lt;string&gt;_
 
 This setting is used in the following situations:
 
@@ -997,7 +997,7 @@ All `TimeUnit` enum constants are valid choices.
 
 Default: **"MILLISECONDS"**.
 
-#### --[dsbulk.]codec.uuidStrategy _&lt;string&gt;_
+#### --codec.uuidStrategy<br />--dsbulk.codec.uuidStrategy _&lt;string&gt;_
 
 Strategy to use when generating time-based (version 1) UUIDs from timestamps. Clock sequence and node ID parts of generated UUIDs are determined on a best-effort basis and are not fully compliant with RFC 4122. Valid values are:
 
@@ -1013,13 +1013,13 @@ Default: **"RANDOM"**.
 
 Workflow Engine-specific settings.
 
-#### -dryRun,<br />--[dsbulk.]engine.dryRun _&lt;boolean&gt;_
+#### -dryRun,<br />--engine.dryRun<br />--dsbulk.engine.dryRun _&lt;boolean&gt;_
 
 Enable or disable dry-run mode, a test mode that runs the command but does not load data. Not applicable for unloading nor counting.
 
 Default: **false**.
 
-#### --[dsbulk.]engine.executionId _&lt;string&gt;_
+#### --engine.executionId<br />--dsbulk.engine.executionId _&lt;string&gt;_
 
 A unique identifier to attribute to each execution. When unspecified or empty, the engine will automatically generate identifiers of the following form: *workflow*_*timestamp*, where :
 
@@ -1039,25 +1039,25 @@ Default: **null**.
 
 Executor-specific settings.
 
-#### --[dsbulk.]executor.maxPerSecond _&lt;number&gt;_
+#### --executor.maxPerSecond<br />--dsbulk.executor.maxPerSecond _&lt;number&gt;_
 
 The maximum number of concurrent operations per second. When loading, this means the maximum number of write requests per second; when unloading or counting, this means the maximum number of rows per second. This acts as a safeguard to prevent overloading the cluster. Batch statements are counted by the number of statements included. Reduce this setting when the latencies get too high and a remote cluster cannot keep up with throughput, as `dsbulk` requests will eventually time out. Setting this option to any negative value or zero will disable it.
 
 Default: **-1**.
 
-#### --[dsbulk.]executor.continuousPaging.enabled _&lt;boolean&gt;_
+#### --executor.continuousPaging.enabled<br />--dsbulk.executor.continuousPaging.enabled _&lt;boolean&gt;_
 
 Enable or disable continuous paging. If the target cluster does not support continuous paging or if `driver.query.consistency` is not `ONE` or `LOCAL_ONE`, traditional paging will be used regardless of this setting.
 
 Default: **true**.
 
-#### --[dsbulk.]executor.continuousPaging.maxConcurrentQueries _&lt;number&gt;_
+#### --executor.continuousPaging.maxConcurrentQueries<br />--dsbulk.executor.continuousPaging.maxConcurrentQueries _&lt;number&gt;_
 
 The maximum number of concurrent continuous paging queries that should be carried in parallel. Set this number to a value equal to or lesser than the value configured server-side for `continuous_paging.max_concurrent_sessions` in the cassandra.yaml configuration file (60 by default); otherwise some requests might be rejected. Settting this option to any negative value or zero will disable it.
 
 Default: **60**.
 
-#### --[dsbulk.]executor.continuousPaging.maxPages _&lt;number&gt;_
+#### --executor.continuousPaging.maxPages<br />--dsbulk.executor.continuousPaging.maxPages _&lt;number&gt;_
 
 The maximum number of pages to retrieve. Setting this value to zero retrieves all pages available.
 
@@ -1065,7 +1065,7 @@ The maximum number of pages to retrieve. Setting this value to zero retrieves al
 
 Default: **0**.
 
-#### --[dsbulk.]executor.continuousPaging.maxPagesPerSecond _&lt;number&gt;_
+#### --executor.continuousPaging.maxPagesPerSecond<br />--dsbulk.executor.continuousPaging.maxPagesPerSecond _&lt;number&gt;_
 
 The maximum number of pages per second. Setting this value to zero indicates no limit.
 
@@ -1073,7 +1073,7 @@ The maximum number of pages per second. Setting this value to zero indicates no 
 
 Default: **0**.
 
-#### --[dsbulk.]executor.continuousPaging.pageSize _&lt;number&gt;_
+#### --executor.continuousPaging.pageSize<br />--dsbulk.executor.continuousPaging.pageSize _&lt;number&gt;_
 
 The size of the page. The unit to use is determined by the `pageUnit` setting. The ideal page size depends on the size of the rows being unloaded: larger page sizes may have a positive impact on throughput for small rows, and vice versa.
 
@@ -1081,7 +1081,7 @@ The size of the page. The unit to use is determined by the `pageUnit` setting. T
 
 Default: **5000**.
 
-#### --[dsbulk.]executor.continuousPaging.pageUnit _&lt;string&gt;_
+#### --executor.continuousPaging.pageUnit<br />--dsbulk.executor.continuousPaging.pageUnit _&lt;string&gt;_
 
 The unit to use for the `pageSize` setting. Possible values are: `ROWS`, `BYTES`.
 
@@ -1089,7 +1089,7 @@ The unit to use for the `pageSize` setting. Possible values are: `ROWS`, `BYTES`
 
 Default: **"ROWS"**.
 
-#### --[dsbulk.]executor.maxInFlight _&lt;number&gt;_
+#### --executor.maxInFlight<br />--dsbulk.executor.maxInFlight _&lt;number&gt;_
 
 The maximum number of "in-flight" requests, or maximum number of concurrent requests waiting for a response from the server. This acts as a safeguard to prevent more requests than the cluster can handle. Batch statements count as one request. Reduce this value when the throughput for reads and writes cannot match the throughput of mappers; this is usually a sign that the workflow engine is not well calibrated and will eventually run out of memory. Setting this option to any negative value or zero will disable it.
 
@@ -1100,19 +1100,19 @@ Default: **1024**.
 
 Log and error management settings.
 
-#### -maxErrors,<br />--[dsbulk.]log.maxErrors _&lt;number&gt;_
+#### -maxErrors,<br />--log.maxErrors<br />--dsbulk.log.maxErrors _&lt;number&gt;_
 
-The maximum number of errors to tolerate before aborting the entire operation. This can be expressed either as an absolute number of errors – in which case, set this to an integer greater than or equal to zero; or as a percentage of total rows processed so far – in which case, set this to a string of the form `N%`, where `N` is a decimal number between 0 and 100 exclusive (e.g. "20%"). Setting this value to any negative integer disables this feature (not recommended).
+The maximum number of errors to tolerate before aborting the entire operation. This can be expressed either as an absolute number of errors - in which case, set this to an integer greater than or equal to zero; or as a percentage of total rows processed so far - in which case, set this to a string of the form `N%`, where `N` is a decimal number between 0 and 100 exclusive (e.g. "20%"). Setting this value to any negative integer disables this feature (not recommended).
 
 Default: **100**.
 
-#### -logDir,<br />--[dsbulk.]log.directory _&lt;string&gt;_
+#### -logDir,<br />--log.directory<br />--dsbulk.log.directory _&lt;string&gt;_
 
 The writable directory where all log files will be stored; if the directory specified does not exist, it will be created. URLs are not acceptable (not even `file:/` URLs). Log files for a specific run, or execution, will be located in a sub-directory under the specified directory. Each execution generates a sub-directory identified by an "execution ID". See `engine.executionId` for more information about execution IDs. Relative paths will be resolved against the current working directory. Also, for convenience, if the path begins with a tilde (`~`), that symbol will be expanded to the current user's home directory.
 
 Default: **"./logs"**.
 
-#### -verbosity,<br />--[dsbulk.]log.verbosity _&lt;number&gt;_
+#### -verbosity,<br />--log.verbosity<br />--dsbulk.log.verbosity _&lt;number&gt;_
 
 The desired level of verbosity. Valid values are:
 
@@ -1122,7 +1122,7 @@ The desired level of verbosity. Valid values are:
 
 Default: **1**.
 
-#### --[dsbulk.]log.ansiMode _&lt;string&gt;_
+#### --log.ansiMode<br />--dsbulk.log.ansiMode _&lt;string&gt;_
 
 Whether or not to use ANSI colors and other escape sequences in log messages printed to the console. Valid values are:
 
@@ -1136,13 +1136,13 @@ Note to Windows users: ANSI support on Windows works best when the Microsoft Vis
 
 Default: **"normal"**.
 
-#### --[dsbulk.]log.maxQueryWarnings _&lt;number&gt;_
+#### --log.maxQueryWarnings<br />--dsbulk.log.maxQueryWarnings _&lt;number&gt;_
 
 The maximum number of query warnings to log before muting them. Query warnings are sent by the server (for example, if the number of statements in a batch is greater than the warning threshold configured on the server). They are useful to diagnose suboptimal configurations but tend to be too invasive, which is why DSBulk by default will only log the 50 first query warnings; any subsequent warnings will be muted and won't be logged at all. Setting this value to any negative integer disables this feature (not recommended).
 
 Default: **50**.
 
-#### --[dsbulk.]log.row.maxResultSetValueLength _&lt;number&gt;_
+#### --log.row.maxResultSetValueLength<br />--dsbulk.log.row.maxResultSetValueLength _&lt;number&gt;_
 
 The maximum length for a result set value. Result set values longer than this value will be truncated.
 
@@ -1150,7 +1150,7 @@ Setting this value to `-1` makes the maximum length for a result set value unlim
 
 Default: **50**.
 
-#### --[dsbulk.]log.row.maxResultSetValues _&lt;number&gt;_
+#### --log.row.maxResultSetValues<br />--dsbulk.log.row.maxResultSetValues _&lt;number&gt;_
 
 The maximum number of result set values to print. If the row has more result set values than this limit, the exceeding values will not be printed.
 
@@ -1158,7 +1158,7 @@ Setting this value to `-1` makes the maximum number of result set values unlimit
 
 Default: **50**.
 
-#### --[dsbulk.]log.stmt.level _&lt;string&gt;_
+#### --log.stmt.level<br />--dsbulk.log.stmt.level _&lt;string&gt;_
 
 The desired log level. Valid values are:
 
@@ -1168,7 +1168,7 @@ The desired log level. Valid values are:
 
 Default: **"EXTENDED"**.
 
-#### --[dsbulk.]log.stmt.maxBoundValueLength _&lt;number&gt;_
+#### --log.stmt.maxBoundValueLength<br />--dsbulk.log.stmt.maxBoundValueLength _&lt;number&gt;_
 
 The maximum length for a bound value. Bound values longer than this value will be truncated.
 
@@ -1176,7 +1176,7 @@ Setting this value to `-1` makes the maximum length for a bound value unlimited 
 
 Default: **50**.
 
-#### --[dsbulk.]log.stmt.maxBoundValues _&lt;number&gt;_
+#### --log.stmt.maxBoundValues<br />--dsbulk.log.stmt.maxBoundValues _&lt;number&gt;_
 
 The maximum number of bound values to print. If the statement has more bound values than this limit, the exceeding values will not be printed.
 
@@ -1184,7 +1184,7 @@ Setting this value to `-1` makes the maximum number of bound values unlimited (n
 
 Default: **50**.
 
-#### --[dsbulk.]log.stmt.maxInnerStatements _&lt;number&gt;_
+#### --log.stmt.maxInnerStatements<br />--dsbulk.log.stmt.maxInnerStatements _&lt;number&gt;_
 
 The maximum number of inner statements to print for a batch statement. Only applicable for batch statements, ignored otherwise. If the batch statement has more children than this value, the exceeding child statements will not be printed.
 
@@ -1192,7 +1192,7 @@ Setting this value to `-1` disables this feature (not recommended).
 
 Default: **10**.
 
-#### --[dsbulk.]log.stmt.maxQueryStringLength _&lt;number&gt;_
+#### --log.stmt.maxQueryStringLength<br />--dsbulk.log.stmt.maxQueryStringLength _&lt;number&gt;_
 
 The maximum length for a query string. Query strings longer than this value will be truncated.
 
@@ -1205,49 +1205,49 @@ Default: **500**.
 
 Monitoring-specific settings.
 
-#### -reportRate,<br />--[dsbulk.]monitoring.reportRate _&lt;string&gt;_
+#### -reportRate,<br />--monitoring.reportRate<br />--dsbulk.monitoring.reportRate _&lt;string&gt;_
 
 The report interval. DSBulk will print useful metrics about the ongoing operation at this rate. Durations lesser than one second will be rounded up to 1 second.
 
 Default: **"5 seconds"**.
 
-#### --[dsbulk.]monitoring.csv _&lt;boolean&gt;_
+#### --monitoring.csv<br />--dsbulk.monitoring.csv _&lt;boolean&gt;_
 
 Enable or disable CSV reporting. If enabled, CSV files containing metrics will be generated in the designated log directory.
 
 Default: **false**.
 
-#### --[dsbulk.]monitoring.durationUnit _&lt;string&gt;_
+#### --monitoring.durationUnit<br />--dsbulk.monitoring.durationUnit _&lt;string&gt;_
 
 The time unit used when printing latency durations. Valid values: all `TimeUnit` enum constants.
 
 Default: **"MILLISECONDS"**.
 
-#### --[dsbulk.]monitoring.expectedReads _&lt;number&gt;_
+#### --monitoring.expectedReads<br />--dsbulk.monitoring.expectedReads _&lt;number&gt;_
 
 The expected total number of reads. Optional, but if set, the console reporter will also print the overall achievement percentage. Setting this value to `-1` disables this feature.
 
 Default: **-1**.
 
-#### --[dsbulk.]monitoring.expectedWrites _&lt;number&gt;_
+#### --monitoring.expectedWrites<br />--dsbulk.monitoring.expectedWrites _&lt;number&gt;_
 
 The expected total number of writes. Optional, but if set, the console reporter will also print the overall achievement percentage. Setting this value to `-1` disables this feature.
 
 Default: **-1**.
 
-#### -jmx,<br />--[dsbulk.]monitoring.jmx _&lt;boolean&gt;_
+#### -jmx,<br />--monitoring.jmx<br />--dsbulk.monitoring.jmx _&lt;boolean&gt;_
 
 Enable or disable JMX reporting. Note that to enable remote JMX reporting, several properties must also be set in the JVM during launch. This is accomplished via the `DSBULK_JAVA_OPTS` environment variable.
 
 Default: **true**.
 
-#### --[dsbulk.]monitoring.rateUnit _&lt;string&gt;_
+#### --monitoring.rateUnit<br />--dsbulk.monitoring.rateUnit _&lt;string&gt;_
 
 The time unit used when printing throughput rates. Valid values: all `TimeUnit` enum constants.
 
 Default: **"SECONDS"**.
 
-#### --[dsbulk.]monitoring.trackBytes _&lt;boolean&gt;_
+#### --monitoring.trackBytes<br />--dsbulk.monitoring.trackBytes _&lt;boolean&gt;_
 
 Whether or not to track the throughput in bytes. When enabled, DSBulk will track and display the number of bytes sent or received per second. While useful to evaluate how much data is actually being transferred, computing such metrics is CPU-intensive and may slow down the operation. This is why it is disabled by default. Also note that the heuristic used to compute data sizes is not 100% accurate and sometimes underestimates the actual size.
 
@@ -1258,7 +1258,7 @@ Default: **false**.
 
 Settings applicable for the count workflow, ignored otherwise.
 
-#### -stats,<br />--[dsbulk.]stats.modes _&lt;list&lt;string&gt;&gt;_
+#### -stats,<br />--stats.modes<br />--dsbulk.stats.modes _&lt;list&lt;string&gt;&gt;_
 
 Which kind(s) of statistics to compute. Only applicaple for the count workflow, ignored otherwise. Possible values are:
 * `global`: count the total number of rows in the table.
@@ -1269,7 +1269,7 @@ The default value is `[global]`.
 
 Default: **["global"]**.
 
-#### -partitions,<br />--[dsbulk.]stats.numPartitions _&lt;number&gt;_
+#### -partitions,<br />--stats.numPartitions<br />--dsbulk.stats.numPartitions _&lt;number&gt;_
 
 The number of distinct partitions to count rows for. Only applicaple for the count workflow when `stats.mode` is `partitions`, ignored otherwise.
 
