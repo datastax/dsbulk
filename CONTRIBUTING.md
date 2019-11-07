@@ -1,4 +1,16 @@
-# Contributing guidelines
+[![Build Status](https://travis-ci.com/riptano/dsbulk.svg?token=HsKMUW45xxTpytJgq1ku&branch=1.x)](https://travis-ci.com/riptano/dsbulk) [![Build status](https://ci.appveyor.com/api/projects/status/p7cicgkbyanmxlsl/branch/1.x?svg=true)](https://ci.appveyor.com/project/DataStax/dsbulk/branch/1.x)
+
+# Before you contribute
+
+## Documentation
+
+Read the [manual](manual/) or the [online docs](https://docs.datastax.com/en/dsbulk/doc/). 
+
+## Issue Management
+
+DataStax Bulk Loader has its own [Jira project](https://datastax.jira.com/projects/DAT/summary).
+
+# Contribution guidelines
 
 ## Branching model
 
@@ -27,7 +39,6 @@ Consequently, the branch having the highest major + minor version (in the format
 will be the branch to target bugfixes to. The branch in the format `x.x` which has the 
 highest major will be the branch to target new features to.
 
-
 ## Code formatting
 
 We follow the [Google Java Style Guide](https://google.github.io/styleguide/javaguide.html). See
@@ -36,9 +47,10 @@ We follow the [Google Java Style Guide](https://google.github.io/styleguide/java
 The build will automatically format the code if necessary.
 
 Some aspects are not covered by the formatter:
+
 * imports: please configure your IDE to follow the guide (no wildcard imports, 
-static imports in ASCII sort order come first, followed by a blank line, 
-followed by normal imports in ASCII sort order).
+  static imports in ASCII sort order come first, followed by a blank line, 
+  followed by normal imports in ASCII sort order).
 * braces must be used with `if`, `else`, `for`, `do` and `while` statements, even when the body is
   empty or contains only a single statement.
 * implementation comments: wrap them to respect the column limit of 100 characters.
