@@ -155,9 +155,10 @@ public class SettingsDocumentor {
             ? "-" + longToShortOptions.get(settingName) + ",<br />"
             : "";
     out.printf(
-        "#### %s--%s _&lt;%s&gt;_%n%n%s%n%n",
+        "#### %s--%s<br />--%s _&lt;%s&gt;_%n%n%s%n%n",
         shortOpt,
-        settingName.replaceFirst("dsbulk\\.", "[dsbulk.]"),
+        settingName.replaceFirst("dsbulk\\.", ""),
+        settingName,
         StringUtils.htmlEscape(
             ConfigUtils.getTypeString(referenceConfig, settingName).orElse("arg")),
         getSanitizedDescription(settingValue));

@@ -165,6 +165,15 @@ public class CommandLineParser {
           // consider the next remaining arg as the section to show help for,
           // and ignore the rest of the command line
           String sectionName = it.next();
+          // handle abbreviated section names:
+          if (sectionName.startsWith("driver")) {
+            // driver -> datastax-java-driver
+            sectionName = sectionName.replaceFirst("driver", "datastax-java-driver");
+          } else if (!sectionName.startsWith("datastax-java-driver")
+              && !sectionName.startsWith("dsbulk")) {
+            // foo -> dsbulk.foo
+            sectionName = "dsbulk." + sectionName;
+          }
           throw new SectionHelpRequestException(sectionName, connectorName);
         }
         // no more args: the help request was for the global help

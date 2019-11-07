@@ -83,43 +83,27 @@ public class HelpEmitter {
             .newline();
     System.out.println(header);
 
-    Ansi commands = Ansi.ansi().a("Available commands:").reset().newline().newline();
-    for (WorkflowType workflowType : WorkflowType.values()) {
-      commands = commands.fgCyan().a(workflowType.getTitle()).reset().a(":").newline();
-      commands = renderWrappedText(commands, workflowType.getDescription());
-      commands = commands.newline();
-    }
-    System.out.println(commands);
+    renderAvailableCommands();
 
     Ansi options = Ansi.ansi().a("Common options:").reset().newline();
     System.out.println(options);
 
-    printAbbreviatedDsbulkOptionNote();
-    printAbbreviatedDriverOptionNote();
+    renderAbbreviatedDsbulkOptionNote();
+    renderAbbreviatedDriverOptionNote();
 
     renderHelpEntries(entries);
 
-    String footer =
-        "GETTING MORE HELP\n\nThere are many more settings/options that may be used to "
-            + "customize behavior. Run the `help` command with one of the following section "
-            + "names for more details:\n    "
-            + String.join("\n    ", getSectionNames(groups))
-            + "\n\nYou can also find more help at "
-            + "https://docs.datastax.com/en/dsbulk/doc.";
-
-    renderWrappedTextPreformatted(footer);
+    renderGettingMoreHelpFooter(groups);
   }
 
   public static void emitSectionHelp(@NonNull String sectionName, @Nullable String connectorName) {
 
     Config referenceConfig = LoaderConfigFactory.createReferenceConfig();
 
-    if (sectionName.equals("driver")) {
-      sectionName = "datastax-java-driver";
-    }
+    boolean driverSection = sectionName.equals("datastax-java-driver");
+
     Map<String, SettingsGroup> groups =
-        SettingsGroupFactory.createDSBulkConfigurationGroups(
-            sectionName.equals("datastax-java-driver"));
+        SettingsGroupFactory.createDSBulkConfigurationGroups(driverSection);
 
     if (!groups.containsKey(sectionName)) {
       // Write error message, available group names, raise as error.
@@ -153,17 +137,71 @@ public class HelpEmitter {
             .newline();
     System.out.println(header);
 
+    if (driverSection) {
+      renderDriverSpecialInstructions();
+    }
+
     Ansi options = Ansi.ansi().a("Options in this section:").reset().newline();
     System.out.println(options);
 
-    if (sectionName.equals("datastax-java-driver")) {
-      printAbbreviatedDriverOptionNote();
+    if (driverSection) {
+      renderAbbreviatedDriverOptionNote();
     } else {
-      printAbbreviatedDsbulkOptionNote();
+      renderAbbreviatedDsbulkOptionNote();
     }
 
     renderHelpEntries(entries);
 
+    renderAvailableSubSections(sectionName, groups);
+
+    if (driverSection) {
+      renderDriverFooter();
+    }
+  }
+
+  private static void renderAvailableCommands() {
+    Ansi commands = Ansi.ansi().a("Available commands:").reset().newline().newline();
+    for (WorkflowType workflowType : WorkflowType.values()) {
+      commands = commands.fgCyan().a(workflowType.getTitle()).reset().a(":").newline();
+      commands = renderWrappedText(commands, workflowType.getDescription());
+      commands = commands.newline();
+    }
+    System.out.println(commands);
+  }
+
+  private static void renderAbbreviatedDsbulkOptionNote() {
+    Ansi note =
+        renderWrappedText(
+            Ansi.ansi(),
+            "Note: on the command line, long options referring to DSBulk configuration "
+                + "settings can have their prefix 'dsbulk' omitted.");
+    System.out.println(note);
+  }
+
+  private static void renderAbbreviatedDriverOptionNote() {
+    Ansi note =
+        renderWrappedText(
+            Ansi.ansi(),
+            "Note: on the command line, long options referring to driver configuration "
+                + "settings can be introduced by the prefix 'datastax-java-driver' or just 'driver'.");
+    System.out.println(note);
+  }
+
+  private static void renderDriverSpecialInstructions() {
+    renderWrappedTextPreformatted(
+        "Any valid driver setting can be specified on the command line. The options listed below "
+            + "are just a subset of all the configurable options of the driver.");
+    System.out.println();
+  }
+
+  private static void renderDriverFooter() {
+    renderWrappedTextPreformatted("See the Java Driver online documentation for more information:");
+    renderWrappedTextPreformatted("https://docs.datastax.com/en/developer/java-driver/latest/");
+    renderWrappedTextPreformatted("https://docs.datastax.com/en/developer/java-driver-dse/latest/");
+  }
+
+  private static void renderAvailableSubSections(
+      @NonNull String sectionName, Map<String, SettingsGroup> groups) {
     Set<String> subSections = new HashSet<>();
     for (String s : groups.keySet()) {
       if (s.startsWith(sectionName + ".")) {
@@ -176,42 +214,18 @@ public class HelpEmitter {
               + String.join("\n    ", subSections);
       renderWrappedTextPreformatted(footer);
     }
-
-    if (sectionName.equals("datastax-java-driver")) {
-      renderWrappedTextPreformatted(
-          "The settings above are just a subset of all the configurable options of the "
-              + "driver. See the Java Driver configuration reference for instructions on how to configure "
-              + "the driver properly:");
-      renderWrappedTextPreformatted("https://docs.datastax.com/en/developer/java-driver/latest/");
-      renderWrappedTextPreformatted(
-          "https://docs.datastax.com/en/developer/java-driver-dse/latest/");
-      renderWrappedTextPreformatted(
-          "Any valid driver setting can be specified on the command line; for example, "
-              + "datastax-java-driver.advanced.reconnection-policy.max-delay can be specified as:");
-      renderWrappedTextPreformatted(
-          "--datastax-java-driver.advanced.reconnection-policy.max-delay \"60 seconds\"");
-      renderWrappedTextPreformatted("or:");
-      renderWrappedTextPreformatted(
-          "--driver.advanced.reconnection-policy.max-delay \"60 seconds\"");
-    }
   }
 
-  private static void printAbbreviatedDsbulkOptionNote() {
-    Ansi note =
-        renderWrappedText(
-            Ansi.ansi(),
-            "Note: on the command line, long options referring to DSBulk configuration "
-                + "settings can have their prefix 'dsbulk' omitted.");
-    System.out.println(note);
-  }
+  private static void renderGettingMoreHelpFooter(Map<String, SettingsGroup> groups) {
+    String footer =
+        "GETTING MORE HELP\n\nThere are many more settings/options that may be used to "
+            + "customize behavior. Run the `help` command with one of the following section "
+            + "names for more details:\n    "
+            + String.join("\n    ", getSectionNames(groups))
+            + "\n\nYou can also find more help at "
+            + "https://docs.datastax.com/en/dsbulk/doc.";
 
-  private static void printAbbreviatedDriverOptionNote() {
-    Ansi note =
-        renderWrappedText(
-            Ansi.ansi(),
-            "Note: on the command line, long options referring to driver configuration "
-                + "settings can be introduced by the prefix 'datastax-java-driver' or just 'driver'.");
-    System.out.println(note);
+    renderWrappedTextPreformatted(footer);
   }
 
   @NonNull
@@ -231,13 +245,17 @@ public class HelpEmitter {
       Ansi message = Ansi.ansi();
       if (shortOpt != null) {
         message = message.fgCyan().a("-").a(shortOpt);
-        if (longOpt != null) {
-          message = message.reset().a(", ");
+        if (abbreviatedLongOpt != null || longOpt != null) {
+          message = message.reset().a(",").newline();
         }
       }
       if (abbreviatedLongOpt != null) {
         message = message.fgGreen().a("--").a(abbreviatedLongOpt).reset();
-      } else if (longOpt != null) {
+        if (longOpt != null) {
+          message = message.reset().a(",").newline();
+        }
+      }
+      if (longOpt != null) {
         message = message.fgGreen().a("--").a(longOpt).reset();
       }
       if (argumentType != null) {

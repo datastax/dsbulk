@@ -183,18 +183,21 @@ class DataStaxBulkLoaderTest {
   @Test
   void should_show_section_help() {
     new DataStaxBulkLoader("help", "dsbulk.batch").run();
-    String out = stdOut.getStreamAsString();
+    CharSequence out = new AnsiString(stdOut.getStreamAsString()).getPlain();
+    assertSectionHelp();
     assertThat(out)
-        .contains("--[dsbulk.]batch.mode")
+        .contains("--batch.mode,")
+        .contains("--dsbulk.batch.mode <string>")
         .doesNotContain("This section has the following subsections");
   }
 
   @Test
   void should_show_section_help_with_subsection_pointers() {
     new DataStaxBulkLoader("help", "dsbulk.connector").run();
-    String out = stdOut.getStreamAsString();
+    CharSequence out = new AnsiString(stdOut.getStreamAsString()).getPlain();
     assertThat(out)
-        .contains("--[dsbulk.]connector.name")
+        .contains("--connector.name,")
+        .contains("--dsbulk.connector.name")
         .contains("This section has the following subsections")
         .contains("connector.csv")
         .contains("connector.json");
@@ -204,7 +207,20 @@ class DataStaxBulkLoaderTest {
   void should_show_section_help_with_connector_shortcuts() {
     new DataStaxBulkLoader("help", "dsbulk.connector.csv").run();
     CharSequence out = new AnsiString(stdOut.getStreamAsString()).getPlain();
-    assertThat(out).contains("-url, --[dsbulk.]connector.csv.url");
+    assertThat(out).contains("-url,");
+    assertThat(out).contains("--connector.csv.url,");
+    assertThat(out).contains("--dsbulk.connector.csv.url <string>");
+  }
+
+  @Test
+  void should_show_section_help_for_driver() {
+    new DataStaxBulkLoader("help", "driver").run();
+    CharSequence out = new AnsiString(stdOut.getStreamAsString()).getPlain();
+    assertThat(out).contains("Any valid driver setting can be specified on the command line");
+    assertThat(out).contains("-h,");
+    assertThat(out).contains("--driver.basic.contact-points,");
+    assertThat(out).contains("--datastax-java-driver.basic.contact-points <list<string>>");
+    assertThat(out).contains("See the Java Driver online documentation for more information");
   }
 
   @Test
@@ -747,13 +763,17 @@ class DataStaxBulkLoaderTest {
     // The tests try restricting global help to json connector, or show all connectors.
     // If all, shortcut options for connector settings should not be shown.
     // If restricted to json, show the shortcut options for common json settings.
-    assertThat(out).contains("--[dsbulk.]connector.json.url");
+    assertThat(out).contains("--connector.json.url");
+    assertThat(out).contains("--dsbulk.connector.json.url");
     if (jsonOnly) {
-      assertThat(out).contains("-url, --[dsbulk.]connector.json.url");
-      assertThat(out).doesNotContain("--[dsbulk.]connector.csv.url");
+      assertThat(out).contains("-url,");
+      assertThat(out).contains("--connector.json.url,");
+      assertThat(out).contains("--dsbulk.connector.json.url <string>");
+      assertThat(out).doesNotContain("connector.csv.url");
     } else {
-      assertThat(out).contains("--[dsbulk.]connector.csv.url");
-      assertThat(out).doesNotContain("-url, --[dsbulk.]connector.csv.url");
+      assertThat(out).contains("--connector.csv.url,");
+      assertThat(out).contains("--dsbulk.connector.csv.url <string>");
+      assertThat(out).doesNotContain("-url");
     }
     assertThat(out).doesNotContain("First argument must be subcommand");
     assertThat(out).containsPattern("-f <string>\\s+Load options from the given file");
@@ -765,9 +785,12 @@ class DataStaxBulkLoaderTest {
 
     // The following assures us that we're looking at section help, not global help.
     assertThat(out).doesNotContain("GETTING MORE HELP");
-    assertThat(out).doesNotContain("--[dsbulk.]connector.json.url");
-    assertThat(out).doesNotContain("--[dsbulk.]connector.csv.url");
+    assertThat(out).doesNotContain("--connector.json.url");
+    assertThat(out).doesNotContain("--dsbulk.connector.json.url");
+    assertThat(out).doesNotContain("--connector.csv.url");
+    assertThat(out).doesNotContain("--dsbulk.connector.csv.url");
 
-    assertThat(out).contains("--[dsbulk.]batch.mode");
+    assertThat(out).contains("--batch.mode,");
+    assertThat(out).contains("--dsbulk.batch.mode <string>");
   }
 }

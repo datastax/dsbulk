@@ -43,14 +43,14 @@ public class HelpEntryFactory {
   static List<HelpEntry> createEntries(
       Collection<String> settings, Map<String, String> longToShortOptions, Config referenceConfig) {
     List<HelpEntry> entries = new ArrayList<>();
-    for (String setting : settings) {
-      String argumentType = ConfigUtils.getTypeString(referenceConfig, setting).orElse("arg");
-      ConfigValue value = ConfigUtils.getNullSafeValue(referenceConfig, setting);
-      String longOptionName = createLongOptionName(setting);
-      String abbreviatedOptionName = createAbbreviatedOptionName(setting);
+    for (String longOptionName : settings) {
+      String argumentType =
+          ConfigUtils.getTypeString(referenceConfig, longOptionName).orElse("arg");
+      ConfigValue value = ConfigUtils.getNullSafeValue(referenceConfig, longOptionName);
+      String abbreviatedOptionName = createAbbreviatedOptionName(longOptionName);
       HelpEntry entry =
           new HelpEntry(
-              longToShortOptions.get(setting),
+              longToShortOptions.get(longOptionName),
               abbreviatedOptionName,
               longOptionName,
               argumentType,
@@ -60,18 +60,17 @@ public class HelpEntryFactory {
     return entries;
   }
 
-  private static String createLongOptionName(String setting) {
-    return setting
-        // the prefix "dsbulk." is optional
-        .replaceFirst("dsbulk\\.", "[dsbulk.]");
-  }
-
   @Nullable
   private static String createAbbreviatedOptionName(String setting) {
     if (setting.startsWith("datastax-java-driver.")) {
       return setting
           // the prefix "datastax-java-driver." can be abbreviated to "driver."
           .replaceFirst("datastax-java-driver\\.", "driver.");
+    }
+    if (setting.startsWith("dsbulk.")) {
+      return setting
+          // the prefix "dsbulk." can be abbreviated to ""
+          .replaceFirst("dsbulk\\.", "");
     }
     return null;
   }
