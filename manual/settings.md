@@ -1414,8 +1414,6 @@ The DSE driver provides 3 implementations out of the box:
 
 You can also specify a custom class that implements `AuthProvider` and has a public constructor with a `DriverContext` argument (to simplify this, the driver provides two abstract classes that can be extended: `DsePlainTextAuthProviderBase` and `DseGssApiAuthProviderBase`).
 
-You can also specify a custom class that implements AuthProvider and has a public constructor with a DriverContext argument.
-
 Default: **null**.
 
 #### -u,<br />--driver.advanced.auth-provider.username<br />--datastax-java-driver.advanced.auth-provider.username _&lt;string&gt;_
