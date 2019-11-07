@@ -57,6 +57,6 @@
   <logger name="reactor.core" level="WARN"/>
 
   <!-- suppress warnings about Tinkerpop not found -->
-  <logger name="com.datastax.dse.driver.api.core.DseSessionBuilderBase" level="ERROR"/>
+  <logger name="com.datastax.dse.driver.internal.core.context.DseDriverContext" level="ERROR"/>
 
 </configuration>
