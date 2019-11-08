@@ -182,7 +182,8 @@ class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(logs)
         .hasMessageContaining(
             "Setting dsbulk.driver.auth.* is deprecated and will be removed in a future release; "
-                + "please configure the driver directly using datastax-java-driver.advanced.auth-provider.* instead.");
+                + "please configure the driver directly using "
+                + "--datastax-java-driver.advanced.auth-provider.* instead");
     if (inferAuthProvider) {
       assertThat(logs)
           .hasMessageContaining(
@@ -223,7 +224,8 @@ class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(logs)
         .hasMessageContaining(
             "Setting dsbulk.driver.auth.* is deprecated and will be removed in a future release; "
-                + "please configure the driver directly using datastax-java-driver.advanced.auth-provider.* instead.");
+                + "please configure the driver directly using "
+                + "--datastax-java-driver.advanced.auth-provider.* instead");
     if (inferAuthProvider) {
       assertThat(logs)
           .hasMessageContaining(
