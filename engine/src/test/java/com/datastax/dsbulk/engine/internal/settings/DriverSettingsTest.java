@@ -56,33 +56,70 @@ class DriverSettingsTest {
     shortcuts = ShortcutsFactory.createShortcutsMap(referenceConfig, null);
   }
 
-  @Test
-  void should_crate_valid_contact_points() throws GeneralSecurityException, IOException {
+  @ParameterizedTest
+  @CsvSource({
+    // IPv4 without port
+    "192.168.0.1,9043,192.168.0.1:9043",
+    // Unambiguous IPv6 without port (because Ipv6 literal is in full form)
+    "fe80:0:0:0:f861:3eff:fe1d:9d7b,9043,fe80:0:0:0:f861:3eff:fe1d:9d7b:9043",
+    "fe80:0:0:f861:3eff:fe1d:9d7b:9044,9043,fe80:0:0:f861:3eff:fe1d:9d7b:9044:9043",
+    // Unambiguous IPv6 without port (because last block is not numeric)
+    "fe80::f861:3eff:fe1d:9d7b,9043,fe80::f861:3eff:fe1d:9d7b:9043",
+    // Ambiguous IPv6 without port
+    "fe80::f861:3eff:fe1d:1234,9043,fe80::f861:3eff:fe1d:1234",
+    // hostname without port
+    "host.com,9043,host.com:9043",
+    // IPv4 with port
+    "192.168.0.1:9044,9043,192.168.0.1:9044",
+    // Unambiguous IPv6 with port (because Ipv6 literal is in full form)
+    "fe80:0:0:0:f861:3eff:fe1d:9d7b:9044,9043,fe80:0:0:0:f861:3eff:fe1d:9d7b:9044",
+    "fe80:0:0:0:f861:3eff:fe1d:1234:9044,9043,fe80:0:0:0:f861:3eff:fe1d:1234:9044",
+    // Unambiguous IPv6 with port (because last block is not numeric)
+    "fe80::f861:3eff:fe1d:9d7b:9044,9043,fe80::f861:3eff:fe1d:9d7b:9044",
+    // Ambiguous IPv6 with port
+    "fe80::f861:3eff:fe1d:1234:9044,9043,fe80::f861:3eff:fe1d:1234:9044",
+    // hostname with port
+    "host.com:9044,9043,host.com:9044",
+  })
+  void should_crate_valid_contact_points(String host, int port, String expected)
+      throws GeneralSecurityException, IOException {
     LoaderConfig oldConfig = createTestConfig("dsbulk.driver");
     LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
     LoaderConfig newConfig =
         createTestConfig(
             "datastax-java-driver",
             "basic.contact-points",
-            "[host1.com,host2.com]",
+            "[" + quoteJson(host) + "]",
             "basic.default-port",
-            1234);
+            port);
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     settings.init(true);
     assertThat(settings.getDriverConfig().getStringList("basic.contact-points"))
-        .containsExactly("host1.com:1234", "host2.com:1234");
+        .containsExactly(expected);
   }
 
-  @Test
-  void should_crate_valid_contact_points_legacy() throws GeneralSecurityException, IOException {
+  @ParameterizedTest
+  @CsvSource({
+    // IPv4
+    "192.168.0.1,9043,192.168.0.1:9043",
+    // IPv6
+    "fe80:0:0:0:f861:3eff:fe1d:9d7b,9043,fe80:0:0:0:f861:3eff:fe1d:9d7b:9043",
+    "fe80:0:0:f861:3eff:fe1d:9d7b:9044,9043,fe80:0:0:f861:3eff:fe1d:9d7b:9044:9043",
+    "fe80::f861:3eff:fe1d:9d7b,9043,fe80::f861:3eff:fe1d:9d7b:9043",
+    "fe80::f861:3eff:fe1d:1234,9043,fe80::f861:3eff:fe1d:1234:9043",
+    // hostname
+    "host.com,9043,host.com:9043"
+  })
+  void should_crate_valid_contact_points_with_deprecated_settings(
+      String host, int port, String expected) throws GeneralSecurityException, IOException {
     LoaderConfig oldConfig =
-        createTestConfig("dsbulk.driver", "hosts", "[host1.com,host2.com]", "port", 1234);
+        createTestConfig("dsbulk.driver", "hosts", "[" + quoteJson(host) + "]", "port", port);
     LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
     LoaderConfig newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     settings.init(true);
     assertThat(settings.getDriverConfig().getStringList("basic.contact-points"))
-        .containsExactly("host1.com:1234", "host2.com:1234");
+        .containsExactly(expected);
   }
 
   @Test

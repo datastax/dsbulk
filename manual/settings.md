@@ -140,6 +140,8 @@ This must be a list of strings with each contact point specified as "host" or "h
 
 If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use "localhost" as the host name (since it resolves to both IPv4 and IPv6 addresses on some platforms).
 
+The heuristic to determine whether or not a contact point is in the form "host" or "host:port" is not 100% accurate for some IPv6 addresses; you should avoid ambiguous IPv6 addresses such as `fe80::f861:3eff:fe1d:1234`, because such a string can be seen either as a combination of IP `fe80::f861:3eff:fe1d` with port 1234, or as IP `fe80::f861:3eff:fe1d:1234` without port. In such cases, DSBulk will not change the contact point. This issue can be avoided by providing IPv6 addresses in full form, e.g. if instead of `fe80::f861:3eff:fe1d:1234` you provide `fe80:0:0:0:0:f861:3eff:fe1d:1234`, then the string is unequivocally parsed as IP `fe80:0:0:0:0:f861:3eff:fe1d` with port 1234.
+
 Note: on Cloud deployments, DSBulk automatically sets this option to an empty list, as contact points are not allowed to be explicitly provided when connecting to DataStax Apollo databases.
 
 Default: **["127.0.0.1:9042"]**.
@@ -1298,6 +1300,8 @@ These are addresses of Cassandra nodes that the driver uses to discover the clus
 This must be a list of strings with each contact point specified as "host" or "host:port". If the specified host doesn't have a port, the default port specified in `basic.default-port` will be used. Note that Cassandra 3 and below and DSE 6.7 and below require all nodes in a cluster to share the same port (see CASSANDRA-7544).
 
 If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use "localhost" as the host name (since it resolves to both IPv4 and IPv6 addresses on some platforms).
+
+The heuristic to determine whether or not a contact point is in the form "host" or "host:port" is not 100% accurate for some IPv6 addresses; you should avoid ambiguous IPv6 addresses such as `fe80::f861:3eff:fe1d:1234`, because such a string can be seen either as a combination of IP `fe80::f861:3eff:fe1d` with port 1234, or as IP `fe80::f861:3eff:fe1d:1234` without port. In such cases, DSBulk will not change the contact point. This issue can be avoided by providing IPv6 addresses in full form, e.g. if instead of `fe80::f861:3eff:fe1d:1234` you provide `fe80:0:0:0:0:f861:3eff:fe1d:1234`, then the string is unequivocally parsed as IP `fe80:0:0:0:0:f861:3eff:fe1d` with port 1234.
 
 Note: on Cloud deployments, DSBulk automatically sets this option to an empty list, as contact points are not allowed to be explicitly provided when connecting to DataStax Apollo databases.
 

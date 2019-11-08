@@ -73,11 +73,13 @@ import com.datastax.oss.driver.shaded.guava.common.base.Joiner;
 import com.datastax.oss.driver.shaded.guava.common.collect.BiMap;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
+import com.datastax.oss.driver.shaded.guava.common.net.InetAddresses;
 import com.datastax.oss.protocol.internal.ProtocolConstants;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigValueFactory;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -518,13 +520,7 @@ public class DriverSettings {
       List<String> hosts = mergedDriverConfig.getStringList(CONTACT_POINTS.getPath());
       List<String> contactPoints =
           hosts.stream()
-              .map(
-                  host -> {
-                    if (host.indexOf(':') == -1) {
-                      host = host + ':' + defaultPort;
-                    }
-                    return host;
-                  })
+              .map(contactPoint -> maybeAddPortToHost(contactPoint))
               .collect(Collectors.toList());
       mergedDriverConfig = addConfigValue(mergedDriverConfig, CONTACT_POINTS, contactPoints);
     }
@@ -622,6 +618,40 @@ public class DriverSettings {
     } else {
       // All levels accepted when reading
       return true;
+    }
+  }
+
+  @NonNull
+  private String maybeAddPortToHost(String contactPoint) {
+    int colon = contactPoint.lastIndexOf(':');
+    if (colon == -1) {
+      // is either ipv4 or hostname without port -> add port
+      return contactPoint + ':' + defaultPort;
+    } else {
+      String hostOrIp = contactPoint.substring(0, colon);
+      if (hostOrIp.indexOf(':') != -1) {
+        // is either ipv6 or ipv6:port -> disambiguate
+        boolean contactPointOk = InetAddresses.isInetAddress(contactPoint);
+        boolean hostOrIpOk = InetAddresses.isInetAddress(hostOrIp);
+        if (!contactPointOk && hostOrIpOk) {
+          // is ipv6 with port -> do nothing
+          return contactPoint;
+        }
+        if (contactPointOk && !hostOrIpOk) {
+          // is ipv6 without port -> add port
+          return contactPoint + ':' + defaultPort;
+        }
+        try {
+          Integer.parseInt(contactPoint.substring(colon + 1));
+        } catch (NumberFormatException e) {
+          // is ipv6 without port -> add port
+          return contactPoint + ':' + defaultPort;
+        }
+        // other cases: ambiguous -> do nothing
+      }
+      // ipv4:port or hostname:port -> do nothing
+      // ipv6 with ambiguous ending -> do nothing
+      return contactPoint;
     }
   }
 
