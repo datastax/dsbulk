@@ -45,6 +45,7 @@ import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.TIMEST
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.engine.internal.auth.AuthProviderFactory;
 import com.datastax.dsbulk.engine.internal.ssl.SslHandlerFactoryFactory;
@@ -80,7 +81,9 @@ import com.typesafe.config.ConfigValueFactory;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.MalformedURLException;
 import java.net.SocketAddress;
+import java.net.URL;
 import java.net.UnknownHostException;
 import java.security.GeneralSecurityException;
 import java.time.Duration;
@@ -446,9 +449,19 @@ public class DriverSettings {
     }
   }
 
-  private void processCloudSettings(boolean write) {
+  private void processCloudSettings(boolean write) throws MalformedURLException {
     boolean cloud = mergedDriverConfig.hasPath(CLOUD_SECURE_CONNECT_BUNDLE.getPath());
     if (cloud) {
+
+      // resolve URL to benefit from DSBulk special URL and Path processing
+      URL cloudSecureConnectBundle =
+          ConfigUtils.resolveURL(
+              mergedDriverConfig.getString(CLOUD_SECURE_CONNECT_BUNDLE.getPath()));
+      mergedDriverConfig =
+          mergedDriverConfig.withValue(
+              CLOUD_SECURE_CONNECT_BUNDLE.getPath(),
+              ConfigValueFactory.fromAnyRef(cloudSecureConnectBundle.toExternalForm()));
+
       if (mergedDriverConfig.hasPath(CONTACT_POINTS.getPath())) {
         if (isValueFromReferenceConfig(mergedDriverConfig, CONTACT_POINTS.getPath())) {
           LOGGER.info(

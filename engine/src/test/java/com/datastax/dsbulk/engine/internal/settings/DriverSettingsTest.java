@@ -9,6 +9,7 @@
 package com.datastax.dsbulk.engine.internal.settings;
 
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
+import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static com.datastax.dsbulk.commons.tests.utils.TestConfigUtils.createTestConfig;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
@@ -22,20 +23,30 @@ import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
+import com.datastax.dsbulk.commons.tests.utils.URLUtils;
 import com.datastax.dsbulk.engine.internal.config.ShortcutsFactory;
 import com.datastax.oss.driver.api.core.DefaultConsistencyLevel;
 import com.datastax.oss.driver.shaded.guava.common.collect.BiMap;
 import com.typesafe.config.Config;
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
 @ExtendWith(LogInterceptingExtension.class)
 class DriverSettingsTest {
+
+  static {
+    URLUtils.setURLFactoryIfNeeded();
+  }
 
   private static BiMap<String, String> shortcuts;
 
@@ -392,6 +403,57 @@ class DriverSettingsTest {
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.executor.continuousPaging.pageUnit, expecting one of BYTES, ROWS, got 'NotAPageUnit'");
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  void should_accept_cloud_secure_connect_bundle(String input, String expected)
+      throws GeneralSecurityException, IOException {
+    assumeFalse(PlatformUtils.isWindows());
+    LoaderConfig oldConfig = createTestConfig("dsbulk.driver");
+    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    LoaderConfig newConfig =
+        createTestConfig(
+            "datastax-java-driver", "basic.cloud.secure-connect-bundle", quoteJson(input));
+    DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
+    settings.init(true);
+    assertThat(settings.getDriverConfig().getString("basic.cloud.secure-connect-bundle"))
+        .isEqualTo(expected);
+  }
+
+  @SuppressWarnings("unused")
+  private static Stream<Arguments> should_accept_cloud_secure_connect_bundle()
+      throws MalformedURLException {
+    return Stream.of(
+        Arguments.of("/tmp/bundle.zip", "file:/tmp/bundle.zip"),
+        Arguments.of(
+            "./bundle.zip",
+            Paths.get(System.getProperty("user.dir"))
+                .resolve("bundle.zip")
+                .toUri()
+                .toURL()
+                .toExternalForm()),
+        Arguments.of("-", "std:/"),
+        Arguments.of(
+            "~/bundle.zip",
+            Paths.get(System.getProperty("user.home"))
+                .resolve("bundle.zip")
+                .toUri()
+                .toURL()
+                .toExternalForm()),
+        Arguments.of("file:/tmp/bundle.zip", "file:/tmp/bundle.zip"),
+        Arguments.of("file:/tmp/../tmp/bundle.zip", "file:/tmp/bundle.zip"),
+        Arguments.of(
+            "file:./bundle.zip",
+            Paths.get(System.getProperty("user.dir"))
+                .resolve("bundle.zip")
+                .toUri()
+                .toURL()
+                .toExternalForm()),
+        Arguments.of("http://host.com/bundle.zip", "http://host.com/bundle.zip"),
+        Arguments.of("https://host.com/bundle.zip", "https://host.com/bundle.zip"),
+        Arguments.of("ftp://host.com/bundle.zip", "ftp://host.com/bundle.zip"),
+        Arguments.of("std:/", "std:/"));
   }
 
   @Test

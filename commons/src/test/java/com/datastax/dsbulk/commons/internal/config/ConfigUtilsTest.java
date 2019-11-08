@@ -17,6 +17,7 @@ import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isValueFro
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.resolvePath;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.resolveThreads;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.resolveURL;
+import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.resolveUserHome;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.createURLFile;
 import static com.typesafe.config.ConfigValueType.BOOLEAN;
 import static com.typesafe.config.ConfigValueType.LIST;
@@ -65,6 +66,10 @@ class ConfigUtilsTest {
     assertThat(resolvePath("~/foo")).isEqualTo(Paths.get(System.getProperty("user.home"), "foo"));
     assertThat(resolvePath("foo/bar"))
         .isEqualTo(Paths.get(System.getProperty("user.dir"), "foo", "bar"));
+    assertThat(resolvePath("./foo/bar"))
+        .isEqualTo(Paths.get(System.getProperty("user.dir"), "foo", "bar"));
+    assertThat(resolvePath("./foo/../foo/bar"))
+        .isEqualTo(Paths.get(System.getProperty("user.dir"), "foo", "bar"));
     assertThatThrownBy(() -> resolvePath("~otheruser/foo"))
         .isInstanceOf(InvalidPathException.class)
         .hasMessageContaining("Cannot resolve home directory");
@@ -108,15 +113,28 @@ class ConfigUtilsTest {
                     t -> assertThat(t.getSuppressed()[0]).isInstanceOf(MalformedURLException.class))
                 .hasMessageContaining("Illegal char <:> at index 17"));
     assertThat(resolveURL("~"))
-        .isEqualTo(Paths.get(System.getProperty("user.home")).toUri().toURL());
+        .isEqualTo(Paths.get(System.getProperty("user.home")).toUri().normalize().toURL());
     assertThat(resolveURL("~/foo"))
         .isEqualTo(Paths.get(System.getProperty("user.home"), "foo").toUri().toURL());
     assertThat(resolveURL("/foo/bar")).isEqualTo(Paths.get("/foo/bar").toUri().toURL());
     assertThat(resolveURL("foo/bar"))
         .isEqualTo(Paths.get(System.getProperty("user.dir"), "foo", "bar").toUri().toURL());
+    assertThat(resolveURL("./foo/bar"))
+        .isEqualTo(Paths.get(System.getProperty("user.dir"), "foo", "bar").toUri().toURL());
+    assertThat(resolveURL("./foo/../foo/bar"))
+        .isEqualTo(Paths.get(System.getProperty("user.dir"), "foo", "bar").toUri().toURL());
     assertThatThrownBy(() -> resolveURL("~otheruser/foo"))
         .isInstanceOf(InvalidPathException.class)
-        .satisfies(t -> assertThat(t.getSuppressed()[0]).isInstanceOf(MalformedURLException.class))
+        .hasMessageContaining("Cannot resolve home directory");
+  }
+
+  @Test
+  void should_resolve_user_home() {
+    assertThat(resolveUserHome("~")).contains(Paths.get(System.getProperty("user.home")));
+    assertThat(resolveUserHome("~/foo"))
+        .contains(Paths.get(System.getProperty("user.home"), "foo"));
+    assertThatThrownBy(() -> resolveUserHome("~otheruser/foo"))
+        .isInstanceOf(InvalidPathException.class)
         .hasMessageContaining("Cannot resolve home directory");
   }
 

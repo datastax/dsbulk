@@ -20,6 +20,7 @@ import com.typesafe.config.ConfigObject;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
 import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -40,6 +41,27 @@ public class ConfigUtils {
   private static final Pattern THREADS_PATTERN =
       Pattern.compile("(.+)\\s*C", Pattern.CASE_INSENSITIVE);
 
+  @Nullable private static final URL CURRENT_DIR;
+
+  @Nullable private static final Path USER_HOME;
+
+  static {
+    URL currentDir;
+    try {
+      currentDir = Paths.get(System.getProperty("user.dir")).toAbsolutePath().toUri().toURL();
+    } catch (MalformedURLException e) {
+      currentDir = null;
+    }
+    CURRENT_DIR = currentDir;
+    Path userHome;
+    try {
+      userHome = Paths.get(System.getProperty("user.home")).toAbsolutePath();
+    } catch (InvalidPathException e) {
+      userHome = null;
+    }
+    USER_HOME = userHome;
+  }
+
   /**
    * Resolves the given path.
    *
@@ -53,14 +75,8 @@ public class ConfigUtils {
    */
   @NonNull
   public static Path resolvePath(@NonNull String path) throws InvalidPathException {
-    if (path.startsWith("~")) {
-      if (path.equals("~") || path.startsWith("~/")) {
-        path = System.getProperty("user.home") + path.substring(1);
-      } else {
-        throw new InvalidPathException(path, "Cannot resolve home directory", 1);
-      }
-    }
-    return Paths.get(path).toAbsolutePath().normalize();
+    Optional<Path> resolved = resolveUserHome(path);
+    return resolved.orElseGet(() -> Paths.get(path).toAbsolutePath().normalize());
   }
 
   /**
@@ -86,8 +102,18 @@ public class ConfigUtils {
     if (url.equals("-")) {
       url = "std:/";
     }
+    Optional<Path> resolved = resolveUserHome(url);
     try {
-      return new URL(url).toURI().normalize().toURL();
+      URL u;
+      if (resolved.isPresent()) {
+        u = resolved.get().toUri().toURL();
+      } else if (CURRENT_DIR == null) {
+        u = new URL(url);
+      } else {
+        // This helps normalize relative URLs
+        u = new URL(CURRENT_DIR, url);
+      }
+      return u.toURI().normalize().toURL();
     } catch (Exception e) {
       // not a valid URL, consider it a path on the local filesystem.
       try {
@@ -97,6 +123,32 @@ public class ConfigUtils {
         throw e1;
       }
     }
+  }
+
+  /**
+   * Resolves a path starting with "~" against the current user's home directory. Returns empty if
+   * the path is not relative to the user home directory.
+   *
+   * <p>Resolving against another user's home directory is not supported and throws {@link
+   * InvalidPathException}.
+   *
+   * @param path The path to resolve.
+   * @return The resolved path, or empty if it is not relative to the user home directory.
+   * @throws InvalidPathException if the path string cannot be converted to a Path, or if the path
+   *     references another user's home directory.
+   */
+  @NonNull
+  public static Optional<Path> resolveUserHome(@NonNull String path) {
+    if (USER_HOME != null && path.startsWith("~")) {
+      if (path.equals("~") || path.startsWith("~/")) {
+        Path resolved = USER_HOME.resolve('.' + path.substring(1)).toAbsolutePath().normalize();
+        return Optional.of(resolved);
+      } else {
+        // other home directories than the current user's are not supported, e.g. '~someuser/'
+        throw new InvalidPathException(path, "Cannot resolve home directory", 1);
+      }
+    }
+    return Optional.empty();
   }
 
   /**

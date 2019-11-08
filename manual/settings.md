@@ -152,12 +152,17 @@ Default: **9042**.
 
 #### -b,<br />--driver.basic.cloud.secure-connect-bundle<br />--datastax-java-driver.basic.cloud.secure-connect-bundle _&lt;string&gt;_
 
-The location of the secure bundle used to connect to a Datastax Apollo database. This setting must be a path on the local filesystem or a valid URL. The following examples are valid:
+The location of the secure bundle used to connect to a Datastax Apollo database. This setting must be a path on the local filesystem or a valid URL.
 
-- `"/a/path/to/bundle.zip"` (path on *Nix systems)
-- `"C:\\a\\path\\to\\bundle.zip"` (path on Windows systems, note that you need to escape backslashes in HOCON)
-- `"file:/a/path/to/bundle.zip"` (URL with file protocol)
-- `"http://host.com/a/path/to/bundle.zip"` (URL with HTTP protocol)
+Examples:
+
+    "/path/to/bundle.zip"          # path on *Nix systems
+    "./path/to/bundle.zip"         # path on *Nix systems, relative to workding directory
+    "~/path/to/bundle.zip"         # path on *Nix systems, relative to home directory
+    "C:\\path\\to\\bundle.zip"     # path on Windows systems,
+                                   # note that you need to escape backslashes in HOCON
+    "file:/a/path/to/bundle.zip"   # URL with file protocol
+    "http://host.com/bundle.zip"   # URL with HTTP protocol
 
 Note: if you set this to a non-null value, DSBulk assumes that you are connecting to an DataStax Apollo database; in this case, you should not set any of the following settings because they are not compatible with Cloud deployments:
 
@@ -1306,12 +1311,17 @@ Default: **9042**.
 
 #### -b,<br />--driver.basic.cloud.secure-connect-bundle<br />--datastax-java-driver.basic.cloud.secure-connect-bundle _&lt;string&gt;_
 
-The location of the secure bundle used to connect to a Datastax Apollo database. This setting must be a path on the local filesystem or a valid URL. The following examples are valid:
+The location of the secure bundle used to connect to a Datastax Apollo database. This setting must be a path on the local filesystem or a valid URL.
 
-- `"/a/path/to/bundle.zip"` (path on *Nix systems)
-- `"C:\\a\\path\\to\\bundle.zip"` (path on Windows systems, note that you need to escape backslashes in HOCON)
-- `"file:/a/path/to/bundle.zip"` (URL with file protocol)
-- `"http://host.com/a/path/to/bundle.zip"` (URL with HTTP protocol)
+Examples:
+
+    "/path/to/bundle.zip"          # path on *Nix systems
+    "./path/to/bundle.zip"         # path on *Nix systems, relative to workding directory
+    "~/path/to/bundle.zip"         # path on *Nix systems, relative to home directory
+    "C:\\path\\to\\bundle.zip"     # path on Windows systems,
+                                   # note that you need to escape backslashes in HOCON
+    "file:/a/path/to/bundle.zip"   # URL with file protocol
+    "http://host.com/bundle.zip"   # URL with HTTP protocol
 
 Note: if you set this to a non-null value, DSBulk assumes that you are connecting to an DataStax Apollo database; in this case, you should not set any of the following settings because they are not compatible with Cloud deployments:
 
