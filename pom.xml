@@ -52,7 +52,6 @@
     <rx-java-extensions.version>0.20.5</rx-java-extensions.version>
     <reactor.version>Californium-RELEASE</reactor.version>
     <config.version>1.4.0</config.version>
-    <guava.version>25.1-jre</guava.version>
     <netty.version>4.1.34.Final</netty.version>
     <caffeine.version>2.7.0</caffeine.version>
     <jctools.version>2.1.2</jctools.version>
@@ -214,7 +213,7 @@
       <dependency>
         <groupId>com.datastax.oss</groupId>
         <artifactId>java-driver-shaded-guava</artifactId>
-        <version>${guava.version}</version>
+        <version>25.1-jre</version>
       </dependency>
 
       <dependency>
@@ -674,7 +673,6 @@ https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
             <doclint>all,-missing</doclint>
             <links>
               <link>https://docs.oracle.com/javase/8/docs/api/</link>
-              <link>https://google.github.io/guava/releases/${guava.version}/api/docs/</link>
               <link>http://fasterxml.github.io/jackson-core/javadoc/2.9/</link>
               <link>http://fasterxml.github.io/jackson-databind/javadoc/2.9/</link>
             </links>
