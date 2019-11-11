@@ -1,4 +1,4 @@
-# DataStax Bulk Loader v1.4.0-SNAPSHOT Options
+# DataStax Bulk Loader v1.4.0 Options
 
 *NOTE:* The long options described here can be persisted in `conf/application.conf` and thus permanently override defaults and avoid specifying options on the command line.
 
