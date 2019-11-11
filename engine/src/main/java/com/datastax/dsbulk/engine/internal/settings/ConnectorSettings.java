@@ -38,7 +38,7 @@ public class ConnectorSettings {
     if (config.hasPath(connectorName)) {
       // the connector should be configured for reads when the workflow is LOAD
       boolean read = type == WorkflowType.LOAD;
-      connectorConfig = config.getConfig(connectorName);
+      connectorConfig = config.getConfig(connectorName).withoutPath("metaSettings");
       connector.configure(connectorConfig, read);
     } else {
       throw new BulkConfigurationException(

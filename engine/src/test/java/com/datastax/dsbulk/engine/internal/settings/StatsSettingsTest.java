@@ -8,6 +8,7 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
+import static com.datastax.dsbulk.commons.tests.utils.TestConfigUtils.createTestConfig;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.global;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.hosts;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.partitions;
@@ -15,8 +16,6 @@ import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.Statist
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
-import com.typesafe.config.ConfigFactory;
 import org.junit.jupiter.api.Test;
 
 class StatsSettingsTest {
@@ -24,9 +23,7 @@ class StatsSettingsTest {
   @Test
   void should_report_statistics_mode() {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("modes = [hosts,ranges,partitions,global]")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.stats")));
+        createTestConfig("dsbulk.stats", "modes", "[hosts,ranges,partitions,global]");
     StatsSettings settings = new StatsSettings(config);
     settings.init();
     assertThat(settings.getStatisticsModes()).contains(hosts, ranges, partitions, global);
@@ -34,10 +31,7 @@ class StatsSettingsTest {
 
   @Test
   void should_report_num_partitions() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("numPartitions = 20")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.stats")));
+    LoaderConfig config = createTestConfig("dsbulk.stats", "numPartitions", 20);
     StatsSettings settings = new StatsSettings(config);
     settings.init();
     assertThat(settings.getNumPartitions()).isEqualTo(20);

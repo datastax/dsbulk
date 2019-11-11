@@ -9,75 +9,91 @@
 package com.datastax.dsbulk.engine.internal.settings;
 
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isValueFromReferenceConfig;
+import static com.datastax.dsbulk.engine.internal.settings.BulkDriverOption.DEFAULT_PORT;
+import static com.datastax.dsbulk.engine.internal.settings.BulkDriverOption.RETRY_POLICY_MAX_RETRIES;
 import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.BULK_LOADER_APPLICATION_NAME;
 import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.clientId;
 import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.getBulkLoaderVersion;
+import static com.datastax.dse.driver.api.core.config.DseDriverOption.CONTINUOUS_PAGING_MAX_PAGES;
+import static com.datastax.dse.driver.api.core.config.DseDriverOption.CONTINUOUS_PAGING_MAX_PAGES_PER_SECOND;
+import static com.datastax.dse.driver.api.core.config.DseDriverOption.CONTINUOUS_PAGING_PAGE_SIZE;
+import static com.datastax.dse.driver.api.core.config.DseDriverOption.CONTINUOUS_PAGING_PAGE_SIZE_BYTES;
 import static com.datastax.dse.driver.api.core.config.DseDriverOption.CONTINUOUS_PAGING_TIMEOUT_FIRST_PAGE;
 import static com.datastax.dse.driver.api.core.config.DseDriverOption.CONTINUOUS_PAGING_TIMEOUT_OTHER_PAGES;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.ADDRESS_TRANSLATOR_CLASS;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CLOUD_SECURE_CONNECT_BUNDLE;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONFIG_RELOAD_INTERVAL;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONNECTION_INIT_QUERY_TIMEOUT;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONNECTION_MAX_REQUESTS;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONNECTION_POOL_LOCAL_SIZE;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONNECTION_POOL_REMOTE_SIZE;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONNECTION_SET_KEYSPACE_TIMEOUT;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONTACT_POINTS;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONTROL_CONNECTION_TIMEOUT;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.HEARTBEAT_INTERVAL;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.LOAD_BALANCING_FILTER_CLASS;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.LOAD_BALANCING_LOCAL_DATACENTER;
-import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.LOAD_BALANCING_POLICY_CLASS;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.PROTOCOL_COMPRESSION;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_CONSISTENCY;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_DEFAULT_IDEMPOTENCE;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_LOG_WARNINGS;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_PAGE_SIZE;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_SERIAL_CONSISTENCY;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_TIMEOUT;
-import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.RETRY_POLICY_CLASS;
+import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_WARN_IF_SET_KEYSPACE;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.TIMESTAMP_GENERATOR_CLASS;
-import static com.datastax.oss.driver.internal.core.config.typesafe.DefaultDriverConfigLoader.DEFAULT_ROOT_PATH;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
+import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.engine.internal.auth.AuthProviderFactory;
-import com.datastax.dsbulk.engine.internal.policies.retry.MultipleRetryPolicy;
 import com.datastax.dsbulk.engine.internal.ssl.SslHandlerFactoryFactory;
 import com.datastax.dse.driver.api.core.DseSession;
 import com.datastax.dse.driver.api.core.DseSessionBuilder;
-import com.datastax.dse.driver.internal.core.config.typesafe.DefaultDseDriverConfigLoader;
+import com.datastax.dse.driver.internal.core.auth.DsePlainTextAuthProvider;
 import com.datastax.dse.driver.internal.core.context.DseDriverContext;
-import com.datastax.dse.driver.internal.core.loadbalancing.DseDcInferringLoadBalancingPolicy;
 import com.datastax.oss.driver.api.core.ConsistencyLevel;
 import com.datastax.oss.driver.api.core.DefaultConsistencyLevel;
-import com.datastax.oss.driver.api.core.addresstranslation.AddressTranslator;
 import com.datastax.oss.driver.api.core.auth.AuthProvider;
-import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
 import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
 import com.datastax.oss.driver.api.core.config.DriverOption;
 import com.datastax.oss.driver.api.core.context.DriverContext;
 import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.driver.api.core.session.ProgrammaticArguments;
 import com.datastax.oss.driver.api.core.time.TimestampGenerator;
+import com.datastax.oss.driver.internal.core.config.typesafe.DefaultDriverConfigLoader;
 import com.datastax.oss.driver.internal.core.ssl.JdkSslHandlerFactory;
 import com.datastax.oss.driver.internal.core.ssl.SslHandlerFactory;
+import com.datastax.oss.driver.internal.core.time.AtomicTimestampGenerator;
+import com.datastax.oss.driver.internal.core.time.ServerSideTimestampGenerator;
+import com.datastax.oss.driver.internal.core.time.ThreadLocalTimestampGenerator;
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
+import com.datastax.oss.driver.shaded.guava.common.base.Joiner;
+import com.datastax.oss.driver.shaded.guava.common.collect.BiMap;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
+import com.datastax.oss.driver.shaded.guava.common.net.InetAddresses;
 import com.datastax.oss.protocol.internal.ProtocolConstants;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
-import com.typesafe.config.ConfigObject;
+import com.typesafe.config.ConfigValueFactory;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.MalformedURLException;
 import java.net.SocketAddress;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.security.GeneralSecurityException;
+import java.time.Duration;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,226 +101,278 @@ import org.slf4j.LoggerFactory;
 public class DriverSettings {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DriverSettings.class);
+  private static final Duration ONE_MINUTE = Duration.ofSeconds(60);
 
-  // Path Constants
-  private static final String POOLING = "pooling";
-  private static final String LOCAL = "local";
-  private static final String REMOTE = "remote";
-  private static final String QUERY = "query";
-  private static final String SOCKET = "socket";
-  private static final String POLICY = "policy";
-  private static final String PROTOCOL = "protocol";
-  private static final String LBP = "lbp";
+  private final LoaderConfig deprecatedDriverConfig;
+  private final LoaderConfig deprecatedContinuousPagingConfig;
+  private final BiMap<String, String> shortcuts;
 
-  private static final String HOSTS = "hosts";
-  private static final String PORT = "port";
+  private LoaderConfig newDriverConfig;
+  private LoaderConfig convertedConfig;
+  private LoaderConfig mergedDriverConfig;
 
-  private static final String CLOUD = "cloud";
-  private static final String SECURE_CONNECT_BUNDLE_PATH = CLOUD + '.' + "secureConnectBundle";
-
-  private static final String POOLING_LOCAL_CONNECTIONS =
-      POOLING + '.' + LOCAL + '.' + "connections";
-  private static final String POOLING_REMOTE_CONNECTIONS =
-      POOLING + '.' + REMOTE + '.' + "connections";
-  private static final String POOLING_REQUESTS = POOLING + '.' + "requests";
-  private static final String POOLING_HEARTBEAT = POOLING + '.' + "heartbeat";
-
-  private static final String QUERY_CONSISTENCY = QUERY + '.' + "consistency";
-  private static final String QUERY_SERIALCONSISTENCY = QUERY + '.' + "serialConsistency";
-  private static final String QUERY_FETCHSIZE = QUERY + '.' + "fetchSize";
-  private static final String QUERY_IDEMPOTENCE = QUERY + '.' + "idempotence";
-
-  private static final String SOCKET_READTIMEOUT = SOCKET + '.' + "readTimeout";
-  private static final String TIMESTAMP_GENERATOR = "timestampGenerator";
-  private static final String ADDRESS_TRANSLATOR = "addressTranslator";
-
-  private static final String PROTOCOL_COMPRESSION = PROTOCOL + '.' + "compression";
-
-  private static final String POLICY_MAX_RETRIES = POLICY + '.' + "maxRetries";
-  private static final String POLICY_LBP_LOCAL_DC = POLICY + '.' + LBP + '.' + "localDc";
-  private static final String POLICY_LBP_ALLOWED_HOSTS = POLICY + '.' + LBP + '.' + "allowedHosts";
-
-  private static final String SSL = "ssl";
-
-  // deprecated settings since DAT-303
-
-  private static final String POOLING_LOCAL_REQUESTS = POOLING + '.' + LOCAL + '.' + "requests";
-  private static final String POOLING_REMOTE_REQUESTS = POOLING + '.' + REMOTE + '.' + "requests";
-
-  private static final String POLICY_LBP_NAME = POLICY + '.' + LBP + '.' + "name";
-  private static final String POLICY_LBP_DSE_CHILD_POLICY =
-      POLICY + '.' + LBP + '.' + "dse.childPolicy";
-  private static final String POLICY_LBP_TOKEN_AWARE_CHILD_POLICY =
-      POLICY + '.' + LBP + '.' + "tokenAware.childPolicy";
-  private static final String POLICY_LBP_TOKEN_AWARE_REPLICA_ORDERING =
-      POLICY + '.' + LBP + '.' + "tokenAware.replicaOrdering";
-  private static final String POLICY_LBP_DC_AWARE_LOCAL_DC =
-      POLICY + '.' + LBP + '.' + "dcAwareRoundRobin.localDc";
-  private static final String POLICY_LBP_DC_AWARE_ALLOW_REMOTE =
-      POLICY + '.' + LBP + '.' + "dcAwareRoundRobin.allowRemoteDCsForLocalConsistencyLevel";
-  private static final String POLICY_LBP_DC_AWARE_REMOTE_HOSTS =
-      POLICY + '.' + LBP + '.' + "dcAwareRoundRobin.usedHostsPerRemoteDc";
-  private static final String POLICY_LBP_WHITE_LIST_CHILD_POLICY =
-      POLICY + '.' + LBP + '.' + "whiteList.childPolicy";
-  private static final String POLICY_LBP_WHITE_LIST_HOSTS =
-      POLICY + '.' + LBP + '.' + "whiteList.hosts";
-
-  private final LoaderConfig config;
-
-  @VisibleForTesting Map<DriverOption, Object> driverConfig;
+  private int defaultPort;
   private AuthProvider authProvider;
-  private SslHandlerFactory sslHandlerFactory;
+  @VisibleForTesting SslHandlerFactory sslHandlerFactory;
   private Predicate<Node> nodeFilter;
 
-  DriverSettings(LoaderConfig config) {
-    this.config = config;
+  DriverSettings(
+      LoaderConfig deprecatedDriverConfig,
+      LoaderConfig deprecatedContinuousPagingConfig,
+      LoaderConfig newDriverConfig,
+      BiMap<String, String> shortcuts) {
+    this.newDriverConfig = newDriverConfig;
+    this.deprecatedDriverConfig = deprecatedDriverConfig;
+    this.deprecatedContinuousPagingConfig = deprecatedContinuousPagingConfig;
+    this.shortcuts = shortcuts.inverse();
   }
 
-  public void init(boolean write, Map<DriverOption, Object> executorConfig)
-      throws GeneralSecurityException, IOException {
+  public void init(boolean write) throws GeneralSecurityException, IOException {
     try {
+      convertDriverDeprecatedConfig();
+    } catch (ConfigException e) {
+      throw BulkConfigurationException.fromTypeSafeConfigException(e, "dsbulk.driver");
+    }
+    try {
+      convertContinuousPagingDeprecatedConfig(write);
+    } catch (ConfigException e) {
+      throw BulkConfigurationException.fromTypeSafeConfigException(
+          e, "dsbulk.executor.continuousPaging");
+    }
+    mergedDriverConfig =
+        new DefaultLoaderConfig(convertedConfig.withFallback(newDriverConfig)).resolve();
+    processCloudSettings(write);
+    processContactPointSettings();
+    processForcedSettings();
+  }
 
-      driverConfig = new HashMap<>(executorConfig);
+  private void convertDriverDeprecatedConfig() throws GeneralSecurityException, IOException {
 
-      // Disable driver-level query warnings, these are handled by LogManager
-      driverConfig.put(REQUEST_LOG_WARNINGS, false);
+    convertedConfig = new DefaultLoaderConfig(ConfigFactory.empty());
 
-      int port = config.getInt(PORT);
+    if (isUserDefined(deprecatedDriverConfig, "port")) {
+      defaultPort = deprecatedDriverConfig.getInt("port");
+      warnDeprecatedSetting("dsbulk.driver.port", DEFAULT_PORT);
+    } else if (newDriverConfig.hasPath("basic.default-port")) {
+      defaultPort = newDriverConfig.getInt("basic.default-port");
+    } else {
+      defaultPort = 9042;
+    }
 
-      URL secureBundleLocation = null;
-      if (config.hasPath(SECURE_CONNECT_BUNDLE_PATH)) {
-        secureBundleLocation = config.getURL(SECURE_CONNECT_BUNDLE_PATH);
-      }
+    if (isUserDefined(deprecatedDriverConfig, "hosts")) {
+      List<String> hosts = deprecatedDriverConfig.getStringList("hosts");
+      List<String> contactPoints =
+          hosts.stream().map(host -> host + ':' + defaultPort).collect(Collectors.toList());
+      convertedConfig = addConfigValue(convertedConfig, CONTACT_POINTS, contactPoints);
+      warnDeprecatedSetting("dsbulk.driver.hosts", CONTACT_POINTS);
+    }
 
-      boolean cloud = secureBundleLocation != null;
-
-      if (cloud) {
-        driverConfig.put(CLOUD_SECURE_CONNECT_BUNDLE, secureBundleLocation.toExternalForm());
-        checkIncompatibleCloudSettings();
-      } else {
-        List<String> hosts = config.getStringList(HOSTS);
-        if (hosts.isEmpty()) {
+    if (isUserDefined(deprecatedDriverConfig, "protocol.compression")) {
+      String compression = deprecatedDriverConfig.getString("protocol.compression");
+      switch (compression.toLowerCase()) {
+        case "lz4":
+        case "snappy":
+        case "none":
+          convertedConfig = addConfigValue(convertedConfig, PROTOCOL_COMPRESSION, compression);
+          warnDeprecatedSetting("dsbulk.driver.protocol.compression", PROTOCOL_COMPRESSION);
+          break;
+        default:
           throw new BulkConfigurationException(
-              "Setting driver.hosts is mandatory. Please set driver.hosts "
-                  + "and try again. See settings.md or help for more information.");
-        }
-        driverConfig.put(
-            CONTACT_POINTS,
-            hosts.stream().map(host -> host + ':' + port).collect(Collectors.toList()));
+              String.format(
+                  "Invalid value for dsbulk.driver.protocol.compression, expecting one of NONE, SNAPPY, LZ4, got '%s'",
+                  compression));
+      }
+    }
+
+    if (isUserDefined(deprecatedDriverConfig, "pooling.local.connections")) {
+      int localConnections = deprecatedDriverConfig.getInt("pooling.local.connections");
+      convertedConfig =
+          addConfigValue(convertedConfig, CONNECTION_POOL_LOCAL_SIZE, localConnections);
+      warnDeprecatedSetting("dsbulk.driver.pooling.local.connections", CONNECTION_POOL_LOCAL_SIZE);
+    }
+
+    if (isUserDefined(deprecatedDriverConfig, "pooling.remote.connections")) {
+      int remoteConnections = deprecatedDriverConfig.getInt("pooling.remote.connections");
+      convertedConfig =
+          addConfigValue(convertedConfig, CONNECTION_POOL_REMOTE_SIZE, remoteConnections);
+      warnDeprecatedSetting(
+          "dsbulk.driver.pooling.remote.connections", CONNECTION_POOL_REMOTE_SIZE);
+    }
+
+    if (isUserDefined(deprecatedDriverConfig, "pooling.local.requests")) {
+      int localRequests = deprecatedDriverConfig.getInt("pooling.local.requests");
+      convertedConfig = addConfigValue(convertedConfig, CONNECTION_MAX_REQUESTS, localRequests);
+      warnDeprecatedSetting("dsbulk.driver.pooling.local.requests", CONNECTION_MAX_REQUESTS);
+    }
+
+    if (isUserDefined(deprecatedDriverConfig, "pooling.remote.requests")) {
+      deprecatedDriverConfig.getInt("pooling.remote.requests");
+      // don't set CONNECTION_MAX_REQUESTS, it's already done above
+      warnDeprecatedSetting("dsbulk.driver.pooling.remote.requests", CONNECTION_MAX_REQUESTS);
+    }
+
+    if (isUserDefined(deprecatedDriverConfig, "pooling.heartbeat")) {
+      Duration heartbeat = deprecatedDriverConfig.getDuration("pooling.heartbeat");
+      convertedConfig = addConfigValue(convertedConfig, HEARTBEAT_INTERVAL, heartbeat);
+      warnDeprecatedSetting("dsbulk.driver.pooling.heartbeat", HEARTBEAT_INTERVAL);
+    }
+
+    if (isUserDefined(deprecatedDriverConfig, "query.consistency")) {
+      ConsistencyLevel consistency =
+          deprecatedDriverConfig.getEnum(DefaultConsistencyLevel.class, "query.consistency");
+      convertedConfig = addConfigValue(convertedConfig, REQUEST_CONSISTENCY, consistency.name());
+      warnDeprecatedSetting("dsbulk.driver.query.consistency", REQUEST_CONSISTENCY);
+    }
+
+    if (isUserDefined(deprecatedDriverConfig, "query.serialConsistency")) {
+      ConsistencyLevel consistency =
+          deprecatedDriverConfig.getEnum(DefaultConsistencyLevel.class, "query.serialConsistency");
+      convertedConfig =
+          addConfigValue(convertedConfig, REQUEST_SERIAL_CONSISTENCY, consistency.name());
+      warnDeprecatedSetting("dsbulk.driver.query.serialConsistency", REQUEST_SERIAL_CONSISTENCY);
+    }
+
+    if (isUserDefined(deprecatedDriverConfig, "query.fetchSize")) {
+      int fetchSize = deprecatedDriverConfig.getInt("query.fetchSize");
+      convertedConfig = addConfigValue(convertedConfig, REQUEST_PAGE_SIZE, fetchSize);
+      warnDeprecatedSetting("dsbulk.driver.query.fetchSize", REQUEST_PAGE_SIZE);
+    }
+
+    if (isUserDefined(deprecatedDriverConfig, "query.idempotence")) {
+      boolean idempotence = deprecatedDriverConfig.getBoolean("query.idempotence");
+      convertedConfig = addConfigValue(convertedConfig, REQUEST_DEFAULT_IDEMPOTENCE, idempotence);
+      warnDeprecatedSetting("dsbulk.driver.query.idempotence", REQUEST_DEFAULT_IDEMPOTENCE);
+    }
+
+    if (isUserDefined(deprecatedDriverConfig, "socket.readTimeout")) {
+      Duration readTimeout = deprecatedDriverConfig.getDuration("socket.readTimeout");
+      convertedConfig = addConfigValue(convertedConfig, REQUEST_TIMEOUT, readTimeout);
+      // also modify continuous paging accordingly, to emulate old behavior
+      convertedConfig =
+          addConfigValue(convertedConfig, CONTINUOUS_PAGING_TIMEOUT_FIRST_PAGE, readTimeout);
+      convertedConfig =
+          addConfigValue(convertedConfig, CONTINUOUS_PAGING_TIMEOUT_OTHER_PAGES, readTimeout);
+      warnDeprecatedSetting("dsbulk.driver.socket.readTimeout", REQUEST_TIMEOUT);
+    }
+
+    if (isUserDefined(deprecatedDriverConfig, "auth")) {
+      authProvider =
+          AuthProviderFactory.createAuthProvider(deprecatedDriverConfig.getConfig("auth"));
+      warnDeprecatedSetting("dsbulk.driver.auth.*", "advanced.auth-provider.*");
+    } else if (!newDriverConfig.hasPath("advanced.auth-provider.class")
+        && newDriverConfig.hasPath("advanced.auth-provider.username")
+        && newDriverConfig.hasPath("advanced.auth-provider.password")) {
+      // Emulate DSBulk behavior for legacy auth settings: when username and password are set but no
+      // auth provider class is set, infer DsePlainTextAuthProvider
+      LOGGER.info(
+          "Username and password provided but auth provider not specified, inferring DsePlainTextAuthProvider");
+      newDriverConfig =
+          newDriverConfig.withValue(
+              "advanced.auth-provider.class",
+              ConfigValueFactory.fromAnyRef(DsePlainTextAuthProvider.class.getSimpleName()));
+    }
+
+    if (isUserDefined(deprecatedDriverConfig, "ssl")) {
+      sslHandlerFactory =
+          SslHandlerFactoryFactory.createSslHandlerFactory(deprecatedDriverConfig.getConfig("ssl"));
+      warnDeprecatedSetting("dsbulk.driver.ssl.*", "advanced.ssl-engine-factory.*");
+    }
+
+    if (isUserDefined(deprecatedDriverConfig, "timestampGenerator")) {
+      String generator = deprecatedDriverConfig.getString("timestampGenerator");
+      Class<? extends TimestampGenerator> generatorClass;
+      switch (generator) {
+        case "AtomicMonotonicTimestampGenerator":
+          generatorClass = AtomicTimestampGenerator.class;
+          break;
+        case "ThreadLocalTimestampGenerator":
+          generatorClass = ThreadLocalTimestampGenerator.class;
+          break;
+        case "ServerSideTimestampGenerator":
+          generatorClass = ServerSideTimestampGenerator.class;
+          break;
+        default:
+          // since this setting is now deprecated, we only support built-in values,
+          // dynamic loading of user-provided classes is not supported anymore
+          throw new BulkConfigurationException(
+              String.format(
+                  "Invalid value for dsbulk.driver.protocol.timestampGenerator, "
+                      + "expecting one of AtomicMonotonicTimestampGenerator, "
+                      + "ThreadLocalTimestampGenerator, ServerSideTimestampGenerator, got '%s'",
+                  generator));
+      }
+      convertedConfig =
+          addConfigValue(
+              convertedConfig, TIMESTAMP_GENERATOR_CLASS, generatorClass.getSimpleName());
+      warnDeprecatedSetting("dsbulk.driver.timestampGenerator", TIMESTAMP_GENERATOR_CLASS);
+    }
+
+    if (isUserDefined(deprecatedDriverConfig, "addressTranslator")) {
+      String translator = deprecatedDriverConfig.getString("addressTranslator");
+      // since this setting is now deprecated, we only support the single built-in value
+      // IdentityTranslator, dynamic loading of user-provided classes is not supported anymore
+      if (!translator.equals("IdentityTranslator")) {
+        throw new BulkConfigurationException(
+            String.format(
+                "Invalid value for dsbulk.driver.protocol.addressTranslator, "
+                    + "expecting IdentityTranslator, got '%s'",
+                translator));
+      }
+      convertedConfig = addConfigValue(convertedConfig, ADDRESS_TRANSLATOR_CLASS, translator);
+      warnDeprecatedSetting("dsbulk.driver.addressTranslator", ADDRESS_TRANSLATOR_CLASS);
+    }
+
+    if (isUserDefined(deprecatedDriverConfig, "policy.maxRetries")) {
+      int maxRetries = deprecatedDriverConfig.getInt("policy.maxRetries");
+      convertedConfig = addConfigValue(convertedConfig, RETRY_POLICY_MAX_RETRIES, maxRetries);
+      warnDeprecatedSetting("dsbulk.driver.policy.maxRetries", RETRY_POLICY_MAX_RETRIES);
+    }
+
+    if (isUserDefined(deprecatedDriverConfig, "policy.lbp")) {
+
+      if (isUserDefined(deprecatedDriverConfig, "policy.lbp.name")) {
+        warnObsoleteLBPSetting("name");
       }
 
-      Compression compression = config.getEnum(Compression.class, PROTOCOL_COMPRESSION);
-      if (compression != Compression.NONE) {
-        driverConfig.put(
-            DefaultDriverOption.PROTOCOL_COMPRESSION, compression.name().toLowerCase());
+      if (isUserDefined(deprecatedDriverConfig, "policy.lbp.dse.childPolicy")) {
+        warnObsoleteLBPSetting("dse.childPolicy");
       }
 
-      driverConfig.put(CONNECTION_POOL_LOCAL_SIZE, config.getInt(POOLING_LOCAL_CONNECTIONS));
-      driverConfig.put(CONNECTION_POOL_REMOTE_SIZE, config.getInt(POOLING_REMOTE_CONNECTIONS));
-
-      int maxRequests = config.getInt(POOLING_REQUESTS);
-      if (config.hasPath(POOLING_LOCAL_REQUESTS)) {
-        warnDeprecatedSetting(POOLING_LOCAL_REQUESTS, POOLING_REQUESTS);
-        maxRequests = config.getInt(POOLING_LOCAL_REQUESTS);
-      }
-      if (config.hasPath(POOLING_REMOTE_REQUESTS)) {
-        warnObsoleteSetting(POOLING_REMOTE_REQUESTS);
-      }
-      driverConfig.put(CONNECTION_MAX_REQUESTS, maxRequests);
-
-      driverConfig.put(HEARTBEAT_INTERVAL, config.getDuration(POOLING_HEARTBEAT));
-
-      // validate enums upfront to get a better error message
-      ConsistencyLevel cl = config.getEnum(DefaultConsistencyLevel.class, QUERY_CONSISTENCY);
-      ConsistencyLevel serialCl =
-          config.getEnum(DefaultConsistencyLevel.class, QUERY_SERIALCONSISTENCY);
-      if (cloud && !isCLCloudCompatible(write, cl)) {
-        if (isValueFromReferenceConfig(config, QUERY_CONSISTENCY)) {
-          LOGGER.info("Changing default consistency level to LOCAL_QUORUM for Cloud deployments.");
-        } else {
-          LOGGER.warn(
-              "Cloud deployments reject consistency level {} when writing; forcing LOCAL_QUORUM.",
-              cl);
-        }
-        cl = DefaultConsistencyLevel.LOCAL_QUORUM;
-      }
-      driverConfig.put(REQUEST_CONSISTENCY, cl.name());
-      driverConfig.put(REQUEST_SERIAL_CONSISTENCY, serialCl.name());
-
-      driverConfig.put(REQUEST_PAGE_SIZE, config.getInt(QUERY_FETCHSIZE));
-      driverConfig.put(REQUEST_DEFAULT_IDEMPOTENCE, config.getBoolean(QUERY_IDEMPOTENCE));
-
-      driverConfig.put(REQUEST_TIMEOUT, config.getDuration(SOCKET_READTIMEOUT));
-      driverConfig.put(
-          CONTINUOUS_PAGING_TIMEOUT_FIRST_PAGE, config.getDuration(SOCKET_READTIMEOUT));
-      driverConfig.put(
-          CONTINUOUS_PAGING_TIMEOUT_OTHER_PAGES, config.getDuration(SOCKET_READTIMEOUT));
-
-      // validate classes upfront to get a better error message
-      driverConfig.put(
-          TIMESTAMP_GENERATOR_CLASS,
-          config.getClass(TIMESTAMP_GENERATOR, TimestampGenerator.class).getSimpleName());
-      if (!cloud) {
-        driverConfig.put(
-            ADDRESS_TRANSLATOR_CLASS,
-            config.getClass(ADDRESS_TRANSLATOR, AddressTranslator.class).getSimpleName());
+      if (isUserDefined(deprecatedDriverConfig, "policy.lbp.dcAwareRoundRobin.localDc")) {
+        String localDc = deprecatedDriverConfig.getString("policy.lbp.dcAwareRoundRobin.localDc");
+        convertedConfig = addConfigValue(convertedConfig, LOAD_BALANCING_LOCAL_DATACENTER, localDc);
+        warnDeprecatedSetting(
+            "dsbulk.driver.policy.lbp.dcAwareRoundRobin.localDc", LOAD_BALANCING_LOCAL_DATACENTER);
       }
 
-      driverConfig.put(
-          LOAD_BALANCING_POLICY_CLASS, DseDcInferringLoadBalancingPolicy.class.getName());
-      driverConfig.put(RETRY_POLICY_CLASS, MultipleRetryPolicy.class.getName());
-      driverConfig.put(
-          BulkDriverOption.RETRY_POLICY_MAX_RETRIES, config.getInt(POLICY_MAX_RETRIES));
-
-      authProvider = AuthProviderFactory.createAuthProvider(config);
-      if (!cloud) {
-        sslHandlerFactory = SslHandlerFactoryFactory.createSslHandlerFactory(config);
+      if (isUserDefined(
+          deprecatedDriverConfig,
+          "policy.lbp.dcAwareRoundRobin.allowRemoteDCsForLocalConsistencyLevel")) {
+        warnObsoleteLBPSetting("dcAwareRoundRobin.allowRemoteDCsForLocalConsistencyLevel");
       }
 
-      if (config.hasPath(POLICY_LBP_NAME)) {
-        warnObsoleteSetting(POLICY_LBP_NAME);
-      }
-      if (config.hasPath(POLICY_LBP_DSE_CHILD_POLICY)) {
-        warnObsoleteSetting(POLICY_LBP_DSE_CHILD_POLICY);
-      }
-      if (config.hasPath(POLICY_LBP_TOKEN_AWARE_CHILD_POLICY)) {
-        warnObsoleteSetting(POLICY_LBP_TOKEN_AWARE_CHILD_POLICY);
-      }
-      if (config.hasPath(POLICY_LBP_TOKEN_AWARE_REPLICA_ORDERING)) {
-        warnObsoleteSetting(POLICY_LBP_TOKEN_AWARE_REPLICA_ORDERING);
-      }
-      if (config.hasPath(POLICY_LBP_DC_AWARE_ALLOW_REMOTE)) {
-        warnObsoleteSetting(POLICY_LBP_DC_AWARE_ALLOW_REMOTE);
-      }
-      if (config.hasPath(POLICY_LBP_DC_AWARE_REMOTE_HOSTS)) {
-        warnObsoleteSetting(POLICY_LBP_DC_AWARE_REMOTE_HOSTS);
-      }
-      if (config.hasPath(POLICY_LBP_WHITE_LIST_CHILD_POLICY)) {
-        warnObsoleteSetting(POLICY_LBP_WHITE_LIST_CHILD_POLICY);
+      if (isUserDefined(
+          deprecatedDriverConfig, "policy.lbp.dcAwareRoundRobin.usedHostsPerRemoteDc")) {
+        warnObsoleteLBPSetting("dcAwareRoundRobin.usedHostsPerRemoteDc");
       }
 
-      if (!cloud) {
-        String localDc = null;
-        // Default for localDc is null
-        if (config.hasPath(POLICY_LBP_LOCAL_DC)) {
-          localDc = config.getString(POLICY_LBP_LOCAL_DC);
-        }
-        if (config.hasPath(POLICY_LBP_DC_AWARE_LOCAL_DC)) {
-          warnDeprecatedSetting(POLICY_LBP_DC_AWARE_LOCAL_DC, POLICY_LBP_LOCAL_DC);
-          localDc = config.getString(POLICY_LBP_DC_AWARE_LOCAL_DC);
-        }
-        if (localDc != null) {
-          driverConfig.put(LOAD_BALANCING_LOCAL_DATACENTER, localDc);
-        }
+      if (isUserDefined(deprecatedDriverConfig, "policy.lbp.tokenAware.childPolicy")) {
+        warnObsoleteLBPSetting("tokenAware.childPolicy");
+      }
 
-        List<String> whiteList = config.getStringList(POLICY_LBP_ALLOWED_HOSTS);
-        if (config.hasPath(POLICY_LBP_WHITE_LIST_HOSTS)) {
-          warnDeprecatedSetting(POLICY_LBP_WHITE_LIST_HOSTS, POLICY_LBP_ALLOWED_HOSTS);
-          whiteList = config.getStringList(POLICY_LBP_WHITE_LIST_HOSTS);
-        }
+      if (isUserDefined(deprecatedDriverConfig, "policy.lbp.tokenAware.replicaOrdering")) {
+        warnObsoleteLBPSetting("tokenAware.replicaOrdering");
+      }
+
+      if (isUserDefined(deprecatedDriverConfig, "policy.lbp.whiteList.childPolicy")) {
+        warnObsoleteLBPSetting("whiteList.childPolicy");
+      }
+
+      if (isUserDefined(deprecatedDriverConfig, "policy.lbp.whiteList.hosts")) {
+        List<String> whiteList = deprecatedDriverConfig.getStringList("policy.lbp.whiteList.hosts");
         if (!whiteList.isEmpty()) {
-          ImmutableList<SocketAddress> allowedHosts =
-              config.getStringList(POLICY_LBP_ALLOWED_HOSTS).stream()
+          List<SocketAddress> allowedHosts =
+              whiteList.stream()
                   .flatMap(
                       host -> {
                         try {
@@ -313,70 +381,235 @@ public class DriverSettings {
                           String msg =
                               String.format(
                                   "Could not resolve host: %s, please verify your %s setting",
-                                  host, POLICY_LBP_ALLOWED_HOSTS);
+                                  host, "policy.lbp.whiteList.hosts");
                           throw new BulkConfigurationException(msg, e);
                         }
                       })
-                  .map(host -> new InetSocketAddress(host, port))
+                  .map(host -> new InetSocketAddress(host, defaultPort))
                   .collect(ImmutableList.toImmutableList());
           nodeFilter = node -> allowedHosts.contains(node.getEndPoint().resolve());
         }
-      }
-
-    } catch (ConfigException e) {
-      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "driver");
-    }
-  }
-
-  private void checkIncompatibleCloudSettings() {
-    if (!isValueFromReferenceConfig(config, HOSTS)) {
-      warnIncompatibleCloudSetting(HOSTS);
-    }
-    if (!isValueFromReferenceConfig(config, PORT)) {
-      warnIncompatibleCloudSetting(PORT);
-    }
-    if (!isValueFromReferenceConfig(config, ADDRESS_TRANSLATOR)) {
-      warnIncompatibleCloudSetting(ADDRESS_TRANSLATOR);
-    }
-    if (!isValueFromReferenceConfig(config, POLICY_LBP_LOCAL_DC)) {
-      warnIncompatibleCloudSetting(POLICY_LBP_LOCAL_DC);
-    }
-    if (!isValueFromReferenceConfig(config, POLICY_LBP_ALLOWED_HOSTS)) {
-      warnIncompatibleCloudSetting(POLICY_LBP_ALLOWED_HOSTS);
-    }
-    ConfigObject value = config.getObject(SSL);
-    for (String path : value.keySet()) {
-      if (!isValueFromReferenceConfig(config, SSL + '.' + path)) {
-        warnIncompatibleCloudSetting(SSL + '.' + path);
+        warnDeprecatedSetting(
+            "dsbulk.driver.policy.lbp.whiteList.hosts", LOAD_BALANCING_FILTER_CLASS);
       }
     }
   }
 
-  private void warnIncompatibleCloudSetting(String path) {
-    LOGGER.warn(
-        "Setting driver.{} is incompatible with Cloud deployments and will be ignored. "
-            + "Please remove this setting, or alternatively, leave driver.{} "
-            + "unset if you are not connecting to a Cloud database.",
-        path,
-        SECURE_CONNECT_BUNDLE_PATH);
+  private void convertContinuousPagingDeprecatedConfig(boolean write) {
+    if (!write && deprecatedContinuousPagingConfig.hasPath("enabled")) {
+
+      boolean continuousPagingEnabled = deprecatedContinuousPagingConfig.getBoolean("enabled");
+
+      if (continuousPagingEnabled) {
+
+        if (isUserDefined(deprecatedContinuousPagingConfig, "pageSize")) {
+          int pageSize = deprecatedContinuousPagingConfig.getInt("pageSize");
+          convertedConfig = addConfigValue(convertedConfig, CONTINUOUS_PAGING_PAGE_SIZE, pageSize);
+          warnDeprecatedSetting(
+              "dsbulk.executor.continuousPaging.pageSize", CONTINUOUS_PAGING_PAGE_SIZE);
+        }
+
+        if (isUserDefined(deprecatedContinuousPagingConfig, "pageUnit")) {
+          String pageUnit = deprecatedContinuousPagingConfig.getString("pageUnit");
+          switch (pageUnit.toLowerCase()) {
+            case "bytes":
+            case "rows":
+              convertedConfig =
+                  addConfigValue(
+                      convertedConfig,
+                      CONTINUOUS_PAGING_PAGE_SIZE_BYTES,
+                      "bytes".equalsIgnoreCase(pageUnit));
+              warnDeprecatedSetting(
+                  "dsbulk.executor.continuousPaging.pageUnit", CONTINUOUS_PAGING_PAGE_SIZE_BYTES);
+              break;
+            default:
+              throw new BulkConfigurationException(
+                  String.format(
+                      "Invalid value for dsbulk.executor.continuousPaging.pageUnit, "
+                          + "expecting one of BYTES, ROWS, got '%s'",
+                      pageUnit));
+          }
+        }
+
+        if (isUserDefined(deprecatedContinuousPagingConfig, "maxPages")) {
+          int maxPages = deprecatedContinuousPagingConfig.getInt("maxPages");
+          convertedConfig = addConfigValue(convertedConfig, CONTINUOUS_PAGING_MAX_PAGES, maxPages);
+          warnDeprecatedSetting(
+              "dsbulk.executor.continuousPaging.maxPages", CONTINUOUS_PAGING_MAX_PAGES);
+        }
+
+        if (isUserDefined(deprecatedContinuousPagingConfig, "maxPagesPerSecond")) {
+          int maxPagesPerSecond = deprecatedContinuousPagingConfig.getInt("maxPagesPerSecond");
+          convertedConfig =
+              addConfigValue(
+                  convertedConfig, CONTINUOUS_PAGING_MAX_PAGES_PER_SECOND, maxPagesPerSecond);
+          warnDeprecatedSetting(
+              "dsbulk.executor.continuousPaging.maxPagesPerSecond",
+              CONTINUOUS_PAGING_MAX_PAGES_PER_SECOND);
+        }
+      }
+    }
+  }
+
+  private void processCloudSettings(boolean write) throws MalformedURLException {
+    boolean cloud = mergedDriverConfig.hasPath(CLOUD_SECURE_CONNECT_BUNDLE.getPath());
+    if (cloud) {
+
+      // resolve URL to benefit from DSBulk special URL and Path processing
+      URL cloudSecureConnectBundle =
+          ConfigUtils.resolveURL(
+              mergedDriverConfig.getString(CLOUD_SECURE_CONNECT_BUNDLE.getPath()));
+      mergedDriverConfig =
+          mergedDriverConfig.withValue(
+              CLOUD_SECURE_CONNECT_BUNDLE.getPath(),
+              ConfigValueFactory.fromAnyRef(cloudSecureConnectBundle.toExternalForm()));
+
+      if (mergedDriverConfig.hasPath(CONTACT_POINTS.getPath())) {
+        if (isValueFromReferenceConfig(mergedDriverConfig, CONTACT_POINTS.getPath())) {
+          LOGGER.info(
+              "A cloud secure connect bundle was provided: ignoring all explicit contact points.");
+        } else {
+          List<String> contactPoints = mergedDriverConfig.getStringList(CONTACT_POINTS.getPath());
+          if (!contactPoints.isEmpty()) {
+            LOGGER.warn(
+                "Explicit contact points provided together with a cloud secure connect bundle; "
+                    + "the following contact points will be ignored: \"{}\"",
+                Joiner.on("\", \"").join(contactPoints));
+          }
+        }
+        mergedDriverConfig =
+            mergedDriverConfig.withValue(
+                CONTACT_POINTS.getPath(), ConfigValueFactory.fromAnyRef(Collections.emptyList()));
+      }
+      if (mergedDriverConfig.hasPath(REQUEST_CONSISTENCY.getPath())) {
+        ConsistencyLevel cl =
+            mergedDriverConfig.getEnum(
+                DefaultConsistencyLevel.class, REQUEST_CONSISTENCY.getPath());
+        if (!isCLCloudCompatible(write, cl)) {
+          if (isValueFromReferenceConfig(mergedDriverConfig, REQUEST_CONSISTENCY.getPath())) {
+            LOGGER.info(
+                "A cloud secure connect bundle was provided and selected operation performs writes: "
+                    + "changing default consistency level to LOCAL_QUORUM.");
+          } else {
+            LOGGER.warn(
+                "A cloud secure connect bundle was provided together with consistency level {}, "
+                    + "but selected operation performs writes: "
+                    + "forcing default consistency level to LOCAL_QUORUM.",
+                cl);
+          }
+          mergedDriverConfig =
+              mergedDriverConfig.withValue(
+                  REQUEST_CONSISTENCY.getPath(), ConfigValueFactory.fromAnyRef("LOCAL_QUORUM"));
+        }
+      }
+      if (sslHandlerFactory != null
+          || mergedDriverConfig.hasPath("advanced.ssl-engine-factory.class")) {
+        LOGGER.warn(
+            "Explicit SSL configuration provided together with a cloud secure connect bundle: "
+                + "SSL settings will be ignored.");
+        mergedDriverConfig = mergedDriverConfig.withoutPath("advanced.ssl-engine-factory");
+        sslHandlerFactory = null;
+      }
+    }
+  }
+
+  private void processContactPointSettings() {
+    if (mergedDriverConfig.hasPath(CONTACT_POINTS.getPath())) {
+      // If the new driver config has contact points, process them now since
+      // DSBulk allows contact points to be specified without port, but the driver doesn't.
+      List<String> hosts = mergedDriverConfig.getStringList(CONTACT_POINTS.getPath());
+      List<String> contactPoints =
+          hosts.stream()
+              .map(contactPoint -> maybeAddPortToHost(contactPoint))
+              .collect(Collectors.toList());
+      mergedDriverConfig = addConfigValue(mergedDriverConfig, CONTACT_POINTS, contactPoints);
+    }
+  }
+
+  private void processForcedSettings() {
+    Duration timeout = mergedDriverConfig.getDuration("basic.request.timeout");
+    if (timeout.compareTo(ONE_MINUTE) < 0) {
+      timeout = ONE_MINUTE;
+    }
+    // The following settings should not be modified by users so we force them
+    Config forcedSettings =
+        ConfigFactory.parseMap(
+            ImmutableMap.<String, Object>builder()
+                .put(CONFIG_RELOAD_INTERVAL.getPath(), 0)
+                // query warnings are handled by DSBulk in LogManager
+                .put(REQUEST_LOG_WARNINGS.getPath(), false)
+                // DSBulk sometimes issues USE requests
+                .put(REQUEST_WARN_IF_SET_KEYSPACE.getPath(), false)
+                // These timeouts are set to basic.request.timeout, unless it's less than
+                // one minute
+                .put(CONNECTION_INIT_QUERY_TIMEOUT.getPath(), timeout)
+                .put(CONNECTION_SET_KEYSPACE_TIMEOUT.getPath(), timeout)
+                .put(CONTROL_CONNECTION_TIMEOUT.getPath(), timeout)
+                .build(),
+            "DSBulk forced driver settings");
+    mergedDriverConfig = new DefaultLoaderConfig(forcedSettings).withFallback(mergedDriverConfig);
+  }
+
+  public LoaderConfig getDriverConfig() {
+    return mergedDriverConfig;
+  }
+
+  public DseSession newSession(String executionId) {
+    DseSessionBuilder sessionBuilder =
+        new BulkLoaderSessionBuilder()
+            .withApplicationVersion(getBulkLoaderVersion())
+            .withApplicationName(BULK_LOADER_APPLICATION_NAME + " " + executionId)
+            .withClientId(clientId(executionId))
+            .withAuthProvider(authProvider)
+            .withConfigLoader(new BulkLoaderDriverConfigLoader());
+    if (nodeFilter != null) {
+      sessionBuilder.withNodeFilter(nodeFilter);
+    }
+    return sessionBuilder.build();
+  }
+
+  private static LoaderConfig addConfigValue(
+      LoaderConfig config, DriverOption option, Object value) {
+    return config.withValue(
+        option.getPath(), ConfigValueFactory.fromAnyRef(value, "DSBulk converted driver settings"));
+  }
+
+  private static boolean isUserDefined(Config config, String path) {
+    return config.hasPath(path) && !isValueFromReferenceConfig(config, path);
+  }
+
+  private void warnDeprecatedSetting(String deprecated, DriverOption replacement) {
+    warnDeprecatedSetting(deprecated, replacement.getPath());
   }
 
   private void warnDeprecatedSetting(String deprecated, String replacement) {
-    LOGGER.warn(
-        "Setting driver.{} is deprecated and will be removed in a future release; "
-            + "please use {} instead.",
-        deprecated,
-        replacement);
+    if (shortcuts.containsKey("datastax-java-driver." + replacement)) {
+      String shortcut = shortcuts.get("datastax-java-driver." + replacement);
+      LOGGER.warn(
+          "Setting {} is deprecated and will be removed in a future release; "
+              + "please configure the driver directly using --datastax-java-driver.{} "
+              + "(or -{}) instead.",
+          deprecated,
+          replacement,
+          shortcut);
+    } else {
+      LOGGER.warn(
+          "Setting {} is deprecated and will be removed in a future release; "
+              + "please configure the driver directly using --datastax-java-driver.{} instead.",
+          deprecated,
+          replacement);
+    }
   }
 
-  private void warnObsoleteSetting(String path) {
+  private static void warnObsoleteLBPSetting(String deprecated) {
     LOGGER.warn(
-        "Setting driver.{} is obsolete and isn't honored anymore; "
-            + "please remove it from your configuration.",
-        path);
+        "Setting dsbulk.driver.policy.lbp.{} has been removed and is not honored anymore; "
+            + "please remove it from your configuration. "
+            + "To configure the load balancing policy, use --datastax-java-driver.basic.load-balancing-policy.* instead",
+        deprecated);
   }
 
-  private boolean isCLCloudCompatible(boolean write, ConsistencyLevel cl) {
+  private static boolean isCLCloudCompatible(boolean write, ConsistencyLevel cl) {
     if (write) {
       int protocolCode = cl.getProtocolCode();
       return protocolCode != ProtocolConstants.ConsistencyLevel.ANY
@@ -388,64 +621,69 @@ public class DriverSettings {
     }
   }
 
-  public DseSession newSession(String executionId) {
-    Supplier<Config> configSupplier =
-        () -> {
-          ConfigFactory.invalidateCaches();
-          Map<String, Object> configMap = new HashMap<>();
-          for (DriverOption driverOption : driverConfig.keySet()) {
-            configMap.put(driverOption.getPath(), driverConfig.get(driverOption));
-          }
-          Config config =
-              ConfigFactory.defaultOverrides()
-                  .withFallback(
-                      ConfigFactory.parseMap(configMap, "DSBulk driver config")
-                          .atPath(DEFAULT_ROOT_PATH))
-                  .withFallback(ConfigFactory.defaultApplication())
-                  .withFallback(ConfigFactory.parseResourcesAnySyntax("dse-reference"))
-                  .withFallback(ConfigFactory.defaultReference())
-                  .resolve();
-          return config.getConfig("datastax-java-driver");
-        };
-    DseSessionBuilder sessionBuilder =
-        new DseSessionBuilder() {
-          @Override
-          protected DriverContext buildContext(
-              DriverConfigLoader configLoader, ProgrammaticArguments programmaticArguments) {
-            return new DseDriverContext(
-                configLoader, programmaticArguments, dseProgrammaticArgumentsBuilder.build()) {
-              @Override
-              protected Optional<SslHandlerFactory> buildSslHandlerFactory() {
-                // If a JDK-based factory was provided through the public API, wrap it;
-                // this can only happen in DSBulk if a secure connect bundle was provided.
-                if (getSslEngineFactory().isPresent()) {
-                  return getSslEngineFactory().map(JdkSslHandlerFactory::new);
-                } else {
-                  return Optional.ofNullable(sslHandlerFactory);
-                }
-              }
-            };
-          }
-        }.withApplicationVersion(getBulkLoaderVersion())
-            .withApplicationName(BULK_LOADER_APPLICATION_NAME + " " + executionId)
-            .withClientId(clientId(executionId))
-            .withAuthProvider(authProvider)
-            .withConfigLoader(
-                new DefaultDseDriverConfigLoader(configSupplier) {
-                  @Override
-                  public boolean supportsReloading() {
-                    return false;
-                  }
-                });
-    if (nodeFilter != null) {
-      sessionBuilder.withNodeFilter(nodeFilter);
+  @NonNull
+  private String maybeAddPortToHost(String contactPoint) {
+    int colon = contactPoint.lastIndexOf(':');
+    if (colon == -1) {
+      // is either ipv4 or hostname without port -> add port
+      return contactPoint + ':' + defaultPort;
+    } else {
+      String hostOrIp = contactPoint.substring(0, colon);
+      if (hostOrIp.indexOf(':') != -1) {
+        // is either ipv6 or ipv6:port -> disambiguate
+        boolean contactPointOk = InetAddresses.isInetAddress(contactPoint);
+        boolean hostOrIpOk = InetAddresses.isInetAddress(hostOrIp);
+        if (!contactPointOk && hostOrIpOk) {
+          // is ipv6 with port -> do nothing
+          return contactPoint;
+        }
+        if (contactPointOk && !hostOrIpOk) {
+          // is ipv6 without port -> add port
+          return contactPoint + ':' + defaultPort;
+        }
+        try {
+          Integer.parseInt(contactPoint.substring(colon + 1));
+        } catch (NumberFormatException e) {
+          // is ipv6 without port -> add port
+          return contactPoint + ':' + defaultPort;
+        }
+        // other cases: ambiguous -> do nothing
+      }
+      // ipv4:port or hostname:port -> do nothing
+      // ipv6 with ambiguous ending -> do nothing
+      return contactPoint;
     }
-    return sessionBuilder.build();
   }
 
-  private enum Compression {
-    NONE,
-    SNAPPY,
-    LZ4
+  private class BulkLoaderDriverConfigLoader extends DefaultDriverConfigLoader {
+    BulkLoaderDriverConfigLoader() {
+      super(DriverSettings.this::getDriverConfig);
+    }
+
+    @Override
+    public boolean supportsReloading() {
+      return false;
+    }
+  }
+
+  private class BulkLoaderSessionBuilder extends DseSessionBuilder {
+    @Override
+    protected DriverContext buildContext(
+        DriverConfigLoader configLoader, ProgrammaticArguments programmaticArguments) {
+      return new DseDriverContext(
+          configLoader, programmaticArguments, dseProgrammaticArgumentsBuilder.build()) {
+
+        @Override
+        protected Optional<SslHandlerFactory> buildSslHandlerFactory() {
+          // If a custom SSL handler factory was created from deprecated config, use it;
+          // otherwise fall back to regular driver settings.
+          if (sslHandlerFactory == null) {
+            return getSslEngineFactory().map(JdkSslHandlerFactory::new);
+          } else {
+            return Optional.of(sslHandlerFactory);
+          }
+        }
+      };
+    }
   }
 }

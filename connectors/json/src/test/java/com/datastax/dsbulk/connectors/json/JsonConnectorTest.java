@@ -12,6 +12,7 @@ import static com.datastax.dsbulk.commons.tests.utils.FileUtils.createURLFile;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readFile;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
+import static com.datastax.dsbulk.commons.tests.utils.TestConfigUtils.createTestConfig;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.any;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
@@ -25,7 +26,6 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.internal.io.CompressedIOUtils;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
@@ -41,8 +41,6 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.github.tomakehurst.wiremock.WireMockServer;
-import com.typesafe.config.Config;
-import com.typesafe.config.ConfigFactory;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -85,9 +83,6 @@ class JsonConnectorTest {
     Thread.setDefaultUncaughtExceptionHandler((thread, t) -> {});
   }
 
-  private static final Config CONNECTOR_DEFAULT_SETTINGS =
-      ConfigFactory.defaultReference().getConfig("dsbulk.connector.json");
-
   private final JsonNodeFactory factory = JsonNodeFactory.instance;
 
   private final ObjectMapper objectMapper = new ObjectMapper();
@@ -116,14 +111,16 @@ class JsonConnectorTest {
       throws Exception {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, parserFeatures = {ALLOW_COMMENTS:true}, "
-                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}"
-                            + " , compression = \"%s\"",
-                        url("/" + fileName), compression))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.json",
+            "url",
+            url("/" + fileName),
+            "parserFeatures",
+            "{ALLOW_COMMENTS:true}",
+            "deserializationFeatures",
+            "{USE_BIG_DECIMAL_FOR_FLOATS : false}",
+            "compression",
+            quoteJson(compression));
     connector.configure(settings, true);
     connector.init();
     List<Record> actual = Flux.from(connector.read()).collectList().block();
@@ -149,14 +146,16 @@ class JsonConnectorTest {
   void should_read_single_file_single_doc() throws Exception {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, parserFeatures = {ALLOW_COMMENTS:true}, "
-                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}, "
-                            + "mode = SINGLE_DOCUMENT",
-                        url("/single_doc.json")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.json",
+            "url",
+            url("/single_doc.json"),
+            "parserFeatures",
+            "{ALLOW_COMMENTS:true}",
+            "deserializationFeatures",
+            "{USE_BIG_DECIMAL_FOR_FLOATS : false}",
+            "mode",
+            "SINGLE_DOCUMENT");
     connector.configure(settings, true);
     connector.init();
     List<Record> actual = Flux.from(connector.read()).collectList().block();
@@ -168,12 +167,14 @@ class JsonConnectorTest {
   void should_read_single_empty_file_single_doc() throws Exception {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, parserFeatures = {ALLOW_COMMENTS:true}, mode = SINGLE_DOCUMENT",
-                        url("/empty.json")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.json",
+            "url",
+            url("/empty.json"),
+            "parserFeatures",
+            "{ALLOW_COMMENTS:true}",
+            "mode",
+            "SINGLE_DOCUMENT");
     connector.configure(settings, true);
     connector.init();
     // should complete with 0 records.
@@ -186,12 +187,14 @@ class JsonConnectorTest {
   void should_read_single_empty_file_multi_doc() throws Exception {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, parserFeatures = {ALLOW_COMMENTS:true}, mode = MULTI_DOCUMENT",
-                        url("/empty.json")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.json",
+            "url",
+            url("/empty.json"),
+            "parserFeatures",
+            "{ALLOW_COMMENTS:true}",
+            "mode",
+            "MULTI_DOCUMENT");
     connector.configure(settings, true);
     connector.init();
     // should complete with 0 records.
@@ -204,13 +207,14 @@ class JsonConnectorTest {
   void should_read_single_file_by_resource() throws Exception {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, parserFeatures = {ALLOW_COMMENTS:true}, "
-                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}",
-                        url("/multi_doc.json")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.json",
+            "url",
+            url("/multi_doc.json"),
+            "parserFeatures",
+            "{ALLOW_COMMENTS:true}",
+            "deserializationFeatures",
+            "{USE_BIG_DECIMAL_FOR_FLOATS : false}");
     connector.configure(settings, true);
     connector.init();
     List<Record> actual = Flux.merge(connector.readByResource()).collectList().block();
@@ -226,10 +230,7 @@ class JsonConnectorTest {
       InputStream is = new ByteArrayInputStream(line.getBytes(ISO_8859_1));
       System.setIn(is);
       JsonConnector connector = new JsonConnector();
-      LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString("encoding = ISO-8859-1")
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      LoaderConfig settings = createTestConfig("dsbulk.connector.json", "encoding", "ISO-8859-1");
       connector.configure(settings, true);
       connector.init();
       List<Record> actual = Flux.from(connector.read()).collectList().block();
@@ -253,10 +254,7 @@ class JsonConnectorTest {
       PrintStream out = new PrintStream(baos);
       System.setOut(out);
       JsonConnector connector = new JsonConnector();
-      LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString("encoding = ISO-8859-1")
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      LoaderConfig settings = createTestConfig("dsbulk.connector.json", "encoding", "ISO-8859-1");
       connector.configure(settings, false);
       connector.init();
       Flux.<Record>just(
@@ -281,9 +279,7 @@ class JsonConnectorTest {
   void should_read_all_resources_in_directory() throws Exception {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(String.format("url = %s, recursive = false", url("/root")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig("dsbulk.connector.json", "url", url("/root"), "recursive", false);
     connector.configure(settings, true);
     connector.init();
     assertThat(Flux.from(connector.read()).count().block()).isEqualTo(300);
@@ -294,9 +290,7 @@ class JsonConnectorTest {
   void should_read_all_resources_in_directory_by_resource() throws Exception {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(String.format("url = %s, recursive = false", url("/root")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig("dsbulk.connector.json", "url", url("/root"), "recursive", false);
     connector.configure(settings, true);
     connector.init();
     assertThat(Flux.merge(connector.readByResource()).count().block()).isEqualTo(300);
@@ -308,10 +302,7 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     Path rootPath = Paths.get(getClass().getResource("/root").toURI());
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format("url = %s, recursive = false", quoteJson(rootPath)))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig("dsbulk.connector.json", "url", quoteJson(rootPath), "recursive", false);
     connector.configure(settings, true);
     connector.init();
     assertThat(Flux.from(connector.read()).count().block()).isEqualTo(300);
@@ -322,9 +313,7 @@ class JsonConnectorTest {
   void should_read_all_resources_in_directory_recursively() throws Exception {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(String.format("url = %s, recursive = true", url("/root")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig("dsbulk.connector.json", "url", url("/root"), "recursive", true);
     connector.configure(settings, true);
     connector.init();
     assertThat(Flux.from(connector.read()).count().block()).isEqualTo(500);
@@ -335,9 +324,7 @@ class JsonConnectorTest {
   void should_read_all_resources_in_directory_recursively_by_resource() throws Exception {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(String.format("url = %s, recursive = true", url("/root")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig("dsbulk.connector.json", "url", url("/root"), "recursive", true);
     connector.configure(settings, true);
     connector.init();
     assertThat(Flux.merge(connector.readByResource()).count().block()).isEqualTo(500);
@@ -348,12 +335,14 @@ class JsonConnectorTest {
   void should_scan_directory_recursively_with_custom_file_name_format() throws Exception {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, recursive = true, fileNamePattern = \"**/part-*\"",
-                        url("/root-custom")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.json",
+            "url",
+            url("/root-custom"),
+            "recursive",
+            true,
+            "fileNamePattern",
+            "\"**/part-*\"");
     connector.configure(settings, true);
     connector.init();
     assertThat(Flux.from(connector.read()).count().block()).isEqualTo(500);
@@ -366,12 +355,14 @@ class JsonConnectorTest {
     Path rootPath = Files.createTempDirectory("empty");
     try {
       LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString(
-                      String.format(
-                          "url = %s, recursive = true, fileNamePattern = \"**/part-*\"",
-                          quoteJson(rootPath)))
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          createTestConfig(
+              "dsbulk.connector.json",
+              "url",
+              quoteJson(rootPath),
+              "recursive",
+              true,
+              "fileNamePattern",
+              "\"**/part-*\"");
       connector.configure(settings, true);
       connector.init();
       assertThat(logs.getLoggedMessages())
@@ -389,12 +380,14 @@ class JsonConnectorTest {
     Files.createTempFile(rootPath, "test", ".txt");
     try {
       LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString(
-                      String.format(
-                          "url = %s, recursive = true, fileNamePattern = \"**/part-*\"",
-                          quoteJson(rootPath)))
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          createTestConfig(
+              "dsbulk.connector.json",
+              "url",
+              quoteJson(rootPath),
+              "recursive",
+              true,
+              "fileNamePattern",
+              "\"**/part-*\"");
       connector.configure(settings, true);
       connector.init();
       assertThat(logs.getLoggedMessages())
@@ -419,12 +412,15 @@ class JsonConnectorTest {
     Files.createTempFile(rootPath, "test", ".txt");
     try {
       LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString(
-                      String.format(
-                          "url = %s, recursive = true, compression = \"%s\"",
-                          quoteJson(rootPath), compression))
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          createTestConfig(
+              "dsbulk.connector.json",
+              "url",
+              quoteJson(rootPath),
+              "recursive",
+              true,
+              "compression",
+              quoteJson(compression));
+
       connector.configure(settings, true);
       connector.init();
       assertThat(logs.getLoggedMessages())
@@ -459,11 +455,14 @@ class JsonConnectorTest {
     Path out = dir.resolve("nonexistent");
     try {
       LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString(
-                      String.format(
-                          "url = %s, escape = \"\\\"\", maxConcurrentFiles = 1", quoteJson(out)))
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          createTestConfig(
+              "dsbulk.connector.json",
+              "url",
+              quoteJson(out),
+              "escape",
+              "\"\\\"\"",
+              "maxConcurrentFiles",
+              1);
       connector.configure(settings, false);
       connector.init();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
@@ -490,12 +489,16 @@ class JsonConnectorTest {
     Path out = dir.resolve("nonexistent");
     try {
       LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString(
-                      String.format(
-                          "url = %s, escape = \"\\\"\", maxConcurrentFiles = 1, mode = SINGLE_DOCUMENT",
-                          quoteJson(out)))
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          createTestConfig(
+              "dsbulk.connector.json",
+              "url",
+              quoteJson(out),
+              "escape",
+              "\"\\\"\"",
+              "maxConcurrentFiles",
+              1,
+              "mode",
+              "SINGLE_DOCUMENT");
       connector.configure(settings, false);
       connector.init();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
@@ -524,12 +527,18 @@ class JsonConnectorTest {
     Path out = dir.resolve("nonexistent");
     try {
       LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString(
-                      String.format(
-                          "url = %s, escape = \"\\\"\", compression = \"gzip\", maxConcurrentFiles = 1, mode = SINGLE_DOCUMENT",
-                          quoteJson(out)))
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          createTestConfig(
+              "dsbulk.connector.json",
+              "url",
+              quoteJson(out),
+              "escape",
+              "\"\\\"\"",
+              "compression",
+              "gzip",
+              "maxConcurrentFiles",
+              1,
+              "mode",
+              "SINGLE_DOCUMENT");
       connector.configure(settings, false);
       connector.init();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
@@ -564,13 +573,20 @@ class JsonConnectorTest {
     Path out = dir.resolve("nonexistent");
     try {
       LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString(
-                      "url = "
-                          + quoteJson(out)
-                          + ", escape = \"\\\"\", compression = \"gzip\", "
-                          + "fileNameFormat = file%d, maxConcurrentFiles = 1, mode = SINGLE_DOCUMENT")
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          createTestConfig(
+              "dsbulk.connector.json",
+              "url",
+              quoteJson(out),
+              "escape",
+              "\"\\\"\"",
+              "compression",
+              "gzip",
+              "fileNameFormat",
+              "file%d",
+              "maxConcurrentFiles",
+              1,
+              "mode",
+              "SINGLE_DOCUMENT");
       connector.configure(settings, false);
       connector.init();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
@@ -605,12 +621,18 @@ class JsonConnectorTest {
     Path out = dir.resolve("nonexistent");
     try {
       LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString(
-                      String.format(
-                          "url = %s, escape = \"\\\"\", maxConcurrentFiles = 1, mode = SINGLE_DOCUMENT, serializationStrategy = NON_NULL",
-                          quoteJson(out)))
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          createTestConfig(
+              "dsbulk.connector.json",
+              "url",
+              quoteJson(out),
+              "escape",
+              "\"\\\"\"",
+              "maxConcurrentFiles",
+              1,
+              "mode",
+              "SINGLE_DOCUMENT",
+              "serializationStrategy",
+              "NON_NULL");
       connector.configure(settings, false);
       connector.init();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
@@ -637,11 +659,14 @@ class JsonConnectorTest {
     Path out = Files.createTempDirectory("test");
     try {
       LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString(
-                      String.format(
-                          "url = %s, escape = \"\\\"\", maxConcurrentFiles = 4", quoteJson(out)))
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          createTestConfig(
+              "dsbulk.connector.json",
+              "url",
+              quoteJson(out),
+              "escape",
+              "\"\\\"\"",
+              "maxConcurrentFiles",
+              4);
       connector.configure(settings, false);
       connector.init();
       // repeat the records 200 times to fully exercise multiple file writing
@@ -669,10 +694,7 @@ class JsonConnectorTest {
   void should_generate_file_name() throws Exception {
     Path out = Files.createTempDirectory("test");
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("url = " + quoteJson(out))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    LoaderConfig settings = createTestConfig("dsbulk.connector.json", "url", quoteJson(out));
     connector.configure(settings, false);
     connector.init();
     connector.counter.set(999);
@@ -688,12 +710,16 @@ class JsonConnectorTest {
     try {
       String escapedPath = quoteJson(out);
       LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString(
-                      String.format(
-                          "url = %s, escape = \"\\\"\", maxConcurrentFiles = 1, maxRecords = 3",
-                          escapedPath))
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          createTestConfig(
+              "dsbulk.connector.json",
+              "url",
+              escapedPath,
+              "escape",
+              "\"\\\"\"",
+              "maxConcurrentFiles",
+              1,
+              "maxRecords",
+              3);
       connector.configure(settings, false);
       connector.init();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
@@ -720,10 +746,8 @@ class JsonConnectorTest {
   void should_skip_records() throws Exception {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format("url = %s, recursive = true, skipRecords = 10", url("/root")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.json", "url", url("/root"), "recursive", true, "skipRecords", 10);
     connector.configure(settings, true);
     connector.init();
     assertThat(Flux.from(connector.read()).count().block()).isEqualTo(450);
@@ -734,10 +758,8 @@ class JsonConnectorTest {
   void should_skip_records2() throws Exception {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format("url = %s, recursive = true, skipRecords = 150", url("/root")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.json", "url", url("/root"), "recursive", true, "skipRecords", 150);
     connector.configure(settings, true);
     connector.init();
     assertThat(Flux.from(connector.read()).count().block()).isEqualTo(0);
@@ -748,10 +770,8 @@ class JsonConnectorTest {
   void should_honor_max_records() throws Exception {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format("url = %s, recursive = true, maxRecords = 10", url("/root")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.json", "url", url("/root"), "recursive", true, "maxRecords", 10);
     connector.configure(settings, true);
     connector.init();
     assertThat(Flux.from(connector.read()).count().block()).isEqualTo(50);
@@ -762,10 +782,8 @@ class JsonConnectorTest {
   void should_honor_max_records2() throws Exception {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format("url = %s, recursive = true, maxRecords = 1", url("/root")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.json", "url", url("/root"), "recursive", true, "maxRecords", 1);
     connector.configure(settings, true);
     connector.init();
     assertThat(Flux.from(connector.read()).count().block()).isEqualTo(5);
@@ -776,12 +794,16 @@ class JsonConnectorTest {
   void should_honor_max_records_and_skip_records() throws Exception {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, recursive = true, skipRecords = 95, maxRecords = 10",
-                        url("/root")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.json",
+            "url",
+            url("/root"),
+            "recursive",
+            true,
+            "skipRecords",
+            95,
+            "maxRecords",
+            10);
     connector.configure(settings, true);
     connector.init();
     assertThat(Flux.from(connector.read()).count().block()).isEqualTo(25);
@@ -792,12 +814,14 @@ class JsonConnectorTest {
   void should_honor_max_records_and_skip_records2() throws Exception {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, skipRecords = 10, maxRecords = 1",
-                        url("/root/ip-by-country-sample1.json")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.json",
+            "url",
+            url("/root/ip-by-country-sample1.json"),
+            "skipRecords",
+            10,
+            "maxRecords",
+            1);
     connector.configure(settings, true);
     connector.init();
     List<Record> records = Flux.from(connector.read()).collectList().block();
@@ -811,9 +835,7 @@ class JsonConnectorTest {
   @Test
   void should_error_on_empty_url() {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
-        new DefaultLoaderConfig(ConfigFactory.parseString("url = \"\""))
-            .withFallback(CONNECTOR_DEFAULT_SETTINGS);
+    LoaderConfig settings = createTestConfig("dsbulk.connector.json", "url", "\"\"");
     assertThatThrownBy(() -> connector.configure(settings, true))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
@@ -826,9 +848,7 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
 
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(String.format("urlfile = %s", quoteJson(MULTIPLE_URLS_FILE)))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig("dsbulk.connector.json", "urlfile", quoteJson(MULTIPLE_URLS_FILE));
 
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
@@ -841,12 +861,12 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
 
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "urlfile = %s, url = %s",
-                        quoteJson(MULTIPLE_URLS_FILE), quoteJson(MULTIPLE_URLS_FILE)))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.json",
+            "urlfile",
+            quoteJson(MULTIPLE_URLS_FILE),
+            "url",
+            quoteJson(MULTIPLE_URLS_FILE));
 
     assertDoesNotThrow(() -> connector.configure(settings, true));
 
@@ -858,12 +878,14 @@ class JsonConnectorTest {
   void should_accept_multiple_urls() throws IOException, URISyntaxException {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "urlfile = %s, recursive = false, fileNamePattern = \"**/part-*\"",
-                        quoteJson(MULTIPLE_URLS_FILE)))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.json",
+            "urlfile",
+            quoteJson(MULTIPLE_URLS_FILE),
+            "recursive",
+            false,
+            "fileNamePattern",
+            "\"**/part-*\"");
     connector.configure(settings, true);
     connector.init();
     assertThat(Flux.merge(connector.readByResource()).count().block()).isEqualTo(400);
@@ -879,10 +901,7 @@ class JsonConnectorTest {
       // will cause the write to fail because the file already exists
       Files.createFile(file);
       LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString(
-                      String.format("url = %s, maxConcurrentFiles = 1", quoteJson(out)))
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          createTestConfig("dsbulk.connector.json", "url", quoteJson(out), "maxConcurrentFiles", 1);
       connector.configure(settings, false);
       assertThrows(IllegalArgumentException.class, connector::init);
     } finally {
@@ -896,10 +915,7 @@ class JsonConnectorTest {
     Path out = Files.createTempDirectory("test");
     try {
       LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString(
-                      String.format("url = %s, maxConcurrentFiles = 1", quoteJson(out)))
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          createTestConfig("dsbulk.connector.json", "url", quoteJson(out), "maxConcurrentFiles", 1);
       connector.configure(settings, false);
       connector.init();
       Path file = out.resolve("output-000001.json");
@@ -920,10 +936,7 @@ class JsonConnectorTest {
     Path out = Files.createTempDirectory("test");
     try {
       LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString(
-                      String.format("url = %s, maxConcurrentFiles = 2", quoteJson(out)))
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          createTestConfig("dsbulk.connector.json", "url", quoteJson(out), "maxConcurrentFiles", 2);
       connector.configure(settings, false);
       connector.init();
       Path file1 = out.resolve("output-000001.json");
@@ -968,12 +981,14 @@ class JsonConnectorTest {
   void should_report_wrong_document_mode() throws Exception {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, parserFeatures = {ALLOW_COMMENTS:true}, mode = MULTI_DOCUMENT",
-                        url("/single_doc.json")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.json",
+            "url",
+            url("/single_doc.json"),
+            "parserFeatures",
+            "{ALLOW_COMMENTS:true}",
+            "mode",
+            "MULTI_DOCUMENT");
     connector.configure(settings, true);
     connector.init();
     assertThatThrownBy(() -> Flux.from(connector.read()).collectList().block())
@@ -997,15 +1012,16 @@ class JsonConnectorTest {
                     .withBody(readFile(path("/single_doc.json")))));
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = \"%s/file.json\", "
-                            + "mode = SINGLE_DOCUMENT, "
-                            + "parserFeatures = {ALLOW_COMMENTS:true}, "
-                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}",
-                        server.baseUrl()))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.json",
+            "url",
+            String.format("\"%s/file.json\"", server.baseUrl()),
+            "mode",
+            "SINGLE_DOCUMENT",
+            "parserFeatures",
+            "{ALLOW_COMMENTS:true}",
+            "deserializationFeatures",
+            "{USE_BIG_DECIMAL_FOR_FLOATS : false}");
     connector.configure(settings, true);
     connector.init();
     List<Record> actual = Flux.from(connector.read()).collectList().block();
@@ -1017,9 +1033,7 @@ class JsonConnectorTest {
   void should_not_write_to_http_url() throws Exception {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("url = \"http://localhost:1234/file.json\"")
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig("dsbulk.connector.json", "url", "\"http://localhost:1234/file.json\"");
     connector.configure(settings, false);
     connector.init();
     assertThatThrownBy(
@@ -1037,52 +1051,44 @@ class JsonConnectorTest {
   @Test
   void should_throw_exception_when_recursive_not_boolean() {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("recursive = NotABoolean")
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    LoaderConfig settings = createTestConfig("dsbulk.connector.json", "recursive", "NotABoolean");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for connector.json.recursive: Expecting BOOLEAN, got STRING");
+        .hasMessageContaining(
+            "Invalid value for dsbulk.connector.json.recursive, expecting BOOLEAN, got STRING");
     connector.close();
   }
 
   @Test
   void should_throw_exception_when_prettyPrint_not_boolean() {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("prettyPrint = NotABoolean")
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    LoaderConfig settings = createTestConfig("dsbulk.connector.json", "prettyPrint", "NotABoolean");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for connector.json.prettyPrint: Expecting BOOLEAN, got STRING");
+        .hasMessageContaining(
+            "Invalid value for dsbulk.connector.json.prettyPrint, expecting BOOLEAN, got STRING");
     connector.close();
   }
 
   @Test
   void should_throw_exception_when_skipRecords_not_number() {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("skipRecords = NotANumber")
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    LoaderConfig settings = createTestConfig("dsbulk.connector.json", "skipRecords", "NotANumber");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for connector.json.skipRecords: Expecting NUMBER, got STRING");
+        .hasMessageContaining(
+            "Invalid value for dsbulk.connector.json.skipRecords, expecting NUMBER, got STRING");
     connector.close();
   }
 
   @Test
   void should_throw_exception_when_maxRecords_not_number() {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxRecords = NotANumber")
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    LoaderConfig settings = createTestConfig("dsbulk.connector.json", "maxRecords", "NotANumber");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for connector.json.maxRecords: Expecting NUMBER, got STRING");
+        .hasMessageContaining(
+            "Invalid value for dsbulk.connector.json.maxRecords, expecting NUMBER, got STRING");
     connector.close();
   }
 
@@ -1090,27 +1096,22 @@ class JsonConnectorTest {
   void should_throw_exception_when_maxConcurrentFiles_not_number() {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxConcurrentFiles = NotANumber")
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig("dsbulk.connector.json", "maxConcurrentFiles", "NotANumber");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage(
-            "Invalid value for connector.json.maxConcurrentFiles: Expecting integer or string in 'nC' syntax, got 'NotANumber'");
+        .hasMessageContaining(
+            "Invalid value for dsbulk.connector.json.maxConcurrentFiles, expecting integer or string in 'nC' syntax, got 'NotANumber'");
     connector.close();
   }
 
   @Test
   void should_throw_exception_when_encoding_not_valid() {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("encoding = NotAnEncoding")
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    LoaderConfig settings = createTestConfig("dsbulk.connector.json", "encoding", "NotAnEncoding");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage(
-            "Invalid value for connector.json.encoding: Expecting valid charset name, got 'NotAnEncoding'");
+        .hasMessageContaining(
+            "Invalid value for dsbulk.connector.json.encoding, expecting valid charset name, got 'NotAnEncoding'");
     connector.close();
   }
 
@@ -1118,26 +1119,26 @@ class JsonConnectorTest {
   void should_throw_exception_when_compression_is_wrong() {
     JsonConnector connector = new JsonConnector();
     // empty string test
-    LoaderConfig settings1 =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("compression = \"abc\"")
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    LoaderConfig settings1 = createTestConfig("dsbulk.connector.json", "compression", "abc");
     assertThrows(BulkConfigurationException.class, () -> connector.configure(settings1, false));
   }
 
   @Test
-  void should_throw_exception_when_doc_compression_is_wrong(@LogCapture LogInterceptor logs)
-      throws Exception {
+  void should_throw_exception_when_doc_compression_is_wrong() throws Exception {
     JsonConnector connector = new JsonConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, compression = \"gzip\", parserFeatures = {ALLOW_COMMENTS:true}, "
-                            + "deserializationFeatures = {USE_BIG_DECIMAL_FOR_FLOATS : false}"
-                            + ", compression = \"bzip2\"",
-                        url("/multi_doc.json.gz")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.json",
+            "url",
+            url("/multi_doc.json.gz"),
+            "compression",
+            "\"gzip\"",
+            "parserFeatures",
+            "{ALLOW_COMMENTS:true}",
+            "deserializationFeatures",
+            "{USE_BIG_DECIMAL_FOR_FLOATS : false}",
+            "compression",
+            "bzip2");
     connector.configure(settings, true);
     connector.init();
     assertThatThrownBy(() -> Flux.from(connector.read()).collectList().block())

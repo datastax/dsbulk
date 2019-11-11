@@ -42,6 +42,7 @@ import com.datastax.oss.driver.api.core.cql.BatchableStatement;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.metrics.Metrics;
 import com.datastax.oss.driver.shaded.guava.common.base.Stopwatch;
+import com.datastax.oss.driver.shaded.guava.common.collect.BiMap;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
@@ -90,8 +91,8 @@ public class LoadWorkflow implements Workflow {
   private Function<Flux<WriteResult>, Flux<WriteResult>> queryWarningsHandler;
   private int numCores;
 
-  LoadWorkflow(LoaderConfig config) {
-    settingsManager = new SettingsManager(config, WorkflowType.LOAD);
+  LoadWorkflow(LoaderConfig config, BiMap<String, String> shortcuts) {
+    settingsManager = new SettingsManager(config, shortcuts, WorkflowType.LOAD);
   }
 
   @Override
@@ -104,7 +105,6 @@ public class LoadWorkflow implements Workflow {
     connectorSettings.init();
     connector = connectorSettings.getConnector();
     connector.init();
-    logSettings.logEffectiveSettings(settingsManager.getGlobalConfig());
     DriverSettings driverSettings = settingsManager.getDriverSettings();
     SchemaSettings schemaSettings = settingsManager.getSchemaSettings();
     BatchSettings batchSettings = settingsManager.getBatchSettings();
@@ -112,12 +112,14 @@ public class LoadWorkflow implements Workflow {
     CodecSettings codecSettings = settingsManager.getCodecSettings();
     MonitoringSettings monitoringSettings = settingsManager.getMonitoringSettings();
     EngineSettings engineSettings = settingsManager.getEngineSettings();
+    driverSettings.init(true);
+    logSettings.logEffectiveSettings(
+        settingsManager.getBulkLoaderConfig(), driverSettings.getDriverConfig());
     monitoringSettings.init();
     codecSettings.init();
     batchSettings.init();
     executorSettings.init();
     engineSettings.init();
-    driverSettings.init(true, executorSettings.getExecutorConfig());
     session = driverSettings.newSession(executionId);
     checkProductCompatibility(session);
     printDebugInfoAboutCluster(session);

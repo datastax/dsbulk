@@ -18,7 +18,6 @@ import ch.qos.logback.core.FileAppender;
 import ch.qos.logback.core.filter.Filter;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.format.row.RowFormatter;
 import com.datastax.dsbulk.commons.internal.format.statement.StatementFormatVerbosity;
 import com.datastax.dsbulk.commons.internal.format.statement.StatementFormatter;
@@ -26,8 +25,10 @@ import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.format.statement.BulkBoundStatementPrinter;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.log.threshold.ErrorThreshold;
-import com.datastax.dsbulk.engine.internal.utils.HelpUtils;
+import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
+import com.datastax.dse.driver.api.core.DseSession;
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.session.Session;
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.base.Joiner;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
@@ -40,7 +41,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Predicate;
@@ -72,10 +74,10 @@ public class LogSettings {
   public static final ImmutableList<String> STACK_TRACE_PRINTER_OPTIONS =
       ImmutableList.of(
           // number of stack elements to print
-          "5",
+          "10",
           // packages to exclude from stack traces
           "reactor.core",
-          "com.google",
+          "com.datastax.oss.driver.shaded",
           "io.netty",
           "java.util.concurrent");
 
@@ -147,7 +149,8 @@ public class LogSettings {
 
   public void init() throws IOException {
     try {
-      // Note: log.ansiMode is handled upstream by com.datastax.dsbulk.engine.DataStaxBulkLoader
+      // Note: log.ansiMode is handled upstream by
+      // com.datastax.dsbulk.engine.internal.cli.CommandLineParser
       operationDirectory =
           new OperationDirectoryResolver(config.getPath("directory"), executionId).resolve();
       System.setProperty(OPERATION_DIRECTORY_KEY, operationDirectory.toFile().getAbsolutePath());
@@ -190,28 +193,37 @@ public class LogSettings {
       }
       this.verbosity = Verbosity.values()[verbosity];
     } catch (ConfigException e) {
-      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "log");
+      throw BulkConfigurationException.fromTypeSafeConfigException(e, "dsbulk.log");
     }
   }
 
-  public void logEffectiveSettings(Config global) {
-    LOGGER.debug("{} starting.", HelpUtils.getVersionMessage());
+  public void logEffectiveSettings(Config dsbulkConfig, Config driverConfig) {
+    LOGGER.debug("{} starting.", WorkflowUtils.getBulkLoaderNameAndVersion());
+    // Initialize the following static fields: their initialization will print the driver
+    // coordinates to the console at INFO level, which is enough.
+    Objects.requireNonNull(DseSession.DSE_DRIVER_COORDINATES);
+    Objects.requireNonNull(Session.OSS_DRIVER_COORDINATES);
     LOGGER.debug("Available processors: {}.", Runtime.getRuntime().availableProcessors());
     LOGGER.info("Operation directory: {}", operationDirectory);
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Effective settings:");
-      Set<Map.Entry<String, ConfigValue>> entries =
-          new TreeSet<>(Comparator.comparing(Map.Entry::getKey));
-      entries.addAll(global.entrySet());
-      for (Map.Entry<String, ConfigValue> entry : entries) {
-        // Skip all settings that have a `metaSettings` path element.
-        if (entry.getKey().contains(".metaSettings.")) {
-          continue;
-        }
-        LOGGER.debug(
-            String.format(
-                "%s = %s", entry.getKey(), entry.getValue().render(ConfigRenderOptions.concise())));
-      }
+      LOGGER.debug("DataStax Bulk Loader Effective settings:");
+      dumpConfig(dsbulkConfig.withoutPath("driver"), Comparator.comparing(Entry::getKey));
+      LOGGER.debug("DataStax DSE Java Driver Effective settings:");
+      dumpConfig(
+          driverConfig,
+          Comparator.comparing(
+              entry ->
+                  entry.getKey().replaceFirst("basic\\.", "0.").replaceFirst("advanced\\.", "1.")));
+    }
+  }
+
+  private void dumpConfig(Config config, Comparator<Entry<String, ConfigValue>> comparator) {
+    Set<Entry<String, ConfigValue>> entries = new TreeSet<>(comparator);
+    entries.addAll(config.entrySet());
+    for (Entry<String, ConfigValue> entry : entries) {
+      LOGGER.debug(
+          String.format(
+              "- %s = %s", entry.getKey(), entry.getValue().render(ConfigRenderOptions.concise())));
     }
   }
 

@@ -351,7 +351,7 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "json",
       "--connector.json.url",
       quoteJson(JSON_RECORDS_ERROR),
-      "--driver.policy.maxRetries",
+      "--driver.advanced.retry-policy.max-retries",
       "1",
       "--schema.keyspace",
       "ks1",

@@ -97,15 +97,15 @@ class EndToEndSimulacronITBase {
         new String[] {
           "--log.directory",
           quoteJson(logDir),
-          "--driver.hosts",
+          "-h",
           hostname,
-          "--driver.port",
+          "-port",
           port,
-          "--driver.policy.lbp.localDc",
+          "-dc",
           "dc1",
-          "--driver.query.consistency",
+          "-cl",
           "LOCAL_ONE",
-          "--driver.pooling.local.connections",
+          "--driver.advanced.connection.pool.local.size",
           "1",
         };
     return Stream.of(args, commonArgs).flatMap(Stream::of).toArray(String[]::new);

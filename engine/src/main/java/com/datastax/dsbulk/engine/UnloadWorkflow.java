@@ -41,6 +41,7 @@ import com.datastax.dse.driver.api.core.DseSession;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.metrics.Metrics;
 import com.datastax.oss.driver.shaded.guava.common.base.Stopwatch;
+import com.datastax.oss.driver.shaded.guava.common.collect.BiMap;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import java.util.List;
@@ -84,8 +85,8 @@ public class UnloadWorkflow implements Workflow {
   private int readConcurrency;
   private int numCores;
 
-  UnloadWorkflow(LoaderConfig config) {
-    settingsManager = new SettingsManager(config, WorkflowType.UNLOAD);
+  UnloadWorkflow(LoaderConfig config, BiMap<String, String> shortcuts) {
+    settingsManager = new SettingsManager(config, shortcuts, WorkflowType.UNLOAD);
   }
 
   @Override
@@ -107,14 +108,15 @@ public class UnloadWorkflow implements Workflow {
     }
     // No logs should be produced until the following statement returns
     logSettings.init();
-    logSettings.logEffectiveSettings(settingsManager.getGlobalConfig());
-    codecSettings.init();
-    monitoringSettings.init();
-    executorSettings.init();
-    driverSettings.init(false, executorSettings.getExecutorConfig());
     connectorSettings.init();
     connector = connectorSettings.getConnector();
     connector.init();
+    driverSettings.init(false);
+    logSettings.logEffectiveSettings(
+        settingsManager.getBulkLoaderConfig(), driverSettings.getDriverConfig());
+    codecSettings.init();
+    monitoringSettings.init();
+    executorSettings.init();
     session = driverSettings.newSession(executionId);
     printDebugInfoAboutCluster(session);
     schemaSettings.init(

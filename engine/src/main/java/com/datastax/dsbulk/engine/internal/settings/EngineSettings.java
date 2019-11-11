@@ -8,8 +8,8 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
+import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.typesafe.config.ConfigException;
 
 public class EngineSettings {
@@ -30,7 +30,7 @@ public class EngineSettings {
       dryRun = config.getBoolean(DRY_RUN);
       executionId = config.hasPath(EXECUTION_ID) ? config.getString(EXECUTION_ID) : null;
     } catch (ConfigException e) {
-      throw ConfigUtils.configExceptionToBulkConfigurationException(e, "engine");
+      throw BulkConfigurationException.fromTypeSafeConfigException(e, "dsbulk.engine");
     }
   }
 

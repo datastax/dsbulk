@@ -8,6 +8,7 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
+import static com.datastax.dsbulk.commons.tests.utils.TestConfigUtils.createTestConfig;
 import static com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode.PARTITION_KEY;
 import static com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode.REPLICA_SET;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -15,12 +16,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.tests.driver.DriverUtils;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.executor.reactor.batch.ReactorStatementBatcher;
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.typesafe.config.ConfigFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -35,7 +34,7 @@ class BatchSettingsTest {
 
   @Test
   void should_create_batcher_when_mode_is_default() {
-    LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.batch"));
+    LoaderConfig config = createTestConfig("dsbulk.batch");
     BatchSettings settings = new BatchSettings(config);
     settings.init();
     assertThat(settings.getBufferSize()).isEqualTo(128);
@@ -47,11 +46,16 @@ class BatchSettingsTest {
   @Test
   void should_create_batcher_for_deprecated_maxBatchSize_and_treat_it_as_maxBatchStatements() {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-                ConfigFactory.parseString(
-                    "maxBatchSize = 32, bufferSize = 32, mode = PARTITION_KEY, maxBatchStatements = null"))
-            .withFallback(ConfigFactory.load().getConfig("dsbulk.batch"));
-
+        createTestConfig(
+            "dsbulk.batch",
+            "maxBatchSize",
+            32,
+            "bufferSize",
+            32,
+            "mode",
+            "PARTITION_KEY",
+            "maxBatchStatements",
+            null);
     BatchSettings settings = new BatchSettings(config);
     settings.init();
     assertThat(settings.getBufferSize()).isEqualTo(32);
@@ -63,10 +67,8 @@ class BatchSettingsTest {
   @Test
   void should_create_batcher_when_mode_is_default_for_new_maxBatchStatements() {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-                ConfigFactory.parseString(
-                    "maxBatchStatements = 32, bufferSize = 32, mode = PARTITION_KEY"))
-            .withFallback(ConfigFactory.load().getConfig("dsbulk.batch"));
+        createTestConfig(
+            "dsbulk.batch", "maxBatchStatements", 32, "bufferSize", 32, "mode", "PARTITION_KEY");
     BatchSettings settings = new BatchSettings(config);
     settings.init();
     assertThat(settings.getBufferSize()).isEqualTo(32);
@@ -78,10 +80,16 @@ class BatchSettingsTest {
   @Test
   void should_throw_when_both_maxBatchStatements_and_maxBatchSize_is_specified() {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-                ConfigFactory.parseString(
-                    "maxBatchStatements = 32, maxBatchSize = 32, bufferSize = 32, mode = PARTITION_KEY"))
-            .withFallback(ConfigFactory.load().getConfig("dsbulk.batch"));
+        createTestConfig(
+            "dsbulk.batch",
+            "maxBatchStatements",
+            32,
+            "maxBatchSize",
+            32,
+            "bufferSize",
+            32,
+            "mode",
+            "PARTITION_KEY");
     BatchSettings settings = new BatchSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
@@ -93,10 +101,7 @@ class BatchSettingsTest {
 
   @Test
   void should_create_batcher_when_batch_mode_provided() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("mode = REPLICA_SET")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.batch")));
+    LoaderConfig config = createTestConfig("dsbulk.batch", "mode", "REPLICA_SET");
     BatchSettings settings = new BatchSettings(config);
     settings.init();
     assertThat(settings.getBufferSize()).isEqualTo(128);
@@ -107,10 +112,7 @@ class BatchSettingsTest {
 
   @Test
   void should_create_batcher_when_buffer_size_provided() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("bufferSize = 5000")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.batch")));
+    LoaderConfig config = createTestConfig("dsbulk.batch", "bufferSize", 5000);
     BatchSettings settings = new BatchSettings(config);
     settings.init();
     assertThat(settings.getBufferSize()).isEqualTo(5000);
@@ -122,10 +124,8 @@ class BatchSettingsTest {
   @Test
   void should_create_batcher_when_max_batch_statements_mode_provided() {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-                ConfigFactory.parseString(
-                    "maxBatchStatements = 10, mode = PARTITION_KEY, bufferSize = -1"))
-            .withFallback(ConfigFactory.load().getConfig("dsbulk.batch"));
+        createTestConfig(
+            "dsbulk.batch", "maxBatchStatements", 10, "mode", "PARTITION_KEY", "bufferSize", -1);
     BatchSettings settings = new BatchSettings(config);
     settings.init();
     // buffer size should implicitly be updated when max batch size is changed and it isn't
@@ -139,10 +139,16 @@ class BatchSettingsTest {
   @Test
   void should_throw_exception_when_buffer_size_less_than_max_batch_size() {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-                ConfigFactory.parseString(
-                    "maxBatchSize = 10, bufferSize = 5, mode = PARTITION_KEY, maxBatchStatements = null"))
-            .withFallback(ConfigFactory.load().getConfig("dsbulk.batch"));
+        createTestConfig(
+            "dsbulk.batch",
+            "maxBatchSize",
+            10,
+            "bufferSize",
+            5,
+            "mode",
+            "PARTITION_KEY",
+            "maxBatchStatements",
+            null);
     BatchSettings settings = new BatchSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
@@ -154,10 +160,8 @@ class BatchSettingsTest {
   @Test
   void should_throw_exception_when_buffer_size_less_than_max_batch_statements() {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-                ConfigFactory.parseString(
-                    "maxBatchStatements = 10, bufferSize = 5, mode = PARTITION_KEY"))
-            .withFallback(ConfigFactory.load().getConfig("dsbulk.batch"));
+        createTestConfig(
+            "dsbulk.batch", "maxBatchStatements", 10, "bufferSize", 5, "mode", "PARTITION_KEY");
     BatchSettings settings = new BatchSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
@@ -169,71 +173,60 @@ class BatchSettingsTest {
   @Test
   void should_throw_exception_when_max_batch_size_not_a_number() {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxBatchSize = NotANumber, maxBatchStatements = null")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.batch")));
-    BatchSettings settings = new BatchSettings(config);
-    assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for batch.maxBatchSize: Expecting NUMBER, got STRING");
-  }
-
-  @Test
-  void should_throw_exception_when_max_batch_statements_not_a_number() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxBatchStatements = NotANumber")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.batch")));
-    BatchSettings settings = new BatchSettings(config);
-    assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for batch.maxBatchStatements: Expecting NUMBER, got STRING");
-  }
-
-  @Test
-  void should_throw_exception_when_max_size_in_bytes_not_a_number() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxSizeInBytes = NotANumber")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.batch")));
-    BatchSettings settings = new BatchSettings(config);
-    assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for batch.maxSizeInBytes: Expecting NUMBER, got STRING");
-  }
-
-  @Test
-  void should_throw_exception_when_buffer_size_not_a_number() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("bufferSize = NotANumber")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.batch")));
-    BatchSettings settings = new BatchSettings(config);
-    assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for batch.bufferSize: Expecting NUMBER, got STRING");
-  }
-
-  @Test
-  void should_throw_exception_when_batch_mode_invalid() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("mode = NotAMode")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.batch")));
+        createTestConfig(
+            "dsbulk.batch", "maxBatchSize", "NotANumber", "maxBatchStatements", "null");
     BatchSettings settings = new BatchSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
-            "Invalid value at 'mode': Expecting one of DISABLED, PARTITION_KEY, REPLICA_SET, got 'NotAMode'");
+            "Invalid value for dsbulk.batch.maxBatchSize, expecting NUMBER, got STRING");
+  }
+
+  @Test
+  void should_throw_exception_when_max_batch_statements_not_a_number() {
+    LoaderConfig config = createTestConfig("dsbulk.batch", "maxBatchStatements", "NotANumber");
+    BatchSettings settings = new BatchSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining(
+            "Invalid value for dsbulk.batch.maxBatchStatements, expecting NUMBER, got STRING");
+  }
+
+  @Test
+  void should_throw_exception_when_max_size_in_bytes_not_a_number() {
+    LoaderConfig config = createTestConfig("dsbulk.batch", "maxSizeInBytes", "NotANumber");
+    BatchSettings settings = new BatchSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining(
+            "Invalid value for dsbulk.batch.maxSizeInBytes, expecting NUMBER, got STRING");
+  }
+
+  @Test
+  void should_throw_exception_when_buffer_size_not_a_number() {
+    LoaderConfig config = createTestConfig("dsbulk.batch", "bufferSize", "NotANumber");
+    BatchSettings settings = new BatchSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining(
+            "Invalid value for dsbulk.batch.bufferSize, expecting NUMBER, got STRING");
+  }
+
+  @Test
+  void should_throw_exception_when_batch_mode_invalid() {
+    LoaderConfig config = createTestConfig("dsbulk.batch", "mode", "NotAMode");
+    BatchSettings settings = new BatchSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining(
+            "Invalid value for dsbulk.batch.mode, expecting one of DISABLED, PARTITION_KEY, REPLICA_SET, got: 'NotAMode'");
   }
 
   @Test
   void should_throw_exception_when_max_batch_statements_and_max_size_in_bytes_are_non_positive() {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-                ConfigFactory.parseString(
-                    "mode: PARTITION_KEY, maxBatchStatements = -1, maxSizeInBytes = 0"))
-            .withFallback(ConfigFactory.load().getConfig("dsbulk.batch"));
+        createTestConfig(
+            "dsbulk.batch", "mode", "PARTITION_KEY", "maxBatchStatements", -1, "maxSizeInBytes", 0);
     BatchSettings settings = new BatchSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
@@ -244,9 +237,16 @@ class BatchSettingsTest {
   @Test
   void should_throw_exception_when_max_batch_statements_and_buffer_size_are_non_positive() {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                "mode = PARTITION_KEY, maxSizeInBytes = 100, bufferSize = -1, maxBatchStatements = 0"));
+        createTestConfig(
+            "dsbulk.batch",
+            "mode",
+            "PARTITION_KEY",
+            "maxSizeInBytes",
+            100,
+            "bufferSize",
+            -1,
+            "maxBatchStatements",
+            0);
     BatchSettings settings = new BatchSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
@@ -258,9 +258,16 @@ class BatchSettingsTest {
   @Test
   void should_load_config_when_only_max_size_in_bytes_specified() {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                "mode: PARTITION_KEY, maxSizeInBytes = 1, bufferSize = 1, maxBatchStatements = -1"));
+        createTestConfig(
+            "dsbulk.batch",
+            "mode",
+            "PARTITION_KEY",
+            "maxSizeInBytes",
+            1,
+            "bufferSize",
+            1,
+            "maxBatchStatements",
+            -1);
     BatchSettings settings = new BatchSettings(config);
     settings.init();
     assertThat(ReflectionUtils.getInternalState(settings, "maxSizeInBytes")).isEqualTo(1L);
@@ -272,9 +279,18 @@ class BatchSettingsTest {
   @Test
   void should_load_config_when_max_size_in_bytes_and_max_batch_sizes_specified() {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                "mode: PARTITION_KEY, maxSizeInBytes = 1, bufferSize = 10, maxBatchSize = 10"));
+        createTestConfig(
+            "dsbulk.batch",
+            "mode",
+            "PARTITION_KEY",
+            "maxSizeInBytes",
+            1,
+            "bufferSize",
+            10,
+            "maxBatchSize",
+            10,
+            "maxBatchStatements",
+            null);
     BatchSettings settings = new BatchSettings(config);
     settings.init();
     assertThat(ReflectionUtils.getInternalState(settings, "maxSizeInBytes")).isEqualTo(1L);
@@ -288,9 +304,16 @@ class BatchSettingsTest {
   @Test
   void should_load_config_when_max_size_in_bytes_and_max_batch_statements_specified() {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                "mode: PARTITION_KEY, maxSizeInBytes = 1, bufferSize = 10, maxBatchStatements = 10"));
+        createTestConfig(
+            "dsbulk.batch",
+            "mode",
+            "PARTITION_KEY",
+            "maxSizeInBytes",
+            1,
+            "bufferSize",
+            10,
+            "maxBatchStatements",
+            10);
     BatchSettings settings = new BatchSettings(config);
     settings.init();
     assertThat(ReflectionUtils.getInternalState(settings, "maxSizeInBytes")).isEqualTo(1L);

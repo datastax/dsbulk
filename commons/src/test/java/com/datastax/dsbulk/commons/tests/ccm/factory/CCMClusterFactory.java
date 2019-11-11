@@ -118,7 +118,7 @@ public abstract class CCMClusterFactory {
     @Override
     public DefaultCCMCluster.Builder createCCMClusterBuilder() {
       DefaultCCMCluster.Builder ccmBuilder = DefaultCCMCluster.builder().withNodes(numberOfNodes);
-      if (ssl) {
+      if (ssl || auth) {
         ccmBuilder.withSSL(hostnameVerification);
       }
       if (auth) {

@@ -10,6 +10,7 @@ package com.datastax.dsbulk.engine.internal.settings;
 
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
+import static com.datastax.dsbulk.commons.tests.utils.TestConfigUtils.createTestConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -17,7 +18,6 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.core.joran.spi.JoranException;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.tests.driver.DriverUtils;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.engine.WorkflowType;
@@ -28,7 +28,6 @@ import com.datastax.dsbulk.engine.internal.log.threshold.RatioErrorThreshold;
 import com.datastax.dsbulk.engine.internal.log.threshold.UnlimitedErrorThreshold;
 import com.datastax.dsbulk.engine.tests.utils.LogUtils;
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.typesafe.config.ConfigFactory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -74,7 +73,7 @@ class LogSettingsTest {
 
   @Test
   void should_create_log_manager_with_default_output_directory() throws Exception {
-    LoaderConfig config = new DefaultLoaderConfig(ConfigFactory.load().getConfig("dsbulk.log"));
+    LoaderConfig config = createTestConfig("dsbulk.log");
     LogSettings settings = new LogSettings(config, "test");
     settings.init();
     try (LogManager logManager = settings.newLogManager(WorkflowType.LOAD, session)) {
@@ -87,10 +86,7 @@ class LogSettingsTest {
 
   @Test()
   void should_accept_maxErrors_as_absolute_number() throws IOException {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxErrors = 20")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LoaderConfig config = createTestConfig("dsbulk.log", "maxErrors", 20);
     LogSettings settings = new LogSettings(config, "test");
     settings.init();
     ErrorThreshold threshold = settings.errorThreshold;
@@ -100,10 +96,7 @@ class LogSettingsTest {
 
   @Test()
   void should_accept_maxErrors_as_percentage() throws IOException {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxErrors = 20%")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LoaderConfig config = createTestConfig("dsbulk.log", "maxErrors", "20%");
     LogSettings settings = new LogSettings(config, "test");
     settings.init();
     ErrorThreshold threshold = settings.errorThreshold;
@@ -115,10 +108,7 @@ class LogSettingsTest {
 
   @Test()
   void should_disable_maxErrors() throws IOException {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxErrors = -42")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LoaderConfig config = createTestConfig("dsbulk.log", "maxErrors", -42);
     LogSettings settings = new LogSettings(config, "test");
     settings.init();
     ErrorThreshold threshold = settings.errorThreshold;
@@ -127,29 +117,20 @@ class LogSettingsTest {
 
   @Test()
   void should_error_when_percentage_is_out_of_bounds() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxErrors = 112 %")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LoaderConfig config = createTestConfig("dsbulk.log", "maxErrors", "112 %");
     LogSettings settings = new LogSettings(config, "test");
     assertThatThrownBy(settings::init)
         .hasMessage(
             "maxErrors must either be a number, or percentage between 0 and 100 exclusive.");
 
-    config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxErrors = 0%")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    config = createTestConfig("dsbulk.log", "maxErrors", "0%");
 
     LogSettings settings2 = new LogSettings(config, "test");
     assertThatThrownBy(settings2::init)
         .hasMessage(
             "maxErrors must either be a number, or percentage between 0 and 100 exclusive.");
 
-    config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxErrors = -1%")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    config = createTestConfig("dsbulk.log", "maxErrors", "-1%");
 
     LogSettings settings3 = new LogSettings(config, "test");
     assertThatThrownBy(settings3::init)
@@ -159,10 +140,7 @@ class LogSettingsTest {
 
   @Test
   void should_create_log_manager_when_output_directory_path_provided() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("directory = " + quoteJson(tempFolder))
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LoaderConfig config = createTestConfig("dsbulk.log", "directory", quoteJson(tempFolder));
     LogSettings settings = new LogSettings(config, "test");
     settings.init();
     try (LogManager logManager = settings.newLogManager(WorkflowType.LOAD, session)) {
@@ -175,10 +153,7 @@ class LogSettingsTest {
 
   @Test
   void should_log_to_main_log_file_in_normal_mode() throws Exception {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("directory = " + quoteJson(tempFolder))
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LoaderConfig config = createTestConfig("dsbulk.log", "directory", quoteJson(tempFolder));
     ch.qos.logback.classic.Logger root =
         (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
     Level oldLevel = root.getLevel();
@@ -208,9 +183,7 @@ class LogSettingsTest {
   @Test
   void should_log_to_main_log_file_in_quiet_mode() throws Exception {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("directory = " + quoteJson(tempFolder) + ", verbosity = 0")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+        createTestConfig("dsbulk.log", "directory", quoteJson(tempFolder), "verbosity", 0);
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
     settings.init();
     ch.qos.logback.classic.Logger dsbulkLogger =
@@ -233,9 +206,7 @@ class LogSettingsTest {
   @Test
   void should_log_to_main_log_file_in_verbose_mode() throws Exception {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("directory = " + quoteJson(tempFolder) + ", verbosity = 2")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+        createTestConfig("dsbulk.log", "directory", quoteJson(tempFolder), "verbosity", 2);
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
     settings.init();
     ch.qos.logback.classic.Logger dsbulkLogger =
@@ -256,97 +227,78 @@ class LogSettingsTest {
 
   @Test
   void should_throw_exception_when_maxQueryStringLength_not_a_number() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("stmt.maxQueryStringLength = NotANumber")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LoaderConfig config = createTestConfig("dsbulk.log", "stmt.maxQueryStringLength", "NotANumber");
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage(
-            "Invalid value for log.stmt.maxQueryStringLength: Expecting NUMBER, got STRING");
+        .hasMessageContaining(
+            "Invalid value for dsbulk.log.stmt.maxQueryStringLength, expecting NUMBER, got STRING");
   }
 
   @Test
   void should_throw_exception_when_maxBoundValueLength_not_a_number() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("stmt.maxBoundValueLength = NotANumber")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LoaderConfig config = createTestConfig("dsbulk.log", "stmt.maxBoundValueLength", "NotANumber");
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for log.stmt.maxBoundValueLength: Expecting NUMBER, got STRING");
+        .hasMessageContaining(
+            "Invalid value for dsbulk.log.stmt.maxBoundValueLength, expecting NUMBER, got STRING");
   }
 
   @Test
   void should_throw_exception_when_maxBoundValues_not_a_number() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("stmt.maxBoundValues = NotANumber")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LoaderConfig config = createTestConfig("dsbulk.log", "stmt.maxBoundValues", "NotANumber");
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for log.stmt.maxBoundValues: Expecting NUMBER, got STRING");
+        .hasMessageContaining(
+            "Invalid value for dsbulk.log.stmt.maxBoundValues, expecting NUMBER, got STRING");
   }
 
   @Test
   void should_throw_exception_when_maxResultSetValues_not_a_number() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("row.maxResultSetValues = NotANumber")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LoaderConfig config = createTestConfig("dsbulk.log", "row.maxResultSetValues", "NotANumber");
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for log.row.maxResultSetValues: Expecting NUMBER, got STRING");
+        .hasMessageContaining(
+            "Invalid value for dsbulk.log.row.maxResultSetValues, expecting NUMBER, got STRING");
   }
 
   @Test
   void should_throw_exception_when_maxResultSetValueLength_not_a_number() {
     LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("row.maxResultSetValueLength = NotANumber")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
-    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
-    assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage(
-            "Invalid value for log.row.maxResultSetValueLength: Expecting NUMBER, got STRING");
-  }
-
-  @Test
-  void should_throw_exception_when_maxInnerStatements_not_a_number() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("stmt.maxInnerStatements = NotANumber")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
-    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
-    assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for log.stmt.maxInnerStatements: Expecting NUMBER, got STRING");
-  }
-
-  @Test
-  void should_throw_exception_when_level_invalid() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("stmt.level = NotALevel")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+        createTestConfig("dsbulk.log", "row.maxResultSetValueLength", "NotANumber");
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
-            "Invalid value at 'stmt.level': Expecting one of ABRIDGED, NORMAL, EXTENDED, got 'NotALevel'");
+            "Invalid value for dsbulk.log.row.maxResultSetValueLength, expecting NUMBER, got STRING");
+  }
+
+  @Test
+  void should_throw_exception_when_maxInnerStatements_not_a_number() {
+    LoaderConfig config = createTestConfig("dsbulk.log", "stmt.maxInnerStatements", "NotANumber");
+    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining(
+            "Invalid value for dsbulk.log.stmt.maxInnerStatements, expecting NUMBER, got STRING");
+  }
+
+  @Test
+  void should_throw_exception_when_level_invalid() {
+    LoaderConfig config = createTestConfig("dsbulk.log", "stmt.level", "NotALevel");
+    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining(
+            "Invalid value for dsbulk.log.stmt.level, expecting one of ABRIDGED, NORMAL, EXTENDED, got: 'NotALevel'");
   }
 
   @Test()
   void should_accept_maxQueryWarnings_as_absolute_number() throws IOException {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxQueryWarnings = 20")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LoaderConfig config = createTestConfig("dsbulk.log", "maxQueryWarnings", 20);
     LogSettings settings = new LogSettings(config, "test");
     settings.init();
     ErrorThreshold threshold = settings.queryWarningsThreshold;
@@ -356,22 +308,17 @@ class LogSettingsTest {
 
   @Test()
   void should_not_accept_maxQueryWarnings_as_percentage() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxQueryWarnings = 20%")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LoaderConfig config = createTestConfig("dsbulk.log", "maxQueryWarnings", "20%");
     LogSettings settings = new LogSettings(config, "test");
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for log.maxQueryWarnings: Expecting NUMBER, got STRING");
+        .hasMessageContaining(
+            "Invalid value for dsbulk.log.maxQueryWarnings, expecting NUMBER, got STRING");
   }
 
   @Test()
   void should_disable_maxQueryWarnings() throws IOException {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxQueryWarnings = -42")
-                .withFallback(ConfigFactory.load().getConfig("dsbulk.log")));
+    LoaderConfig config = createTestConfig("dsbulk.log", "maxQueryWarnings", -42);
     LogSettings settings = new LogSettings(config, "test");
     settings.init();
     ErrorThreshold threshold = settings.queryWarningsThreshold;

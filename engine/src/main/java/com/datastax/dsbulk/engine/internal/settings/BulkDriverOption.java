@@ -12,7 +12,19 @@ import com.datastax.oss.driver.api.core.config.DriverOption;
 import edu.umd.cs.findbugs.annotations.NonNull;
 
 public enum BulkDriverOption implements DriverOption {
-  RETRY_POLICY_MAX_RETRIES("advanced.connection.retry-policy.max-retries"),
+
+  /**
+   * The default port to use when {@link
+   * com.datastax.oss.driver.api.core.config.DefaultDriverOption#CONTACT_POINTS} contains hosts
+   * without ports.
+   */
+  DEFAULT_PORT("basic.default-port"),
+
+  /**
+   * The maximum number of attemps to retry, when using {@link
+   * com.datastax.dsbulk.engine.internal.policies.retry.MultipleRetryPolicy}.
+   */
+  RETRY_POLICY_MAX_RETRIES("advanced.retry-policy.max-retries"),
   ;
 
   private final String path;

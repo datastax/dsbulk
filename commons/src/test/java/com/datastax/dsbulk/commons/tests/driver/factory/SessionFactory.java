@@ -118,9 +118,12 @@ public abstract class SessionFactory {
             .put(SSL_ENGINE_FACTORY_CLASS, "DefaultSslEngineFactory")
             .put(SSL_TRUSTSTORE_PATH, DEFAULT_CLIENT_TRUSTSTORE_FILE.toString())
             .put(SSL_TRUSTSTORE_PASSWORD, DEFAULT_CLIENT_TRUSTSTORE_PASSWORD)
+            .build();
+
+    private static final ImmutableMap<DriverOption, String> AUTH_OPTIONS =
+        ImmutableMap.<DriverOption, String>builder()
             .put(SSL_KEYSTORE_PATH, DEFAULT_CLIENT_KEYSTORE_FILE.toString())
             .put(SSL_KEYSTORE_PASSWORD, DEFAULT_CLIENT_KEYSTORE_PASSWORD)
-            .put(SSL_HOSTNAME_VALIDATION, "false")
             .build();
 
     private static final Duration ONE_MINUTE = Duration.ofSeconds(60);
@@ -179,10 +182,16 @@ public abstract class SessionFactory {
             .withString(AUTH_PROVIDER_USER_NAME, credentials[0])
             .withString(AUTH_PROVIDER_PASSWORD, credentials[1]);
       }
-      if (config.ssl()) {
+      if (config.auth()) {
+        for (Map.Entry<DriverOption, String> entry : AUTH_OPTIONS.entrySet()) {
+          setOption(loaderBuilder, entry.getKey(), entry.getValue());
+        }
+      }
+      if (config.ssl() || config.auth()) {
         for (Map.Entry<DriverOption, String> entry : SSL_OPTIONS.entrySet()) {
           setOption(loaderBuilder, entry.getKey(), entry.getValue());
         }
+        setOption(loaderBuilder, SSL_HOSTNAME_VALIDATION, config.hostnameVerification());
       }
       configLoader = loaderBuilder.build();
     }

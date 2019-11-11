@@ -33,6 +33,21 @@ public @interface SessionConfig {
   boolean ssl() default false;
 
   /**
+   * Whether clients (tests) will use hostname verification when using SSL encryption.
+   *
+   * @return {@code true} to indicate client will verify the server cert, false otherwise (default).
+   */
+  boolean hostnameVerification() default false;
+
+  /**
+   * Whether to use authentication. Implies the use of SSL encryption.
+   *
+   * @return {@code true} to use authentication, {@code false} to use unauthenticated communication
+   *     (default).
+   */
+  boolean auth() default false;
+
+  /**
    * Whether to set the current session to a specific keyspace through a {@code USE} statement.
    *
    * <p>This will be done only once, upon session creation, and should not be changed afterwards in

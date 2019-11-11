@@ -10,6 +10,7 @@
 - [improvement] DAT-481: Improve NodeComparator algorithm.
 - [improvement] DAT-449: Add support for loading and unloading from/to compressed files.
 - [improvement] DAT-499: Warn if cloud enabled and incompatible settings are defined.
+- [improvement] DAT-495: DAT-495: Allow driver to be configured directly.
 
 
 ### 1.3.4

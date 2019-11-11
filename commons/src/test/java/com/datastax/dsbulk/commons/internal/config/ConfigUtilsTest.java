@@ -17,6 +17,7 @@ import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isValueFro
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.resolvePath;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.resolveThreads;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.resolveURL;
+import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.resolveUserHome;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.createURLFile;
 import static com.typesafe.config.ConfigValueType.BOOLEAN;
 import static com.typesafe.config.ConfigValueType.LIST;
@@ -65,6 +66,10 @@ class ConfigUtilsTest {
     assertThat(resolvePath("~/foo")).isEqualTo(Paths.get(System.getProperty("user.home"), "foo"));
     assertThat(resolvePath("foo/bar"))
         .isEqualTo(Paths.get(System.getProperty("user.dir"), "foo", "bar"));
+    assertThat(resolvePath("./foo/bar"))
+        .isEqualTo(Paths.get(System.getProperty("user.dir"), "foo", "bar"));
+    assertThat(resolvePath("./foo/../foo/bar"))
+        .isEqualTo(Paths.get(System.getProperty("user.dir"), "foo", "bar"));
     assertThatThrownBy(() -> resolvePath("~otheruser/foo"))
         .isInstanceOf(InvalidPathException.class)
         .hasMessageContaining("Cannot resolve home directory");
@@ -108,15 +113,28 @@ class ConfigUtilsTest {
                     t -> assertThat(t.getSuppressed()[0]).isInstanceOf(MalformedURLException.class))
                 .hasMessageContaining("Illegal char <:> at index 17"));
     assertThat(resolveURL("~"))
-        .isEqualTo(Paths.get(System.getProperty("user.home")).toUri().toURL());
+        .isEqualTo(Paths.get(System.getProperty("user.home")).toUri().normalize().toURL());
     assertThat(resolveURL("~/foo"))
         .isEqualTo(Paths.get(System.getProperty("user.home"), "foo").toUri().toURL());
     assertThat(resolveURL("/foo/bar")).isEqualTo(Paths.get("/foo/bar").toUri().toURL());
     assertThat(resolveURL("foo/bar"))
         .isEqualTo(Paths.get(System.getProperty("user.dir"), "foo", "bar").toUri().toURL());
+    assertThat(resolveURL("./foo/bar"))
+        .isEqualTo(Paths.get(System.getProperty("user.dir"), "foo", "bar").toUri().toURL());
+    assertThat(resolveURL("./foo/../foo/bar"))
+        .isEqualTo(Paths.get(System.getProperty("user.dir"), "foo", "bar").toUri().toURL());
     assertThatThrownBy(() -> resolveURL("~otheruser/foo"))
         .isInstanceOf(InvalidPathException.class)
-        .satisfies(t -> assertThat(t.getSuppressed()[0]).isInstanceOf(MalformedURLException.class))
+        .hasMessageContaining("Cannot resolve home directory");
+  }
+
+  @Test
+  void should_resolve_user_home() {
+    assertThat(resolveUserHome("~")).contains(Paths.get(System.getProperty("user.home")));
+    assertThat(resolveUserHome("~/foo"))
+        .contains(Paths.get(System.getProperty("user.home"), "foo"));
+    assertThatThrownBy(() -> resolveUserHome("~otheruser/foo"))
+        .isInstanceOf(InvalidPathException.class)
         .hasMessageContaining("Cannot resolve home directory");
   }
 
@@ -139,11 +157,11 @@ class ConfigUtilsTest {
                     + "stringListField = [\"v1\", \"v2\"], "
                     + "numberListField = [9, 7], "
                     + "booleanField = false"));
-    assertThat(getTypeString(config, "intField")).isEqualTo("number");
-    assertThat(getTypeString(config, "stringField")).isEqualTo("string");
-    assertThat(getTypeString(config, "stringListField")).isEqualTo("list<string>");
-    assertThat(getTypeString(config, "numberListField")).isEqualTo("list<number>");
-    assertThat(getTypeString(config, "booleanField")).isEqualTo("boolean");
+    assertThat(getTypeString(config, "intField")).contains("number");
+    assertThat(getTypeString(config, "stringField")).contains("string");
+    assertThat(getTypeString(config, "stringListField")).contains("list<string>");
+    assertThat(getTypeString(config, "numberListField")).contains("list<number>");
+    assertThat(getTypeString(config, "booleanField")).contains("boolean");
     assertThatThrownBy(() -> getTypeString(config, "this.path.does.not.exist"))
         .isInstanceOf(ConfigException.Missing.class)
         .hasMessage("No configuration setting found for key 'this.path.does.not.exist'");
@@ -258,9 +276,13 @@ class ConfigUtilsTest {
   @Test
   void should_detect_value_from_reference() {
     Config config =
-        ConfigFactory.parseString("foo = -1").withFallback(ConfigFactory.defaultReference());
-    assertThat(isValueFromReferenceConfig(config, "foo")).isFalse();
-    assertThat(isValueFromReferenceConfig(config, "bar")).isTrue();
+        ConfigFactory.parseString("overriddenInApplication = -1, onlyInApplication = -2")
+            .withFallback(ConfigFactory.defaultReference());
+    assertThat(isValueFromReferenceConfig(config, "overriddenInApplication")).isFalse();
+    assertThat(isValueFromReferenceConfig(config, "onlyInApplication")).isFalse();
+    assertThat(isValueFromReferenceConfig(config, "fromReference")).isTrue();
+    assertThat(isValueFromReferenceConfig(config, "fromReferenceButNull")).isTrue();
+    assertThat(isValueFromReferenceConfig(config, "nonExistent")).isFalse();
   }
 
   static List<Arguments> urlsProvider() throws MalformedURLException {

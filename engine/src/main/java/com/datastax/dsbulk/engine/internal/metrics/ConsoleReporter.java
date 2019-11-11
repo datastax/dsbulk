@@ -21,7 +21,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.ScheduledReporter;
 import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.Timer;
-import com.datastax.dsbulk.engine.internal.utils.HelpUtils;
+import com.datastax.dsbulk.engine.internal.utils.ConsoleUtils;
 import com.datastax.dsbulk.executor.api.listener.MetricsCollectingExecutionListener;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
@@ -46,7 +46,6 @@ public class ConsoleReporter extends ScheduledReporter {
 
   private static final double BYTES_PER_KB = 1024;
   private static final double BYTES_PER_MB = BYTES_PER_KB * BYTES_PER_KB;
-  private static final int LINE_LENGTH = HelpUtils.getLineLength();
 
   private final long expectedTotal;
   private final AtomicBoolean running;
@@ -272,7 +271,7 @@ public class ConsoleReporter extends ScheduledReporter {
     }
 
     private boolean hasMoreSpace() {
-      return header.toString().length() < LINE_LENGTH;
+      return header.toString().length() < ConsoleUtils.LINE_LENGTH;
     }
   }
 

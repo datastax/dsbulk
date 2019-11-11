@@ -13,6 +13,7 @@ import static com.datastax.dsbulk.commons.tests.utils.FileUtils.createURLFile;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readFile;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
+import static com.datastax.dsbulk.commons.tests.utils.TestConfigUtils.createTestConfig;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.any;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
@@ -26,7 +27,6 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.internal.io.CompressedIOUtils;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
@@ -41,8 +41,6 @@ import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.datastax.oss.driver.shaded.guava.common.base.Charsets;
 import com.github.tomakehurst.wiremock.WireMockServer;
-import com.typesafe.config.Config;
-import com.typesafe.config.ConfigFactory;
 import com.univocity.parsers.common.TextParsingException;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -89,9 +87,6 @@ class CSVConnectorTest {
 
   private static Path MULTIPLE_URLS_FILE;
 
-  private static final Config CONNECTOR_DEFAULT_SETTINGS =
-      ConfigFactory.defaultReference().getConfig("dsbulk.connector.csv");
-
   private final URI resource = URI.create("file://file1.csv");
 
   @BeforeAll
@@ -113,12 +108,18 @@ class CSVConnectorTest {
   void should_read_single_file(String fileName, String compMethod) throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, normalizeLineEndingsInQuotes = true, escape = \"\\\"\", comment = \"#\", compression = \"%s\"",
-                        url("/" + fileName), compMethod))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.csv",
+            "url",
+            url("/" + fileName),
+            "normalizeLineEndingsInQuotes",
+            true,
+            "escape",
+            "\"\\\"\"",
+            "comment",
+            "\"#\"",
+            "compression",
+            quoteJson(compMethod));
     connector.configure(settings, true);
     connector.init();
     List<Record> actual = Flux.from(connector.read()).collectList().block();
@@ -145,12 +146,16 @@ class CSVConnectorTest {
   void should_read_single_file_by_resource() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, normalizeLineEndingsInQuotes = true, escape = \"\\\"\", comment = \"#\"",
-                        url("/sample.csv")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.csv",
+            "url",
+            url("/sample.csv"),
+            "normalizeLineEndingsInQuotes",
+            true,
+            "escape",
+            "\"\\\"\"",
+            "comment",
+            "\"#\"");
     connector.configure(settings, true);
     connector.init();
     List<Record> actual = Flux.merge(connector.readByResource()).collectList().block();
@@ -231,9 +236,8 @@ class CSVConnectorTest {
       System.setIn(is);
       CSVConnector connector = new CSVConnector();
       LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString("header = false, url = -, encoding = ISO-8859-1")
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          createTestConfig(
+              "dsbulk.connector.csv", "header", false, "url", "-", "encoding", "ISO-8859-1");
       connector.configure(settings, true);
       connector.init();
       List<Record> actual = Flux.from(connector.read()).collectList().block();
@@ -255,9 +259,7 @@ class CSVConnectorTest {
       System.setOut(out);
       CSVConnector connector = new CSVConnector();
       LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString("header = false, encoding = ISO-8859-1")
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          createTestConfig("dsbulk.connector.csv", "header", false, "encoding", "ISO-8859-1");
       connector.configure(settings, false);
       connector.init();
       Flux.<Record>just(DefaultRecord.indexed("source", resource, -1, "fóô", "bàr", "qïx"))
@@ -280,9 +282,8 @@ class CSVConnectorTest {
       System.setIn(is);
       CSVConnector connector = new CSVConnector();
       LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString("header = false, url = -, newline = \"\\r\\n\"")
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          createTestConfig(
+              "dsbulk.connector.csv", "header", false, "url", "-", "newline", "\"\\r\\n\"");
       connector.configure(settings, true);
       connector.init();
       List<Record> actual = Flux.from(connector.read()).collectList().block();
@@ -304,9 +305,7 @@ class CSVConnectorTest {
       System.setOut(out);
       CSVConnector connector = new CSVConnector();
       LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString("header = false, newline = \"\\r\\n\"")
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          createTestConfig("dsbulk.connector.csv", "header", false, "newline", "\"\\r\\n\"");
       connector.configure(settings, false);
       connector.init();
       Flux.<Record>just(DefaultRecord.indexed("source", resource, -1, "abc", "de\nf", "ghk"))
@@ -323,9 +322,7 @@ class CSVConnectorTest {
   void should_read_all_resources_in_directory() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(String.format("url = %s, recursive = false", url("/root")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig("dsbulk.connector.csv", "url", url("/root"), "recursive", false);
     connector.configure(settings, true);
     connector.init();
     assertThat(Flux.from(connector.read()).count().block()).isEqualTo(300);
@@ -336,9 +333,7 @@ class CSVConnectorTest {
   void should_read_all_resources_in_directory_by_resource() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(String.format("url = %s, recursive = false", url("/root")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig("dsbulk.connector.csv", "url", url("/root"), "recursive", false);
     connector.configure(settings, true);
     connector.init();
     assertThat(Flux.merge(connector.readByResource()).count().block()).isEqualTo(300);
@@ -350,10 +345,7 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Path rootPath = Paths.get(getClass().getResource("/root").toURI());
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format("url = %s, recursive = false", quoteJson(rootPath)))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig("dsbulk.connector.csv", "url", quoteJson(rootPath), "recursive", false);
     connector.configure(settings, true);
     connector.init();
     assertThat(Flux.from(connector.read()).count().block()).isEqualTo(300);
@@ -364,9 +356,7 @@ class CSVConnectorTest {
   void should_read_all_resources_in_directory_recursively() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(String.format("url = %s, recursive = true", url("/root")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig("dsbulk.connector.csv", "url", url("/root"), "recursive", true);
     connector.configure(settings, true);
     connector.init();
     assertThat(Flux.from(connector.read()).count().block()).isEqualTo(500);
@@ -377,9 +367,7 @@ class CSVConnectorTest {
   void should_read_all_resources_in_directory_recursively_by_resource() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(String.format("url = %s, recursive = true", url("/root")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig("dsbulk.connector.csv", "url", url("/root"), "recursive", true);
     connector.configure(settings, true);
     connector.init();
     assertThat(Flux.merge(connector.readByResource()).count().block()).isEqualTo(500);
@@ -390,12 +378,14 @@ class CSVConnectorTest {
   void should_scan_directory_recursively_with_custom_file_name_format() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, recursive = true, fileNamePattern = \"**/part-*\"",
-                        url("/root-custom")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.csv",
+            "url",
+            url("/root-custom"),
+            "recursive",
+            true,
+            "fileNamePattern",
+            "\"**/part-*\"");
     connector.configure(settings, true);
     connector.init();
     assertThat(Flux.from(connector.read()).count().block()).isEqualTo(500);
@@ -408,12 +398,14 @@ class CSVConnectorTest {
     Path rootPath = Files.createTempDirectory("empty");
     try {
       LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString(
-                      String.format(
-                          "url = %s, recursive = true, fileNamePattern = \"**/part-*\"",
-                          quoteJson(rootPath)))
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          createTestConfig(
+              "dsbulk.connector.csv",
+              "url",
+              quoteJson(rootPath),
+              "recursive",
+              true,
+              "fileNamePattern",
+              "\"**/part-*\"");
       connector.configure(settings, true);
       connector.init();
       assertThat(logs.getLoggedMessages())
@@ -431,12 +423,14 @@ class CSVConnectorTest {
     Files.createTempFile(rootPath, "test", ".txt");
     try {
       LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString(
-                      String.format(
-                          "url = %s, recursive = true, fileNamePattern = \"**/part-*\"",
-                          quoteJson(rootPath)))
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          createTestConfig(
+              "dsbulk.connector.csv",
+              "url",
+              quoteJson(rootPath),
+              "recursive",
+              true,
+              "fileNamePattern",
+              "\"**/part-*\"");
       connector.configure(settings, true);
       connector.init();
       assertThat(logs.getLoggedMessages())
@@ -461,12 +455,14 @@ class CSVConnectorTest {
     Files.createTempFile(rootPath, "test", ".txt");
     try {
       LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString(
-                      String.format(
-                          "url = %s, recursive = true, compression = \"%s\"",
-                          quoteJson(rootPath), compression))
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          createTestConfig(
+              "dsbulk.connector.csv",
+              "url",
+              quoteJson(rootPath),
+              "recursive",
+              true,
+              "compression",
+              quoteJson(compression));
       connector.configure(settings, true);
       connector.init();
       assertThat(logs.getLoggedMessages())
@@ -501,11 +497,14 @@ class CSVConnectorTest {
     Path out = dir.resolve("nonexistent");
     try {
       LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString(
-                      String.format(
-                          "url = %s, escape = \"\\\"\", maxConcurrentFiles = 1", quoteJson(out)))
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          createTestConfig(
+              "dsbulk.connector.csv",
+              "url",
+              quoteJson(out),
+              "escape",
+              "\"\\\"\"",
+              "maxConcurrentFiles",
+              1);
       connector.configure(settings, false);
       connector.init();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
@@ -534,12 +533,16 @@ class CSVConnectorTest {
     Path out = dir.resolve("nonexistent");
     try {
       LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString(
-                      String.format(
-                          "url = %s, escape = \"\\\"\", maxConcurrentFiles = 1, compression = \"gzip\"",
-                          quoteJson(out)))
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          createTestConfig(
+              "dsbulk.connector.csv",
+              "url",
+              quoteJson(out),
+              "escape",
+              "\"\\\"\"",
+              "maxConcurrentFiles",
+              1,
+              "compression",
+              "\"gzip\"");
       connector.configure(settings, false);
       connector.init();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
@@ -574,12 +577,18 @@ class CSVConnectorTest {
     Path out = dir.resolve("nonexistent");
     try {
       LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString(
-                      "url = "
-                          + quoteJson(out)
-                          + ", escape = \"\\\"\", maxConcurrentFiles = 1, compression = \"gzip\", fileNameFormat = file%d")
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          createTestConfig(
+              "dsbulk.connector.csv",
+              "url",
+              quoteJson(out),
+              "escape",
+              "\"\\\"\"",
+              "maxConcurrentFiles",
+              1,
+              "compression",
+              "\"gzip\"",
+              "fileNameFormat",
+              "file%d");
       connector.configure(settings, false);
       connector.init();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
@@ -612,11 +621,14 @@ class CSVConnectorTest {
     Path out = Files.createTempDirectory("test");
     try {
       LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString(
-                      String.format(
-                          "url = %s, escape = \"\\\"\", maxConcurrentFiles = 4", quoteJson(out)))
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          createTestConfig(
+              "dsbulk.connector.csv",
+              "url",
+              quoteJson(out),
+              "escape",
+              "\"\\\"\"",
+              "maxConcurrentFiles",
+              4);
       connector.configure(settings, false);
       connector.init();
       // repeat the records 200 times to fully exercise multiple file writing
@@ -646,10 +658,7 @@ class CSVConnectorTest {
   void should_generate_file_name() throws Exception {
     Path out = Files.createTempDirectory("test");
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("url = " + quoteJson(out))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    LoaderConfig settings = createTestConfig("dsbulk.connector.csv", "url", quoteJson(out));
     connector.configure(settings, false);
     connector.init();
     connector.counter.set(999);
@@ -664,12 +673,16 @@ class CSVConnectorTest {
     Path out = Files.createTempDirectory("test");
     try {
       LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString(
-                      String.format(
-                          "url = %s, escape = \"\\\"\", maxConcurrentFiles = 1, maxRecords = 4",
-                          quoteJson(out)))
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          createTestConfig(
+              "dsbulk.connector.csv",
+              "url",
+              quoteJson(out),
+              "escape",
+              "\"\\\"\"",
+              "maxConcurrentFiles",
+              1,
+              "maxRecords",
+              4);
       connector.configure(settings, false);
       connector.init();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
@@ -704,9 +717,7 @@ class CSVConnectorTest {
       InputStream is = new ByteArrayInputStream(lines.getBytes(UTF_8));
       System.setIn(is);
       CSVConnector connector = new CSVConnector();
-      LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString("header = true").withFallback(CONNECTOR_DEFAULT_SETTINGS));
+      LoaderConfig settings = createTestConfig("dsbulk.connector.csv", "header", true);
       connector.configure(settings, true);
       connector.init();
       List<Record> actual = Flux.from(connector.read()).collectList().block();
@@ -726,10 +737,8 @@ class CSVConnectorTest {
   void should_skip_records() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format("url = %s, recursive = true, skipRecords = 10", url("/root")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.csv", "url", url("/root"), "recursive", true, "skipRecords", 10);
     connector.configure(settings, true);
     connector.init();
     assertThat(Flux.from(connector.read()).count().block()).isEqualTo(450);
@@ -740,10 +749,8 @@ class CSVConnectorTest {
   void should_skip_records2() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format("url = %s, recursive = true, skipRecords = 150", url("/root")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.csv", "url", url("/root"), "recursive", true, "skipRecords", 150);
     connector.configure(settings, true);
     connector.init();
     assertThat(Flux.from(connector.read()).count().block()).isEqualTo(0);
@@ -754,10 +761,8 @@ class CSVConnectorTest {
   void should_honor_max_records() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format("url = %s, recursive = true, maxRecords = 10", url("/root")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.csv", "url", url("/root"), "recursive", true, "maxRecords", 10);
     connector.configure(settings, true);
     connector.init();
     assertThat(Flux.from(connector.read()).count().block()).isEqualTo(50);
@@ -768,10 +773,8 @@ class CSVConnectorTest {
   void should_honor_max_records2() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format("url = %s, recursive = true, maxRecords = 1", url("/root")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.csv", "url", url("/root"), "recursive", true, "maxRecords", 1);
     connector.configure(settings, true);
     connector.init();
     assertThat(Flux.from(connector.read()).count().block()).isEqualTo(5);
@@ -782,12 +785,16 @@ class CSVConnectorTest {
   void should_honor_max_records_and_skip_records() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, recursive = true, skipRecords = 95, maxRecords = 10",
-                        url("/root")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.csv",
+            "url",
+            url("/root"),
+            "recursive",
+            true,
+            "skipRecords",
+            95,
+            "maxRecords",
+            10);
     connector.configure(settings, true);
     connector.init();
     assertThat(Flux.from(connector.read()).count().block()).isEqualTo(25);
@@ -798,12 +805,14 @@ class CSVConnectorTest {
   void should_honor_max_records_and_skip_records2() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, skipRecords = 10, maxRecords = 1",
-                        url("/root/ip-by-country-sample1.csv")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.csv",
+            "url",
+            url("/root/ip-by-country-sample1.csv"),
+            "skipRecords",
+            10,
+            "maxRecords",
+            1);
     connector.configure(settings, true);
     connector.init();
     List<Record> records = Flux.from(connector.read()).collectList().block();
@@ -821,15 +830,16 @@ class CSVConnectorTest {
     Files.write(file, Collections.singleton(" foo "));
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, "
-                            + "ignoreLeadingWhitespaces = false, "
-                            + "ignoreTrailingWhitespaces = false, "
-                            + "header = false",
-                        quoteJson(file)))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.csv",
+            "url",
+            quoteJson(file),
+            "ignoreLeadingWhitespaces",
+            false,
+            "ignoreTrailingWhitespaces",
+            false,
+            "header",
+            false);
     connector.configure(settings, true);
     connector.init();
     List<Record> records = Flux.from(connector.read()).collectList().block();
@@ -845,15 +855,16 @@ class CSVConnectorTest {
     Files.write(file, Collections.singleton(" foo "));
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, "
-                            + "ignoreLeadingWhitespaces = true, "
-                            + "ignoreTrailingWhitespaces = true, "
-                            + "header = false",
-                        quoteJson(file)))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.csv",
+            "url",
+            quoteJson(file),
+            "ignoreLeadingWhitespaces",
+            true,
+            "ignoreTrailingWhitespaces",
+            true,
+            "header",
+            false);
     connector.configure(settings, true);
     connector.init();
     List<Record> records = Flux.from(connector.read()).collectList().block();
@@ -868,16 +879,18 @@ class CSVConnectorTest {
     Path out = Files.createTempDirectory("test");
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, "
-                            + "ignoreLeadingWhitespaces = false, "
-                            + "ignoreTrailingWhitespaces = false, "
-                            + "maxConcurrentFiles = 1, "
-                            + "header = false",
-                        quoteJson(out)))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.csv",
+            "url",
+            quoteJson(out),
+            "ignoreLeadingWhitespaces",
+            false,
+            "ignoreTrailingWhitespaces",
+            false,
+            "maxConcurrentFiles",
+            1,
+            "header",
+            false);
     connector.configure(settings, false);
     connector.init();
     Flux.<Record>just(DefaultRecord.indexed("source", resource, -1, " foo "))
@@ -894,15 +907,16 @@ class CSVConnectorTest {
     Path out = Files.createTempDirectory("test");
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, "
-                            + "ignoreLeadingWhitespaces = true, "
-                            + "ignoreTrailingWhitespaces = true, "
-                            + "header = false",
-                        quoteJson(out)))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.csv",
+            "url",
+            quoteJson(out),
+            "ignoreLeadingWhitespaces",
+            true,
+            "ignoreTrailingWhitespaces",
+            true,
+            "header",
+            false);
     connector.configure(settings, false);
     connector.init();
     Flux.<Record>just(DefaultRecord.indexed("source", resource, -1, " foo "))
@@ -920,15 +934,16 @@ class CSVConnectorTest {
     Files.write(file, Collections.singleton("\" foo \""));
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, "
-                            + "ignoreLeadingWhitespacesInQuotes = false, "
-                            + "ignoreTrailingWhitespacesInQuotes = false, "
-                            + "header = false",
-                        quoteJson(file)))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.csv",
+            "url",
+            quoteJson(file),
+            "ignoreLeadingWhitespacesInQuotes",
+            false,
+            "ignoreTrailingWhitespacesInQuotes",
+            false,
+            "header",
+            false);
     connector.configure(settings, true);
     connector.init();
     List<Record> records = Flux.from(connector.read()).collectList().block();
@@ -944,15 +959,16 @@ class CSVConnectorTest {
     Files.write(file, Collections.singleton("\" foo \""));
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, "
-                            + "ignoreLeadingWhitespacesInQuotes = true, "
-                            + "ignoreTrailingWhitespacesInQuotes = true, "
-                            + "header = false",
-                        quoteJson(file)))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.csv",
+            "url",
+            quoteJson(file),
+            "ignoreLeadingWhitespacesInQuotes",
+            true,
+            "ignoreTrailingWhitespacesInQuotes",
+            true,
+            "header",
+            false);
     connector.configure(settings, true);
     connector.init();
     List<Record> records = Flux.from(connector.read()).collectList().block();
@@ -967,10 +983,8 @@ class CSVConnectorTest {
     Files.write(file, Collections.singleton(","));
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format("url = %s, nullValue = null, header = false", quoteJson(file)))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.csv", "url", quoteJson(file), "nullValue", null, "header", false);
     connector.configure(settings, true);
     connector.init();
     List<Record> records = Flux.from(connector.read()).collectList().block();
@@ -985,10 +999,8 @@ class CSVConnectorTest {
     Files.write(file, Collections.singleton(","));
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format("url = %s, nullValue = NULL, header = false", quoteJson(file)))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.csv", "url", quoteJson(file), "nullValue", "NULL", "header", false);
     connector.configure(settings, true);
     connector.init();
     List<Record> records = Flux.from(connector.read()).collectList().block();
@@ -1002,10 +1014,8 @@ class CSVConnectorTest {
     Path out = Files.createTempDirectory("test");
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format("url = %s, nullValue = null, header = true", quoteJson(out)))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.csv", "url", quoteJson(out), "nullValue", null, "header", true);
     connector.configure(settings, false);
     connector.init();
     Flux.<Record>just(
@@ -1029,10 +1039,8 @@ class CSVConnectorTest {
     Path out = Files.createTempDirectory("test");
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format("url = %s, nullValue = NULL, header = false", quoteJson(out)))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.csv", "url", quoteJson(out), "nullValue", "NULL", "header", false);
     connector.configure(settings, false);
     connector.init();
     Flux.<Record>just(DefaultRecord.indexed("source", resource, -1, new Object[] {null}))
@@ -1049,10 +1057,8 @@ class CSVConnectorTest {
     Files.write(file, Collections.singleton("\"\""));
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format("url = %s, emptyValue = \"\", header = false", quoteJson(file)))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.csv", "url", quoteJson(file), "emptyValue", "\"\"", "header", false);
     connector.configure(settings, true);
     connector.init();
     List<Record> records = Flux.from(connector.read()).collectList().block();
@@ -1067,10 +1073,8 @@ class CSVConnectorTest {
     Files.write(file, Collections.singleton("\"\""));
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format("url = %s, emptyValue = EMPTY, header = false", quoteJson(file)))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.csv", "url", quoteJson(file), "emptyValue", "EMPTY", "header", false);
     connector.configure(settings, true);
     connector.init();
     List<Record> records = Flux.from(connector.read()).collectList().block();
@@ -1088,10 +1092,7 @@ class CSVConnectorTest {
       // will cause the write to fail because the file already exists
       Files.createFile(file);
       LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString(
-                      String.format("url = %s, maxConcurrentFiles = 1", quoteJson(out)))
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          createTestConfig("dsbulk.connector.csv", "url", quoteJson(out), "maxConcurrentFiles", 1);
       connector.configure(settings, false);
       assertThrows(IllegalArgumentException.class, connector::init);
     } finally {
@@ -1103,15 +1104,10 @@ class CSVConnectorTest {
   void should_error_when_newline_is_wrong() {
     CSVConnector connector = new CSVConnector();
     // empty string test
-    LoaderConfig settings1 =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("newline = \"\"").withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    LoaderConfig settings1 = createTestConfig("dsbulk.connector.csv", "newline", "\"\"");
     assertThrows(BulkConfigurationException.class, () -> connector.configure(settings1, false));
     // long string test
-    LoaderConfig settings2 =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("newline = \"abc\"")
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    LoaderConfig settings2 = createTestConfig("dsbulk.connector.csv", "newline", "\"abc\"");
     assertThrows(BulkConfigurationException.class, () -> connector.configure(settings2, false));
   }
 
@@ -1121,10 +1117,7 @@ class CSVConnectorTest {
     Path out = Files.createTempDirectory("test");
     try {
       LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString(
-                      String.format("url = %s, maxConcurrentFiles = 1", quoteJson(out)))
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          createTestConfig("dsbulk.connector.csv", "url", quoteJson(out), "maxConcurrentFiles", 1);
       connector.configure(settings, false);
       connector.init();
       Path file = out.resolve("output-000001.csv");
@@ -1145,10 +1138,7 @@ class CSVConnectorTest {
     Path out = Files.createTempDirectory("test");
     try {
       LoaderConfig settings =
-          new DefaultLoaderConfig(
-              ConfigFactory.parseString(
-                      String.format("url = %s, maxConcurrentFiles = 2", quoteJson(out)))
-                  .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+          createTestConfig("dsbulk.connector.csv", "url", quoteJson(out), "maxConcurrentFiles", 2);
       connector.configure(settings, false);
       connector.init();
       Path file1 = out.resolve("output-000001.csv");
@@ -1200,12 +1190,16 @@ class CSVConnectorTest {
                     .withBody(readFile(path("/sample.csv")))));
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = \"%s/file.csv\", normalizeLineEndingsInQuotes = true, escape = \"\\\"\", comment = \"#\"",
-                        server.baseUrl()))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.csv",
+            "url",
+            String.format("\"%s/file.csv\"", server.baseUrl()),
+            "normalizeLineEndingsInQuotes",
+            true,
+            "escape",
+            "\"\\\"\"",
+            "comment",
+            "\"#\"");
     connector.configure(settings, true);
     connector.init();
     List<Record> actual = Flux.from(connector.read()).collectList().block();
@@ -1217,9 +1211,7 @@ class CSVConnectorTest {
   void should_not_write_to_http_url() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("url = \"http://localhost:1234/file.csv\"")
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig("dsbulk.connector.csv", "url", "\"http://localhost:1234/file.csv\"");
     connector.configure(settings, false);
     connector.init();
     assertThatThrownBy(
@@ -1238,12 +1230,16 @@ class CSVConnectorTest {
   void should_throw_IOE_when_max_chars_per_column_exceeded() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, escape = \"\\\"\", comment = \"#\", maxCharsPerColumn = 15",
-                        url("/sample.csv")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.csv",
+            "url",
+            url("/sample.csv"),
+            "escape",
+            "\"\\\"\"",
+            "comment",
+            "\"#\"",
+            "maxCharsPerColumn",
+            15);
     connector.configure(settings, true);
     connector.init();
     assertThatThrownBy(() -> Flux.from(connector.read()).collectList().block())
@@ -1264,12 +1260,16 @@ class CSVConnectorTest {
   void should_throw_IOE_when_max_columns_exceeded() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, escape = \"\\\"\", comment = \"#\", maxColumns = 1",
-                        url("/sample.csv")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.csv",
+            "url",
+            url("/sample.csv"),
+            "escape",
+            "\"\\\"\"",
+            "comment",
+            "\"#\"",
+            "maxColumns",
+            1);
     connector.configure(settings, true);
     connector.init();
     assertThatThrownBy(() -> Flux.from(connector.read()).collectList().block())
@@ -1287,9 +1287,7 @@ class CSVConnectorTest {
   @Test
   void should_error_on_empty_url() {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
-        new DefaultLoaderConfig(ConfigFactory.parseString("url = null"))
-            .withFallback(CONNECTOR_DEFAULT_SETTINGS);
+    LoaderConfig settings = createTestConfig("dsbulk.connector.csv", "url", null);
     assertThatThrownBy(() -> connector.configure(settings, true))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
@@ -1300,52 +1298,44 @@ class CSVConnectorTest {
   @Test
   void should_throw_exception_when_recursive_not_boolean() {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("recursive = NotABoolean")
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    LoaderConfig settings = createTestConfig("dsbulk.connector.csv", "recursive", "NotABoolean");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for connector.csv.recursive: Expecting BOOLEAN, got STRING");
+        .hasMessageContaining(
+            "Invalid value for dsbulk.connector.csv.recursive, expecting BOOLEAN, got STRING");
     connector.close();
   }
 
   @Test
   void should_throw_exception_when_header_not_boolean() {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("header = NotABoolean")
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    LoaderConfig settings = createTestConfig("dsbulk.connector.csv", "header", "NotABoolean");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for connector.csv.header: Expecting BOOLEAN, got STRING");
+        .hasMessageContaining(
+            "Invalid value for dsbulk.connector.csv.header, expecting BOOLEAN, got STRING");
     connector.close();
   }
 
   @Test
   void should_throw_exception_when_skipRecords_not_number() {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("skipRecords = NotANumber")
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    LoaderConfig settings = createTestConfig("dsbulk.connector.csv", "skipRecords", "NotANumber");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for connector.csv.skipRecords: Expecting NUMBER, got STRING");
+        .hasMessageContaining(
+            "Invalid value for dsbulk.connector.csv.skipRecords, expecting NUMBER, got STRING");
     connector.close();
   }
 
   @Test
   void should_throw_exception_when_maxRecords_not_number() {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxRecords = NotANumber")
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    LoaderConfig settings = createTestConfig("dsbulk.connector.csv", "maxRecords", "NotANumber");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for connector.csv.maxRecords: Expecting NUMBER, got STRING");
+        .hasMessageContaining(
+            "Invalid value for dsbulk.connector.csv.maxRecords, expecting NUMBER, got STRING");
     connector.close();
   }
 
@@ -1353,75 +1343,66 @@ class CSVConnectorTest {
   void should_throw_exception_when_maxConcurrentFiles_not_number() {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("maxConcurrentFiles = NotANumber")
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig("dsbulk.connector.csv", "maxConcurrentFiles", "NotANumber");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage(
-            "Invalid value for connector.csv.maxConcurrentFiles: Expecting integer or string in 'nC' syntax, got 'NotANumber'");
+        .hasMessageContaining(
+            "Invalid value for dsbulk.connector.csv.maxConcurrentFiles, expecting integer or string in 'nC' syntax, got 'NotANumber'");
     connector.close();
   }
 
   @Test
   void should_throw_exception_when_encoding_not_valid() {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("encoding = NotAnEncoding")
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    LoaderConfig settings = createTestConfig("dsbulk.connector.csv", "encoding", "NotAnEncoding");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage(
-            "Invalid value for connector.csv.encoding: Expecting valid charset name, got 'NotAnEncoding'");
+        .hasMessageContaining(
+            "Invalid value for dsbulk.connector.csv.encoding, expecting valid charset name, got 'NotAnEncoding'");
     connector.close();
   }
 
   @Test
   void should_throw_exception_when_delimiter_not_valid() {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("delimiter = \"\"").withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    LoaderConfig settings = createTestConfig("dsbulk.connector.csv", "delimiter", "\"\"");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for connector.csv.delimiter: Expecting single char, got ''");
+        .hasMessageContaining(
+            "Invalid value for dsbulk.connector.csv.delimiter, expecting single char, got ''");
     connector.close();
   }
 
   @Test
   void should_throw_exception_when_quote_not_valid() {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("quote = \"\"").withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    LoaderConfig settings = createTestConfig("dsbulk.connector.csv", "quote", "\"\"");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for connector.csv.quote: Expecting single char, got ''");
+        .hasMessageContaining(
+            "Invalid value for dsbulk.connector.csv.quote, expecting single char, got ''");
     connector.close();
   }
 
   @Test
   void should_throw_exception_when_escape_not_valid() {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("escape = \"\"").withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    LoaderConfig settings = createTestConfig("dsbulk.connector.csv", "escape", "\"\"");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for connector.csv.escape: Expecting single char, got ''");
+        .hasMessageContaining(
+            "Invalid value for dsbulk.connector.csv.escape, expecting single char, got ''");
     connector.close();
   }
 
   @Test
   void should_throw_exception_when_comment_not_valid() {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("comment = \"\"").withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    LoaderConfig settings = createTestConfig("dsbulk.connector.csv", "comment", "\"\"");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
-        .hasMessage("Invalid value for connector.csv.comment: Expecting single char, got ''");
+        .hasMessageContaining(
+            "Invalid value for dsbulk.connector.csv.comment, expecting single char, got ''");
     connector.close();
   }
 
@@ -1429,32 +1410,32 @@ class CSVConnectorTest {
   void should_error_when_compression_is_wrong() {
     CSVConnector connector = new CSVConnector();
     // empty string test
-    LoaderConfig settings1 =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("compression = \"abc\"")
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+    LoaderConfig settings1 = createTestConfig("dsbulk.connector.csv", "compression", "\"abc\"");
     assertThrows(BulkConfigurationException.class, () -> connector.configure(settings1, false));
   }
 
   @Test
-  void should_throw_IOE_when_read_wrong_compression(@LogCapture LogInterceptor logs)
-      throws Exception {
+  void should_throw_IOE_when_read_wrong_compression() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "url = %s, escape = \"\\\"\", comment = \"#\", compression = \"bzip2\"",
-                        url("/sample.csv.gz")))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.csv",
+            "url",
+            url("/sample.csv.gz"),
+            "escape",
+            "\"\\\"\"",
+            "comment",
+            "\"#\"",
+            "compression",
+            "\"bzip2\"");
     connector.configure(settings, true);
     connector.init();
     assertThatThrownBy(() -> Flux.from(connector.read()).collectList().block())
         .hasRootCauseExactlyInstanceOf(IOException.class)
         .satisfies(
-            t -> {
-              assertThat(getRootCause(t)).hasMessageContaining("Stream is not in the BZip2 format");
-            });
+            t ->
+                assertThat(getRootCause(t))
+                    .hasMessageContaining("Stream is not in the BZip2 format"));
     connector.close();
   }
 
@@ -1463,9 +1444,7 @@ class CSVConnectorTest {
   void should_reject_header_with_empty_field() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("url = " + url("/bad_header_empty.csv"))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig("dsbulk.connector.csv", "url", url("/bad_header_empty.csv"));
     connector.configure(settings, true);
     connector.init();
     assertThatThrownBy(() -> Flux.from(connector.read()).collectList().block())
@@ -1487,9 +1466,7 @@ class CSVConnectorTest {
   void should_reject_header_with_duplicate_field() throws Exception {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("url = " + url("/bad_header_duplicate.csv"))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig("dsbulk.connector.csv", "url", url("/bad_header_duplicate.csv"));
     connector.configure(settings, true);
     connector.init();
     assertThatThrownBy(() -> Flux.from(connector.read()).collectList().block())
@@ -1575,9 +1552,7 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
 
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(String.format("urlfile = %s", quoteJson(MULTIPLE_URLS_FILE)))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig("dsbulk.connector.csv", "urlfile", quoteJson(MULTIPLE_URLS_FILE));
 
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
@@ -1590,12 +1565,12 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
 
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "urlfile = %s, url = %s",
-                        quoteJson(MULTIPLE_URLS_FILE), quoteJson(MULTIPLE_URLS_FILE)))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.csv",
+            "urlfile",
+            quoteJson(MULTIPLE_URLS_FILE),
+            "url",
+            quoteJson(MULTIPLE_URLS_FILE));
 
     assertDoesNotThrow(() -> connector.configure(settings, true));
 
@@ -1607,12 +1582,14 @@ class CSVConnectorTest {
   void should_accept_multiple_urls() throws IOException, URISyntaxException {
     CSVConnector connector = new CSVConnector();
     LoaderConfig settings =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                    String.format(
-                        "urlfile = %s, recursive = false, fileNamePattern = \"**/part-*\"",
-                        quoteJson(MULTIPLE_URLS_FILE)))
-                .withFallback(CONNECTOR_DEFAULT_SETTINGS));
+        createTestConfig(
+            "dsbulk.connector.csv",
+            "urlfile",
+            quoteJson(MULTIPLE_URLS_FILE),
+            "recursive",
+            false,
+            "fileNamePattern",
+            "\"**/part-*\"");
     connector.configure(settings, true);
     connector.init();
     assertThat(Flux.merge(connector.readByResource()).count().block()).isEqualTo(400);

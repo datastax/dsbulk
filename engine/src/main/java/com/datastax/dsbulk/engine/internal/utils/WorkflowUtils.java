@@ -149,6 +149,12 @@ public class WorkflowUtils {
     return version;
   }
 
+  @NonNull
+  public static String getBulkLoaderNameAndVersion() {
+    String version = getBulkLoaderVersion();
+    return BULK_LOADER_APPLICATION_NAME + " v" + version;
+  }
+
   public static UUID clientId(String executionId) {
     byte[] executionIdBytes = executionId.getBytes(StandardCharsets.UTF_8);
     byte[] concat = new byte[16 + executionIdBytes.length];
