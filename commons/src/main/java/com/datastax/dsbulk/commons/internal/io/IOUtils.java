@@ -14,11 +14,11 @@ import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.oss.driver.shaded.guava.common.io.Resources;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.LineNumberReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.URISyntaxException;
@@ -67,8 +67,8 @@ public final class IOUtils {
         : new BufferedOutputStream(out, BUFFER_SIZE);
   }
 
-  public static LineNumberReader newBufferedReader(URL url, Charset charset) throws IOException {
-    return new LineNumberReader(
+  public static BufferedReader newBufferedReader(URL url, Charset charset) throws IOException {
+    return new BufferedReader(
         new InputStreamReader(newBufferedInputStream(url), charset), BUFFER_SIZE);
   }
 

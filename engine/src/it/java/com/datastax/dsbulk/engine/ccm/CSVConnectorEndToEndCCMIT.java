@@ -391,7 +391,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     Path destinationFile = unloadDir.resolve("output-000001.csv.deflate");
     assertThat(destinationFile).exists();
     try (LineNumberReader reader =
-        CompressedIOUtils.newBufferedReader(destinationFile.toUri().toURL(), UTF_8, "deflate")) {
+        new LineNumberReader(
+            CompressedIOUtils.newBufferedReader(
+                destinationFile.toUri().toURL(), UTF_8, "deflate"))) {
       assertThat(reader.lines()).hasSize(24);
     }
   }

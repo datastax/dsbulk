@@ -9,11 +9,11 @@
 package com.datastax.dsbulk.commons.internal.io;
 
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.LineNumberReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.URL;
@@ -82,9 +82,9 @@ public final class CompressedIOUtils {
           .put(DEFLATE_COMPRESSION, ".deflate")
           .build();
 
-  public static LineNumberReader newBufferedReader(
+  public static BufferedReader newBufferedReader(
       final URL url, final Charset charset, final String compression) throws IOException {
-    final LineNumberReader reader;
+    final BufferedReader reader;
     if (compression == null || isNoneCompression(compression)) {
       reader = IOUtils.newBufferedReader(url, charset);
     } else {
@@ -96,7 +96,7 @@ public final class CompressedIOUtils {
       try {
         CompressorInputStream cin =
             new CompressorStreamFactory().createCompressorInputStream(compressor, in);
-        reader = new LineNumberReader(new InputStreamReader(cin, charset), BUFFER_SIZE);
+        reader = new BufferedReader(new InputStreamReader(cin, charset), BUFFER_SIZE);
       } catch (CompressorException ex) {
         throw new IOException("Can't instantiate class for compression: " + compression, ex);
       }

@@ -200,7 +200,8 @@ class CompressedIOUtilsTest {
   }
 
   private static List<String> readCompressed(URL url, String compression) throws IOException {
-    LineNumberReader reader = CompressedIOUtils.newBufferedReader(url, Charsets.UTF_8, compression);
+    LineNumberReader reader =
+        new LineNumberReader(CompressedIOUtils.newBufferedReader(url, Charsets.UTF_8, compression));
     return reader.lines().collect(Collectors.toList());
   }
 
