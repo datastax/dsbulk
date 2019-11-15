@@ -55,7 +55,7 @@ public class PositionsTracker {
         range.setUpper(position);
         if (iterator.hasNext()) {
           Range next = iterator.next();
-          if (range.getUpper() == next.getLower() - 1) {
+          if (range.getUpper() == next.getLower() - 1L) {
             iterator.remove();
             range = iterator.previous();
             range.setUpper(next.getUpper());
