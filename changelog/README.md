@@ -3,14 +3,13 @@
 ## 1.4.0
 
 - [improvement] DAT-303: Update DSBulk to Java DSE Driver 2.x.
-- [improvement] DAT-449: Add support for loading and unloading from/to compressed files.
+- [new feature] DAT-449: Add support for loading and unloading from/to compressed files.
 - [new feature] DAT-412: Add support for DataStax Cloud.
 - [improvement] DAT-492: Add CLI shortcut for secure connect bundle.
 - [improvement] DAT-490: Allow secure connect bundle to be provided from external URL.
 - [improvement] DAT-481: Improve NodeComparator algorithm.
-- [improvement] DAT-449: Add support for loading and unloading from/to compressed files.
 - [improvement] DAT-499: Warn if cloud enabled and incompatible settings are defined.
-- [improvement] DAT-495: DAT-495: Allow driver to be configured directly.
+- [improvement] DAT-495: Allow driver to be configured directly.
 
 
 ### 1.3.4
