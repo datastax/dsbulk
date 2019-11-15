@@ -12,7 +12,7 @@ import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.ass
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static org.awaitility.Awaitility.await;
-import static org.awaitility.Duration.ONE_MINUTE;
+import static org.awaitility.Durations.ONE_MINUTE;
 import static org.slf4j.event.Level.WARN;
 
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;

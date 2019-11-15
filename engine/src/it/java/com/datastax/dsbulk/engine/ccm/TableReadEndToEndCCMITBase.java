@@ -21,7 +21,7 @@ import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.Statist
 import static com.datastax.oss.driver.api.core.DefaultProtocolVersion.V4;
 import static com.datastax.oss.driver.internal.core.util.RoutingKey.compose;
 import static org.awaitility.Awaitility.await;
-import static org.awaitility.Duration.ONE_MINUTE;
+import static org.awaitility.Durations.ONE_MINUTE;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;

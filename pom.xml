@@ -75,7 +75,7 @@
     <compress.xz.version>1.8</compress.xz.version>
     <compress.brotli.version>0.1.2</compress.brotli.version>
     <simulacron.version>0.8.11</simulacron.version>
-    <awaitility.version>3.1.6</awaitility.version>
+    <awaitility.version>4.0.1</awaitility.version>
     <surefire.version>2.22.2</surefire.version>
     <antlr4.version>4.7.2</antlr4.version>
     <max.simulacron.clusters>4</max.simulacron.clusters>

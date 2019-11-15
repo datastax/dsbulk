@@ -14,7 +14,7 @@ import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.OSS;
 import static com.datastax.oss.driver.api.core.DefaultConsistencyLevel.ALL;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
-import static org.awaitility.Duration.ONE_MINUTE;
+import static org.awaitility.Durations.ONE_MINUTE;
 
 import com.datastax.dsbulk.commons.tests.ccm.CCMExtension;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
