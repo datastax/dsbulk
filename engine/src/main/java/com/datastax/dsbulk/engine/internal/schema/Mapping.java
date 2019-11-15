@@ -17,15 +17,15 @@ import edu.umd.cs.findbugs.annotations.NonNull;
 import java.util.Set;
 
 /**
- * Defines a bidirectional, one-to-one relationship between record fields and CQL columns.
+ * Defines a bidirectional, many-to-many relationship between record fields and CQL columns.
  *
- * <p>In write workflows, CQL columns correspond to bound variables in the write statement. In read
- * workflows, CQL columns correspond to row variables in a read result.
+ * <p>In write workflows, CQL words correspond to bound variables in the write statement. In read
+ * workflows, CQL words correspond to row variables in a read result.
  */
 public interface Mapping {
 
   /**
-   * Maps the given field to one or more bound statement variables.
+   * Maps the given field to one or more variables in a write bound statement.
    *
    * @param field the field to find the variable for.
    * @return the bound statement variables the given field maps to, or an empty collection if the
@@ -35,7 +35,7 @@ public interface Mapping {
   Set<CQLWord> fieldToVariables(@NonNull Field field);
 
   /**
-   * Maps the given row variable to a field.
+   * Maps the given row variable to one or more fields in a record.
    *
    * @param variable the row variable; never {@code null}.
    * @return the fields the given variable maps to, or an empty collection if the variable does not
