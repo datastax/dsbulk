@@ -519,9 +519,7 @@ public class DriverSettings {
       // DSBulk allows contact points to be specified without port, but the driver doesn't.
       List<String> hosts = mergedDriverConfig.getStringList(CONTACT_POINTS.getPath());
       List<String> contactPoints =
-          hosts.stream()
-              .map(contactPoint -> maybeAddPortToHost(contactPoint))
-              .collect(Collectors.toList());
+          hosts.stream().map(this::maybeAddPortToHost).collect(Collectors.toList());
       mergedDriverConfig = addConfigValue(mergedDriverConfig, CONTACT_POINTS, contactPoints);
     }
   }
