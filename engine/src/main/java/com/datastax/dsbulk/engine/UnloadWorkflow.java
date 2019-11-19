@@ -180,7 +180,7 @@ public class UnloadWorkflow implements Workflow {
     } else {
       flux = parallelFlux();
     }
-    flux.compose(writer)
+    flux.transformDeferred(writer)
         .transform(failedRecordsMonitor)
         .transform(failedRecordsHandler)
         .then()
