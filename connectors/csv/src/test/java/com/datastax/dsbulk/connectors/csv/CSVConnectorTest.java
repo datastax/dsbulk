@@ -1596,6 +1596,32 @@ class CSVConnectorTest {
     connector.close();
   }
 
+  /** DAT-516: Always quote comment character when unloading */
+  @Test
+  void should_quote_comment_character() throws Exception {
+    Path out = Files.createTempDirectory("test");
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        createTestConfig(
+            "dsbulk.connector.csv",
+            "url",
+            quoteJson(out),
+            "header",
+            "false",
+            "maxConcurrentFiles",
+            1,
+            "comment",
+            "\"#\"");
+    connector.configure(settings, false);
+    connector.init();
+    Flux.<Record>just(DefaultRecord.indexed("source", resource, -1, "#shouldbequoted"))
+        .transform(connector.write())
+        .blockFirst();
+    connector.close();
+    List<String> actual = Files.readAllLines(out.resolve("output-000001.csv"));
+    assertThat(actual).hasSize(1).containsExactly("\"#shouldbequoted\"");
+  }
+
   private static String url(String resource) {
     return quoteJson(CSVConnectorTest.class.getResource(resource));
   }
