@@ -78,6 +78,8 @@ import ru.lanwen.wiremock.ext.WiremockResolver.Wiremock;
 @ExtendWith(WiremockResolver.class)
 class JsonConnectorTest {
 
+  private static final int IRRELEVANT_POSITION = -1;
+
   static {
     URLUtils.setURLFactoryIfNeeded();
     Thread.setDefaultUncaughtExceptionHandler((thread, t) -> {});
@@ -261,7 +263,7 @@ class JsonConnectorTest {
               DefaultRecord.indexed(
                   "source",
                   resource,
-                  -1,
+                  IRRELEVANT_POSITION,
                   factory.textNode("fóô"),
                   factory.textNode("bàr"),
                   factory.textNode("qïx")))
@@ -1199,7 +1201,7 @@ class JsonConnectorTest {
         DefaultRecord.mapped(
             "source",
             resource,
-            -1,
+            IRRELEVANT_POSITION,
             fields,
             factory.numberNode(1997),
             factory.textNode("Ford"),
@@ -1210,7 +1212,7 @@ class JsonConnectorTest {
         DefaultRecord.mapped(
             "source",
             resource,
-            -1,
+            IRRELEVANT_POSITION,
             fields,
             factory.numberNode(1999),
             factory.textNode("Chevy"),
@@ -1221,7 +1223,7 @@ class JsonConnectorTest {
         DefaultRecord.mapped(
             "source",
             resource,
-            -1,
+            IRRELEVANT_POSITION,
             fields,
             factory.numberNode(1996),
             factory.textNode("Jeep"),
@@ -1232,7 +1234,7 @@ class JsonConnectorTest {
         DefaultRecord.mapped(
             "source",
             resource,
-            -1,
+            IRRELEVANT_POSITION,
             fields,
             factory.numberNode(1999),
             factory.textNode("Chevy"),
@@ -1243,7 +1245,7 @@ class JsonConnectorTest {
         DefaultRecord.mapped(
             "source",
             resource,
-            -1,
+            IRRELEVANT_POSITION,
             fields,
             null,
             null,
