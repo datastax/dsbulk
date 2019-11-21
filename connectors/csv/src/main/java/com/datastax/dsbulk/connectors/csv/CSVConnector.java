@@ -304,6 +304,8 @@ public class CSVConnector implements Connector {
       } else {
         format.setLineSeparator(newline);
       }
+      // DAT-516: Always quote comment character when unloading
+      writerSettings.setQuotationTriggers(comment);
       counter = new AtomicInteger(0);
     }
   }

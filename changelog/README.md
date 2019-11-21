@@ -1,5 +1,10 @@
 ## Changelog
 
+## 1.5.0 (in progress)
+
+- [bug] DAT-516: Always quote comment character when unloading.
+
+
 ## 1.4.0
 
 - [improvement] DAT-303: Update DSBulk to Java DSE Driver 2.x.

@@ -80,6 +80,8 @@ import ru.lanwen.wiremock.ext.WiremockResolver.Wiremock;
 @ExtendWith(WiremockResolver.class)
 class CSVConnectorTest {
 
+  private static final int IRRELEVANT_POSITION = -1;
+
   static {
     URLUtils.setURLFactoryIfNeeded();
     Thread.setDefaultUncaughtExceptionHandler((thread, t) -> {});
@@ -262,7 +264,8 @@ class CSVConnectorTest {
           createTestConfig("dsbulk.connector.csv", "header", false, "encoding", "ISO-8859-1");
       connector.configure(settings, false);
       connector.init();
-      Flux.<Record>just(DefaultRecord.indexed("source", resource, -1, "fóô", "bàr", "qïx"))
+      Flux.<Record>just(
+              DefaultRecord.indexed("source", resource, IRRELEVANT_POSITION, "fóô", "bàr", "qïx"))
           .transform(connector.write())
           .blockLast();
       connector.close();
@@ -308,7 +311,8 @@ class CSVConnectorTest {
           createTestConfig("dsbulk.connector.csv", "header", false, "newline", "\"\\r\\n\"");
       connector.configure(settings, false);
       connector.init();
-      Flux.<Record>just(DefaultRecord.indexed("source", resource, -1, "abc", "de\nf", "ghk"))
+      Flux.<Record>just(
+              DefaultRecord.indexed("source", resource, IRRELEVANT_POSITION, "abc", "de\nf", "ghk"))
           .transform(connector.write())
           .blockLast();
       connector.close();
@@ -893,7 +897,7 @@ class CSVConnectorTest {
             false);
     connector.configure(settings, false);
     connector.init();
-    Flux.<Record>just(DefaultRecord.indexed("source", resource, -1, " foo "))
+    Flux.<Record>just(DefaultRecord.indexed("source", resource, IRRELEVANT_POSITION, " foo "))
         .transform(connector.write())
         .blockFirst();
     connector.close();
@@ -919,7 +923,7 @@ class CSVConnectorTest {
             false);
     connector.configure(settings, false);
     connector.init();
-    Flux.<Record>just(DefaultRecord.indexed("source", resource, -1, " foo "))
+    Flux.<Record>just(DefaultRecord.indexed("source", resource, IRRELEVANT_POSITION, " foo "))
         .transform(connector.write())
         .blockFirst();
     connector.close();
@@ -1022,7 +1026,7 @@ class CSVConnectorTest {
             DefaultRecord.mapped(
                 "source",
                 resource,
-                -1,
+                IRRELEVANT_POSITION,
                 new Field[] {new DefaultMappedField("field1")},
                 new Object[] {null}))
         .transform(connector.write())
@@ -1043,7 +1047,8 @@ class CSVConnectorTest {
             "dsbulk.connector.csv", "url", quoteJson(out), "nullValue", "NULL", "header", false);
     connector.configure(settings, false);
     connector.init();
-    Flux.<Record>just(DefaultRecord.indexed("source", resource, -1, new Object[] {null}))
+    Flux.<Record>just(
+            DefaultRecord.indexed("source", resource, IRRELEVANT_POSITION, new Object[] {null}))
         .transform(connector.write())
         .blockFirst();
     connector.close();
@@ -1493,7 +1498,7 @@ class CSVConnectorTest {
         DefaultRecord.mapped(
             "source",
             resource,
-            -1,
+            IRRELEVANT_POSITION,
             fields,
             "1997",
             "Ford",
@@ -1504,7 +1509,7 @@ class CSVConnectorTest {
         DefaultRecord.mapped(
             "source",
             resource,
-            -1,
+            IRRELEVANT_POSITION,
             fields,
             "1999",
             "Chevy",
@@ -1515,7 +1520,7 @@ class CSVConnectorTest {
         DefaultRecord.mapped(
             "source",
             resource,
-            -1,
+            IRRELEVANT_POSITION,
             fields,
             "1996",
             "Jeep",
@@ -1526,7 +1531,7 @@ class CSVConnectorTest {
         DefaultRecord.mapped(
             "source",
             resource,
-            -1,
+            IRRELEVANT_POSITION,
             fields,
             "1999",
             "Chevy",
@@ -1537,7 +1542,7 @@ class CSVConnectorTest {
         DefaultRecord.mapped(
             "source",
             resource,
-            -1,
+            IRRELEVANT_POSITION,
             fields,
             null,
             null,
@@ -1594,6 +1599,33 @@ class CSVConnectorTest {
     connector.init();
     assertThat(Flux.merge(connector.readByResource()).count().block()).isEqualTo(400);
     connector.close();
+  }
+
+  /** DAT-516: Always quote comment character when unloading */
+  @Test
+  void should_quote_comment_character() throws Exception {
+    Path out = Files.createTempDirectory("test");
+    CSVConnector connector = new CSVConnector();
+    LoaderConfig settings =
+        createTestConfig(
+            "dsbulk.connector.csv",
+            "url",
+            quoteJson(out),
+            "header",
+            "false",
+            "maxConcurrentFiles",
+            1,
+            "comment",
+            "\"#\"");
+    connector.configure(settings, false);
+    connector.init();
+    Flux.<Record>just(
+            DefaultRecord.indexed("source", resource, IRRELEVANT_POSITION, "#shouldbequoted"))
+        .transform(connector.write())
+        .blockFirst();
+    connector.close();
+    List<String> actual = Files.readAllLines(out.resolve("output-000001.csv"));
+    assertThat(actual).hasSize(1).containsExactly("\"#shouldbequoted\"");
   }
 
   private static String url(String resource) {
