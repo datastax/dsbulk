@@ -20,7 +20,8 @@ public enum WorkflowType {
 
     @Override
     public String getDescription() {
-      return "Loads data from external data sources into DataStax Enterprise databases. "
+      return "Loads data from external data sources into "
+          + "DataStax Enterprise or Apache Cassandra (R) databases. "
           + "This command requires a connector to read data from; "
           + "the target table, or alternatively, the insert query must also be properly configured. "
           + "Run `dsbulk help connector` or `dsbulk help schema` for more information.";

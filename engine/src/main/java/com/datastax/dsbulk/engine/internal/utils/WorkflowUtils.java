@@ -11,9 +11,6 @@ package com.datastax.dsbulk.engine.internal.utils;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
-import com.datastax.dse.driver.api.core.metadata.DseNodeProperties;
-import com.datastax.oss.driver.api.core.CqlSession;
-import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.driver.shaded.guava.common.base.Throwables;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.BufferedReader;
@@ -22,12 +19,7 @@ import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
-import java.util.Collection;
-import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
 
 public class WorkflowUtils {
@@ -36,8 +28,6 @@ public class WorkflowUtils {
 
   private static final UUID BULK_LOADER_NAMESPACE =
       UUID.fromString("2505c745-cedf-4714-bcab-0d580270ed95");
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(WorkflowUtils.class);
 
   /**
    * The threshold, in number of resources to read or write, that triggers a thread-per-core
@@ -111,27 +101,6 @@ public class WorkflowUtils {
       }
     }
     return suppressed;
-  }
-
-  public static void checkProductCompatibility(CqlSession session) {
-    Collection<Node> hosts = session.getMetadata().getNodes().values();
-    List<Node> nonDseHosts =
-        hosts.stream()
-            .filter(
-                host ->
-                    !host.getExtras().containsKey(DseNodeProperties.DSE_VERSION)
-                        && (host.getCassandraVersion() == null
-                            || host.getCassandraVersion().getDSEPatch() <= 0))
-            .collect(Collectors.toList());
-    if (!nonDseHosts.isEmpty()) {
-      LOGGER.error(
-          "Incompatible cluster detected. Load functionality is only compatible with a DSE cluster.");
-      LOGGER.error("The following nodes do not appear to be running DSE:");
-      for (Node host : nonDseHosts) {
-        LOGGER.error(host.getHostId() + ": " + host.getEndPoint());
-      }
-      throw new IllegalStateException("Unable to load data to non DSE cluster");
-    }
   }
 
   public static String getBulkLoaderVersion() {
