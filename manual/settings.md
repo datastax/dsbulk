@@ -1339,7 +1339,7 @@ Default: **null**.
 
 #### --driver.basic.request.timeout<br />--datastax-java-driver.basic.request.timeout _&lt;string&gt;_
 
-How long the driver waits for a request to complete. This is a global limit on the duration of a session.execute() call, including any internal retries the driver might do. By default, this value is set very high because DSBulk is optimized for good throughput, rahter than good latencies.
+How long the driver waits for a request to complete. This is a global limit on the duration of a session.execute() call, including any internal retries the driver might do. By default, this value is set very high because DSBulk is optimized for good throughput, rather than good latencies.
 
 Default: **"60 seconds"**.
 
