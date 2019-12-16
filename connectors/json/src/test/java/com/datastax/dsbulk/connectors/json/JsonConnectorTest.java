@@ -130,6 +130,7 @@ class JsonConnectorTest {
     connector.close();
   }
 
+  @SuppressWarnings("unused")
   private static Stream<Arguments> should_read_single_file_multi_doc() {
     return Stream.of(
         arguments("multi_doc.json", CompressedIOUtils.NONE_COMPRESSION),
