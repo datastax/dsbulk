@@ -20,7 +20,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-class MockContinuousAsyncResultSet implements ContinuousAsyncResultSet {
+final class MockContinuousAsyncResultSet implements ContinuousAsyncResultSet {
 
   private final List<Row> rows;
   private final Iterator<Row> iterator;

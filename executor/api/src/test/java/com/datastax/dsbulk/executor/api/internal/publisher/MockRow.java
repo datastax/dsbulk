@@ -17,8 +17,8 @@ import com.datastax.oss.driver.api.core.type.DataType;
 import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
 import java.nio.ByteBuffer;
 
-@SuppressWarnings({"ConstantConditions", "NullableProblems"})
-class MockRow implements Row {
+@SuppressWarnings("NullableProblems")
+final class MockRow implements Row {
 
   private int index;
 
