@@ -224,7 +224,6 @@ public class ExtendedCodecRegistry extends DefaultCodecRegistry {
     this.allowMissingFields = allowMissingFields;
   }
 
-  @SuppressWarnings("unchecked")
   @NonNull
   @Override
   public <JavaTypeT> TypeCodec<JavaTypeT> codecFor(
@@ -232,28 +231,32 @@ public class ExtendedCodecRegistry extends DefaultCodecRegistry {
     // Implementation note: it's not required to cache codecs created on-the-fly by this method
     // as caching is meant to be handled by the caller, see
     // com.datastax.dsbulk.engine.internal.schema.DefaultMapping.codec()
-    TypeCodec codec;
     try {
       if (GenericType.STRING.equals(javaType)) {
         // Never return the driver's built-in StringCodec because it does not handle
         // null words. We need StringToStringCodec here.
-        codec = createStringConvertingCodec(cqlType, true);
+        @SuppressWarnings("unchecked")
+        TypeCodec<JavaTypeT> codec =
+            (TypeCodec<JavaTypeT>) createStringConvertingCodec(cqlType, true);
+        return codec;
       } else {
-        codec = super.codecFor(cqlType, javaType);
+        return super.codecFor(cqlType, javaType);
       }
     } catch (CodecNotFoundException e) {
-      codec = maybeCreateConvertingCodec(cqlType, javaType);
+      @SuppressWarnings("unchecked")
+      TypeCodec<JavaTypeT> codec =
+          (TypeCodec<JavaTypeT>) maybeCreateConvertingCodec(cqlType, javaType);
       if (codec == null) {
         throw e;
       }
+      return codec;
     }
-    return codec;
   }
 
-  @SuppressWarnings("unchecked")
   @NonNull
   public <EXTERNAL, INTERNAL> ConvertingCodec<EXTERNAL, INTERNAL> convertingCodecFor(
       @NonNull DataType cqlType, @NonNull GenericType<? extends EXTERNAL> javaType) {
+    @SuppressWarnings("unchecked")
     ConvertingCodec<EXTERNAL, INTERNAL> codec =
         (ConvertingCodec<EXTERNAL, INTERNAL>) maybeCreateConvertingCodec(cqlType, javaType);
     if (codec != null) {
@@ -284,8 +287,10 @@ public class ExtendedCodecRegistry extends DefaultCodecRegistry {
           ConvertingCodec<Object, Object> eltCodec = convertingCodecFor(eltType, componentType);
           eltCodecs.add(eltCodec);
         }
-        //noinspection unchecked
-        return new ListToUDTCodec(javaType.getRawType(), udtCodec, eltCodecs.build());
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        ListToUDTCodec codec =
+            new ListToUDTCodec(javaType.getRawType(), udtCodec, eltCodecs.build());
+        return codec;
       } else if (cqlType instanceof TupleType) {
         TypeCodec<TupleValue> tupleCodec = codecFor(cqlType);
         ImmutableList.Builder<ConvertingCodec<Object, Object>> eltCodecs =
@@ -294,8 +299,10 @@ public class ExtendedCodecRegistry extends DefaultCodecRegistry {
           ConvertingCodec<Object, Object> eltCodec = convertingCodecFor(eltType, componentType);
           eltCodecs.add(eltCodec);
         }
-        //noinspection unchecked
-        return new ListToTupleCodec(javaType.getRawType(), tupleCodec, eltCodecs.build());
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        ListToTupleCodec codec =
+            new ListToTupleCodec(javaType.getRawType(), tupleCodec, eltCodecs.build());
+        return codec;
       }
     }
 
@@ -303,12 +310,13 @@ public class ExtendedCodecRegistry extends DefaultCodecRegistry {
       GenericType<?> componentType =
           GenericType.of(((ParameterizedType) javaType.getType()).getActualTypeArguments()[0]);
       @SuppressWarnings("unchecked")
-      Class<? extends Collection> collType = (Class<? extends Collection>) javaType.getRawType();
+      Class<? extends Collection<?>> collType =
+          (Class<? extends Collection<?>>) javaType.getRawType();
 
       if (isCollection(cqlType)) {
         TypeCodec<?> typeCodec = codecFor(cqlType);
         ConvertingCodec<Object, Object> elementCodec = null;
-        Supplier<? extends Collection> collectionCreator;
+        Supplier<? extends Collection<?>> collectionCreator;
         if (cqlType instanceof SetType) {
           elementCodec = convertingCodecFor(((SetType) cqlType).getElementType(), componentType);
         } else if (cqlType instanceof ListType) {
@@ -319,9 +327,10 @@ public class ExtendedCodecRegistry extends DefaultCodecRegistry {
         } else {
           collectionCreator = ArrayList::new;
         }
-        //noinspection unchecked
-        return new CollectionToCollectionCodec(
-            collType, typeCodec, elementCodec, collectionCreator);
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        CollectionToCollectionCodec codec =
+            new CollectionToCollectionCodec(collType, typeCodec, elementCodec, collectionCreator);
+        return codec;
       }
     }
 
@@ -336,9 +345,11 @@ public class ExtendedCodecRegistry extends DefaultCodecRegistry {
             convertingCodecFor(((MapType) cqlType).getKeyType(), keyType);
         ConvertingCodec<?, ?> valueConvertingCodec =
             convertingCodecFor(((MapType) cqlType).getValueType(), valueType);
-        //noinspection unchecked
-        return new MapToMapCodec(
-            javaType.getRawType(), typeCodec, keyConvertingCodec, valueConvertingCodec);
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        MapToMapCodec codec =
+            new MapToMapCodec(
+                javaType.getRawType(), typeCodec, keyConvertingCodec, valueConvertingCodec);
+        return codec;
       } else if (cqlType instanceof UserDefinedType) {
         TypeCodec<UdtValue> udtCodec = codecFor(cqlType);
         ImmutableMap.Builder<CqlIdentifier, ConvertingCodec<?, Object>> fieldCodecs =
@@ -354,8 +365,10 @@ public class ExtendedCodecRegistry extends DefaultCodecRegistry {
           ConvertingCodec<?, Object> fieldCodec = convertingCodecFor(fieldType, valueType);
           fieldCodecs.put(fieldName, fieldCodec);
         }
-        //noinspection unchecked
-        return new MapToUDTCodec(javaType.getRawType(), udtCodec, keyCodec, fieldCodecs.build());
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        MapToUDTCodec codec =
+            new MapToUDTCodec(javaType.getRawType(), udtCodec, keyCodec, fieldCodecs.build());
+        return codec;
       }
     }
 
