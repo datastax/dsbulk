@@ -11,7 +11,6 @@ package com.datastax.dsbulk.engine;
 import static com.datastax.dsbulk.connectors.api.CommonConnectorFeature.INDEXED_RECORDS;
 import static com.datastax.dsbulk.connectors.api.CommonConnectorFeature.MAPPED_RECORDS;
 import static com.datastax.dsbulk.engine.internal.utils.ClusterInformationUtils.printDebugInfoAboutCluster;
-import static com.datastax.dsbulk.engine.internal.utils.WorkflowUtils.checkProductCompatibility;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.codahale.metrics.MetricRegistry;
@@ -121,7 +120,6 @@ public class LoadWorkflow implements Workflow {
     executorSettings.init();
     engineSettings.init();
     session = driverSettings.newSession(executionId);
-    checkProductCompatibility(session);
     printDebugInfoAboutCluster(session);
     schemaSettings.init(
         WorkflowType.LOAD,
