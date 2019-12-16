@@ -16,7 +16,7 @@
   <parent>
     <artifactId>dsbulk-connectors</artifactId>
     <groupId>com.datastax.dse</groupId>
-    <version>1.4.1-SNAPSHOT</version>
+    <version>1.4.1</version>
   </parent>
 
   <artifactId>dsbulk-connectors-api</artifactId>
