@@ -1,4 +1,4 @@
-# DataStax Bulk Loader v1.4.1-SNAPSHOT Options
+# DataStax Bulk Loader v1.4.2-SNAPSHOT Options
 
 *NOTE:* The long options described here can be persisted in `conf/application.conf` and thus permanently override defaults and avoid specifying options on the command line.
 
@@ -1385,6 +1385,12 @@ The datacenter that is considered "local": the default load balancing policy wil
 
 Default: **null**.
 
+#### --driver.basic.load-balancing-policy.filter.class<br />--datastax-java-driver.basic.load-balancing-policy.filter.class _&lt;string&gt;_
+
+An optional custom filter to include/exclude nodes. This option is not required; if present, it must be the fully-qualified name of a class that implements `java.util.function.Predicate<Node>`, and has a public constructor taking a single `DriverContext` argument. The predicate's `test(Node)` method will be invoked each time the policy processes a topology or state change: if it returns false, the node will be set at distance `IGNORED` (meaning the driver won't ever connect to it), and never included in any query plan.
+
+Default: **null**.
+
 #### --driver.advanced.protocol.version<br />--datastax-java-driver.advanced.protocol.version _&lt;string&gt;_
 
 The native protocol version to use. If this option is absent, the driver looks up the versions of the nodes at startup (by default in `system.peers.release_version`), and chooses the highest common protocol version. For example, if you have a mixed cluster with Apache Cassandra 2.1 nodes (protocol v3) and Apache Cassandra 3.0 nodes (protocol v3 and v4), then protocol v3 is chosen. If the nodes don't have a common protocol version, initialization fails. If this option is set, then the given version will be used for all connections, without any negotiation or downgrading. If any of the contact points doesn't support it, that contact point will be skipped. Once the protocol version is set, it can't change for the rest of the driver's lifetime; if an incompatible node joins the cluster later, connection will fail and the driver will force it down (i.e. never try to connect to it again).
@@ -1446,6 +1452,16 @@ The password to use to authenticate against a cluster with authentication enable
 
  - `PlainTextAuthProvider`
  - `DsePlainTextAuthProvider`
+
+
+Default: **null**.
+
+#### --driver.advanced.auth-provider.authorization-id<br />--datastax-java-driver.advanced.auth-provider.authorization-id _&lt;string&gt;_
+
+An authorization ID allows the currently authenticated user to act as a different user (proxy authentication). Providers that accept this setting:
+
+ - `DsePlainTextAuthProvider`
+ - `DseGssApiAuthProvider`
 
 
 Default: **null**.
