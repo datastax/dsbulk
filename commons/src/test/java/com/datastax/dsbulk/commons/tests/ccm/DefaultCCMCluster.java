@@ -126,7 +126,7 @@ public class DefaultCCMCluster implements CCMCluster {
             System.getProperty("com.datastax.dsbulk.commons.tests.ccm.CCM_IS_DSE", "false"));
     boolean ddac =
         Boolean.parseBoolean(
-            System.getProperty("com.datastax.dsbulk.commons.tests.ccm.CCM_IS_DDAC", "true"));
+            System.getProperty("com.datastax.dsbulk.commons.tests.ccm.CCM_IS_DDAC", "false"));
     CCM_TYPE = dse ? DSE : (ddac ? DDAC : OSS);
     String versionStr = System.getProperty("com.datastax.dsbulk.commons.tests.ccm.CCM_VERSION");
     CCM_VERSION = Version.parse(versionStr == null ? CCM_TYPE.getDefaultVersion() : versionStr);
