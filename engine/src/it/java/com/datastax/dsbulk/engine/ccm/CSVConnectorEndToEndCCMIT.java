@@ -13,6 +13,8 @@ import static com.datastax.dsbulk.commons.codecs.util.CodecUtils.numberToInstant
 import static com.datastax.dsbulk.commons.codecs.util.OverflowStrategy.REJECT;
 import static com.datastax.dsbulk.commons.codecs.util.OverflowStrategy.TRUNCATE;
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
+import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
+import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.OSS;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.createURLFile;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
@@ -111,6 +113,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   private static final Version V3 = Version.parse("3.0");
+  private static final Version V3_10 = Version.parse("3.10");
   private static final Version V2_2 = Version.parse("2.2");
   private static final Version V2_1 = Version.parse("2.1");
   private static final Version V5_1 = Version.parse("5.1");
@@ -598,7 +601,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   void full_load_unload_counters_custom_query_positional() throws IOException {
 
     assumeTrue(
-        ccm.getVersion().compareTo(V5_1) >= 0, "UPDATE SET += syntax is only supported in 5.1+");
+        (ccm.getClusterType() == DSE && ccm.getVersion().compareTo(V5_1) >= 0)
+            || (ccm.getClusterType() == OSS && ccm.getVersion().compareTo(V3_10) >= 0),
+        "UPDATE SET += syntax is only supported in C* 3.10+ and DSE 5.1+");
 
     session.execute("DROP TABLE IF EXISTS counters");
     session.execute(
@@ -665,7 +670,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   void full_load_unload_counters_custom_query_named() throws IOException {
 
     assumeTrue(
-        ccm.getVersion().compareTo(V5_1) >= 0, "UPDATE SET += syntax is only supported in 5.1+");
+        (ccm.getClusterType() == DSE && ccm.getVersion().compareTo(V5_1) >= 0)
+            || (ccm.getClusterType() == OSS && ccm.getVersion().compareTo(V3_10) >= 0),
+        "UPDATE SET += syntax is only supported in C* 3.10+ and DSE 5.1+");
 
     session.execute("DROP TABLE IF EXISTS counters");
     session.execute(
