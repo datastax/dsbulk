@@ -10,7 +10,6 @@ package com.datastax.dsbulk.engine.ccm;
 
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DDAC;
-import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
@@ -20,7 +19,6 @@ import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutpu
 
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
-import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
 import com.datastax.dsbulk.commons.tests.driver.annotations.SessionConfig;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
@@ -41,7 +39,6 @@ import org.junit.jupiter.params.provider.ValueSource;
     config = "authenticator:PasswordAuthenticator",
     jvmArgs = "-Dcassandra.superuser_setup_delay_ms=0")
 @Tag("medium")
-@CCMRequirements(compatibleTypes = {DSE, DDAC})
 @ExtendWith(LogInterceptingExtension.class)
 class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
 

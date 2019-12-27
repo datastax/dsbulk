@@ -10,8 +10,6 @@ package com.datastax.dsbulk.engine.ccm;
 
 import static com.datastax.dsbulk.commons.codecs.util.OverflowStrategy.REJECT;
 import static com.datastax.dsbulk.commons.codecs.util.OverflowStrategy.TRUNCATE;
-import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DDAC;
-import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.createURLFile;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
@@ -38,7 +36,6 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import com.datastax.dsbulk.commons.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
-import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
 import com.datastax.dsbulk.commons.tests.utils.Version;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.oss.driver.api.core.CqlIdentifier;
@@ -61,7 +58,6 @@ import org.junit.jupiter.api.Test;
 
 @CCMConfig(numberOfNodes = 1)
 @Tag("medium")
-@CCMRequirements(compatibleTypes = {DSE, DDAC})
 class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   private static final Version V3 = Version.parse("3.0");

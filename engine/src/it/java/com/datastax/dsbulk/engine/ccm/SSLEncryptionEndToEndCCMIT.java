@@ -8,8 +8,6 @@
  */
 package com.datastax.dsbulk.engine.ccm;
 
-import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DDAC;
-import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.DEFAULT_CLIENT_CERT_CHAIN_FILE;
 import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.DEFAULT_CLIENT_KEYSTORE_FILE;
 import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.DEFAULT_CLIENT_KEYSTORE_PASSWORD;
@@ -26,7 +24,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
-import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
 import com.datastax.dsbulk.commons.tests.driver.annotations.SessionConfig;
 import com.datastax.dsbulk.engine.DataStaxBulkLoader;
 import com.datastax.oss.driver.api.core.CqlIdentifier;
@@ -41,7 +38,6 @@ import org.junit.jupiter.api.Test;
 
 @CCMConfig(ssl = true, hostnameVerification = true, auth = true)
 @Tag("medium")
-@CCMRequirements(compatibleTypes = {DSE, DDAC})
 class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
 
   SSLEncryptionEndToEndCCMIT(

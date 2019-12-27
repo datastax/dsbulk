@@ -13,8 +13,6 @@ import static com.datastax.dsbulk.commons.codecs.util.CodecUtils.numberToInstant
 import static com.datastax.dsbulk.commons.codecs.util.OverflowStrategy.REJECT;
 import static com.datastax.dsbulk.commons.codecs.util.OverflowStrategy.TRUNCATE;
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
-import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DDAC;
-import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDERR;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.createURLFile;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
@@ -55,7 +53,6 @@ import com.datastax.dsbulk.commons.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.commons.internal.io.CompressedIOUtils;
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
-import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMRequirements;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
@@ -111,7 +108,6 @@ import org.junit.jupiter.params.provider.CsvSource;
 @ExtendWith(StreamInterceptingExtension.class)
 @CCMConfig(numberOfNodes = 1, config = "enable_user_defined_functions:true")
 @Tag("medium")
-@CCMRequirements(compatibleTypes = {DSE, DDAC})
 class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   private static final Version V3 = Version.parse("3.0");
