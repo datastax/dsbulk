@@ -27,13 +27,13 @@ public interface CCMCluster extends Closeable {
   enum Type {
 
     /** OSS Cassandra. */
-    OSS("3.11.2", ""),
+    OSS("3.11.5", ""),
 
     /** DataStax Distribution of Apache Cassandra. */
     DDAC("5.1.11", "--ddac"),
 
     /** DataStax Enterprise. */
-    DSE("6.0.2", "--dse");
+    DSE("6.7.7", "--dse");
 
     private final String defaultVersion;
     private final String ccmCreateOption;
