@@ -11,7 +11,7 @@ package com.datastax.dsbulk.executor.reactor;
 import com.datastax.dsbulk.executor.api.BulkExecutor;
 import com.datastax.dsbulk.executor.api.internal.publisher.ContinuousReadResultPublisher;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
-import com.datastax.dse.driver.api.core.DseSession;
+import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import java.util.Objects;
 import reactor.core.publisher.Flux;
@@ -27,34 +27,34 @@ public class ContinuousReactorBulkExecutor extends DefaultReactorBulkExecutor
 
   /**
    * Creates a new builder for {@link ContinuousReactorBulkExecutor} instances using the given
-   * {@link DseSession}.
+   * {@link CqlSession}.
    *
-   * @param session the {@link DseSession} to use.
+   * @param session the {@link CqlSession} to use.
    * @return a new builder.
    */
-  public static ContinuousReactorBulkExecutorBuilder builder(DseSession session) {
+  public static ContinuousReactorBulkExecutorBuilder builderCP(CqlSession session) {
     return new ContinuousReactorBulkExecutorBuilder(session);
   }
 
-  private final DseSession dseSession;
+  private final CqlSession cqlSession;
 
   /**
-   * Creates a new instance using the given {@link DseSession} and using defaults for all
+   * Creates a new instance using the given {@link CqlSession} and using defaults for all
    * parameters.
    *
-   * <p>If you need to customize your executor, use the {@link #builder(DseSession) builder} method
+   * <p>If you need to customize your executor, use the {@link #builder(CqlSession) builder} method
    * instead.
    *
-   * @param dseSession the {@link DseSession} to use.
+   * @param cqlSession the {@link CqlSession} to use.
    */
-  public ContinuousReactorBulkExecutor(DseSession dseSession) {
-    super(dseSession);
-    this.dseSession = dseSession;
+  public ContinuousReactorBulkExecutor(CqlSession cqlSession) {
+    super(cqlSession);
+    this.cqlSession = cqlSession;
   }
 
   ContinuousReactorBulkExecutor(ContinuousReactorBulkExecutorBuilder builder) {
     super(builder);
-    this.dseSession = builder.dseSession;
+    this.cqlSession = builder.cqlSession;
   }
 
   @Override
@@ -63,7 +63,7 @@ public class ContinuousReactorBulkExecutor extends DefaultReactorBulkExecutor
     return Flux.from(
         new ContinuousReadResultPublisher(
             statement,
-            dseSession,
+            cqlSession,
             failFast,
             listener,
             maxConcurrentRequests,

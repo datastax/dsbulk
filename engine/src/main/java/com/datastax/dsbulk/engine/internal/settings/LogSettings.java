@@ -26,7 +26,6 @@ import com.datastax.dsbulk.engine.internal.format.statement.BulkBoundStatementPr
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.log.threshold.ErrorThreshold;
 import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
-import com.datastax.dse.driver.api.core.DseSession;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.session.Session;
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
@@ -201,7 +200,6 @@ public class LogSettings {
     LOGGER.debug("{} starting.", WorkflowUtils.getBulkLoaderNameAndVersion());
     // Initialize the following static fields: their initialization will print the driver
     // coordinates to the console at INFO level, which is enough.
-    Objects.requireNonNull(DseSession.DSE_DRIVER_COORDINATES);
     Objects.requireNonNull(Session.OSS_DRIVER_COORDINATES);
     LOGGER.debug("Available processors: {}.", Runtime.getRuntime().availableProcessors());
     LOGGER.info("Operation directory: {}", operationDirectory);

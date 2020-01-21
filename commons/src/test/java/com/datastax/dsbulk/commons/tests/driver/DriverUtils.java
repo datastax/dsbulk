@@ -13,7 +13,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.datastax.dse.driver.api.core.DseProtocolVersion;
-import com.datastax.dse.driver.api.core.DseSession;
 import com.datastax.dse.driver.api.core.metadata.DseNodeProperties;
 import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.CqlSession;
@@ -66,8 +65,8 @@ public class DriverUtils {
   }
 
   @NonNull
-  public static DseSession mockDseSession() {
-    DseSession session = mock(DseSession.class);
+  public static CqlSession mockCqlSession() {
+    CqlSession session = mock(CqlSession.class);
     configureMockSession(session, DseProtocolVersion.DSE_V2);
     return session;
   }

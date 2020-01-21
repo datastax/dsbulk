@@ -16,18 +16,18 @@ import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMVersionRequirement;
 import com.datastax.dsbulk.executor.api.SerializedSession;
 import com.datastax.dsbulk.executor.api.ccm.BulkExecutorCCMITBase;
 import com.datastax.dsbulk.executor.rxjava.ContinuousRxJavaBulkExecutor;
-import com.datastax.dse.driver.api.core.DseSession;
+import com.datastax.oss.driver.api.core.CqlSession;
 import org.junit.jupiter.api.Tag;
 
 @Tag("medium")
 @CCMRequirements(versionRequirements = @CCMVersionRequirement(type = DSE, min = "5.1"))
 class ContinuousRxJavaBulkExecutorCCMIT extends BulkExecutorCCMITBase {
 
-  ContinuousRxJavaBulkExecutorCCMIT(CCMCluster ccm, DseSession session) {
+  ContinuousRxJavaBulkExecutorCCMIT(CCMCluster ccm, CqlSession session) {
     super(
         ccm,
         session,
-        ContinuousRxJavaBulkExecutor.builder(new SerializedSession(session)).build(),
-        ContinuousRxJavaBulkExecutor.builder(new SerializedSession(session)).failSafe().build());
+        ContinuousRxJavaBulkExecutor.builderCP(new SerializedSession(session)).build(),
+        ContinuousRxJavaBulkExecutor.builderCP(new SerializedSession(session)).failSafe().build());
   }
 }

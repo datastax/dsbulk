@@ -41,8 +41,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <java.version>1.8</java.version>
-    <oss.driver.version>4.3.0</oss.driver.version>
-    <dse.driver.version>2.3.0</dse.driver.version>
+    <oss.driver.version>4.4.0</oss.driver.version>
     <!--
     When upgrading library versions make sure the resulting binary tarball contains only
     required jars, and that no jar has an offending license.
@@ -146,12 +145,6 @@
         <groupId>com.datastax.dse</groupId>
         <artifactId>dsbulk-engine</artifactId>
         <version>${project.version}</version>
-      </dependency>
-
-      <dependency>
-        <groupId>com.datastax.dse</groupId>
-        <artifactId>dse-java-driver-core</artifactId>
-        <version>${dse.driver.version}</version>
       </dependency>
 
       <dependency>

@@ -45,16 +45,15 @@ import com.datastax.dsbulk.commons.tests.driver.annotations.SessionConfig;
 import com.datastax.dsbulk.commons.tests.driver.annotations.SessionFactoryMethod;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.commons.tests.utils.StringUtils;
-import com.datastax.dse.driver.api.core.DseSession;
-import com.datastax.dse.driver.api.core.DseSessionBuilder;
 import com.datastax.dse.driver.api.core.config.DseDriverConfigLoader;
 import com.datastax.dse.driver.api.core.config.DseDriverOption;
-import com.datastax.dse.driver.internal.core.auth.DsePlainTextAuthProvider;
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
 import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
 import com.datastax.oss.driver.api.core.config.DriverOption;
 import com.datastax.oss.driver.api.core.config.ProgrammaticDriverConfigLoaderBuilder;
+import com.datastax.oss.driver.internal.core.auth.PlainTextAuthProvider;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
@@ -105,7 +104,7 @@ public abstract class SessionFactory {
     return new SessionAnnotationFactory(config, dcName);
   }
 
-  public abstract DseSessionBuilder createSessionBuilder();
+  public abstract CqlSessionBuilder createSessionBuilder();
 
   public void configureSession(CqlSession session) {
     // nothing to do by default
@@ -178,7 +177,7 @@ public abstract class SessionFactory {
       String[] credentials = computeCredentials(config.credentials());
       if (credentials != null) {
         loaderBuilder
-            .withClass(AUTH_PROVIDER_CLASS, DsePlainTextAuthProvider.class)
+            .withClass(AUTH_PROVIDER_CLASS, PlainTextAuthProvider.class)
             .withString(AUTH_PROVIDER_USER_NAME, credentials[0])
             .withString(AUTH_PROVIDER_PASSWORD, credentials[1]);
       }
@@ -260,8 +259,8 @@ public abstract class SessionFactory {
     }
 
     @Override
-    public DseSessionBuilder createSessionBuilder() {
-      return DseSession.builder().withConfigLoader(configLoader);
+    public CqlSessionBuilder createSessionBuilder() {
+      return CqlSession.builder().withConfigLoader(configLoader);
     }
 
     @Override
@@ -317,8 +316,8 @@ public abstract class SessionFactory {
     }
 
     @Override
-    public DseSessionBuilder createSessionBuilder() {
-      DseSessionBuilder sessionBuilder = newBuilderInstance();
+    public CqlSessionBuilder createSessionBuilder() {
+      CqlSessionBuilder sessionBuilder = newBuilderInstance();
       if (sessionBuilder == null) {
         throw new NullPointerException(
             String.format("Session factory method %s returned null", factoryMethod));
@@ -326,8 +325,8 @@ public abstract class SessionFactory {
       return sessionBuilder;
     }
 
-    DseSessionBuilder newBuilderInstance() {
-      return ReflectionUtils.invokeMethod(factoryMethod, null, DseSessionBuilder.class);
+    CqlSessionBuilder newBuilderInstance() {
+      return ReflectionUtils.invokeMethod(factoryMethod, null, CqlSessionBuilder.class);
     }
 
     @Override

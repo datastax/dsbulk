@@ -49,11 +49,9 @@ import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.engine.internal.auth.AuthProviderFactory;
 import com.datastax.dsbulk.engine.internal.ssl.SslHandlerFactoryFactory;
-import com.datastax.dse.driver.api.core.DseSession;
-import com.datastax.dse.driver.api.core.DseSessionBuilder;
-import com.datastax.dse.driver.internal.core.auth.DsePlainTextAuthProvider;
-import com.datastax.dse.driver.internal.core.context.DseDriverContext;
 import com.datastax.oss.driver.api.core.ConsistencyLevel;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.datastax.oss.driver.api.core.DefaultConsistencyLevel;
 import com.datastax.oss.driver.api.core.auth.AuthProvider;
 import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
@@ -62,7 +60,9 @@ import com.datastax.oss.driver.api.core.context.DriverContext;
 import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.driver.api.core.session.ProgrammaticArguments;
 import com.datastax.oss.driver.api.core.time.TimestampGenerator;
+import com.datastax.oss.driver.internal.core.auth.PlainTextAuthProvider;
 import com.datastax.oss.driver.internal.core.config.typesafe.DefaultDriverConfigLoader;
+import com.datastax.oss.driver.internal.core.context.DefaultDriverContext;
 import com.datastax.oss.driver.internal.core.ssl.JdkSslHandlerFactory;
 import com.datastax.oss.driver.internal.core.ssl.SslHandlerFactory;
 import com.datastax.oss.driver.internal.core.time.AtomicTimestampGenerator;
@@ -263,13 +263,13 @@ public class DriverSettings {
         && newDriverConfig.hasPath("advanced.auth-provider.username")
         && newDriverConfig.hasPath("advanced.auth-provider.password")) {
       // Emulate DSBulk behavior for legacy auth settings: when username and password are set but no
-      // auth provider class is set, infer DsePlainTextAuthProvider
+      // auth provider class is set, infer PlainTextAuthProvider
       LOGGER.info(
-          "Username and password provided but auth provider not specified, inferring DsePlainTextAuthProvider");
+          "Username and password provided but auth provider not specified, inferring PlainTextAuthProvider");
       newDriverConfig =
           newDriverConfig.withValue(
               "advanced.auth-provider.class",
-              ConfigValueFactory.fromAnyRef(DsePlainTextAuthProvider.class.getSimpleName()));
+              ConfigValueFactory.fromAnyRef(PlainTextAuthProvider.class.getSimpleName()));
     }
 
     if (isUserDefined(deprecatedDriverConfig, "ssl")) {
@@ -552,8 +552,8 @@ public class DriverSettings {
     return mergedDriverConfig;
   }
 
-  public DseSession newSession(String executionId) {
-    DseSessionBuilder sessionBuilder =
+  public CqlSession newSession(String executionId) {
+    CqlSessionBuilder sessionBuilder =
         new BulkLoaderSessionBuilder()
             .withApplicationVersion(getBulkLoaderVersion())
             .withApplicationName(BULK_LOADER_APPLICATION_NAME + " " + executionId)
@@ -664,12 +664,11 @@ public class DriverSettings {
     }
   }
 
-  private class BulkLoaderSessionBuilder extends DseSessionBuilder {
+  private class BulkLoaderSessionBuilder extends CqlSessionBuilder {
     @Override
     protected DriverContext buildContext(
         DriverConfigLoader configLoader, ProgrammaticArguments programmaticArguments) {
-      return new DseDriverContext(
-          configLoader, programmaticArguments, dseProgrammaticArgumentsBuilder.build()) {
+      return new DefaultDriverContext(configLoader, programmaticArguments) {
 
         @Override
         protected Optional<SslHandlerFactory> buildSslHandlerFactory() {

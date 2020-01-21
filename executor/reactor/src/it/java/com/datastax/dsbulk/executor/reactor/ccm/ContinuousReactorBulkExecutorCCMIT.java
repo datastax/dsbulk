@@ -16,14 +16,14 @@ import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMVersionRequirement;
 import com.datastax.dsbulk.executor.api.SerializedSession;
 import com.datastax.dsbulk.executor.api.ccm.BulkExecutorCCMITBase;
 import com.datastax.dsbulk.executor.reactor.ContinuousReactorBulkExecutor;
-import com.datastax.dse.driver.api.core.DseSession;
+import com.datastax.oss.driver.api.core.CqlSession;
 import org.junit.jupiter.api.Tag;
 
 @Tag("medium")
 @CCMRequirements(versionRequirements = @CCMVersionRequirement(type = DSE, min = "5.1"))
 class ContinuousReactorBulkExecutorCCMIT extends BulkExecutorCCMITBase {
 
-  ContinuousReactorBulkExecutorCCMIT(CCMCluster ccm, DseSession session) {
+  ContinuousReactorBulkExecutorCCMIT(CCMCluster ccm, CqlSession session) {
     super(
         ccm,
         session,
