@@ -29,7 +29,10 @@ class ContinuousRxJavaBulkExecutorCCMIT extends BulkExecutorCCMITBase {
     super(
         ccm,
         session,
-        ContinuousRxJavaBulkExecutor.builderCP(new SerializedSession(session)).build(),
-        ContinuousRxJavaBulkExecutor.builderCP(new SerializedSession(session)).failSafe().build());
+        ContinuousRxJavaBulkExecutor.continuousPagingBuilder(new SerializedSession(session))
+            .build(),
+        ContinuousRxJavaBulkExecutor.continuousPagingBuilder(new SerializedSession(session))
+            .failSafe()
+            .build());
   }
 }

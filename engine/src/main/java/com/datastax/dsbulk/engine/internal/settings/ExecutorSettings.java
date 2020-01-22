@@ -120,26 +120,25 @@ public class ExecutorSettings {
 
   private ReactorBulkExecutor newContinuousExecutor(
       CqlSession session, ExecutionListener executionListener) {
-    ContinuousReactorBulkExecutorBuilder builder = ContinuousReactorBulkExecutor.builderCP(session);
+    ContinuousReactorBulkExecutorBuilder builder =
+        ContinuousReactorBulkExecutor.continuousPagingBuilder(session);
     return configureExecutor(builder, executionListener)
         .withMaxInFlightQueries(maxConcurrentQueries)
         .build();
   }
 
   private boolean continuousPagingAvailable(CqlSession session) {
-    if (session != null) {
-      ProtocolVersion protocolVersion = session.getContext().getProtocolVersion();
-      if (protocolVersion.getCode() >= DseProtocolVersion.DSE_V1.getCode()) {
-        DefaultConsistencyLevel consistencyLevel =
-            DefaultConsistencyLevel.valueOf(
-                session
-                    .getContext()
-                    .getConfig()
-                    .getDefaultProfile()
-                    .getString(DefaultDriverOption.REQUEST_CONSISTENCY));
-        return consistencyLevel == DefaultConsistencyLevel.ONE
-            || consistencyLevel == DefaultConsistencyLevel.LOCAL_ONE;
-      }
+    ProtocolVersion protocolVersion = session.getContext().getProtocolVersion();
+    if (protocolVersion.getCode() >= DseProtocolVersion.DSE_V1.getCode()) {
+      DefaultConsistencyLevel consistencyLevel =
+          DefaultConsistencyLevel.valueOf(
+              session
+                  .getContext()
+                  .getConfig()
+                  .getDefaultProfile()
+                  .getString(DefaultDriverOption.REQUEST_CONSISTENCY));
+      return consistencyLevel == DefaultConsistencyLevel.ONE
+          || consistencyLevel == DefaultConsistencyLevel.LOCAL_ONE;
     }
     return false;
   }

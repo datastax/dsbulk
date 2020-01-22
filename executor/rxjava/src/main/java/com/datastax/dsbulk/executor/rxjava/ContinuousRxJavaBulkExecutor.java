@@ -32,7 +32,7 @@ public class ContinuousRxJavaBulkExecutor extends DefaultRxJavaBulkExecutor
    * @param session the {@link CqlSession} to use.
    * @return a new builder.
    */
-  public static ContinuousRxJavaBulkExecutorBuilder builderCP(CqlSession session) {
+  public static ContinuousRxJavaBulkExecutorBuilder continuousPagingBuilder(CqlSession session) {
     return new ContinuousRxJavaBulkExecutorBuilder(session);
   }
 
@@ -42,8 +42,8 @@ public class ContinuousRxJavaBulkExecutor extends DefaultRxJavaBulkExecutor
    * Creates a new instance using the given {@link CqlSession} and using defaults for all
    * parameters.
    *
-   * <p>If you need to customize your executor, use the {@link #builderCP(CqlSession) builder}
-   * method instead.
+   * <p>If you need to customize your executor, use the {@link #continuousPagingBuilder(CqlSession)
+   * builder} method instead.
    *
    * @param cqlSession the {@link CqlSession} to use.
    */

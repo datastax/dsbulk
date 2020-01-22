@@ -32,7 +32,7 @@ public class ContinuousReactorBulkExecutor extends DefaultReactorBulkExecutor
    * @param session the {@link CqlSession} to use.
    * @return a new builder.
    */
-  public static ContinuousReactorBulkExecutorBuilder builderCP(CqlSession session) {
+  public static ContinuousReactorBulkExecutorBuilder continuousPagingBuilder(CqlSession session) {
     return new ContinuousReactorBulkExecutorBuilder(session);
   }
 
