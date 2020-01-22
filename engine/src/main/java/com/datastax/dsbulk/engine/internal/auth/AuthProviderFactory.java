@@ -14,6 +14,7 @@ import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dse.driver.api.core.auth.DseGssApiAuthProviderBase.GssApiOptions;
 import com.datastax.oss.driver.api.core.auth.AuthProvider;
+import com.datastax.oss.driver.internal.core.auth.PlainTextAuthProvider;
 import com.datastax.oss.driver.internal.core.auth.ProgrammaticPlainTextAuthProvider;
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
@@ -54,8 +55,11 @@ public class AuthProviderFactory {
 
     switch (authProvider.toLowerCase()) {
       case "plaintextauthprovider":
-
+        return createPlainTextAuthProvider(config, authProvider, authorizationId);
       case "dseplaintextauthprovider":
+        LOGGER.warn(
+            "The com.datastax.dse.driver.internal.core.auth.DsePlainTextAuthProvider is deprecated. Please use {} instead.",
+            PlainTextAuthProvider.class);
         return createPlainTextAuthProvider(config, authProvider, authorizationId);
 
       case "dsegssapiauthprovider":
