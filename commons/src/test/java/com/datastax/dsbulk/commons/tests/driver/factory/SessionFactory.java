@@ -45,7 +45,6 @@ import com.datastax.dsbulk.commons.tests.driver.annotations.SessionConfig;
 import com.datastax.dsbulk.commons.tests.driver.annotations.SessionFactoryMethod;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.commons.tests.utils.StringUtils;
-import com.datastax.dse.driver.api.core.config.DseDriverConfigLoader;
 import com.datastax.dse.driver.api.core.config.DseDriverOption;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
@@ -143,7 +142,7 @@ public abstract class SessionFactory {
       useKeyspaceMode = config.useKeyspace();
       loggedKeyspaceName = config.loggedKeyspaceName();
       ProgrammaticDriverConfigLoaderBuilder loaderBuilder =
-          DseDriverConfigLoader.programmaticBuilder()
+          DriverConfigLoader.programmaticBuilder()
               .withInt(CONNECTION_POOL_LOCAL_SIZE, 1)
               .withInt(CONNECTION_POOL_REMOTE_SIZE, 1)
               .withString(LOAD_BALANCING_LOCAL_DATACENTER, dcName)
