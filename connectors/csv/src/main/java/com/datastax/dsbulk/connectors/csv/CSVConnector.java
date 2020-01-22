@@ -8,20 +8,16 @@
  */
 package com.datastax.dsbulk.connectors.csv;
 
-import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.getURLsFromFile;
-import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isPathAbsentOrEmpty;
-import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isPathPresentAndNotEmpty;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isValueFromReferenceConfig;
-import static com.datastax.dsbulk.commons.internal.io.IOUtils.countReadableFiles;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.io.CompressedIOUtils;
-import com.datastax.dsbulk.commons.internal.io.IOUtils;
 import com.datastax.dsbulk.commons.internal.reactive.SimpleBackpressureController;
+import com.datastax.dsbulk.connectors.api.AbstractConnector;
 import com.datastax.dsbulk.connectors.api.CommonConnectorFeature;
-import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.ConnectorFeature;
+import com.datastax.dsbulk.connectors.api.ConnectorWriter;
 import com.datastax.dsbulk.connectors.api.Field;
 import com.datastax.dsbulk.connectors.api.MappedField;
 import com.datastax.dsbulk.connectors.api.Record;
@@ -41,7 +37,6 @@ import com.univocity.parsers.csv.CsvParser;
 import com.univocity.parsers.csv.CsvParserSettings;
 import com.univocity.parsers.csv.CsvWriter;
 import com.univocity.parsers.csv.CsvWriterSettings;
-import edu.umd.cs.findbugs.annotations.NonNull;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import java.io.IOException;
 import java.io.Reader;
@@ -53,28 +48,19 @@ import java.net.URL;
 import java.net.URLStreamHandler;
 import java.nio.channels.ClosedChannelException;
 import java.nio.charset.Charset;
-import java.nio.file.FileSystemNotFoundException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.PathMatcher;
-import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Signal;
-import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
 /**
@@ -87,15 +73,12 @@ import reactor.core.scheduler.Schedulers;
  * <p>This connector is highly configurable; see its {@code reference.conf} file, bundled within its
  * jar archive, for detailed information.
  */
-public class CSVConnector implements Connector {
+public class CSVConnector extends AbstractConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CSVConnector.class);
   private static final GenericType<String> STRING_TYPE = GenericType.STRING;
   private static final Pattern WHITESPACE = Pattern.compile("\\s+");
 
-  private static final String URL = "url";
-  private static final String URLFILE = "urlfile";
-  private static final String FILE_NAME_PATTERN = "fileNamePattern";
   private static final String ENCODING = "encoding";
   private static final String COMPRESSION = "compression";
   private static final String DELIMITER = "delimiter";
@@ -103,12 +86,7 @@ public class CSVConnector implements Connector {
   private static final String ESCAPE = "escape";
   private static final String COMMENT = "comment";
   private static final String NEWLINE = "newline";
-  private static final String SKIP_RECORDS = "skipRecords";
-  private static final String MAX_RECORDS = "maxRecords";
-  private static final String MAX_CONCURRENT_FILES = "maxConcurrentFiles";
-  private static final String RECURSIVE = "recursive";
   private static final String HEADER = "header";
-  private static final String FILE_NAME_FORMAT = "fileNameFormat";
   private static final String MAX_CHARS_PER_COLUMN = "maxCharsPerColumn";
   private static final String MAX_COLUMNS = "maxColumns";
   private static final String AUTO_NEWLINE = "auto";
@@ -122,10 +100,7 @@ public class CSVConnector implements Connector {
   private static final String NULL_VALUE = "nullValue";
   private static final String EMPTY_VALUE = "emptyValue";
 
-  private boolean read;
   private List<URL> urls;
-  private List<Path> roots;
-  private List<URL> files;
   private String pattern;
   private Charset encoding;
   private String compression;
@@ -137,7 +112,6 @@ public class CSVConnector implements Connector {
   private long skipRecords;
   private long maxRecords;
   private int maxConcurrentFiles;
-  private boolean recursive;
   private boolean header;
   private String fileNameFormat;
   private int maxCharsPerColumn;
@@ -149,12 +123,9 @@ public class CSVConnector implements Connector {
   private boolean normalizeLineEndingsInQuotes;
   private String nullValue;
   private String emptyValue;
-  private int resourceCount;
   private CsvParserSettings parserSettings;
   private CsvWriterSettings writerSettings;
   @VisibleForTesting AtomicInteger counter;
-  private Scheduler scheduler;
-  private List<CSVWriter> writers;
 
   @Override
   public void configure(LoaderConfig settings, boolean read) {
@@ -211,47 +182,6 @@ public class CSVConnector implements Connector {
       }
     } catch (ConfigException e) {
       throw BulkConfigurationException.fromTypeSafeConfigException(e, "dsbulk.connector.csv");
-    }
-  }
-
-  @NonNull
-  private List<URL> loadURLs(LoaderConfig settings) {
-    if (isPathPresentAndNotEmpty(settings, URLFILE)) {
-      // suppress URL option
-      try {
-        return getURLsFromFile(settings.getPath(URLFILE));
-      } catch (IOException e) {
-        throw new BulkConfigurationException(
-            "Problem when retrieving urls from file specified by the URL file parameter", e);
-      }
-    } else {
-      return Collections.singletonList(settings.getURL(URL));
-    }
-  }
-
-  private void validateURL(LoaderConfig settings, boolean read) {
-    if (read) {
-      // for LOAD
-      if (isPathAbsentOrEmpty(settings, URL)) {
-        if (isPathAbsentOrEmpty(settings, URLFILE)) {
-          throw new BulkConfigurationException(
-              "A URL or URL file is mandatory when using the csv connector for LOAD. Please set connector.csv.url or connector.csv.urlfile "
-                  + "and try again. See settings.md or help for more information.");
-        }
-      }
-      if (isPathPresentAndNotEmpty(settings, URL) && isPathPresentAndNotEmpty(settings, URLFILE)) {
-        LOGGER.debug("You specified both URL and URL file. The URL file will take precedence.");
-      }
-    } else {
-      // for UNLOAD we are not supporting urlfile parameter
-      if (isPathPresentAndNotEmpty(settings, URLFILE)) {
-        throw new BulkConfigurationException("The urlfile parameter is not supported for UNLOAD");
-      }
-      if (isPathAbsentOrEmpty(settings, URL)) {
-        throw new BulkConfigurationException(
-            "A URL is mandatory when using the json connector for UNLOAD. Please set connector.csv.url "
-                + "and try again. See settings.md or help for more information.");
-      }
     }
   }
 
@@ -332,51 +262,6 @@ public class CSVConnector implements Connector {
   }
 
   @Override
-  public void close() {
-    if (scheduler != null) {
-      scheduler.dispose();
-    }
-    if (writers != null) {
-      IOException e = null;
-      for (CSVWriter writer : writers) {
-        try {
-          writer.close();
-        } catch (IOException e1) {
-          if (e == null) {
-            e = e1;
-          } else {
-            e.addSuppressed(e1);
-          }
-        }
-      }
-      if (e != null) {
-        throw new UncheckedIOException(e);
-      }
-    }
-  }
-
-  @Override
-  public int estimatedResourceCount() {
-    return resourceCount;
-  }
-
-  @Override
-  public Publisher<Record> read() {
-    assert read;
-    return Flux.concat(
-        Flux.fromIterable(roots).flatMap(this::scanRootDirectory).flatMap(this::readURL),
-        Flux.fromIterable(files).flatMap(this::readURL));
-  }
-
-  @Override
-  public Publisher<Publisher<Record>> readByResource() {
-    assert read;
-    return Flux.concat(
-        Flux.fromIterable(roots).flatMap(this::scanRootDirectory).map(this::readURL),
-        Flux.fromIterable(files).map(this::readURL));
-  }
-
-  @Override
   public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
     assert !read;
     writers = new CopyOnWriteArrayList<>();
@@ -432,65 +317,7 @@ public class CSVConnector implements Connector {
             .dematerialize();
   }
 
-  private void tryReadFromDirectories() throws URISyntaxException, IOException {
-    resourceCount = 0;
-    for (URL u : urls) {
-      try {
-        Path root = Paths.get(u.toURI());
-        if (Files.isDirectory(root)) {
-          if (!Files.isReadable(root)) {
-            throw new IllegalArgumentException(
-                String.format("Directory is not readable: %s.", root));
-          }
-          roots.add(root);
-          int inDirectoryResourceCount =
-              Objects.requireNonNull(scanRootDirectory(root).take(100).count().block()).intValue();
-          if (inDirectoryResourceCount == 0) {
-            if (countReadableFiles(root, recursive) == 0) {
-              LOGGER.warn("Directory {} has no readable files.", root);
-            } else {
-              LOGGER.warn(
-                  "No files in directory {} matched the connector.csv.fileNamePattern of \"{}\".",
-                  root,
-                  pattern);
-            }
-          }
-          resourceCount += inDirectoryResourceCount;
-        } else {
-          resourceCount += 1;
-          files.add(u);
-        }
-      } catch (FileSystemNotFoundException ignored) {
-        // not a path on a known filesystem, fall back to reading from URL directly
-        files.add(u);
-        resourceCount++;
-      }
-    }
-  }
-
-  private void tryWriteToDirectory() throws URISyntaxException, IOException {
-    try {
-      resourceCount = -1;
-      Path root = Paths.get(urls.get(0).toURI()); // for UNLOAD always one URL
-      if (!Files.exists(root)) {
-        root = Files.createDirectories(root);
-      }
-      if (Files.isDirectory(root)) {
-        if (!Files.isWritable(root)) {
-          throw new IllegalArgumentException(String.format("Directory is not writable: %s.", root));
-        }
-        if (IOUtils.isDirectoryNonEmpty(root)) {
-          throw new IllegalArgumentException(
-              "Invalid value for connector.csv.url: target directory " + root + " must be empty.");
-        }
-        this.roots.add(root);
-      }
-    } catch (FileSystemNotFoundException ignored) {
-      // not a path on a known filesystem, fall back to writing to URL directly
-    }
-  }
-
-  private Flux<Record> readURL(URL url) {
+  public Flux<Record> readURL(URL url) {
     Flux<Record> records =
         Flux.create(
             sink -> {
@@ -584,35 +411,12 @@ public class CSVConnector implements Connector {
     }
   }
 
-  private Flux<URL> scanRootDirectory(Path root) {
-    try {
-      // this stream will be closed by the flux, do not add it to a try-with-resources block
-      @SuppressWarnings("StreamResourceLeak")
-      Stream<Path> files = Files.walk(root, recursive ? Integer.MAX_VALUE : 1);
-      PathMatcher matcher = root.getFileSystem().getPathMatcher("glob:" + pattern);
-      return Flux.fromStream(files)
-          .filter(Files::isReadable)
-          .filter(Files::isRegularFile)
-          .filter(matcher::matches)
-          .map(
-              file -> {
-                try {
-                  return file.toUri().toURL();
-                } catch (MalformedURLException e) {
-                  throw new UncheckedIOException(e);
-                }
-              });
-    } catch (IOException e) {
-      throw new UncheckedIOException("Error scanning directory " + root, e);
-    }
-  }
-
-  private class CSVWriter {
+  private class CSVWriter implements ConnectorWriter {
 
     private URL url;
     private CsvWriter writer;
 
-    private void write(Record record) throws IOException {
+    public void write(Record record) throws IOException {
       try {
         if (writer == null) {
           open();
@@ -654,7 +458,7 @@ public class CSVConnector implements Connector {
       }
     }
 
-    private void close() throws IOException {
+    public void close() throws IOException {
       if (writer != null) {
         try {
           writer.close();
