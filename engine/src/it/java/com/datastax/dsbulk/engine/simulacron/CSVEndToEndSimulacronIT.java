@@ -74,6 +74,7 @@ import com.datastax.oss.simulacron.common.result.WriteFailureResult;
 import com.datastax.oss.simulacron.common.result.WriteTimeoutResult;
 import com.datastax.oss.simulacron.common.stubbing.Prime;
 import com.datastax.oss.simulacron.server.BoundCluster;
+import com.datastax.oss.simulacron.server.RejectScope;
 import com.typesafe.config.ConfigFactory;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -150,6 +151,32 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
         .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
         .contains("Writes: total: 24, successful: 24, failed: 0");
     validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", LOCAL_ONE);
+  }
+
+  @Test
+  void full_load_with_all_nodes_failed_exception() throws Exception {
+    // simulate AllNodesFailedException
+    simulacron.rejectConnections(0, RejectScope.STOP);
+
+    String[] args = {
+      "load",
+      "--log.verbosity",
+      "2",
+      "-header",
+      "false",
+      "--connector.csv.url",
+      quoteJson(CSV_RECORDS_UNIQUE),
+      "--schema.keyspace",
+      "ks1",
+      "--schema.query",
+      INSERT_INTO_IP_BY_COUNTRY,
+      "--schema.mapping",
+      IP_BY_COUNTRY_MAPPING_INDEXED
+    };
+
+    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
+    validateExceptionsLog(2, "AllNodesFailedException", "operation.log");
   }
 
   @ParameterizedTest
