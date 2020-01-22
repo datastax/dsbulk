@@ -157,26 +157,29 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
   void full_load_with_all_nodes_failed_exception() throws Exception {
     // simulate AllNodesFailedException
     simulacron.rejectConnections(0, RejectScope.STOP);
+    try {
+      String[] args = {
+        "load",
+        "--log.verbosity",
+        "2",
+        "-header",
+        "false",
+        "--connector.csv.url",
+        quoteJson(CSV_RECORDS_UNIQUE),
+        "--schema.keyspace",
+        "ks1",
+        "--schema.query",
+        INSERT_INTO_IP_BY_COUNTRY,
+        "--schema.mapping",
+        IP_BY_COUNTRY_MAPPING_INDEXED
+      };
 
-    String[] args = {
-      "load",
-      "--log.verbosity",
-      "2",
-      "-header",
-      "false",
-      "--connector.csv.url",
-      quoteJson(CSV_RECORDS_UNIQUE),
-      "--schema.keyspace",
-      "ks1",
-      "--schema.query",
-      INSERT_INTO_IP_BY_COUNTRY,
-      "--schema.mapping",
-      IP_BY_COUNTRY_MAPPING_INDEXED
-    };
-
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
-    validateExceptionsLog(2, "AllNodesFailedException", "operation.log");
+      int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+      assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
+      validateExceptionsLog(2, "AllNodesFailedException", "operation.log");
+    } finally {
+      simulacron.acceptConnections();
+    }
   }
 
   @ParameterizedTest
@@ -408,7 +411,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
   }
 
   @Test
-  void load_long_column() {
+  void load_long_column() throws Exception {
 
     primeIpByCountryTable(simulacron);
     RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
