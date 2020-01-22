@@ -20,7 +20,9 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import org.junit.jupiter.api.Tag;
 
 @Tag("medium")
-@CCMRequirements(versionRequirements = @CCMVersionRequirement(type = DSE, min = "5.1"))
+@CCMRequirements(
+    compatibleTypes = {DSE},
+    versionRequirements = @CCMVersionRequirement(type = DSE, min = "5.1"))
 class ContinuousReactorBulkExecutorCCMIT extends BulkExecutorCCMITBase {
 
   ContinuousReactorBulkExecutorCCMIT(CCMCluster ccm, CqlSession session) {
