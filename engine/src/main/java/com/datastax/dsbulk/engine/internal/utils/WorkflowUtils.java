@@ -11,12 +11,12 @@ package com.datastax.dsbulk.engine.internal.utils;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
+import com.datastax.oss.driver.api.core.uuid.Uuids;
 import com.datastax.oss.driver.shaded.guava.common.base.Throwables;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
@@ -125,25 +125,6 @@ public class WorkflowUtils {
   }
 
   public static UUID clientId(String executionId) {
-    byte[] executionIdBytes = executionId.getBytes(StandardCharsets.UTF_8);
-    byte[] concat = new byte[16 + executionIdBytes.length];
-    System.arraycopy(
-        ByteBuffer.allocate(Long.BYTES)
-            .putLong(BULK_LOADER_NAMESPACE.getMostSignificantBits())
-            .array(),
-        0,
-        concat,
-        0,
-        8);
-    System.arraycopy(
-        ByteBuffer.allocate(Long.BYTES)
-            .putLong(BULK_LOADER_NAMESPACE.getLeastSignificantBits())
-            .array(),
-        0,
-        concat,
-        8,
-        8);
-    System.arraycopy(executionIdBytes, 0, concat, 16, executionIdBytes.length);
-    return UUID.nameUUIDFromBytes(concat);
+    return Uuids.nameBased(BULK_LOADER_NAMESPACE, executionId);
   }
 }
