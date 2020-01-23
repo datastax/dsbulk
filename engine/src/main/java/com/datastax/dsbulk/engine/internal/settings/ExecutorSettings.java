@@ -98,7 +98,7 @@ public class ExecutorSettings {
           return newDefaultExecutor(session, executionListener);
         }
         if (continuousPagingAvailable(session)) {
-          return newContinuousExecutor((CqlSession) session, executionListener);
+          return newContinuousExecutor(session, executionListener);
         } else {
           LOGGER.warn(
               "Continuous paging is not available, read performance will not be optimal. "

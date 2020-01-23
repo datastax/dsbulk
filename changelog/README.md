@@ -2,7 +2,7 @@
 
 ## 1.4.2 (in progress)
 
-- [task] DAT-525: Update DSBulk to unified driver
+- [improvement] DAT-525: Update DSBulk to unified driver
 
 ## 1.4.1
 

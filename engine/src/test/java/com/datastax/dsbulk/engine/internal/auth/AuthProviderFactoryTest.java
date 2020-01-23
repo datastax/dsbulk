@@ -10,6 +10,7 @@ package com.datastax.dsbulk.engine.internal.auth;
 
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static com.datastax.dsbulk.commons.tests.utils.TestConfigUtils.createTestConfig;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
@@ -79,7 +80,9 @@ class AuthProviderFactoryTest {
     AuthProviderFactory.createAuthProvider(config);
 
     // then
-    System.out.println(logs.getLoggedMessages());
+    assertThat(logs.getLoggedMessages())
+        .contains(
+            "The DsePlainTextAuthProvider is deprecated. Please use PlainTextAuthProvider instead.");
   }
 
   @Test
