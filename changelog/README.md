@@ -1,5 +1,9 @@
 ## Changelog
 
+## 1.4.2 (in progress)
+
+- [improvement] DAT-525: Update DSBulk to unified driver
+
 ## 1.4.1
 
 - [bug] DAT-516: Always quote comment character when unloading.

@@ -12,7 +12,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.dsbulk.commons.tests.RemoteClusterExtension;
 import com.datastax.dsbulk.commons.tests.driver.factory.SessionFactory;
-import com.datastax.dse.driver.api.core.DseSession;
+import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.metadata.EndPoint;
 import com.datastax.oss.driver.shaded.guava.common.util.concurrent.Uninterruptibles;
 import java.lang.reflect.Parameter;
@@ -74,9 +74,9 @@ public class SNIProxyServerExtension extends RemoteClusterExtension {
   }
 
   @Override
-  protected DseSession createSession(SessionFactory sessionFactory, ExtensionContext context) {
+  protected CqlSession createSession(SessionFactory sessionFactory, ExtensionContext context) {
     SNIProxyServer proxy = getOrCreateSNIProxyServer(context);
-    DseSession session =
+    CqlSession session =
         sessionFactory
             .createSessionBuilder()
             .withCloudSecureConnectBundle(proxy.getSecureBundlePath())

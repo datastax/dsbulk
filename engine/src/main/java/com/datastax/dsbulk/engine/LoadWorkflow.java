@@ -36,7 +36,7 @@ import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
 import com.datastax.dsbulk.executor.api.internal.result.EmptyWriteResult;
 import com.datastax.dsbulk.executor.api.result.WriteResult;
 import com.datastax.dsbulk.executor.reactor.writer.ReactorBulkWriter;
-import com.datastax.dse.driver.api.core.DseSession;
+import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.BatchableStatement;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.metrics.Metrics;
@@ -64,7 +64,7 @@ public class LoadWorkflow implements Workflow {
   private Connector connector;
   private MetricsManager metricsManager;
   private LogManager logManager;
-  private DseSession session;
+  private CqlSession session;
   private ReactorBulkWriter executor;
   private boolean batchingEnabled;
   private boolean dryRun;

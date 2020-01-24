@@ -22,8 +22,6 @@ import com.datastax.dsbulk.executor.reactor.ReactorBulkExecutor;
 import com.datastax.dsbulk.executor.reactor.reader.ReactorBulkReader;
 import com.datastax.dsbulk.executor.reactor.writer.ReactorBulkWriter;
 import com.datastax.dse.driver.api.core.DseProtocolVersion;
-import com.datastax.dse.driver.api.core.DseSession;
-import com.datastax.dse.driver.api.core.cql.continuous.ContinuousSession;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.DefaultConsistencyLevel;
 import com.datastax.oss.driver.api.core.ProtocolVersion;
@@ -100,7 +98,7 @@ public class ExecutorSettings {
           return newDefaultExecutor(session, executionListener);
         }
         if (continuousPagingAvailable(session)) {
-          return newContinuousExecutor((DseSession) session, executionListener);
+          return newContinuousExecutor(session, executionListener);
         } else {
           LOGGER.warn(
               "Continuous paging is not available, read performance will not be optimal. "
@@ -121,27 +119,26 @@ public class ExecutorSettings {
   }
 
   private ReactorBulkExecutor newContinuousExecutor(
-      DseSession session, ExecutionListener executionListener) {
-    ContinuousReactorBulkExecutorBuilder builder = ContinuousReactorBulkExecutor.builder(session);
+      CqlSession session, ExecutionListener executionListener) {
+    ContinuousReactorBulkExecutorBuilder builder =
+        ContinuousReactorBulkExecutor.continuousPagingBuilder(session);
     return configureExecutor(builder, executionListener)
         .withMaxInFlightQueries(maxConcurrentQueries)
         .build();
   }
 
   private boolean continuousPagingAvailable(CqlSession session) {
-    if (session instanceof ContinuousSession) {
-      ProtocolVersion protocolVersion = session.getContext().getProtocolVersion();
-      if (protocolVersion.getCode() >= DseProtocolVersion.DSE_V1.getCode()) {
-        DefaultConsistencyLevel consistencyLevel =
-            DefaultConsistencyLevel.valueOf(
-                session
-                    .getContext()
-                    .getConfig()
-                    .getDefaultProfile()
-                    .getString(DefaultDriverOption.REQUEST_CONSISTENCY));
-        return consistencyLevel == DefaultConsistencyLevel.ONE
-            || consistencyLevel == DefaultConsistencyLevel.LOCAL_ONE;
-      }
+    ProtocolVersion protocolVersion = session.getContext().getProtocolVersion();
+    if (protocolVersion.getCode() >= DseProtocolVersion.DSE_V1.getCode()) {
+      DefaultConsistencyLevel consistencyLevel =
+          DefaultConsistencyLevel.valueOf(
+              session
+                  .getContext()
+                  .getConfig()
+                  .getDefaultProfile()
+                  .getString(DefaultDriverOption.REQUEST_CONSISTENCY));
+      return consistencyLevel == DefaultConsistencyLevel.ONE
+          || consistencyLevel == DefaultConsistencyLevel.LOCAL_ONE;
     }
     return false;
   }

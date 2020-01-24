@@ -67,7 +67,7 @@ class LoaderConfigFactoryTest {
                 .description())
         .startsWith("reference.conf @ jar");
 
-    // should read DSE driver dse-reference.conf from its JAR
+    // should read DSE driver reference.conf from its JAR
     assertThat(referenceConfig.hasPath("datastax-java-driver.basic.load-balancing-policy.class"))
         .isTrue();
     assertThat(
@@ -75,7 +75,7 @@ class LoaderConfigFactoryTest {
                 .getValue("datastax-java-driver.basic.load-balancing-policy.class")
                 .origin()
                 .description())
-        .startsWith("dse-reference.conf @ jar");
+        .startsWith("reference.conf @ jar");
 
     // should read (dummy) dsbulk-reference.conf file found on the classpath
     assertThat(referenceConfig.hasPath("dsbulk.definedInDSBukReference")).isTrue();

@@ -9,7 +9,7 @@
 package com.datastax.dsbulk.commons.tests;
 
 import com.datastax.dsbulk.commons.tests.driver.factory.SessionFactory;
-import com.datastax.dse.driver.api.core.DseSession;
+import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.metadata.EndPoint;
 import java.lang.reflect.Parameter;
 import java.util.HashSet;
@@ -37,7 +37,7 @@ public abstract class RemoteClusterExtension implements AfterAllCallback, Parame
       ParameterContext parameterContext, ExtensionContext extensionContext)
       throws ParameterResolutionException {
     Class<?> type = parameterContext.getParameter().getType();
-    return type.isAssignableFrom(DseSession.class);
+    return type.isAssignableFrom(CqlSession.class);
   }
 
   @Override
@@ -47,7 +47,7 @@ public abstract class RemoteClusterExtension implements AfterAllCallback, Parame
     Parameter parameter = parameterContext.getParameter();
     Class<?> type = parameter.getType();
     AutoCloseable value;
-    if (type.isAssignableFrom(DseSession.class)) {
+    if (type.isAssignableFrom(CqlSession.class)) {
       value = createSession(parameter, extensionContext);
       registerCloseable(value, extensionContext);
     } else {
@@ -61,7 +61,7 @@ public abstract class RemoteClusterExtension implements AfterAllCallback, Parame
     closeCloseables(context);
   }
 
-  protected DseSession createSession(Parameter parameter, ExtensionContext context) {
+  protected CqlSession createSession(Parameter parameter, ExtensionContext context) {
     Class<?> testClass = context.getRequiredTestClass();
     SessionFactory sessionFactory =
         SessionFactory.createInstanceForAnnotatedElement(
@@ -69,9 +69,9 @@ public abstract class RemoteClusterExtension implements AfterAllCallback, Parame
     return createSession(sessionFactory, context);
   }
 
-  protected DseSession createSession(SessionFactory sessionFactory, ExtensionContext context) {
+  protected CqlSession createSession(SessionFactory sessionFactory, ExtensionContext context) {
     List<EndPoint> contactPoints = getContactPoints(context);
-    DseSession session =
+    CqlSession session =
         sessionFactory.createSessionBuilder().addContactEndPoints(contactPoints).build();
     sessionFactory.configureSession(session);
     return session;

@@ -69,6 +69,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -861,7 +862,11 @@ public class LogManager implements AutoCloseable {
 
   private static boolean isUnrecoverable(Throwable error) {
     if (error instanceof AllNodesFailedException) {
-      for (Throwable child : ((AllNodesFailedException) error).getErrors().values()) {
+      for (Throwable child :
+          ((AllNodesFailedException) error)
+              .getAllErrors().values().stream()
+                  .flatMap(List::stream)
+                  .collect(Collectors.toList())) {
         if (isUnrecoverable(child)) {
           return true;
         }

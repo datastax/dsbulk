@@ -181,7 +181,6 @@ Default: **null**.
 The username to use to authenticate against a cluster with authentication enabled. Providers that accept this setting:
 
  - `PlainTextAuthProvider`
- - `DsePlainTextAuthProvider`
 
 
 Default: **null**.
@@ -191,7 +190,6 @@ Default: **null**.
 The password to use to authenticate against a cluster with authentication enabled. Providers that accept this setting:
 
  - `PlainTextAuthProvider`
- - `DsePlainTextAuthProvider`
 
 
 Default: **null**.
@@ -208,7 +206,7 @@ Default: **"LOCAL_ONE"**.
 
 #### -dc,<br />--driver.basic.load-balancing-policy.local-datacenter<br />--datastax-java-driver.basic.load-balancing-policy.local-datacenter _&lt;string&gt;_
 
-The datacenter that is considered "local": the default load balancing policy will only include nodes from this datacenter in its query plans. Set this to a non-null value if you want to force the local datacenter; otherwise, the `DseDcInferringLoadBalancingPolicy` used by default by DSBulk will infer the local datacenter from the provided contact points.
+The datacenter that is considered "local": the default load balancing policy will only include nodes from this datacenter in its query plans. Set this to a non-null value if you want to force the local datacenter; otherwise, the `DcInferringLoadBalancingPolicy` used by default by DSBulk will infer the local datacenter from the provided contact points.
 
 Default: **null**.
 
@@ -1377,11 +1375,11 @@ The load balancing policy class to use. If it is not qualified, the driver assum
 
 DSBulk uses a special policy that infers the local datacenter from the contact points. You can also specify a custom class that implements `LoadBalancingPolicy` and has a public constructor with two arguments: the `DriverContext` and a `String` representing the profile name.
 
-Default: **"com.datastax.dse.driver.internal.core.loadbalancing.DseDcInferringLoadBalancingPolicy"**.
+Default: **"com.datastax.oss.driver.internal.core.loadbalancing.DcInferringLoadBalancingPolicy"**.
 
 #### -dc,<br />--driver.basic.load-balancing-policy.local-datacenter<br />--datastax-java-driver.basic.load-balancing-policy.local-datacenter _&lt;string&gt;_
 
-The datacenter that is considered "local": the default load balancing policy will only include nodes from this datacenter in its query plans. Set this to a non-null value if you want to force the local datacenter; otherwise, the `DseDcInferringLoadBalancingPolicy` used by default by DSBulk will infer the local datacenter from the provided contact points.
+The datacenter that is considered "local": the default load balancing policy will only include nodes from this datacenter in its query plans. Set this to a non-null value if you want to force the local datacenter; otherwise, the `DcInferringLoadBalancingPolicy` used by default by DSBulk will infer the local datacenter from the provided contact points.
 
 Default: **null**.
 
@@ -1428,11 +1426,10 @@ The class of the authentication provider. If it is not qualified, the driver ass
 - `com.datastax.dse.driver.internal.core.auth`
 
 The DSE driver provides 3 implementations out of the box:
-- `PlainTextAuthProvider`: uses plain-text credentials. It requires the `username` and `password` options. Should be used only when authenticating against Apache Cassandra(R) clusters; not recommended when authenticating against DSE clusters.
-- `DsePlainTextAuthProvider`: provides SASL authentication using the PLAIN mechanism for DSE clusters secured with DseAuthenticator. It requires the `username` and `password` options, and optionally, an `authorization-id`.
+- `PlainTextAuthProvider`: uses plain-text credentials. It requires the `username` and `password` options, and optionally, an `authorization-id` (for DSE clusters only).
 - `DseGssApiAuthProvider`: provides GSSAPI authentication for DSE clusters secured with `DseAuthenticator`. Read the javadocs of this authenticator for detailed instructions.
 
-You can also specify a custom class that implements `AuthProvider` and has a public constructor with a `DriverContext` argument (to simplify this, the driver provides two abstract classes that can be extended: `DsePlainTextAuthProviderBase` and `DseGssApiAuthProviderBase`).
+You can also specify a custom class that implements `AuthProvider` and has a public constructor with a `DriverContext` argument (to simplify this, the driver provides two abstract classes that can be extended: `PlainTextAuthProviderBase` and `DseGssApiAuthProviderBase`).
 
 Default: **null**.
 
@@ -1441,7 +1438,6 @@ Default: **null**.
 The username to use to authenticate against a cluster with authentication enabled. Providers that accept this setting:
 
  - `PlainTextAuthProvider`
- - `DsePlainTextAuthProvider`
 
 
 Default: **null**.
@@ -1451,7 +1447,6 @@ Default: **null**.
 The password to use to authenticate against a cluster with authentication enabled. Providers that accept this setting:
 
  - `PlainTextAuthProvider`
- - `DsePlainTextAuthProvider`
 
 
 Default: **null**.

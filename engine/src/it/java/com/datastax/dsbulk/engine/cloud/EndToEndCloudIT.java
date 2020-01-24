@@ -196,7 +196,7 @@ class EndToEndCloudIT {
         "--datastax-java-driver.advanced.connection.pool.local.size",
         "1",
         "--datastax-java-driver.advanced.auth-provider.class",
-        "DsePlainTextAuthProvider",
+        "PlainTextAuthProvider",
         "--datastax-java-driver.advanced.auth-provider.username",
         "cassandra",
         "--datastax-java-driver.advanced.auth-provider.password",

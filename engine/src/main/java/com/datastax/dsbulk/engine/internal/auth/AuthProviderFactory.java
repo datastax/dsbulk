@@ -13,7 +13,6 @@ import static com.datastax.dsbulk.commons.internal.io.IOUtils.assertAccessibleFi
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dse.driver.api.core.auth.DseGssApiAuthProviderBase.GssApiOptions;
-import com.datastax.dse.driver.internal.core.auth.DseProgrammaticPlainTextAuthProvider;
 import com.datastax.oss.driver.api.core.auth.AuthProvider;
 import com.datastax.oss.driver.internal.core.auth.ProgrammaticPlainTextAuthProvider;
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
@@ -37,11 +36,11 @@ public class AuthProviderFactory {
     String authProvider = config.getString("provider");
 
     // If the user specified a username or a password, but no auth provider, infer
-    // DsePlainTextAuthProvider
+    // PlainTextAuthProvider
     if (authProvider.equals("None") && config.hasPath("username") && config.hasPath("password")) {
       LOGGER.info(
-          "Username and password provided but auth provider not specified, inferring DsePlainTextAuthProvider");
-      authProvider = "DsePlainTextAuthProvider";
+          "Username and password provided but auth provider not specified, inferring PlainTextAuthProvider");
+      authProvider = "PlainTextAuthProvider";
     }
 
     if (authProvider.equals("None")) {
@@ -55,10 +54,11 @@ public class AuthProviderFactory {
 
     switch (authProvider.toLowerCase()) {
       case "plaintextauthprovider":
-        return createPlainTextAuthProvider(config, authProvider);
-
+        return createPlainTextAuthProvider(config, authProvider, authorizationId);
       case "dseplaintextauthprovider":
-        return createDsePlainTextAuthProvider(config, authProvider, authorizationId);
+        LOGGER.warn(
+            "The DsePlainTextAuthProvider is deprecated. Please use PlainTextAuthProvider instead.");
+        return createPlainTextAuthProvider(config, authProvider, authorizationId);
 
       case "dsegssapiauthprovider":
         return createGssApiAuthProvider(config, authProvider, authorizationId);
@@ -73,16 +73,9 @@ public class AuthProviderFactory {
   }
 
   private static AuthProvider createPlainTextAuthProvider(
-      LoaderConfig config, String authProvider) {
-    checkHasCredentials(config, authProvider);
-    return new ProgrammaticPlainTextAuthProvider(
-        config.getString("username"), config.getString("password"));
-  }
-
-  private static AuthProvider createDsePlainTextAuthProvider(
       LoaderConfig config, String authProvider, String authorizationId) {
     checkHasCredentials(config, authProvider);
-    return new DseProgrammaticPlainTextAuthProvider(
+    return new ProgrammaticPlainTextAuthProvider(
         config.getString("username"), config.getString("password"), authorizationId);
   }
 

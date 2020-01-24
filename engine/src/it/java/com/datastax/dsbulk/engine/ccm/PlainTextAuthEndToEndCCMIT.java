@@ -9,7 +9,6 @@
 package com.datastax.dsbulk.engine.ccm;
 
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
-import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DDAC;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
@@ -85,12 +84,9 @@ class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
     if (!inferAuthProvider) {
       args.add("--datastax-java-driver.advanced.auth-provider.class");
-      if (ccm.getClusterType() == DDAC) {
-        args.add("PlainTextAuthProvider");
-      } else {
-        args.add("DsePlainTextAuthProvider");
-      }
+      args.add("PlainTextAuthProvider");
     }
+
     args.add("--datastax-java-driver.advanced.auth-provider.username");
     args.add("cassandra");
     args.add("--datastax-java-driver.advanced.auth-provider.password");
@@ -103,7 +99,7 @@ class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
       assertThat(logs)
           .hasMessageContaining(
               "Username and password provided but auth provider not specified, "
-                  + "inferring DsePlainTextAuthProvider");
+                  + "inferring PlainTextAuthProvider");
     }
     deleteDirectory(logDir);
     logs.clear();
@@ -122,11 +118,7 @@ class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("ip_by_country");
     if (!inferAuthProvider) {
       args.add("--datastax-java-driver.advanced.auth-provider.class");
-      if (ccm.getClusterType() == DDAC) {
-        args.add("PlainTextAuthProvider");
-      } else {
-        args.add("DsePlainTextAuthProvider");
-      }
+      args.add("PlainTextAuthProvider");
     }
     args.add("--datastax-java-driver.advanced.auth-provider.username");
     args.add("cassandra");
@@ -140,7 +132,7 @@ class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
       assertThat(logs)
           .hasMessageContaining(
               "Username and password provided but auth provider not specified, "
-                  + "inferring DsePlainTextAuthProvider");
+                  + "inferring PlainTextAuthProvider");
     }
   }
 
@@ -162,11 +154,7 @@ class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
     if (!inferAuthProvider) {
       args.add("--driver.auth.provider");
-      if (ccm.getClusterType() == DDAC) {
-        args.add("PlainTextAuthProvider");
-      } else {
-        args.add("DsePlainTextAuthProvider");
-      }
+      args.add("PlainTextAuthProvider");
     }
     args.add("--driver.auth.username");
     args.add("cassandra");
@@ -185,7 +173,7 @@ class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
       assertThat(logs)
           .hasMessageContaining(
               "Username and password provided but auth provider not specified, "
-                  + "inferring DsePlainTextAuthProvider");
+                  + "inferring PlainTextAuthProvider");
     }
     deleteDirectory(logDir);
     logs.clear();
@@ -204,11 +192,7 @@ class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("ip_by_country");
     if (!inferAuthProvider) {
       args.add("--driver.auth.provider");
-      if (ccm.getClusterType() == DDAC) {
-        args.add("PlainTextAuthProvider");
-      } else {
-        args.add("DsePlainTextAuthProvider");
-      }
+      args.add("PlainTextAuthProvider");
     }
     args.add("--driver.auth.username");
     args.add("cassandra");
@@ -227,7 +211,7 @@ class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
       assertThat(logs)
           .hasMessageContaining(
               "Username and password provided but auth provider not specified, "
-                  + "inferring DsePlainTextAuthProvider");
+                  + "inferring PlainTextAuthProvider");
     }
   }
 }

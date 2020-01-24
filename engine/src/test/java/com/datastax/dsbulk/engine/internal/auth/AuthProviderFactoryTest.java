@@ -10,15 +10,22 @@ package com.datastax.dsbulk.engine.internal.auth;
 
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static com.datastax.dsbulk.commons.tests.utils.TestConfigUtils.createTestConfig;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.tests.logging.LogCapture;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
+import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.slf4j.event.Level;
 
+@ExtendWith(LogInterceptingExtension.class)
 class AuthProviderFactoryTest {
 
   @Test
@@ -53,6 +60,29 @@ class AuthProviderFactoryTest {
         .hasMessageContaining(
             "Both dsbulk.driver.auth.username and dsbulk.driver.auth.password "
                 + "must be provided with DsePlainTextAuthProvider");
+  }
+
+  @Test
+  void should_generate_deprecation_warning_when_client_uses_dse_plain_text_auth_provider(
+      @LogCapture(level = Level.WARN) LogInterceptor logs) {
+    // given
+    LoaderConfig config =
+        createTestConfig(
+            "dsbulk.driver.auth",
+            "provider",
+            "DsePlainTextAuthProvider",
+            "password",
+            "\"\"",
+            "username",
+            "u");
+
+    // when
+    AuthProviderFactory.createAuthProvider(config);
+
+    // then
+    assertThat(logs.getLoggedMessages())
+        .contains(
+            "The DsePlainTextAuthProvider is deprecated. Please use PlainTextAuthProvider instead.");
   }
 
   @Test

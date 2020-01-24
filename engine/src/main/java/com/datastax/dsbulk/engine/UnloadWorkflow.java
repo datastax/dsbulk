@@ -37,7 +37,7 @@ import com.datastax.dsbulk.engine.internal.settings.SettingsManager;
 import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
 import com.datastax.dsbulk.executor.reactor.reader.ReactorBulkReader;
-import com.datastax.dse.driver.api.core.DseSession;
+import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.metrics.Metrics;
 import com.datastax.oss.driver.shaded.guava.common.base.Stopwatch;
@@ -69,7 +69,7 @@ public class UnloadWorkflow implements Workflow {
   private ReadResultMapper readResultMapper;
   private MetricsManager metricsManager;
   private LogManager logManager;
-  private DseSession session;
+  private CqlSession session;
   private ReactorBulkReader executor;
   private List<? extends Statement<?>> readStatements;
   private Function<? super Publisher<Record>, ? extends Publisher<Record>> writer;

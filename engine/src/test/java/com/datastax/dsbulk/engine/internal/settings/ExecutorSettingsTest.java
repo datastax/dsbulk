@@ -24,7 +24,6 @@ import com.datastax.dsbulk.executor.api.reader.ReactiveBulkReader;
 import com.datastax.dsbulk.executor.api.writer.ReactiveBulkWriter;
 import com.datastax.dsbulk.executor.reactor.ContinuousReactorBulkExecutor;
 import com.datastax.dsbulk.executor.reactor.DefaultReactorBulkExecutor;
-import com.datastax.dse.driver.api.core.DseSession;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
 import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
@@ -38,12 +37,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 class ExecutorSettingsTest {
 
   private CqlSession session;
-  private DseSession dseSession;
+  private CqlSession cqlSession;
 
   @BeforeEach
   void setUp() {
     session = DriverUtils.mockSession();
-    dseSession = DriverUtils.mockDseSession();
+    cqlSession = DriverUtils.mockCqlSession();
   }
 
   @Test
@@ -71,12 +70,12 @@ class ExecutorSettingsTest {
   @Test
   void should_create_non_continuous_executor_when_read_workflow_and_wrong_CL(
       @LogCapture LogInterceptor logs) {
-    DriverExecutionProfile profile = dseSession.getContext().getConfig().getDefaultProfile();
+    DriverExecutionProfile profile = cqlSession.getContext().getConfig().getDefaultProfile();
     when(profile.getString(DefaultDriverOption.REQUEST_CONSISTENCY)).thenReturn("TWO");
     LoaderConfig config = createTestConfig("dsbulk.executor");
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
-    ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null, false);
+    ReactiveBulkReader executor = settings.newReadExecutor(cqlSession, null, false);
     assertThat(executor).isNotNull().isInstanceOf(DefaultReactorBulkExecutor.class);
     assertThat(logs)
         .hasMessageContaining(
@@ -86,11 +85,11 @@ class ExecutorSettingsTest {
   @Test
   void should_create_continuous_executor_when_read_workflow_and_session_dse() {
     LoaderConfig config = createTestConfig("dsbulk.executor");
-    DriverExecutionProfile profile = dseSession.getContext().getConfig().getDefaultProfile();
+    DriverExecutionProfile profile = cqlSession.getContext().getConfig().getDefaultProfile();
     when(profile.getString(DefaultDriverOption.REQUEST_CONSISTENCY)).thenReturn("LOCAL_ONE");
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
-    ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null, false);
+    ReactiveBulkReader executor = settings.newReadExecutor(cqlSession, null, false);
     assertThat(executor).isNotNull().isInstanceOf(ContinuousReactorBulkExecutor.class);
   }
 
@@ -122,21 +121,21 @@ class ExecutorSettingsTest {
   void should_enable_maxPerSecond() {
     LoaderConfig config = createTestConfig("dsbulk.executor", "maxPerSecond", 100);
     ExecutorSettings settings = new ExecutorSettings(config);
-    DriverExecutionProfile profile = dseSession.getContext().getConfig().getDefaultProfile();
+    DriverExecutionProfile profile = cqlSession.getContext().getConfig().getDefaultProfile();
     when(profile.getString(DefaultDriverOption.REQUEST_CONSISTENCY)).thenReturn("ONE");
     settings.init();
-    ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null, false);
+    ReactiveBulkReader executor = settings.newReadExecutor(cqlSession, null, false);
     assertThat(((RateLimiter) getInternalState(executor, "rateLimiter")).getRate()).isEqualTo(100);
   }
 
   @Test
   void should_disable_maxPerSecond() {
     LoaderConfig config = createTestConfig("dsbulk.executor", "maxPerSecond", 0);
-    DriverExecutionProfile profile = dseSession.getContext().getConfig().getDefaultProfile();
+    DriverExecutionProfile profile = cqlSession.getContext().getConfig().getDefaultProfile();
     when(profile.getString(DefaultDriverOption.REQUEST_CONSISTENCY)).thenReturn("ONE");
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
-    ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null, false);
+    ReactiveBulkReader executor = settings.newReadExecutor(cqlSession, null, false);
     assertThat(getInternalState(executor, "rateLimiter")).isNull();
   }
 
@@ -154,10 +153,10 @@ class ExecutorSettingsTest {
   void should_enable_maxInFlight() {
     LoaderConfig config = createTestConfig("dsbulk.executor", "maxInFlight", 100);
     ExecutorSettings settings = new ExecutorSettings(config);
-    DriverExecutionProfile profile = dseSession.getContext().getConfig().getDefaultProfile();
+    DriverExecutionProfile profile = cqlSession.getContext().getConfig().getDefaultProfile();
     when(profile.getString(DefaultDriverOption.REQUEST_CONSISTENCY)).thenReturn("ONE");
     settings.init();
-    ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null, false);
+    ReactiveBulkReader executor = settings.newReadExecutor(cqlSession, null, false);
     assertThat(((Semaphore) getInternalState(executor, "maxConcurrentRequests")).availablePermits())
         .isEqualTo(100);
   }
@@ -166,10 +165,10 @@ class ExecutorSettingsTest {
   void should_disable_maxInFlight() {
     LoaderConfig config = createTestConfig("dsbulk.executor", "maxInFlight", 0);
     ExecutorSettings settings = new ExecutorSettings(config);
-    DriverExecutionProfile profile = dseSession.getContext().getConfig().getDefaultProfile();
+    DriverExecutionProfile profile = cqlSession.getContext().getConfig().getDefaultProfile();
     when(profile.getString(DefaultDriverOption.REQUEST_CONSISTENCY)).thenReturn("ONE");
     settings.init();
-    ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null, false);
+    ReactiveBulkReader executor = settings.newReadExecutor(cqlSession, null, false);
     assertThat(getInternalState(executor, "maxConcurrentRequests")).isNull();
   }
 
@@ -187,11 +186,11 @@ class ExecutorSettingsTest {
   void should_enable_maxConcurrentQueries() {
     LoaderConfig config =
         createTestConfig("dsbulk.executor", "continuousPaging.maxConcurrentQueries", 100);
-    DriverExecutionProfile profile = dseSession.getContext().getConfig().getDefaultProfile();
+    DriverExecutionProfile profile = cqlSession.getContext().getConfig().getDefaultProfile();
     when(profile.getString(DefaultDriverOption.REQUEST_CONSISTENCY)).thenReturn("LOCAL_ONE");
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
-    ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null, false);
+    ReactiveBulkReader executor = settings.newReadExecutor(cqlSession, null, false);
     assertThat(((Semaphore) getInternalState(executor, "maxConcurrentQueries")).availablePermits())
         .isEqualTo(100);
   }
@@ -201,10 +200,10 @@ class ExecutorSettingsTest {
     LoaderConfig config =
         createTestConfig("dsbulk.executor", "continuousPaging.maxConcurrentQueries", 0);
     ExecutorSettings settings = new ExecutorSettings(config);
-    DriverExecutionProfile profile = dseSession.getContext().getConfig().getDefaultProfile();
+    DriverExecutionProfile profile = cqlSession.getContext().getConfig().getDefaultProfile();
     when(profile.getString(DefaultDriverOption.REQUEST_CONSISTENCY)).thenReturn("ONE");
     settings.init();
-    ReactiveBulkReader executor = settings.newReadExecutor(dseSession, null, false);
+    ReactiveBulkReader executor = settings.newReadExecutor(cqlSession, null, false);
     assertThat(getInternalState(executor, "maxConcurrentQueries")).isNull();
   }
 

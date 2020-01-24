@@ -453,7 +453,7 @@ public class ConfigUtils {
       value = config.getValue(path);
     }
     String resource = value.origin().resource();
-    // Account for dse-reference.conf and dsbulk-reference.conf
+    // Account for reference.conf and dsbulk-reference.conf
     return resource != null && resource.endsWith("reference.conf");
   }
 }

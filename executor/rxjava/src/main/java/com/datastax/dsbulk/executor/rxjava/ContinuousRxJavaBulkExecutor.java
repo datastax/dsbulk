@@ -11,7 +11,7 @@ package com.datastax.dsbulk.executor.rxjava;
 import com.datastax.dsbulk.executor.api.BulkExecutor;
 import com.datastax.dsbulk.executor.api.internal.publisher.ContinuousReadResultPublisher;
 import com.datastax.dsbulk.executor.api.result.ReadResult;
-import com.datastax.dse.driver.api.core.DseSession;
+import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import io.reactivex.Flowable;
 import java.util.Objects;
@@ -27,34 +27,34 @@ public class ContinuousRxJavaBulkExecutor extends DefaultRxJavaBulkExecutor
 
   /**
    * Creates a new builder for {@link ContinuousRxJavaBulkExecutor} instances using the given {@link
-   * DseSession}.
+   * CqlSession}.
    *
-   * @param session the {@link DseSession} to use.
+   * @param session the {@link CqlSession} to use.
    * @return a new builder.
    */
-  public static ContinuousRxJavaBulkExecutorBuilder builder(DseSession session) {
+  public static ContinuousRxJavaBulkExecutorBuilder continuousPagingBuilder(CqlSession session) {
     return new ContinuousRxJavaBulkExecutorBuilder(session);
   }
 
-  private final DseSession dseSession;
+  private final CqlSession cqlSession;
 
   /**
-   * Creates a new instance using the given {@link DseSession} and using defaults for all
+   * Creates a new instance using the given {@link CqlSession} and using defaults for all
    * parameters.
    *
-   * <p>If you need to customize your executor, use the {@link #builder(DseSession) builder} method
-   * instead.
+   * <p>If you need to customize your executor, use the {@link #continuousPagingBuilder(CqlSession)
+   * builder} method instead.
    *
-   * @param dseSession the {@link DseSession} to use.
+   * @param cqlSession the {@link CqlSession} to use.
    */
-  public ContinuousRxJavaBulkExecutor(DseSession dseSession) {
-    super(dseSession);
-    this.dseSession = dseSession;
+  public ContinuousRxJavaBulkExecutor(CqlSession cqlSession) {
+    super(cqlSession);
+    this.cqlSession = cqlSession;
   }
 
   ContinuousRxJavaBulkExecutor(ContinuousRxJavaBulkExecutorBuilder builder) {
     super(builder);
-    this.dseSession = builder.dseSession;
+    this.cqlSession = builder.cqlSession;
   }
 
   @Override
@@ -63,7 +63,7 @@ public class ContinuousRxJavaBulkExecutor extends DefaultRxJavaBulkExecutor
     return Flowable.fromPublisher(
         new ContinuousReadResultPublisher(
             statement,
-            dseSession,
+            cqlSession,
             failFast,
             listener,
             maxConcurrentRequests,

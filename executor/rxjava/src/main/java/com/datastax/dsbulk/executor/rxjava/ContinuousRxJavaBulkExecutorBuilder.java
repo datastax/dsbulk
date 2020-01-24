@@ -9,17 +9,17 @@
 package com.datastax.dsbulk.executor.rxjava;
 
 import com.datastax.dsbulk.executor.api.AbstractBulkExecutorBuilder;
-import com.datastax.dse.driver.api.core.DseSession;
+import com.datastax.oss.driver.api.core.CqlSession;
 
 /** A builder for {@link ContinuousRxJavaBulkExecutor} instances. */
 public class ContinuousRxJavaBulkExecutorBuilder
     extends AbstractBulkExecutorBuilder<ContinuousRxJavaBulkExecutor> {
 
-  final DseSession dseSession;
+  final CqlSession cqlSession;
 
-  ContinuousRxJavaBulkExecutorBuilder(DseSession dseSession) {
-    super(dseSession);
-    this.dseSession = dseSession;
+  ContinuousRxJavaBulkExecutorBuilder(CqlSession cqlSession) {
+    super(cqlSession);
+    this.cqlSession = cqlSession;
   }
 
   @Override
