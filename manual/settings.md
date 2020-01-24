@@ -1426,7 +1426,7 @@ The class of the authentication provider. If it is not qualified, the driver ass
 - `com.datastax.dse.driver.internal.core.auth`
 
 The DSE driver provides 3 implementations out of the box:
-- `PlainTextAuthProvider`: uses plain-text credentials. It requires the `username` and `password` options, and optionally, an `authorization-id`. Should be used only when authenticating against Apache Cassandra(R) clusters and DSE clusters secured with DseAuthenticator;
+- `PlainTextAuthProvider`: uses plain-text credentials. It requires the `username` and `password` options, and optionally, an `authorization-id` (for DSE clusters only).
 - `DseGssApiAuthProvider`: provides GSSAPI authentication for DSE clusters secured with `DseAuthenticator`. Read the javadocs of this authenticator for detailed instructions.
 
 You can also specify a custom class that implements `AuthProvider` and has a public constructor with a `DriverContext` argument (to simplify this, the driver provides two abstract classes that can be extended: `PlainTextAuthProviderBase` and `DseGssApiAuthProviderBase`).
@@ -1455,6 +1455,7 @@ Default: **null**.
 
 An authorization ID allows the currently authenticated user to act as a different user (proxy authentication). Providers that accept this setting:
 
+ - `DsePlainTextAuthProvider`
  - `DseGssApiAuthProvider`
 
 
