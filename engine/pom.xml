@@ -54,11 +54,6 @@
     </dependency>
 
     <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>java-driver-core</artifactId>
-    </dependency>
-
-    <dependency>
       <groupId>com.typesafe</groupId>
       <artifactId>config</artifactId>
     </dependency>
