@@ -24,7 +24,6 @@ import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
-import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
@@ -42,11 +41,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.typesafe.config.ConfigException;
-import io.netty.util.concurrent.DefaultThreadFactory;
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -58,8 +54,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -69,7 +63,6 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 import reactor.core.scheduler.Scheduler;
-import reactor.core.scheduler.Schedulers;
 
 /**
  * A connector for Json files.
@@ -110,9 +103,6 @@ public class JsonConnector extends AbstractConnector {
   private String compression;
   private long skipRecords;
   private long maxRecords;
-  private int maxConcurrentFiles;
-  private String fileNameFormat;
-  @VisibleForTesting AtomicInteger counter;
   private ObjectMapper objectMapper;
   private JavaType jsonNodeMapType;
   private Map<JsonParser.Feature, Boolean> parserFeatures;
@@ -141,13 +131,13 @@ public class JsonConnector extends AbstractConnector {
                 String.join(",", CompressedIOUtils.getSupportedCompressions(read)),
                 compression));
       }
-      mode = settings.getEnum(DocumentMode.class, MODE);
       pattern = settings.getString(FILE_NAME_PATTERN);
       if (!CompressedIOUtils.isNoneCompression(compression)
           && isValueFromReferenceConfig(settings, FILE_NAME_PATTERN)) {
         pattern = pattern + CompressedIOUtils.getCompressionSuffix(compression);
       }
       encoding = settings.getCharset(ENCODING);
+      mode = settings.getEnum(DocumentMode.class, MODE);
       skipRecords = settings.getLong(SKIP_RECORDS);
       maxRecords = settings.getLong(MAX_RECORDS);
       maxConcurrentFiles = settings.getThreads(MAX_CONCURRENT_FILES);
@@ -226,34 +216,7 @@ public class JsonConnector extends AbstractConnector {
 
   @Override
   public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
-    assert !read;
-    writers = new CopyOnWriteArrayList<>();
-    if (!roots.isEmpty() && maxConcurrentFiles > 1) {
-      return upstream -> {
-        ThreadFactory threadFactory = new DefaultThreadFactory("json-connector");
-        scheduler = Schedulers.newParallel(maxConcurrentFiles, threadFactory);
-        for (int i = 0; i < maxConcurrentFiles; i++) {
-          writers.add(new JsonWriter());
-        }
-        return Flux.from(upstream)
-            .parallel(maxConcurrentFiles)
-            .runOn(scheduler)
-            .groups()
-            .flatMap(
-                records -> {
-                  Integer key = records.key();
-                  assert key != null;
-                  return records.transform(writeRecords(writers.get(key)));
-                },
-                maxConcurrentFiles);
-      };
-    } else {
-      return upstream -> {
-        JsonWriter writer = new JsonWriter();
-        writers.add(writer);
-        return Flux.from(upstream).transform(writeRecords(writer));
-      };
-    }
+    return super.write(new JsonWriter(), "json-connector");
   }
 
   public Flux<Record> readURL(URL url) {
@@ -394,21 +357,6 @@ public class JsonConnector extends AbstractConnector {
         factory.createGenerator(CompressedIOUtils.newBufferedWriter(url, encoding, compression));
     writer.setRootValueSeparator(new SerializedString(System.lineSeparator()));
     return writer;
-  }
-
-  @VisibleForTesting
-  URL getOrCreateDestinationURL() {
-    if (!roots.isEmpty()) {
-      try {
-        String next = String.format(fileNameFormat, counter.incrementAndGet());
-        return roots.get(0).resolve(next).toUri().toURL(); // for UNLOAD always one URL
-      } catch (MalformedURLException e) {
-        throw new UncheckedIOException(
-            String.format("Could not create file URL with format %s", fileNameFormat), e);
-      }
-    }
-    // assume we are writing to a single URL and ignore fileNameFormat
-    return urls.get(0); // for UNLOAD always one URL
   }
 
   private static <T extends Enum<T>> Map<T, Boolean> getFeatureMap(

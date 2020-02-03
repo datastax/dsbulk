@@ -16,7 +16,9 @@ import static com.datastax.dsbulk.commons.internal.io.IOUtils.countReadableFiles
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.io.IOUtils;
+import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import edu.umd.cs.findbugs.annotations.NonNull;
+import io.netty.util.concurrent.DefaultThreadFactory;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.MalformedURLException;
@@ -30,6 +32,9 @@ import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import org.reactivestreams.Publisher;
@@ -38,6 +43,7 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Signal;
 import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
 
 public abstract class AbstractConnector implements Connector {
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractConnector.class);
@@ -53,12 +59,15 @@ public abstract class AbstractConnector implements Connector {
   protected List<URL> urls;
   protected boolean read;
   protected List<Path> roots;
+  protected String fileNameFormat;
   protected List<URL> files;
   protected boolean recursive;
   protected String pattern;
   protected int resourceCount;
   protected Scheduler scheduler;
+  protected int maxConcurrentFiles;
   protected List<ConnectorWriter> writers;
+  @VisibleForTesting public AtomicInteger counter;
 
   @Override
   public Publisher<Record> read() {
@@ -122,30 +131,6 @@ public abstract class AbstractConnector implements Connector {
                 + "and try again. See settings.md or help for more information.");
       }
     }
-  }
-
-  protected Function<Flux<Record>, Flux<Record>> writeRecords(ConnectorWriter writer) {
-    return upstream ->
-        upstream
-            .materialize()
-            .map(
-                signal -> {
-                  if (signal.isOnNext()) {
-                    Record record = signal.get();
-                    assert record != null;
-                    try {
-                      writer.write(record);
-                    } catch (Exception e) {
-                      // Note that we may be are inside a parallel flux;
-                      // sending more than one onError signal to downstream will result
-                      // in all onError signals but the first to be dropped.
-                      // The framework is expected to deal with that.
-                      signal = Signal.error(e);
-                    }
-                  }
-                  return signal;
-                })
-            .dematerialize();
   }
 
   protected void tryReadFromDirectories() throws URISyntaxException, IOException {
@@ -251,5 +236,75 @@ public abstract class AbstractConnector implements Connector {
         throw new UncheckedIOException(e);
       }
     }
+  }
+
+  protected Function<? super Publisher<Record>, ? extends Publisher<Record>> write(
+      ConnectorWriter writer, String poolName) {
+    assert !read;
+    writers = new CopyOnWriteArrayList<>();
+    if (!roots.isEmpty() && maxConcurrentFiles > 1) {
+      return upstream -> {
+        ThreadFactory threadFactory = new DefaultThreadFactory(poolName);
+        scheduler = Schedulers.newParallel(maxConcurrentFiles, threadFactory);
+        for (int i = 0; i < maxConcurrentFiles; i++) {
+          writers.add(writer);
+        }
+        return Flux.from(upstream)
+            .parallel(maxConcurrentFiles)
+            .runOn(scheduler)
+            .groups()
+            .flatMap(
+                records -> {
+                  Integer key = records.key();
+                  assert key != null;
+                  return records.transform(writeRecords(writers.get(key)));
+                },
+                maxConcurrentFiles);
+      };
+    } else {
+      return upstream -> {
+        writers.add(writer);
+        return Flux.from(upstream).transform(writeRecords(writer));
+      };
+    }
+  }
+
+  private Function<Flux<Record>, Flux<Record>> writeRecords(ConnectorWriter writer) {
+    return upstream ->
+        upstream
+            .materialize()
+            .map(
+                signal -> {
+                  if (signal.isOnNext()) {
+                    Record record = signal.get();
+                    assert record != null;
+                    try {
+                      writer.write(record);
+                    } catch (Exception e) {
+                      // Note that we may be are inside a parallel flux;
+                      // sending more than one onError signal to downstream will result
+                      // in all onError signals but the first to be dropped.
+                      // The framework is expected to deal with that.
+                      signal = Signal.error(e);
+                    }
+                  }
+                  return signal;
+                })
+            .dematerialize();
+  }
+
+  @VisibleForTesting
+  public URL getOrCreateDestinationURL() {
+    if (!roots.isEmpty()) {
+      try {
+        String next = String.format(fileNameFormat, counter.incrementAndGet());
+        return roots.get(0).resolve(next).toUri().toURL(); // for UNLOAD always one URL
+      } catch (MalformedURLException e) {
+        throw new UncheckedIOException(
+            String.format("Could not create file URL with format %s", fileNameFormat), e);
+      }
+    }
+    // assume we are writing to a single URL and ignore fileNameFormat
+    return urls.get(0); // for UNLOAD always one URL
   }
 }

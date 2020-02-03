@@ -27,7 +27,6 @@ import com.datastax.dsbulk.connectors.api.internal.DefaultIndexedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
-import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.typesafe.config.ConfigException;
 import com.univocity.parsers.common.ParsingContext;
 import com.univocity.parsers.common.TextParsingException;
@@ -37,11 +36,8 @@ import com.univocity.parsers.csv.CsvParser;
 import com.univocity.parsers.csv.CsvParserSettings;
 import com.univocity.parsers.csv.CsvWriter;
 import com.univocity.parsers.csv.CsvWriterSettings;
-import io.netty.util.concurrent.DefaultThreadFactory;
 import java.io.IOException;
 import java.io.Reader;
-import java.io.UncheckedIOException;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -50,8 +46,6 @@ import java.nio.channels.ClosedChannelException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.regex.Pattern;
@@ -60,8 +54,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
-import reactor.core.publisher.Signal;
-import reactor.core.scheduler.Schedulers;
 
 /**
  * A connector for CSV files.
@@ -113,7 +105,6 @@ public class CSVConnector extends AbstractConnector {
   private long maxRecords;
   private int maxConcurrentFiles;
   private boolean header;
-  private String fileNameFormat;
   private int maxCharsPerColumn;
   private int maxColumns;
   private boolean ignoreLeadingWhitespaces;
@@ -125,7 +116,6 @@ public class CSVConnector extends AbstractConnector {
   private String emptyValue;
   private CsvParserSettings parserSettings;
   private CsvWriterSettings writerSettings;
-  @VisibleForTesting AtomicInteger counter;
 
   @Override
   public void configure(LoaderConfig settings, boolean read) {
@@ -263,58 +253,7 @@ public class CSVConnector extends AbstractConnector {
 
   @Override
   public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
-    assert !read;
-    writers = new CopyOnWriteArrayList<>();
-    if (!roots.isEmpty() && maxConcurrentFiles > 1) {
-      return upstream -> {
-        ThreadFactory threadFactory = new DefaultThreadFactory("csv-connector");
-        scheduler = Schedulers.newParallel(maxConcurrentFiles, threadFactory);
-        for (int i = 0; i < maxConcurrentFiles; i++) {
-          writers.add(new CSVWriter());
-        }
-        return Flux.from(upstream)
-            .parallel(maxConcurrentFiles)
-            .runOn(scheduler)
-            .groups()
-            .flatMap(
-                records -> {
-                  Integer key = records.key();
-                  assert key != null;
-                  return records.transform(writeRecords(writers.get(key)));
-                },
-                maxConcurrentFiles);
-      };
-    } else {
-      return upstream -> {
-        CSVWriter writer = new CSVWriter();
-        writers.add(writer);
-        return Flux.from(upstream).transform(writeRecords(writer));
-      };
-    }
-  }
-
-  private Function<Flux<Record>, Flux<Record>> writeRecords(CSVWriter writer) {
-    return upstream ->
-        upstream
-            .materialize()
-            .map(
-                signal -> {
-                  if (signal.isOnNext()) {
-                    Record record = signal.get();
-                    assert record != null;
-                    try {
-                      writer.write(record);
-                    } catch (Exception e) {
-                      // Note that we may be are inside a parallel flux;
-                      // sending more than one onError signal to downstream will result
-                      // in all onError signals but the first to be dropped.
-                      // The framework is expected to deal with that.
-                      signal = Signal.error(e);
-                    }
-                  }
-                  return signal;
-                })
-            .dematerialize();
+    return super.write(new CSVWriter(), "csv-connector");
   }
 
   public Flux<Record> readURL(URL url) {
@@ -472,21 +411,6 @@ public class CSVConnector extends AbstractConnector {
         }
       }
     }
-  }
-
-  @VisibleForTesting
-  URL getOrCreateDestinationURL() {
-    if (!roots.isEmpty()) {
-      try {
-        String next = String.format(fileNameFormat, counter.incrementAndGet());
-        return roots.get(0).resolve(next).toUri().toURL(); // for UNLOAD always one URL
-      } catch (MalformedURLException e) {
-        throw new UncheckedIOException(
-            String.format("Could not create file URL with format %s", fileNameFormat), e);
-      }
-    }
-    // assume we are writing to a single URL and ignore fileNameFormat
-    return urls.get(0); // for UNLOAD always one URL
   }
 
   private IOException launderTextParsingException(TextParsingException e, URL url) {
