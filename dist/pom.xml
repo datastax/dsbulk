@@ -31,21 +31,45 @@
     <dependency>
       <groupId>com.datastax.dse</groupId>
       <artifactId>dsbulk-commons</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>com.github.spotbugs</groupId>
+          <artifactId>spotbugs-annotations</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
       <artifactId>dsbulk-executor-api</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>com.github.spotbugs</groupId>
+          <artifactId>spotbugs-annotations</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
       <artifactId>dsbulk-executor-reactor</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>com.github.spotbugs</groupId>
+          <artifactId>spotbugs-annotations</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
       <artifactId>dsbulk-connectors-api</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>com.github.spotbugs</groupId>
+          <artifactId>spotbugs-annotations</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
@@ -56,16 +80,34 @@
     <dependency>
       <groupId>com.datastax.dse</groupId>
       <artifactId>dsbulk-connectors-csv</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>com.github.spotbugs</groupId>
+          <artifactId>spotbugs-annotations</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
       <artifactId>dsbulk-connectors-json</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>com.github.spotbugs</groupId>
+          <artifactId>spotbugs-annotations</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
       <artifactId>dsbulk-engine</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>com.github.spotbugs</groupId>
+          <artifactId>spotbugs-annotations</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
@@ -82,8 +124,16 @@
           <artifactId>spotbugs-annotations</artifactId>
         </exclusion>
         <exclusion>
+            <groupId>org.javatuples</groupId>
+            <artifactId>javatuples</artifactId>
+          </exclusion>
+        <exclusion>
             <groupId>org.apache.tinkerpop</groupId>
             <artifactId>gremlin-core</artifactId>
+          </exclusion>
+        <exclusion>
+            <groupId>org.apache.tinkerpop</groupId>
+            <artifactId>gremlin-driver</artifactId>
           </exclusion>
           <exclusion>
             <groupId>org.apache.tinkerpop</groupId>
