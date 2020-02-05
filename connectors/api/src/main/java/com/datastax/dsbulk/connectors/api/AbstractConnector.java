@@ -36,6 +36,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -250,7 +251,7 @@ public abstract class AbstractConnector implements Connector {
   }
 
   protected Function<? super Publisher<Record>, ? extends Publisher<Record>> write(
-      ConnectorWriter writer, String poolName) {
+      Supplier<ConnectorWriter> writerSupplier, String poolName) {
     assert !read;
     writers = new CopyOnWriteArrayList<>();
     if (!roots.isEmpty() && maxConcurrentFiles > 1) {
@@ -258,7 +259,7 @@ public abstract class AbstractConnector implements Connector {
         ThreadFactory threadFactory = new DefaultThreadFactory(poolName);
         scheduler = Schedulers.newParallel(maxConcurrentFiles, threadFactory);
         for (int i = 0; i < maxConcurrentFiles; i++) {
-          writers.add(writer);
+          writers.add(writerSupplier.get());
         }
         return Flux.from(upstream)
             .parallel(maxConcurrentFiles)
@@ -274,6 +275,7 @@ public abstract class AbstractConnector implements Connector {
       };
     } else {
       return upstream -> {
+        ConnectorWriter writer = writerSupplier.get();
         writers.add(writer);
         return Flux.from(upstream).transform(writeRecords(writer));
       };

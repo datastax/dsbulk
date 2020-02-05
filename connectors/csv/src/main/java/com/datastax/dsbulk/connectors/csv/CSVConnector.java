@@ -101,7 +101,6 @@ public class CSVConnector extends AbstractConnector {
   private String newline;
   private long skipRecords;
   private long maxRecords;
-  private int maxConcurrentFiles;
   private boolean header;
   private int maxCharsPerColumn;
   private int maxColumns;
@@ -251,7 +250,7 @@ public class CSVConnector extends AbstractConnector {
 
   @Override
   public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
-    return super.write(new CSVWriter(), "csv-connector");
+    return super.write(CSVWriter::new, "csv-connector");
   }
 
   public Flux<Record> readURL(URL url) {

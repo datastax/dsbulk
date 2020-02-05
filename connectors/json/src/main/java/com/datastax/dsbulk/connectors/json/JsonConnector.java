@@ -210,7 +210,7 @@ public class JsonConnector extends AbstractConnector {
 
   @Override
   public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
-    return super.write(new JsonWriter(), "json-connector");
+    return super.write(JsonWriter::new, "json-connector");
   }
 
   public Flux<Record> readURL(URL url) {
@@ -295,6 +295,7 @@ public class JsonConnector extends AbstractConnector {
         if (mode == DocumentMode.SINGLE_DOCUMENT && currentLine > 0) {
           writer.writeRaw(',');
         }
+
         writer.writeObject(record);
         currentLine++;
       } catch (ClosedChannelException e) {
