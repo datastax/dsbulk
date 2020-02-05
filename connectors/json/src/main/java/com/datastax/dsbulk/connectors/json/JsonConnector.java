@@ -51,7 +51,6 @@ import java.nio.channels.ClosedChannelException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -62,7 +61,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
-import reactor.core.scheduler.Scheduler;
 
 /**
  * A connector for Json files.
@@ -96,9 +94,7 @@ public class JsonConnector extends AbstractConnector {
   private static final TypeReference<Map<String, JsonNode>> JSON_NODE_MAP_TYPE_REFERENCE =
       new TypeReference<Map<String, JsonNode>>() {};
 
-  private List<URL> urls;
   private DocumentMode mode;
-  private String pattern;
   private Charset encoding;
   private String compression;
   private long skipRecords;
@@ -111,8 +107,6 @@ public class JsonConnector extends AbstractConnector {
   private Map<DeserializationFeature, Boolean> deserializationFeatures;
   private JsonInclude.Include serializationStrategy;
   private boolean prettyPrint;
-  private Scheduler scheduler;
-  private List<JsonWriter> writers;
 
   @Override
   public void configure(LoaderConfig settings, boolean read) {
@@ -277,6 +271,10 @@ public class JsonConnector extends AbstractConnector {
       records = records.take(maxRecords);
     }
     return records;
+  }
+
+  public String getConnectorName() {
+    return "json";
   }
 
   private class JsonWriter implements ConnectorWriter {

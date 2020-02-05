@@ -92,8 +92,6 @@ public class CSVConnector extends AbstractConnector {
   private static final String NULL_VALUE = "nullValue";
   private static final String EMPTY_VALUE = "emptyValue";
 
-  private List<URL> urls;
-  private String pattern;
   private Charset encoding;
   private String compression;
   private char delimiter;
@@ -326,6 +324,10 @@ public class CSVConnector extends AbstractConnector {
       records = records.take(maxRecords);
     }
     return records;
+  }
+
+  public String getConnectorName() {
+    return "csv";
   }
 
   private MappedField[] getFieldNames(URL url, ParsingContext context) throws IOException {

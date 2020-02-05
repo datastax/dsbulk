@@ -107,14 +107,18 @@ public abstract class AbstractConnector implements Connector {
 
   public abstract Flux<Record> readURL(URL url);
 
+  public abstract String getConnectorName();
+
   protected void validateURL(LoaderConfig settings, boolean read) {
     if (read) {
       // for LOAD
       if (isPathAbsentOrEmpty(settings, URL)) {
         if (isPathAbsentOrEmpty(settings, URLFILE)) {
           throw new BulkConfigurationException(
-              "A URL or URL file is mandatory when using the json connector for LOAD. Please set connector.json.url or connector.json.urlfile "
-                  + "and try again. See settings.md or help for more information.");
+              String.format(
+                  "A URL or URL file is mandatory when using the %s connector for LOAD. Please set connector.%s.url or connector.%s.urlfile "
+                      + "and try again. See settings.md or help for more information.",
+                  getConnectorName(), getConnectorName(), getConnectorName()));
         }
       }
       if (isPathPresentAndNotEmpty(settings, URL) && isPathPresentAndNotEmpty(settings, URLFILE)) {
@@ -127,8 +131,10 @@ public abstract class AbstractConnector implements Connector {
       }
       if (isPathAbsentOrEmpty(settings, URL)) {
         throw new BulkConfigurationException(
-            "A URL is mandatory when using the json connector for UNLOAD. Please set connector.json.url "
-                + "and try again. See settings.md or help for more information.");
+            String.format(
+                "A URL is mandatory when using the %s connector for UNLOAD. Please set connector.%s.url "
+                    + "and try again. See settings.md or help for more information.",
+                getConnectorName(), getConnectorName()));
       }
     }
   }
@@ -151,8 +157,9 @@ public abstract class AbstractConnector implements Connector {
               LOGGER.warn("Directory {} has no readable files.", root);
             } else {
               LOGGER.warn(
-                  "No files in directory {} matched the connector.json.fileNamePattern of \"{}\".",
+                  "No files in directory {} matched the connector.{}.fileNamePattern of \"{}\".",
                   root,
+                  getConnectorName(),
                   pattern);
             }
           }
@@ -205,7 +212,11 @@ public abstract class AbstractConnector implements Connector {
         }
         if (IOUtils.isDirectoryNonEmpty(root)) {
           throw new IllegalArgumentException(
-              "Invalid value for connector.json.url: target directory " + root + " must be empty.");
+              String.format(
+                  "Invalid value for connector.%s.url: target directory "
+                      + root
+                      + " must be empty.",
+                  getConnectorName()));
         }
         this.roots.add(root);
       }
