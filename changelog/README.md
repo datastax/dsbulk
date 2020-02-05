@@ -1,5 +1,5 @@
 ## Changelog
-## 1.4.2
+## 1.5.0
 
 - [improvement] DAT-282 Reduce code duplication in connectors.
 

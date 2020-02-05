@@ -46,8 +46,9 @@ import reactor.core.publisher.Signal;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
-public abstract class AbstractConnector implements Connector {
-  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractConnector.class);
+public abstract class AbstractConnectorFileBasedConnector implements Connector {
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(AbstractConnectorFileBasedConnector.class);
   public static final String URL = "url";
   public static final String URLFILE = "urlfile";
   public static final String FILE_NAME_PATTERN = "fileNamePattern";
@@ -106,9 +107,9 @@ public abstract class AbstractConnector implements Connector {
     return resourceCount;
   }
 
-  public abstract Flux<Record> readURL(URL url);
+  protected abstract Flux<Record> readURL(URL url);
 
-  public abstract String getConnectorName();
+  protected abstract String getConnectorName();
 
   protected void validateURL(LoaderConfig settings, boolean read) {
     if (read) {
@@ -251,12 +252,12 @@ public abstract class AbstractConnector implements Connector {
   }
 
   protected Function<? super Publisher<Record>, ? extends Publisher<Record>> write(
-      Supplier<ConnectorWriter> writerSupplier, String poolName) {
+      Supplier<ConnectorWriter> writerSupplier) {
     assert !read;
     writers = new CopyOnWriteArrayList<>();
     if (!roots.isEmpty() && maxConcurrentFiles > 1) {
       return upstream -> {
-        ThreadFactory threadFactory = new DefaultThreadFactory(poolName);
+        ThreadFactory threadFactory = new DefaultThreadFactory(getConnectorName() + "-connector");
         scheduler = Schedulers.newParallel(maxConcurrentFiles, threadFactory);
         for (int i = 0; i < maxConcurrentFiles; i++) {
           writers.add(writerSupplier.get());
@@ -319,5 +320,11 @@ public abstract class AbstractConnector implements Connector {
     }
     // assume we are writing to a single URL and ignore fileNameFormat
     return urls.get(0); // for UNLOAD always one URL
+  }
+
+  public interface ConnectorWriter {
+    void write(Record record) throws IOException;
+
+    void close() throws IOException;
   }
 }

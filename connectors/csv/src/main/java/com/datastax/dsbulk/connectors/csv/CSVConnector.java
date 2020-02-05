@@ -14,10 +14,9 @@ import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.io.CompressedIOUtils;
 import com.datastax.dsbulk.commons.internal.reactive.SimpleBackpressureController;
-import com.datastax.dsbulk.connectors.api.AbstractConnector;
+import com.datastax.dsbulk.connectors.api.AbstractConnectorFileBasedConnector;
 import com.datastax.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.dsbulk.connectors.api.ConnectorFeature;
-import com.datastax.dsbulk.connectors.api.ConnectorWriter;
 import com.datastax.dsbulk.connectors.api.Field;
 import com.datastax.dsbulk.connectors.api.MappedField;
 import com.datastax.dsbulk.connectors.api.Record;
@@ -65,7 +64,7 @@ import reactor.core.publisher.FluxSink;
  * <p>This connector is highly configurable; see its {@code reference.conf} file, bundled within its
  * jar archive, for detailed information.
  */
-public class CSVConnector extends AbstractConnector {
+public class CSVConnector extends AbstractConnectorFileBasedConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CSVConnector.class);
   private static final GenericType<String> STRING_TYPE = GenericType.STRING;
@@ -250,7 +249,7 @@ public class CSVConnector extends AbstractConnector {
 
   @Override
   public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
-    return super.write(CSVWriter::new, "csv-connector");
+    return super.write(CSVWriter::new);
   }
 
   public Flux<Record> readURL(URL url) {
@@ -356,6 +355,7 @@ public class CSVConnector extends AbstractConnector {
     private URL url;
     private CsvWriter writer;
 
+    @Override
     public void write(Record record) throws IOException {
       try {
         if (writer == null) {
@@ -398,6 +398,7 @@ public class CSVConnector extends AbstractConnector {
       }
     }
 
+    @Override
     public void close() throws IOException {
       if (writer != null) {
         try {

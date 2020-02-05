@@ -14,10 +14,9 @@ import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.io.CompressedIOUtils;
 import com.datastax.dsbulk.commons.internal.reactive.SimpleBackpressureController;
-import com.datastax.dsbulk.connectors.api.AbstractConnector;
+import com.datastax.dsbulk.connectors.api.AbstractConnectorFileBasedConnector;
 import com.datastax.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.dsbulk.connectors.api.ConnectorFeature;
-import com.datastax.dsbulk.connectors.api.ConnectorWriter;
 import com.datastax.dsbulk.connectors.api.MappedField;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
@@ -72,7 +71,7 @@ import reactor.core.publisher.FluxSink;
  * <p>This connector is highly configurable; see its {@code reference.conf} file, bundled within its
  * jar archive, for detailed information.
  */
-public class JsonConnector extends AbstractConnector {
+public class JsonConnector extends AbstractConnectorFileBasedConnector {
   enum DocumentMode {
     MULTI_DOCUMENT,
     SINGLE_DOCUMENT
@@ -210,7 +209,7 @@ public class JsonConnector extends AbstractConnector {
 
   @Override
   public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
-    return super.write(JsonWriter::new, "json-connector");
+    return super.write(JsonWriter::new);
   }
 
   public Flux<Record> readURL(URL url) {
@@ -283,6 +282,7 @@ public class JsonConnector extends AbstractConnector {
     private JsonGenerator writer;
     private long currentLine;
 
+    @Override
     public void write(Record record) throws IOException {
       try {
         if (writer == null) {
@@ -329,6 +329,7 @@ public class JsonConnector extends AbstractConnector {
       }
     }
 
+    @Override
     public void close() throws IOException {
       if (writer != null) {
         try {
