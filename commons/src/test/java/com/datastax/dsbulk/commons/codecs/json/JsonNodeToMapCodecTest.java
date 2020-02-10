@@ -32,6 +32,7 @@ class JsonNodeToMapCodecTest {
   private JsonNodeToMapCodec<Double, List<String>> codec;
 
   @BeforeEach
+  @SuppressWarnings({"unchecked", "RedundantSuppression"})
   void setUp() {
     codec =
         (JsonNodeToMapCodec<Double, List<String>>)

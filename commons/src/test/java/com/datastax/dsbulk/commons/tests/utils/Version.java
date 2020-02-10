@@ -18,7 +18,7 @@ import java.util.regex.Pattern;
  *
  * <p>It can only parse x.y.z.w version numbers.
  */
-public class Version implements Comparable<Version> {
+public final class Version implements Comparable<Version> {
 
   private static final Pattern PATTERN = Pattern.compile("(\\d+)\\.(\\d+)(\\.(\\d+))?(\\.(\\d+))?");
 

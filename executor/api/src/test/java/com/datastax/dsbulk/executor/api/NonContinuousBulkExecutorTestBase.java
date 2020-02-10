@@ -23,7 +23,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import org.junit.jupiter.api.BeforeEach;
 
 public abstract class NonContinuousBulkExecutorTestBase extends BulkExecutorTestBase {
@@ -84,9 +83,7 @@ public abstract class NonContinuousBulkExecutorTestBase extends BulkExecutorTest
     ExecutionInfo executionInfo1a = mock(ExecutionInfo.class);
     when(successfulReadResultSet1a.getExecutionInfo()).thenReturn(executionInfo1a);
     when(executionInfo1a.getPagingState()).thenReturn(pagingState);
-    //noinspection unchecked
-    when(successfulReadResultSet1a.fetchNextPage())
-        .thenReturn((CompletionStage) futureReadSuccess1b);
+    when(successfulReadResultSet1a.fetchNextPage()).thenReturn(futureReadSuccess1b);
 
     // read request 1b
     futureReadSuccess1b.complete(successfulReadResultSet1b);

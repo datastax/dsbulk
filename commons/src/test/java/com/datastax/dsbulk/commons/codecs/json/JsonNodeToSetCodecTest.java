@@ -29,6 +29,7 @@ class JsonNodeToSetCodecTest {
   private JsonNodeToSetCodec<String> codec2;
 
   @BeforeEach
+  @SuppressWarnings({"unchecked", "RedundantSuppression"})
   void setUp() {
     ExtendedCodecRegistry codecRegistry =
         new ExtendedCodecRegistryBuilder().withNullStrings("NULL").build();

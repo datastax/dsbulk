@@ -24,6 +24,7 @@ class StringToSetCodecTest {
   private StringToSetCodec<String> codec2;
 
   @BeforeEach
+  @SuppressWarnings({"unchecked", "RedundantSuppression"})
   void setUp() {
     ExtendedCodecRegistry codecRegistry =
         new ExtendedCodecRegistryBuilder().withNullStrings("NULL").build();

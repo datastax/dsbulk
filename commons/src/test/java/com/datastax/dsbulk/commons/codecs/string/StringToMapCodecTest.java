@@ -26,6 +26,7 @@ class StringToMapCodecTest {
   private StringToMapCodec<Double, List<String>> codec;
 
   @BeforeEach
+  @SuppressWarnings({"unchecked", "RedundantSuppression"})
   void setUp() {
     codec =
         (StringToMapCodec<Double, List<String>>)

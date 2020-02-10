@@ -98,7 +98,7 @@ public class LogInterceptingExtension
       if (this == o) {
         return true;
       }
-      if (o == null || getClass() != o.getClass()) {
+      if (!(o instanceof LogInterceptorKey)) {
         return false;
       }
       LogInterceptorKey that = (LogInterceptorKey) o;

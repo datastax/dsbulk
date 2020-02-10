@@ -12,7 +12,7 @@ import edu.umd.cs.findbugs.annotations.NonNull;
 import java.math.BigInteger;
 import java.util.Objects;
 
-class RandomToken implements Token<BigInteger> {
+final class RandomToken implements Token<BigInteger> {
 
   private final BigInteger value;
 

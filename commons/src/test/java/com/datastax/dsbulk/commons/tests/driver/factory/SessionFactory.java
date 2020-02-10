@@ -267,7 +267,7 @@ public abstract class SessionFactory {
       if (this == o) {
         return true;
       }
-      if (o == null || getClass() != o.getClass()) {
+      if (!(o instanceof SessionAnnotationFactory)) {
         return false;
       }
       SessionAnnotationFactory that = (SessionAnnotationFactory) o;
@@ -333,7 +333,7 @@ public abstract class SessionFactory {
       if (this == o) {
         return true;
       }
-      if (o == null || getClass() != o.getClass()) {
+      if (!(o instanceof SessionMethodFactory)) {
         return false;
       }
       SessionFactory.SessionMethodFactory that = (SessionFactory.SessionMethodFactory) o;

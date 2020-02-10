@@ -103,7 +103,7 @@ public abstract class BoundClusterFactory {
       if (this == o) {
         return true;
       }
-      if (o == null || getClass() != o.getClass()) {
+      if (!(o instanceof SimulacronClusterAnnotationFactory)) {
         return false;
       }
       SimulacronClusterAnnotationFactory that = (SimulacronClusterAnnotationFactory) o;
@@ -171,7 +171,7 @@ public abstract class BoundClusterFactory {
       if (this == o) {
         return true;
       }
-      if (o == null || getClass() != o.getClass()) {
+      if (!(o instanceof SimulacronClusterMethodFactory)) {
         return false;
       }
       SimulacronClusterMethodFactory that = (SimulacronClusterMethodFactory) o;

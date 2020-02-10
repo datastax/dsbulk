@@ -11,7 +11,7 @@ package com.datastax.dsbulk.commons.partitioner;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.util.Objects;
 
-class Murmur3Token implements Token<Long> {
+final class Murmur3Token implements Token<Long> {
 
   private final long value;
 

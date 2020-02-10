@@ -61,7 +61,7 @@ abstract class DefaultResult implements Result {
     if (this == o) {
       return true;
     }
-    if (o == null || getClass() != o.getClass()) {
+    if (!(o instanceof DefaultResult)) {
       return false;
     }
     DefaultResult that = (DefaultResult) o;

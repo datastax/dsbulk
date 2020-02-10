@@ -150,7 +150,7 @@ public abstract class CCMClusterFactory {
       if (this == o) {
         return true;
       }
-      if (o == null || getClass() != o.getClass()) {
+      if (!(o instanceof CCMClusterAnnotationFactory)) {
         return false;
       }
       CCMClusterAnnotationFactory that = (CCMClusterAnnotationFactory) o;
@@ -223,7 +223,7 @@ public abstract class CCMClusterFactory {
       if (this == o) {
         return true;
       }
-      if (o == null || getClass() != o.getClass()) {
+      if (!(o instanceof CCMClusterMethodFactory)) {
         return false;
       }
       CCMClusterMethodFactory that = (CCMClusterMethodFactory) o;

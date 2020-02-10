@@ -1031,7 +1031,7 @@ public class DefaultCCMCluster implements CCMCluster {
       if (this == o) {
         return true;
       }
-      if (o == null || getClass() != o.getClass()) {
+      if (!(o instanceof Builder)) {
         return false;
       }
       Builder builder = (Builder) o;

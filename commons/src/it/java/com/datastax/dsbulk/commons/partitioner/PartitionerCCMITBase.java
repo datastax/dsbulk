@@ -72,7 +72,7 @@ abstract class PartitionerCCMITBase {
     for (Statement<?> stmt : statements) {
       stmt = stmt.setConsistencyLevel(ALL).setExecutionProfile(SessionUtils.slowProfile(session));
       ResultSet rs = session.execute(stmt);
-      for (Row ignored : rs) {
+      for (@SuppressWarnings("unused") Row ignored : rs) {
         total++;
       }
     }

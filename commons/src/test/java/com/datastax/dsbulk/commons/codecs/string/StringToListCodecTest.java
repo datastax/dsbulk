@@ -29,6 +29,7 @@ class StringToListCodecTest {
   private Instant i2 = Instant.parse("2018-05-25T18:34:12.999Z");
 
   @BeforeEach
+  @SuppressWarnings({"unchecked", "RedundantSuppression"})
   void setUp() {
     ExtendedCodecRegistry codecRegistry =
         new ExtendedCodecRegistryBuilder().withNullStrings("NULL").build();

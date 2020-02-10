@@ -118,8 +118,7 @@ public class StatementBatcherTest {
     Metadata metadata = mock(Metadata.class);
     TokenMap tokenMap = mock(TokenMap.class);
     when(session.getMetadata()).thenReturn(metadata);
-    //noinspection unchecked
-    when(metadata.getTokenMap()).thenReturn((Optional) Optional.of(tokenMap));
+    when(metadata.getTokenMap()).thenReturn(Optional.of(tokenMap));
     when(tokenMap.getReplicas(ks, key1)).thenReturn(replicaSet1);
     when(tokenMap.getReplicas(ks, key2)).thenReturn(replicaSet2);
     when(tokenMap.getReplicas(ks, key3)).thenReturn(replicaSet1);
@@ -137,8 +136,7 @@ public class StatementBatcherTest {
     Metadata metadata = mock(Metadata.class);
     TokenMap tokenMap = mock(TokenMap.class);
     when(session.getMetadata()).thenReturn(metadata);
-    //noinspection unchecked
-    when(metadata.getTokenMap()).thenReturn((Optional) Optional.of(tokenMap));
+    when(metadata.getTokenMap()).thenReturn(Optional.of(tokenMap));
     when(tokenMap.getReplicas(ks, key1)).thenReturn(replicaSet1);
     when(tokenMap.getReplicas(ks, key2)).thenReturn(replicaSet2);
     when(tokenMap.getReplicas(ks, key3)).thenReturn(replicaSet1);
@@ -156,8 +154,7 @@ public class StatementBatcherTest {
     Metadata metadata = mock(Metadata.class);
     TokenMap tokenMap = mock(TokenMap.class);
     when(session.getMetadata()).thenReturn(metadata);
-    //noinspection unchecked
-    when(metadata.getTokenMap()).thenReturn((Optional) Optional.of(tokenMap));
+    when(metadata.getTokenMap()).thenReturn(Optional.of(tokenMap));
     when(tokenMap.getReplicas(ks, key1)).thenReturn(new HashSet<>());
     when(tokenMap.getReplicas(ks, key2)).thenReturn(new HashSet<>());
     when(tokenMap.getReplicas(ks, key3)).thenReturn(new HashSet<>());
@@ -175,8 +172,7 @@ public class StatementBatcherTest {
     Metadata metadata = mock(Metadata.class);
     TokenMap tokenMap = mock(TokenMap.class);
     when(session.getMetadata()).thenReturn(metadata);
-    //noinspection unchecked
-    when(metadata.getTokenMap()).thenReturn((Optional) Optional.of(tokenMap));
+    when(metadata.getTokenMap()).thenReturn(Optional.of(tokenMap));
     when(tokenMap.getReplicas(ks, key1)).thenReturn(new HashSet<>());
     when(tokenMap.getReplicas(ks, key2)).thenReturn(new HashSet<>());
     when(tokenMap.getReplicas(ks, key3)).thenReturn(new HashSet<>());
