@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Copyright DataStax, Inc.
+
+    This software is subject to the below license agreement.
+    DataStax may make changes to the agreement from time to time,
+    and will post the amended terms at
+    https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
+
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+  <modelVersion>4.0.0</modelVersion>
+
+<parent>
+    <artifactId>dsbulk-connectors</artifactId>
+    <groupId>com.datastax.dse</groupId>
+    <version>1.4.2-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>dsbulk-connectors-commons</artifactId>
+
+  <name>DataStax Bulk Loader - Connectors - Commons</name>
+  <description>
+    Common connector code for the DataStax Bulk Loader.
+  </description>
+
+  <dependencies>
+
+    <dependency>
+      <groupId>com.datastax.dse</groupId>
+      <artifactId>dsbulk-commons</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
+      <artifactId>java-driver-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.projectreactor</groupId>
+      <artifactId>reactor-core</artifactId>
+    </dependency>
+
+    <dependency>
+    <groupId>com.datastax.dse</groupId>
+    <artifactId>dsbulk-connectors-api</artifactId>
+  </dependency>
+
+    <dependency>
+      <groupId>org.reactivestreams</groupId>
+      <artifactId>reactive-streams</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
+      <artifactId>java-driver-shaded-guava</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.github.spotbugs</groupId>
+      <artifactId>spotbugs-annotations</artifactId>
+    </dependency>
+
+  </dependencies>
+</project>

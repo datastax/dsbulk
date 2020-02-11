@@ -14,7 +14,6 @@ import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.io.CompressedIOUtils;
 import com.datastax.dsbulk.commons.internal.reactive.SimpleBackpressureController;
-import com.datastax.dsbulk.connectors.api.AbstractConnectorFileBasedConnector;
 import com.datastax.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.dsbulk.connectors.api.ConnectorFeature;
 import com.datastax.dsbulk.connectors.api.Field;
@@ -25,6 +24,7 @@ import com.datastax.dsbulk.connectors.api.internal.DefaultErrorRecord;
 import com.datastax.dsbulk.connectors.api.internal.DefaultIndexedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
+import com.datastax.dsbulk.connectors.commons.AbstractFileBasedConnector;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import com.typesafe.config.ConfigException;
 import com.univocity.parsers.common.ParsingContext;
@@ -64,7 +64,7 @@ import reactor.core.publisher.FluxSink;
  * <p>This connector is highly configurable; see its {@code reference.conf} file, bundled within its
  * jar archive, for detailed information.
  */
-public class CSVConnector extends AbstractConnectorFileBasedConnector {
+public class CSVConnector extends AbstractFileBasedConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CSVConnector.class);
   private static final GenericType<String> STRING_TYPE = GenericType.STRING;

@@ -50,6 +50,11 @@
 
     <dependency>
       <groupId>com.datastax.dse</groupId>
+      <artifactId>dsbulk-connectors-commons</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.datastax.dse</groupId>
       <artifactId>dsbulk-connectors-csv</artifactId>
     </dependency>
 

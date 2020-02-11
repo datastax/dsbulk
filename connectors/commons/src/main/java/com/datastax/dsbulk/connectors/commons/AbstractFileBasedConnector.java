@@ -6,16 +6,14 @@
  * and will post the amended terms at
  * https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
  */
-package com.datastax.dsbulk.connectors.api;
-
-import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.getURLsFromFile;
-import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isPathAbsentOrEmpty;
-import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isPathPresentAndNotEmpty;
-import static com.datastax.dsbulk.commons.internal.io.IOUtils.countReadableFiles;
+package com.datastax.dsbulk.connectors.commons;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.io.IOUtils;
+import com.datastax.dsbulk.connectors.api.Connector;
+import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import io.netty.util.concurrent.DefaultThreadFactory;
@@ -46,9 +44,8 @@ import reactor.core.publisher.Signal;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
-public abstract class AbstractConnectorFileBasedConnector implements Connector {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(AbstractConnectorFileBasedConnector.class);
+public abstract class AbstractFileBasedConnector implements Connector {
+  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractFileBasedConnector.class);
   public static final String URL = "url";
   public static final String URLFILE = "urlfile";
   public static final String FILE_NAME_PATTERN = "fileNamePattern";
@@ -89,10 +86,10 @@ public abstract class AbstractConnectorFileBasedConnector implements Connector {
 
   @NonNull
   protected List<java.net.URL> loadURLs(LoaderConfig settings) {
-    if (isPathPresentAndNotEmpty(settings, URLFILE)) {
+    if (ConfigUtils.isPathPresentAndNotEmpty(settings, URLFILE)) {
       // suppress URL option
       try {
-        return getURLsFromFile(settings.getPath(URLFILE));
+        return ConfigUtils.getURLsFromFile(settings.getPath(URLFILE));
       } catch (IOException e) {
         throw new BulkConfigurationException(
             "Problem when retrieving urls from file specified by the URL file parameter", e);
@@ -114,8 +111,8 @@ public abstract class AbstractConnectorFileBasedConnector implements Connector {
   protected void validateURL(LoaderConfig settings, boolean read) {
     if (read) {
       // for LOAD
-      if (isPathAbsentOrEmpty(settings, URL)) {
-        if (isPathAbsentOrEmpty(settings, URLFILE)) {
+      if (ConfigUtils.isPathAbsentOrEmpty(settings, URL)) {
+        if (ConfigUtils.isPathAbsentOrEmpty(settings, URLFILE)) {
           throw new BulkConfigurationException(
               String.format(
                   "A URL or URL file is mandatory when using the %s connector for LOAD. Please set connector.%s.url or connector.%s.urlfile "
@@ -123,15 +120,16 @@ public abstract class AbstractConnectorFileBasedConnector implements Connector {
                   getConnectorName(), getConnectorName(), getConnectorName()));
         }
       }
-      if (isPathPresentAndNotEmpty(settings, URL) && isPathPresentAndNotEmpty(settings, URLFILE)) {
+      if (ConfigUtils.isPathPresentAndNotEmpty(settings, URL)
+          && ConfigUtils.isPathPresentAndNotEmpty(settings, URLFILE)) {
         LOGGER.debug("You specified both URL and URL file. The URL file will take precedence.");
       }
     } else {
       // for UNLOAD we are not supporting urlfile parameter
-      if (isPathPresentAndNotEmpty(settings, URLFILE)) {
+      if (ConfigUtils.isPathPresentAndNotEmpty(settings, URLFILE)) {
         throw new BulkConfigurationException("The urlfile parameter is not supported for UNLOAD");
       }
-      if (isPathAbsentOrEmpty(settings, URL)) {
+      if (ConfigUtils.isPathAbsentOrEmpty(settings, URL)) {
         throw new BulkConfigurationException(
             String.format(
                 "A URL is mandatory when using the %s connector for UNLOAD. Please set connector.%s.url "
@@ -155,7 +153,7 @@ public abstract class AbstractConnectorFileBasedConnector implements Connector {
           int inDirectoryResourceCount =
               Objects.requireNonNull(scanRootDirectory(root).take(100).count().block()).intValue();
           if (inDirectoryResourceCount == 0) {
-            if (countReadableFiles(root, recursive) == 0) {
+            if (IOUtils.countReadableFiles(root, recursive) == 0) {
               LOGGER.warn("Directory {} has no readable files.", root);
             } else {
               LOGGER.warn(
@@ -295,7 +293,7 @@ public abstract class AbstractConnectorFileBasedConnector implements Connector {
                     try {
                       writer.write(record);
                     } catch (Exception e) {
-                      // Note that we may be are inside a parallel flux;
+                      // Note that we may be inside a parallel flux;
                       // sending more than one onError signal to downstream will result
                       // in all onError signals but the first to be dropped.
                       // The framework is expected to deal with that.

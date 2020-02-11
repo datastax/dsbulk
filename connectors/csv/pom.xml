@@ -113,6 +113,11 @@
       <scope>test</scope>
     </dependency>
 
+    <dependency>
+      <groupId>com.datastax.dse</groupId>
+      <artifactId>dsbulk-connectors-commons</artifactId>
+    </dependency>
+
   </dependencies>
 
 </project>

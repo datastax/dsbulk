@@ -1,8 +1,6 @@
 ## Changelog
 ## 1.5.0
 
-- [improvement] DAT-282 Reduce code duplication in connectors.
-
 ## 1.4.1
 
 - [bug] DAT-516: Always quote comment character when unloading.

@@ -31,6 +31,7 @@
     <module>api</module>
     <module>csv</module>
     <module>json</module>
+    <module>commons</module>
   </modules>
 
 </project>
