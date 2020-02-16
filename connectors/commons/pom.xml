@@ -13,7 +13,7 @@
 
   <modelVersion>4.0.0</modelVersion>
 
-<parent>
+  <parent>
     <artifactId>dsbulk-connectors</artifactId>
     <groupId>com.datastax.dse</groupId>
     <version>1.4.2-SNAPSHOT</version>
@@ -34,18 +34,14 @@
     </dependency>
 
     <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>java-driver-core</artifactId>
-    </dependency>
-    <dependency>
       <groupId>io.projectreactor</groupId>
       <artifactId>reactor-core</artifactId>
     </dependency>
 
     <dependency>
-    <groupId>com.datastax.dse</groupId>
-    <artifactId>dsbulk-connectors-api</artifactId>
-  </dependency>
+      <groupId>com.datastax.dse</groupId>
+      <artifactId>dsbulk-connectors-api</artifactId>
+    </dependency>
 
     <dependency>
       <groupId>org.reactivestreams</groupId>
@@ -63,4 +59,5 @@
     </dependency>
 
   </dependencies>
+
 </project>

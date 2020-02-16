@@ -29,9 +29,9 @@
 
   <modules>
     <module>api</module>
+    <module>commons</module>
     <module>csv</module>
     <module>json</module>
-    <module>commons</module>
   </modules>
 
 </project>

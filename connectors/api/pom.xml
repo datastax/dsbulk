@@ -32,16 +32,6 @@
       <groupId>com.datastax.dse</groupId>
       <artifactId>dsbulk-commons</artifactId>
     </dependency>
-    
-    <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>java-driver-core</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>io.projectreactor</groupId>
-      <artifactId>reactor-core</artifactId>
-    </dependency>
-
 
     <dependency>
       <groupId>org.reactivestreams</groupId>
