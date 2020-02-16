@@ -16,6 +16,7 @@ import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import com.datastax.oss.driver.shaded.guava.common.base.Functions;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -46,7 +47,7 @@ public final class MockConnector implements Connector {
           public void init() {}
 
           @Override
-          public void configure(LoaderConfig settings, boolean read) {}
+          public void configure(@NonNull LoaderConfig settings, boolean read) {}
 
           @Override
           public int estimatedResourceCount() {
@@ -54,25 +55,29 @@ public final class MockConnector implements Connector {
           }
 
           @Override
-          public boolean supports(ConnectorFeature feature) {
+          public boolean supports(@NonNull ConnectorFeature feature) {
             return true;
           }
 
+          @NonNull
           @Override
           public RecordMetadata getRecordMetadata() {
             return (field, cql) -> GenericType.STRING;
           }
 
+          @NonNull
           @Override
           public Publisher<Publisher<Record>> readByResource() {
             return Flux.just(read());
           }
 
+          @NonNull
           @Override
           public Publisher<Record> read() {
             return Flux.just(records);
           }
 
+          @NonNull
           @Override
           public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
             return Functions.identity();
@@ -95,7 +100,7 @@ public final class MockConnector implements Connector {
           public void init() {}
 
           @Override
-          public void configure(LoaderConfig settings, boolean read) {}
+          public void configure(@NonNull LoaderConfig settings, boolean read) {}
 
           @Override
           public int estimatedResourceCount() {
@@ -103,25 +108,29 @@ public final class MockConnector implements Connector {
           }
 
           @Override
-          public boolean supports(ConnectorFeature feature) {
+          public boolean supports(@NonNull ConnectorFeature feature) {
             return true;
           }
 
+          @NonNull
           @Override
           public RecordMetadata getRecordMetadata() {
             return (field, cql) -> GenericType.STRING;
           }
 
+          @NonNull
           @Override
           public Publisher<Publisher<Record>> readByResource() {
             return Flux::just;
           }
 
+          @NonNull
           @Override
           public Publisher<Record> read() {
             return Flux::just;
           }
 
+          @NonNull
           @Override
           public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
             return upstream -> Flux.from(upstream).doOnNext(records::add);
@@ -146,7 +155,7 @@ public final class MockConnector implements Connector {
           public void init() {}
 
           @Override
-          public void configure(LoaderConfig settings, boolean read) {}
+          public void configure(@NonNull LoaderConfig settings, boolean read) {}
 
           @Override
           public int estimatedResourceCount() {
@@ -154,25 +163,29 @@ public final class MockConnector implements Connector {
           }
 
           @Override
-          public boolean supports(ConnectorFeature feature) {
+          public boolean supports(@NonNull ConnectorFeature feature) {
             return true;
           }
 
+          @NonNull
           @Override
           public RecordMetadata getRecordMetadata() {
             return (field, cql) -> GenericType.STRING;
           }
 
+          @NonNull
           @Override
           public Publisher<Publisher<Record>> readByResource() {
             return Flux::just;
           }
 
+          @NonNull
           @Override
           public Publisher<Record> read() {
             return Flux::just;
           }
 
+          @NonNull
           @Override
           public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
             return upstream -> Flux.from(upstream).doOnNext(r -> records.incrementAndGet());
@@ -181,23 +194,27 @@ public final class MockConnector implements Connector {
     return records;
   }
 
+  @NonNull
   @Override
   public Publisher<Record> read() {
     return delegate.read();
   }
 
+  @NonNull
   @Override
   public Publisher<Publisher<Record>> readByResource() {
     return delegate.readByResource();
   }
 
+  @NonNull
   @Override
   public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
     return delegate.write();
   }
 
   @Override
-  public void configure(LoaderConfig settings, boolean read) throws BulkConfigurationException {
+  public void configure(@NonNull LoaderConfig settings, boolean read)
+      throws BulkConfigurationException {
     delegate.configure(settings, read);
   }
 
@@ -211,13 +228,14 @@ public final class MockConnector implements Connector {
     delegate.close();
   }
 
+  @NonNull
   @Override
   public RecordMetadata getRecordMetadata() {
     return delegate.getRecordMetadata();
   }
 
   @Override
-  public boolean supports(ConnectorFeature feature) {
+  public boolean supports(@NonNull ConnectorFeature feature) {
     return delegate.supports(feature);
   }
 
