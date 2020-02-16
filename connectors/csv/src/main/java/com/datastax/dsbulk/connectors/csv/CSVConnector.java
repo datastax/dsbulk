@@ -8,8 +8,6 @@
  */
 package com.datastax.dsbulk.connectors.csv;
 
-import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isValueFromReferenceConfig;
-
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.io.CompressedIOUtils;
@@ -35,6 +33,7 @@ import com.univocity.parsers.csv.CsvParser;
 import com.univocity.parsers.csv.CsvParserSettings;
 import com.univocity.parsers.csv.CsvWriter;
 import com.univocity.parsers.csv.CsvWriterSettings;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.IOException;
 import java.io.Reader;
 import java.net.URI;
@@ -42,13 +41,9 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLStreamHandler;
 import java.nio.channels.ClosedChannelException;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
 import java.util.regex.Pattern;
-import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -70,8 +65,6 @@ public class CSVConnector extends AbstractFileBasedConnector {
   private static final GenericType<String> STRING_TYPE = GenericType.STRING;
   private static final Pattern WHITESPACE = Pattern.compile("\\s+");
 
-  private static final String ENCODING = "encoding";
-  private static final String COMPRESSION = "compression";
   private static final String DELIMITER = "delimiter";
   private static final String QUOTE = "quote";
   private static final String ESCAPE = "escape";
@@ -91,15 +84,11 @@ public class CSVConnector extends AbstractFileBasedConnector {
   private static final String NULL_VALUE = "nullValue";
   private static final String EMPTY_VALUE = "emptyValue";
 
-  private Charset encoding;
-  private String compression;
   private char delimiter;
   private char quote;
   private char escape;
   private char comment;
   private String newline;
-  private long skipRecords;
-  private long maxRecords;
   private boolean header;
   private int maxCharsPerColumn;
   private int maxColumns;
@@ -113,43 +102,20 @@ public class CSVConnector extends AbstractFileBasedConnector {
   private CsvParserSettings parserSettings;
   private CsvWriterSettings writerSettings;
 
+  @NonNull
+  public String getConnectorName() {
+    return "csv";
+  }
+
   @Override
-  public void configure(LoaderConfig settings, boolean read) {
+  public void configure(@NonNull LoaderConfig settings, boolean read) {
     try {
-      validateURL(settings, read);
-      this.read = read;
-      urls = loadURLs(settings);
-      roots = new ArrayList<>();
-      files = new ArrayList<>();
-      compression = settings.getString(COMPRESSION);
-      if (!CompressedIOUtils.isSupportedCompression(compression, read)) {
-        throw new BulkConfigurationException(
-            String.format(
-                "Invalid value for connector.csv.%s, valid values: %s, got: '%s'",
-                COMPRESSION,
-                String.join(",", CompressedIOUtils.getSupportedCompressions(read)),
-                compression));
-      }
-      pattern = settings.getString(FILE_NAME_PATTERN);
-      if (!CompressedIOUtils.isNoneCompression(compression)
-          && isValueFromReferenceConfig(settings, FILE_NAME_PATTERN)) {
-        pattern = pattern + CompressedIOUtils.getCompressionSuffix(compression);
-      }
-      encoding = settings.getCharset(ENCODING);
+      super.configure(settings, read);
       delimiter = settings.getChar(DELIMITER);
       quote = settings.getChar(QUOTE);
       escape = settings.getChar(ESCAPE);
       comment = settings.getChar(COMMENT);
-      skipRecords = settings.getLong(SKIP_RECORDS);
-      maxRecords = settings.getLong(MAX_RECORDS);
-      maxConcurrentFiles = settings.getThreads(MAX_CONCURRENT_FILES);
-      recursive = settings.getBoolean(RECURSIVE);
       header = settings.getBoolean(HEADER);
-      fileNameFormat = settings.getString(FILE_NAME_FORMAT);
-      if (!CompressedIOUtils.isNoneCompression(compression)
-          && isValueFromReferenceConfig(settings, FILE_NAME_FORMAT)) {
-        fileNameFormat = fileNameFormat + CompressedIOUtils.getCompressionSuffix(compression);
-      }
       maxCharsPerColumn = settings.getInt(MAX_CHARS_PER_COLUMN);
       maxColumns = settings.getInt(MAX_COLUMNS);
       newline = settings.getString(NEWLINE);
@@ -173,11 +139,7 @@ public class CSVConnector extends AbstractFileBasedConnector {
 
   @Override
   public void init() throws URISyntaxException, IOException {
-    if (read) {
-      tryReadFromDirectories();
-    } else {
-      tryWriteToDirectory();
-    }
+    super.init();
     CsvFormat format = new CsvFormat();
     format.setDelimiter(delimiter);
     format.setQuote(quote);
@@ -222,17 +184,17 @@ public class CSVConnector extends AbstractFileBasedConnector {
       }
       // DAT-516: Always quote comment character when unloading
       writerSettings.setQuotationTriggers(comment);
-      counter = new AtomicInteger(0);
     }
   }
 
+  @NonNull
   @Override
   public RecordMetadata getRecordMetadata() {
     return (field, cqlType) -> STRING_TYPE;
   }
 
   @Override
-  public boolean supports(ConnectorFeature feature) {
+  public boolean supports(@NonNull ConnectorFeature feature) {
     if (feature instanceof CommonConnectorFeature) {
       CommonConnectorFeature commonFeature = (CommonConnectorFeature) feature;
       switch (commonFeature) {
@@ -247,85 +209,68 @@ public class CSVConnector extends AbstractFileBasedConnector {
     return false;
   }
 
-  @Override
-  public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
-    return super.write(CSVWriter::new);
-  }
-
-  public Flux<Record> readURL(URL url) {
-    Flux<Record> records =
-        Flux.create(
-            sink -> {
-              CsvParser parser = new CsvParser(parserSettings);
-              SimpleBackpressureController controller = new SimpleBackpressureController();
-              // DAT-177: Do not call sink.onDispose nor sink.onCancel,
-              // as doing so seems to prevent the flow from completing in rare occasions.
-              sink.onRequest(controller::signalRequested);
-              long recordNumber = 1;
-              LOGGER.debug("Reading {}", url);
-              URI resource = URI.create(url.toExternalForm());
-              try (Reader r = CompressedIOUtils.newBufferedReader(url, encoding, compression)) {
-                parser.beginParsing(r);
-                ParsingContext context = parser.getContext();
-                MappedField[] fieldNames = null;
-                if (header) {
-                  fieldNames = getFieldNames(url, context);
-                }
-                while (!sink.isCancelled()) {
-                  com.univocity.parsers.common.record.Record row = parser.parseNextRecord();
-                  String source = context.currentParsedContent();
-                  if (row == null) {
-                    break;
-                  }
-                  Record record;
-                  try {
-                    Object[] values = row.getValues();
-                    if (header) {
-                      record =
-                          DefaultRecord.mapped(
-                              source, resource, recordNumber++, fieldNames, values);
-                      // also emit indexed fields
-                      for (int i = 0; i < values.length; i++) {
-                        DefaultIndexedField field = new DefaultIndexedField(i);
-                        Object value = values[i];
-                        ((DefaultRecord) record).setFieldValue(field, value);
-                      }
-                    } else {
-                      record = DefaultRecord.indexed(source, resource, recordNumber++, values);
-                    }
-                  } catch (Exception e) {
-                    record = new DefaultErrorRecord(source, resource, recordNumber, e);
-                  }
-                  LOGGER.trace("Emitting record {}", record);
-                  controller.awaitRequested(1);
-                  sink.next(record);
-                }
-                LOGGER.debug("Done reading {}", url);
-                sink.complete();
-              } catch (TextParsingException e) {
-                IOException ioe = launderTextParsingException(e, url);
-                sink.error(ioe);
-              } catch (Exception e) {
-                if (e.getCause() instanceof TextParsingException) {
-                  e = launderTextParsingException(((TextParsingException) e.getCause()), url);
-                }
-                sink.error(
-                    new IOException(
-                        String.format("Error reading from %s at line %d", url, recordNumber), e));
+  @NonNull
+  public Flux<Record> readSingleFile(@NonNull URL url) {
+    return Flux.create(
+        sink -> {
+          CsvParser parser = new CsvParser(parserSettings);
+          SimpleBackpressureController controller = new SimpleBackpressureController();
+          // DAT-177: Do not call sink.onDispose nor sink.onCancel,
+          // as doing so seems to prevent the flow from completing in rare occasions.
+          sink.onRequest(controller::signalRequested);
+          long recordNumber = 1;
+          LOGGER.debug("Reading {}", url);
+          URI resource = URI.create(url.toExternalForm());
+          try (Reader r = CompressedIOUtils.newBufferedReader(url, encoding, compression)) {
+            parser.beginParsing(r);
+            ParsingContext context = parser.getContext();
+            MappedField[] fieldNames = null;
+            if (header) {
+              fieldNames = getFieldNames(url, context);
+            }
+            while (!sink.isCancelled()) {
+              com.univocity.parsers.common.record.Record row = parser.parseNextRecord();
+              String source = context.currentParsedContent();
+              if (row == null) {
+                break;
               }
-            },
-            FluxSink.OverflowStrategy.ERROR);
-    if (skipRecords > 0) {
-      records = records.skip(skipRecords);
-    }
-    if (maxRecords != -1) {
-      records = records.take(maxRecords);
-    }
-    return records;
-  }
-
-  public String getConnectorName() {
-    return "csv";
+              Record record;
+              try {
+                Object[] values = row.getValues();
+                if (header) {
+                  record =
+                      DefaultRecord.mapped(source, resource, recordNumber++, fieldNames, values);
+                  // also emit indexed fields
+                  for (int i = 0; i < values.length; i++) {
+                    DefaultIndexedField field = new DefaultIndexedField(i);
+                    Object value = values[i];
+                    ((DefaultRecord) record).setFieldValue(field, value);
+                  }
+                } else {
+                  record = DefaultRecord.indexed(source, resource, recordNumber++, values);
+                }
+              } catch (Exception e) {
+                record = new DefaultErrorRecord(source, resource, recordNumber, e);
+              }
+              LOGGER.trace("Emitting record {}", record);
+              controller.awaitRequested(1);
+              sink.next(record);
+            }
+            LOGGER.debug("Done reading {}", url);
+            sink.complete();
+          } catch (TextParsingException e) {
+            IOException ioe = launderTextParsingException(e, url);
+            sink.error(ioe);
+          } catch (Exception e) {
+            if (e.getCause() instanceof TextParsingException) {
+              e = launderTextParsingException(((TextParsingException) e.getCause()), url);
+            }
+            sink.error(
+                new IOException(
+                    String.format("Error reading from %s at line %d", url, recordNumber), e));
+          }
+        },
+        FluxSink.OverflowStrategy.ERROR);
   }
 
   private MappedField[] getFieldNames(URL url, ParsingContext context) throws IOException {
@@ -350,13 +295,19 @@ public class CSVConnector extends AbstractFileBasedConnector {
     }
   }
 
-  private class CSVWriter implements ConnectorWriter {
+  @NonNull
+  @Override
+  protected RecordWriter newSingleFileWriter() {
+    return new CSVWriter();
+  }
+
+  private class CSVWriter implements RecordWriter {
 
     private URL url;
     private CsvWriter writer;
 
     @Override
-    public void write(Record record) throws IOException {
+    public void write(@NonNull Record record) throws IOException {
       try {
         if (writer == null) {
           open();

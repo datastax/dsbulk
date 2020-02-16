@@ -8,8 +8,6 @@
  */
 package com.datastax.dsbulk.connectors.json;
 
-import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isValueFromReferenceConfig;
-
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.io.CompressedIOUtils;
@@ -40,6 +38,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.typesafe.config.ConfigException;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.net.URI;
@@ -47,15 +46,10 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLStreamHandler;
 import java.nio.channels.ClosedChannelException;
-import java.nio.charset.Charset;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -72,17 +66,17 @@ import reactor.core.publisher.FluxSink;
  * jar archive, for detailed information.
  */
 public class JsonConnector extends AbstractFileBasedConnector {
+
   enum DocumentMode {
     MULTI_DOCUMENT,
     SINGLE_DOCUMENT
   }
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JsonConnector.class);
+
   private static final GenericType<JsonNode> JSON_NODE_TYPE_TOKEN = GenericType.of(JsonNode.class);
 
   private static final String MODE = "mode";
-  private static final String ENCODING = "encoding";
-  private static final String COMPRESSION = "compression";
   private static final String PARSER_FEATURES = "parserFeatures";
   private static final String GENERATOR_FEATURES = "generatorFeatures";
   private static final String SERIALIZATION_FEATURES = "serializationFeatures";
@@ -94,10 +88,6 @@ public class JsonConnector extends AbstractFileBasedConnector {
       new TypeReference<Map<String, JsonNode>>() {};
 
   private DocumentMode mode;
-  private Charset encoding;
-  private String compression;
-  private long skipRecords;
-  private long maxRecords;
   private ObjectMapper objectMapper;
   private JavaType jsonNodeMapType;
   private Map<JsonParser.Feature, Boolean> parserFeatures;
@@ -107,39 +97,16 @@ public class JsonConnector extends AbstractFileBasedConnector {
   private JsonInclude.Include serializationStrategy;
   private boolean prettyPrint;
 
+  @NonNull
+  public String getConnectorName() {
+    return "json";
+  }
+
   @Override
-  public void configure(LoaderConfig settings, boolean read) {
+  public void configure(@NonNull LoaderConfig settings, boolean read) {
     try {
-      validateURL(settings, read);
-      this.read = read;
-      urls = loadURLs(settings);
-      roots = new ArrayList<>();
-      files = new ArrayList<>();
-      compression = settings.getString(COMPRESSION);
-      if (!CompressedIOUtils.isSupportedCompression(compression, read)) {
-        throw new BulkConfigurationException(
-            String.format(
-                "Invalid value for connector.json.%s, valid values: %s, got: '%s'",
-                COMPRESSION,
-                String.join(",", CompressedIOUtils.getSupportedCompressions(read)),
-                compression));
-      }
-      pattern = settings.getString(FILE_NAME_PATTERN);
-      if (!CompressedIOUtils.isNoneCompression(compression)
-          && isValueFromReferenceConfig(settings, FILE_NAME_PATTERN)) {
-        pattern = pattern + CompressedIOUtils.getCompressionSuffix(compression);
-      }
-      encoding = settings.getCharset(ENCODING);
+      super.configure(settings, read);
       mode = settings.getEnum(DocumentMode.class, MODE);
-      skipRecords = settings.getLong(SKIP_RECORDS);
-      maxRecords = settings.getLong(MAX_RECORDS);
-      maxConcurrentFiles = settings.getThreads(MAX_CONCURRENT_FILES);
-      recursive = settings.getBoolean(RECURSIVE);
-      fileNameFormat = settings.getString(FILE_NAME_FORMAT);
-      if (!CompressedIOUtils.isNoneCompression(compression)
-          && isValueFromReferenceConfig(settings, FILE_NAME_FORMAT)) {
-        fileNameFormat = fileNameFormat + CompressedIOUtils.getCompressionSuffix(compression);
-      }
       parserFeatures = getFeatureMap(settings.getConfig(PARSER_FEATURES), JsonParser.Feature.class);
       generatorFeatures =
           getFeatureMap(settings.getConfig(GENERATOR_FEATURES), JsonGenerator.Feature.class);
@@ -156,11 +123,7 @@ public class JsonConnector extends AbstractFileBasedConnector {
 
   @Override
   public void init() throws URISyntaxException, IOException {
-    if (read) {
-      tryReadFromDirectories();
-    } else {
-      tryWriteToDirectory();
-    }
+    super.init();
     objectMapper = new ObjectMapper();
     objectMapper.setNodeFactory(JsonNodeFactory.withExactBigDecimals(true));
     jsonNodeMapType = objectMapper.constructType(JSON_NODE_MAP_TYPE_REFERENCE.getType());
@@ -180,7 +143,6 @@ public class JsonConnector extends AbstractFileBasedConnector {
         objectMapper.configure(
             serializationFeature, serializationFeatures.get(serializationFeature));
       }
-      counter = new AtomicInteger(0);
       if (prettyPrint) {
         objectMapper.setDefaultPrettyPrinter(new DefaultPrettyPrinter(System.lineSeparator()));
       }
@@ -188,13 +150,14 @@ public class JsonConnector extends AbstractFileBasedConnector {
     }
   }
 
+  @NonNull
   @Override
   public RecordMetadata getRecordMetadata() {
     return (field, cqlType) -> JSON_NODE_TYPE_TOKEN;
   }
 
   @Override
-  public boolean supports(ConnectorFeature feature) {
+  public boolean supports(@NonNull ConnectorFeature feature) {
     if (feature instanceof CommonConnectorFeature) {
       CommonConnectorFeature commonFeature = (CommonConnectorFeature) feature;
       switch (commonFeature) {
@@ -207,83 +170,72 @@ public class JsonConnector extends AbstractFileBasedConnector {
     return false;
   }
 
-  @Override
-  public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
-    return super.write(JsonWriter::new);
-  }
-
-  public Flux<Record> readURL(URL url) {
-    Flux<Record> records =
-        Flux.create(
-            sink -> {
-              LOGGER.debug("Reading {}", url);
-              URI resource = URI.create(url.toExternalForm());
-              SimpleBackpressureController controller = new SimpleBackpressureController();
-              sink.onRequest(controller::signalRequested);
-              // DAT-177: Do not call sink.onDispose nor sink.onCancel,
-              // as doing so seems to prevent the flow from completing in rare occasions.
-              JsonFactory factory = objectMapper.getFactory();
-              try (BufferedReader r =
-                      CompressedIOUtils.newBufferedReader(url, encoding, compression);
-                  JsonParser parser = factory.createParser(r)) {
-                if (mode == DocumentMode.SINGLE_DOCUMENT) {
-                  do {
-                    parser.nextToken();
-                  } while (parser.currentToken() != JsonToken.START_ARRAY
-                      && parser.currentToken() != null);
-                  parser.nextToken();
-                }
-                MappingIterator<JsonNode> it = objectMapper.readValues(parser, JsonNode.class);
-                long recordNumber = 1;
-                while (!sink.isCancelled() && it.hasNext()) {
-                  if (parser.currentToken() != JsonToken.START_OBJECT) {
-                    throw new JsonParseException(
-                        parser,
-                        String.format(
-                            "Expecting START_OBJECT, got %s. Did you forget to set connector.json.mode to SINGLE_DOCUMENT?",
-                            parser.currentToken()));
-                  }
-                  Record record;
-                  JsonNode node = it.next();
-                  Map<String, JsonNode> values = objectMapper.convertValue(node, jsonNodeMapType);
-                  Map<MappedField, JsonNode> fields =
-                      values.entrySet().stream()
-                          .collect(
-                              Collectors.toMap(
-                                  e -> new DefaultMappedField(e.getKey()), Entry::getValue));
-                  record = DefaultRecord.mapped(node, resource, recordNumber++, fields);
-                  LOGGER.trace("Emitting record {}", record);
-                  controller.awaitRequested(1);
-                  sink.next(record);
-                }
-                LOGGER.debug("Done reading {}", url);
-                sink.complete();
-              } catch (Exception e) {
-                sink.error(new IOException(String.format("Error reading from %s", url), e));
+  @NonNull
+  public Flux<Record> readSingleFile(@NonNull URL url) {
+    return Flux.create(
+        sink -> {
+          LOGGER.debug("Reading {}", url);
+          URI resource = URI.create(url.toExternalForm());
+          SimpleBackpressureController controller = new SimpleBackpressureController();
+          sink.onRequest(controller::signalRequested);
+          // DAT-177: Do not call sink.onDispose nor sink.onCancel,
+          // as doing so seems to prevent the flow from completing in rare occasions.
+          JsonFactory factory = objectMapper.getFactory();
+          try (BufferedReader r = CompressedIOUtils.newBufferedReader(url, encoding, compression);
+              JsonParser parser = factory.createParser(r)) {
+            if (mode == DocumentMode.SINGLE_DOCUMENT) {
+              do {
+                parser.nextToken();
+              } while (parser.currentToken() != JsonToken.START_ARRAY
+                  && parser.currentToken() != null);
+              parser.nextToken();
+            }
+            MappingIterator<JsonNode> it = objectMapper.readValues(parser, JsonNode.class);
+            long recordNumber = 1;
+            while (!sink.isCancelled() && it.hasNext()) {
+              if (parser.currentToken() != JsonToken.START_OBJECT) {
+                throw new JsonParseException(
+                    parser,
+                    String.format(
+                        "Expecting START_OBJECT, got %s. Did you forget to set connector.json.mode to SINGLE_DOCUMENT?",
+                        parser.currentToken()));
               }
-            },
-            FluxSink.OverflowStrategy.ERROR);
-    if (skipRecords > 0) {
-      records = records.skip(skipRecords);
-    }
-    if (maxRecords != -1) {
-      records = records.take(maxRecords);
-    }
-    return records;
+              Record record;
+              JsonNode node = it.next();
+              Map<String, JsonNode> values = objectMapper.convertValue(node, jsonNodeMapType);
+              Map<MappedField, JsonNode> fields =
+                  values.entrySet().stream()
+                      .collect(
+                          Collectors.toMap(
+                              e -> new DefaultMappedField(e.getKey()), Entry::getValue));
+              record = DefaultRecord.mapped(node, resource, recordNumber++, fields);
+              LOGGER.trace("Emitting record {}", record);
+              controller.awaitRequested(1);
+              sink.next(record);
+            }
+            LOGGER.debug("Done reading {}", url);
+            sink.complete();
+          } catch (Exception e) {
+            sink.error(new IOException(String.format("Error reading from %s", url), e));
+          }
+        },
+        FluxSink.OverflowStrategy.ERROR);
   }
 
-  public String getConnectorName() {
-    return "json";
+  @NonNull
+  @Override
+  protected RecordWriter newSingleFileWriter() {
+    return new JsonWriter();
   }
 
-  private class JsonWriter implements ConnectorWriter {
+  private class JsonWriter implements RecordWriter {
 
     private URL url;
     private JsonGenerator writer;
     private long currentLine;
 
     @Override
-    public void write(Record record) throws IOException {
+    public void write(@NonNull Record record) throws IOException {
       try {
         if (writer == null) {
           open();
@@ -312,7 +264,7 @@ public class JsonConnector extends AbstractFileBasedConnector {
     private void open() throws IOException {
       url = getOrCreateDestinationURL();
       try {
-        writer = createJsonWriter(url);
+        writer = newJsonGenerator(url);
         if (mode == DocumentMode.SINGLE_DOCUMENT) {
           // do not use writer.writeStartArray(): we need to fool the parser into thinking it's on
           // multi doc mode,
@@ -351,12 +303,12 @@ public class JsonConnector extends AbstractFileBasedConnector {
     }
   }
 
-  private JsonGenerator createJsonWriter(URL url) throws IOException {
+  private JsonGenerator newJsonGenerator(URL url) throws IOException {
     JsonFactory factory = objectMapper.getFactory();
-    JsonGenerator writer =
+    JsonGenerator generator =
         factory.createGenerator(CompressedIOUtils.newBufferedWriter(url, encoding, compression));
-    writer.setRootValueSeparator(new SerializedString(System.lineSeparator()));
-    return writer;
+    generator.setRootValueSeparator(new SerializedString(System.lineSeparator()));
+    return generator;
   }
 
   private static <T extends Enum<T>> Map<T, Boolean> getFeatureMap(
