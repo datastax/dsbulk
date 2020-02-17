@@ -32,6 +32,7 @@ import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.commons.tests.utils.FileUtils;
+import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.commons.tests.utils.URLUtils;
 import com.datastax.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.dsbulk.connectors.api.Field;
@@ -49,8 +50,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
+import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -59,6 +62,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
@@ -665,10 +669,15 @@ class CSVConnectorTest {
     LoaderConfig settings = createTestConfig("dsbulk.connector.csv", "url", quoteJson(out));
     connector.configure(settings, false);
     connector.init();
-    connector.counter.set(999);
-    assertThat(connector.getOrCreateDestinationURL().getPath()).endsWith("output-001000.csv");
-    connector.counter.set(999_999);
-    assertThat(connector.getOrCreateDestinationURL().getPath()).endsWith("output-1000000.csv");
+    AtomicInteger counter = (AtomicInteger) ReflectionUtils.getInternalState(connector, "counter");
+    Method getOrCreateDestinationURL =
+        ReflectionUtils.locateMethod("getOrCreateDestinationURL", CSVConnector.class, 0);
+    counter.set(999);
+    URL nextFile = ReflectionUtils.invokeMethod(getOrCreateDestinationURL, connector, URL.class);
+    assertThat(nextFile.getPath()).endsWith("output-001000.csv");
+    counter.set(999_999);
+    nextFile = ReflectionUtils.invokeMethod(getOrCreateDestinationURL, connector, URL.class);
+    assertThat(nextFile.getPath()).endsWith("output-1000000.csv");
   }
 
   @Test

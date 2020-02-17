@@ -74,6 +74,7 @@ import com.datastax.oss.simulacron.common.result.WriteTimeoutResult;
 import com.datastax.oss.simulacron.common.stubbing.Prime;
 import com.datastax.oss.simulacron.server.BoundCluster;
 import com.typesafe.config.ConfigFactory;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -667,7 +668,7 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
         new JsonConnector() {
 
           @Override
-          public void configure(LoaderConfig settings, boolean read) {
+          public void configure(@NonNull LoaderConfig settings, boolean read) {
             settings =
                 new DefaultLoaderConfig(
                         ConfigFactory.parseString(
@@ -676,6 +677,7 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
             super.configure(settings, read);
           }
 
+          @NonNull
           @Override
           public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
             // will cause the write workers to fail because the files already exist
@@ -691,7 +693,7 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
           }
 
           @Override
-          public boolean supports(ConnectorFeature feature) {
+          public boolean supports(@NonNull ConnectorFeature feature) {
             return true;
           }
         });

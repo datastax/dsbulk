@@ -409,19 +409,6 @@ public class ConfigUtils {
   }
 
   /**
-   * Checks if the given path is absent (i.e., it does not exist or has an explicit {@code null}
-   * value), or if the path value is an empty string.
-   *
-   * @param config The config.
-   * @param path The path expression.
-   * @return {@code true} if the given path is absent or if its value is an empty string, {@code
-   *     false} otherwise.
-   */
-  public static boolean isPathAbsentOrEmpty(Config config, String path) {
-    return !config.hasPath(path) || config.getString(path).isEmpty();
-  }
-
-  /**
    * Checks if the given path is present and its value is a non-empty string.
    *
    * @param config The config.

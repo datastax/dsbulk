@@ -19,11 +19,11 @@
     <version>1.4.2-SNAPSHOT</version>
   </parent>
 
-  <artifactId>dsbulk-connectors-api</artifactId>
+  <artifactId>dsbulk-connectors-commons</artifactId>
 
-  <name>DataStax Bulk Loader - Connectors - API</name>
+  <name>DataStax Bulk Loader - Connectors - Commons</name>
   <description>
-    Connectors API for the DataStax Bulk Loader.
+    Common connector code for the DataStax Bulk Loader.
   </description>
 
   <dependencies>
@@ -31,6 +31,16 @@
     <dependency>
       <groupId>com.datastax.dse</groupId>
       <artifactId>dsbulk-commons</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>io.projectreactor</groupId>
+      <artifactId>reactor-core</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.datastax.dse</groupId>
+      <artifactId>dsbulk-connectors-api</artifactId>
     </dependency>
 
     <dependency>

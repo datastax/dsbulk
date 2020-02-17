@@ -131,6 +131,12 @@
 
       <dependency>
         <groupId>com.datastax.dse</groupId>
+        <artifactId>dsbulk-connectors-commons</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>com.datastax.dse</groupId>
         <artifactId>dsbulk-connectors-csv</artifactId>
         <version>${project.version}</version>
       </dependency>

@@ -10,6 +10,7 @@ package com.datastax.dsbulk.connectors.api;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.config.LoaderConfig;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.util.function.Function;
 import org.reactivestreams.Publisher;
 
@@ -104,6 +105,7 @@ public interface Connector extends AutoCloseable {
    *
    * @return a {@link Publisher} of records read from the datasource.
    */
+  @NonNull
   Publisher<Record> read();
 
   /**
@@ -121,6 +123,7 @@ public interface Connector extends AutoCloseable {
    *
    * @return a {@link Publisher} of records read from the datasource, grouped by resources.
    */
+  @NonNull
   Publisher<Publisher<Record>> readByResource();
 
   /**
@@ -132,6 +135,7 @@ public interface Connector extends AutoCloseable {
    * @return A transforming {@link Function} that writes records from the upstream flow to the
    *     datasource, then emits the records written to downstream subscribers.
    */
+  @NonNull
   Function<? super Publisher<Record>, ? extends Publisher<Record>> write();
 
   /**
@@ -141,7 +145,8 @@ public interface Connector extends AutoCloseable {
    * @param read whether the connector should be configured for reading or writing.
    * @throws BulkConfigurationException if the connector fails to configure properly.
    */
-  default void configure(LoaderConfig settings, boolean read) throws BulkConfigurationException {}
+  default void configure(@NonNull LoaderConfig settings, boolean read)
+      throws BulkConfigurationException {}
 
   /**
    * Initializes the connector.
@@ -167,7 +172,7 @@ public interface Connector extends AutoCloseable {
    * @param feature the feature to check.
    * @return {@code true} if this connector supports the feature, {@code false} otherwise.
    */
-  default boolean supports(ConnectorFeature feature) {
+  default boolean supports(@NonNull ConnectorFeature feature) {
     return false;
   }
 
@@ -179,6 +184,7 @@ public interface Connector extends AutoCloseable {
    *
    * @return the metadata about the records that this connector can read or write.
    */
+  @NonNull
   RecordMetadata getRecordMetadata();
 
   /**
