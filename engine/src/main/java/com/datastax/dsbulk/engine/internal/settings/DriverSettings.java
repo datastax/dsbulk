@@ -559,7 +559,7 @@ public class DriverSettings {
             .withApplicationName(BULK_LOADER_APPLICATION_NAME + " " + executionId)
             .withClientId(clientId(executionId))
             .withAuthProvider(authProvider)
-            .withConfigLoader(new BulkLoaderDriverConfigLoader());
+            .withConfigLoader(new DefaultDriverConfigLoader(this::getDriverConfig, false));
     if (nodeFilter != null) {
       sessionBuilder.withNodeFilter(nodeFilter);
     }
@@ -650,17 +650,6 @@ public class DriverSettings {
       // ipv4:port or hostname:port -> do nothing
       // ipv6 with ambiguous ending -> do nothing
       return contactPoint;
-    }
-  }
-
-  private class BulkLoaderDriverConfigLoader extends DefaultDriverConfigLoader {
-    BulkLoaderDriverConfigLoader() {
-      super(DriverSettings.this::getDriverConfig);
-    }
-
-    @Override
-    public boolean supportsReloading() {
-      return false;
     }
   }
 
