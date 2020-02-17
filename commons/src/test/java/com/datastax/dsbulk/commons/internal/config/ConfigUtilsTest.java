@@ -116,7 +116,14 @@ class ConfigUtilsTest {
         .isEqualTo(Paths.get(System.getProperty("user.home")).toUri().normalize().toURL());
     assertThat(resolveURL("~/foo"))
         .isEqualTo(Paths.get(System.getProperty("user.home"), "foo").toUri().toURL());
-    assertThat(resolveURL("/foo/bar")).isEqualTo(Paths.get("/foo/bar").toUri().toURL());
+    assumingThat(
+        !PlatformUtils.isWindows(),
+        () -> assertThat(resolveURL("/foo/bar")).isEqualTo(Paths.get("/foo/bar").toUri().toURL()));
+    assumingThat(
+        PlatformUtils.isWindows(),
+        () ->
+            assertThat(resolveURL("C:/foo/bar"))
+                .isEqualTo(Paths.get("C:/foo/bar").toUri().toURL()));
     assertThat(resolveURL("foo/bar"))
         .isEqualTo(Paths.get(System.getProperty("user.dir"), "foo", "bar").toUri().toURL());
     assertThat(resolveURL("./foo/bar"))
@@ -232,9 +239,7 @@ class ConfigUtilsTest {
 
   @ParameterizedTest
   @MethodSource("urlsProvider")
-  void should_get_urls_from_file(
-      List<String> input, List<URL> expectedNonWindows, List<URL> expectedWindows)
-      throws IOException {
+  void should_get_urls_from_file(List<String> input, List<URL> expected) throws IOException {
     // given
     Path urlFile = createURLFile(input);
 
@@ -242,10 +247,7 @@ class ConfigUtilsTest {
     List<URL> urlsFromFile = ConfigUtils.getURLsFromFile(urlFile);
 
     // then
-    assumingThat(
-        !PlatformUtils.isWindows(), () -> assertThat(urlsFromFile).isEqualTo(expectedNonWindows));
-    assumingThat(
-        PlatformUtils.isWindows(), () -> assertThat(urlsFromFile).isEqualTo(expectedWindows));
+    assertThat(urlsFromFile).isEqualTo(expected);
     Files.delete(urlFile);
   }
 
@@ -286,18 +288,28 @@ class ConfigUtilsTest {
   }
 
   static List<Arguments> urlsProvider() throws MalformedURLException {
-    return Lists.newArrayList(
-        arguments(
-            Arrays.asList("/a-first-file", "/second-file"),
-            Arrays.asList(new URL("file:/a-first-file"), new URL("file:/second-file")),
-            Arrays.asList(new URL("file:/C:/a-first-file"), new URL("file:/C:/second-file"))),
-        arguments(
-            Arrays.asList("/a-first-file", "#/second-file"),
-            Collections.singletonList(new URL("file:/a-first-file")),
-            Collections.singletonList(new URL("file:/C:/a-first-file"))),
-        arguments(
-            Arrays.asList("/a-first-file", "/second-file "),
-            Arrays.asList(new URL("file:/a-first-file"), new URL("file:/second-file")),
-            Arrays.asList(new URL("file:/C:/a-first-file"), new URL("file:/C:/second-file"))));
+    if (PlatformUtils.isWindows()) {
+      return Lists.newArrayList(
+          arguments(
+              Arrays.asList("C:\\a\\first-file", "D:/a/second-file"),
+              Arrays.asList(new URL("file:/C:/a/first-file"), new URL("file:/D:/a/second-file"))),
+          arguments(
+              Arrays.asList("C:\\a\\first-file", "# this is a comment line"),
+              Collections.singletonList(new URL("file:/C:/a/first-file"))),
+          arguments(
+              Arrays.asList("C:\\a\\first-file", " D:/a/second-file "),
+              Arrays.asList(new URL("file:/C:/a/first-file"), new URL("file:/D:/a/second-file"))));
+    } else {
+      return Lists.newArrayList(
+          arguments(
+              Arrays.asList("/a-first-file", "/second-file"),
+              Arrays.asList(new URL("file:/a-first-file"), new URL("file:/second-file"))),
+          arguments(
+              Arrays.asList("/a-first-file", "# this is a comment line"),
+              Collections.singletonList(new URL("file:/a-first-file"))),
+          arguments(
+              Arrays.asList("/a-first-file", " /second-file "),
+              Arrays.asList(new URL("file:/a-first-file"), new URL("file:/second-file"))));
+    }
   }
 }
