@@ -87,6 +87,7 @@ public abstract class AbstractFileBasedConnector implements Connector {
     return resourceCount;
   }
 
+  @Override
   public void configure(@NonNull LoaderConfig settings, boolean read) {
     this.read = read;
     urls = loadURLs(settings);
@@ -257,6 +258,7 @@ public abstract class AbstractFileBasedConnector implements Connector {
      *
      * @throws IOException If an I/O error occurs while closing.
      */
+    @Override
     void close() throws IOException;
   }
 

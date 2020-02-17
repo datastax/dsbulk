@@ -97,6 +97,7 @@ public class JsonConnector extends AbstractFileBasedConnector {
   private JsonInclude.Include serializationStrategy;
   private boolean prettyPrint;
 
+  @Override
   @NonNull
   public String getConnectorName() {
     return "json";
@@ -170,8 +171,9 @@ public class JsonConnector extends AbstractFileBasedConnector {
     return false;
   }
 
+  @Override
   @NonNull
-  public Flux<Record> readSingleFile(@NonNull URL url) {
+  protected Flux<Record> readSingleFile(@NonNull URL url) {
     return Flux.create(
         sink -> {
           LOGGER.debug("Reading {}", url);

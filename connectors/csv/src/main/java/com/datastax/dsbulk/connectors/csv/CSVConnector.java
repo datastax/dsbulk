@@ -102,6 +102,7 @@ public class CSVConnector extends AbstractFileBasedConnector {
   private CsvParserSettings parserSettings;
   private CsvWriterSettings writerSettings;
 
+  @Override
   @NonNull
   public String getConnectorName() {
     return "csv";
@@ -209,8 +210,9 @@ public class CSVConnector extends AbstractFileBasedConnector {
     return false;
   }
 
+  @Override
   @NonNull
-  public Flux<Record> readSingleFile(@NonNull URL url) {
+  protected Flux<Record> readSingleFile(@NonNull URL url) {
     return Flux.create(
         sink -> {
           CsvParser parser = new CsvParser(parserSettings);
