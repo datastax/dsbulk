@@ -16,7 +16,7 @@
   <parent>
     <artifactId>dsbulk-executor</artifactId>
     <groupId>com.datastax.dse</groupId>
-    <version>1.4.2-ngdg-SNAPSHOT</version>
+    <version>1.5.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>dsbulk-executor-api</artifactId>
