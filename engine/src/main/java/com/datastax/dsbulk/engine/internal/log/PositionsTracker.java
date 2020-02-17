@@ -34,7 +34,7 @@ public class PositionsTracker {
           resource,
           (res, positions) -> {
             if (positions == null) {
-              positions = new ArrayList<>();
+              positions = new ArrayList<>(100);
               positions.add(new Range(position));
               return positions;
             } else {
