@@ -12,7 +12,6 @@ import static com.datastax.oss.driver.api.core.DefaultProtocolVersion.V4;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.datastax.dse.driver.api.core.DseProtocolVersion;
 import com.datastax.dse.driver.api.core.metadata.DseNodeProperties;
 import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.CqlSession;
@@ -60,14 +59,7 @@ public class DriverUtils {
   @NonNull
   public static CqlSession mockSession() {
     CqlSession session = mock(CqlSession.class);
-    configureMockSession(session, ProtocolVersion.DEFAULT);
-    return session;
-  }
-
-  @NonNull
-  public static CqlSession mockCqlSession() {
-    CqlSession session = mock(CqlSession.class);
-    configureMockSession(session, DseProtocolVersion.DSE_V2);
+    configureMockSession(session);
     return session;
   }
 
@@ -89,7 +81,7 @@ public class DriverUtils {
     return h1;
   }
 
-  private static void configureMockSession(CqlSession session, ProtocolVersion version) {
+  private static void configureMockSession(CqlSession session) {
     DriverContext context = mock(DriverContext.class);
     DriverConfig config = mock(DriverConfig.class);
     DriverExecutionProfile profile = mock(DriverExecutionProfile.class);
@@ -97,7 +89,7 @@ public class DriverUtils {
     TokenMap tokenMap = mock(TokenMap.class);
     when(session.getContext()).thenReturn(context);
     when(context.getCodecRegistry()).thenReturn(CodecRegistry.DEFAULT);
-    when(context.getProtocolVersion()).thenReturn(version);
+    when(context.getProtocolVersion()).thenReturn(ProtocolVersion.DEFAULT);
     when(context.getConfig()).thenReturn(config);
     when(config.getDefaultProfile()).thenReturn(profile);
     when(config.getProfile(DriverExecutionProfile.DEFAULT_NAME)).thenReturn(profile);
