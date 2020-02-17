@@ -155,14 +155,10 @@
 
       <dependency>
         <groupId>com.datastax.oss</groupId>
-        <artifactId>java-driver-core</artifactId>
+        <artifactId>java-driver-bom</artifactId>
         <version>${oss.driver.version}</version>
-      </dependency>
-
-      <dependency>
-        <groupId>com.datastax.oss</groupId>
-        <artifactId>java-driver-test-infra</artifactId>
-        <version>${oss.driver.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
         <exclusions>
           <exclusion>
             <groupId>junit</groupId>
@@ -207,12 +203,6 @@
         <groupId>com.typesafe</groupId>
         <artifactId>config</artifactId>
         <version>${config.version}</version>
-      </dependency>
-
-      <dependency>
-        <groupId>com.datastax.oss</groupId>
-        <artifactId>java-driver-shaded-guava</artifactId>
-        <version>25.1-jre</version>
       </dependency>
 
       <dependency>
