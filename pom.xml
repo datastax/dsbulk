@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <!--
 
     Copyright DataStax, Inc.
@@ -9,26 +10,19 @@
 
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
-
   <modelVersion>4.0.0</modelVersion>
-
   <groupId>com.datastax.dse</groupId>
   <artifactId>dsbulk-parent</artifactId>
   <version>1.5.0-SNAPSHOT</version>
   <packaging>pom</packaging>
-
   <name>DataStax Bulk Loader</name>
-  <description>
-    A unified tool for loading into and unloading from DSE storage engines (i.e., Cassandra/Apollo and DataStax Enterprise).
-  </description>
-
+  <description>A unified tool for loading into and unloading from DSE storage engines (i.e., Cassandra/Apollo and DataStax Enterprise).</description>
   <url>https://github.com/riptano/dsbulk</url>
   <inceptionYear>2017</inceptionYear>
   <organization>
     <name>DataStax</name>
     <url>http://www.datastax.com</url>
   </organization>
-
   <modules>
     <module>commons</module>
     <module>connectors</module>
@@ -36,7 +30,6 @@
     <module>engine</module>
     <module>dist</module>
   </modules>
-
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -80,79 +73,65 @@
     <max.simulacron.clusters>4</max.simulacron.clusters>
     <max.ccm.clusters>2</max.ccm.clusters>
   </properties>
-
   <dependencyManagement>
-
     <dependencies>
-
       <dependency>
         <groupId>com.datastax.dse</groupId>
         <artifactId>dsbulk-commons</artifactId>
         <version>${project.version}</version>
       </dependency>
-
       <dependency>
         <groupId>com.datastax.dse</groupId>
         <artifactId>dsbulk-commons</artifactId>
         <version>${project.version}</version>
         <type>test-jar</type>
       </dependency>
-
       <dependency>
         <groupId>com.datastax.dse</groupId>
         <artifactId>dsbulk-executor-api</artifactId>
         <version>${project.version}</version>
       </dependency>
-
       <dependency>
         <groupId>com.datastax.dse</groupId>
         <artifactId>dsbulk-executor-api</artifactId>
         <version>${project.version}</version>
         <type>test-jar</type>
       </dependency>
-
       <dependency>
         <groupId>com.datastax.dse</groupId>
         <artifactId>dsbulk-executor-rxjava</artifactId>
         <version>${project.version}</version>
       </dependency>
-
       <dependency>
         <groupId>com.datastax.dse</groupId>
         <artifactId>dsbulk-executor-reactor</artifactId>
         <version>${project.version}</version>
       </dependency>
-
       <dependency>
         <groupId>com.datastax.dse</groupId>
         <artifactId>dsbulk-connectors-api</artifactId>
         <version>${project.version}</version>
       </dependency>
-
       <dependency>
         <groupId>com.datastax.dse</groupId>
         <artifactId>dsbulk-connectors-commons</artifactId>
         <version>${project.version}</version>
       </dependency>
-
       <dependency>
         <groupId>com.datastax.dse</groupId>
         <artifactId>dsbulk-connectors-csv</artifactId>
         <version>${project.version}</version>
       </dependency>
-
       <dependency>
         <groupId>com.datastax.dse</groupId>
         <artifactId>dsbulk-connectors-json</artifactId>
         <version>${project.version}</version>
       </dependency>
-
       <dependency>
         <groupId>com.datastax.dse</groupId>
         <artifactId>dsbulk-engine</artifactId>
         <version>${project.version}</version>
       </dependency>
-
       <dependency>
         <groupId>com.datastax.oss</groupId>
         <artifactId>java-driver-bom</artifactId>
@@ -166,31 +145,26 @@
           </exclusion>
         </exclusions>
       </dependency>
-
       <dependency>
         <groupId>org.reactivestreams</groupId>
         <artifactId>reactive-streams</artifactId>
         <version>${reactive-streams.version}</version>
       </dependency>
-
       <dependency>
         <groupId>org.reactivestreams</groupId>
         <artifactId>reactive-streams-tck</artifactId>
         <version>${reactive-streams.version}</version>
       </dependency>
-
       <dependency>
         <groupId>io.reactivex.rxjava2</groupId>
         <artifactId>rxjava</artifactId>
         <version>${rx-java.version}</version>
       </dependency>
-
       <dependency>
         <groupId>com.github.akarnokd</groupId>
         <artifactId>rxjava2-extensions</artifactId>
         <version>${rx-java-extensions.version}</version>
       </dependency>
-
       <dependency>
         <groupId>io.projectreactor</groupId>
         <artifactId>reactor-bom</artifactId>
@@ -198,541 +172,335 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
-
       <dependency>
         <groupId>com.typesafe</groupId>
         <artifactId>config</artifactId>
         <version>${config.version}</version>
       </dependency>
-
       <dependency>
         <groupId>com.github.ben-manes.caffeine</groupId>
         <artifactId>caffeine</artifactId>
         <version>${caffeine.version}</version>
       </dependency>
-
       <dependency>
         <groupId>org.jctools</groupId>
         <artifactId>jctools-core</artifactId>
         <version>${jctools.version}</version>
       </dependency>
-
       <dependency>
         <groupId>io.dropwizard.metrics</groupId>
         <artifactId>metrics-core</artifactId>
         <version>${metrics.version}</version>
       </dependency>
-
       <dependency>
         <groupId>io.dropwizard.metrics</groupId>
         <artifactId>metrics-jmx</artifactId>
         <version>${metrics.version}</version>
       </dependency>
-
       <dependency>
         <groupId>com.github.jnr</groupId>
         <artifactId>jnr-ffi</artifactId>
         <version>${jnr-ffi.version}</version>
       </dependency>
-
       <dependency>
         <groupId>com.github.jnr</groupId>
         <artifactId>jnr-posix</artifactId>
         <version>${jnr-posix.version}</version>
       </dependency>
-
       <dependency>
         <groupId>org.lz4</groupId>
         <artifactId>lz4-java</artifactId>
         <version>${lz4.version}</version>
       </dependency>
-
       <dependency>
         <groupId>org.xerial.snappy</groupId>
         <artifactId>snappy-java</artifactId>
         <version>${snappy.version}</version>
       </dependency>
-
       <dependency>
         <groupId>org.hdrhistogram</groupId>
         <artifactId>HdrHistogram</artifactId>
         <version>${hdr.version}</version>
       </dependency>
-
       <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>
         <version>${slf4j.version}</version>
       </dependency>
-
       <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>jul-to-slf4j</artifactId>
         <version>${slf4j.version}</version>
       </dependency>
-
       <dependency>
         <groupId>ch.qos.logback</groupId>
         <artifactId>logback-classic</artifactId>
         <version>${logback.version}</version>
       </dependency>
-
       <dependency>
         <groupId>com.univocity</groupId>
         <artifactId>univocity-parsers</artifactId>
         <version>${univocity.version}</version>
       </dependency>
-
       <dependency>
         <groupId>com.fasterxml.jackson.core</groupId>
         <artifactId>jackson-core</artifactId>
         <version>${jackson.version}</version>
       </dependency>
-
       <dependency>
         <groupId>com.fasterxml.jackson.core</groupId>
         <artifactId>jackson-databind</artifactId>
         <version>${jackson-databind.version}</version>
       </dependency>
-
       <dependency>
         <groupId>org.junit.jupiter</groupId>
         <artifactId>junit-jupiter-params</artifactId>
         <version>${junit.version}</version>
       </dependency>
-
       <dependency>
         <groupId>org.junit.jupiter</groupId>
         <artifactId>junit-jupiter-engine</artifactId>
         <version>${junit.version}</version>
       </dependency>
-
       <dependency>
         <groupId>org.assertj</groupId>
         <artifactId>assertj-core</artifactId>
         <version>${assertj.version}</version>
       </dependency>
-
       <dependency>
         <groupId>org.mockito</groupId>
         <artifactId>mockito-core</artifactId>
         <version>${mockito.version}</version>
       </dependency>
-
       <dependency>
         <groupId>org.mockito</groupId>
         <artifactId>mockito-junit-jupiter</artifactId>
         <version>${mockito.version}</version>
       </dependency>
-
       <dependency>
         <groupId>org.apache.commons</groupId>
         <artifactId>commons-exec</artifactId>
         <version>${commons-exec.version}</version>
       </dependency>
-
       <dependency>
         <groupId>org.apache.commons</groupId>
         <artifactId>commons-text</artifactId>
         <version>1.8</version>
       </dependency>
-
       <dependency>
         <groupId>com.github.spotbugs</groupId>
         <artifactId>spotbugs-annotations</artifactId>
         <version>3.1.12</version>
       </dependency>
-
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-buffer</artifactId>
         <version>${netty.version}</version>
       </dependency>
-
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-codec</artifactId>
         <version>${netty.version}</version>
       </dependency>
-
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-common</artifactId>
         <version>${netty.version}</version>
       </dependency>
-
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-handler</artifactId>
         <version>${netty.version}</version>
       </dependency>
-
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-resolver</artifactId>
         <version>${netty.version}</version>
       </dependency>
-
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-transport</artifactId>
         <version>${netty.version}</version>
       </dependency>
-
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-tcnative-boringssl-static</artifactId>
         <!-- when upgrading this library, make sure SSL tests pass, see SSLEncryptionEndToEndCCMIT -->
         <version>2.0.25.Final</version>
       </dependency>
-
       <dependency>
         <groupId>org.apache.commons</groupId>
         <artifactId>commons-compress</artifactId>
         <version>${commons-compress.version}</version>
       </dependency>
-
       <dependency>
         <groupId>com.github.luben</groupId>
         <artifactId>zstd-jni</artifactId>
         <version>${compress.zstd.version}</version>
       </dependency>
-
       <dependency>
         <groupId>org.tukaani</groupId>
         <artifactId>xz</artifactId>
         <version>${compress.xz.version}</version>
       </dependency>
-
       <dependency>
         <groupId>org.brotli</groupId>
         <artifactId>dec</artifactId>
         <version>${compress.brotli.version}</version>
       </dependency>
-
       <dependency>
         <groupId>com.datastax.oss.simulacron</groupId>
         <artifactId>simulacron-native-server</artifactId>
         <version>${simulacron.version}</version>
       </dependency>
-
       <dependency>
         <groupId>org.awaitility</groupId>
         <artifactId>awaitility</artifactId>
         <version>${awaitility.version}</version>
       </dependency>
-
       <dependency>
         <groupId>org.antlr</groupId>
         <artifactId>antlr4-runtime</artifactId>
         <version>${antlr4.version}</version>
       </dependency>
-
       <dependency>
         <groupId>com.github.tomakehurst</groupId>
         <artifactId>wiremock</artifactId>
         <version>2.25.1</version>
       </dependency>
-
       <dependency>
         <groupId>ru.lanwen.wiremock</groupId>
         <artifactId>wiremock-junit5</artifactId>
         <version>1.3.1</version>
       </dependency>
-
       <dependency>
         <groupId>org.fusesource.jansi</groupId>
         <artifactId>jansi</artifactId>
         <version>1.17.1</version>
       </dependency>
-
     </dependencies>
-
   </dependencyManagement>
-
   <build>
-
     <pluginManagement>
-
       <plugins>
-
+        <plugin>
+          <groupId>au.com.acegi</groupId>
+          <artifactId>xml-format-maven-plugin</artifactId>
+          <version>3.1.1</version>
+        </plugin>
         <plugin>
           <groupId>com.coveo</groupId>
           <artifactId>fmt-maven-plugin</artifactId>
           <version>2.8</version>
-          <executions>
-            <execution>
-              <goals>
-                <goal>format</goal>
-              </goals>
-            </execution>
-          </executions>
         </plugin>
-
         <plugin>
           <groupId>org.codehaus.mojo</groupId>
           <artifactId>build-helper-maven-plugin</artifactId>
           <version>3.0.0</version>
         </plugin>
-
         <plugin>
           <artifactId>maven-compiler-plugin</artifactId>
           <version>3.8.0</version>
-          <configuration>
-            <source>${java.version}</source>
-            <target>${java.version}</target>
-            <optimize>true</optimize>
-            <showDeprecation>true</showDeprecation>
-            <showWarnings>true</showWarnings>
-            <failOnWarning>false</failOnWarning>
-            <compilerId>javac-with-errorprone</compilerId>
-            <forceJavacCompilerUse>true</forceJavacCompilerUse>
-            <useIncrementalCompilation>false</useIncrementalCompilation>
-            <compilerArgs>
-              <arg>-XepExcludedPaths:.*/generated/.*</arg>
-            </compilerArgs>
-          </configuration>
-          <dependencies>
-            <dependency>
-              <groupId>org.codehaus.plexus</groupId>
-              <artifactId>plexus-compiler-javac-errorprone</artifactId>
-              <version>2.8.5</version>
-            </dependency>
-            <dependency>
-              <groupId>com.google.errorprone</groupId>
-              <artifactId>error_prone_core</artifactId>
-              <version>2.3.3</version>
-            </dependency>
-          </dependencies>
         </plugin>
-
         <plugin>
           <groupId>com.mycila</groupId>
           <artifactId>license-maven-plugin</artifactId>
           <version>3.0</version>
-          <configuration>
-            <inlineHeader><![CDATA[
-
-Copyright DataStax, Inc.
-
-This software is subject to the below license agreement.
-DataStax may make changes to the agreement from time to time,
-and will post the amended terms at
-https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
-
-]]>
-            </inlineHeader>
-            <includes>
-              <include>src/**/*.java</include>
-              <include>src/**/*.xml</include>
-              <include>src/**/*.properties</include>
-              <include>**/pom.xml</include>
-              <include>src/**/*.g4</include>
-            </includes>
-            <mapping>
-              <java>SLASHSTAR_STYLE</java>
-              <properties>SCRIPT_STYLE</properties>
-              <g4>SLASHSTAR_STYLE</g4>
-            </mapping>
-            <strictCheck>true</strictCheck>
-          </configuration>
-          <executions>
-            <execution>
-              <id>check-license</id>
-              <phase>initialize</phase>
-              <goals>
-                <goal>format</goal>
-              </goals>
-            </execution>
-          </executions>
         </plugin>
-
         <plugin>
           <groupId>org.codehaus.mojo</groupId>
           <artifactId>animal-sniffer-maven-plugin</artifactId>
           <version>1.16</version>
-          <executions>
-            <execution>
-              <id>check-jdk8</id>
-              <goals>
-                <goal>check</goal>
-              </goals>
-              <configuration>
-                <signature>
-                  <groupId>org.codehaus.mojo.signature</groupId>
-                  <artifactId>java18</artifactId>
-                  <version>1.0</version>
-                </signature>
-              </configuration>
-            </execution>
-          </executions>
         </plugin>
-
         <plugin>
           <groupId>org.antlr</groupId>
           <artifactId>antlr4-maven-plugin</artifactId>
           <version>${antlr4.version}</version>
-          <configuration>
-            <visitor>true</visitor>
-          </configuration>
-          <executions>
-            <execution>
-              <goals>
-                <goal>antlr4</goal>
-              </goals>
-              <phase>generate-sources</phase>
-            </execution>
-          </executions>
         </plugin>
-
         <plugin>
           <artifactId>maven-surefire-plugin</artifactId>
           <version>${surefire.version}</version>
-          <configuration>
-            <systemPropertyVariables>
-              <logback.configurationFile>${project.basedir}/src/test/resources/logback-test.xml</logback.configurationFile>
-            </systemPropertyVariables>
-          </configuration>
         </plugin>
-
         <plugin>
           <artifactId>maven-failsafe-plugin</artifactId>
           <version>${surefire.version}</version>
-          <configuration>
-            <systemPropertyVariables>
-              <logback.configurationFile>${project.basedir}/src/test/resources/logback-test.xml</logback.configurationFile>
-            </systemPropertyVariables>
-          </configuration>
         </plugin>
-
         <plugin>
           <groupId>org.jacoco</groupId>
           <artifactId>jacoco-maven-plugin</artifactId>
           <version>0.8.5</version>
-          <executions>
-            <execution>
-              <id>unit-tests-coverage</id>
-              <goals>
-                <goal>prepare-agent</goal>
-              </goals>
-            </execution>
-            <execution>
-              <id>integration-tests-coverage</id>
-              <goals>
-                <goal>prepare-agent-integration</goal>
-              </goals>
-            </execution>
-            <execution>
-              <id>report-unit-tests-coverage</id>
-              <goals>
-                <goal>report</goal>
-              </goals>
-            </execution>
-            <execution>
-              <id>report-integration-tests-coverage</id>
-              <goals>
-                <goal>report-integration</goal>
-              </goals>
-            </execution>
-          </executions>
-          <configuration>
-            <excludes>
-              <exclude>**/generated/**</exclude>
-            </excludes>
-          </configuration>
         </plugin>
-
         <plugin>
           <artifactId>maven-source-plugin</artifactId>
           <version>3.0.1</version>
-          <executions>
-            <execution>
-              <id>attach-sources</id>
-              <phase>package</phase>
-              <goals>
-                <goal>jar-no-fork</goal>
-              </goals>
-            </execution>
-          </executions>
         </plugin>
-
         <plugin>
           <artifactId>maven-javadoc-plugin</artifactId>
           <version>3.0.0</version>
-          <inherited>true</inherited>
-          <configuration>
-            <quiet>true</quiet>
-            <verbose>false</verbose>
-            <doclint>all,-missing</doclint>
-            <links>
-              <link>https://docs.oracle.com/javase/8/docs/api/</link>
-              <link>http://fasterxml.github.io/jackson-core/javadoc/2.9/</link>
-              <link>http://fasterxml.github.io/jackson-databind/javadoc/2.9/</link>
-            </links>
-          </configuration>
-          <executions>
-            <execution>
-              <id>attach-javadocs</id>
-              <goals>
-                <goal>jar</goal>
-              </goals>
-            </execution>
-          </executions>
         </plugin>
-
         <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-jar-plugin</artifactId>
           <version>3.0.2</version>
         </plugin>
-
         <plugin>
           <artifactId>maven-assembly-plugin</artifactId>
           <version>3.1.0</version>
         </plugin>
-
         <plugin>
           <artifactId>maven-gpg-plugin</artifactId>
           <version>1.5</version>
         </plugin>
-
         <plugin>
           <artifactId>maven-install-plugin</artifactId>
           <version>2.5.2</version>
         </plugin>
-
         <plugin>
           <artifactId>maven-deploy-plugin</artifactId>
           <version>2.8.2</version>
         </plugin>
-
         <plugin>
           <artifactId>maven-release-plugin</artifactId>
           <version>2.5.3</version>
-          <configuration>
-            <tagNameFormat>@{project.version}</tagNameFormat>
-            <autoVersionSubmodules>true</autoVersionSubmodules>
-            <useReleaseProfile>false</useReleaseProfile>
-            <releaseProfiles>release</releaseProfiles>
-          </configuration>
         </plugin>
-
       </plugins>
-
     </pluginManagement>
-
     <plugins>
-
+      <plugin>
+        <groupId>au.com.acegi</groupId>
+        <artifactId>xml-format-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>xml-format</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <excludes>
+            <exclude>ci/**</exclude>
+            <exclude>.idea/**</exclude>
+            <exclude>**/target/**</exclude>
+            <exclude>**/dependency-reduced-pom.xml</exclude>
+            <exclude>**/.flattened-pom.xml</exclude>
+          </excludes>
+        </configuration>
+      </plugin>
       <plugin>
         <groupId>com.coveo</groupId>
         <artifactId>fmt-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>format</goal>
+            </goals>
+          </execution>
+        </executions>
         <configuration>
           <additionalSourceDirectories>
             <additionalSourceDirectory>src/it/java</additionalSourceDirectory>
           </additionalSourceDirectories>
         </configuration>
       </plugin>
-
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>
@@ -766,28 +534,157 @@ https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
           </execution>
         </executions>
       </plugin>
-
       <plugin>
         <groupId>com.mycila</groupId>
         <artifactId>license-maven-plugin</artifactId>
-      </plugin>
+        <configuration>
+          <inlineHeader><![CDATA[
 
+Copyright DataStax, Inc.
+
+This software is subject to the below license agreement.
+DataStax may make changes to the agreement from time to time,
+and will post the amended terms at
+https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
+
+]]></inlineHeader>
+          <includes>
+            <include>src/**/*.java</include>
+            <include>src/**/*.xml</include>
+            <include>src/**/*.properties</include>
+            <include>**/pom.xml</include>
+            <include>src/**/*.g4</include>
+          </includes>
+          <mapping>
+            <java>SLASHSTAR_STYLE</java>
+            <properties>SCRIPT_STYLE</properties>
+            <g4>SLASHSTAR_STYLE</g4>
+          </mapping>
+          <strictCheck>true</strictCheck>
+        </configuration>
+        <executions>
+          <execution>
+            <id>check-license</id>
+            <phase>initialize</phase>
+            <goals>
+              <goal>format</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>animal-sniffer-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>check-jdk8</id>
+            <goals>
+              <goal>check</goal>
+            </goals>
+            <configuration>
+              <signature>
+                <groupId>org.codehaus.mojo.signature</groupId>
+                <artifactId>java18</artifactId>
+                <version>1.0</version>
+              </signature>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
-
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <source>${java.version}</source>
+          <target>${java.version}</target>
+          <optimize>true</optimize>
+          <showDeprecation>true</showDeprecation>
+          <showWarnings>true</showWarnings>
+          <failOnWarning>false</failOnWarning>
+          <compilerId>javac-with-errorprone</compilerId>
+          <forceJavacCompilerUse>true</forceJavacCompilerUse>
+          <useIncrementalCompilation>false</useIncrementalCompilation>
+          <compilerArgs>
+            <arg>-XepExcludedPaths:.*/generated/.*</arg>
+          </compilerArgs>
+        </configuration>
+        <dependencies>
+          <dependency>
+            <groupId>org.codehaus.plexus</groupId>
+            <artifactId>plexus-compiler-javac-errorprone</artifactId>
+            <version>2.8.5</version>
+          </dependency>
+          <dependency>
+            <groupId>com.google.errorprone</groupId>
+            <artifactId>error_prone_core</artifactId>
+            <version>2.3.3</version>
+          </dependency>
+        </dependencies>
       </plugin>
-
+      <plugin>
+        <groupId>org.antlr</groupId>
+        <artifactId>antlr4-maven-plugin</artifactId>
+        <configuration>
+          <visitor>true</visitor>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>antlr4</goal>
+            </goals>
+            <phase>generate-sources</phase>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <groupId>org.jacoco</groupId>
         <artifactId>jacoco-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>unit-tests-coverage</id>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>integration-tests-coverage</id>
+            <goals>
+              <goal>prepare-agent-integration</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>report-unit-tests-coverage</id>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>report-integration-tests-coverage</id>
+            <goals>
+              <goal>report-integration</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <excludes>
+            <exclude>**/generated/**</exclude>
+          </excludes>
+        </configuration>
       </plugin>
-
+      <plugin>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <systemPropertyVariables>
+            <logback.configurationFile>${project.basedir}/src/test/resources/logback-test.xml</logback.configurationFile>
+          </systemPropertyVariables>
+        </configuration>
+      </plugin>
       <plugin>
         <artifactId>maven-failsafe-plugin</artifactId>
+        <configuration>
+          <systemPropertyVariables>
+            <logback.configurationFile>${project.basedir}/src/test/resources/logback-test.xml</logback.configurationFile>
+          </systemPropertyVariables>
+        </configuration>
         <executions>
           <execution>
             <id>short-tests</id>
@@ -803,13 +700,52 @@ https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
           </execution>
         </executions>
       </plugin>
-
+      <plugin>
+        <artifactId>maven-source-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <phase>package</phase>
+            <goals>
+              <goal>jar-no-fork</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <inherited>true</inherited>
+        <configuration>
+          <quiet>true</quiet>
+          <verbose>false</verbose>
+          <doclint>all,-missing</doclint>
+          <links>
+            <link>https://docs.oracle.com/javase/8/docs/api/</link>
+            <link>http://fasterxml.github.io/jackson-core/javadoc/2.9/</link>
+            <link>http://fasterxml.github.io/jackson-databind/javadoc/2.9/</link>
+          </links>
+        </configuration>
+        <executions>
+          <execution>
+            <id>attach-javadocs</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-release-plugin</artifactId>
+        <configuration>
+          <tagNameFormat>@{project.version}</tagNameFormat>
+          <autoVersionSubmodules>true</autoVersionSubmodules>
+          <useReleaseProfile>false</useReleaseProfile>
+          <releaseProfiles>release</releaseProfiles>
+        </configuration>
+      </plugin>
     </plugins>
-
   </build>
-
   <profiles>
-
     <!--
     Profile activated when releasing. See:
     http://central.sonatype.org/pages/apache-maven.html
@@ -855,7 +791,6 @@ https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
         </plugins>
       </build>
     </profile>
-
     <profile>
       <id>medium</id>
       <build>
@@ -881,7 +816,6 @@ https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
         </plugins>
       </build>
     </profile>
-
     <profile>
       <id>long</id>
       <build>
@@ -907,9 +841,7 @@ https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
         </plugins>
       </build>
     </profile>
-
   </profiles>
-
   <repositories>
     <repository>
       <id>datastax-releases-local</id>
@@ -923,7 +855,6 @@ https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
       </snapshots>
     </repository>
   </repositories>
-
   <distributionManagement>
     <repository>
       <id>datastax-releases-local</id>
@@ -936,28 +867,24 @@ https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
       <url>https://repo.sjc.dsinternal.org/artifactory/datastax-snapshots-local/</url>
     </snapshotRepository>
   </distributionManagement>
-
   <licenses>
     <license>
       <name>DataStax DSE Bulk Utility License</name>
       <url>https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms</url>
       <distribution>repo</distribution>
-      <comments />
+      <comments/>
     </license>
   </licenses>
-
   <scm>
     <connection>scm:git:git@github.com:riptano/dsbulk.git</connection>
     <developerConnection>scm:git:git@github.com:riptano/dsbulk.git</developerConnection>
     <url>https://github.com/riptano/dsbulk</url>
     <tag>HEAD</tag>
   </scm>
-
   <developers>
     <developer>
       <name>Various</name>
       <organization>DataStax</organization>
     </developer>
   </developers>
-
 </project>

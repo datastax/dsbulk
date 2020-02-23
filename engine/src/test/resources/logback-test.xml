@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <!--
 
     Copyright DataStax, Inc.
@@ -9,15 +10,10 @@
 
 -->
 <configuration>
-
   <!-- for testing purposes, this file should contain exactly the same appenders
   and loggers as the production configuration file "logback.xml" -->
-
   <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator"/>
-
-  <conversionRule conversionWord="msgx"
-                  converterClass="com.datastax.dsbulk.engine.internal.log.HighlightingMessageConverter"/>
-
+  <conversionRule conversionWord="msgx" converterClass="com.datastax.dsbulk.engine.internal.log.HighlightingMessageConverter"/>
   <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
     <target>System.err</target>
     <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
@@ -40,20 +36,16 @@
       <charset>UTF-8</charset>
     </encoder>
   </appender>
-
   <root level="INFO">
     <!-- main log file appender is created programmatically in LogSettings -->
     <appender-ref ref="CONSOLE"/>
   </root>
-
   <logger name="com.datastax.oss.driver" level="WARN"/>
   <logger name="com.datastax.dse.driver" level="WARN"/>
   <logger name="io.netty" level="WARN"/>
   <logger name="reactor.core" level="WARN"/>
-
   <!-- test-specific loggers -->
   <logger name="com.datastax.oss.simulacron" level="ERROR"/>
   <logger name="com.datastax.dsbulk.commons.tests.ccm" level="ERROR"/>
   <logger name="com.datastax.dsbulk.commons.tests.cloud" level="ERROR"/>
-
 </configuration>

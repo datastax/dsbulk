@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <!--
 
     Copyright DataStax, Inc.
@@ -8,20 +9,14 @@
     https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
 
 -->
-<assembly xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2"
-          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-          xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2 http://maven.apache.org/xsd/assembly-1.1.2.xsd">
+<assembly xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2 http://maven.apache.org/xsd/assembly-1.1.2.xsd">
   <id>binary-distro</id>
-
   <formats>
     <format>tar.gz</format>
     <format>zip</format>
   </formats>
-
   <includeBaseDirectory>true</includeBaseDirectory>
-
   <fileSets>
-
     <fileSet>
       <directory>${project.basedir}/..</directory>
       <outputDirectory>./</outputDirectory>
@@ -30,12 +25,10 @@
         <include>LICENSE*</include>
       </includes>
     </fileSet>
-
     <fileSet>
       <directory>${project.basedir}/../manual</directory>
       <outputDirectory>manual</outputDirectory>
     </fileSet>
-
     <fileSet>
       <directory>${project.basedir}/../bin</directory>
       <outputDirectory>bin</outputDirectory>
@@ -44,7 +37,6 @@
         <include>dsbulk</include>
       </includes>
     </fileSet>
-
     <fileSet>
       <directory>${project.basedir}/../bin</directory>
       <outputDirectory>bin</outputDirectory>
@@ -53,12 +45,10 @@
         <include>dsbulk.cmd</include>
       </includes>
     </fileSet>
-
     <fileSet>
       <directory>${project.basedir}/src/conf</directory>
       <outputDirectory>conf</outputDirectory>
     </fileSet>
-
     <fileSet>
       <directory>${project.build.directory}/generated-sources/license</directory>
       <outputDirectory>./</outputDirectory>
@@ -66,17 +56,12 @@
         <include>THIRD-PARTY*</include>
       </includes>
     </fileSet>
-
   </fileSets>
-
   <dependencySets>
-
     <dependencySet>
       <outputDirectory>lib</outputDirectory>
       <useProjectArtifact>false</useProjectArtifact>
       <scope>runtime</scope>
     </dependencySet>
-
   </dependencySets>
-
 </assembly>

@@ -10,24 +10,16 @@
 
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-
   <modelVersion>4.0.0</modelVersion>
-
   <parent>
     <artifactId>dsbulk-parent</artifactId>
     <groupId>com.datastax.dse</groupId>
     <version>1.5.0-SNAPSHOT</version>
   </parent>
-
   <artifactId>dsbulk-dist</artifactId>
-
   <name>DataStax Bulk Loader - Binary Distribution</name>
-  <description>
-    Binary distribution of the DataStax Bulk Loader.
-  </description>
-
+  <description>Binary distribution of the DataStax Bulk Loader.</description>
   <dependencies>
-
     <dependency>
       <groupId>com.datastax.dse</groupId>
       <artifactId>dsbulk-commons</artifactId>
@@ -38,7 +30,6 @@
         </exclusion>
       </exclusions>
     </dependency>
-
     <dependency>
       <groupId>com.datastax.dse</groupId>
       <artifactId>dsbulk-executor-api</artifactId>
@@ -49,7 +40,6 @@
         </exclusion>
       </exclusions>
     </dependency>
-
     <dependency>
       <groupId>com.datastax.dse</groupId>
       <artifactId>dsbulk-executor-reactor</artifactId>
@@ -60,7 +50,6 @@
         </exclusion>
       </exclusions>
     </dependency>
-
     <dependency>
       <groupId>com.datastax.dse</groupId>
       <artifactId>dsbulk-connectors-api</artifactId>
@@ -71,12 +60,10 @@
         </exclusion>
       </exclusions>
     </dependency>
-
     <dependency>
       <groupId>com.datastax.dse</groupId>
       <artifactId>dsbulk-connectors-commons</artifactId>
     </dependency>
-
     <dependency>
       <groupId>com.datastax.dse</groupId>
       <artifactId>dsbulk-connectors-csv</artifactId>
@@ -87,7 +74,6 @@
         </exclusion>
       </exclusions>
     </dependency>
-
     <dependency>
       <groupId>com.datastax.dse</groupId>
       <artifactId>dsbulk-connectors-json</artifactId>
@@ -98,7 +84,6 @@
         </exclusion>
       </exclusions>
     </dependency>
-
     <dependency>
       <groupId>com.datastax.dse</groupId>
       <artifactId>dsbulk-engine</artifactId>
@@ -109,7 +94,6 @@
         </exclusion>
       </exclusions>
     </dependency>
-
     <dependency>
       <groupId>com.datastax.oss</groupId>
       <artifactId>java-driver-core</artifactId>
@@ -124,29 +108,27 @@
           <artifactId>spotbugs-annotations</artifactId>
         </exclusion>
         <exclusion>
-            <groupId>org.javatuples</groupId>
-            <artifactId>javatuples</artifactId>
-          </exclusion>
+          <groupId>org.javatuples</groupId>
+          <artifactId>javatuples</artifactId>
+        </exclusion>
         <exclusion>
-            <groupId>org.apache.tinkerpop</groupId>
-            <artifactId>gremlin-core</artifactId>
-          </exclusion>
+          <groupId>org.apache.tinkerpop</groupId>
+          <artifactId>gremlin-core</artifactId>
+        </exclusion>
         <exclusion>
-            <groupId>org.apache.tinkerpop</groupId>
-            <artifactId>gremlin-driver</artifactId>
-          </exclusion>
-          <exclusion>
-            <groupId>org.apache.tinkerpop</groupId>
-            <artifactId>tinkergraph-gremlin</artifactId>
-          </exclusion>
+          <groupId>org.apache.tinkerpop</groupId>
+          <artifactId>gremlin-driver</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.tinkerpop</groupId>
+          <artifactId>tinkergraph-gremlin</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
-
     <dependency>
       <groupId>com.datastax.oss</groupId>
       <artifactId>java-driver-shaded-guava</artifactId>
     </dependency>
-
     <dependency>
       <groupId>com.github.ben-manes.caffeine</groupId>
       <artifactId>caffeine</artifactId>
@@ -162,62 +144,47 @@
         </exclusion>
       </exclusions>
     </dependency>
-
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
     </dependency>
-
     <!-- DAT-415: driver transitive dependencies must be explicitly declared -->
-
     <dependency>
       <groupId>com.github.jnr</groupId>
       <artifactId>jnr-ffi</artifactId>
     </dependency>
-
     <dependency>
       <groupId>com.github.jnr</groupId>
       <artifactId>jnr-posix</artifactId>
     </dependency>
-
     <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-buffer</artifactId>
     </dependency>
-
     <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-codec</artifactId>
     </dependency>
-
     <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-common</artifactId>
     </dependency>
-
     <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-handler</artifactId>
     </dependency>
-
     <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-resolver</artifactId>
     </dependency>
-
     <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-transport</artifactId>
     </dependency>
-
   </dependencies>
-
   <build>
-
     <finalName>dsbulk-${project.version}</finalName>
-
     <plugins>
-
       <plugin>
         <groupId>org.jacoco</groupId>
         <artifactId>jacoco-maven-plugin</artifactId>
@@ -230,7 +197,6 @@
           </execution>
         </executions>
       </plugin>
-
       <plugin>
         <artifactId>maven-jar-plugin</artifactId>
         <!-- http://stackoverflow.com/questions/13218313/unable-to-disable-generation-of-empty-jar-maven-jar-plugin -->
@@ -241,49 +207,37 @@
           </execution>
         </executions>
       </plugin>
-
       <plugin>
         <artifactId>maven-source-plugin</artifactId>
         <configuration>
           <skipSource>true</skipSource>
         </configuration>
       </plugin>
-
       <plugin>
         <artifactId>maven-javadoc-plugin</artifactId>
         <configuration>
           <skip>true</skip>
         </configuration>
       </plugin>
-
       <plugin>
         <artifactId>maven-install-plugin</artifactId>
         <configuration>
           <skip>true</skip>
         </configuration>
       </plugin>
-
       <plugin>
         <artifactId>maven-deploy-plugin</artifactId>
         <configuration>
           <skip>true</skip>
         </configuration>
       </plugin>
-
     </plugins>
-
   </build>
-
   <profiles>
-
     <profile>
-
       <id>release</id>
-
       <build>
-
         <plugins>
-
           <plugin>
             <groupId>org.codehaus.mojo</groupId>
             <artifactId>license-maven-plugin</artifactId>
@@ -309,7 +263,6 @@
               </execution>
             </executions>
           </plugin>
-
           <plugin>
             <artifactId>maven-assembly-plugin</artifactId>
             <executions>
@@ -329,27 +282,20 @@
               <tarLongFileMode>posix</tarLongFileMode>
             </configuration>
           </plugin>
-
           <plugin>
             <artifactId>maven-install-plugin</artifactId>
             <configuration>
               <skip>false</skip>
             </configuration>
           </plugin>
-
           <plugin>
             <artifactId>maven-deploy-plugin</artifactId>
             <configuration>
               <skip>false</skip>
             </configuration>
           </plugin>
-
         </plugins>
-
       </build>
-
     </profile>
-
   </profiles>
-
 </project>
