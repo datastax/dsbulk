@@ -85,10 +85,32 @@ public class ConfigurationFileCreator {
     pw.println("#");
     pw.println(
         wrapLines(
-            "# Uncomment settings as needed to configure "
-                + "DSBulk. When this file is named application.conf and placed in the "
-                + "/conf directory, it will be automatically picked up and used by default. "
-                + "To use other file names see the -f command-line option."));
+            "# Please make sure you've read the DataStax Bulk Loader documentation "
+                + "included in this binary distribution:"));
+    pw.println("# ../manual/README.md");
+    pw.println("#");
+    pw.println("# An exhaustive list of available settings can be found here:");
+    pw.println("# ../manual/settings.md");
+    pw.println("#");
+    pw.println(
+        wrapLines(
+            "# Also, two template configuration files meant to be used together can be "
+                + "found here:"));
+    pw.println("# ../manual/application.template.conf");
+    pw.println("# ../manual/driver.template.conf");
+    pw.println("#");
+    pw.println(
+        wrapLines(
+            "# We recommend that this file be named application.conf and placed in the "
+                + "/conf directory; these are indeed the default file name and path where "
+                + "DSBulk looks for configuration files."));
+    pw.println("#");
+    pw.println(
+        wrapLines(
+            "# To use other file names, or another folder, you can use the -f command "
+                + "line switch; consult the DataStax Bulk Loader online documentation for more "
+                + "information:"));
+    pw.println("# https://docs.datastax.com/en/dsbulk/doc/dsbulk/dsbulkLoadConfigFile.html");
     pw.println(ROW_OF_HASHES);
     pw.println();
     pw.println(ROW_OF_HASHES);
@@ -96,11 +118,19 @@ public class ConfigurationFileCreator {
     pw.println("#");
     pw.println(
         wrapLines(
-            "# Settings for the Java Driver are declared in the driver.conf file located "
-                + "in the same directory. Use this file to configure the driver directly, "
-                + "for example, to define contact points, provide authentication and encryption "
-                + "settings, modify timeouts, consistency levels, page sizes, policies, "
-                + "and much more."));
+            "# You can declare any Java Driver settings directly in this file, but for "
+                + "maintainability sake, we placed them in a separate file, which is "
+                + "expected to be named driver.conf and located in the same /conf directory."));
+    pw.println(
+        wrapLines(
+            "# Use that file, for example, to define contact points, provide "
+                + "authentication and encryption settings, modify timeouts, consistency levels, "
+                + "page sizes, policies, and much more."));
+    pw.println(
+        wrapLines(
+            "# If you decide to declare the driver settings in a different way, or in a "
+                + "file named differently, make sure to test your setup to ensure that all "
+                + "settings are correctly detected."));
     pw.println("#");
     pw.println("# You can also consult the Java Driver online documentation for more details:");
     pw.println("# https://docs.datastax.com/en/developer/java-driver/latest/");
@@ -114,13 +144,13 @@ public class ConfigurationFileCreator {
     pw.println(
         wrapLines(
             "# Settings for the DataStax Bulk Loader (DSBulk) are declared below. Use this "
-                + "file, for example, to define which connector to use and how, to customize "
+                + "section, for example, to define which connector to use and how, to customize "
                 + "logging, monitoring, codecs, to specify schema settings and mappings, "
                 + "and much more."));
-    pw.println();
+    pw.println("#");
     pw.println(
         "# You can also consult the DataStax Bulk Loader online documentation for more details:");
-    pw.println("# https://docs.datastax.com/en/dsbulk/doc/");
+    pw.println("# https://docs.datastax.com/en/dsbulk/doc/dsbulk/dsbulkRef.html");
     pw.println(ROW_OF_HASHES);
     pw.println("dsbulk {");
     pw.println();
@@ -192,9 +222,14 @@ public class ConfigurationFileCreator {
     pw.println("#");
     pw.println(
         wrapLines(
-            "# Uncomment settings as needed to configure the driver. "
-                + "When this file is named driver.conf and placed "
-                + "in the /conf directory, it will be automatically picked up and used by default."));
+            "# This file is not meant as the main configuration file for DSBulk, but "
+                + "rather to be included from the main configuration file. We recommend that "
+                + "this file be named driver.conf and placed in the /conf directory, alongside "
+                + "with another configuration file for DSBulk itself, named application.conf. "
+                + "Also, for this setup to work, application.conf should include driver.conf, "
+                + "for example by using an import directive. For other ways to "
+                + "configure this tool, refer to DataStax Bulk Loader online documentation:"));
+    pw.println("# https://docs.datastax.com/en/dsbulk/doc/dsbulk/dsbulkRef.html");
     pw.println(ROW_OF_HASHES);
     pw.println("");
     pw.println("datastax-java-driver {");
