@@ -216,7 +216,7 @@ run:
 mvn license:format
 ```
 
-## Pre-commit hook (highly recommended)
+## Pre-commit hook
  
 Ensure `pre-commit.sh` is executable, then install it:
 
@@ -281,31 +281,6 @@ Result:
 
 After your change, what will change.
 ```
-
-## Branching model
-
-The loader uses [semantic versioning](http://semver.org/) and its branches use the following scheme:
-
-```
-            1.0.1      1.0.2 ...                1.1.1 ...
-         -----*----------*------> 1.0.x      -----*------> 1.1.x
-        /                                   /
-       /                                   /
-      /                                   /
------*-----------------------------------*-------------------------> 1.x
-   1.0.0                               1.1.0        ...
-
-Legend:
- > branch
- * tag
-```
-
-- new features are developed on "minor" branches such as `1.x`, where minor releases 
-(ending in `.0`) happen.
-- bugfixes go to "patch" branches such as `1.0.x` and `1.1.x`, where patch releases 
-(ending in `.1`, `.2`...) happen.
-- patch branches are regularly merged to the right (`1.0.x` to `1.1.x`) and to the bottom 
-(`1.1.x` to `1.x`) so that bugfixes are applied to newer versions too.
 
 ## Pull requests
 
