@@ -1,6 +1,6 @@
 ## Changelog
 
-## 1.5.0 (in progress)
+## 1.5.0
 
 - [improvement] DAT-525: Update DSBulk to unified driver.
 - [new feature] DAT-354: Add support for DSE Graph to DSBulk.
