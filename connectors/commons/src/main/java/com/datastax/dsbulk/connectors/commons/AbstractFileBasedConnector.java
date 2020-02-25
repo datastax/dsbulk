@@ -132,11 +132,8 @@ public abstract class AbstractFileBasedConnector implements Connector {
   public Publisher<Record> read() {
     assert read;
     return Flux.concat(
-        Flux.fromIterable(roots)
-            .flatMap(this::scanRootDirectory)
-            .flatMap(url -> readSingleFile(url).transform(this::applyPerFileLimits)),
-        Flux.fromIterable(files)
-            .flatMap(url -> readSingleFile(url).transform(this::applyPerFileLimits)));
+            Flux.fromIterable(roots).flatMap(this::scanRootDirectory), Flux.fromIterable(files))
+        .flatMap(url -> readSingleFile(url).transform(this::applyPerFileLimits));
   }
 
   @NonNull
@@ -144,8 +141,8 @@ public abstract class AbstractFileBasedConnector implements Connector {
   public Publisher<Publisher<Record>> readByResource() {
     assert read;
     return Flux.concat(
-        Flux.fromIterable(roots).flatMap(this::scanRootDirectory).map(this::readSingleFile),
-        Flux.fromIterable(files).map(this::readSingleFile));
+            Flux.fromIterable(roots).flatMap(this::scanRootDirectory), Flux.fromIterable(files))
+        .map(this::readSingleFile);
   }
 
   @NonNull
