@@ -110,16 +110,16 @@ ctool run dsbulk-dse 'nodetool clearsnapshot --all'
 ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test1kb -header false --batch.mode REPLICA_SET -url /mnt/data/DSEBulkLoadTest/in/data1KB/ -h ${dse_ip} &> test1KBLOAD_second"
 
 #10KB
-ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test10kb -header false --batch.mode REPLICA_SET --connector.csv.maxCharsPerColumn 11000 -url /mnt/data/DSEBulkLoadTest/in/data10KB/ -h ${dse_ip} &> test10KBLOAD_first"
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test10kb -header false --batch.mode DISABLED --driver.basic.request.timeout '5 minutes' --connector.csv.maxCharsPerColumn 11000 -url /mnt/data/DSEBulkLoadTest/in/data10KB/ -h ${dse_ip} &> test10KBLOAD_first"
 ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.test10kb;\""
 ctool run dsbulk-dse 'nodetool clearsnapshot --all'
-ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test10kb -header false --batch.mode REPLICA_SET --connector.csv.maxCharsPerColumn 11000 -url /mnt/data/DSEBulkLoadTest/in/data10KB/ -h ${dse_ip} &> test10KBLOAD_second"
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test10kb -header false --batch.mode DISABLED --driver.basic.request.timeout '5 minutes' --connector.csv.maxCharsPerColumn 11000 -url /mnt/data/DSEBulkLoadTest/in/data10KB/ -h ${dse_ip} &> test10KBLOAD_second"
 
 #1MB
-ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test1mb -header false --batch.mode DISABLED --connector.csv.maxCharsPerColumn 1100000 --executor.maxInFlight 64 -url /mnt/data/DSEBulkLoadTest/in/data1MB/ -h ${dse_ip} &> test1MBLOAD_first"
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test1mb -header false --batch.mode DISABLED --driver.basic.request.timeout '5 minutes' --connector.csv.maxCharsPerColumn 1100000 --executor.maxInFlight 64 -url /mnt/data/DSEBulkLoadTest/in/data1MB/ -h ${dse_ip} &> test1MBLOAD_first"
 ctool run dsbulk-dse 0 "cqlsh -e \"TRUNCATE test.test1mb;\""
 ctool run dsbulk-dse 'nodetool clearsnapshot --all'
-ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test1mb -header false --batch.mode DISABLED --connector.csv.maxCharsPerColumn 1100000 --executor.maxInFlight 64 -url /mnt/data/DSEBulkLoadTest/in/data1MB/ -h ${dse_ip} &> test1MBLOAD_second"
+ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test1mb -header false --batch.mode DISABLED --driver.basic.request.timeout '5 minutes' --connector.csv.maxCharsPerColumn 1100000 --executor.maxInFlight 64 -url /mnt/data/DSEBulkLoadTest/in/data1MB/ -h ${dse_ip} &> test1MBLOAD_second"
 
 #10 number of columns
 ctool run --sudo dsbulk-client "/mnt/data/dsbulk/bin/dsbulk load -k test -t test10 -header false --batch.mode REPLICA_SET -url /mnt/data/DSEBulkLoadTest/in/data10/ -h ${dse_ip} &> test10LOAD_first"
