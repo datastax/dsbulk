@@ -79,6 +79,7 @@ workload:
         properties:
           target.group: dsbulk-client
           export_output: false
+          timeout: 2 hours
           script: |
             cd ${FALLOUT_SCRATCH_DIR}
             #setup data-set (random Partition Key)
@@ -143,3 +144,28 @@ workload:
             unzip *.zip
             rm *.zip
             mv dsbulk-* dsbulk
+    - disable-auto-compation-server-0:
+        module: bash
+        properties:
+          target.group: server
+          target.ordinals: 0
+          export_output: false
+          timeout: 1 hours
+          script: |
+            nodetool -h localhost disableautocompaction test
+            sleep 2m
+    - load-csv-performance-test:
+        module: bash
+        properties:
+          target.group: dsbulk-client
+          export_output: false
+          timeout: 2 hours
+          script: |
+            cd ${FALLOUT_SCRATCH_DIR}
+            DSE_IP=$(echo ${FALLOUT_SERVER_PRODUCT_CONTACT_POINTS} | cut -d "," -f 1)
+            # 100b TPC
+            /mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -header false --batch.mode DISABLED --driver.basic.request.timeout '5 minutes' -url /mnt/data/DSEBulkLoadTest/in/data100B/ -h ${DSE_IP} &> test100bLOAD_tpc"
+
+  checkers:
+    verify_success:
+      checker: nofail
