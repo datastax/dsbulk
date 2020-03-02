@@ -82,15 +82,14 @@ workload:
           timeout: 2 hours
           script: |
             cd ${FALLOUT_SCRATCH_DIR}
+            sudo apt-get install lftp
             #setup data-set (random Partition Key)
-            mkdir -p ${FALLOUT_SCRATCH_DIR}/mnt/data
+            mkdir -p ${FALLOUT_SCRATCH_DIR}/mnt/data/DSEBulkLoadTest
             chmod 777 ${FALLOUT_SCRATCH_DIR}/mnt/data
-            cd ${FALLOUT_SCRATCH_DIR}/mnt/data
-            git clone https://github.com/brianmhess/DSEBulkLoadTest
             cd ${FALLOUT_SCRATCH_DIR}/mnt/data/DSEBulkLoadTest
-            make compile
-            make dirs
-            make data
+            # download in and out form remote ftp
+            lftp -e 'mirror /dsbulk/in /home/automaton/fallout_scratch/mnt/data/DSEBulkLoadTest/' -u 'dse_ftp','dse$#@RULES' ftp://fileserver001.datastax.lan/
+            lftp -e 'mirror /dsbulk/out /home/automaton/fallout_scratch/mnt/data/DSEBulkLoadTest/' -u 'dse_ftp','dse$#@RULES' ftp://fileserver001.datastax.lan/
 
             #prepare data for parallel LOAD
             mkdir -p ${FALLOUT_SCRATCH_DIR}/mnt/data/DSEBulkLoadTest/in/data100B_one_file
@@ -164,6 +163,8 @@ workload:
             DSE_IP=$(echo ${FALLOUT_SERVER_PRODUCT_CONTACT_POINTS} | cut -d "," -f 1)
             # 100b TPC
             mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -header false --batch.mode DISABLED --driver.basic.request.timeout '5 minutes' -url mnt/data/DSEBulkLoadTest/in/data100B/ -h ${DSE_IP} &> test100bLOAD_tpc
+            # 100b parallel
+            #parallel
 
   checkers:
     verify_success:
