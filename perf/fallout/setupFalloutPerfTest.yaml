@@ -82,7 +82,7 @@ workload:
           timeout: 2 hours
           script: |
             cd ${FALLOUT_SCRATCH_DIR}
-            sudo apt-get install lftp
+            sudo apt-get install lftp --assume-yes
             #setup data-set (random Partition Key)
             mkdir -p ${FALLOUT_SCRATCH_DIR}/mnt/data/DSEBulkLoadTest
             chmod 777 ${FALLOUT_SCRATCH_DIR}/mnt/data
@@ -115,6 +115,10 @@ workload:
             mkdir -p ${FALLOUT_SCRATCH_DIR}/mnt/data/data_faker/generated_one_file
             cd ${FALLOUT_SCRATCH_DIR}/mnt/data/data_faker/generated
             cat purchases_1.csv purchases_2.csv purchases_3.csv purchases_4.csv purchases_5.csv purchases_6.csv purchases_7.csv purchases_8.csv purchases_9.csv purchases_10.csv purchases_11.csv purchases_12.csv purchases_13.csv purchases_14.csv purchases_15.csv purchases_16.csv purchases_17.csv purchases_18.csv purchases_19.csv purchases_20.csv purchases_21.csv purchases_22.csv purchases_23.csv purchases_24.csv purchases_25.csv purchases_26.csv purchases_27.csv purchases_28.csv purchases_29.csv purchases_30.csv purchases_31.csv purchases_32.csv > ../generated_one_file/purchases.csv
+
+            # install cqlsh
+            sudo pip install --upgrade pip
+            sudo pip install cqlsh
     - setup-dse-schema:
         module: cqlsh
         properties:
@@ -157,15 +161,43 @@ workload:
         properties:
           target.group: dsbulk-client
           export_output: false
-          timeout: 2 hours
+          timeout: 8 hours
           script: |
             cd ${FALLOUT_SCRATCH_DIR}
-            DSE_IP=$(echo ${FALLOUT_SERVER_PRODUCT_CONTACT_POINTS} | cut -d "," -f 1)
-            # 100b TPC
-            mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -header false --batch.mode DISABLED --driver.basic.request.timeout '5 minutes' -url mnt/data/DSEBulkLoadTest/in/data100B/ -h ${DSE_IP} &> test100bLOAD_tpc
-            # 100b parallel
-            #parallel
+            dse_ip=$(echo ${FALLOUT_SERVER_PRODUCT_CONTACT_POINTS} | cut -d "," -f 1)
 
+            # 100b TPC
+            mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -header false --batch.mode DISABLED --driver.basic.request.timeout '5 minutes' -url mnt/data/DSEBulkLoadTest/in/data100B/ -h ${dse_ip} &> test100bLOAD_tpc
+            cqlsh ${FALLOUT_SERVER_NODE0_DSE_JMXADDRESS} --cqlversion=3.4.5 -e 'TRUNCATE test.test100b;'
+            # 100b parallell
+            mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -header false --batch.mode DISABLED --driver.basic.request.timeout '5 minutes' -url /mnt/data/DSEBulkLoadTest/in/data100B_one_file/ -h ${dse_ip} &> test100bLOAD_parallel
+            # 1 KB
+            mnt/data/dsbulk/bin/dsbulk load -k test -t test1kb -header false --batch.mode REPLICA_SET -url /mnt/data/DSEBulkLoadTest/in/data1KB/ -h ${dse_ip} &> test1KBLOAD
+            # 10 KB
+            mnt/data/dsbulk/bin/dsbulk load -k test -t test10kb -header false --batch.mode DISABLED --driver.basic.request.timeout '5 minutes' --connector.csv.maxCharsPerColumn 11000 -url /mnt/data/DSEBulkLoadTest/in/data10KB/ -h ${dse_ip} &> test10KBLOAD
+            # 1 MB
+            /mnt/data/dsbulk/bin/dsbulk load -k test -t test1mb -header false --batch.mode DISABLED --driver.basic.request.timeout '5 minutes' --connector.csv.maxCharsPerColumn 1100000 --executor.maxInFlight 64 -url /mnt/data/DSEBulkLoadTest/in/data1MB/ -h ${dse_ip} &> test1MBLOAD
+            # 10 columns
+            /mnt/data/dsbulk/bin/dsbulk load -k test -t test10 -header false --batch.mode REPLICA_SET -url /mnt/data/DSEBulkLoadTest/in/data10/ -h ${dse_ip} &> test10columnsLOAD
+
+            # (ordered data-set) - LOAD
+            # transactions tpc
+            mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -header false --batch.mode PARTITION_KEY -url /mnt/data/data_faker/generated -h ${dse_ip} -delim '|' -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' --codec.timestamp ISO_ZONED_DATE_TIME &> transactionsLOAD_tpc
+            cqlsh ${FALLOUT_SERVER_NODE0_DSE_JMXADDRESS} --cqlversion=3.4.5 -e 'TRUNCATE test.transactions;'
+            # transactions parallel
+            mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -header false --batch.mode PARTITION_KEY -url /mnt/data/data_faker/generated_one_file -h ${dse_ip} -delim '|' -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' --codec.timestamp ISO_ZONED_DATE_TIME &> transactionsLOAD_parallel
+    - repair-and-compact:
+        module: bash
+        properties:
+          target.group: server
+          target.ordinals: 0
+          export_output: false
+          timeout: 2 hours
+          script: |
+            nodetool -h localhost repair
+            nodetool -h localhost enableautocompaction test
+            nodetool -h localhost compact test
+            nodetool -h localhost compactionstats
   checkers:
     verify_success:
       checker: nofail
