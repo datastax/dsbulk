@@ -88,8 +88,8 @@ workload:
             chmod 777 ${FALLOUT_SCRATCH_DIR}/mnt/data
             cd ${FALLOUT_SCRATCH_DIR}/mnt/data/DSEBulkLoadTest
             # download in and out form remote ftp
-            lftp -e 'mirror /dsbulk/in /home/automaton/fallout_scratch/mnt/data/DSEBulkLoadTest/' -u 'dse_ftp','dse$#@RULES' ftp://fileserver001.datastax.lan/
-            lftp -e 'mirror /dsbulk/out /home/automaton/fallout_scratch/mnt/data/DSEBulkLoadTest/' -u 'dse_ftp','dse$#@RULES' ftp://fileserver001.datastax.lan/
+            lftp -e 'mirror /dsbulk/in /home/automaton/fallout_scratch/mnt/data/DSEBulkLoadTest/ && exit' -u 'dse_ftp','dse$#@RULES' ftp://fileserver001.datastax.lan/
+            lftp -e 'mirror /dsbulk/out /home/automaton/fallout_scratch/mnt/data/DSEBulkLoadTest/ && exit' -u 'dse_ftp','dse$#@RULES' ftp://fileserver001.datastax.lan/
 
             #prepare data for parallel LOAD
             mkdir -p ${FALLOUT_SCRATCH_DIR}/mnt/data/DSEBulkLoadTest/in/data100B_one_file
