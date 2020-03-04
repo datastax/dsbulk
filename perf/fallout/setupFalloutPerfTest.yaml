@@ -167,25 +167,25 @@ workload:
             dse_ip=$(echo ${FALLOUT_SERVER_PRODUCT_CONTACT_POINTS} | cut -d "," -f 1)
 
             # 100b TPC
-            mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -header false --batch.mode DISABLED --driver.basic.request.timeout '5 minutes' -url mnt/data/DSEBulkLoadTest/in/data100B/ -h ${dse_ip} &> test100bLOAD_tpc
+            mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -header false --batch.mode DISABLED --driver.basic.request.timeout '5 minutes' -url mnt/data/DSEBulkLoadTest/in/data100B/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/test100bLOAD_tpc
             cqlsh ${FALLOUT_SERVER_NODE0_DSE_JMXADDRESS} --cqlversion=3.4.5 -e 'TRUNCATE test.test100b;'
             # 100b parallell
-            mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -header false --batch.mode DISABLED --driver.basic.request.timeout '5 minutes' -url mnt/data/DSEBulkLoadTest/in/data100B_one_file/ -h ${dse_ip} &> test100bLOAD_parallel
+            mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -header false --batch.mode DISABLED --driver.basic.request.timeout '5 minutes' -url mnt/data/DSEBulkLoadTest/in/data100B_one_file/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/test100bLOAD_parallel
             # 1 KB
-            mnt/data/dsbulk/bin/dsbulk load -k test -t test1kb -header false --batch.mode REPLICA_SET -url mnt/data/DSEBulkLoadTest/in/data1KB/ -h ${dse_ip} &> test1KBLOAD
+            mnt/data/dsbulk/bin/dsbulk load -k test -t test1kb -header false --batch.mode REPLICA_SET -url mnt/data/DSEBulkLoadTest/in/data1KB/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/test1KBLOAD
             # 10 KB
-            mnt/data/dsbulk/bin/dsbulk load -k test -t test10kb -header false --batch.mode DISABLED --driver.basic.request.timeout '5 minutes' --connector.csv.maxCharsPerColumn 11000 -url mnt/data/DSEBulkLoadTest/in/data10KB/ -h ${dse_ip} &> test10KBLOAD
+            mnt/data/dsbulk/bin/dsbulk load -k test -t test10kb -header false --batch.mode DISABLED --driver.basic.request.timeout '5 minutes' --connector.csv.maxCharsPerColumn 11000 -url mnt/data/DSEBulkLoadTest/in/data10KB/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/test10KBLOAD
             # 1 MB
-            mnt/data/dsbulk/bin/dsbulk load -k test -t test1mb -header false --batch.mode DISABLED --driver.basic.request.timeout '5 minutes' --connector.csv.maxCharsPerColumn 1100000 --executor.maxInFlight 64 -url mnt/data/DSEBulkLoadTest/in/data1MB/ -h ${dse_ip} &> test1MBLOAD
+            mnt/data/dsbulk/bin/dsbulk load -k test -t test1mb -header false --batch.mode DISABLED --driver.basic.request.timeout '5 minutes' --connector.csv.maxCharsPerColumn 1100000 --executor.maxInFlight 64 -url mnt/data/DSEBulkLoadTest/in/data1MB/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/test1MBLOAD
             # 10 columns
-            mnt/data/dsbulk/bin/dsbulk load -k test -t test10 -header false --batch.mode REPLICA_SET -url mnt/data/DSEBulkLoadTest/in/data10/ -h ${dse_ip} &> test10columnsLOAD
+            mnt/data/dsbulk/bin/dsbulk load -k test -t test10 -header false --batch.mode REPLICA_SET -url mnt/data/DSEBulkLoadTest/in/data10/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/test10columnsLOAD
 
             # (ordered data-set) - LOAD
             # transactions tpc
-            mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -header false --batch.mode PARTITION_KEY -url mnt/data/data_faker/generated -h ${dse_ip} -delim '|' -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' --codec.timestamp ISO_ZONED_DATE_TIME &> transactionsLOAD_tpc
+            mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -header false --batch.mode PARTITION_KEY -url mnt/data/data_faker/generated -h ${dse_ip} -delim '|' -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' --codec.timestamp ISO_ZONED_DATE_TIME &> ${FALLOUT_ARTIFACT_DIR}/transactionsLOAD_tpc
             cqlsh ${FALLOUT_SERVER_NODE0_DSE_JMXADDRESS} --cqlversion=3.4.5 -e 'TRUNCATE test.transactions;'
             # transactions parallel
-            mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -header false --batch.mode PARTITION_KEY -url mnt/data/data_faker/generated_one_file -h ${dse_ip} -delim '|' -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' --codec.timestamp ISO_ZONED_DATE_TIME &> transactionsLOAD_parallel
+            mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -header false --batch.mode PARTITION_KEY -url mnt/data/data_faker/generated_one_file -h ${dse_ip} -delim '|' -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' --codec.timestamp ISO_ZONED_DATE_TIME &> ${FALLOUT_ARTIFACT_DIR}/transactionsLOAD_parallel
     - repair-and-compact:
         module: bash
         properties:
@@ -194,10 +194,50 @@ workload:
           export_output: false
           timeout: 4 hours
           script: |
+            # run repair to make COUNT and LOAD yield proper results - repair is blocking
             nodetool -h localhost repair
             nodetool -h localhost enableautocompaction test
             nodetool -h localhost compact test
             nodetool -h localhost compactionstats
+    - unload-csv-performance-test:
+        module: bash
+        properties:
+          target.group: dsbulk-client
+          export_output: false
+          timeout: 8 hours
+          script: |
+            cd ${FALLOUT_SCRATCH_DIR}
+            dse_ip=$(echo ${FALLOUT_SERVER_PRODUCT_CONTACT_POINTS} | cut -d "," -f 1)
+
+            #100B TPC
+            rm -Rf mnt/data/DSEBulkLoadTest/out/data100B/
+            mnt/data/dsbulk/bin/dsbulk unload -k test -t test100b -header false -url mnt/data/DSEBulkLoadTest/out/data100B/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/100BUNLOAD_tpc_csv
+
+            #100B parallel
+            rm -Rf mnt/data/DSEBulkLoadTest/out/data100B/
+            mnt/data/dsbulk/bin/dsbulk unload -header false -url mnt/data/DSEBulkLoadTest/out/data100B/ -h ${dse_ip} -query 'SELECT * FROM test.test100b WHERE token(pkey) > -9223372036854775807 and token (pkey) <= 3074457345618258602' &> ${FALLOUT_ARTIFACT_DIR}/100BUNLOAD_parallel_csv
+
+            rm -Rf mnt/data/DSEBulkLoadTest/out/data1KB/
+            mnt/data/dsbulk/bin/dsbulk unload -k test -t test1kb -header false -url mnt/data/DSEBulkLoadTest/out/data1KB/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/1KBUNLOAD_csv
+
+            rm -Rf mnt/data/DSEBulkLoadTest/out/data10KB/
+            mnt/data/dsbulk/bin/dsbulk unload -k test -t test10kb -header false -url mnt/data/DSEBulkLoadTest/out/data10KB/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/10kbUNLOAD_csv
+
+            rm -Rf mnt/data/DSEBulkLoadTest/out/data1MB/
+            mnt/data/dsbulk/bin/dsbulk unload -k test -t test1mb -header false -url mnt/data/DSEBulkLoadTest/out/data1MB/ -h ${dse_ip} --executor.continuousPaging.pageSize 500000 --executor.continuousPaging.pageUnit BYTES &> ${FALLOUT_ARTIFACT_DIR}/1mbUNLOAD_csv
+
+            rm -Rf mnt/data/DSEBulkLoadTest/out/data10/
+            mnt/data/dsbulk/bin/dsbulk unload -k test -t test10 -header false -url mnt/data/DSEBulkLoadTest/out/data10/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/10UNLOAD_csv
+
+            #run dsbulk step (sorted data-set) - UNLOAD JSON
+            #TPC
+            rm -Rf mnt/data/data_faker/generated
+            mnt/data/dsbulk/bin/dsbulk unload -k test -t transactions -header false -url mnt/data/data_faker/generated -h ${dse_ip} -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' &> ${FALLOUT_ARTIFACT_DIR}/transactions-UNLOAD_tpc_csv
+
+            #parallel
+            rm -Rf mnt/data/data_faker/generated
+            mnt/data/dsbulk/bin/dsbulk unload -header false -url mnt/data/data_faker/generated -h ${dse_ip} -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact'  -query 'SELECT * FROM test.transactions WHERE token(user_id) > -9223372036854775807 and token (user_id) <= 3074457345618258602' &> ${FALLOUT_ARTIFACT_DIR}/transactions-UNLOAD_parallel_csv
+
   checkers:
     verify_success:
       checker: nofail
