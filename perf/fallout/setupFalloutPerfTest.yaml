@@ -50,9 +50,16 @@ ensemble:
         cloud.instance.type: m1.xlarge
         mark_for_reuse: true
     configuration_manager:
+      - name: CTool
+        properties:
+          java.version: "1.8_144"
       - name: ctool_monitoring
         properties:
           graphite.create_server: true
+      - name: ctool_opscenter
+        properties:
+          opscenter.repair.restart_period: 60
+          opscenter.use_graphite_if_available: true
   clients:
     - name: dsbulk-client
       node.count: 1
@@ -237,7 +244,51 @@ workload:
             #parallel
             rm -Rf mnt/data/data_faker/generated
             mnt/data/dsbulk/bin/dsbulk unload -header false -url mnt/data/data_faker/generated -h ${dse_ip} -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact'  -query 'SELECT * FROM test.transactions WHERE token(user_id) > -9223372036854775807 and token (user_id) <= 3074457345618258602' &> ${FALLOUT_ARTIFACT_DIR}/transactions-UNLOAD_parallel_csv
+    - unload-json-performance-test:
+        module: bash
+        properties:
+          target.group: dsbulk-client
+          export_output: false
+          timeout: 8 hours
+          script: |
+            cd ${FALLOUT_SCRATCH_DIR}
+            dse_ip=$(echo ${FALLOUT_SERVER_PRODUCT_CONTACT_POINTS} | cut -d "," -f 1)
 
+            rm -Rf mnt/data/DSEBulkLoadTest/out/data100B/
+            mnt/data/dsbulk/bin/dsbulk unload -k test -t test100b -c json -url mnt/data/DSEBulkLoadTest/out/data100B/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/100BUNLOADjson
+
+            rm -Rf mnt/data/DSEBulkLoadTest/out/data1KB/
+            mnt/data/dsbulk/bin/dsbulk unload -k test -t test1kb -c json -url mnt/data/DSEBulkLoadTest/out/data1KB/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/1KBUNLOADjson
+
+            rm -Rf mnt/data/DSEBulkLoadTest/out/data10KB/
+            mnt/data/dsbulk/bin/dsbulk unload -k test -t test10kb -c json -url mnt/data/DSEBulkLoadTest/out/data10KB/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/10kbUNLOADjson
+
+            rm -Rf mnt/data/DSEBulkLoadTest/out/data1MB/
+            mnt/data/dsbulk/bin/dsbulk unload -k test -t test1mb -c json -url mnt/data/DSEBulkLoadTest/out/data1MB/ -h ${dse_ip} --executor.continuousPaging.pageSize 500000 --executor.continuousPaging.pageUnit BYTES &> ${FALLOUT_ARTIFACT_DIR}/1mbUNLOADjson
+
+            rm -Rf mnt/data/DSEBulkLoadTest/out/data10/
+            mnt/data/dsbulk/bin/dsbulk unload -k test -t test10 -c json -url mnt/data/DSEBulkLoadTest/out/data10/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/10UNLOADjson
+
+            #run dsbulk step (sorted data-set) - UNLOAD
+            rm -Rf mnt/data/data_faker/generated
+            mnt/data/dsbulk/bin/dsbulk unload -k test -t transactions -c json -url mnt/data/data_faker/generated -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/transactionsUNLOADjson
+    - count-performance-test:
+        module: bash
+        properties:
+          target.group: dsbulk-client
+          export_output: false
+          timeout: 1 hours
+          script: |
+            cd ${FALLOUT_SCRATCH_DIR}
+            dse_ip=$(echo ${FALLOUT_SERVER_PRODUCT_CONTACT_POINTS} | cut -d "," -f 1)
+            mnt/data/dsbulk/bin/dsbulk count -k test -t test100b -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/count100b
+            mnt/data/dsbulk/bin/dsbulk count -k test -t test1kb -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/count1kb
+            mnt/data/dsbulk/bin/dsbulk count -k test -t test10kb -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/count10kb
+            mnt/data/dsbulk/bin/dsbulk count -k test -t test1mb -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/count1mb
+            mnt/data/dsbulk/bin/dsbulk count -k test -t test10 -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/count10
+
+            #run dsbulk step (ordered data-set) - COUNT
+            mnt/data/dsbulk/bin/dsbulk count -k test -t transactions -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/countTransactions
   checkers:
     verify_success:
       checker: nofail
