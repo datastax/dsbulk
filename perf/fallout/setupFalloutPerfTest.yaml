@@ -101,6 +101,12 @@ workload:
             lftp -e 'mirror /dsbulk/out /home/automaton/fallout_scratch/mnt/data/DSEBulkLoadTest/ && exit' -u 'dse_ftp','dse$#@RULES' ftp://fileserver001.datastax.lan/
             lftp -e 'mirror /dsbulk/json /home/automaton/fallout_scratch/mnt/data/DSEBulkLoadTest/ && exit' -u 'dse_ftp','dse$#@RULES' ftp://fileserver001.datastax.lan/
 
+
+            #install maven and java
+            sudo apt update --assume-yes
+            sudo apt install maven --assume-yes
+            sudo apt-get install unzip --assume-yes
+
             # install cqlsh
             sudo pip install --upgrade pip
             sudo pip install cqlsh
