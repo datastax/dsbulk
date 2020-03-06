@@ -1,6 +1,8 @@
 # branch and version of the dsbulk to benchmark
 branch: "1.x"
 version: "1.5.1-SNAPSHOT"
+# type of connector that should be performance tested, could be json or csv.
+type_of_test: csv
 
 ---
 
@@ -68,7 +70,7 @@ ensemble:
         properties:
           cloud.provider: openstack
           cloud.tenant: performance
-          cloud.instance.type: m1.xlarge
+          cloud.instance.type: c3.8xlarge
           mark_for_reuse: true
       configuration_manager:
         - name: ctool
@@ -97,31 +99,7 @@ workload:
             # download in and out form remote ftp
             lftp -e 'mirror /dsbulk/in /home/automaton/fallout_scratch/mnt/data/DSEBulkLoadTest/ && exit' -u 'dse_ftp','dse$#@RULES' ftp://fileserver001.datastax.lan/
             lftp -e 'mirror /dsbulk/out /home/automaton/fallout_scratch/mnt/data/DSEBulkLoadTest/ && exit' -u 'dse_ftp','dse$#@RULES' ftp://fileserver001.datastax.lan/
-
-            #prepare data for parallel LOAD
-            mkdir -p ${FALLOUT_SCRATCH_DIR}/mnt/data/DSEBulkLoadTest/in/data100B_one_file
-            cd ${FALLOUT_SCRATCH_DIR}/mnt/data/DSEBulkLoadTest/in/data100B
-            cat data100B_0.csv data100B_1.csv data100B_2.csv data100B_3.csv data100B_4.csv data100B_5.csv data100B_6.csv data100B_7.csv data100B_8.csv data100B_9.csv data100B_10.csv data100B_11.csv data100B_12.csv data100B_13.csv data100B_14.csv data100B_15.csv data100B_16.csv data100B_17.csv data100B_18.csv data100B_19.csv > ../data100B_one_file/data100B.csv
-
-            #install maven and java
-            sudo apt update --assume-yes
-            sudo apt install maven --assume-yes
-            sudo apt-get install unzip --assume-yes
-
-            #setup data-set (multiple records per Partition Key)
-            cd ${FALLOUT_SCRATCH_DIR}/mnt/data
-            git clone https://github.com/riptano/data_faker.git
-            cd ${FALLOUT_SCRATCH_DIR}/mnt/data/data_faker
-            mvn clean package
-
-            #generate 1 million PKs. Every PK has >= 50 && <= 100 records.
-            cd ${FALLOUT_SCRATCH_DIR}/mnt/data/data_faker
-            java -jar target/fake-data-generator-1.0.jar 32 1000000 50 100 false
-
-            #prepare data for parallel LOAD ordered
-            mkdir -p ${FALLOUT_SCRATCH_DIR}/mnt/data/data_faker/generated_one_file
-            cd ${FALLOUT_SCRATCH_DIR}/mnt/data/data_faker/generated
-            cat purchases_1.csv purchases_2.csv purchases_3.csv purchases_4.csv purchases_5.csv purchases_6.csv purchases_7.csv purchases_8.csv purchases_9.csv purchases_10.csv purchases_11.csv purchases_12.csv purchases_13.csv purchases_14.csv purchases_15.csv purchases_16.csv purchases_17.csv purchases_18.csv purchases_19.csv purchases_20.csv purchases_21.csv purchases_22.csv purchases_23.csv purchases_24.csv purchases_25.csv purchases_26.csv purchases_27.csv purchases_28.csv purchases_29.csv purchases_30.csv purchases_31.csv purchases_32.csv > ../generated_one_file/purchases.csv
+            lftp -e 'mirror /dsbulk/json /home/automaton/fallout_scratch/mnt/data/DSEBulkLoadTest/ && exit' -u 'dse_ftp','dse$#@RULES' ftp://fileserver001.datastax.lan/
 
             # install cqlsh
             sudo pip install --upgrade pip
@@ -170,29 +148,65 @@ workload:
           export_output: false
           timeout: 8 hours
           script: |
-            cd ${FALLOUT_SCRATCH_DIR}
-            dse_ip=$(echo ${FALLOUT_SERVER_PRODUCT_CONTACT_POINTS} | cut -d "," -f 1)
+            if [ "{{type_of_test}}" = "csv" ]
+            then
+              cd ${FALLOUT_SCRATCH_DIR}
+              dse_ip=$(echo ${FALLOUT_SERVER_PRODUCT_CONTACT_POINTS} | cut -d "," -f 1)
 
-            # 100b TPC
-            mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -header false --batch.mode DISABLED --driver.basic.request.timeout '5 minutes' -url mnt/data/DSEBulkLoadTest/in/data100B/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/test100bLOAD_tpc
-            cqlsh ${FALLOUT_SERVER_NODE0_DSE_JMXADDRESS} --cqlversion=3.4.5 -e 'TRUNCATE test.test100b;'
-            # 100b parallell
-            mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -header false --batch.mode DISABLED --driver.basic.request.timeout '5 minutes' -url mnt/data/DSEBulkLoadTest/in/data100B_one_file/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/test100bLOAD_parallel
-            # 1 KB
-            mnt/data/dsbulk/bin/dsbulk load -k test -t test1kb -header false --batch.mode REPLICA_SET -url mnt/data/DSEBulkLoadTest/in/data1KB/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/test1KBLOAD
-            # 10 KB
-            mnt/data/dsbulk/bin/dsbulk load -k test -t test10kb -header false --batch.mode DISABLED --driver.basic.request.timeout '5 minutes' --connector.csv.maxCharsPerColumn 11000 -url mnt/data/DSEBulkLoadTest/in/data10KB/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/test10KBLOAD
-            # 1 MB
-            mnt/data/dsbulk/bin/dsbulk load -k test -t test1mb -header false --batch.mode DISABLED --driver.basic.request.timeout '5 minutes' --connector.csv.maxCharsPerColumn 1100000 --executor.maxInFlight 64 -url mnt/data/DSEBulkLoadTest/in/data1MB/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/test1MBLOAD
-            # 10 columns
-            mnt/data/dsbulk/bin/dsbulk load -k test -t test10 -header false --batch.mode REPLICA_SET -url mnt/data/DSEBulkLoadTest/in/data10/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/test10columnsLOAD
+              # 100b TPC
+              mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -header false --batch.mode DISABLED --driver.basic.request.timeout '5 minutes' -url mnt/data/DSEBulkLoadTest/in/data100B/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/test100bLOAD_tpc
+              cqlsh ${FALLOUT_SERVER_NODE0_DSE_JMXADDRESS} --cqlversion=3.4.5 -e 'TRUNCATE test.test100b;'
+              # 100b parallell
+              mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -header false --batch.mode DISABLED --driver.basic.request.timeout '5 minutes' -url mnt/data/DSEBulkLoadTest/in/data100B_one_file/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/test100bLOAD_parallel
+              # 1 KB
+              mnt/data/dsbulk/bin/dsbulk load -k test -t test1kb -header false --batch.mode REPLICA_SET -url mnt/data/DSEBulkLoadTest/in/data1KB/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/test1KBLOAD
+              # 10 KB
+              mnt/data/dsbulk/bin/dsbulk load -k test -t test10kb -header false --batch.mode DISABLED --driver.basic.request.timeout '5 minutes' --connector.csv.maxCharsPerColumn 11000 -url mnt/data/DSEBulkLoadTest/in/data10KB/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/test10KBLOAD
+              # 1 MB
+              mnt/data/dsbulk/bin/dsbulk load -k test -t test1mb -header false --batch.mode DISABLED --driver.basic.request.timeout '5 minutes' --connector.csv.maxCharsPerColumn 1100000 --executor.maxInFlight 64 -url mnt/data/DSEBulkLoadTest/in/data1MB/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/test1MBLOAD
+              # 10 columns
+              mnt/data/dsbulk/bin/dsbulk load -k test -t test10 -header false --batch.mode REPLICA_SET -url mnt/data/DSEBulkLoadTest/in/data10/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/test10columnsLOAD
 
-            # (ordered data-set) - LOAD
-            # transactions tpc
-            mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -header false --batch.mode PARTITION_KEY -url mnt/data/data_faker/generated -h ${dse_ip} -delim '|' -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' --codec.timestamp ISO_ZONED_DATE_TIME &> ${FALLOUT_ARTIFACT_DIR}/transactionsLOAD_tpc
-            cqlsh ${FALLOUT_SERVER_NODE0_DSE_JMXADDRESS} --cqlversion=3.4.5 -e 'TRUNCATE test.transactions;'
-            # transactions parallel
-            mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -header false --batch.mode PARTITION_KEY -url mnt/data/data_faker/generated_one_file -h ${dse_ip} -delim '|' -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' --codec.timestamp ISO_ZONED_DATE_TIME &> ${FALLOUT_ARTIFACT_DIR}/transactionsLOAD_parallel
+              # transactions tpc
+              mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -header false --batch.mode PARTITION_KEY -url mnt/data/DSEBulkLoadTest/in/transactions/generated -h ${dse_ip} -delim '|' -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' --codec.timestamp ISO_ZONED_DATE_TIME &> ${FALLOUT_ARTIFACT_DIR}/transactionsLOAD_tpc
+              cqlsh 10.200.176.200 --cqlversion=3.4.5 -e 'TRUNCATE test.transactions;'
+              # transactions parallel
+              mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -header false --batch.mode PARTITION_KEY -url mnt/data/DSEBulkLoadTest/in/transactions/generated_one_file -h ${dse_ip} -delim '|' -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' --codec.timestamp ISO_ZONED_DATE_TIME &> ${FALLOUT_ARTIFACT_DIR}/transactionsLOAD_parallel
+            else
+              echo "ignoring load-csv-performance-test step"
+            fi
+    - load-json-performance-test:
+        module: bash
+        properties:
+          target.group: dsbulk-client
+          export_output: false
+          timeout: 8 hours
+          script: |
+            if [ "{{type_of_test}}" = "json" ]
+            then
+              cd ${FALLOUT_SCRATCH_DIR}
+              dse_ip=$(echo ${FALLOUT_SERVER_PRODUCT_CONTACT_POINTS} | cut -d "," -f 1)
+
+              # 100b
+              mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -c json --batch.mode REPLICA_SET -url mnt/data/DSEBulkLoadTest/json/data100B/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/test100bLOAD_json
+
+              # 1KB
+              mnt/data/dsbulk/bin/dsbulk load -k test -t test1kb -c json --batch.mode REPLICA_SET --driver.basic.request.timeout '5 minutes' -url mnt/data/DSEBulkLoadTest/json/data1KB/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/test1KBLOAD_json
+
+              # 10KB
+              mnt/data/dsbulk/bin/dsbulk load -k test -t test10kb -c json --batch.mode DISABLED --driver.basic.request.timeout '5 minutes' -url mnt/data/DSEBulkLoadTest/json/data10KB/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/test10KBLOAD_json
+
+              # 1MB
+              mnt/data/dsbulk/bin/dsbulk load -k test -t test1mb -c json --batch.mode DISABLED --executor.maxInFlight 64 --driver.basic.request.timeout '5 minutes' -url mnt/data/DSEBulkLoadTest/json/data1MB/ -h ${dse_ip} &> test1MBLOAD_json
+
+              # 10 columns
+              mnt/data/dsbulk/bin/dsbulk load -k test -t test10 -c json --batch.mode REPLICA_SET --driver.basic.request.timeout '5 minutes' -url mnt/data/DSEBulkLoadTest/json/data10/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/test10LOAD_json
+
+              # transactions
+              mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -c json --batch.mode PARTITION_KEY --driver.basic.request.timeout '5 minutes' -url mnt/data/DSEBulkLoadTest/json/transactions/generated -h ${dse_ip} --codec.timestamp ISO_ZONED_DATE_TIME &> ${FALLOUT_ARTIFACT_DIR}/transactionsLOAD_json
+            else
+              echo "ignoring load-json-performance-test step"
+            fi
     - repair-and-compact:
         module: bash
         properties:
@@ -213,37 +227,42 @@ workload:
           export_output: false
           timeout: 8 hours
           script: |
-            cd ${FALLOUT_SCRATCH_DIR}
-            dse_ip=$(echo ${FALLOUT_SERVER_PRODUCT_CONTACT_POINTS} | cut -d "," -f 1)
+            if [ "{{type_of_test}}" = "csv" ]
+            then
+              cd ${FALLOUT_SCRATCH_DIR}
+              dse_ip=$(echo ${FALLOUT_SERVER_PRODUCT_CONTACT_POINTS} | cut -d "," -f 1)
 
-            #100B TPC
-            rm -Rf mnt/data/DSEBulkLoadTest/out/data100B/
-            mnt/data/dsbulk/bin/dsbulk unload -k test -t test100b -header false -url mnt/data/DSEBulkLoadTest/out/data100B/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/100BUNLOAD_tpc_csv
+              #100B TPC
+              rm -Rf mnt/data/DSEBulkLoadTest/out/data100B/
+              mnt/data/dsbulk/bin/dsbulk unload -k test -t test100b -header false -url mnt/data/DSEBulkLoadTest/out/data100B/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/100BUNLOAD_tpc_csv
 
-            #100B parallel
-            rm -Rf mnt/data/DSEBulkLoadTest/out/data100B/
-            mnt/data/dsbulk/bin/dsbulk unload -header false -url mnt/data/DSEBulkLoadTest/out/data100B/ -h ${dse_ip} -query 'SELECT * FROM test.test100b WHERE token(pkey) > -9223372036854775807 and token (pkey) <= 3074457345618258602' &> ${FALLOUT_ARTIFACT_DIR}/100BUNLOAD_parallel_csv
+              #100B parallel
+              rm -Rf mnt/data/DSEBulkLoadTest/out/data100B/
+              mnt/data/dsbulk/bin/dsbulk unload -header false -url mnt/data/DSEBulkLoadTest/out/data100B/ -h ${dse_ip} -query 'SELECT * FROM test.test100b WHERE token(pkey) > -9223372036854775807 and token (pkey) <= 3074457345618258602' &> ${FALLOUT_ARTIFACT_DIR}/100BUNLOAD_parallel_csv
 
-            rm -Rf mnt/data/DSEBulkLoadTest/out/data1KB/
-            mnt/data/dsbulk/bin/dsbulk unload -k test -t test1kb -header false -url mnt/data/DSEBulkLoadTest/out/data1KB/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/1KBUNLOAD_csv
+              rm -Rf mnt/data/DSEBulkLoadTest/out/data1KB/
+              mnt/data/dsbulk/bin/dsbulk unload -k test -t test1kb -header false -url mnt/data/DSEBulkLoadTest/out/data1KB/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/1KBUNLOAD_csv
 
-            rm -Rf mnt/data/DSEBulkLoadTest/out/data10KB/
-            mnt/data/dsbulk/bin/dsbulk unload -k test -t test10kb -header false -url mnt/data/DSEBulkLoadTest/out/data10KB/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/10kbUNLOAD_csv
+              rm -Rf mnt/data/DSEBulkLoadTest/out/data10KB/
+              mnt/data/dsbulk/bin/dsbulk unload -k test -t test10kb -header false -url mnt/data/DSEBulkLoadTest/out/data10KB/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/10kbUNLOAD_csv
 
-            rm -Rf mnt/data/DSEBulkLoadTest/out/data1MB/
-            mnt/data/dsbulk/bin/dsbulk unload -k test -t test1mb -header false -url mnt/data/DSEBulkLoadTest/out/data1MB/ -h ${dse_ip} --executor.continuousPaging.pageSize 500000 --executor.continuousPaging.pageUnit BYTES &> ${FALLOUT_ARTIFACT_DIR}/1mbUNLOAD_csv
+              rm -Rf mnt/data/DSEBulkLoadTest/out/data1MB/
+              mnt/data/dsbulk/bin/dsbulk unload -k test -t test1mb -header false -url mnt/data/DSEBulkLoadTest/out/data1MB/ -h ${dse_ip} --executor.continuousPaging.pageSize 500000 --executor.continuousPaging.pageUnit BYTES &> ${FALLOUT_ARTIFACT_DIR}/1mbUNLOAD_csv
 
-            rm -Rf mnt/data/DSEBulkLoadTest/out/data10/
-            mnt/data/dsbulk/bin/dsbulk unload -k test -t test10 -header false -url mnt/data/DSEBulkLoadTest/out/data10/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/10UNLOAD_csv
+              rm -Rf mnt/data/DSEBulkLoadTest/out/data10/
+              mnt/data/dsbulk/bin/dsbulk unload -k test -t test10 -header false -url mnt/data/DSEBulkLoadTest/out/data10/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/10UNLOAD_csv
 
-            #run dsbulk step (sorted data-set) - UNLOAD JSON
-            #TPC
-            rm -Rf mnt/data/data_faker/generated
-            mnt/data/dsbulk/bin/dsbulk unload -k test -t transactions -header false -url mnt/data/data_faker/generated -h ${dse_ip} -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' &> ${FALLOUT_ARTIFACT_DIR}/transactions-UNLOAD_tpc_csv
+              #run dsbulk step (sorted data-set) - UNLOAD JSON
+              #TPC
+              rm -Rf mnt/data/DSEBulkLoadTest/in/transactions/generated
+              mnt/data/dsbulk/bin/dsbulk unload -k test -t transactions -header false -url mnt/data/DSEBulkLoadTest/in/transactions/generated -h ${dse_ip} -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact' &> ${FALLOUT_ARTIFACT_DIR}/transactions-UNLOAD_tpc_csv
 
-            #parallel
-            rm -Rf mnt/data/data_faker/generated
-            mnt/data/dsbulk/bin/dsbulk unload -header false -url mnt/data/data_faker/generated -h ${dse_ip} -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact'  -query 'SELECT * FROM test.transactions WHERE token(user_id) > -9223372036854775807 and token (user_id) <= 3074457345618258602' &> ${FALLOUT_ARTIFACT_DIR}/transactions-UNLOAD_parallel_csv
+              #parallel
+              rm -Rf mnt/data/DSEBulkLoadTest/in/transactions/generated
+              mnt/data/dsbulk/bin/dsbulk unload -header false -url mnt/data/DSEBulkLoadTest/in/transactions/generated -h ${dse_ip} -m '0=user_id,1=date,2=item,3=price,4=quantity,5=total,6=currency,7=payment,8=contact'  -query 'SELECT * FROM test.transactions WHERE token(user_id) > -9223372036854775807 and token (user_id) <= 3074457345618258602' &> ${FALLOUT_ARTIFACT_DIR}/transactions-UNLOAD_parallel_csv
+            else
+              echo "ignoring unload-csv-performance-test step"
+            fi
     - unload-json-performance-test:
         module: bash
         properties:
@@ -251,27 +270,32 @@ workload:
           export_output: false
           timeout: 8 hours
           script: |
-            cd ${FALLOUT_SCRATCH_DIR}
-            dse_ip=$(echo ${FALLOUT_SERVER_PRODUCT_CONTACT_POINTS} | cut -d "," -f 1)
+            if [ "{{type_of_test}}" = "json" ]
+            then
+              cd ${FALLOUT_SCRATCH_DIR}
+              dse_ip=$(echo ${FALLOUT_SERVER_PRODUCT_CONTACT_POINTS} | cut -d "," -f 1)
 
-            rm -Rf mnt/data/DSEBulkLoadTest/out/data100B/
-            mnt/data/dsbulk/bin/dsbulk unload -k test -t test100b -c json -url mnt/data/DSEBulkLoadTest/out/data100B/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/100BUNLOADjson
+              rm -Rf mnt/data/DSEBulkLoadTest/out/data100B/
+              mnt/data/dsbulk/bin/dsbulk unload -k test -t test100b -c json -url mnt/data/DSEBulkLoadTest/out/data100B/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/100BUNLOADjson
 
-            rm -Rf mnt/data/DSEBulkLoadTest/out/data1KB/
-            mnt/data/dsbulk/bin/dsbulk unload -k test -t test1kb -c json -url mnt/data/DSEBulkLoadTest/out/data1KB/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/1KBUNLOADjson
+              rm -Rf mnt/data/DSEBulkLoadTest/out/data1KB/
+              mnt/data/dsbulk/bin/dsbulk unload -k test -t test1kb -c json -url mnt/data/DSEBulkLoadTest/out/data1KB/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/1KBUNLOADjson
 
-            rm -Rf mnt/data/DSEBulkLoadTest/out/data10KB/
-            mnt/data/dsbulk/bin/dsbulk unload -k test -t test10kb -c json -url mnt/data/DSEBulkLoadTest/out/data10KB/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/10kbUNLOADjson
+              rm -Rf mnt/data/DSEBulkLoadTest/out/data10KB/
+              mnt/data/dsbulk/bin/dsbulk unload -k test -t test10kb -c json -url mnt/data/DSEBulkLoadTest/out/data10KB/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/10kbUNLOADjson
 
-            rm -Rf mnt/data/DSEBulkLoadTest/out/data1MB/
-            mnt/data/dsbulk/bin/dsbulk unload -k test -t test1mb -c json -url mnt/data/DSEBulkLoadTest/out/data1MB/ -h ${dse_ip} --executor.continuousPaging.pageSize 500000 --executor.continuousPaging.pageUnit BYTES &> ${FALLOUT_ARTIFACT_DIR}/1mbUNLOADjson
+              rm -Rf mnt/data/DSEBulkLoadTest/out/data1MB/
+              mnt/data/dsbulk/bin/dsbulk unload -k test -t test1mb -c json -url mnt/data/DSEBulkLoadTest/out/data1MB/ -h ${dse_ip} --executor.continuousPaging.pageSize 500000 --executor.continuousPaging.pageUnit BYTES &> ${FALLOUT_ARTIFACT_DIR}/1mbUNLOADjson
 
-            rm -Rf mnt/data/DSEBulkLoadTest/out/data10/
-            mnt/data/dsbulk/bin/dsbulk unload -k test -t test10 -c json -url mnt/data/DSEBulkLoadTest/out/data10/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/10UNLOADjson
+              rm -Rf mnt/data/DSEBulkLoadTest/out/data10/
+              mnt/data/dsbulk/bin/dsbulk unload -k test -t test10 -c json -url mnt/data/DSEBulkLoadTest/out/data10/ -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/10UNLOADjson
 
-            #run dsbulk step (sorted data-set) - UNLOAD
-            rm -Rf mnt/data/data_faker/generated
-            mnt/data/dsbulk/bin/dsbulk unload -k test -t transactions -c json -url mnt/data/data_faker/generated -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/transactionsUNLOADjson
+              #run dsbulk step (sorted data-set) - UNLOAD
+              rm -Rf mnt/data/DSEBulkLoadTest/json/transactions/generated
+              mnt/data/dsbulk/bin/dsbulk unload -k test -t transactions -c json -url mnt/data/DSEBulkLoadTest/json/transactions/generated -h ${dse_ip} &> ${FALLOUT_ARTIFACT_DIR}/transactionsUNLOADjson
+            else
+              echo "ignoring unload-json-performance-test step"
+            fi
     - count-performance-test:
         module: bash
         properties:
