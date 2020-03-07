@@ -2,7 +2,7 @@
 branch: "1.x"
 version: "1.5.1-SNAPSHOT"
 # type of connector that should be performance tested, could be json or csv.
-type_of_test: csv
+type_of_test: "csv"
 
 ---
 
