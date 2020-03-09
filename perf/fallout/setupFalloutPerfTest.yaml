@@ -58,6 +58,7 @@ ensemble:
       - name: ctool_monitoring
         properties:
           graphite.create_server: true
+      # ops-center will be available on {observer_ip}:8888/opscenter/index.html
       - name: ctool_opscenter
         properties:
           opscenter.repair.restart_period: 60
