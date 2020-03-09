@@ -42,6 +42,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.assertj.core.api.Assertions;
@@ -186,6 +187,61 @@ public class EndToEndUtils {
       long numErrors = lines.filter(l -> l.contains(keyword)).count();
       assertThat(numErrors).isEqualTo(size);
     }
+  }
+
+  public static void assertStatus(int actual, int expected) {
+    Map<String, String> filesContent = new HashMap<>();
+    if (actual != expected) {
+      try {
+        filesContent = EndToEndUtils.getErrorFilesContent();
+        filesContent.put("operation.log", EndToEndUtils.getFileContent("operation.log"));
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+    String delimiter = "------------------------------------------";
+    StringBuilder failMessageBuilder = new StringBuilder();
+
+    filesContent.forEach(
+        (fileName, content) -> {
+          failMessageBuilder.append("\n");
+          failMessageBuilder.append(delimiter);
+          failMessageBuilder.append("\n");
+          failMessageBuilder.append(fileName);
+          failMessageBuilder.append(":\n");
+          failMessageBuilder.append(content);
+        });
+
+    assertThat(actual).withFailMessage(failMessageBuilder.toString()).isEqualTo(expected);
+  }
+
+  public static String getFileContent(String fileName) throws IOException {
+    Path logPath = getOperationDirectory();
+    Path exceptionFile = logPath.resolve(fileName);
+    try (Stream<String> lines = Files.lines(exceptionFile)) {
+      return lines.collect(Collectors.joining("\n"));
+    }
+  }
+
+  public static Map<String, String> getErrorFilesContent() throws IOException {
+    Path logPath = getOperationDirectory();
+    Map<String, String> result = new HashMap<>();
+    // find all available -errors.log files
+    try (Stream<Path> stream = Files.walk(logPath, 1)) {
+      Set<String> errorFileNames =
+          stream
+              .filter(file -> !Files.isDirectory(file))
+              .map(Path::getFileName)
+              .filter(p -> p.toString().endsWith("-errors.log"))
+              .map(Path::toString)
+              .collect(Collectors.toSet());
+
+      // retrieve content for each of error files
+      for (String fileName : errorFileNames) {
+        result.put(fileName, getFileContent(fileName));
+      }
+    }
+    return result;
   }
 
   public static void validateNumberOfBadRecords(int size) throws Exception {

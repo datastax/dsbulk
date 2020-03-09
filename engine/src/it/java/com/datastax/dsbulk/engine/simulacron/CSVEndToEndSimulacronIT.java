@@ -26,6 +26,7 @@ import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.INSERT_INTO_IP_BY_COUNTRY;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.SELECT_FROM_IP_BY_COUNTRY;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.assertStatus;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createParameterizedQuery;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createQueryWithError;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createQueryWithResultSet;
@@ -146,7 +147,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     };
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isZero();
+    assertStatus(status, 0);
     assertThat(logs.getAllMessagesAsString())
         .contains("Records: total: 24, successful: 24, failed: 0")
         .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
@@ -176,7 +177,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       };
 
       int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-      assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
+      assertStatus(status, DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
       validateExceptionsLog(2, "AllNodesFailedException", "operation.log");
     } finally {
       simulacron.acceptConnections();
@@ -212,7 +213,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
         .contains("Records: total: 24, successful: 24, failed: 0")
         .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
         .contains("Writes: total: 24, successful: 24, failed: 0");
-    assertThat(status).isZero();
+    assertStatus(status, 0);
     validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", LOCAL_ONE);
   }
 
@@ -246,7 +247,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     };
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isZero();
+    assertStatus(status, 0);
     validateQueryCount(simulacron, 0, "INSERT INTO ip_by_country", ONE);
   }
 
@@ -272,7 +273,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     };
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isZero();
+    assertStatus(status, 0);
     validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", LOCAL_ONE);
   }
 
@@ -300,7 +301,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     };
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
+    assertStatus(status, DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
     validateQueryCount(simulacron, 21, "INSERT INTO ip_by_country", LOCAL_ONE);
     validateNumberOfBadRecords(3);
     validateExceptionsLog(3, "Source:", "mapping-errors.log");
@@ -368,7 +369,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     };
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
+    assertStatus(status, DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
 
     // There are 24 rows of data, but two extra queries due to the retry for the write timeout and
     // the unavailable.
@@ -405,7 +406,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     };
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
+    assertStatus(status, DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
     validateQueryCount(simulacron, 21, "INSERT INTO ip_by_country", LOCAL_ONE);
     validateNumberOfBadRecords(3);
     validateExceptionsLog(3, "Source:", "mapping-errors.log");
@@ -436,7 +437,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     };
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isZero();
+    assertStatus(status, 0);
     validateQueryCount(simulacron, 1, "INSERT INTO ip_by_country", LOCAL_ONE);
   }
 
@@ -465,7 +466,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "DISABLED"
     };
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_TOO_MANY_ERRORS);
+    assertStatus(status, DataStaxBulkLoader.STATUS_ABORTED_TOO_MANY_ERRORS);
     assertThat(logs.getAllMessagesAsString())
         .contains("aborted: Too many errors, the maximum allowed is 1%");
   }
@@ -497,7 +498,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       IP_BY_COUNTRY_MAPPING_INDEXED
     };
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_TOO_MANY_ERRORS);
+    assertStatus(status, DataStaxBulkLoader.STATUS_ABORTED_TOO_MANY_ERRORS);
     assertThat(logs.getAllMessagesAsString())
         .contains("aborted: Too many errors, the maximum allowed is 9")
         .contains("Records: total: 24, successful: 14, failed: 10");
@@ -539,7 +540,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "false"
     };
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_TOO_MANY_ERRORS);
+    assertStatus(status, DataStaxBulkLoader.STATUS_ABORTED_TOO_MANY_ERRORS);
     assertThat(logs.getAllMessagesAsString())
         .contains("aborted: Too many errors, the maximum allowed is 2")
         .contains("Records: total: 3, successful: 0, failed: 3");
@@ -574,7 +575,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "false"
     };
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_TOO_MANY_ERRORS);
+    assertStatus(status, DataStaxBulkLoader.STATUS_ABORTED_TOO_MANY_ERRORS);
     assertThat(logs.getAllMessagesAsString())
         .contains("aborted: Too many errors, the maximum allowed is 2")
         .contains("Records: total: 3, successful: 0, failed: 3");
@@ -608,7 +609,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     };
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isZero();
+    assertStatus(status, 0);
     assertThat(logs.getAllMessagesAsString())
         .contains("Records: total: 24, successful: 24, failed: 0")
         .contains("Reads: total: 24, successful: 24, failed: 0");
@@ -648,7 +649,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     };
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isZero();
+    assertStatus(status, 0);
     verifyDelimiterCount(';', 168);
     verifyDelimiterCount('<', 96);
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, LOCAL_ONE);
@@ -680,7 +681,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     };
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isZero();
+    assertStatus(status, 0);
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ConsistencyLevel.LOCAL_ONE);
     validateOutputFiles(1000, unloadDir);
   }
@@ -711,7 +712,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     };
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
+    assertStatus(status, DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
     validateQueryCount(simulacron, 0, SELECT_FROM_IP_BY_COUNTRY, LOCAL_ONE);
     validatePrepare(simulacron, SELECT_FROM_IP_BY_COUNTRY);
   }
@@ -742,7 +743,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     };
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
+    assertStatus(status, DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
     validateQueryCount(simulacron, 0, SELECT_FROM_IP_BY_COUNTRY, LOCAL_ONE);
     validatePrepare(simulacron, SELECT_FROM_IP_BY_COUNTRY);
   }
@@ -803,7 +804,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     };
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isEqualTo(DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
+    assertStatus(status, DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
     assertThat(stdErr.getStreamAsString())
         .contains("failed")
         .containsPattern("output-00000[1-4].csv");
@@ -836,15 +837,15 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     };
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isZero();
+    assertStatus(status, 0);
 
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, LOCAL_ONE);
-    assertThat(stdOut.getStreamLines().size()).isEqualTo(24);
+    assertStatus(stdOut.getStreamLines().size(), 24);
   }
 
   private void verifyDelimiterCount(char delimiter, int expected) throws Exception {
     String contents =
         FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.joining("\n"));
-    assertThat(StringUtils.countOccurrences(delimiter, contents)).isEqualTo(expected);
+    assertStatus(StringUtils.countOccurrences(delimiter, contents), expected);
   }
 }
