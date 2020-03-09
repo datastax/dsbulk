@@ -11,6 +11,7 @@ package com.datastax.dsbulk.engine.ccm;
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.assertStatus;
 import static org.awaitility.Awaitility.await;
 import static org.awaitility.Durations.ONE_MINUTE;
 import static org.slf4j.event.Level.WARN;
@@ -98,7 +99,7 @@ class SearchEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(quoteJson(query));
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isZero();
+    assertStatus(status, 0);
 
     assertThat(logs)
         .hasMessageContaining(
@@ -153,7 +154,7 @@ class SearchEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("test_search2");
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isZero();
+    assertStatus(status, 0);
 
     assertThat(records)
         .hasSize(3)
