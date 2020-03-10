@@ -200,7 +200,9 @@ public class EndToEndUtils {
       }
     }
     String delimiter = "------------------------------------------";
-    StringBuilder failMessageBuilder = new StringBuilder();
+    String assertErrorMessage =
+        String.format("Expected status was %s, but got: %s", expected, actual);
+    StringBuilder failMessageBuilder = new StringBuilder(assertErrorMessage);
 
     filesContent.forEach(
         (fileName, content) -> {
