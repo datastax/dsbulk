@@ -193,26 +193,22 @@ public class EndToEndUtils {
 
   public static void assertStatus(int actual, int expected) {
     StringWriter sw = new StringWriter();
-    PrintWriter pw = new PrintWriter(sw);
     if (actual != expected) {
-      Map<String, String> filesContent;
+      PrintWriter pw = new PrintWriter(sw);
+      pw.printf("Expected exit status %s, but got: %s%n", expected, actual);
       try {
-        filesContent = EndToEndUtils.getErrorFilesContent();
+        Map<String, String> filesContent = EndToEndUtils.getErrorFilesContent();
         filesContent.put("operation.log", getFileContent("operation.log"));
+        filesContent.forEach(
+            (fileName, content) -> {
+              pw.println("------------------------------------------");
+              pw.println(fileName + ":");
+              pw.println(content);
+            });
       } catch (IOException e) {
-        throw new RuntimeException(e);
+        pw.println("Failed to retrieve error logs: ");
+        e.printStackTrace(pw);
       }
-      String delimiter = "------------------------------------------";
-      String assertErrorMessage =
-          String.format("Expected status was %s, but got: %s", expected, actual);
-      pw.println(assertErrorMessage);
-
-      filesContent.forEach(
-          (fileName, content) -> {
-            pw.println(delimiter);
-            pw.println(fileName + ":");
-            pw.println(content);
-          });
     }
     assertThat(actual).withFailMessage(sw.toString()).isEqualTo(expected);
   }
