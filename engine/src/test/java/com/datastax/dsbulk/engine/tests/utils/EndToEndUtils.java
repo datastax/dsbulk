@@ -194,7 +194,7 @@ public class EndToEndUtils {
     if (actual != expected) {
       try {
         filesContent = EndToEndUtils.getErrorFilesContent();
-        filesContent.put("operation.log", EndToEndUtils.getFileContent("operation.log"));
+        filesContent.put("operation.log", getFileContent("operation.log"));
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
@@ -220,9 +220,7 @@ public class EndToEndUtils {
   public static String getFileContent(String fileName) throws IOException {
     Path logPath = getOperationDirectory();
     Path exceptionFile = logPath.resolve(fileName);
-    try (Stream<String> lines = Files.lines(exceptionFile)) {
-      return lines.collect(Collectors.joining(System.lineSeparator()));
-    }
+    return FileUtils.readFile(exceptionFile);
   }
 
   public static Map<String, String> getErrorFilesContent() throws IOException {
