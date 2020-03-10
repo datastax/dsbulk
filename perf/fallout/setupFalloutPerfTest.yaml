@@ -92,6 +92,7 @@ workload:
           timeout: 2 hours
           script: |
             cd ${FALLOUT_SCRATCH_DIR}
+            sudo apt update --assume-yes
             sudo apt-get install lftp --assume-yes
             #setup data-set (random Partition Key)
             mkdir -p ${FALLOUT_SCRATCH_DIR}/mnt/data/DSEBulkLoadTest
@@ -104,7 +105,6 @@ workload:
 
 
             #install maven and java
-            sudo apt update --assume-yes
             sudo apt install maven --assume-yes
             sudo apt-get install unzip --assume-yes
 
