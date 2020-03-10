@@ -204,11 +204,11 @@ public class EndToEndUtils {
 
     filesContent.forEach(
         (fileName, content) -> {
-          failMessageBuilder.append("\n");
+          failMessageBuilder.append(System.lineSeparator());
           failMessageBuilder.append(delimiter);
-          failMessageBuilder.append("\n");
+          failMessageBuilder.append(System.lineSeparator());
           failMessageBuilder.append(fileName);
-          failMessageBuilder.append(":\n");
+          failMessageBuilder.append(":").append(System.lineSeparator());
           failMessageBuilder.append(content);
         });
 
@@ -219,7 +219,7 @@ public class EndToEndUtils {
     Path logPath = getOperationDirectory();
     Path exceptionFile = logPath.resolve(fileName);
     try (Stream<String> lines = Files.lines(exceptionFile)) {
-      return lines.collect(Collectors.joining("\n"));
+      return lines.collect(Collectors.joining(System.lineSeparator()));
     }
   }
 
