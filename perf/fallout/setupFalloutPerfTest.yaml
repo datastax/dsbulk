@@ -23,7 +23,7 @@ ensemble:
           java.version: "1.8_151"
           product.type: dse
           product.install.type: tarball
-          product.version: 6.7-dev
+          product.version: 6.5.4
           enable.graph: false
           json.topology: |
             {
