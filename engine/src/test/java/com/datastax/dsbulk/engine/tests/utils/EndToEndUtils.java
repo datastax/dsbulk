@@ -27,6 +27,8 @@ import com.datastax.oss.simulacron.common.result.Result;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
 import com.datastax.oss.simulacron.server.BoundCluster;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -199,22 +201,21 @@ public class EndToEndUtils {
         throw new RuntimeException(e);
       }
     }
+    StringWriter sw = new StringWriter();
+    PrintWriter pw = new PrintWriter(sw);
     String delimiter = "------------------------------------------";
     String assertErrorMessage =
         String.format("Expected status was %s, but got: %s", expected, actual);
-    StringBuilder failMessageBuilder = new StringBuilder(assertErrorMessage);
+    pw.println(assertErrorMessage);
 
     filesContent.forEach(
         (fileName, content) -> {
-          failMessageBuilder.append(System.lineSeparator());
-          failMessageBuilder.append(delimiter);
-          failMessageBuilder.append(System.lineSeparator());
-          failMessageBuilder.append(fileName);
-          failMessageBuilder.append(":").append(System.lineSeparator());
-          failMessageBuilder.append(content);
+          pw.println(delimiter);
+          pw.println(fileName + ":");
+          pw.println(content);
         });
 
-    assertThat(actual).withFailMessage(failMessageBuilder.toString()).isEqualTo(expected);
+    assertThat(actual).withFailMessage(sw.toString()).isEqualTo(expected);
   }
 
   public static String getFileContent(String fileName) throws IOException {
