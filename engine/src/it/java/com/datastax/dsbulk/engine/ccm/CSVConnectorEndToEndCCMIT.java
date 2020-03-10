@@ -22,6 +22,7 @@ import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLines;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStreamExcludingHeaders;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
+import static com.datastax.dsbulk.engine.DataStaxBulkLoader.*;
 import static com.datastax.dsbulk.engine.DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR;
 import static com.datastax.dsbulk.engine.DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS;
 import static com.datastax.dsbulk.engine.DataStaxBulkLoader.STATUS_OK;
@@ -1891,7 +1892,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("[NULL]");
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertStatus(status, DataStaxBulkLoader.STATUS_ABORTED_TOO_MANY_ERRORS);
+    assertStatus(status, STATUS_ABORTED_TOO_MANY_ERRORS);
     assertThat(logs.getAllMessagesAsString())
         .contains("aborted: Too many errors, the maximum allowed is 9")
         .contains("Records: total: 24, successful: 14, failed: 10");
