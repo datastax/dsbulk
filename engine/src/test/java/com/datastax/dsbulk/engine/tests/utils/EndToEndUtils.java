@@ -29,6 +29,7 @@ import com.datastax.oss.simulacron.server.BoundCluster;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -44,7 +45,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.assertj.core.api.Assertions;
@@ -217,10 +217,14 @@ public class EndToEndUtils {
     assertThat(actual).withFailMessage(sw.toString()).isEqualTo(expected);
   }
 
-  public static String getFileContent(String fileName) throws IOException {
+  public static String getFileContent(String fileName) {
     Path logPath = getOperationDirectory();
     Path exceptionFile = logPath.resolve(fileName);
-    return FileUtils.readFile(exceptionFile);
+    try {
+      return FileUtils.readFile(exceptionFile);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
   }
 
   public static Map<String, String> getErrorFilesContent() throws IOException {
@@ -228,18 +232,12 @@ public class EndToEndUtils {
     Map<String, String> result = new HashMap<>();
     // find all available -errors.log files
     try (Stream<Path> stream = Files.walk(logPath, 1)) {
-      Set<String> errorFileNames =
-          stream
-              .filter(file -> !Files.isDirectory(file))
-              .map(Path::getFileName)
-              .filter(p -> p.toString().endsWith("-errors.log"))
-              .map(Path::toString)
-              .collect(Collectors.toSet());
-
-      // retrieve content for each of error files
-      for (String fileName : errorFileNames) {
-        result.put(fileName, getFileContent(fileName));
-      }
+      stream
+          .filter(file -> !Files.isDirectory(file))
+          .map(Path::getFileName)
+          .filter(p -> p.toString().endsWith("-errors.log"))
+          .map(Path::toString)
+          .forEach(fileName -> result.put(fileName, getFileContent(fileName)));
     }
     return result;
   }
