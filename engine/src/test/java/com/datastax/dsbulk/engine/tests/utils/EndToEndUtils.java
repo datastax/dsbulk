@@ -197,8 +197,9 @@ public class EndToEndUtils {
       PrintWriter pw = new PrintWriter(sw);
       pw.printf("Expected exit status %s, but got: %s%n", expected, actual);
       try {
-        Map<String, String> filesContent = EndToEndUtils.getErrorFilesContent();
+        Map<String, String> filesContent = new LinkedHashMap<>();
         filesContent.put("operation.log", getFileContent("operation.log"));
+        addErrorFilesContent(filesContent);
         filesContent.forEach(
             (fileName, content) -> {
               pw.println("------------------------------------------");
@@ -223,9 +224,8 @@ public class EndToEndUtils {
     }
   }
 
-  public static Map<String, String> getErrorFilesContent() throws IOException {
+  public static void addErrorFilesContent(Map<String, String> result) throws IOException {
     Path logPath = getOperationDirectory();
-    Map<String, String> result = new HashMap<>();
     // find all available -errors.log files
     try (Stream<Path> stream = Files.walk(logPath, 1)) {
       stream
@@ -235,7 +235,6 @@ public class EndToEndUtils {
           .map(Path::toString)
           .forEach(fileName -> result.put(fileName, getFileContent(fileName)));
     }
-    return result;
   }
 
   public static void validateNumberOfBadRecords(int size) throws Exception {
