@@ -14,6 +14,7 @@ import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Workload.graph;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
+import static com.datastax.dsbulk.engine.DataStaxBulkLoader.STATUS_OK;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.assertStatus;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
 
@@ -68,7 +69,7 @@ class GraphJsonConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
             "json");
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertStatus(status, 0);
+    assertStatus(status, STATUS_OK);
     validateResultSetSize(34, SELECT_ALL_CUSTOMERS);
     GraphResultSet results =
         session.execute(
@@ -92,7 +93,7 @@ class GraphJsonConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
             "1");
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertStatus(status, 0);
+    assertStatus(status, STATUS_OK);
     validateOutputFiles(34, unloadDir);
     // Remove data for reload validation
     truncateTables();
@@ -111,7 +112,7 @@ class GraphJsonConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
             "json");
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertStatus(status, 0);
+    assertStatus(status, STATUS_OK);
     validateResultSetSize(34, SELECT_ALL_CUSTOMERS);
     results =
         session.execute(
@@ -142,7 +143,7 @@ class GraphJsonConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
             "json");
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertStatus(status, 0);
+    assertStatus(status, STATUS_OK);
     validateResultSetSize(14, SELECT_ALL_CUSTOMER_ORDERS);
     GraphResultSet results =
         session.execute(
@@ -172,7 +173,7 @@ class GraphJsonConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
             "1");
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertStatus(status, 0);
+    assertStatus(status, STATUS_OK);
     validateOutputFiles(14, unloadDir);
     // Remove data for reload validation
     truncateTables();
@@ -197,7 +198,7 @@ class GraphJsonConnectorEndToEndCCMIT extends GraphEndToEndCCMITBase {
             CUSTOMER_ORDER_MAPPINGS);
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertStatus(status, 0);
+    assertStatus(status, STATUS_OK);
     validateResultSetSize(14, SELECT_ALL_CUSTOMER_ORDERS);
     results =
         session.execute(

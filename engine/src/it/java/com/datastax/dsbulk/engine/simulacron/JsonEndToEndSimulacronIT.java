@@ -13,6 +13,7 @@ import static com.datastax.dsbulk.commons.tests.logging.StreamType.STDOUT;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.createURLFile;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
+import static com.datastax.dsbulk.engine.DataStaxBulkLoader.STATUS_OK;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.INSERT_INTO_IP_BY_COUNTRY;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.SELECT_FROM_IP_BY_COUNTRY;
@@ -145,7 +146,7 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     };
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertStatus(status, 0);
+    assertStatus(status, STATUS_OK);
     assertThat(logs.getAllMessagesAsString())
         .contains("Records: total: 24, successful: 24, failed: 0")
         .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
@@ -176,7 +177,7 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     };
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertStatus(status, 0);
+    assertStatus(status, STATUS_OK);
     assertThat(logs.getAllMessagesAsString())
         .contains("Records: total: 24, successful: 24, failed: 0")
         .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
@@ -214,7 +215,7 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     };
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertStatus(status, 0);
+    assertStatus(status, STATUS_OK);
     validateQueryCount(simulacron, 0, "INSERT INTO ip_by_country", ONE);
   }
 
@@ -240,7 +241,7 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     };
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertStatus(status, 0);
+    assertStatus(status, STATUS_OK);
     validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", LOCAL_ONE);
   }
 
@@ -267,7 +268,7 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     };
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertStatus(status, 0);
+    assertStatus(status, STATUS_OK);
     validateQueryCount(
         simulacron, 1, "INSERT INTO ks1.table1 (key, value) VALUES (:key, :value)", LOCAL_ONE);
   }
@@ -509,7 +510,7 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     };
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertStatus(status, 0);
+    assertStatus(status, STATUS_OK);
     assertThat(logs.getAllMessagesAsString())
         .contains("Records: total: 24, successful: 24, failed: 0")
         .contains("Reads: total: 24, successful: 24, failed: 0");
@@ -542,7 +543,7 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     };
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertStatus(status, 0);
+    assertStatus(status, STATUS_OK);
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, LOCAL_ONE);
     validateOutputFiles(1000, unloadDir);
   }
@@ -584,7 +585,7 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     };
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertStatus(status, 0);
+    assertStatus(status, STATUS_OK);
     validateQueryCount(
         simulacron,
         1,
@@ -749,7 +750,7 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     };
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertStatus(status, 0);
+    assertStatus(status, STATUS_OK);
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, LOCAL_ONE);
     assertThat(stdOut.getStreamLines().size()).isEqualTo(24);
   }
