@@ -27,6 +27,9 @@ import com.datastax.oss.simulacron.common.result.Result;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
 import com.datastax.oss.simulacron.server.BoundCluster;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -185,6 +188,54 @@ public class EndToEndUtils {
     try (Stream<String> lines = Files.lines(exceptionFile)) {
       long numErrors = lines.filter(l -> l.contains(keyword)).count();
       assertThat(numErrors).isEqualTo(size);
+    }
+  }
+
+  public static void assertStatus(int actual, int expected) {
+    StringWriter sw = new StringWriter();
+    if (actual != expected) {
+      PrintWriter pw = new PrintWriter(sw);
+      pw.printf("Expected exit status %s, but got: %s%n", expected, actual);
+      try {
+        Map<String, String> filesContent = new LinkedHashMap<>();
+        filesContent.put("operation.log", getFileContent("operation.log"));
+        addErrorFilesContent(filesContent);
+        String delimiter = "------------------------------------------";
+        filesContent.forEach(
+            (fileName, content) -> {
+              pw.println(delimiter);
+              pw.println(fileName + ":");
+              pw.println(content);
+            });
+        pw.println(delimiter);
+      } catch (IOException e) {
+        pw.println("Failed to retrieve error logs: ");
+        e.printStackTrace(pw);
+      }
+    }
+    assertThat(actual).withFailMessage(sw.toString()).isEqualTo(expected);
+  }
+
+  public static String getFileContent(String fileName) {
+    Path logPath = getOperationDirectory();
+    Path exceptionFile = logPath.resolve(fileName);
+    try {
+      return FileUtils.readFile(exceptionFile);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
+  public static void addErrorFilesContent(Map<String, String> result) throws IOException {
+    Path logPath = getOperationDirectory();
+    // find all available -errors.log files
+    try (Stream<Path> stream = Files.walk(logPath, 1)) {
+      stream
+          .filter(file -> !Files.isDirectory(file))
+          .map(Path::getFileName)
+          .filter(p -> p.toString().endsWith("-errors.log"))
+          .map(Path::toString)
+          .forEach(fileName -> result.put(fileName, getFileContent(fileName)));
     }
   }
 

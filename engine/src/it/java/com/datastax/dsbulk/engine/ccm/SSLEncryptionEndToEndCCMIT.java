@@ -16,11 +16,12 @@ import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.DEFAULT_CL
 import static com.datastax.dsbulk.commons.tests.ccm.DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
+import static com.datastax.dsbulk.engine.DataStaxBulkLoader.STATUS_OK;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.assertStatus;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createIpByCountryTable;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
-import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datastax.dsbulk.commons.tests.ccm.CCMCluster;
 import com.datastax.dsbulk.commons.tests.ccm.annotations.CCMConfig;
@@ -91,7 +92,7 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isZero();
+    assertStatus(status, STATUS_OK);
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
     deleteDirectory(logDir);
 
@@ -129,7 +130,7 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isZero();
+    assertStatus(status, STATUS_OK);
     validateOutputFiles(24, unloadDir);
   }
 
@@ -168,7 +169,7 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isZero();
+    assertStatus(status, STATUS_OK);
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
     deleteDirectory(logDir);
 
@@ -206,7 +207,7 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isZero();
+    assertStatus(status, STATUS_OK);
     validateOutputFiles(24, unloadDir);
   }
 
@@ -245,7 +246,7 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isZero();
+    assertStatus(status, STATUS_OK);
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
     deleteDirectory(logDir);
 
@@ -283,7 +284,7 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isZero();
+    assertStatus(status, STATUS_OK);
     validateOutputFiles(24, unloadDir);
   }
 }

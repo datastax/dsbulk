@@ -11,8 +11,10 @@ package com.datastax.dsbulk.engine.ccm;
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
+import static com.datastax.dsbulk.engine.DataStaxBulkLoader.STATUS_OK;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.assertStatus;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createIpByCountryTable;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
 
@@ -93,7 +95,7 @@ class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("cassandra");
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isZero();
+    assertStatus(status, STATUS_OK);
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
     if (inferAuthProvider) {
       assertThat(logs)
@@ -126,7 +128,7 @@ class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("cassandra");
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isZero();
+    assertStatus(status, STATUS_OK);
     validateOutputFiles(24, unloadDir);
     if (inferAuthProvider) {
       assertThat(logs)
@@ -162,7 +164,7 @@ class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("cassandra");
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isZero();
+    assertStatus(status, STATUS_OK);
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
     assertThat(logs)
         .hasMessageContaining(
@@ -200,7 +202,7 @@ class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("cassandra");
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isZero();
+    assertStatus(status, STATUS_OK);
     validateOutputFiles(24, unloadDir);
     assertThat(logs)
         .hasMessageContaining(

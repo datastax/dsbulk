@@ -11,8 +11,10 @@ package com.datastax.dsbulk.engine.cloud;
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static com.datastax.dsbulk.commons.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
+import static com.datastax.dsbulk.engine.DataStaxBulkLoader.STATUS_OK;
 import static com.datastax.dsbulk.engine.tests.utils.CsvUtils.CSV_RECORDS_UNIQUE;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.assertStatus;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.createIpByCountryTable;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validateOutputFiles;
 import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.validatePositionsFile;
@@ -158,7 +160,7 @@ class EndToEndCloudIT {
     loadArgs.addAll(Arrays.asList(specificArgs));
     loadArgs.addAll(commonArgs());
     int status = new DataStaxBulkLoader(loadArgs.toArray(new String[0])).run();
-    assertThat(status).isZero();
+    assertStatus(status, STATUS_OK);
     ResultSet set = session.execute("SELECT * FROM ip_by_country");
     List<Row> results = set.all();
     assertThat(results.size()).isEqualTo(24);
@@ -185,7 +187,7 @@ class EndToEndCloudIT {
     unloadArgs.addAll(Arrays.asList(specificArgs));
     unloadArgs.addAll(commonArgs());
     int status = new DataStaxBulkLoader(unloadArgs.toArray(new String[0])).run();
-    assertThat(status).isZero();
+    assertStatus(status, STATUS_OK);
     validateOutputFiles(24, unloadDir);
   }
 

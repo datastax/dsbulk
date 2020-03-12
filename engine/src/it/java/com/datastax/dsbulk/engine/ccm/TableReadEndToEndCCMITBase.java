@@ -14,10 +14,12 @@ import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.dsbulk.commons.tests.ccm.CCMCluster.Type.OSS;
 import static com.datastax.dsbulk.commons.tests.utils.CQLUtils.createKeyspaceSimpleStrategy;
 import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
+import static com.datastax.dsbulk.engine.DataStaxBulkLoader.STATUS_OK;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.global;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.hosts;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.partitions;
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.ranges;
+import static com.datastax.dsbulk.engine.tests.utils.EndToEndUtils.assertStatus;
 import static com.datastax.oss.driver.api.core.DefaultProtocolVersion.V4;
 import static com.datastax.oss.driver.internal.core.util.RoutingKey.compose;
 import static org.awaitility.Awaitility.await;
@@ -116,7 +118,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add(table);
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isZero();
+    assertStatus(status, STATUS_OK);
 
     assertUnload();
   }
@@ -171,7 +173,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add(table + "_mv");
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isZero();
+    assertStatus(status, STATUS_OK);
 
     assertUnload();
   }
@@ -195,7 +197,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add(quoteJson(String.format("SELECT * FROM \"%s\".\"%s\"", keyspace, table)));
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isZero();
+    assertStatus(status, STATUS_OK);
 
     assertUnload();
   }
@@ -231,7 +233,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     }
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isZero();
+    assertStatus(status, STATUS_OK);
 
     assertUnload();
   }
@@ -250,7 +252,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add(table);
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isZero();
+    assertStatus(status, STATUS_OK);
 
     assertCount(keyspace, table, modes);
   }
@@ -267,7 +269,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add(quoteJson(String.format("SELECT * FROM \"%s\".\"%s\"", keyspace, table)));
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isZero();
+    assertStatus(status, STATUS_OK);
 
     assertCount(keyspace, table, modes);
   }
