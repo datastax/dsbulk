@@ -200,12 +200,14 @@ public class EndToEndUtils {
         Map<String, String> filesContent = new LinkedHashMap<>();
         filesContent.put("operation.log", getFileContent("operation.log"));
         addErrorFilesContent(filesContent);
+        String delimiter = "------------------------------------------";
         filesContent.forEach(
             (fileName, content) -> {
-              pw.println("------------------------------------------");
+              pw.println(delimiter);
               pw.println(fileName + ":");
               pw.println(content);
             });
+        pw.println(delimiter);
       } catch (IOException e) {
         pw.println("Failed to retrieve error logs: ");
         e.printStackTrace(pw);
