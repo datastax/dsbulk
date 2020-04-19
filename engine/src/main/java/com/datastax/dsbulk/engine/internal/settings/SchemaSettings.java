@@ -605,18 +605,22 @@ public class SchemaSettings {
         query = sb.append(query.substring(whereClauseIndex)).toString();
       }
       if (workflowType == COUNT) {
-        StringBuilder sb = new StringBuilder("SELECT ");
-        if (modes.contains(partitions)) {
-          appendPartitionKey(sb);
-        } else if (modes.contains(ranges) || modes.contains(hosts)) {
-          appendTokenFunction(sb);
-        } else {
-          sb.append(getGlobalCountSelector());
+        if (modes.contains(partitions) || modes.contains(ranges) || modes.contains(hosts)) {
+          throw new BulkConfigurationException(
+              String.format(
+                  "Cannot count with stats.modes = %s when schema.query is provided; "
+                      + "only stats.modes = [global] is allowed",
+                  modes));
         }
-        query =
-            sb.append(' ')
-                .append(query.substring(queryInspector.getFromClauseStartIndex()))
-                .toString();
+        if (queryInspector.isSelectStar()) {
+          StringBuilder sb = new StringBuilder("SELECT ");
+          // reduce row size by only selecting one column instead of all columns
+          sb.append(getGlobalCountSelector());
+          query =
+              sb.append(' ')
+                  .append(query.substring(queryInspector.getFromClauseStartIndex()))
+                  .toString();
+        }
       }
       queryInspector = new QueryInspector(query);
     }
@@ -1222,18 +1226,6 @@ public class SchemaSettings {
       }
     }
     sb.append(')');
-  }
-
-  private void appendPartitionKey(StringBuilder sb) {
-    List<ColumnMetadata> partitionKey = table.getPartitionKey();
-    Iterator<ColumnMetadata> pks = partitionKey.iterator();
-    while (pks.hasNext()) {
-      ColumnMetadata pk = pks.next();
-      sb.append(pk.getName().asCql(true));
-      if (pks.hasNext()) {
-        sb.append(", ");
-      }
-    }
   }
 
   @NonNull

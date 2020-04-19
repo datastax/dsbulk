@@ -1377,48 +1377,33 @@ class SchemaSettingsTest {
   }
 
   @Test
-  void should_replace_select_clause_when_count_query_does_not_contain_partition_key() {
-    when(table.getClusteringColumns()).thenReturn(ImmutableMap.of(col2, ClusteringOrder.ASC));
-    LoaderConfig config =
-        createTestConfig("dsbulk.schema", "query", "\"SELECT c3 FROM ks.t1 WHERE c1 = 0\"");
-    SchemaSettings schemaSettings = new SchemaSettings(config);
-    schemaSettings.init(WorkflowType.COUNT, session, false, true);
-    ReadResultCounter counter =
-        schemaSettings.createReadResultCounter(session, codecRegistry, EnumSet.of(partitions), 10);
-    assertThat(counter).isNotNull();
-    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
-    verify(session).prepare(argument.capture());
-    assertThat(argument.getValue()).isEqualTo("SELECT c1 FROM ks.t1 WHERE c1 = 0");
-  }
-
-  @Test
-  void should_replace_select_clause_when_count_query_contains_extraneous_columns_partitions() {
+  void should_use_custom_query_when_mode_is_global() {
     when(table.getClusteringColumns()).thenReturn(ImmutableMap.of(col2, ClusteringOrder.ASC));
     LoaderConfig config =
         createTestConfig("dsbulk.schema", "query", "\"SELECT c1, c3 FROM ks.t1 WHERE c1 = 0\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.COUNT, session, false, true);
     ReadResultCounter counter =
-        schemaSettings.createReadResultCounter(session, codecRegistry, EnumSet.of(partitions), 10);
+        schemaSettings.createReadResultCounter(session, codecRegistry, EnumSet.of(global), 10);
     assertThat(counter).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue()).isEqualTo("SELECT c1 FROM ks.t1 WHERE c1 = 0");
+    assertThat(argument.getValue()).isEqualTo("SELECT c1, c3 FROM ks.t1 WHERE c1 = 0");
   }
 
   @Test
-  void should_replace_select_clause_when_count_query_contains_extraneous_columns_hosts() {
+  void should_throw_when_custom_query_and_mode_is_not_global() {
     LoaderConfig config =
         createTestConfig("dsbulk.schema", "query", "\"SELECT c1, c3 FROM ks.t1 WHERE c1 = 0\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.COUNT, session, false, true);
-    ReadResultCounter counter =
-        schemaSettings.createReadResultCounter(
-            session, codecRegistry, EnumSet.of(hosts, ranges), 10);
-    assertThat(counter).isNotNull();
-    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
-    verify(session).prepare(argument.capture());
-    assertThat(argument.getValue()).isEqualTo("SELECT token(c1) FROM ks.t1 WHERE c1 = 0");
+    assertThatThrownBy(
+            () ->
+                schemaSettings.createReadResultCounter(
+                    session, codecRegistry, EnumSet.of(hosts, ranges, partitions), 10))
+        .isInstanceOf(BulkConfigurationException.class)
+        .hasMessageContaining(
+            "Cannot count with stats.modes = [ranges, hosts, partitions] when schema.query is provided; only stats.modes = [global] is allowed");
   }
 
   @Test

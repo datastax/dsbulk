@@ -1,5 +1,10 @@
 ## Changelog
 
+## 1.5.1 (in progress)
+
+- [bug] DAT-558: Count operations should not modify user-provided queries.
+
+
 ## 1.5.0
 
 - [improvement] DAT-525: Update DSBulk to unified driver.
