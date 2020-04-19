@@ -256,7 +256,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
   }
 
   @ParameterizedTest(name = "[{index}] count keyspace {0} table {1} modes {2} (custom query)")
-  @ArgumentsSource(CountWorkflowArgumentsProvider.class)
+  @ArgumentsSource(CountWorkflowCustomQueryArgumentsProvider.class)
   void full_count_custom_query(String keyspace, String table, EnumSet<StatisticsMode> modes) {
 
     List<String> args = new ArrayList<>();
@@ -499,6 +499,22 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
           for (EnumSet<StatisticsMode> mode : modes) {
             args.add(Arguments.of(keyspace, table, mode));
           }
+        }
+      }
+      return args.stream();
+    }
+  }
+
+  private static class CountWorkflowCustomQueryArgumentsProvider implements ArgumentsProvider {
+
+    @Override
+    public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
+      List<String> tables = Lists.newArrayList("SINGLE_PK", "composite_pk");
+      List<String> keyspaces = Lists.newArrayList("RF_1", "rf_2", "rf_3");
+      List<Arguments> args = new ArrayList<>();
+      for (String keyspace : keyspaces) {
+        for (String table : tables) {
+          args.add(Arguments.of(keyspace, table, EnumSet.of(global)));
         }
       }
       return args.stream();
