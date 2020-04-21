@@ -15,10 +15,10 @@ import com.datastax.dsbulk.commons.codecs.util.CodecUtils;
 import com.datastax.dsbulk.commons.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.commons.codecs.util.TimeUUIDGenerator;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -47,7 +47,7 @@ public class CodecSettings {
   private static final String NUMERIC_TIMESTAMP_EPOCH = "epoch";
   private static final String TIME_UUID_GENERATOR = "uuidStrategy";
 
-  private final LoaderConfig config;
+  private final Config config;
 
   private Locale locale;
   private ImmutableList<String> nullStrings;
@@ -67,7 +67,7 @@ public class CodecSettings {
   private List<String> booleanStrings;
 
   @VisibleForTesting
-  public CodecSettings(LoaderConfig config) {
+  public CodecSettings(Config config) {
     this.config = config;
   }
 

@@ -9,7 +9,7 @@
 package com.datastax.dsbulk.engine.internal.settings;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 
 public class EngineSettings {
@@ -17,11 +17,11 @@ public class EngineSettings {
   private static final String DRY_RUN = "dryRun";
   private static final String EXECUTION_ID = "executionId";
 
-  private final LoaderConfig config;
+  private final Config config;
   private boolean dryRun;
   private String executionId;
 
-  EngineSettings(LoaderConfig config) {
+  EngineSettings(Config config) {
     this.config = config;
   }
 

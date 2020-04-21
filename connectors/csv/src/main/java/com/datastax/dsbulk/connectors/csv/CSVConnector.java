@@ -9,7 +9,7 @@
 package com.datastax.dsbulk.connectors.csv;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.io.CompressedIOUtils;
 import com.datastax.dsbulk.commons.internal.reactive.SimpleBackpressureController;
 import com.datastax.dsbulk.connectors.api.CommonConnectorFeature;
@@ -24,6 +24,7 @@ import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.datastax.dsbulk.connectors.commons.AbstractFileBasedConnector;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
+import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.univocity.parsers.common.ParsingContext;
 import com.univocity.parsers.common.TextParsingException;
@@ -109,13 +110,13 @@ public class CSVConnector extends AbstractFileBasedConnector {
   }
 
   @Override
-  public void configure(@NonNull LoaderConfig settings, boolean read) {
+  public void configure(@NonNull Config settings, boolean read) {
     try {
       super.configure(settings, read);
-      delimiter = settings.getChar(DELIMITER);
-      quote = settings.getChar(QUOTE);
-      escape = settings.getChar(ESCAPE);
-      comment = settings.getChar(COMMENT);
+      delimiter = ConfigUtils.getChar(settings, DELIMITER);
+      quote = ConfigUtils.getChar(settings, QUOTE);
+      escape = ConfigUtils.getChar(settings, ESCAPE);
+      comment = ConfigUtils.getChar(settings, COMMENT);
       header = settings.getBoolean(HEADER);
       maxCharsPerColumn = settings.getInt(MAX_CHARS_PER_COLUMN);
       maxColumns = settings.getInt(MAX_COLUMNS);

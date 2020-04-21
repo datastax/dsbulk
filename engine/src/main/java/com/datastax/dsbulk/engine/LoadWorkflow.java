@@ -15,7 +15,6 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.codahale.metrics.MetricRegistry;
 import com.datastax.dsbulk.commons.codecs.ExtendedCodecRegistry;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.Record;
@@ -42,6 +41,7 @@ import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.metrics.Metrics;
 import com.datastax.oss.driver.shaded.guava.common.base.Stopwatch;
 import com.datastax.oss.driver.shaded.guava.common.collect.BiMap;
+import com.typesafe.config.Config;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
@@ -90,7 +90,7 @@ public class LoadWorkflow implements Workflow {
   private Function<Flux<WriteResult>, Flux<WriteResult>> queryWarningsHandler;
   private int numCores;
 
-  LoadWorkflow(LoaderConfig config, BiMap<String, String> shortcuts) {
+  LoadWorkflow(Config config, BiMap<String, String> shortcuts) {
     settingsManager = new SettingsManager(config, shortcuts, WorkflowType.LOAD);
   }
 

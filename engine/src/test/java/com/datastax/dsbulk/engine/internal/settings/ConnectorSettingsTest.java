@@ -12,8 +12,6 @@ import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.ass
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.tests.utils.TestConfigUtils;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.csv.CSVConnector;
@@ -30,9 +28,8 @@ class ConnectorSettingsTest {
 
   @Test
   void should_find_csv_connector_short_name() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-                ConfigFactory.parseString("name: csv, csv{url:\"file:///a/b.csv\"}"))
+    Config config =
+        ConfigFactory.parseString("name: csv, csv{url:\"file:///a/b.csv\"}")
             .withFallback(CONNECTOR_DEFAULT_SETTINGS);
     ConnectorSettings connectorSettings = new ConnectorSettings(config, WorkflowType.LOAD);
     connectorSettings.init();
@@ -57,9 +54,8 @@ class ConnectorSettingsTest {
 
   @Test
   void should_find_json_connector_short_name() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-                ConfigFactory.parseString("name: json, json{ url:\"file:///a/b.json\"}"))
+    Config config =
+        ConfigFactory.parseString("name: json, json{ url:\"file:///a/b.json\"}")
             .withFallback(CONNECTOR_DEFAULT_SETTINGS);
     ConnectorSettings connectorSettings = new ConnectorSettings(config, WorkflowType.LOAD);
     connectorSettings.init();
@@ -85,9 +81,7 @@ class ConnectorSettingsTest {
     assertThrows(
         BulkConfigurationException.class,
         () -> {
-          LoaderConfig config =
-              new DefaultLoaderConfig(
-                  ConfigFactory.parseString("name: foo, foo {url:\"file:///a/b.txt\"}"));
+          Config config = ConfigFactory.parseString("name: foo, foo {url:\"file:///a/b.txt\"}");
           ConnectorSettings connectorSettings = new ConnectorSettings(config, WorkflowType.LOAD);
           connectorSettings.init();
           //noinspection ResultOfMethodCallIgnored

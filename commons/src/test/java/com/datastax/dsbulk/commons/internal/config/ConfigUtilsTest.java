@@ -29,7 +29,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumingThat;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
-import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.utils.URLUtils;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
@@ -38,7 +37,10 @@ import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.NoSuchFileException;
@@ -57,6 +59,152 @@ class ConfigUtilsTest {
 
   static {
     URLUtils.setURLFactoryIfNeeded();
+  }
+
+  @Test
+  void should_create_reference_config() {
+    Config referenceConfig = ConfigUtils.createReferenceConfig();
+    assertReferenceConfig(referenceConfig);
+  }
+
+  @Test
+  void should_create_application_config() {
+    Config applicationConfig = ConfigUtils.createApplicationConfig(null);
+    assertReferenceConfig(applicationConfig);
+    // should read application.conf
+    assertThat(applicationConfig.hasPath("dsbulk.definedInApplication")).isTrue();
+    assertThat(applicationConfig.getValue("dsbulk.definedInApplication").origin().description())
+        .startsWith("application.conf @ file");
+    // should not read application-custom.conf
+    assertThat(applicationConfig.hasPath("dsbulk.definedInCustomApplication")).isFalse();
+  }
+
+  @Test
+  void should_create_application_config_with_custom_location() throws URISyntaxException {
+    Path appConfigPath = Paths.get(getClass().getResource("/application-custom.conf").toURI());
+    Config applicationConfig = ConfigUtils.createApplicationConfig(appConfigPath);
+    assertReferenceConfig(applicationConfig);
+    // should not read application.conf
+    assertThat(applicationConfig.hasPath("dsbulk.definedInApplication")).isFalse();
+    // should read application-custom.conf
+    assertThat(applicationConfig.hasPath("dsbulk.definedInCustomApplication")).isTrue();
+    assertThat(applicationConfig.getValue("dsbulk.definedInCustomApplication").origin().filename())
+        .endsWith("application-custom.conf");
+  }
+
+  private static void assertReferenceConfig(Config referenceConfig) {
+    // should read OSS driver reference.conf from its JAR
+    assertThat(referenceConfig.hasPath("datastax-java-driver.basic.config-reload-interval"))
+        .isTrue();
+    assertThat(
+            referenceConfig
+                .getValue("datastax-java-driver.basic.config-reload-interval")
+                .origin()
+                .description())
+        .startsWith("reference.conf @ jar");
+
+    // should read DSE driver reference.conf from its JAR
+    assertThat(referenceConfig.hasPath("datastax-java-driver.basic.load-balancing-policy.class"))
+        .isTrue();
+    assertThat(
+            referenceConfig
+                .getValue("datastax-java-driver.basic.load-balancing-policy.class")
+                .origin()
+                .description())
+        .startsWith("reference.conf @ jar");
+
+    // should read (dummy) dsbulk-reference.conf file found on the classpath
+    assertThat(referenceConfig.hasPath("dsbulk.definedInDSBukReference")).isTrue();
+    assertThat(referenceConfig.getValue("dsbulk.definedInDSBukReference").origin().description())
+        .startsWith("dsbulk-reference.conf @ file");
+  }
+
+  @Test
+  void should_get_absolute_path() {
+    Config config = ConfigFactory.parseString("path = /var/lib");
+    Path path = ConfigUtils.getPath(config, "path");
+    assertThat(path).isNormalized().isAbsolute();
+  }
+
+  @Test
+  void should_get_relative_path() {
+    Config config = ConfigFactory.parseString("path1 = target, path2 = ./target");
+    Path path1 = ConfigUtils.getPath(config, "path1");
+    assertThat(path1).isNormalized().isAbsolute();
+    Path path2 = ConfigUtils.getPath(config, "path2");
+    assertThat(path2).isNormalized().isAbsolute();
+    assertThat(path1).isEqualTo(path2);
+  }
+
+  @Test
+  void should_get_path_with_user_home() {
+    Config config = ConfigFactory.parseString("path1 = ~, path2 = ~/foo");
+    Path home = Paths.get(System.getProperty("user.home"));
+    Path path1 = ConfigUtils.getPath(config, "path1");
+    assertThat(path1).isNormalized().isAbsolute().isEqualTo(home);
+    Path path2 = ConfigUtils.getPath(config, "path2");
+    assertThat(home.relativize(path2)).isEqualTo(Paths.get("foo"));
+  }
+
+  @Test
+  void should_get_absolute_URL() throws Exception {
+    Config config =
+        ConfigFactory.parseString("url1 = \"file:///var/lib\", url2 = \"http://foo.com/bar\"");
+    URL url1 = ConfigUtils.getURL(config, "url1");
+    assertThat(url1.toExternalForm()).isEqualTo("file:/var/lib");
+    assertThat(url1.toURI())
+        .hasScheme("file")
+        .hasNoPort()
+        .hasNoQuery()
+        .hasNoUserInfo()
+        .hasPath("/var/lib");
+    URL url2 = ConfigUtils.getURL(config, "url2");
+    assertThat(url2.toExternalForm()).isEqualTo("http://foo.com/bar");
+    assertThat(url2.toURI())
+        .hasScheme("http")
+        .hasNoPort()
+        .hasNoQuery()
+        .hasNoUserInfo()
+        .hasAuthority("foo.com")
+        .hasPath("/bar");
+  }
+
+  @Test
+  void should_get_stdio_URL() throws Exception {
+    Config config = ConfigFactory.parseString("url1 = -");
+    URL stdioUrl = ConfigUtils.getURL(config, "url1");
+    assertThat(stdioUrl.toExternalForm()).isEqualTo("std:/");
+    assertThat(stdioUrl.toURI())
+        .hasScheme("std")
+        .hasNoPort()
+        .hasNoQuery()
+        .hasNoUserInfo()
+        .hasPath("/");
+  }
+
+  @Test
+  void should_get_threads() {
+    Config config = ConfigFactory.parseString("threads1 = 4, threads2 = 2C");
+    int threads1 = ConfigUtils.getThreads(config, "threads1");
+    assertThat(threads1).isEqualTo(4);
+    int threads2 = ConfigUtils.getThreads(config, "threads2");
+    assertThat(threads2).isEqualTo(2 * Runtime.getRuntime().availableProcessors());
+  }
+
+  @Test
+  void should_get_char() {
+    Config config = ConfigFactory.parseString("char = a");
+    char c = ConfigUtils.getChar(config, "char");
+    assertThat(c).isEqualTo('a');
+  }
+
+  @Test
+  void should_get_charset() {
+    Config config = ConfigFactory.parseString("charset1 = UTF-8, charset2 = utf8");
+    Charset charset1 = ConfigUtils.getCharset(config, "charset1");
+    assertThat(charset1).isEqualTo(StandardCharsets.UTF_8);
+    Charset charset2 = ConfigUtils.getCharset(config, "charset2");
+    assertThat(charset2).isEqualTo(StandardCharsets.UTF_8);
   }
 
   @Test
@@ -156,14 +304,13 @@ class ConfigUtilsTest {
 
   @Test
   void should_get_type_string() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                "intField = 7, "
-                    + "stringField = mystring, "
-                    + "stringListField = [\"v1\", \"v2\"], "
-                    + "numberListField = [9, 7], "
-                    + "booleanField = false"));
+    Config config =
+        ConfigFactory.parseString(
+            "intField = 7, "
+                + "stringField = mystring, "
+                + "stringListField = [\"v1\", \"v2\"], "
+                + "numberListField = [9, 7], "
+                + "booleanField = false");
     assertThat(getTypeString(config, "intField")).contains("number");
     assertThat(getTypeString(config, "stringField")).contains("string");
     assertThat(getTypeString(config, "stringListField")).contains("list<string>");
@@ -176,16 +323,15 @@ class ConfigUtilsTest {
 
   @Test
   void should_get_null_safe_value() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                "intField = 7, "
-                    + "stringField = mystring, "
-                    + "stringListField = [\"v1\", \"v2\"], "
-                    + "numberListField = [9, 7], "
-                    + "nullField = [9, 7], "
-                    + "booleanField = false,"
-                    + "nullField = null"));
+    Config config =
+        ConfigFactory.parseString(
+            "intField = 7, "
+                + "stringField = mystring, "
+                + "stringListField = [\"v1\", \"v2\"], "
+                + "numberListField = [9, 7], "
+                + "nullField = [9, 7], "
+                + "booleanField = false,"
+                + "nullField = null");
     assertThat(getNullSafeValue(config, "intField").valueType()).isEqualTo(NUMBER);
     assertThat(getNullSafeValue(config, "stringField").valueType()).isEqualTo(STRING);
     assertThat(getNullSafeValue(config, "stringListField").valueType()).isEqualTo(LIST);
@@ -199,17 +345,16 @@ class ConfigUtilsTest {
 
   @Test
   void should_get_config_value_type() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString(
-                "intField = 7\n"
-                    + "stringField = mystring\n"
-                    + "stringListField = [\"v1\", \"v2\"]\n"
-                    + "numberListField = [9, 7]\n"
-                    + "nullField = [9, 7]\n"
-                    + "booleanField = false\n"
-                    + "# @type string\n"
-                    + "nullField = null"));
+    Config config =
+        ConfigFactory.parseString(
+            "intField = 7\n"
+                + "stringField = mystring\n"
+                + "stringListField = [\"v1\", \"v2\"]\n"
+                + "numberListField = [9, 7]\n"
+                + "nullField = [9, 7]\n"
+                + "booleanField = false\n"
+                + "# @type string\n"
+                + "nullField = null");
     assertThat(getValueType(config, "intField")).isEqualTo(NUMBER);
     assertThat(getValueType(config, "stringField")).isEqualTo(STRING);
     assertThat(getValueType(config, "stringListField")).isEqualTo(LIST);
@@ -223,17 +368,15 @@ class ConfigUtilsTest {
 
   @Test
   void should_get_type_hint_for_value() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("# This is a comment.\n# @type string\nmyField = foo"));
+    Config config =
+        ConfigFactory.parseString("# This is a comment.\n# @type string\nmyField = foo");
     assertThat(getTypeHint(config.getValue("myField"))).contains("string");
   }
 
   @Test
   void should_get_comments_for_value() {
-    LoaderConfig config =
-        new DefaultLoaderConfig(
-            ConfigFactory.parseString("# This is a comment.\n# @type string\nmyField = foo"));
+    Config config =
+        ConfigFactory.parseString("# This is a comment.\n# @type string\nmyField = foo");
     assertThat(getComments(config.getValue("myField"))).isEqualTo("This is a comment.");
   }
 

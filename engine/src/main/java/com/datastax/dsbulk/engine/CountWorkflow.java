@@ -14,7 +14,6 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import com.codahale.metrics.MetricRegistry;
 import com.datastax.dsbulk.commons.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
@@ -36,6 +35,7 @@ import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.metrics.Metrics;
 import com.datastax.oss.driver.shaded.guava.common.base.Stopwatch;
 import com.datastax.oss.driver.shaded.guava.common.collect.BiMap;
+import com.typesafe.config.Config;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import java.util.EnumSet;
 import java.util.List;
@@ -70,7 +70,7 @@ public class CountWorkflow implements Workflow {
   private Function<Flux<ReadResult>, Flux<ReadResult>> failedReadsHandler;
   private Function<Flux<Void>, Flux<Void>> terminationHandler;
 
-  CountWorkflow(LoaderConfig config, BiMap<String, String> shortcuts) {
+  CountWorkflow(Config config, BiMap<String, String> shortcuts) {
     settingsManager = new SettingsManager(config, shortcuts, WorkflowType.COUNT);
   }
 

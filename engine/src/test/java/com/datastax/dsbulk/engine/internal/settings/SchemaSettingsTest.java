@@ -45,7 +45,6 @@ import static org.slf4j.event.Level.WARN;
 
 import com.datastax.dsbulk.commons.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
@@ -94,6 +93,7 @@ import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSetMultimap;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import com.datastax.oss.driver.shaded.guava.common.collect.SetMultimap;
 import com.datastax.oss.driver.shaded.guava.common.collect.Sets;
+import com.typesafe.config.Config;
 import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.util.Arrays;
@@ -224,7 +224,7 @@ class SchemaSettingsTest {
   void should_create_record_mapper_when_mapping_keyspace_and_table_provided(
       ProtocolVersion version) {
     when(context.getProtocolVersion()).thenReturn(version);
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "mapping",
@@ -261,7 +261,7 @@ class SchemaSettingsTest {
     when(col1.getType()).thenReturn(COUNTER);
     when(col2.getType()).thenReturn(COUNTER);
     when(col3.getType()).thenReturn(COUNTER);
-    LoaderConfig config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
+    Config config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(LOAD, session, false, true);
     RecordMapper recordMapper =
@@ -285,7 +285,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_fail_to_create_schema_settings_when_mapping_many_to_one() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema", "mapping", "\" 0 = f1, 1 = f1\"", "keyspace", "ks", "table", "t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
@@ -299,7 +299,7 @@ class SchemaSettingsTest {
   @MethodSource("allProtocolVersions")
   void should_create_record_mapper_when_mapping_ttl_and_timestamp(ProtocolVersion version) {
     when(context.getProtocolVersion()).thenReturn(version);
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "mapping",
@@ -343,7 +343,7 @@ class SchemaSettingsTest {
   @MethodSource("allProtocolVersions")
   void should_create_record_mapper_when_mapping_function(ProtocolVersion version) {
     when(context.getProtocolVersion()).thenReturn(version);
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "mapping",
@@ -369,7 +369,7 @@ class SchemaSettingsTest {
   @MethodSource("allProtocolVersions")
   void should_create_record_mapper_with_static_ttl(ProtocolVersion version) {
     when(context.getProtocolVersion()).thenReturn(version);
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "mapping",
@@ -396,7 +396,7 @@ class SchemaSettingsTest {
   @MethodSource("allProtocolVersions")
   void should_create_record_mapper_with_static_timestamp(ProtocolVersion version) {
     when(context.getProtocolVersion()).thenReturn(version);
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "mapping",
@@ -425,7 +425,7 @@ class SchemaSettingsTest {
   @MethodSource("allProtocolVersions")
   void should_create_record_mapper_with_static_timestamp_and_ttl(ProtocolVersion version) {
     when(context.getProtocolVersion()).thenReturn(version);
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "mapping",
@@ -461,7 +461,7 @@ class SchemaSettingsTest {
             mockColumnDefinition("c2var", DataTypes.TEXT));
     when(ps.getVariableDefinitions()).thenReturn(definitions);
     when(table.getColumn(CqlIdentifier.fromInternal("c2"))).thenReturn(Optional.of(col2));
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "mapping",
@@ -487,7 +487,7 @@ class SchemaSettingsTest {
   @MethodSource("allProtocolVersions")
   void should_create_record_mapper_when_mapping_is_a_list_and_indexed(ProtocolVersion version) {
     when(context.getProtocolVersion()).thenReturn(version);
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "mapping",
@@ -520,7 +520,7 @@ class SchemaSettingsTest {
   @MethodSource("allProtocolVersions")
   void should_create_record_mapper_when_mapping_is_a_list_and_mapped(ProtocolVersion version) {
     when(context.getProtocolVersion()).thenReturn(version);
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "mapping",
@@ -551,7 +551,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_create_record_mapper_when_mapping_and_statement_provided() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "mapping",
@@ -579,7 +579,7 @@ class SchemaSettingsTest {
   @MethodSource("allProtocolVersions")
   void should_create_record_mapper_when_keyspace_and_table_provided(ProtocolVersion version) {
     when(context.getProtocolVersion()).thenReturn(version);
-    LoaderConfig config =
+    Config config =
         createTestConfig("dsbulk.schema", "nullToUnset", true, "keyspace", "ks", "table", "t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(LOAD, session, true, true);
@@ -607,7 +607,7 @@ class SchemaSettingsTest {
   void should_create_record_mapper_with_inferred_mapping_and_override(ProtocolVersion version) {
     when(context.getProtocolVersion()).thenReturn(version);
     // Infer mapping, but override to set c4 source field to C3 column.
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "nullToUnset",
@@ -644,7 +644,7 @@ class SchemaSettingsTest {
   void should_create_record_mapper_with_inferred_mapping_and_skip(ProtocolVersion version) {
     when(context.getProtocolVersion()).thenReturn(version);
     // Infer mapping, but skip C2.
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "nullToUnset",
@@ -678,7 +678,7 @@ class SchemaSettingsTest {
       ProtocolVersion version) {
     when(context.getProtocolVersion()).thenReturn(version);
     // Infer mapping, but skip C2 and C3.
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "nullToUnset",
@@ -710,7 +710,7 @@ class SchemaSettingsTest {
   @MethodSource("allProtocolVersions")
   void should_create_record_mapper_when_null_to_unset_is_false(ProtocolVersion version) {
     when(context.getProtocolVersion()).thenReturn(version);
-    LoaderConfig config =
+    Config config =
         createTestConfig("dsbulk.schema", "nullToUnset", false, "keyspace", "ks", "table", "t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(LOAD, session, false, true);
@@ -733,7 +733,7 @@ class SchemaSettingsTest {
   @MethodSource("allProtocolVersions")
   void should_create_row_mapper_when_mapping_keyspace_and_table_provided(ProtocolVersion version) {
     when(context.getProtocolVersion()).thenReturn(version);
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "mapping",
@@ -763,7 +763,7 @@ class SchemaSettingsTest {
   @MethodSource("allProtocolVersions")
   void should_create_row_mapper_when_mapping_is_a_list_and_indexed(ProtocolVersion version) {
     when(context.getProtocolVersion()).thenReturn(version);
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "mapping",
@@ -793,7 +793,7 @@ class SchemaSettingsTest {
   @MethodSource("allProtocolVersions")
   void should_create_row_mapper_when_mapping_is_a_list_and_mapped(ProtocolVersion version) {
     when(context.getProtocolVersion()).thenReturn(version);
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "mapping",
@@ -824,7 +824,7 @@ class SchemaSettingsTest {
   void should_create_row_mapper_with_inferred_mapping_and_override(ProtocolVersion version) {
     when(context.getProtocolVersion()).thenReturn(version);
     // Infer mapping, but override to set c4 source field to C3 column.
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "nullToUnset",
@@ -856,7 +856,7 @@ class SchemaSettingsTest {
   void should_create_row_mapper_with_inferred_mapping_and_skip(ProtocolVersion version) {
     when(context.getProtocolVersion()).thenReturn(version);
     // Infer mapping, but skip C2.
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "nullToUnset",
@@ -887,7 +887,7 @@ class SchemaSettingsTest {
   void should_create_row_mapper_with_inferred_mapping_and_skip_multiple(ProtocolVersion version) {
     when(context.getProtocolVersion()).thenReturn(version);
     // Infer mapping, but skip C2 and C3.
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "nullToUnset",
@@ -916,7 +916,7 @@ class SchemaSettingsTest {
   @MethodSource("allProtocolVersions")
   void should_create_row_mapper_when_mapping_and_statement_provided(ProtocolVersion version) {
     when(context.getProtocolVersion()).thenReturn(version);
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "mapping",
@@ -944,7 +944,7 @@ class SchemaSettingsTest {
   @MethodSource("allProtocolVersions")
   void should_create_row_mapper_when_keyspace_and_table_provided(ProtocolVersion version) {
     when(context.getProtocolVersion()).thenReturn(version);
-    LoaderConfig config =
+    Config config =
         createTestConfig("dsbulk.schema", "nullToUnset", true, "keyspace", "ks", "table", "t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(UNLOAD, session, false, true);
@@ -967,7 +967,7 @@ class SchemaSettingsTest {
   @MethodSource("allProtocolVersions")
   void should_create_row_mapper_when_null_to_unset_is_false(ProtocolVersion version) {
     when(context.getProtocolVersion()).thenReturn(version);
-    LoaderConfig config =
+    Config config =
         createTestConfig("dsbulk.schema", "nullToUnset", false, "keyspace", "ks", "table", "t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(UNLOAD, session, false, true);
@@ -987,7 +987,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_use_default_writetime_var_name() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "keyspace",
@@ -1016,7 +1016,7 @@ class SchemaSettingsTest {
             mockColumnDefinition("c3", DataTypes.TEXT));
     when(ps.getVariableDefinitions()).thenReturn(definitions);
     when(table.getColumn(CqlIdentifier.fromInternal("c2"))).thenReturn(Optional.of(col2));
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "query",
@@ -1043,7 +1043,7 @@ class SchemaSettingsTest {
             mockColumnDefinition("\"This is a quoted \\\" variable name\"", DataTypes.TEXT));
     when(ps.getVariableDefinitions()).thenReturn(definitions);
     when(table.getColumn(CqlIdentifier.fromInternal("c2"))).thenReturn(Optional.of(col2));
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "query",
@@ -1064,7 +1064,7 @@ class SchemaSettingsTest {
   @MethodSource("allProtocolVersions")
   void should_include_function_call_in_insert_statement(ProtocolVersion version) {
     when(context.getProtocolVersion()).thenReturn(version);
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "keyspace",
@@ -1084,7 +1084,7 @@ class SchemaSettingsTest {
   @MethodSource("allProtocolVersions")
   void should_include_function_call_in_select_statement(ProtocolVersion version) {
     when(context.getProtocolVersion()).thenReturn(version);
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "keyspace",
@@ -1103,7 +1103,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_when_misplaced_function_call_in_insert_statement() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "keyspace",
@@ -1122,7 +1122,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_when_misplaced_function_call_in_select_statement() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "keyspace",
@@ -1144,11 +1144,11 @@ class SchemaSettingsTest {
     when(ps.getVariableDefinitions()).thenReturn(mockColumnDefinitions());
     BoundStatement bs = mock(BoundStatement.class);
     when(ps.bind()).thenReturn(bs);
-    LoaderConfig config = createTestConfig("dsbulk.schema", "query", "\"SELECT a,b,c FROM ks.t1\"");
+    Config config = createTestConfig("dsbulk.schema", "query", "\"SELECT a,b,c FROM ks.t1\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(UNLOAD, session, false, true);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-    List<? extends Statement> statements = schemaSettings.createReadStatements(session);
+    List<?> statements = schemaSettings.createReadStatements(session);
     assertThat(statements).hasSize(1);
     assertThat(statements.get(0)).isEqualTo(bs);
   }
@@ -1175,8 +1175,7 @@ class SchemaSettingsTest {
     when(bs3.setRoutingKeyspace(any(CqlIdentifier.class))).thenReturn(bs3);
     when(bs3.setRoutingToken(token1)).thenReturn(bs3);
     when(ps.bind()).thenReturn(bs1, bs2, bs3);
-    LoaderConfig config =
-        createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1", "splits", 3);
+    Config config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1", "splits", 3);
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(UNLOAD, session, false, true);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
@@ -1206,7 +1205,7 @@ class SchemaSettingsTest {
     when(bs3.setRoutingKeyspace(any(CqlIdentifier.class))).thenReturn(bs3);
     when(bs3.setRoutingToken(token1)).thenReturn(bs3);
     when(ps.bind()).thenReturn(bs1, bs2, bs3);
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "keyspace",
@@ -1245,7 +1244,7 @@ class SchemaSettingsTest {
     when(bs3.setRoutingKeyspace(any(CqlIdentifier.class))).thenReturn(bs3);
     when(bs3.setRoutingToken(token1)).thenReturn(bs3);
     when(ps.bind()).thenReturn(bs1, bs2, bs3);
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "keyspace",
@@ -1283,8 +1282,7 @@ class SchemaSettingsTest {
     when(bs3.setRoutingKeyspace(any(CqlIdentifier.class))).thenReturn(bs3);
     when(bs3.setRoutingToken(token1)).thenReturn(bs3);
     when(ps.bind()).thenReturn(bs1, bs2, bs3);
-    LoaderConfig config =
-        createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1", "splits", 3);
+    Config config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1", "splits", 3);
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.COUNT, session, false, true);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
@@ -1297,7 +1295,7 @@ class SchemaSettingsTest {
   void should_create_row_counter_for_global_stats(ProtocolVersion version) {
     when(context.getProtocolVersion()).thenReturn(version);
     when(table.getPrimaryKey()).thenReturn(newArrayList(col1, col2));
-    LoaderConfig config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
+    Config config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.COUNT, session, false, true);
     ReadResultCounter counter =
@@ -1314,7 +1312,7 @@ class SchemaSettingsTest {
   void should_create_row_counter_for_partition_stats(ProtocolVersion version) {
     when(context.getProtocolVersion()).thenReturn(version);
     when(table.getClusteringColumns()).thenReturn(ImmutableMap.of(col2, ClusteringOrder.ASC));
-    LoaderConfig config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
+    Config config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.COUNT, session, false, true);
     ReadResultCounter counter =
@@ -1330,7 +1328,7 @@ class SchemaSettingsTest {
   @MethodSource("allProtocolVersions")
   void should_create_row_counter_for_hosts_stats(ProtocolVersion version) {
     when(context.getProtocolVersion()).thenReturn(version);
-    LoaderConfig config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
+    Config config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.COUNT, session, false, true);
     ReadResultCounter counter =
@@ -1346,7 +1344,7 @@ class SchemaSettingsTest {
   @MethodSource("allProtocolVersions")
   void should_create_row_counter_for_ranges_stats(ProtocolVersion version) {
     when(context.getProtocolVersion()).thenReturn(version);
-    LoaderConfig config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
+    Config config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.COUNT, session, false, true);
     ReadResultCounter counter =
@@ -1363,7 +1361,7 @@ class SchemaSettingsTest {
   void should_create_row_counter_for_partitions_and_ranges_stats(ProtocolVersion version) {
     when(context.getProtocolVersion()).thenReturn(version);
     when(table.getClusteringColumns()).thenReturn(ImmutableMap.of(col2, ClusteringOrder.ASC));
-    LoaderConfig config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
+    Config config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.COUNT, session, false, true);
     ReadResultCounter counter =
@@ -1379,7 +1377,7 @@ class SchemaSettingsTest {
   @Test
   void should_use_custom_query_when_mode_is_global() {
     when(table.getClusteringColumns()).thenReturn(ImmutableMap.of(col2, ClusteringOrder.ASC));
-    LoaderConfig config =
+    Config config =
         createTestConfig("dsbulk.schema", "query", "\"SELECT c1, c3 FROM ks.t1 WHERE c1 = 0\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.COUNT, session, false, true);
@@ -1393,7 +1391,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_throw_when_custom_query_and_mode_is_not_global() {
-    LoaderConfig config =
+    Config config =
         createTestConfig("dsbulk.schema", "query", "\"SELECT c1, c3 FROM ks.t1 WHERE c1 = 0\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.COUNT, session, false, true);
@@ -1416,7 +1414,7 @@ class SchemaSettingsTest {
     when(ps.bind()).thenReturn(bs1);
     when(bs1.setToken("\"My Start\"", token1)).thenReturn(bs1);
     when(bs1.setToken("\"My End\"", token2)).thenReturn(bs1);
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "keyspace",
@@ -1437,7 +1435,7 @@ class SchemaSettingsTest {
   void should_throw_configuration_exception_when_read_statement_variables_not_recognized() {
     ColumnDefinitions definitions = mockColumnDefinitions(mockColumnDefinition("bar", BIGINT));
     when(ps.getVariableDefinitions()).thenReturn(definitions);
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "keyspace",
@@ -1461,7 +1459,7 @@ class SchemaSettingsTest {
         mockColumnDefinitions(
             mockColumnDefinition("foo", BIGINT), mockColumnDefinition("bar", BIGINT));
     when(ps.getVariableDefinitions()).thenReturn(definitions);
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "keyspace",
@@ -1481,7 +1479,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_warn_that_keyspace_was_not_found_but_similar_ks_exists() {
-    LoaderConfig config = createTestConfig("dsbulk.schema", "keyspace", "KS", "table", "t1");
+    Config config = createTestConfig("dsbulk.schema", "keyspace", "KS", "table", "t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, false, true))
         .isInstanceOf(BulkConfigurationException.class)
@@ -1491,7 +1489,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_warn_that_table_was_not_found_but_similar_table_exists() {
-    LoaderConfig config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "T1");
+    Config config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "T1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, false, true))
         .isInstanceOf(BulkConfigurationException.class)
@@ -1501,7 +1499,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_warn_that_table_was_not_found_but_similar_mv_exists() {
-    LoaderConfig config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "MV1");
+    Config config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "MV1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(UNLOAD, session, false, true))
         .isInstanceOf(BulkConfigurationException.class)
@@ -1511,7 +1509,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_warn_that_keyspace_was_not_found() {
-    LoaderConfig config = createTestConfig("dsbulk.schema", "keyspace", "MyKs", "table", "t1");
+    Config config = createTestConfig("dsbulk.schema", "keyspace", "MyKs", "table", "t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, false, true))
         .isInstanceOf(BulkConfigurationException.class)
@@ -1520,7 +1518,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_warn_that_table_was_not_found() {
-    LoaderConfig config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "MyTable");
+    Config config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "MyTable");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, false, true))
         .isInstanceOf(BulkConfigurationException.class)
@@ -1529,7 +1527,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_warn_that_mv_was_not_found() {
-    LoaderConfig config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "MyTable");
+    Config config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "MyTable");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(UNLOAD, session, false, true))
         .isInstanceOf(BulkConfigurationException.class)
@@ -1538,7 +1536,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_warn_that_mapped_fields_not_supported() {
-    LoaderConfig config =
+    Config config =
         createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1", "mapping", "\"c1=c1\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
@@ -1549,7 +1547,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_invalid_schema_settings() {
-    LoaderConfig config = createTestConfig("dsbulk.schema");
+    Config config = createTestConfig("dsbulk.schema");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
         .isInstanceOf(BulkConfigurationException.class)
@@ -1559,7 +1557,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_invalid_schema_mapping_missing_keyspace_and_table() {
-    LoaderConfig config = createTestConfig("dsbulk.schema", "mapping", "\"c1=c2\"");
+    Config config = createTestConfig("dsbulk.schema", "mapping", "\"c1=c2\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
         .isInstanceOf(BulkConfigurationException.class)
@@ -1569,7 +1567,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_when_query_is_qualified_and_keyspace_provided() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema", "query", "\"INSERT INTO ks.t1 (col1) VALUES (?)\"", "keyspace", "ks");
     SchemaSettings schemaSettings = new SchemaSettings(config);
@@ -1581,7 +1579,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_when_query_is_not_qualified_and_keyspace_not_provided() {
-    LoaderConfig config =
+    Config config =
         createTestConfig("dsbulk.schema", "query", "\"INSERT INTO t1 (col1) VALUES (?)\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
@@ -1593,7 +1591,7 @@ class SchemaSettingsTest {
   @Test
   void should_error_when_query_is_qualified_and_keyspace_non_existent() {
     when(metadata.getKeyspace(CqlIdentifier.fromInternal("ks"))).thenReturn(Optional.empty());
-    LoaderConfig config =
+    Config config =
         createTestConfig("dsbulk.schema", "query", "\"INSERT INTO ks.t1 (col1) VALUES (?)\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
@@ -1604,7 +1602,7 @@ class SchemaSettingsTest {
   @Test
   void should_error_when_query_is_provided_and_table_non_existent() {
     when(keyspace.getTable(CqlIdentifier.fromInternal("t1"))).thenReturn(Optional.empty());
-    LoaderConfig config =
+    Config config =
         createTestConfig("dsbulk.schema", "query", "\"INSERT INTO ks.t1 (col1) VALUES (?)\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
@@ -1615,7 +1613,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_invalid_schema_query_with_ttl() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "query",
@@ -1633,7 +1631,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_invalid_schema_query_with_timestamp() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "query",
@@ -1651,7 +1649,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_invalid_schema_query_with_mapped_timestamp() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "query",
@@ -1669,7 +1667,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_invalid_schema_query_with_keyspace_and_table() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "query",
@@ -1687,7 +1685,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_invalid_schema_query_with_mapped_ttl() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "query",
@@ -1705,7 +1703,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_when_mapping_provided_and_count_workflow() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema", "keyspace", "ks", "table", "t1", "mapping", "\"col1,col2\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
@@ -1716,7 +1714,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_invalid_timestamp() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema", "queryTimestamp", "junk", "keyspace", "ks", "table", "t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
@@ -1728,7 +1726,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_invalid_schema_missing_keyspace() {
-    LoaderConfig config = createTestConfig("dsbulk.schema", "table", "t1");
+    Config config = createTestConfig("dsbulk.schema", "table", "t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
         .isInstanceOf(BulkConfigurationException.class)
@@ -1738,7 +1736,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_invalid_schema_query_present_and_function_present_load() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "mapping",
@@ -1757,7 +1755,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_invalid_schema_query_present_and_function_present_unload() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "mapping",
@@ -1776,7 +1774,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_throw_exception_when_nullToUnset_not_a_boolean() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema", "keyspace", "ks", "table", "t1", "nullToUnset", "NotABoolean");
     SchemaSettings schemaSettings = new SchemaSettings(config);
@@ -1788,7 +1786,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_when_mapping_contains_entry_that_does_not_match_any_column() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "keyspace",
@@ -1818,7 +1816,7 @@ class SchemaSettingsTest {
         ImmutableMap.of(DseNodeProperties.DSE_VERSION, Version.parse("6.0.0"));
     when(node.getExtras()).thenReturn(extras);
     when(node.toString()).thenReturn("host1");
-    LoaderConfig config = createTestConfig("dsbulk.schema", "graph", "ks", "vertex", "v1");
+    Config config = createTestConfig("dsbulk.schema", "graph", "ks", "vertex", "v1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, false, true))
         .isInstanceOf(IllegalStateException.class)
@@ -1835,7 +1833,7 @@ class SchemaSettingsTest {
     DseVertexMetadata vertexMetadata = mock(DseVertexMetadata.class);
     when(table.getVertex()).thenAnswer(x -> Optional.of(vertexMetadata));
     when(vertexMetadata.getLabelName()).thenReturn(CqlIdentifier.fromInternal("v1"));
-    LoaderConfig config = createTestConfig("dsbulk.schema", "graph", "ks", "vertex", "v1");
+    Config config = createTestConfig("dsbulk.schema", "graph", "ks", "vertex", "v1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, false, true))
         .isInstanceOf(IllegalStateException.class)
@@ -1848,7 +1846,7 @@ class SchemaSettingsTest {
     when(table.getVertex()).thenAnswer(x -> Optional.of(vertexMetadata));
     when(vertexMetadata.getLabelName()).thenReturn(CqlIdentifier.fromInternal("v1"));
     when(keyspace.getGraphEngine()).thenReturn(Optional.of("Classic"));
-    LoaderConfig config = createTestConfig("dsbulk.schema", "graph", "ks", "vertex", "v1");
+    Config config = createTestConfig("dsbulk.schema", "graph", "ks", "vertex", "v1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, false, true))
         .isInstanceOf(IllegalStateException.class)
@@ -1859,7 +1857,7 @@ class SchemaSettingsTest {
   @Test
   void should_warn_when_keyspace_is_core_graph_but_non_graph_options_provided() {
     when(keyspace.getGraphEngine()).thenReturn(Optional.of("Core"));
-    LoaderConfig config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
+    Config config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(LOAD, session, true, false);
     assertThat(logs)
@@ -1872,7 +1870,7 @@ class SchemaSettingsTest {
   @Test
   void should_warn_when_keyspace_is_classic_graph_and_workflow_is_load() {
     when(keyspace.getGraphEngine()).thenReturn(Optional.of("Classic"));
-    LoaderConfig config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
+    Config config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(LOAD, session, true, false);
     assertThat(logs)
@@ -1884,7 +1882,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_when_mapping_contains_entry_that_does_not_match_any_bound_variable() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "query",
@@ -1902,7 +1900,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_when_mapping_does_not_contain_primary_key() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema", "keyspace", "ks", "table", "t1", "mapping", "\"fieldA = c3\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
@@ -1916,7 +1914,7 @@ class SchemaSettingsTest {
   @Test
   void should_error_when_insert_query_does_not_contain_primary_key() {
     when(table.getColumn(CqlIdentifier.fromInternal("c2"))).thenReturn(Optional.of(col2));
-    LoaderConfig config =
+    Config config =
         createTestConfig("dsbulk.schema", "query", "\"INSERT INTO ks.t1 (c2) VALUES (:c2)\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(LOAD, session, false, true);
@@ -1929,7 +1927,7 @@ class SchemaSettingsTest {
   @Test
   void
       should_not_error_when_insert_query_does_not_contain_clustering_column_but_mutation_is_static_only() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema", "query", "\"INSERT INTO ks.t1 (c1, c3) VALUES (:c1, :c3)\"");
     when(table.getPrimaryKey()).thenReturn(newArrayList(col1, col2));
@@ -1942,7 +1940,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_when_counting_partitions_but_table_has_no_clustering_column() {
-    LoaderConfig config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
+    Config config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(WorkflowType.COUNT, session, false, true);
     assertThatThrownBy(
@@ -1977,13 +1975,13 @@ class SchemaSettingsTest {
     when(bs3.setRoutingKeyspace(any(CqlIdentifier.class))).thenReturn(bs3);
     when(bs3.setRoutingToken(token1)).thenReturn(bs3);
     when(ps.bind()).thenReturn(bs1, bs2, bs3);
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema", "keyspace", "ks", "query", "\"SELECT a,b,c FROM t1\"", "splits", 3);
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(UNLOAD, session, false, true);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-    List<? extends Statement> stmts = schemaSettings.createReadStatements(session);
+    List<?> stmts = schemaSettings.createReadStatements(session);
     assertThat(stmts).hasSize(3);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -2015,7 +2013,7 @@ class SchemaSettingsTest {
     when(bs3.setRoutingKeyspace(any(CqlIdentifier.class))).thenReturn(bs3);
     when(bs3.setRoutingToken(token1)).thenReturn(bs3);
     when(ps.bind()).thenReturn(bs1, bs2, bs3);
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "keyspace",
@@ -2027,7 +2025,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(UNLOAD, session, false, true);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-    List<? extends Statement> stmts = schemaSettings.createReadStatements(session);
+    List<?> stmts = schemaSettings.createReadStatements(session);
     assertThat(stmts).hasSize(3);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -2061,7 +2059,7 @@ class SchemaSettingsTest {
     when(bs3.setRoutingKeyspace(any(CqlIdentifier.class))).thenReturn(bs3);
     when(bs3.setRoutingToken(token1)).thenReturn(bs3);
     when(ps.bind()).thenReturn(bs1, bs2, bs3);
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema",
             "keyspace",
@@ -2073,7 +2071,7 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(UNLOAD, session, false, true);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-    List<? extends Statement> stmts = schemaSettings.createReadStatements(session);
+    List<?> stmts = schemaSettings.createReadStatements(session);
     assertThat(stmts).hasSize(3);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -2084,7 +2082,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_when_graph_and_keyspace_both_present() {
-    LoaderConfig config = createTestConfig("dsbulk.schema", "keyspace", "ks", "graph", "graph1");
+    Config config = createTestConfig("dsbulk.schema", "keyspace", "ks", "graph", "graph1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
         .isInstanceOf(BulkConfigurationException.class)
@@ -2093,7 +2091,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_when_table_and_vertex_both_present() {
-    LoaderConfig config = createTestConfig("dsbulk.schema", "table", "t1", "vertex", "v1");
+    Config config = createTestConfig("dsbulk.schema", "table", "t1", "vertex", "v1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
         .isInstanceOf(BulkConfigurationException.class)
@@ -2102,7 +2100,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_when_table_and_edge_both_present() {
-    LoaderConfig config = createTestConfig("dsbulk.schema", "table", "t1", "edge", "e1");
+    Config config = createTestConfig("dsbulk.schema", "table", "t1", "edge", "e1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
         .isInstanceOf(BulkConfigurationException.class)
@@ -2111,7 +2109,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_when_vertex_and_edge_both_present() {
-    LoaderConfig config = createTestConfig("dsbulk.schema", "vertex", "v1", "edge", "e1");
+    Config config = createTestConfig("dsbulk.schema", "vertex", "v1", "edge", "e1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
         .isInstanceOf(BulkConfigurationException.class)
@@ -2120,7 +2118,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_when_edge_without_from_vertex() {
-    LoaderConfig config = createTestConfig("dsbulk.schema", "edge", "e1");
+    Config config = createTestConfig("dsbulk.schema", "edge", "e1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
         .isInstanceOf(BulkConfigurationException.class)
@@ -2129,7 +2127,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_when_edge_without_to_vertex() {
-    LoaderConfig config = createTestConfig("dsbulk.schema", "edge", "e1", "from", "v1");
+    Config config = createTestConfig("dsbulk.schema", "edge", "e1", "from", "v1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
         .isInstanceOf(BulkConfigurationException.class)
@@ -2142,13 +2140,13 @@ class SchemaSettingsTest {
     when(ps.getVariableDefinitions()).thenReturn(definitions);
     BoundStatement bs1 = mock(BoundStatement.class);
     when(ps.bind()).thenReturn(bs1);
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema", "keyspace", "ks", "query", "\"SELECT a,b,c FROM t1 WHERE c1 = 1\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(UNLOAD, session, false, true);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
-    List<? extends Statement> stmts = schemaSettings.createReadStatements(session);
+    List<?> stmts = schemaSettings.createReadStatements(session);
     assertThat(stmts).hasSize(1);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -2158,7 +2156,7 @@ class SchemaSettingsTest {
   @Test
   void should_warn_when_null_to_unset_true_and_protocol_version_lesser_than_4() {
     when(context.getProtocolVersion()).thenReturn(V3);
-    LoaderConfig config =
+    Config config =
         createTestConfig("dsbulk.schema", "nullToUnset", true, "keyspace", "ks", "table", "t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(LOAD, session, false, true);
@@ -2176,7 +2174,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_when_both_indexed_and_mapped_mappings_unsupported() {
-    LoaderConfig config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
+    Config config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, false, false))
         .isInstanceOf(BulkConfigurationException.class)
@@ -2196,7 +2194,7 @@ class SchemaSettingsTest {
     when(table.getIndexes()).thenReturn(ImmutableMap.of(idxName, idx));
     when(idx.getClassName())
         .thenReturn(Optional.of("com.datastax.bdp.search.solr.Cql3SolrSecondaryIndex"));
-    LoaderConfig config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
+    Config config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(LOAD, session, false, true);
     RecordMapper mapper = schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry);
@@ -2223,7 +2221,7 @@ class SchemaSettingsTest {
     when(table.getIndexes()).thenReturn(ImmutableMap.of(idxName, idx));
     when(idx.getClassName())
         .thenReturn(Optional.of("com.datastax.bdp.search.solr.Cql3SolrSecondaryIndex"));
-    LoaderConfig config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
+    Config config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(UNLOAD, session, false, true);
     ReadResultMapper mapper =
@@ -2250,7 +2248,7 @@ class SchemaSettingsTest {
     CqlIdentifier idxName = CqlIdentifier.fromInternal("idx");
     when(table.getIndexes()).thenReturn(ImmutableMap.of(idxName, idx));
     when(idx.getClassName()).thenReturn(Optional.of("not a search index"));
-    LoaderConfig config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
+    Config config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(UNLOAD, session, false, true);
     ReadResultMapper mapper =
@@ -2276,7 +2274,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_when_vertex_non_existent() {
-    LoaderConfig config = createTestConfig("dsbulk.schema", "graph", "ks", "vertex", "v1");
+    Config config = createTestConfig("dsbulk.schema", "graph", "ks", "vertex", "v1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
         .isInstanceOf(BulkConfigurationException.class)
@@ -2288,7 +2286,7 @@ class SchemaSettingsTest {
     DseVertexMetadata vertexMetadata = mock(DseVertexMetadata.class);
     when(table.getVertex()).thenAnswer(x -> Optional.of(vertexMetadata));
     when(vertexMetadata.getLabelName()).thenReturn(CqlIdentifier.fromInternal("v1"));
-    LoaderConfig config = createTestConfig("dsbulk.schema", "graph", "ks", "vertex", "\"V1\"");
+    Config config = createTestConfig("dsbulk.schema", "graph", "ks", "vertex", "\"V1\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
         .isInstanceOf(BulkConfigurationException.class)
@@ -2298,7 +2296,7 @@ class SchemaSettingsTest {
 
   @Test
   void should_error_when_edge_non_existent() {
-    LoaderConfig config =
+    Config config =
         createTestConfig("dsbulk.schema", "graph", "ks", "edge", "e1", "from", "v1", "to", "v2");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
@@ -2313,7 +2311,7 @@ class SchemaSettingsTest {
     when(edgeMetadata.getLabelName()).thenReturn(CqlIdentifier.fromInternal("e1"));
     when(edgeMetadata.getFromLabel()).thenReturn(CqlIdentifier.fromInternal("v1"));
     when(edgeMetadata.getToLabel()).thenReturn(CqlIdentifier.fromInternal("V2"));
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.schema", "graph", "ks", "edge", "\"E1\"", "from", "\"V1\"", "to", "\"V2\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
@@ -2329,7 +2327,7 @@ class SchemaSettingsTest {
     when(table.getVertex()).thenAnswer(v -> Optional.of(vertexMetadata));
     when(vertexMetadata.getLabelName()).thenReturn(CqlIdentifier.fromInternal("v1"));
     when(keyspace.getGraphEngine()).thenReturn(Optional.of("Core"));
-    LoaderConfig config = createTestConfig("dsbulk.schema", "graph", "ks", "vertex", "v1");
+    Config config = createTestConfig("dsbulk.schema", "graph", "ks", "vertex", "v1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(LOAD, session, true, false);
     assertThat(getInternalState(schemaSettings, "table")).isSameAs(table);
@@ -2343,7 +2341,7 @@ class SchemaSettingsTest {
     when(edgeMetadata.getFromLabel()).thenReturn(CqlIdentifier.fromInternal("v1"));
     when(edgeMetadata.getToLabel()).thenReturn(CqlIdentifier.fromInternal("v2"));
     when(keyspace.getGraphEngine()).thenReturn(Optional.of("Core"));
-    LoaderConfig config =
+    Config config =
         createTestConfig("dsbulk.schema", "graph", "ks", "edge", "e1", "from", "v1", "to", "v2");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(LOAD, session, true, false);

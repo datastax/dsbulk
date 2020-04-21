@@ -11,12 +11,12 @@ package com.datastax.dsbulk.connectors.commons;
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isValueFromReferenceConfig;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.io.CompressedIOUtils;
 import com.datastax.dsbulk.commons.internal.io.IOUtils;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.Record;
+import com.typesafe.config.Config;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import java.io.IOException;
@@ -88,10 +88,10 @@ public abstract class AbstractFileBasedConnector implements Connector {
   }
 
   @Override
-  public void configure(@NonNull LoaderConfig settings, boolean read) {
+  public void configure(@NonNull Config settings, boolean read) {
     this.read = read;
     urls = loadURLs(settings);
-    encoding = settings.getCharset(ENCODING);
+    encoding = ConfigUtils.getCharset(settings, ENCODING);
     compression = settings.getString(COMPRESSION);
     if (!CompressedIOUtils.isSupportedCompression(compression, read)) {
       throw new BulkConfigurationException(
@@ -112,7 +112,7 @@ public abstract class AbstractFileBasedConnector implements Connector {
       fileNameFormat = fileNameFormat + CompressedIOUtils.getCompressionSuffix(compression);
     }
     recursive = settings.getBoolean(RECURSIVE);
-    maxConcurrentFiles = settings.getThreads(MAX_CONCURRENT_FILES);
+    maxConcurrentFiles = ConfigUtils.getThreads(settings, MAX_CONCURRENT_FILES);
     skipRecords = settings.getLong(SKIP_RECORDS);
     maxRecords = settings.getLong(MAX_RECORDS);
   }
@@ -249,6 +249,7 @@ public abstract class AbstractFileBasedConnector implements Connector {
      *     (open, close, etc.).
      */
     void write(@NonNull Record record) throws IOException;
+
     /**
      * Closes the underlying file being written. Once this method is called, it is guaranteed that
      * {@link #write(Record)} will not be called anymore.
@@ -263,11 +264,11 @@ public abstract class AbstractFileBasedConnector implements Connector {
    * Validates and computes the list of URLs to be read or written. This method honors both the
    * {@link #URLFILE} and {@link #URL} configuration options.
    *
-   * <p>Expected to be called during the {@linkplain #configure(LoaderConfig, boolean) configuration
+   * <p>Expected to be called during the {@linkplain #configure(Config, boolean) configuration
    * phase}.
    */
   @NonNull
-  protected List<URL> loadURLs(@NonNull LoaderConfig settings) {
+  protected List<URL> loadURLs(@NonNull Config settings) {
     boolean hasUrl = ConfigUtils.isPathPresentAndNotEmpty(settings, URL);
     boolean hasUrlfile = ConfigUtils.isPathPresentAndNotEmpty(settings, URLFILE);
     if (read) {
@@ -297,24 +298,24 @@ public abstract class AbstractFileBasedConnector implements Connector {
     }
     if (hasUrlfile) {
       try {
-        return ConfigUtils.getURLsFromFile(settings.getPath(URLFILE));
+        return ConfigUtils.getURLsFromFile(ConfigUtils.getPath(settings, URLFILE));
       } catch (IOException e) {
         throw new BulkConfigurationException(
             "Problem when retrieving urls from file specified by the URL file parameter", e);
       }
     } else {
-      return Collections.singletonList(settings.getURL(URL));
+      return Collections.singletonList(ConfigUtils.getURL(settings, URL));
     }
   }
 
   /**
-   * Inspects the list or URLs as loaded by {@link #loadURLs(LoaderConfig)} and determines exactly
-   * what files and folders need to be read.
+   * Inspects the list or URLs as loaded by {@link #loadURLs(Config)} and determines exactly what
+   * files and folders need to be read.
    *
    * <p>Should be called at the beginning of the {@linkplain #init() initialization process}, but
    * only when reading, never when writing.
    *
-   * <p>This method expects that {@link #loadURLs(LoaderConfig)} has been previously called.
+   * <p>This method expects that {@link #loadURLs(Config)} has been previously called.
    */
   protected void processURLsForRead() throws URISyntaxException, IOException {
     resourceCount = 0;
@@ -354,14 +355,14 @@ public abstract class AbstractFileBasedConnector implements Connector {
   }
 
   /**
-   * Inspects the list or URLs as loaded by {@link #loadURLs(LoaderConfig)} and determines if the
+   * Inspects the list or URLs as loaded by {@link #loadURLs(Config)} and determines if the
    * connector should write to a single file, or to a directory of files.
    *
    * <p>Should be called at the beginning of the {@linkplain #init() initialization process}, but
    * only when writing, never when reading.
    *
-   * <p>This method expects that {@link #loadURLs(LoaderConfig)} has been previously called, and
-   * also expects exactly one URL to be present, which can be either a directory or a file.
+   * <p>This method expects that {@link #loadURLs(Config)} has been previously called, and also
+   * expects exactly one URL to be present, which can be either a directory or a file.
    */
   protected void processURLsForWrite() throws URISyntaxException, IOException {
     try {

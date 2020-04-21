@@ -11,11 +11,12 @@ package com.datastax.dsbulk.engine.internal.ssl;
 import static com.datastax.dsbulk.commons.internal.io.IOUtils.assertAccessibleFile;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.oss.driver.api.core.ssl.ProgrammaticSslEngineFactory;
 import com.datastax.oss.driver.api.core.ssl.SslEngineFactory;
 import com.datastax.oss.driver.internal.core.ssl.JdkSslHandlerFactory;
 import com.datastax.oss.driver.internal.core.ssl.SslHandlerFactory;
+import com.typesafe.config.Config;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
@@ -39,7 +40,7 @@ import javax.net.ssl.TrustManagerFactory;
 public class SslHandlerFactoryFactory {
 
   @Nullable
-  public static SslHandlerFactory createSslHandlerFactory(LoaderConfig config)
+  public static SslHandlerFactory createSslHandlerFactory(Config config)
       throws GeneralSecurityException, IOException {
     String sslProvider = config.getString("provider");
     switch (sslProvider.toLowerCase()) {
@@ -57,7 +58,7 @@ public class SslHandlerFactoryFactory {
     }
   }
 
-  private static SslHandlerFactory createJdkSslHandlerFactory(LoaderConfig config)
+  private static SslHandlerFactory createJdkSslHandlerFactory(Config config)
       throws GeneralSecurityException, IOException {
     KeyManagerFactory kmf = createKeyManagerFactory(config);
     TrustManagerFactory tmf = createTrustManagerFactory(config);
@@ -73,7 +74,7 @@ public class SslHandlerFactoryFactory {
     return new JdkSslHandlerFactory(sslEngineFactory);
   }
 
-  private static SslHandlerFactory createNettySslHandlerFactory(LoaderConfig config)
+  private static SslHandlerFactory createNettySslHandlerFactory(Config config)
       throws GeneralSecurityException, IOException {
     if (config.hasPath("openssl.keyCertChain") != config.hasPath("openssl.privateKey")) {
       throw new BulkConfigurationException(
@@ -87,8 +88,8 @@ public class SslHandlerFactoryFactory {
     SslContextBuilder builder =
         SslContextBuilder.forClient().sslProvider(SslProvider.OPENSSL).trustManager(tmf);
     if (config.hasPath("openssl.keyCertChain")) {
-      Path sslOpenSslKeyCertChain = config.getPath("openssl.keyCertChain");
-      Path sslOpenSslPrivateKey = config.getPath("openssl.privateKey");
+      Path sslOpenSslKeyCertChain = ConfigUtils.getPath(config, "openssl.keyCertChain");
+      Path sslOpenSslPrivateKey = ConfigUtils.getPath(config, "openssl.privateKey");
       assertAccessibleFile(sslOpenSslKeyCertChain, "OpenSSL key certificate chain file");
       assertAccessibleFile(sslOpenSslPrivateKey, "OpenSSL private key file");
       builder.keyManager(
@@ -103,7 +104,7 @@ public class SslHandlerFactoryFactory {
     return new NettySslHandlerFactory(sslContext);
   }
 
-  private static TrustManagerFactory createTrustManagerFactory(LoaderConfig config)
+  private static TrustManagerFactory createTrustManagerFactory(Config config)
       throws KeyStoreException, IOException, NoSuchAlgorithmException, CertificateException {
     if (config.hasPath("truststore.path") != config.hasPath("truststore.password")) {
       throw new BulkConfigurationException(
@@ -117,7 +118,7 @@ public class SslHandlerFactoryFactory {
     }
     TrustManagerFactory tmf = null;
     if (config.hasPath("truststore.path")) {
-      Path sslTrustStorePath = config.getPath("truststore.path");
+      Path sslTrustStorePath = ConfigUtils.getPath(config, "truststore.path");
       assertAccessibleFile(sslTrustStorePath, "SSL truststore file");
       String sslTrustStorePassword = config.getString("truststore.password");
       String sslTrustStoreAlgorithm = config.getString("truststore.algorithm");
@@ -131,7 +132,7 @@ public class SslHandlerFactoryFactory {
     return tmf;
   }
 
-  private static KeyManagerFactory createKeyManagerFactory(LoaderConfig config)
+  private static KeyManagerFactory createKeyManagerFactory(Config config)
       throws KeyStoreException, IOException, NoSuchAlgorithmException, CertificateException,
           UnrecoverableKeyException {
     if (config.hasPath("keystore.path") != config.hasPath("keystore.password")) {
@@ -147,7 +148,7 @@ public class SslHandlerFactoryFactory {
 
     KeyManagerFactory kmf = null;
     if (config.hasPath("keystore.path")) {
-      Path sslKeyStorePath = config.getPath("keystore.path");
+      Path sslKeyStorePath = ConfigUtils.getPath(config, "keystore.path");
       assertAccessibleFile(sslKeyStorePath, "SSL keystore file");
       String sslKeyStorePassword = config.getString("keystore.password");
       String sslTrustStoreAlgorithm = config.getString("truststore.algorithm");

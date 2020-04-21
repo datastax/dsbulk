@@ -11,14 +11,14 @@ package com.datastax.dsbulk.engine.internal.settings;
 import static com.datastax.dsbulk.commons.tests.utils.TestConfigUtils.createTestConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.typesafe.config.Config;
 import org.junit.jupiter.api.Test;
 
 class EngineSettingsTest {
 
   @Test
   void should_report_default_dry_run() {
-    LoaderConfig config = createTestConfig("dsbulk.engine");
+    Config config = createTestConfig("dsbulk.engine");
     EngineSettings settings = new EngineSettings(config);
     settings.init();
     assertThat(settings.isDryRun()).isFalse();
@@ -26,7 +26,7 @@ class EngineSettingsTest {
 
   @Test
   void should_create_custom_dry_run() {
-    LoaderConfig config = createTestConfig("dsbulk.engine", "dryRun", true);
+    Config config = createTestConfig("dsbulk.engine", "dryRun", true);
     EngineSettings settings = new EngineSettings(config);
     settings.init();
     assertThat(settings.isDryRun()).isTrue();
@@ -34,7 +34,7 @@ class EngineSettingsTest {
 
   @Test
   void should_report_execution_id() {
-    LoaderConfig config = createTestConfig("dsbulk.engine", "executionId", "MyExecutionId");
+    Config config = createTestConfig("dsbulk.engine", "executionId", "MyExecutionId");
     EngineSettings settings = new EngineSettings(config);
     settings.init();
     assertThat(settings.getCustomExecutionIdTemplate()).isEqualTo("MyExecutionId");

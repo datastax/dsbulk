@@ -15,7 +15,6 @@ import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.nio.file.StandardOpenOption.WRITE;
 
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
-import com.datastax.dsbulk.commons.internal.config.LoaderConfigFactory;
 import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.datastax.dsbulk.engine.internal.config.SettingsGroup;
 import com.datastax.dsbulk.engine.internal.config.SettingsGroupFactory;
@@ -50,7 +49,7 @@ public class SettingsDocumentor {
     try (PrintWriter out =
         new PrintWriter(
             Files.newBufferedWriter(filePath, UTF_8, WRITE, CREATE, TRUNCATE_EXISTING))) {
-      Config referenceConfig = LoaderConfigFactory.createReferenceConfig();
+      Config referenceConfig = ConfigUtils.createReferenceConfig();
       Map<String, SettingsGroup> groups =
           SettingsGroupFactory.createDSBulkConfigurationGroups(true);
       SettingsGroup driverGroup = groups.remove("datastax-java-driver");

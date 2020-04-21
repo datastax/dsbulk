@@ -26,7 +26,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.io.CompressedIOUtils;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
@@ -42,6 +41,7 @@ import com.datastax.dsbulk.connectors.api.internal.DefaultMappedField;
 import com.datastax.dsbulk.connectors.api.internal.DefaultRecord;
 import com.datastax.oss.driver.shaded.guava.common.base.Charsets;
 import com.github.tomakehurst.wiremock.WireMockServer;
+import com.typesafe.config.Config;
 import com.univocity.parsers.common.TextParsingException;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -113,7 +113,7 @@ class CSVConnectorTest {
   @DisplayName("Should read single file with given compression")
   void should_read_single_file(String fileName, String compMethod) throws Exception {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.csv",
             "url",
@@ -151,7 +151,7 @@ class CSVConnectorTest {
   @Test
   void should_read_single_file_by_resource() throws Exception {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.csv",
             "url",
@@ -241,7 +241,7 @@ class CSVConnectorTest {
       InputStream is = new ByteArrayInputStream(line.getBytes(ISO_8859_1));
       System.setIn(is);
       CSVConnector connector = new CSVConnector();
-      LoaderConfig settings =
+      Config settings =
           createTestConfig(
               "dsbulk.connector.csv", "header", false, "url", "-", "encoding", "ISO-8859-1");
       connector.configure(settings, true);
@@ -264,7 +264,7 @@ class CSVConnectorTest {
       PrintStream out = new PrintStream(baos);
       System.setOut(out);
       CSVConnector connector = new CSVConnector();
-      LoaderConfig settings =
+      Config settings =
           createTestConfig("dsbulk.connector.csv", "header", false, "encoding", "ISO-8859-1");
       connector.configure(settings, false);
       connector.init();
@@ -288,7 +288,7 @@ class CSVConnectorTest {
       InputStream is = new ByteArrayInputStream(line.getBytes(UTF_8));
       System.setIn(is);
       CSVConnector connector = new CSVConnector();
-      LoaderConfig settings =
+      Config settings =
           createTestConfig(
               "dsbulk.connector.csv", "header", false, "url", "-", "newline", "\"\\r\\n\"");
       connector.configure(settings, true);
@@ -311,7 +311,7 @@ class CSVConnectorTest {
       PrintStream out = new PrintStream(baos);
       System.setOut(out);
       CSVConnector connector = new CSVConnector();
-      LoaderConfig settings =
+      Config settings =
           createTestConfig("dsbulk.connector.csv", "header", false, "newline", "\"\\r\\n\"");
       connector.configure(settings, false);
       connector.init();
@@ -329,7 +329,7 @@ class CSVConnectorTest {
   @Test
   void should_read_all_resources_in_directory() throws Exception {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig("dsbulk.connector.csv", "url", url("/root"), "recursive", false);
     connector.configure(settings, true);
     connector.init();
@@ -340,7 +340,7 @@ class CSVConnectorTest {
   @Test
   void should_read_all_resources_in_directory_by_resource() throws Exception {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig("dsbulk.connector.csv", "url", url("/root"), "recursive", false);
     connector.configure(settings, true);
     connector.init();
@@ -352,7 +352,7 @@ class CSVConnectorTest {
   void should_read_all_resources_in_directory_with_path() throws Exception {
     CSVConnector connector = new CSVConnector();
     Path rootPath = Paths.get(getClass().getResource("/root").toURI());
-    LoaderConfig settings =
+    Config settings =
         createTestConfig("dsbulk.connector.csv", "url", quoteJson(rootPath), "recursive", false);
     connector.configure(settings, true);
     connector.init();
@@ -363,7 +363,7 @@ class CSVConnectorTest {
   @Test
   void should_read_all_resources_in_directory_recursively() throws Exception {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig("dsbulk.connector.csv", "url", url("/root"), "recursive", true);
     connector.configure(settings, true);
     connector.init();
@@ -374,7 +374,7 @@ class CSVConnectorTest {
   @Test
   void should_read_all_resources_in_directory_recursively_by_resource() throws Exception {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig("dsbulk.connector.csv", "url", url("/root"), "recursive", true);
     connector.configure(settings, true);
     connector.init();
@@ -385,7 +385,7 @@ class CSVConnectorTest {
   @Test
   void should_scan_directory_recursively_with_custom_file_name_format() throws Exception {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.csv",
             "url",
@@ -405,7 +405,7 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Path rootPath = Files.createTempDirectory("empty");
     try {
-      LoaderConfig settings =
+      Config settings =
           createTestConfig(
               "dsbulk.connector.csv",
               "url",
@@ -430,7 +430,7 @@ class CSVConnectorTest {
     Path rootPath = Files.createTempDirectory("empty");
     Files.createTempFile(rootPath, "test", ".txt");
     try {
-      LoaderConfig settings =
+      Config settings =
           createTestConfig(
               "dsbulk.connector.csv",
               "url",
@@ -462,7 +462,7 @@ class CSVConnectorTest {
     Path rootPath = Files.createTempDirectory("empty");
     Files.createTempFile(rootPath, "test", ".txt");
     try {
-      LoaderConfig settings =
+      Config settings =
           createTestConfig(
               "dsbulk.connector.csv",
               "url",
@@ -504,7 +504,7 @@ class CSVConnectorTest {
     Path dir = Files.createTempDirectory("test");
     Path out = dir.resolve("nonexistent");
     try {
-      LoaderConfig settings =
+      Config settings =
           createTestConfig(
               "dsbulk.connector.csv",
               "url",
@@ -540,7 +540,7 @@ class CSVConnectorTest {
     Path dir = Files.createTempDirectory("test");
     Path out = dir.resolve("nonexistent");
     try {
-      LoaderConfig settings =
+      Config settings =
           createTestConfig(
               "dsbulk.connector.csv",
               "url",
@@ -584,7 +584,7 @@ class CSVConnectorTest {
     Path dir = Files.createTempDirectory("test");
     Path out = dir.resolve("nonexistent");
     try {
-      LoaderConfig settings =
+      Config settings =
           createTestConfig(
               "dsbulk.connector.csv",
               "url",
@@ -628,7 +628,7 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Path out = Files.createTempDirectory("test");
     try {
-      LoaderConfig settings =
+      Config settings =
           createTestConfig(
               "dsbulk.connector.csv",
               "url",
@@ -666,7 +666,7 @@ class CSVConnectorTest {
   void should_generate_file_name() throws Exception {
     Path out = Files.createTempDirectory("test");
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings = createTestConfig("dsbulk.connector.csv", "url", quoteJson(out));
+    Config settings = createTestConfig("dsbulk.connector.csv", "url", quoteJson(out));
     connector.configure(settings, false);
     connector.init();
     AtomicInteger counter = (AtomicInteger) ReflectionUtils.getInternalState(connector, "counter");
@@ -685,7 +685,7 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Path out = Files.createTempDirectory("test");
     try {
-      LoaderConfig settings =
+      Config settings =
           createTestConfig(
               "dsbulk.connector.csv",
               "url",
@@ -730,7 +730,7 @@ class CSVConnectorTest {
       InputStream is = new ByteArrayInputStream(lines.getBytes(UTF_8));
       System.setIn(is);
       CSVConnector connector = new CSVConnector();
-      LoaderConfig settings = createTestConfig("dsbulk.connector.csv", "header", true);
+      Config settings = createTestConfig("dsbulk.connector.csv", "header", true);
       connector.configure(settings, true);
       connector.init();
       List<Record> actual = Flux.from(connector.read()).collectList().block();
@@ -749,7 +749,7 @@ class CSVConnectorTest {
   @Test
   void should_skip_records() throws Exception {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.csv", "url", url("/root"), "recursive", true, "skipRecords", 10);
     connector.configure(settings, true);
@@ -761,7 +761,7 @@ class CSVConnectorTest {
   @Test
   void should_skip_records2() throws Exception {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.csv", "url", url("/root"), "recursive", true, "skipRecords", 150);
     connector.configure(settings, true);
@@ -773,7 +773,7 @@ class CSVConnectorTest {
   @Test
   void should_honor_max_records() throws Exception {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.csv", "url", url("/root"), "recursive", true, "maxRecords", 10);
     connector.configure(settings, true);
@@ -785,7 +785,7 @@ class CSVConnectorTest {
   @Test
   void should_honor_max_records2() throws Exception {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.csv", "url", url("/root"), "recursive", true, "maxRecords", 1);
     connector.configure(settings, true);
@@ -797,7 +797,7 @@ class CSVConnectorTest {
   @Test
   void should_honor_max_records_and_skip_records() throws Exception {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.csv",
             "url",
@@ -817,7 +817,7 @@ class CSVConnectorTest {
   @Test
   void should_honor_max_records_and_skip_records2() throws Exception {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.csv",
             "url",
@@ -842,7 +842,7 @@ class CSVConnectorTest {
     Path file = Files.createTempFile("test", ".csv");
     Files.write(file, Collections.singleton(" foo "));
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.csv",
             "url",
@@ -867,7 +867,7 @@ class CSVConnectorTest {
     Path file = Files.createTempFile("test", ".csv");
     Files.write(file, Collections.singleton(" foo "));
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.csv",
             "url",
@@ -891,7 +891,7 @@ class CSVConnectorTest {
       throws Exception {
     Path out = Files.createTempDirectory("test");
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.csv",
             "url",
@@ -919,7 +919,7 @@ class CSVConnectorTest {
       throws Exception {
     Path out = Files.createTempDirectory("test");
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.csv",
             "url",
@@ -946,7 +946,7 @@ class CSVConnectorTest {
     Path file = Files.createTempFile("test", ".csv");
     Files.write(file, Collections.singleton("\" foo \""));
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.csv",
             "url",
@@ -971,7 +971,7 @@ class CSVConnectorTest {
     Path file = Files.createTempFile("test", ".csv");
     Files.write(file, Collections.singleton("\" foo \""));
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.csv",
             "url",
@@ -995,7 +995,7 @@ class CSVConnectorTest {
     Path file = Files.createTempFile("test", ".csv");
     Files.write(file, Collections.singleton(","));
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.csv", "url", quoteJson(file), "nullValue", null, "header", false);
     connector.configure(settings, true);
@@ -1011,7 +1011,7 @@ class CSVConnectorTest {
     Path file = Files.createTempFile("test", ".csv");
     Files.write(file, Collections.singleton(","));
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.csv", "url", quoteJson(file), "nullValue", "NULL", "header", false);
     connector.configure(settings, true);
@@ -1026,7 +1026,7 @@ class CSVConnectorTest {
   void should_honor_nullValue_when_writing() throws Exception {
     Path out = Files.createTempDirectory("test");
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.csv", "url", quoteJson(out), "nullValue", null, "header", true);
     connector.configure(settings, false);
@@ -1051,7 +1051,7 @@ class CSVConnectorTest {
   void should_honor_nullValue_when_writing2() throws Exception {
     Path out = Files.createTempDirectory("test");
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.csv", "url", quoteJson(out), "nullValue", "NULL", "header", false);
     connector.configure(settings, false);
@@ -1070,7 +1070,7 @@ class CSVConnectorTest {
     Path file = Files.createTempFile("test", ".csv");
     Files.write(file, Collections.singleton("\"\""));
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.csv", "url", quoteJson(file), "emptyValue", "\"\"", "header", false);
     connector.configure(settings, true);
@@ -1086,7 +1086,7 @@ class CSVConnectorTest {
     Path file = Files.createTempFile("test", ".csv");
     Files.write(file, Collections.singleton("\"\""));
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.csv", "url", quoteJson(file), "emptyValue", "EMPTY", "header", false);
     connector.configure(settings, true);
@@ -1105,7 +1105,7 @@ class CSVConnectorTest {
       Path file = out.resolve("output-000001.csv");
       // will cause the write to fail because the file already exists
       Files.createFile(file);
-      LoaderConfig settings =
+      Config settings =
           createTestConfig("dsbulk.connector.csv", "url", quoteJson(out), "maxConcurrentFiles", 1);
       connector.configure(settings, false);
       assertThrows(IllegalArgumentException.class, connector::init);
@@ -1118,10 +1118,10 @@ class CSVConnectorTest {
   void should_error_when_newline_is_wrong() {
     CSVConnector connector = new CSVConnector();
     // empty string test
-    LoaderConfig settings1 = createTestConfig("dsbulk.connector.csv", "newline", "\"\"");
+    Config settings1 = createTestConfig("dsbulk.connector.csv", "newline", "\"\"");
     assertThrows(BulkConfigurationException.class, () -> connector.configure(settings1, false));
     // long string test
-    LoaderConfig settings2 = createTestConfig("dsbulk.connector.csv", "newline", "\"abc\"");
+    Config settings2 = createTestConfig("dsbulk.connector.csv", "newline", "\"abc\"");
     assertThrows(BulkConfigurationException.class, () -> connector.configure(settings2, false));
   }
 
@@ -1130,7 +1130,7 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Path out = Files.createTempDirectory("test");
     try {
-      LoaderConfig settings =
+      Config settings =
           createTestConfig("dsbulk.connector.csv", "url", quoteJson(out), "maxConcurrentFiles", 1);
       connector.configure(settings, false);
       connector.init();
@@ -1151,7 +1151,7 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Path out = Files.createTempDirectory("test");
     try {
-      LoaderConfig settings =
+      Config settings =
           createTestConfig("dsbulk.connector.csv", "url", quoteJson(out), "maxConcurrentFiles", 2);
       connector.configure(settings, false);
       connector.init();
@@ -1203,7 +1203,7 @@ class CSVConnectorTest {
                     .withHeader("Content-Type", "text/csv")
                     .withBody(readFile(path("/sample.csv")))));
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.csv",
             "url",
@@ -1224,7 +1224,7 @@ class CSVConnectorTest {
   @Test
   void should_not_write_to_http_url() throws Exception {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig("dsbulk.connector.csv", "url", "\"http://localhost:1234/file.csv\"");
     connector.configure(settings, false);
     connector.init();
@@ -1243,7 +1243,7 @@ class CSVConnectorTest {
   @Test
   void should_throw_IOE_when_max_chars_per_column_exceeded() throws Exception {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.csv",
             "url",
@@ -1273,7 +1273,7 @@ class CSVConnectorTest {
   @Test
   void should_throw_IOE_when_max_columns_exceeded() throws Exception {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.csv",
             "url",
@@ -1301,7 +1301,7 @@ class CSVConnectorTest {
   @Test
   void should_error_on_empty_url() {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings = createTestConfig("dsbulk.connector.csv", "url", null);
+    Config settings = createTestConfig("dsbulk.connector.csv", "url", null);
     assertThatThrownBy(() -> connector.configure(settings, true))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
@@ -1312,7 +1312,7 @@ class CSVConnectorTest {
   @Test
   void should_throw_exception_when_recursive_not_boolean() {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings = createTestConfig("dsbulk.connector.csv", "recursive", "NotABoolean");
+    Config settings = createTestConfig("dsbulk.connector.csv", "recursive", "NotABoolean");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
@@ -1323,7 +1323,7 @@ class CSVConnectorTest {
   @Test
   void should_throw_exception_when_header_not_boolean() {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings = createTestConfig("dsbulk.connector.csv", "header", "NotABoolean");
+    Config settings = createTestConfig("dsbulk.connector.csv", "header", "NotABoolean");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
@@ -1334,7 +1334,7 @@ class CSVConnectorTest {
   @Test
   void should_throw_exception_when_skipRecords_not_number() {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings = createTestConfig("dsbulk.connector.csv", "skipRecords", "NotANumber");
+    Config settings = createTestConfig("dsbulk.connector.csv", "skipRecords", "NotANumber");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
@@ -1345,7 +1345,7 @@ class CSVConnectorTest {
   @Test
   void should_throw_exception_when_maxRecords_not_number() {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings = createTestConfig("dsbulk.connector.csv", "maxRecords", "NotANumber");
+    Config settings = createTestConfig("dsbulk.connector.csv", "maxRecords", "NotANumber");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
@@ -1356,8 +1356,7 @@ class CSVConnectorTest {
   @Test
   void should_throw_exception_when_maxConcurrentFiles_not_number() {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
-        createTestConfig("dsbulk.connector.csv", "maxConcurrentFiles", "NotANumber");
+    Config settings = createTestConfig("dsbulk.connector.csv", "maxConcurrentFiles", "NotANumber");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
@@ -1368,7 +1367,7 @@ class CSVConnectorTest {
   @Test
   void should_throw_exception_when_encoding_not_valid() {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings = createTestConfig("dsbulk.connector.csv", "encoding", "NotAnEncoding");
+    Config settings = createTestConfig("dsbulk.connector.csv", "encoding", "NotAnEncoding");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
@@ -1379,7 +1378,7 @@ class CSVConnectorTest {
   @Test
   void should_throw_exception_when_delimiter_not_valid() {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings = createTestConfig("dsbulk.connector.csv", "delimiter", "\"\"");
+    Config settings = createTestConfig("dsbulk.connector.csv", "delimiter", "\"\"");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
@@ -1390,7 +1389,7 @@ class CSVConnectorTest {
   @Test
   void should_throw_exception_when_quote_not_valid() {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings = createTestConfig("dsbulk.connector.csv", "quote", "\"\"");
+    Config settings = createTestConfig("dsbulk.connector.csv", "quote", "\"\"");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
@@ -1401,7 +1400,7 @@ class CSVConnectorTest {
   @Test
   void should_throw_exception_when_escape_not_valid() {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings = createTestConfig("dsbulk.connector.csv", "escape", "\"\"");
+    Config settings = createTestConfig("dsbulk.connector.csv", "escape", "\"\"");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
@@ -1412,7 +1411,7 @@ class CSVConnectorTest {
   @Test
   void should_throw_exception_when_comment_not_valid() {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings = createTestConfig("dsbulk.connector.csv", "comment", "\"\"");
+    Config settings = createTestConfig("dsbulk.connector.csv", "comment", "\"\"");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
@@ -1424,14 +1423,14 @@ class CSVConnectorTest {
   void should_error_when_compression_is_wrong() {
     CSVConnector connector = new CSVConnector();
     // empty string test
-    LoaderConfig settings1 = createTestConfig("dsbulk.connector.csv", "compression", "\"abc\"");
+    Config settings1 = createTestConfig("dsbulk.connector.csv", "compression", "\"abc\"");
     assertThrows(BulkConfigurationException.class, () -> connector.configure(settings1, false));
   }
 
   @Test
   void should_throw_IOE_when_read_wrong_compression() throws Exception {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.csv",
             "url",
@@ -1457,8 +1456,7 @@ class CSVConnectorTest {
   @Test
   void should_reject_header_with_empty_field() throws Exception {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
-        createTestConfig("dsbulk.connector.csv", "url", url("/bad_header_empty.csv"));
+    Config settings = createTestConfig("dsbulk.connector.csv", "url", url("/bad_header_empty.csv"));
     connector.configure(settings, true);
     connector.init();
     assertThatThrownBy(() -> Flux.from(connector.read()).collectList().block())
@@ -1479,7 +1477,7 @@ class CSVConnectorTest {
   @Test
   void should_reject_header_with_duplicate_field() throws Exception {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig("dsbulk.connector.csv", "url", url("/bad_header_duplicate.csv"));
     connector.configure(settings, true);
     connector.init();
@@ -1565,7 +1563,7 @@ class CSVConnectorTest {
   void should_throw_if_passing_urlfile_parameter_for_write() {
     CSVConnector connector = new CSVConnector();
 
-    LoaderConfig settings =
+    Config settings =
         createTestConfig("dsbulk.connector.csv", "urlfile", quoteJson(MULTIPLE_URLS_FILE));
 
     assertThatThrownBy(() -> connector.configure(settings, false))
@@ -1578,7 +1576,7 @@ class CSVConnectorTest {
       @LogCapture(level = Level.DEBUG) LogInterceptor logs) {
     CSVConnector connector = new CSVConnector();
 
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.csv",
             "urlfile",
@@ -1595,7 +1593,7 @@ class CSVConnectorTest {
   @Test
   void should_accept_multiple_urls() throws IOException, URISyntaxException {
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.csv",
             "urlfile",
@@ -1615,7 +1613,7 @@ class CSVConnectorTest {
   void should_quote_comment_character() throws Exception {
     Path out = Files.createTempDirectory("test");
     CSVConnector connector = new CSVConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.csv",
             "url",

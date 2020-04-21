@@ -11,7 +11,6 @@ package com.datastax.dsbulk.engine;
 import static com.datastax.dsbulk.commons.internal.utils.ThrowableUtils.getSanitizedErrorMessage;
 import static com.datastax.dsbulk.engine.internal.settings.LogSettings.NO_REACTOR_ERRORS;
 
-import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.utils.ThrowableUtils;
 import com.datastax.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.dsbulk.engine.internal.cli.AnsiConfigurator;
@@ -24,6 +23,7 @@ import com.datastax.dsbulk.engine.internal.help.HelpEmitter;
 import com.datastax.dsbulk.engine.internal.log.TooManyErrorsException;
 import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
 import com.datastax.oss.driver.shaded.guava.common.collect.BiMap;
+import com.typesafe.config.Config;
 import java.io.BufferedWriter;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
@@ -64,7 +64,7 @@ public class DataStaxBulkLoader {
       AnsiConfigurator.configureAnsi(args);
 
       ParsedCommandLine result = new CommandLineParser(args).parse();
-      LoaderConfig config = result.getConfig();
+      Config config = result.getConfig();
       BiMap<String, String> shortcuts = result.getShortcuts();
       workflow = result.getWorkflowType().newWorkflow(config, shortcuts);
 

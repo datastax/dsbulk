@@ -9,7 +9,7 @@
 package com.datastax.dsbulk.engine.internal.settings;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import java.util.EnumSet;
 import java.util.List;
@@ -26,12 +26,12 @@ public class StatsSettings {
   private static final String MODES = "modes";
   private static final String NUM_PARTITIONS = "numPartitions";
 
-  private final LoaderConfig config;
+  private final Config config;
 
   private List<StatisticsMode> statisticsModes;
   private int numPartitions;
 
-  StatsSettings(LoaderConfig config) {
+  StatsSettings(Config config) {
     this.config = config;
   }
 

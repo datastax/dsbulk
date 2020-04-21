@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.utils.WorkflowUtils;
 import com.datastax.oss.driver.shaded.guava.common.collect.BiMap;
@@ -16,7 +15,7 @@ import com.typesafe.config.Config;
 
 public class SettingsManager {
 
-  private final LoaderConfig config;
+  private final Config config;
   private final BiMap<String, String> shortcuts;
   private final WorkflowType workflowType;
 
@@ -34,7 +33,7 @@ public class SettingsManager {
   private StatsSettings statsSettings;
 
   public SettingsManager(
-      LoaderConfig config, BiMap<String, String> shortcuts, WorkflowType workflowType) {
+      Config config, BiMap<String, String> shortcuts, WorkflowType workflowType) {
     this.config = config;
     this.shortcuts = shortcuts;
     this.workflowType = workflowType;

@@ -17,7 +17,6 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import com.codahale.metrics.MetricRegistry;
 import com.datastax.dsbulk.commons.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.Record;
@@ -42,6 +41,7 @@ import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.metrics.Metrics;
 import com.datastax.oss.driver.shaded.guava.common.base.Stopwatch;
 import com.datastax.oss.driver.shaded.guava.common.collect.BiMap;
+import com.typesafe.config.Config;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import java.util.List;
@@ -85,7 +85,7 @@ public class UnloadWorkflow implements Workflow {
   private int readConcurrency;
   private int numCores;
 
-  UnloadWorkflow(LoaderConfig config, BiMap<String, String> shortcuts) {
+  UnloadWorkflow(Config config, BiMap<String, String> shortcuts) {
     settingsManager = new SettingsManager(config, shortcuts, WorkflowType.UNLOAD);
   }
 

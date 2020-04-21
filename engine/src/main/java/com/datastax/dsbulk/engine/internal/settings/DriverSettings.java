@@ -44,9 +44,7 @@ import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUES
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.TIMESTAMP_GENERATOR_CLASS;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
-import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.engine.internal.auth.AuthProviderFactory;
 import com.datastax.dsbulk.engine.internal.ssl.SslHandlerFactoryFactory;
 import com.datastax.oss.driver.api.core.ConsistencyLevel;
@@ -103,13 +101,13 @@ public class DriverSettings {
   private static final Logger LOGGER = LoggerFactory.getLogger(DriverSettings.class);
   private static final Duration ONE_MINUTE = Duration.ofSeconds(60);
 
-  private final LoaderConfig deprecatedDriverConfig;
-  private final LoaderConfig deprecatedContinuousPagingConfig;
+  private final Config deprecatedDriverConfig;
+  private final Config deprecatedContinuousPagingConfig;
   private final BiMap<String, String> shortcuts;
 
-  private LoaderConfig newDriverConfig;
-  private LoaderConfig convertedConfig;
-  private LoaderConfig mergedDriverConfig;
+  private Config newDriverConfig;
+  private Config convertedConfig;
+  private Config mergedDriverConfig;
 
   private int defaultPort;
   private AuthProvider authProvider;
@@ -117,9 +115,9 @@ public class DriverSettings {
   private Predicate<Node> nodeFilter;
 
   DriverSettings(
-      LoaderConfig deprecatedDriverConfig,
-      LoaderConfig deprecatedContinuousPagingConfig,
-      LoaderConfig newDriverConfig,
+      Config deprecatedDriverConfig,
+      Config deprecatedContinuousPagingConfig,
+      Config newDriverConfig,
       BiMap<String, String> shortcuts) {
     this.newDriverConfig = newDriverConfig;
     this.deprecatedDriverConfig = deprecatedDriverConfig;
@@ -139,8 +137,7 @@ public class DriverSettings {
       throw BulkConfigurationException.fromTypeSafeConfigException(
           e, "dsbulk.executor.continuousPaging");
     }
-    mergedDriverConfig =
-        new DefaultLoaderConfig(convertedConfig.withFallback(newDriverConfig)).resolve();
+    mergedDriverConfig = convertedConfig.withFallback(newDriverConfig).resolve();
     processCloudSettings(write);
     processContactPointSettings();
     processForcedSettings();
@@ -148,7 +145,7 @@ public class DriverSettings {
 
   private void convertDriverDeprecatedConfig() throws GeneralSecurityException, IOException {
 
-    convertedConfig = new DefaultLoaderConfig(ConfigFactory.empty());
+    convertedConfig = ConfigFactory.empty();
 
     if (isUserDefined(deprecatedDriverConfig, "port")) {
       defaultPort = deprecatedDriverConfig.getInt("port");
@@ -545,10 +542,10 @@ public class DriverSettings {
                 .put(CONTROL_CONNECTION_TIMEOUT.getPath(), timeout)
                 .build(),
             "DSBulk forced driver settings");
-    mergedDriverConfig = new DefaultLoaderConfig(forcedSettings).withFallback(mergedDriverConfig);
+    mergedDriverConfig = forcedSettings.withFallback(mergedDriverConfig);
   }
 
-  public LoaderConfig getDriverConfig() {
+  public Config getDriverConfig() {
     return mergedDriverConfig;
   }
 
@@ -566,8 +563,7 @@ public class DriverSettings {
     return sessionBuilder.build();
   }
 
-  private static LoaderConfig addConfigValue(
-      LoaderConfig config, DriverOption option, Object value) {
+  private static Config addConfigValue(Config config, DriverOption option, Object value) {
     return config.withValue(
         option.getPath(), ConfigValueFactory.fromAnyRef(value, "DSBulk converted driver settings"));
   }

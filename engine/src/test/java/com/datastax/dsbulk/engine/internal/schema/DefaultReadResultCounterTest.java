@@ -24,7 +24,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 import com.datastax.dsbulk.commons.codecs.ExtendedCodecRegistry;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.tests.driver.DriverUtils;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptor;
@@ -42,6 +41,7 @@ import com.datastax.oss.driver.api.core.metadata.token.TokenRange;
 import com.datastax.oss.driver.internal.core.metadata.DefaultEndPoint;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.driver.shaded.guava.common.collect.Sets;
+import com.typesafe.config.Config;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -189,7 +189,7 @@ class DefaultReadResultCounterTest {
     when(node1.getEndPoint()).thenReturn(addr1);
     when(node2.getEndPoint()).thenReturn(addr2);
     when(node3.getEndPoint()).thenReturn(addr3);
-    LoaderConfig config = createTestConfig("dsbulk.codec");
+    Config config = createTestConfig("dsbulk.codec");
     CodecSettings settings = new CodecSettings(config);
     settings.init();
     this.codecRegistry = settings.createCodecRegistry(false, false);

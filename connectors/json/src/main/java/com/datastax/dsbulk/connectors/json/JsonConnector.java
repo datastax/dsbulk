@@ -9,7 +9,6 @@
 package com.datastax.dsbulk.connectors.json;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.io.CompressedIOUtils;
 import com.datastax.dsbulk.commons.internal.reactive.SimpleBackpressureController;
 import com.datastax.dsbulk.connectors.api.CommonConnectorFeature;
@@ -37,6 +36,7 @@ import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.BufferedReader;
@@ -104,7 +104,7 @@ public class JsonConnector extends AbstractFileBasedConnector {
   }
 
   @Override
-  public void configure(@NonNull LoaderConfig settings, boolean read) {
+  public void configure(@NonNull Config settings, boolean read) {
     try {
       super.configure(settings, read);
       mode = settings.getEnum(DocumentMode.class, MODE);
@@ -314,7 +314,7 @@ public class JsonConnector extends AbstractFileBasedConnector {
   }
 
   private static <T extends Enum<T>> Map<T, Boolean> getFeatureMap(
-      LoaderConfig source, Class<T> featureClass) {
+      Config source, Class<T> featureClass) {
     Map<T, Boolean> dest = new HashMap<>();
     for (String name : source.root().keySet()) {
       dest.put(Enum.valueOf(featureClass, name), source.getBoolean(name));

@@ -15,11 +15,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.tests.driver.DriverUtils;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.executor.reactor.batch.ReactorStatementBatcher;
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.typesafe.config.Config;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -34,7 +34,7 @@ class BatchSettingsTest {
 
   @Test
   void should_create_batcher_when_mode_is_default() {
-    LoaderConfig config = createTestConfig("dsbulk.batch");
+    Config config = createTestConfig("dsbulk.batch");
     BatchSettings settings = new BatchSettings(config);
     settings.init();
     assertThat(settings.getBufferSize()).isEqualTo(128);
@@ -45,7 +45,7 @@ class BatchSettingsTest {
 
   @Test
   void should_create_batcher_for_deprecated_maxBatchSize_and_treat_it_as_maxBatchStatements() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.batch",
             "maxBatchSize",
@@ -66,7 +66,7 @@ class BatchSettingsTest {
 
   @Test
   void should_create_batcher_when_mode_is_default_for_new_maxBatchStatements() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.batch", "maxBatchStatements", 32, "bufferSize", 32, "mode", "PARTITION_KEY");
     BatchSettings settings = new BatchSettings(config);
@@ -79,7 +79,7 @@ class BatchSettingsTest {
 
   @Test
   void should_throw_when_both_maxBatchStatements_and_maxBatchSize_is_specified() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.batch",
             "maxBatchStatements",
@@ -101,7 +101,7 @@ class BatchSettingsTest {
 
   @Test
   void should_create_batcher_when_batch_mode_provided() {
-    LoaderConfig config = createTestConfig("dsbulk.batch", "mode", "REPLICA_SET");
+    Config config = createTestConfig("dsbulk.batch", "mode", "REPLICA_SET");
     BatchSettings settings = new BatchSettings(config);
     settings.init();
     assertThat(settings.getBufferSize()).isEqualTo(128);
@@ -112,7 +112,7 @@ class BatchSettingsTest {
 
   @Test
   void should_create_batcher_when_buffer_size_provided() {
-    LoaderConfig config = createTestConfig("dsbulk.batch", "bufferSize", 5000);
+    Config config = createTestConfig("dsbulk.batch", "bufferSize", 5000);
     BatchSettings settings = new BatchSettings(config);
     settings.init();
     assertThat(settings.getBufferSize()).isEqualTo(5000);
@@ -123,7 +123,7 @@ class BatchSettingsTest {
 
   @Test
   void should_create_batcher_when_max_batch_statements_mode_provided() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.batch", "maxBatchStatements", 10, "mode", "PARTITION_KEY", "bufferSize", -1);
     BatchSettings settings = new BatchSettings(config);
@@ -138,7 +138,7 @@ class BatchSettingsTest {
 
   @Test
   void should_throw_exception_when_buffer_size_less_than_max_batch_size() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.batch",
             "maxBatchSize",
@@ -159,7 +159,7 @@ class BatchSettingsTest {
 
   @Test
   void should_throw_exception_when_buffer_size_less_than_max_batch_statements() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.batch", "maxBatchStatements", 10, "bufferSize", 5, "mode", "PARTITION_KEY");
     BatchSettings settings = new BatchSettings(config);
@@ -172,7 +172,7 @@ class BatchSettingsTest {
 
   @Test
   void should_throw_exception_when_max_batch_size_not_a_number() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.batch", "maxBatchSize", "NotANumber", "maxBatchStatements", "null");
     BatchSettings settings = new BatchSettings(config);
@@ -184,7 +184,7 @@ class BatchSettingsTest {
 
   @Test
   void should_throw_exception_when_max_batch_statements_not_a_number() {
-    LoaderConfig config = createTestConfig("dsbulk.batch", "maxBatchStatements", "NotANumber");
+    Config config = createTestConfig("dsbulk.batch", "maxBatchStatements", "NotANumber");
     BatchSettings settings = new BatchSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
@@ -194,7 +194,7 @@ class BatchSettingsTest {
 
   @Test
   void should_throw_exception_when_max_size_in_bytes_not_a_number() {
-    LoaderConfig config = createTestConfig("dsbulk.batch", "maxSizeInBytes", "NotANumber");
+    Config config = createTestConfig("dsbulk.batch", "maxSizeInBytes", "NotANumber");
     BatchSettings settings = new BatchSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
@@ -204,7 +204,7 @@ class BatchSettingsTest {
 
   @Test
   void should_throw_exception_when_buffer_size_not_a_number() {
-    LoaderConfig config = createTestConfig("dsbulk.batch", "bufferSize", "NotANumber");
+    Config config = createTestConfig("dsbulk.batch", "bufferSize", "NotANumber");
     BatchSettings settings = new BatchSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
@@ -214,7 +214,7 @@ class BatchSettingsTest {
 
   @Test
   void should_throw_exception_when_batch_mode_invalid() {
-    LoaderConfig config = createTestConfig("dsbulk.batch", "mode", "NotAMode");
+    Config config = createTestConfig("dsbulk.batch", "mode", "NotAMode");
     BatchSettings settings = new BatchSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
@@ -224,7 +224,7 @@ class BatchSettingsTest {
 
   @Test
   void should_throw_exception_when_max_batch_statements_and_max_size_in_bytes_are_non_positive() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.batch", "mode", "PARTITION_KEY", "maxBatchStatements", -1, "maxSizeInBytes", 0);
     BatchSettings settings = new BatchSettings(config);
@@ -236,7 +236,7 @@ class BatchSettingsTest {
 
   @Test
   void should_throw_exception_when_max_batch_statements_and_buffer_size_are_non_positive() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.batch",
             "mode",
@@ -257,7 +257,7 @@ class BatchSettingsTest {
 
   @Test
   void should_load_config_when_only_max_size_in_bytes_specified() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.batch",
             "mode",
@@ -278,7 +278,7 @@ class BatchSettingsTest {
 
   @Test
   void should_load_config_when_max_size_in_bytes_and_max_batch_sizes_specified() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.batch",
             "mode",
@@ -303,7 +303,7 @@ class BatchSettingsTest {
 
   @Test
   void should_load_config_when_max_size_in_bytes_and_max_batch_statements_specified() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.batch",
             "mode",

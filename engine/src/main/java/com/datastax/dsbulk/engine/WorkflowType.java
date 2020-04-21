@@ -8,8 +8,8 @@
  */
 package com.datastax.dsbulk.engine;
 
-import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.oss.driver.shaded.guava.common.collect.BiMap;
+import com.typesafe.config.Config;
 
 public enum WorkflowType {
   LOAD {
@@ -28,7 +28,7 @@ public enum WorkflowType {
     }
 
     @Override
-    public Workflow newWorkflow(LoaderConfig config, BiMap<String, String> shortcuts) {
+    public Workflow newWorkflow(Config config, BiMap<String, String> shortcuts) {
       return new LoadWorkflow(config, shortcuts);
     }
   },
@@ -49,7 +49,7 @@ public enum WorkflowType {
     }
 
     @Override
-    public Workflow newWorkflow(LoaderConfig config, BiMap<String, String> shortcuts) {
+    public Workflow newWorkflow(Config config, BiMap<String, String> shortcuts) {
       return new UnloadWorkflow(config, shortcuts);
     }
   },
@@ -71,7 +71,7 @@ public enum WorkflowType {
     }
 
     @Override
-    public Workflow newWorkflow(LoaderConfig config, BiMap<String, String> shortcuts) {
+    public Workflow newWorkflow(Config config, BiMap<String, String> shortcuts) {
       return new CountWorkflow(config, shortcuts);
     }
   },
@@ -81,5 +81,5 @@ public enum WorkflowType {
 
   public abstract String getDescription();
 
-  public abstract Workflow newWorkflow(LoaderConfig config, BiMap<String, String> shortcuts);
+  public abstract Workflow newWorkflow(Config config, BiMap<String, String> shortcuts);
 }

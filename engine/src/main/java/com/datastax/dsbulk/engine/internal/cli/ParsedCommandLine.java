@@ -8,18 +8,17 @@
  */
 package com.datastax.dsbulk.engine.internal.cli;
 
-import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.oss.driver.shaded.guava.common.collect.BiMap;
+import com.typesafe.config.Config;
 
 public class ParsedCommandLine {
 
   private final WorkflowType workflowType;
-  private final LoaderConfig config;
+  private final Config config;
   private final BiMap<String, String> shortcuts;
 
-  ParsedCommandLine(
-      WorkflowType workflowType, LoaderConfig config, BiMap<String, String> shortcuts) {
+  ParsedCommandLine(WorkflowType workflowType, Config config, BiMap<String, String> shortcuts) {
     this.workflowType = workflowType;
     this.config = config;
     this.shortcuts = shortcuts;
@@ -29,7 +28,7 @@ public class ParsedCommandLine {
     return workflowType;
   }
 
-  public LoaderConfig getConfig() {
+  public Config getConfig() {
     return config;
   }
 

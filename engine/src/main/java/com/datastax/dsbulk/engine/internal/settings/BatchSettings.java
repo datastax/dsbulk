@@ -9,11 +9,11 @@
 package com.datastax.dsbulk.engine.internal.settings;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.executor.api.batch.StatementBatcher;
 import com.datastax.dsbulk.executor.reactor.batch.ReactorStatementBatcher;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.DefaultBatchType;
+import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,14 +50,14 @@ public class BatchSettings {
   private static final String MAX_BATCH_STATEMENTS = "maxBatchStatements";
   private static final String BUFFER_SIZE = "bufferSize";
 
-  private final LoaderConfig config;
+  private final Config config;
 
   private BatchMode mode;
   private long maxSizeInBytes;
   private int maxBatchStatements;
   private int bufferSize;
 
-  BatchSettings(LoaderConfig config) {
+  BatchSettings(Config config) {
     this.config = config;
   }
 

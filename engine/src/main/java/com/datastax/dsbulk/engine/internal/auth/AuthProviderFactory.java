@@ -11,12 +11,13 @@ package com.datastax.dsbulk.engine.internal.auth;
 import static com.datastax.dsbulk.commons.internal.io.IOUtils.assertAccessibleFile;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dse.driver.api.core.auth.DseGssApiAuthProviderBase.GssApiOptions;
 import com.datastax.oss.driver.api.core.auth.AuthProvider;
 import com.datastax.oss.driver.internal.core.auth.ProgrammaticPlainTextAuthProvider;
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
+import com.typesafe.config.Config;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
@@ -31,7 +32,7 @@ public class AuthProviderFactory {
   private static final Logger LOGGER = LoggerFactory.getLogger(AuthProviderFactory.class);
 
   @Nullable
-  public static AuthProvider createAuthProvider(LoaderConfig config) {
+  public static AuthProvider createAuthProvider(Config config) {
 
     String authProvider = config.getString("provider");
 
@@ -73,14 +74,14 @@ public class AuthProviderFactory {
   }
 
   private static AuthProvider createPlainTextAuthProvider(
-      LoaderConfig config, String authProvider, String authorizationId) {
+      Config config, String authProvider, String authorizationId) {
     checkHasCredentials(config, authProvider);
     return new ProgrammaticPlainTextAuthProvider(
         config.getString("username"), config.getString("password"), authorizationId);
   }
 
   private static AuthProvider createGssApiAuthProvider(
-      LoaderConfig config, String authProvider, String authorizationId) {
+      Config config, String authProvider, String authorizationId) {
     if (!config.hasPath("saslService")) {
       throw new BulkConfigurationException(
           String.format(
@@ -98,7 +99,7 @@ public class AuthProviderFactory {
 
     Path authKeyTab = null;
     if (config.hasPath("keyTab")) {
-      authKeyTab = config.getPath("keyTab");
+      authKeyTab = ConfigUtils.getPath(config, "keyTab");
       assertAccessibleFile(authKeyTab, "Keytab file");
 
       // When using a keytab, we must have a principal. If the user didn't provide one,
@@ -163,7 +164,7 @@ public class AuthProviderFactory {
     return new BulkGssApiAuthProvider(options);
   }
 
-  private static void checkHasCredentials(LoaderConfig config, String authProvider) {
+  private static void checkHasCredentials(Config config, String authProvider) {
     if (!config.hasPath("username") || !config.hasPath("password")) {
       throw new BulkConfigurationException(
           "Both dsbulk.driver.auth.username and dsbulk.driver.auth.password must be provided with "

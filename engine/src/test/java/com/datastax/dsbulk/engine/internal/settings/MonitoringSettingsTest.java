@@ -17,12 +17,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.codahale.metrics.MetricRegistry;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
 import com.datastax.oss.driver.api.core.ProtocolVersion;
 import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
+import com.typesafe.config.Config;
 import java.nio.file.Path;
 import java.time.Duration;
 import org.assertj.core.util.Files;
@@ -35,7 +35,7 @@ class MonitoringSettingsTest {
 
   @Test
   void should_create_metrics_manager_with_default_settings() {
-    LoaderConfig config = createTestConfig("dsbulk.monitoring");
+    Config config = createTestConfig("dsbulk.monitoring");
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     settings.init();
     MetricsManager metricsManager =
@@ -63,7 +63,7 @@ class MonitoringSettingsTest {
   @Test
   void should_create_metrics_manager_with_user_supplied_settings() {
     Path tmpPath = Files.temporaryFolder().toPath();
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.monitoring",
             "rateUnit",
@@ -109,7 +109,7 @@ class MonitoringSettingsTest {
 
   @Test
   void should_throw_exception_when_expectedWrites_not_a_number() {
-    LoaderConfig config = createTestConfig("dsbulk.monitoring", "expectedWrites", "NotANumber");
+    Config config = createTestConfig("dsbulk.monitoring", "expectedWrites", "NotANumber");
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
@@ -119,7 +119,7 @@ class MonitoringSettingsTest {
 
   @Test
   void should_throw_exception_when_expectedReads_not_a_number() {
-    LoaderConfig config = createTestConfig("dsbulk.monitoring", "expectedReads", "NotANumber");
+    Config config = createTestConfig("dsbulk.monitoring", "expectedReads", "NotANumber");
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
@@ -129,7 +129,7 @@ class MonitoringSettingsTest {
 
   @Test
   void should_throw_exception_when_trackBytes_not_a_boolean() {
-    LoaderConfig config = createTestConfig("dsbulk.monitoring", "trackBytes", "NotABoolean");
+    Config config = createTestConfig("dsbulk.monitoring", "trackBytes", "NotABoolean");
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
@@ -139,7 +139,7 @@ class MonitoringSettingsTest {
 
   @Test
   void should_throw_exception_when_jmx_not_a_boolean() {
-    LoaderConfig config = createTestConfig("dsbulk.monitoring", "jmx", "NotABoolean");
+    Config config = createTestConfig("dsbulk.monitoring", "jmx", "NotABoolean");
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
@@ -149,7 +149,7 @@ class MonitoringSettingsTest {
 
   @Test
   void should_throw_exception_when_rateUnit_not_a_boolean() {
-    LoaderConfig config = createTestConfig("dsbulk.monitoring", "rateUnit", "NotAUnit");
+    Config config = createTestConfig("dsbulk.monitoring", "rateUnit", "NotAUnit");
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
@@ -159,7 +159,7 @@ class MonitoringSettingsTest {
 
   @Test
   void should_throw_exception_when_durationUnit_not_a_boolean() {
-    LoaderConfig config = createTestConfig("dsbulk.monitoring", "durationUnit", "NotAUnit");
+    Config config = createTestConfig("dsbulk.monitoring", "durationUnit", "NotAUnit");
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
@@ -169,7 +169,7 @@ class MonitoringSettingsTest {
 
   @Test
   void should_throw_exception_when_reportRate_not_a_duration() {
-    LoaderConfig config = createTestConfig("dsbulk.monitoring", "reportRate", "NotADuration");
+    Config config = createTestConfig("dsbulk.monitoring", "reportRate", "NotADuration");
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)

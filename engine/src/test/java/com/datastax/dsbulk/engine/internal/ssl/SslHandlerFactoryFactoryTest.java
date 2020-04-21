@@ -19,7 +19,7 @@ import static com.datastax.dsbulk.commons.tests.utils.TestConfigUtils.createTest
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.typesafe.config.Config;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -31,7 +31,7 @@ class SslHandlerFactoryFactoryTest {
   @Test
   void should_accept_existing_jdk_keystore() throws IOException, GeneralSecurityException {
     Path key = DEFAULT_CLIENT_KEYSTORE_FILE.toPath();
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.driver.ssl",
             "provider",
@@ -46,7 +46,7 @@ class SslHandlerFactoryFactoryTest {
   @Test
   void should_accept_existing_jdk_truststore() throws IOException, GeneralSecurityException {
     Path key = DEFAULT_CLIENT_TRUSTSTORE_FILE.toPath();
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.driver.ssl",
             "provider",
@@ -63,7 +63,7 @@ class SslHandlerFactoryFactoryTest {
       throws IOException, GeneralSecurityException {
     Path key = DEFAULT_CLIENT_PRIVATE_KEY_FILE.toPath();
     Path chain = DEFAULT_CLIENT_CERT_CHAIN_FILE.toPath();
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.driver.ssl",
             "provider",
@@ -79,7 +79,7 @@ class SslHandlerFactoryFactoryTest {
   void should_error_keystore_without_password() throws IOException {
     Path keystore = Files.createTempFile("my", "keystore");
     try {
-      LoaderConfig config =
+      Config config =
           createTestConfig(
               "dsbulk.driver.ssl", "provider", "JDK", "keystore.path", "" + quoteJson(keystore));
       assertThatThrownBy(() -> SslHandlerFactoryFactory.createSslHandlerFactory(config))
@@ -93,7 +93,7 @@ class SslHandlerFactoryFactoryTest {
 
   @Test
   void should_error_password_without_keystore() {
-    LoaderConfig config =
+    Config config =
         createTestConfig("dsbulk.driver.ssl", "provider", "JDK", "keystore.password", "mypass");
     assertThatThrownBy(() -> SslHandlerFactoryFactory.createSslHandlerFactory(config))
         .isInstanceOf(BulkConfigurationException.class)
@@ -105,7 +105,7 @@ class SslHandlerFactoryFactoryTest {
   void should_error_openssl_keycertchain_without_key() throws IOException {
     Path chain = Files.createTempFile("my", ".chain");
     try {
-      LoaderConfig config =
+      Config config =
           createTestConfig(
               "dsbulk.driver.ssl", "provider", "OpenSSL", "openssl.keyCertChain", quoteJson(chain));
       assertThatThrownBy(() -> SslHandlerFactoryFactory.createSslHandlerFactory(config))
@@ -122,7 +122,7 @@ class SslHandlerFactoryFactoryTest {
   void should_error_key_without_openssl_keycertchain() throws IOException {
     Path key = Files.createTempFile("my", ".key");
     try {
-      LoaderConfig config =
+      Config config =
           createTestConfig(
               "dsbulk.driver.ssl", "provider", "OpenSSL", "openssl.privateKey", quoteJson(key));
       assertThatThrownBy(() -> SslHandlerFactoryFactory.createSslHandlerFactory(config))
@@ -139,7 +139,7 @@ class SslHandlerFactoryFactoryTest {
   void should_error_truststore_without_password() throws IOException {
     Path truststore = Files.createTempFile("my", "truststore");
     try {
-      LoaderConfig config =
+      Config config =
           createTestConfig(
               "dsbulk.driver.ssl", "provider", "JDK", "truststore.path", quoteJson(truststore));
       assertThatThrownBy(() -> SslHandlerFactoryFactory.createSslHandlerFactory(config))
@@ -155,7 +155,7 @@ class SslHandlerFactoryFactoryTest {
 
   @Test
   void should_error_password_without_truststore() {
-    LoaderConfig config =
+    Config config =
         createTestConfig("dsbulk.driver.ssl", "provider", "JDK", "truststore.password", "mypass");
     assertThatThrownBy(() -> SslHandlerFactoryFactory.createSslHandlerFactory(config))
         .isInstanceOf(BulkConfigurationException.class)
@@ -167,7 +167,7 @@ class SslHandlerFactoryFactoryTest {
 
   @Test
   void should_error_nonexistent_truststore() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.driver.ssl",
             "provider",
@@ -183,7 +183,7 @@ class SslHandlerFactoryFactoryTest {
 
   @Test
   void should_error_truststore_is_a_dir() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.driver.ssl",
             "provider",
@@ -201,7 +201,7 @@ class SslHandlerFactoryFactoryTest {
   void should_accept_existing_truststore() throws IOException, GeneralSecurityException {
     Path truststore = Files.createTempFile("my", ".truststore");
     try {
-      LoaderConfig config =
+      Config config =
           createTestConfig(
               "dsbulk.driver.ssl",
               "truststore.password",
@@ -216,7 +216,7 @@ class SslHandlerFactoryFactoryTest {
 
   @Test
   void should_error_nonexistent_keystore() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.driver.ssl",
             "provider",
@@ -232,7 +232,7 @@ class SslHandlerFactoryFactoryTest {
 
   @Test
   void should_error_keystore_is_a_dir() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.driver.ssl",
             "provider",
@@ -250,7 +250,7 @@ class SslHandlerFactoryFactoryTest {
   void should_accept_existing_keystore() throws IOException, GeneralSecurityException {
     Path keystore = Files.createTempFile("my", ".keystore");
     try {
-      LoaderConfig config =
+      Config config =
           createTestConfig(
               "dsbulk.driver.ssl",
               "keystore.password",
@@ -267,7 +267,7 @@ class SslHandlerFactoryFactoryTest {
   void should_error_nonexistent_openssl_keycertchain() throws IOException {
     Path key = Files.createTempFile("my", ".key");
     try {
-      LoaderConfig config =
+      Config config =
           createTestConfig(
               "dsbulk.driver.ssl",
               "provider",
@@ -289,7 +289,7 @@ class SslHandlerFactoryFactoryTest {
   void should_error_openssl_keycertchain_is_a_dir() throws IOException {
     Path key = Files.createTempFile("my", ".key");
     try {
-      LoaderConfig config =
+      Config config =
           createTestConfig(
               "dsbulk.driver.ssl",
               "provider",
@@ -310,7 +310,7 @@ class SslHandlerFactoryFactoryTest {
   void should_error_nonexistent_openssl_key() throws IOException {
     Path chain = Files.createTempFile("my", ".chain");
     try {
-      LoaderConfig config =
+      Config config =
           createTestConfig(
               "dsbulk.driver.ssl",
               "provider",
@@ -331,7 +331,7 @@ class SslHandlerFactoryFactoryTest {
   void should_error_openssl_key_is_a_dir() throws IOException {
     Path chain = Files.createTempFile("my", ".chain");
     try {
-      LoaderConfig config =
+      Config config =
           createTestConfig(
               "dsbulk.driver.ssl",
               "provider",

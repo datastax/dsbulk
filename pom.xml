@@ -872,7 +872,7 @@ https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
       <name>DataStax DSE Bulk Utility License</name>
       <url>https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms</url>
       <distribution>repo</distribution>
-      <comments />
+      <comments/>
     </license>
   </licenses>
   <scm>

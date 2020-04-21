@@ -30,7 +30,7 @@ import static java.util.concurrent.TimeUnit.MICROSECONDS;
 
 import com.datastax.dsbulk.commons.codecs.ExtendedCodecRegistry;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.partitioner.TokenRangeReadStatementGenerator;
 import com.datastax.dsbulk.connectors.api.Field;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
@@ -81,6 +81,7 @@ import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMultimap;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSet;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSetMultimap;
 import com.datastax.oss.driver.shaded.guava.common.collect.Multimap;
+import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.time.Instant;
@@ -123,7 +124,7 @@ public class SchemaSettings {
   private static final String CORE = "Core";
   private static final String SPLITS = "splits";
 
-  private final LoaderConfig config;
+  private final Config config;
 
   private boolean nullToUnset;
   private boolean allowExtraFields;
@@ -143,7 +144,7 @@ public class SchemaSettings {
   private MappingPreference mappingPreference;
   private ProtocolVersion protocolVersion;
 
-  SchemaSettings(LoaderConfig config) {
+  SchemaSettings(Config config) {
     this.config = config;
   }
 
@@ -381,7 +382,7 @@ public class SchemaSettings {
       nullToUnset = config.getBoolean(NULL_TO_UNSET);
       allowExtraFields = config.getBoolean(ALLOW_EXTRA_FIELDS);
       allowMissingFields = config.getBoolean(ALLOW_MISSING_FIELDS);
-      splits = config.getThreads(SPLITS);
+      splits = ConfigUtils.getThreads(config, SPLITS);
 
       // Final checks related to graph operations
 
@@ -1305,7 +1306,7 @@ public class SchemaSettings {
     return coll.stream().anyMatch(FunctionCall.class::isInstance);
   }
 
-  private static boolean hasGraphOptions(LoaderConfig config) {
+  private static boolean hasGraphOptions(Config config) {
     return config.hasPath(GRAPH)
         || config.hasPath(VERTEX)
         || config.hasPath(EDGE)

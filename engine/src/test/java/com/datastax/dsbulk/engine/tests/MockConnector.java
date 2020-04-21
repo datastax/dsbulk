@@ -9,13 +9,13 @@
 package com.datastax.dsbulk.engine.tests;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.ConnectorFeature;
 import com.datastax.dsbulk.connectors.api.Record;
 import com.datastax.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import com.datastax.oss.driver.shaded.guava.common.base.Functions;
+import com.typesafe.config.Config;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.util.ArrayList;
 import java.util.List;
@@ -47,7 +47,7 @@ public final class MockConnector implements Connector {
           public void init() {}
 
           @Override
-          public void configure(@NonNull LoaderConfig settings, boolean read) {}
+          public void configure(@NonNull Config settings, boolean read) {}
 
           @Override
           public int estimatedResourceCount() {
@@ -100,7 +100,7 @@ public final class MockConnector implements Connector {
           public void init() {}
 
           @Override
-          public void configure(@NonNull LoaderConfig settings, boolean read) {}
+          public void configure(@NonNull Config settings, boolean read) {}
 
           @Override
           public int estimatedResourceCount() {
@@ -155,7 +155,7 @@ public final class MockConnector implements Connector {
           public void init() {}
 
           @Override
-          public void configure(@NonNull LoaderConfig settings, boolean read) {}
+          public void configure(@NonNull Config settings, boolean read) {}
 
           @Override
           public int estimatedResourceCount() {
@@ -213,8 +213,7 @@ public final class MockConnector implements Connector {
   }
 
   @Override
-  public void configure(@NonNull LoaderConfig settings, boolean read)
-      throws BulkConfigurationException {
+  public void configure(@NonNull Config settings, boolean read) throws BulkConfigurationException {
     delegate.configure(settings, read);
   }
 

@@ -15,7 +15,6 @@ import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.nio.file.StandardOpenOption.WRITE;
 
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
-import com.datastax.dsbulk.commons.internal.config.LoaderConfigFactory;
 import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.datastax.dsbulk.engine.internal.config.SettingsGroup;
 import com.datastax.dsbulk.engine.internal.config.SettingsGroupFactory;
@@ -155,7 +154,7 @@ public class ConfigurationFileCreator {
     pw.println("dsbulk {");
     pw.println();
 
-    Config referenceConfig = LoaderConfigFactory.createReferenceConfig();
+    Config referenceConfig = ConfigUtils.createReferenceConfig();
 
     Map<String, SettingsGroup> groups = SettingsGroupFactory.createDSBulkConfigurationGroups(false);
 
@@ -234,8 +233,7 @@ public class ConfigurationFileCreator {
     pw.println("");
     pw.println("datastax-java-driver {");
     pw.println("");
-    Config driverConfig =
-        LoaderConfigFactory.standaloneDriverReference().getConfig("datastax-java-driver");
+    Config driverConfig = ConfigUtils.standaloneDriverReference().getConfig("datastax-java-driver");
     printDriverSettings(pw, driverConfig.root(), 1);
     pw.println("}");
   }

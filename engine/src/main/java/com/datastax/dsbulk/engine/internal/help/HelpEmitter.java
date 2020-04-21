@@ -10,7 +10,7 @@ package com.datastax.dsbulk.engine.internal.help;
 
 import static com.datastax.dsbulk.engine.internal.utils.ConsoleUtils.LINE_LENGTH;
 
-import com.datastax.dsbulk.commons.internal.config.LoaderConfigFactory;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.config.SettingsGroup;
@@ -39,7 +39,7 @@ public class HelpEmitter {
 
   public static void emitGlobalHelp(@Nullable String connectorName) {
 
-    Config referenceConfig = LoaderConfigFactory.createReferenceConfig();
+    Config referenceConfig = ConfigUtils.createReferenceConfig();
 
     Map<String, SettingsGroup> groups = SettingsGroupFactory.createDSBulkConfigurationGroups(false);
 
@@ -98,7 +98,7 @@ public class HelpEmitter {
 
   public static void emitSectionHelp(@NonNull String sectionName, @Nullable String connectorName) {
 
-    Config referenceConfig = LoaderConfigFactory.createReferenceConfig();
+    Config referenceConfig = ConfigUtils.createReferenceConfig();
 
     boolean driverSection = sectionName.equals("datastax-java-driver");
 

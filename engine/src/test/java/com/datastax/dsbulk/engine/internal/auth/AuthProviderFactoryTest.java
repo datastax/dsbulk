@@ -14,10 +14,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
+import com.typesafe.config.Config;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,7 +30,7 @@ class AuthProviderFactoryTest {
 
   @Test
   void should_error_invalid_auth_provider() {
-    LoaderConfig config = createTestConfig("dsbulk.driver.auth", "provider", "InvalidAuthProvider");
+    Config config = createTestConfig("dsbulk.driver.auth", "provider", "InvalidAuthProvider");
     assertThatThrownBy(() -> AuthProviderFactory.createAuthProvider(config))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining("Invalid value for dsbulk.driver.auth.provider")
@@ -40,7 +40,7 @@ class AuthProviderFactoryTest {
 
   @Test
   void should_error_invalid_auth_combinations_missing_username() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.driver.auth", "provider", "PlainTextAuthProvider", "username", "\"\"");
     assertThatThrownBy(() -> AuthProviderFactory.createAuthProvider(config))
@@ -52,7 +52,7 @@ class AuthProviderFactoryTest {
 
   @Test
   void should_error_invalid_auth_combinations_missing_password() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.driver.auth", "provider", "DsePlainTextAuthProvider", "password", "\"\"");
     assertThatThrownBy(() -> AuthProviderFactory.createAuthProvider(config))
@@ -66,7 +66,7 @@ class AuthProviderFactoryTest {
   void should_generate_deprecation_warning_when_client_uses_dse_plain_text_auth_provider(
       @LogCapture(level = Level.WARN) LogInterceptor logs) {
     // given
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.driver.auth",
             "provider",
@@ -87,7 +87,7 @@ class AuthProviderFactoryTest {
 
   @Test
   void should_error_nonexistent_keytab() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.driver.auth", "provider", "DseGSSAPIAuthProvider", "keyTab", "noexist.keytab");
     assertThatThrownBy(() -> AuthProviderFactory.createAuthProvider(config))
@@ -97,7 +97,7 @@ class AuthProviderFactoryTest {
 
   @Test
   void should_error_keytab_is_a_dir() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.driver.auth", "provider", "DseGSSAPIAuthProvider", "keyTab", "\".\"");
     assertThatThrownBy(() -> AuthProviderFactory.createAuthProvider(config))
@@ -109,7 +109,7 @@ class AuthProviderFactoryTest {
   void should_error_keytab_has_no_keys() throws IOException {
     Path keytabPath = Files.createTempFile("my", ".keytab");
     try {
-      LoaderConfig config =
+      Config config =
           createTestConfig(
               "dsbulk.driver.auth",
               "provider",
@@ -126,7 +126,7 @@ class AuthProviderFactoryTest {
 
   @Test
   void should_error_DseGSSAPIAuthProvider_and_no_sasl_protocol() {
-    LoaderConfig config =
+    Config config =
         createTestConfig(
             "dsbulk.driver.auth", "provider", "DseGSSAPIAuthProvider", "saslService", null);
     assertThatThrownBy(() -> AuthProviderFactory.createAuthProvider(config))

@@ -9,7 +9,6 @@
 package com.datastax.dsbulk.engine.internal.settings;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.executor.api.AbstractBulkExecutor;
 import com.datastax.dsbulk.executor.api.AbstractBulkExecutorBuilder;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
@@ -36,14 +35,14 @@ public class ExecutorSettings {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ExecutorSettings.class);
 
-  private final LoaderConfig config;
+  private final Config config;
 
   private int maxPerSecond;
   private int maxInFlight;
   private boolean continuousPagingEnabled;
   private int maxConcurrentQueries;
 
-  ExecutorSettings(LoaderConfig config) {
+  ExecutorSettings(Config config) {
     this.config = config;
   }
 

@@ -17,7 +17,7 @@ import ch.qos.logback.core.Appender;
 import ch.qos.logback.core.FileAppender;
 import ch.qos.logback.core.filter.Filter;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.format.row.RowFormatter;
 import com.datastax.dsbulk.commons.internal.format.statement.StatementFormatVerbosity;
 import com.datastax.dsbulk.commons.internal.format.statement.StatementFormatter;
@@ -126,7 +126,7 @@ public class LogSettings {
   private static final String MAX_QUERY_WARNINGS = "maxQueryWarnings";
   private static final String VERBOSITY = "verbosity";
 
-  private final LoaderConfig config;
+  private final Config config;
   private final String executionId;
 
   private Path operationDirectory;
@@ -141,7 +141,7 @@ public class LogSettings {
   @VisibleForTesting ErrorThreshold queryWarningsThreshold;
   private Verbosity verbosity;
 
-  LogSettings(LoaderConfig config, String executionId) {
+  LogSettings(Config config, String executionId) {
     this.config = config;
     this.executionId = executionId;
   }
@@ -151,7 +151,8 @@ public class LogSettings {
       // Note: log.ansiMode is handled upstream by
       // com.datastax.dsbulk.engine.internal.cli.CommandLineParser
       operationDirectory =
-          new OperationDirectoryResolver(config.getPath("directory"), executionId).resolve();
+          new OperationDirectoryResolver(ConfigUtils.getPath(config, "directory"), executionId)
+              .resolve();
       System.setProperty(OPERATION_DIRECTORY_KEY, operationDirectory.toFile().getAbsolutePath());
       maxQueryStringLength = config.getInt(MAX_QUERY_STRING_LENGTH);
       maxBoundValueLength = config.getInt(MAX_BOUND_VALUE_LENGTH);
@@ -205,7 +206,7 @@ public class LogSettings {
     LOGGER.info("Operation directory: {}", operationDirectory);
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("DataStax Bulk Loader Effective settings:");
-      dumpConfig(dsbulkConfig.withoutPath("driver"), Comparator.comparing(Entry::getKey));
+      dumpConfig(dsbulkConfig.withoutPath("driver"), Entry.comparingByKey());
       LOGGER.debug("DataStax DSE Java Driver Effective settings:");
       dumpConfig(
           driverConfig,

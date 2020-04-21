@@ -10,8 +10,6 @@ package com.datastax.dsbulk.engine.internal.cli;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
-import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.LoaderConfigFactory;
 import com.datastax.dsbulk.commons.internal.io.IOUtils;
 import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
@@ -75,8 +73,8 @@ public class CommandLineParser {
 
     checkHelpRequest(connectorName);
 
-    Config referenceConfig = LoaderConfigFactory.createReferenceConfig();
-    Config applicationConfig = LoaderConfigFactory.createApplicationConfig(applicationPath);
+    Config referenceConfig = ConfigUtils.createReferenceConfig();
+    Config applicationConfig = ConfigUtils.createApplicationConfig(applicationPath);
 
     BiMap<String, String> shortcuts =
         ShortcutsFactory.createShortcutsMap(
@@ -86,7 +84,7 @@ public class CommandLineParser {
 
     Config finalConfig = parseArguments(referenceConfig, applicationConfig, shortcuts);
 
-    return new ParsedCommandLine(workflowType, new DefaultLoaderConfig(finalConfig), shortcuts);
+    return new ParsedCommandLine(workflowType, finalConfig, shortcuts);
   }
 
   /**

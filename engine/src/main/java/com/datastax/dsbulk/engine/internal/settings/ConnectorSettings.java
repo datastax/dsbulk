@@ -9,23 +9,23 @@
 package com.datastax.dsbulk.engine.internal.settings;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.engine.WorkflowType;
+import com.typesafe.config.Config;
 import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 public class ConnectorSettings {
 
-  private final LoaderConfig config;
+  private final Config config;
   private final WorkflowType type;
 
   private Connector connector;
   private String connectorName;
-  private LoaderConfig connectorConfig;
+  private Config connectorConfig;
 
-  ConnectorSettings(LoaderConfig config, WorkflowType type) {
+  ConnectorSettings(Config config, WorkflowType type) {
     this.config = config;
     this.type = type;
   }
@@ -54,7 +54,7 @@ public class ConnectorSettings {
     return connectorName;
   }
 
-  public LoaderConfig getConnectorConfig() {
+  public Config getConnectorConfig() {
     return connectorConfig;
   }
 

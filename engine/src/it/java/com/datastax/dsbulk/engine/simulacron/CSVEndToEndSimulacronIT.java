@@ -52,8 +52,6 @@ import static java.util.Collections.emptyMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
-import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
 import com.datastax.dsbulk.commons.tests.logging.StreamCapture;
@@ -80,6 +78,7 @@ import com.datastax.oss.simulacron.common.result.WriteTimeoutResult;
 import com.datastax.oss.simulacron.common.stubbing.Prime;
 import com.datastax.oss.simulacron.server.BoundCluster;
 import com.datastax.oss.simulacron.server.RejectScope;
+import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.IOException;
@@ -764,13 +763,12 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
         new CSVConnector() {
 
           @Override
-          public void configure(@NonNull LoaderConfig settings, boolean read) {
+          public void configure(@NonNull Config settings, boolean read) {
             settings =
-                new DefaultLoaderConfig(
-                        ConfigFactory.parseString(
-                            "url = "
-                                + quoteJson(unloadDir)
-                                + ", header = false, maxConcurrentFiles = 4"))
+                ConfigFactory.parseString(
+                        "url = "
+                            + quoteJson(unloadDir)
+                            + ", header = false, maxConcurrentFiles = 4")
                     .withFallback(ConfigFactory.load().getConfig("dsbulk.connector.csv"));
             super.configure(settings, read);
           }

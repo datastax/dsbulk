@@ -17,8 +17,7 @@ import static org.slf4j.event.Level.INFO;
 import static org.slf4j.event.Level.WARN;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.LoaderConfigFactory;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
@@ -52,7 +51,7 @@ class DriverSettingsTest {
 
   @BeforeAll
   static void createShortcuts() {
-    Config referenceConfig = LoaderConfigFactory.createReferenceConfig();
+    Config referenceConfig = ConfigUtils.createReferenceConfig();
     shortcuts = ShortcutsFactory.createShortcutsMap(referenceConfig, null);
   }
 
@@ -83,9 +82,9 @@ class DriverSettingsTest {
   })
   void should_crate_valid_contact_points(String host, int port, String expected)
       throws GeneralSecurityException, IOException {
-    LoaderConfig oldConfig = createTestConfig("dsbulk.driver");
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig =
+    Config oldConfig = createTestConfig("dsbulk.driver");
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig =
         createTestConfig(
             "datastax-java-driver",
             "basic.contact-points",
@@ -112,10 +111,10 @@ class DriverSettingsTest {
   })
   void should_crate_valid_contact_points_with_deprecated_settings(
       String host, int port, String expected) throws GeneralSecurityException, IOException {
-    LoaderConfig oldConfig =
+    Config oldConfig =
         createTestConfig("dsbulk.driver", "hosts", "[" + quoteJson(host) + "]", "port", port);
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig = createTestConfig("datastax-java-driver");
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     settings.init(true);
     assertThat(settings.getDriverConfig().getStringList("basic.contact-points"))
@@ -124,9 +123,9 @@ class DriverSettingsTest {
 
   @Test
   void should_throw_exception_when_port_not_a_number() {
-    LoaderConfig oldConfig = createTestConfig("dsbulk.driver", "port", "NotANumber");
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig = createTestConfig("datastax-java-driver");
+    Config oldConfig = createTestConfig("dsbulk.driver", "port", "NotANumber");
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
         .isInstanceOf(BulkConfigurationException.class)
@@ -135,10 +134,9 @@ class DriverSettingsTest {
 
   @Test
   void should_throw_exception_when_local_connections_not_a_number() {
-    LoaderConfig oldConfig =
-        createTestConfig("dsbulk.driver", "pooling.local.connections", "NotANumber");
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig = createTestConfig("datastax-java-driver");
+    Config oldConfig = createTestConfig("dsbulk.driver", "pooling.local.connections", "NotANumber");
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
         .isInstanceOf(BulkConfigurationException.class)
@@ -148,10 +146,10 @@ class DriverSettingsTest {
 
   @Test
   void should_throw_exception_when_remote_connections_not_a_number() {
-    LoaderConfig oldConfig =
+    Config oldConfig =
         createTestConfig("dsbulk.driver", "pooling.remote.connections", "NotANumber");
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig = createTestConfig("datastax-java-driver");
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
         .isInstanceOf(BulkConfigurationException.class)
@@ -161,10 +159,9 @@ class DriverSettingsTest {
 
   @Test
   void should_throw_exception_when_local_requests_not_a_number() {
-    LoaderConfig oldConfig =
-        createTestConfig("dsbulk.driver", "pooling.local.requests", "NotANumber");
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig = createTestConfig("datastax-java-driver");
+    Config oldConfig = createTestConfig("dsbulk.driver", "pooling.local.requests", "NotANumber");
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
         .isInstanceOf(BulkConfigurationException.class)
@@ -174,10 +171,9 @@ class DriverSettingsTest {
 
   @Test
   void should_throw_exception_when_remote_requests_not_a_number() {
-    LoaderConfig oldConfig =
-        createTestConfig("dsbulk.driver", "pooling.remote.requests", "NotANumber");
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig = createTestConfig("datastax-java-driver");
+    Config oldConfig = createTestConfig("dsbulk.driver", "pooling.remote.requests", "NotANumber");
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
         .isInstanceOf(BulkConfigurationException.class)
@@ -187,9 +183,9 @@ class DriverSettingsTest {
 
   @Test
   void should_throw_exception_when_fetch_size_not_a_number() {
-    LoaderConfig oldConfig = createTestConfig("dsbulk.driver", "query.fetchSize", "NotANumber");
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig = createTestConfig("datastax-java-driver");
+    Config oldConfig = createTestConfig("dsbulk.driver", "query.fetchSize", "NotANumber");
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
         .isInstanceOf(BulkConfigurationException.class)
@@ -199,10 +195,10 @@ class DriverSettingsTest {
 
   @Test
   void should_throw_exception_when_read_timeout_not_a_duration() {
-    LoaderConfig oldConfig =
+    Config oldConfig =
         createTestConfig("dsbulk.driver", "socket.readTimeout", "\"I am not a duration\"");
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig = createTestConfig("datastax-java-driver");
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
         .isInstanceOf(BulkConfigurationException.class)
@@ -212,9 +208,9 @@ class DriverSettingsTest {
 
   @Test
   void should_throw_exception_when_max_retries_not_a_number() {
-    LoaderConfig oldConfig = createTestConfig("dsbulk.driver", "policy.maxRetries", "NotANumber");
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig = createTestConfig("datastax-java-driver");
+    Config oldConfig = createTestConfig("dsbulk.driver", "policy.maxRetries", "NotANumber");
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
         .isInstanceOf(BulkConfigurationException.class)
@@ -224,9 +220,9 @@ class DriverSettingsTest {
 
   @Test
   void should_throw_exception_when_idempotence_not_a_boolean() {
-    LoaderConfig oldConfig = createTestConfig("dsbulk.driver", "query.idempotence", "NotABoolean");
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig = createTestConfig("datastax-java-driver");
+    Config oldConfig = createTestConfig("dsbulk.driver", "query.idempotence", "NotABoolean");
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
         .isInstanceOf(BulkConfigurationException.class)
@@ -236,9 +232,9 @@ class DriverSettingsTest {
 
   @Test
   void should_throw_exception_when_timestamp_generator_invalid() {
-    LoaderConfig oldConfig = createTestConfig("dsbulk.driver", "timestampGenerator", "Unknown");
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig = createTestConfig("datastax-java-driver");
+    Config oldConfig = createTestConfig("dsbulk.driver", "timestampGenerator", "Unknown");
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
         .isInstanceOf(BulkConfigurationException.class)
@@ -250,9 +246,9 @@ class DriverSettingsTest {
 
   @Test
   void should_throw_exception_when_address_translator_invalid() {
-    LoaderConfig oldConfig = createTestConfig("dsbulk.driver", "addressTranslator", "Unknown");
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig = createTestConfig("datastax-java-driver");
+    Config oldConfig = createTestConfig("dsbulk.driver", "addressTranslator", "Unknown");
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
         .isInstanceOf(BulkConfigurationException.class)
@@ -262,9 +258,9 @@ class DriverSettingsTest {
 
   @Test
   void should_throw_exception_when_compression_invalid() {
-    LoaderConfig oldConfig = createTestConfig("dsbulk.driver", "protocol.compression", "Unknown");
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig = createTestConfig("datastax-java-driver");
+    Config oldConfig = createTestConfig("dsbulk.driver", "protocol.compression", "Unknown");
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
         .isInstanceOf(BulkConfigurationException.class)
@@ -274,9 +270,9 @@ class DriverSettingsTest {
 
   @Test
   void should_throw_exception_when_consistency_invalid() {
-    LoaderConfig oldConfig = createTestConfig("dsbulk.driver", "query.consistency", "Unknown");
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig = createTestConfig("datastax-java-driver");
+    Config oldConfig = createTestConfig("dsbulk.driver", "query.consistency", "Unknown");
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
         .isInstanceOf(BulkConfigurationException.class)
@@ -286,10 +282,9 @@ class DriverSettingsTest {
 
   @Test
   void should_throw_exception_when_serial_consistency_invalid() {
-    LoaderConfig oldConfig =
-        createTestConfig("dsbulk.driver", "query.serialConsistency", "Unknown");
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig = createTestConfig("datastax-java-driver");
+    Config oldConfig = createTestConfig("dsbulk.driver", "query.serialConsistency", "Unknown");
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
         .isInstanceOf(BulkConfigurationException.class)
@@ -299,9 +294,9 @@ class DriverSettingsTest {
 
   @Test
   void should_throw_exception_when_heartbeat_invalid() {
-    LoaderConfig oldConfig = createTestConfig("dsbulk.driver", "pooling.heartbeat", "NotADuration");
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig = createTestConfig("datastax-java-driver");
+    Config oldConfig = createTestConfig("dsbulk.driver", "pooling.heartbeat", "NotADuration");
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
         .isInstanceOf(BulkConfigurationException.class)
@@ -331,9 +326,9 @@ class DriverSettingsTest {
       String newSetting,
       @LogCapture(level = WARN, value = DriverSettings.class) LogInterceptor logs)
       throws GeneralSecurityException, IOException {
-    LoaderConfig oldConfig = createTestConfig("dsbulk.driver", deprecatedSetting, value);
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig = createTestConfig("datastax-java-driver");
+    Config oldConfig = createTestConfig("dsbulk.driver", deprecatedSetting, value);
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     settings.init(true);
     assertThat(logs)
@@ -359,9 +354,9 @@ class DriverSettingsTest {
       String shortcut,
       @LogCapture(level = WARN, value = DriverSettings.class) LogInterceptor logs)
       throws GeneralSecurityException, IOException {
-    LoaderConfig oldConfig = createTestConfig("dsbulk.driver", deprecatedSetting, value);
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig = createTestConfig("datastax-java-driver");
+    Config oldConfig = createTestConfig("dsbulk.driver", deprecatedSetting, value);
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     settings.init(true);
     assertThat(logs)
@@ -385,10 +380,10 @@ class DriverSettingsTest {
       String newSetting,
       @LogCapture(level = WARN, value = DriverSettings.class) LogInterceptor logs)
       throws GeneralSecurityException, IOException {
-    LoaderConfig oldConfig = createTestConfig("dsbulk.driver");
-    LoaderConfig cpConfig =
+    Config oldConfig = createTestConfig("dsbulk.driver");
+    Config cpConfig =
         createTestConfig("dsbulk.executor.continuousPaging", deprecatedSetting, value);
-    LoaderConfig newConfig = createTestConfig("datastax-java-driver");
+    Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     settings.init(false);
     assertThat(logs)
@@ -414,9 +409,9 @@ class DriverSettingsTest {
       String value,
       @LogCapture(level = WARN, value = DriverSettings.class) LogInterceptor logs)
       throws GeneralSecurityException, IOException {
-    LoaderConfig oldConfig = createTestConfig("dsbulk.driver", obsoleteSetting, value);
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig = createTestConfig("datastax-java-driver");
+    Config oldConfig = createTestConfig("dsbulk.driver", obsoleteSetting, value);
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     settings.init(true);
     assertThat(logs)
@@ -431,10 +426,10 @@ class DriverSettingsTest {
 
   @Test
   void should_throw_exception_when_page_unit_invalid() {
-    LoaderConfig oldConfig = createTestConfig("dsbulk.driver");
-    LoaderConfig cpConfig =
+    Config oldConfig = createTestConfig("dsbulk.driver");
+    Config cpConfig =
         createTestConfig("dsbulk.executor.continuousPaging", "pageUnit", "NotAPageUnit");
-    LoaderConfig newConfig = createTestConfig("datastax-java-driver");
+    Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(false))
         .isInstanceOf(BulkConfigurationException.class)
@@ -447,9 +442,9 @@ class DriverSettingsTest {
   void should_accept_cloud_secure_connect_bundle(String input, String expected)
       throws GeneralSecurityException, IOException {
     assumeFalse(PlatformUtils.isWindows());
-    LoaderConfig oldConfig = createTestConfig("dsbulk.driver");
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig =
+    Config oldConfig = createTestConfig("dsbulk.driver");
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig =
         createTestConfig(
             "datastax-java-driver", "basic.cloud.secure-connect-bundle", quoteJson(input));
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
@@ -498,9 +493,9 @@ class DriverSettingsTest {
       @LogCapture(level = INFO, value = DriverSettings.class) LogInterceptor logs)
       throws GeneralSecurityException, IOException {
     assumeFalse(PlatformUtils.isWindows());
-    LoaderConfig oldConfig = createTestConfig("dsbulk.driver");
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig =
+    Config oldConfig = createTestConfig("dsbulk.driver");
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig =
         createTestConfig(
             "datastax-java-driver", "basic.cloud.secure-connect-bundle", "/path/to/bundle");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
@@ -516,9 +511,9 @@ class DriverSettingsTest {
       @LogCapture(level = WARN, value = DriverSettings.class) LogInterceptor logs)
       throws GeneralSecurityException, IOException {
     assumeFalse(PlatformUtils.isWindows());
-    LoaderConfig oldConfig = createTestConfig("dsbulk.driver");
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig =
+    Config oldConfig = createTestConfig("dsbulk.driver");
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig =
         createTestConfig(
             "datastax-java-driver",
             "basic.contact-points",
@@ -539,9 +534,9 @@ class DriverSettingsTest {
       @LogCapture(level = WARN, value = DriverSettings.class) LogInterceptor logs)
       throws GeneralSecurityException, IOException {
     assumeFalse(PlatformUtils.isWindows());
-    LoaderConfig oldConfig = createTestConfig("dsbulk.driver", "hosts", "[host.com]");
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig =
+    Config oldConfig = createTestConfig("dsbulk.driver", "hosts", "[host.com]");
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig =
         createTestConfig(
             "datastax-java-driver", "basic.cloud.secure-connect-bundle", "/path/to/bundle");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
@@ -558,9 +553,9 @@ class DriverSettingsTest {
       @LogCapture(level = INFO, value = DriverSettings.class) LogInterceptor logs)
       throws GeneralSecurityException, IOException {
     assumeFalse(PlatformUtils.isWindows());
-    LoaderConfig oldConfig = createTestConfig("dsbulk.driver");
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig =
+    Config oldConfig = createTestConfig("dsbulk.driver");
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig =
         createTestConfig(
             "datastax-java-driver", "basic.cloud.secure-connect-bundle", "/path/to/bundle");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
@@ -580,9 +575,9 @@ class DriverSettingsTest {
       @LogCapture(level = WARN, value = DriverSettings.class) LogInterceptor logs)
       throws GeneralSecurityException, IOException {
     assumeFalse(PlatformUtils.isWindows());
-    LoaderConfig oldConfig = createTestConfig("dsbulk.driver");
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig =
+    Config oldConfig = createTestConfig("dsbulk.driver");
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig =
         createTestConfig(
             "datastax-java-driver",
             "basic.cloud.secure-connect-bundle",
@@ -609,9 +604,9 @@ class DriverSettingsTest {
       @LogCapture(level = WARN, value = DriverSettings.class) LogInterceptor logs)
       throws GeneralSecurityException, IOException {
     assumeFalse(PlatformUtils.isWindows());
-    LoaderConfig oldConfig = createTestConfig("dsbulk.driver");
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig =
+    Config oldConfig = createTestConfig("dsbulk.driver");
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig =
         createTestConfig(
             "datastax-java-driver",
             "basic.cloud.secure-connect-bundle",
@@ -642,9 +637,9 @@ class DriverSettingsTest {
       @LogCapture(level = WARN, value = DriverSettings.class) LogInterceptor logs)
       throws GeneralSecurityException, IOException {
     assumeFalse(PlatformUtils.isWindows());
-    LoaderConfig oldConfig = createTestConfig("dsbulk.driver");
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig =
+    Config oldConfig = createTestConfig("dsbulk.driver");
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig =
         createTestConfig(
             "datastax-java-driver",
             "basic.cloud.secure-connect-bundle",
@@ -663,9 +658,9 @@ class DriverSettingsTest {
       @LogCapture(level = WARN, value = DriverSettings.class) LogInterceptor logs)
       throws GeneralSecurityException, IOException {
     assumeFalse(PlatformUtils.isWindows());
-    LoaderConfig oldConfig = createTestConfig("dsbulk.driver");
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig =
+    Config oldConfig = createTestConfig("dsbulk.driver");
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig =
         createTestConfig(
             "datastax-java-driver",
             "basic.cloud.secure-connect-bundle",
@@ -687,9 +682,9 @@ class DriverSettingsTest {
       @LogCapture(level = WARN, value = DriverSettings.class) LogInterceptor logs)
       throws GeneralSecurityException, IOException {
     assumeFalse(PlatformUtils.isWindows());
-    LoaderConfig oldConfig = createTestConfig("dsbulk.driver", "ssl.provider", "JDK");
-    LoaderConfig cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
-    LoaderConfig newConfig =
+    Config oldConfig = createTestConfig("dsbulk.driver", "ssl.provider", "JDK");
+    Config cpConfig = createTestConfig("dsbulk.executor.continuousPaging");
+    Config newConfig =
         createTestConfig(
             "datastax-java-driver", "basic.cloud.secure-connect-bundle", "/path/to/bundle");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);

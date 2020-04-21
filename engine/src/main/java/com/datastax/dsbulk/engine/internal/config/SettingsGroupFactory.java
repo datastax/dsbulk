@@ -9,7 +9,6 @@
 package com.datastax.dsbulk.engine.internal.config;
 
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
-import com.datastax.dsbulk.commons.internal.config.LoaderConfigFactory;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigObject;
 import com.typesafe.config.ConfigOrigin;
@@ -68,7 +67,7 @@ public class SettingsGroupFactory {
    * @param includeDriver Whether to include a driver section or not.
    */
   public static Map<String, SettingsGroup> createDSBulkConfigurationGroups(boolean includeDriver) {
-    Config referenceConfig = LoaderConfigFactory.createReferenceConfig();
+    Config referenceConfig = ConfigUtils.createReferenceConfig();
     List<String> commonSettings = parseCommonSettings(referenceConfig);
     List<String> preferredSettings = parsePreferredSettings(referenceConfig, commonSettings);
     SettingsComparator comparator = new SettingsComparator(preferredSettings);
@@ -85,7 +84,7 @@ public class SettingsGroupFactory {
 
     if (includeDriver) {
       Config driverConfig =
-          LoaderConfigFactory.standaloneDriverReference().getConfig("datastax-java-driver");
+          ConfigUtils.standaloneDriverReference().getConfig("datastax-java-driver");
       SettingsGroup driverGroup = new OrderedSettingsGroup();
       populateDriverGroup(driverGroup, driverConfig.root(), "datastax-java-driver");
       groups.put("datastax-java-driver", driverGroup);

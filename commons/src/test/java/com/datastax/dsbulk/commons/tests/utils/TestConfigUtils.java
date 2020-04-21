@@ -8,9 +8,7 @@
  */
 package com.datastax.dsbulk.commons.tests.utils;
 
-import com.datastax.dsbulk.commons.config.LoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.DefaultLoaderConfig;
-import com.datastax.dsbulk.commons.internal.config.LoaderConfigFactory;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigParseOptions;
@@ -27,8 +25,8 @@ public class TestConfigUtils {
    * @param additionalArgs Additional arguments to be emulated as command line arguments.
    * @return A test configuration containing all the settings under the section 'path'.
    */
-  public static LoaderConfig createTestConfig(String path, Object... additionalArgs) {
-    Config baseConfig = LoaderConfigFactory.createApplicationConfig(null).getConfig(path);
+  public static Config createTestConfig(String path, Object... additionalArgs) {
+    Config baseConfig = ConfigUtils.createApplicationConfig(null).getConfig(path);
     if (additionalArgs != null && additionalArgs.length != 0) {
       Iterator<Object> it = Arrays.asList(additionalArgs).iterator();
       while (it.hasNext()) {
@@ -41,6 +39,6 @@ public class TestConfigUtils {
                 .withFallback(baseConfig);
       }
     }
-    return new DefaultLoaderConfig(baseConfig);
+    return baseConfig;
   }
 }

@@ -10,13 +10,13 @@ package com.datastax.dsbulk.engine.internal.settings;
 
 import com.codahale.metrics.MetricRegistry;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
 import com.datastax.dsbulk.engine.internal.settings.LogSettings.Verbosity;
 import com.datastax.oss.driver.api.core.ProtocolVersion;
 import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
 import com.datastax.oss.driver.shaded.guava.common.util.concurrent.ThreadFactoryBuilder;
+import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -34,7 +34,7 @@ public class MonitoringSettings {
   private static final String JMX = "jmx";
   private static final String CSV = "csv";
 
-  private final LoaderConfig config;
+  private final Config config;
   private final String executionId;
 
   private TimeUnit rateUnit;
@@ -46,7 +46,7 @@ public class MonitoringSettings {
   private boolean jmx;
   private boolean csv;
 
-  MonitoringSettings(LoaderConfig config, String executionId) {
+  MonitoringSettings(Config config, String executionId) {
     this.config = config;
     this.executionId = executionId;
   }

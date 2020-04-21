@@ -25,7 +25,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.internal.io.CompressedIOUtils;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
@@ -42,6 +41,7 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.github.tomakehurst.wiremock.WireMockServer;
+import com.typesafe.config.Config;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -116,7 +116,7 @@ class JsonConnectorTest {
   void should_read_single_file_multi_doc(final String fileName, final String compression)
       throws Exception {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.json",
             "url",
@@ -152,7 +152,7 @@ class JsonConnectorTest {
   @Test
   void should_read_single_file_single_doc() throws Exception {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.json",
             "url",
@@ -173,7 +173,7 @@ class JsonConnectorTest {
   @Test
   void should_read_single_empty_file_single_doc() throws Exception {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.json",
             "url",
@@ -193,7 +193,7 @@ class JsonConnectorTest {
   @Test
   void should_read_single_empty_file_multi_doc() throws Exception {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.json",
             "url",
@@ -213,7 +213,7 @@ class JsonConnectorTest {
   @Test
   void should_read_single_file_by_resource() throws Exception {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.json",
             "url",
@@ -237,7 +237,7 @@ class JsonConnectorTest {
       InputStream is = new ByteArrayInputStream(line.getBytes(ISO_8859_1));
       System.setIn(is);
       JsonConnector connector = new JsonConnector();
-      LoaderConfig settings = createTestConfig("dsbulk.connector.json", "encoding", "ISO-8859-1");
+      Config settings = createTestConfig("dsbulk.connector.json", "encoding", "ISO-8859-1");
       connector.configure(settings, true);
       connector.init();
       List<Record> actual = Flux.from(connector.read()).collectList().block();
@@ -261,7 +261,7 @@ class JsonConnectorTest {
       PrintStream out = new PrintStream(baos);
       System.setOut(out);
       JsonConnector connector = new JsonConnector();
-      LoaderConfig settings = createTestConfig("dsbulk.connector.json", "encoding", "ISO-8859-1");
+      Config settings = createTestConfig("dsbulk.connector.json", "encoding", "ISO-8859-1");
       connector.configure(settings, false);
       connector.init();
       Flux.<Record>just(
@@ -285,7 +285,7 @@ class JsonConnectorTest {
   @Test
   void should_read_all_resources_in_directory() throws Exception {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig("dsbulk.connector.json", "url", url("/root"), "recursive", false);
     connector.configure(settings, true);
     connector.init();
@@ -296,7 +296,7 @@ class JsonConnectorTest {
   @Test
   void should_read_all_resources_in_directory_by_resource() throws Exception {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig("dsbulk.connector.json", "url", url("/root"), "recursive", false);
     connector.configure(settings, true);
     connector.init();
@@ -308,7 +308,7 @@ class JsonConnectorTest {
   void should_read_all_resources_in_directory_with_path() throws Exception {
     JsonConnector connector = new JsonConnector();
     Path rootPath = Paths.get(getClass().getResource("/root").toURI());
-    LoaderConfig settings =
+    Config settings =
         createTestConfig("dsbulk.connector.json", "url", quoteJson(rootPath), "recursive", false);
     connector.configure(settings, true);
     connector.init();
@@ -319,7 +319,7 @@ class JsonConnectorTest {
   @Test
   void should_read_all_resources_in_directory_recursively() throws Exception {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig("dsbulk.connector.json", "url", url("/root"), "recursive", true);
     connector.configure(settings, true);
     connector.init();
@@ -330,7 +330,7 @@ class JsonConnectorTest {
   @Test
   void should_read_all_resources_in_directory_recursively_by_resource() throws Exception {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig("dsbulk.connector.json", "url", url("/root"), "recursive", true);
     connector.configure(settings, true);
     connector.init();
@@ -341,7 +341,7 @@ class JsonConnectorTest {
   @Test
   void should_scan_directory_recursively_with_custom_file_name_format() throws Exception {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.json",
             "url",
@@ -361,7 +361,7 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     Path rootPath = Files.createTempDirectory("empty");
     try {
-      LoaderConfig settings =
+      Config settings =
           createTestConfig(
               "dsbulk.connector.json",
               "url",
@@ -386,7 +386,7 @@ class JsonConnectorTest {
     Path rootPath = Files.createTempDirectory("empty");
     Files.createTempFile(rootPath, "test", ".txt");
     try {
-      LoaderConfig settings =
+      Config settings =
           createTestConfig(
               "dsbulk.connector.json",
               "url",
@@ -418,7 +418,7 @@ class JsonConnectorTest {
     Path rootPath = Files.createTempDirectory("empty");
     Files.createTempFile(rootPath, "test", ".txt");
     try {
-      LoaderConfig settings =
+      Config settings =
           createTestConfig(
               "dsbulk.connector.json",
               "url",
@@ -461,7 +461,7 @@ class JsonConnectorTest {
     Path dir = Files.createTempDirectory("test");
     Path out = dir.resolve("nonexistent");
     try {
-      LoaderConfig settings =
+      Config settings =
           createTestConfig(
               "dsbulk.connector.json",
               "url",
@@ -495,7 +495,7 @@ class JsonConnectorTest {
     Path dir = Files.createTempDirectory("test");
     Path out = dir.resolve("nonexistent");
     try {
-      LoaderConfig settings =
+      Config settings =
           createTestConfig(
               "dsbulk.connector.json",
               "url",
@@ -533,7 +533,7 @@ class JsonConnectorTest {
     Path dir = Files.createTempDirectory("test");
     Path out = dir.resolve("nonexistent");
     try {
-      LoaderConfig settings =
+      Config settings =
           createTestConfig(
               "dsbulk.connector.json",
               "url",
@@ -579,7 +579,7 @@ class JsonConnectorTest {
     Path dir = Files.createTempDirectory("test");
     Path out = dir.resolve("nonexistent");
     try {
-      LoaderConfig settings =
+      Config settings =
           createTestConfig(
               "dsbulk.connector.json",
               "url",
@@ -627,7 +627,7 @@ class JsonConnectorTest {
     Path dir = Files.createTempDirectory("test");
     Path out = dir.resolve("nonexistent");
     try {
-      LoaderConfig settings =
+      Config settings =
           createTestConfig(
               "dsbulk.connector.json",
               "url",
@@ -665,7 +665,7 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     Path out = Files.createTempDirectory("test");
     try {
-      LoaderConfig settings =
+      Config settings =
           createTestConfig(
               "dsbulk.connector.json",
               "url",
@@ -701,7 +701,7 @@ class JsonConnectorTest {
   void should_generate_file_name() throws Exception {
     Path out = Files.createTempDirectory("test");
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings = createTestConfig("dsbulk.connector.json", "url", quoteJson(out));
+    Config settings = createTestConfig("dsbulk.connector.json", "url", quoteJson(out));
     connector.configure(settings, false);
     connector.init();
     AtomicInteger counter = (AtomicInteger) ReflectionUtils.getInternalState(connector, "counter");
@@ -721,7 +721,7 @@ class JsonConnectorTest {
     Path out = Files.createTempDirectory("test");
     try {
       String escapedPath = quoteJson(out);
-      LoaderConfig settings =
+      Config settings =
           createTestConfig(
               "dsbulk.connector.json",
               "url",
@@ -757,7 +757,7 @@ class JsonConnectorTest {
   @Test
   void should_skip_records() throws Exception {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.json", "url", url("/root"), "recursive", true, "skipRecords", 10);
     connector.configure(settings, true);
@@ -769,7 +769,7 @@ class JsonConnectorTest {
   @Test
   void should_skip_records2() throws Exception {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.json", "url", url("/root"), "recursive", true, "skipRecords", 150);
     connector.configure(settings, true);
@@ -781,7 +781,7 @@ class JsonConnectorTest {
   @Test
   void should_honor_max_records() throws Exception {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.json", "url", url("/root"), "recursive", true, "maxRecords", 10);
     connector.configure(settings, true);
@@ -793,7 +793,7 @@ class JsonConnectorTest {
   @Test
   void should_honor_max_records2() throws Exception {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.json", "url", url("/root"), "recursive", true, "maxRecords", 1);
     connector.configure(settings, true);
@@ -805,7 +805,7 @@ class JsonConnectorTest {
   @Test
   void should_honor_max_records_and_skip_records() throws Exception {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.json",
             "url",
@@ -825,7 +825,7 @@ class JsonConnectorTest {
   @Test
   void should_honor_max_records_and_skip_records2() throws Exception {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.json",
             "url",
@@ -847,7 +847,7 @@ class JsonConnectorTest {
   @Test
   void should_error_on_empty_url() {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings = createTestConfig("dsbulk.connector.json", "url", "\"\"");
+    Config settings = createTestConfig("dsbulk.connector.json", "url", "\"\"");
     assertThatThrownBy(() -> connector.configure(settings, true))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
@@ -859,7 +859,7 @@ class JsonConnectorTest {
   void should_throw_if_passing_urlfile_parameter_for_write() {
     JsonConnector connector = new JsonConnector();
 
-    LoaderConfig settings =
+    Config settings =
         createTestConfig("dsbulk.connector.json", "urlfile", quoteJson(MULTIPLE_URLS_FILE));
 
     assertThatThrownBy(() -> connector.configure(settings, false))
@@ -872,7 +872,7 @@ class JsonConnectorTest {
       @LogCapture(level = Level.DEBUG) LogInterceptor logs) {
     JsonConnector connector = new JsonConnector();
 
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.json",
             "urlfile",
@@ -889,7 +889,7 @@ class JsonConnectorTest {
   @Test
   void should_accept_multiple_urls() throws IOException, URISyntaxException {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.json",
             "urlfile",
@@ -912,7 +912,7 @@ class JsonConnectorTest {
       Path file = out.resolve("output-000001.json");
       // will cause the write to fail because the file already exists
       Files.createFile(file);
-      LoaderConfig settings =
+      Config settings =
           createTestConfig("dsbulk.connector.json", "url", quoteJson(out), "maxConcurrentFiles", 1);
       connector.configure(settings, false);
       assertThrows(IllegalArgumentException.class, connector::init);
@@ -926,7 +926,7 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     Path out = Files.createTempDirectory("test");
     try {
-      LoaderConfig settings =
+      Config settings =
           createTestConfig("dsbulk.connector.json", "url", quoteJson(out), "maxConcurrentFiles", 1);
       connector.configure(settings, false);
       connector.init();
@@ -947,7 +947,7 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     Path out = Files.createTempDirectory("test");
     try {
-      LoaderConfig settings =
+      Config settings =
           createTestConfig("dsbulk.connector.json", "url", quoteJson(out), "maxConcurrentFiles", 2);
       connector.configure(settings, false);
       connector.init();
@@ -992,7 +992,7 @@ class JsonConnectorTest {
   @Test
   void should_report_wrong_document_mode() throws Exception {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.json",
             "url",
@@ -1023,7 +1023,7 @@ class JsonConnectorTest {
                     .withHeader("Content-Type", "text/json")
                     .withBody(readFile(path("/single_doc.json")))));
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.json",
             "url",
@@ -1044,7 +1044,7 @@ class JsonConnectorTest {
   @Test
   void should_not_write_to_http_url() throws Exception {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig("dsbulk.connector.json", "url", "\"http://localhost:1234/file.json\"");
     connector.configure(settings, false);
     connector.init();
@@ -1063,7 +1063,7 @@ class JsonConnectorTest {
   @Test
   void should_throw_exception_when_recursive_not_boolean() {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings = createTestConfig("dsbulk.connector.json", "recursive", "NotABoolean");
+    Config settings = createTestConfig("dsbulk.connector.json", "recursive", "NotABoolean");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
@@ -1074,7 +1074,7 @@ class JsonConnectorTest {
   @Test
   void should_throw_exception_when_prettyPrint_not_boolean() {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings = createTestConfig("dsbulk.connector.json", "prettyPrint", "NotABoolean");
+    Config settings = createTestConfig("dsbulk.connector.json", "prettyPrint", "NotABoolean");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
@@ -1085,7 +1085,7 @@ class JsonConnectorTest {
   @Test
   void should_throw_exception_when_skipRecords_not_number() {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings = createTestConfig("dsbulk.connector.json", "skipRecords", "NotANumber");
+    Config settings = createTestConfig("dsbulk.connector.json", "skipRecords", "NotANumber");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
@@ -1096,7 +1096,7 @@ class JsonConnectorTest {
   @Test
   void should_throw_exception_when_maxRecords_not_number() {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings = createTestConfig("dsbulk.connector.json", "maxRecords", "NotANumber");
+    Config settings = createTestConfig("dsbulk.connector.json", "maxRecords", "NotANumber");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
@@ -1107,8 +1107,7 @@ class JsonConnectorTest {
   @Test
   void should_throw_exception_when_maxConcurrentFiles_not_number() {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
-        createTestConfig("dsbulk.connector.json", "maxConcurrentFiles", "NotANumber");
+    Config settings = createTestConfig("dsbulk.connector.json", "maxConcurrentFiles", "NotANumber");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
@@ -1119,7 +1118,7 @@ class JsonConnectorTest {
   @Test
   void should_throw_exception_when_encoding_not_valid() {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings = createTestConfig("dsbulk.connector.json", "encoding", "NotAnEncoding");
+    Config settings = createTestConfig("dsbulk.connector.json", "encoding", "NotAnEncoding");
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(BulkConfigurationException.class)
         .hasMessageContaining(
@@ -1131,14 +1130,14 @@ class JsonConnectorTest {
   void should_throw_exception_when_compression_is_wrong() {
     JsonConnector connector = new JsonConnector();
     // empty string test
-    LoaderConfig settings1 = createTestConfig("dsbulk.connector.json", "compression", "abc");
+    Config settings1 = createTestConfig("dsbulk.connector.json", "compression", "abc");
     assertThrows(BulkConfigurationException.class, () -> connector.configure(settings1, false));
   }
 
   @Test
   void should_throw_exception_when_doc_compression_is_wrong() throws Exception {
     JsonConnector connector = new JsonConnector();
-    LoaderConfig settings =
+    Config settings =
         createTestConfig(
             "dsbulk.connector.json",
             "url",

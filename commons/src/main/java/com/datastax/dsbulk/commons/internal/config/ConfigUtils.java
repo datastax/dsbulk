@@ -8,13 +8,12 @@
  */
 package com.datastax.dsbulk.commons.internal.config;
 
-import static com.datastax.dsbulk.commons.config.LoaderConfig.LEAF_ANNOTATION;
-import static com.datastax.dsbulk.commons.config.LoaderConfig.TYPE_ANNOTATION;
-
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
+import com.datastax.dsbulk.commons.internal.reflection.ReflectionUtils;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigException.Missing;
+import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigList;
 import com.typesafe.config.ConfigObject;
 import com.typesafe.config.ConfigValue;
@@ -24,6 +23,7 @@ import edu.umd.cs.findbugs.annotations.Nullable;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
@@ -45,6 +45,10 @@ public class ConfigUtils {
 
   @Nullable private static final Path USER_HOME;
 
+  private static final String TYPE_ANNOTATION = "@type";
+
+  private static final String LEAF_ANNOTATION = "@leaf";
+
   static {
     URL currentDir;
     try {
@@ -60,6 +64,209 @@ public class ConfigUtils {
       userHome = null;
     }
     USER_HOME = userHome;
+  }
+
+  /**
+   * Invalidates caches and creates a resolved config containing only the driver settings that
+   * DSBulk overrides.
+   *
+   * <p>The reference config is obtained from all classpath resources named driver-reference.conf.
+   *
+   * <p>This method is only useful for documentation purposes.
+   *
+   * @return a resolved reference config containing only the driver settings that DSBulk overrides.
+   */
+  public static Config standaloneDriverReference() {
+    ConfigFactory.invalidateCaches();
+    return ConfigFactory.parseResourcesAnySyntax("driver-reference").resolve();
+  }
+
+  /**
+   * Invalidates caches and creates a resolved reference config for DSBulk.
+   *
+   * <p>The reference config is obtained from the following stack:
+   *
+   * <ol>
+   *   <li>All classpath resources named dsbulk-reference.conf: DSBulk specific settings and driver
+   *       overrides.
+   *   <li>All classpath resources named dse-reference.conf: DSE driver specific settings.
+   *   <li>All classpath resources named reference.conf: OSS driver settings.
+   * </ol>
+   *
+   * @return a resolved reference config for DSBulk
+   */
+  @NonNull
+  public static Config createReferenceConfig() {
+    // parse errors should not happen here
+    return ConfigFactory.parseResourcesAnySyntax("dsbulk-reference")
+        .withFallback(ConfigFactory.parseResourcesAnySyntax("dse-reference"))
+        .withFallback(ConfigFactory.defaultReference())
+        .resolve();
+  }
+
+  /**
+   * Invalidates caches and creates a resolved application config for DSBulk, optionally pulling
+   * application settings from the given alternate location.
+   *
+   * <p>The application config is obtained from the following stack:
+   *
+   * <ol>
+   *   <li>All classpath resources named application[.conf,.json,.properties] or <code>appConfigPath
+   *       </code> if non null: application settings (DSBulk and driver overrides).
+   *   <li>dsbulk-reference.conf: DSBulk specific settings and driver overrides.
+   *   <li>dse-reference.conf: DSE driver specific settings.
+   *   <li>reference.conf: OSS driver settings.
+   * </ol>
+   *
+   * * @param appConfigPath An alternate location for the application settings, or null to use the
+   * default application resources.
+   *
+   * @return a resolved application config for DSBulk
+   */
+  @NonNull
+  public static Config createApplicationConfig(@Nullable Path appConfigPath) {
+    try {
+      if (appConfigPath != null) {
+        // If the user specified the -f option (giving us an app config path),
+        // set the config.file property to tell TypeSafeConfig.
+        System.setProperty("config.file", appConfigPath.toString());
+      }
+      Config referenceConfig = createReferenceConfig();
+      return ConfigFactory.defaultOverrides()
+          .withFallback(ConfigFactory.defaultApplication())
+          .withFallback(referenceConfig)
+          .resolve();
+    } catch (ConfigException.Parse e) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Error parsing configuration file %s at line %s. "
+                  + "Please make sure its format is compliant with HOCON syntax. "
+                  + "If you are using \\ (backslash) to define a path, "
+                  + "escape it with \\\\ or use / (forward slash) instead.",
+              e.origin().filename(), e.origin().lineNumber()),
+          e);
+    }
+  }
+
+  /**
+   * Returns the {@link Path} object at the given path.
+   *
+   * <p>The returned Path is normalized and absolute.
+   *
+   * <p>For convenience, if the path begins with a tilde (`~`), that symbol will be expanded to the
+   * current user's home directory, as supplied by `System.getProperty("user.home")`. Note that this
+   * expansion will not occur when the tilde is not the first character in the path, nor when the
+   * home directory owner is not the current user.
+   *
+   * @param config The {@link Config} to use.
+   * @param path path expression.
+   * @return the Path object at the requested path.
+   * @throws Missing if value is absent or null.
+   * @throws ConfigException.WrongType if value is not convertible to a Path.
+   */
+  public static Path getPath(Config config, String path) {
+    String setting = config.getString(path);
+    try {
+      return resolvePath(setting);
+    } catch (InvalidPathException e) {
+      throw new ConfigException.WrongType(
+          config.origin(),
+          String.format("%s: Expecting valid filepath, got '%s'", path, setting),
+          e);
+    }
+  }
+
+  /**
+   * Returns the {@link URL} object at the given path.
+   *
+   * <p>The value will be first interpreted directly as a URL; if the parsing fails, the value will
+   * be then interpreted as a path on the local filesystem, then converted to a file URL.
+   *
+   * <p>If the value is "-" map it to "std:/", to indicate this url represents stdout (when
+   * unloading) and stdin (when loading).
+   *
+   * <p>The returned URL is normalized and absolute.
+   *
+   * @param config The {@link Config} to use.
+   * @param path path expression.
+   * @return the URL object at the requested path.
+   * @throws Missing if value is absent or null.
+   * @throws ConfigException.WrongType if value is not convertible to a URL.
+   */
+  public static URL getURL(Config config, String path) {
+    String setting = config.getString(path);
+    try {
+      return resolveURL(setting);
+    } catch (Exception e) {
+      throw new ConfigException.WrongType(
+          config.origin(),
+          String.format("%s: Expecting valid filepath or URL, got '%s'", path, setting),
+          e);
+    }
+  }
+
+  /**
+   * Returns the number of threads at the given path.
+   *
+   * <p>The given path can be an integer, or alternatively, an integer followed by the letter C, in
+   * which case, the resulting value is the integer multiplied by the number of available cores on
+   * the system.
+   *
+   * @param config The {@link Config} to use.
+   * @param path path expression.
+   * @return the number of threads at the requested path.
+   * @throws Missing if value is absent or null.
+   * @throws ConfigException.WrongType if value is not convertible to a number of threads.
+   */
+  public static int getThreads(Config config, String path) {
+    String setting = config.getString(path);
+    try {
+      return resolveThreads(setting);
+    } catch (Exception e) {
+      throw new ConfigException.WrongType(
+          config.origin(),
+          String.format("%s: Expecting integer or string in 'nC' syntax, got '%s'", path, setting),
+          e);
+    }
+  }
+
+  /**
+   * Returns the character at the given path.
+   *
+   * @param config The {@link Config} to use.
+   * @param path path expression.
+   * @return the character at the requested path.
+   * @throws Missing if value is absent or null.
+   * @throws ConfigException.WrongType if value is not convertible to a single character.
+   */
+  public static char getChar(Config config, String path) {
+    String setting = config.getString(path);
+    if (setting.length() != 1) {
+      throw new ConfigException.WrongType(
+          config.origin(), String.format("%s: Expecting single char, got '%s'", path, setting));
+    }
+    return setting.charAt(0);
+  }
+
+  /**
+   * Returns the {@link Charset} at the given path.
+   *
+   * @param config The {@link Config} to use.
+   * @param path path expression.
+   * @return the Charset at the requested path.
+   * @throws Missing if value is absent or null.
+   * @throws ConfigException.WrongType if value is not convertible to a Charset.
+   */
+  public static Charset getCharset(Config config, String path) {
+    String setting = config.getString(path);
+    try {
+      return Charset.forName(setting);
+    } catch (Exception e) {
+      throw new ConfigException.WrongType(
+          config.origin(),
+          String.format("%s: Expecting valid charset name, got '%s'", path, setting),
+          e);
+    }
   }
 
   /**
@@ -157,14 +364,14 @@ public class ConfigUtils {
    * <p>This method first tries to parse the input directly as an integer.
    *
    * <p>If that fails, it then tries to parse the input as an integer followed by the letter 'C'. If
-   * that succeeds, the total number of threads returned is <code>
-   * n * {@link Runtime#availableProcessors() number of available cores}</code>.
+   * that succeeds, the total number of threads returned is <code> n * {@link
+   * Runtime#availableProcessors() number of available cores}</code>.
    *
    * @param threadsStr The string to parse.
+   * @return The number of threads.
    * @throws PatternSyntaxException If the input cannot be parsed.
    * @throws IllegalArgumentException If the input can be parsed, but the resulting integer is not
    *     positive.
-   * @return The number of threads.
    */
   public static int resolveThreads(@NonNull String threadsStr) {
     int threads;
@@ -442,5 +649,42 @@ public class ConfigUtils {
     String resource = value.origin().resource();
     // Account for reference.conf and dsbulk-reference.conf
     return resource != null && resource.endsWith("reference.conf");
+  }
+
+  /**
+   * Returns the {@link Class} object at the given path.
+   *
+   * <p>Short class names are allowed and will be resolved against common package names.
+   *
+   * @param <T> the expected type.
+   * @param config The {@link Config} to use.
+   * @param path path expression.
+   * @param expected The expected class or interface that the object should be an instance of.
+   * @return the Class object corresponding to the class name at the requested path.
+   * @throws Missing if value is absent or null.
+   * @throws ConfigException.WrongType if value is not convertible to a Path.
+   * @throws ConfigException.BadValue if the object is not of the expected type.
+   */
+  public static <T> Class<? extends T> getClass(Config config, String path, Class<T> expected) {
+    String setting = config.getString(path);
+    try {
+      Class<?> c = ReflectionUtils.resolveClass(setting);
+      if (expected.isAssignableFrom(c)) {
+        @SuppressWarnings("unchecked")
+        Class<T> ret = (Class<T>) c;
+        return ret;
+      }
+      throw new ConfigException.BadValue(
+          config.origin(),
+          path,
+          String.format(
+              "Class does not extend nor implement %s: %s",
+              expected.getSimpleName(), c.getSimpleName()));
+    } catch (Exception e) {
+      throw new ConfigException.WrongType(
+          config.origin(),
+          String.format("%s: Expecting FQCN or short class name, got '%s'", path, setting),
+          e);
+    }
   }
 }

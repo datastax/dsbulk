@@ -45,7 +45,6 @@ import com.datastax.dsbulk.commons.codecs.temporal.TemporalToTemporalCodec;
 import com.datastax.dsbulk.commons.codecs.temporal.TemporalToUUIDCodec;
 import com.datastax.dsbulk.commons.codecs.util.TimeUUIDGenerator;
 import com.datastax.dsbulk.commons.config.BulkConfigurationException;
-import com.datastax.dsbulk.commons.config.LoaderConfig;
 import com.datastax.dsbulk.commons.tests.driver.DriverUtils;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.oss.driver.api.core.type.DataTypes;
@@ -54,6 +53,7 @@ import com.datastax.oss.driver.api.core.type.UserDefinedType;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import com.datastax.oss.driver.internal.core.type.UserDefinedTypeBuilder;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.typesafe.config.Config;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -69,7 +69,7 @@ class CodecSettingsTest {
   @Test
   void should_return_string_converting_codecs() {
 
-    LoaderConfig config = createTestConfig("dsbulk.codec");
+    Config config = createTestConfig("dsbulk.codec");
     CodecSettings settings = new CodecSettings(config);
     settings.init();
     ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(false, false);
@@ -121,7 +121,7 @@ class CodecSettingsTest {
   @Test
   void should_return_number_converting_codecs() {
 
-    LoaderConfig config = createTestConfig("dsbulk.codec");
+    Config config = createTestConfig("dsbulk.codec");
     CodecSettings settings = new CodecSettings(config);
     settings.init();
     ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(false, false);
@@ -155,7 +155,7 @@ class CodecSettingsTest {
   @Test
   void should_return_temporal_converting_codecs() {
 
-    LoaderConfig config = createTestConfig("dsbulk.codec");
+    Config config = createTestConfig("dsbulk.codec");
     CodecSettings settings = new CodecSettings(config);
     settings.init();
     ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(false, false);
@@ -248,7 +248,7 @@ class CodecSettingsTest {
   @Test
   void should_return_codecs_for_tokenizable_fields() {
 
-    LoaderConfig config = createTestConfig("dsbulk.codec");
+    Config config = createTestConfig("dsbulk.codec");
     CodecSettings settings = new CodecSettings(config);
     settings.init();
     ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(false, false);
@@ -281,7 +281,7 @@ class CodecSettingsTest {
   @Test
   void should_return_uuid_converting_codecs() {
 
-    LoaderConfig config = createTestConfig("dsbulk.codec", "uuidStrategy", "MIN");
+    Config config = createTestConfig("dsbulk.codec", "uuidStrategy", "MIN");
     CodecSettings settings = new CodecSettings(config);
     settings.init();
     ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(false, false);
@@ -319,7 +319,7 @@ class CodecSettingsTest {
 
   @Test
   void should_return_boolean_converting_codecs() {
-    LoaderConfig config = createTestConfig("dsbulk.codec");
+    Config config = createTestConfig("dsbulk.codec");
     CodecSettings settings = new CodecSettings(config);
     settings.init();
     ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(false, false);
@@ -338,7 +338,7 @@ class CodecSettingsTest {
 
   @Test
   void should_return_rounding_codecs() {
-    LoaderConfig config =
+    Config config =
         createTestConfig("dsbulk.codec", "roundingStrategy", "UP", "formatNumbers", "true");
     CodecSettings settings = new CodecSettings(config);
     settings.init();
@@ -350,7 +350,7 @@ class CodecSettingsTest {
 
   @Test
   void should_return_codecs_honoring_overflow_strategy() {
-    LoaderConfig config = createTestConfig("dsbulk.codec", "overflowStrategy", "TRUNCATE");
+    Config config = createTestConfig("dsbulk.codec", "overflowStrategy", "TRUNCATE");
     CodecSettings settings = new CodecSettings(config);
     settings.init();
     ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(false, false);
@@ -363,7 +363,7 @@ class CodecSettingsTest {
   @Test
   void should_create_settings_when_null_words_are_specified() {
     {
-      LoaderConfig config = createTestConfig("dsbulk.codec", "nullStrings", "[NULL]");
+      Config config = createTestConfig("dsbulk.codec", "nullStrings", "[NULL]");
       CodecSettings codecSettings = new CodecSettings(config);
       codecSettings.init();
 
@@ -371,7 +371,7 @@ class CodecSettingsTest {
           .containsOnly("NULL");
     }
     {
-      LoaderConfig config = createTestConfig("dsbulk.codec", "nullStrings", "[NIL, NULL]");
+      Config config = createTestConfig("dsbulk.codec", "nullStrings", "[NIL, NULL]");
       CodecSettings codecSettings = new CodecSettings(config);
       codecSettings.init();
 
@@ -379,7 +379,7 @@ class CodecSettingsTest {
           .containsOnly("NIL", "NULL");
     }
     {
-      LoaderConfig config = createTestConfig("dsbulk.codec", "nullStrings", "[\"NULL\"]");
+      Config config = createTestConfig("dsbulk.codec", "nullStrings", "[\"NULL\"]");
       CodecSettings codecSettings = new CodecSettings(config);
       codecSettings.init();
 
@@ -387,7 +387,7 @@ class CodecSettingsTest {
           .containsOnly("NULL");
     }
     {
-      LoaderConfig config = createTestConfig("dsbulk.codec", "nullStrings", "[\"NIL\", \"NULL\"]");
+      Config config = createTestConfig("dsbulk.codec", "nullStrings", "[\"NIL\", \"NULL\"]");
       CodecSettings codecSettings = new CodecSettings(config);
       codecSettings.init();
 
@@ -398,7 +398,7 @@ class CodecSettingsTest {
 
   @Test
   void should_throw_exception_when_nullStrings_not_a_list() {
-    LoaderConfig config = createTestConfig("dsbulk.codec", "nullStrings", null);
+    Config config = createTestConfig("dsbulk.codec", "nullStrings", null);
     CodecSettings settings = new CodecSettings(config);
     assertThatThrownBy(settings::init)
         .isInstanceOf(BulkConfigurationException.class)
@@ -408,7 +408,7 @@ class CodecSettingsTest {
 
   @Test
   void should_return_string_to_unknown_type_codec_for_dynamic_composite_type() {
-    LoaderConfig config = createTestConfig("dsbulk.codec");
+    Config config = createTestConfig("dsbulk.codec");
     CodecSettings settings = new CodecSettings(config);
     settings.init();
     ExtendedCodecRegistry codecRegistry = settings.createCodecRegistry(false, false);

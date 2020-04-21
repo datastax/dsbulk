@@ -15,15 +15,14 @@ import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.Statist
 import static com.datastax.dsbulk.engine.internal.settings.StatsSettings.StatisticsMode.ranges;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.datastax.dsbulk.commons.config.LoaderConfig;
+import com.typesafe.config.Config;
 import org.junit.jupiter.api.Test;
 
 class StatsSettingsTest {
 
   @Test
   void should_report_statistics_mode() {
-    LoaderConfig config =
-        createTestConfig("dsbulk.stats", "modes", "[hosts,ranges,partitions,global]");
+    Config config = createTestConfig("dsbulk.stats", "modes", "[hosts,ranges,partitions,global]");
     StatsSettings settings = new StatsSettings(config);
     settings.init();
     assertThat(settings.getStatisticsModes()).contains(hosts, ranges, partitions, global);
@@ -31,7 +30,7 @@ class StatsSettingsTest {
 
   @Test
   void should_report_num_partitions() {
-    LoaderConfig config = createTestConfig("dsbulk.stats", "numPartitions", 20);
+    Config config = createTestConfig("dsbulk.stats", "numPartitions", 20);
     StatsSettings settings = new StatsSettings(config);
     settings.init();
     assertThat(settings.getNumPartitions()).isEqualTo(20);
