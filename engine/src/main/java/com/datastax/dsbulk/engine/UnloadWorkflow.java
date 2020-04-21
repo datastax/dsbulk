@@ -16,7 +16,6 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.codahale.metrics.MetricRegistry;
 import com.datastax.dsbulk.commons.codecs.ExtendedCodecRegistry;
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.Record;
@@ -104,7 +103,7 @@ public class UnloadWorkflow implements Workflow {
     engineSettings.init();
     // First verify that dry-run is off; that's unsupported for unload.
     if (engineSettings.isDryRun()) {
-      throw new BulkConfigurationException("Dry-run is not supported for unload");
+      throw new IllegalArgumentException("Dry-run is not supported for unload");
     }
     // No logs should be produced until the following statement returns
     logSettings.init();

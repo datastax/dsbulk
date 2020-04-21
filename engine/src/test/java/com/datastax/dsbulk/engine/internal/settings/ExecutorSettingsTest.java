@@ -14,7 +14,6 @@ import static com.datastax.dsbulk.commons.tests.utils.TestConfigUtils.createTest
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.tests.driver.DriverUtils;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
@@ -147,7 +146,7 @@ class ExecutorSettingsTest {
     Config config = createTestConfig("dsbulk.executor", "maxPerSecond", "NotANumber");
     ExecutorSettings settings = new ExecutorSettings(config);
     assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.executor.maxPerSecond, expecting NUMBER, got STRING");
   }
@@ -183,7 +182,7 @@ class ExecutorSettingsTest {
     Config config = createTestConfig("dsbulk.executor", "maxInFlight", "NotANumber");
     ExecutorSettings settings = new ExecutorSettings(config);
     assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.executor.maxInFlight, expecting NUMBER, got STRING");
   }
@@ -221,7 +220,7 @@ class ExecutorSettingsTest {
         createTestConfig("dsbulk.executor", "continuousPaging.maxConcurrentQueries", "NotANumber");
     ExecutorSettings settings = new ExecutorSettings(config);
     assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.executor.continuousPaging.maxConcurrentQueries, expecting NUMBER, got STRING");
   }

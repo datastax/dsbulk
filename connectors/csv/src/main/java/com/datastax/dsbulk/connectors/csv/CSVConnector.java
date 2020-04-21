@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.connectors.csv;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.io.CompressedIOUtils;
 import com.datastax.dsbulk.commons.internal.reactive.SimpleBackpressureController;
@@ -129,13 +128,13 @@ public class CSVConnector extends AbstractFileBasedConnector {
       nullValue = settings.getIsNull(NULL_VALUE) ? null : settings.getString(NULL_VALUE);
       emptyValue = settings.getIsNull(EMPTY_VALUE) ? null : settings.getString(EMPTY_VALUE);
       if (!AUTO_NEWLINE.equalsIgnoreCase(newline) && (newline.isEmpty() || newline.length() > 2)) {
-        throw new BulkConfigurationException(
+        throw new IllegalArgumentException(
             String.format(
                 "Invalid value for connector.csv.%s: Expecting '%s' or a string containing 1 or 2 chars, got: '%s'",
                 NEWLINE, AUTO_NEWLINE, newline));
       }
     } catch (ConfigException e) {
-      throw BulkConfigurationException.fromTypeSafeConfigException(e, "dsbulk.connector.csv");
+      throw ConfigUtils.fromTypeSafeConfigException(e, "dsbulk.connector.csv");
     }
   }
 

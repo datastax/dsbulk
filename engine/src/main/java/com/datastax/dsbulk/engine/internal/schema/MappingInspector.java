@@ -15,7 +15,6 @@ import static com.datastax.dsbulk.engine.internal.schema.MappingPreference.MAPPE
 import static java.util.stream.Collectors.counting;
 import static java.util.stream.Collectors.groupingBy;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.generated.schema.MappingBaseVisitor;
@@ -106,7 +105,7 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
               int col,
               String msg,
               RecognitionException e) {
-            throw new BulkConfigurationException(
+            throw new IllegalArgumentException(
                 String.format(
                     "Invalid schema.mapping: mapping could not be parsed at line %d:%d: %s",
                     line, col, msg),
@@ -197,7 +196,7 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
         visitMappedEntry(entry);
       }
       if (hasRegularMappedEntry && mappingPreference == INDEXED_ONLY) {
-        throw new BulkConfigurationException(
+        throw new IllegalArgumentException(
             "Schema mapping contains named fields, but connector only supports indexed fields, "
                 + "please enable support for named fields in the connector, or alternatively, "
                 + "provide an indexed mapping of the form: '0=col1,1=col2,...'");
@@ -210,7 +209,7 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   public MappingToken visitSimpleEntry(SimpleEntryContext ctx) {
     CQLFragment variable = visitVariableOrFunction(ctx.variableOrFunction());
     if (workflowType == LOAD && variable instanceof FunctionCall) {
-      throw new BulkConfigurationException(
+      throw new IllegalArgumentException(
           "Invalid schema.mapping: simple entries cannot contain function calls when loading, "
               + "please use mapped entries instead.");
     }
@@ -314,7 +313,7 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
       // names provided at instantiation.
       if (text.equals(EXTERNAL_TTL_VARNAME)) {
         if (usingTTLVariable == null) {
-          throw new BulkConfigurationException(
+          throw new IllegalArgumentException(
               String.format(
                   "Invalid mapping: %s variable is not allowed when schema.query does not contain a USING TTL clause",
                   EXTERNAL_TTL_VARNAME));
@@ -322,7 +321,7 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
         variable = usingTTLVariable;
       } else if (text.equals(EXTERNAL_TIMESTAMP_VARNAME)) {
         if (usingTimestampVariable == null) {
-          throw new BulkConfigurationException(
+          throw new IllegalArgumentException(
               String.format(
                   "Invalid mapping: %s variable is not allowed when schema.query does not contain a USING TIMESTAMP clause",
                   EXTERNAL_TIMESTAMP_VARNAME));
@@ -410,7 +409,7 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
 
   private void checkInferring() {
     if (inferring) {
-      throw new BulkConfigurationException(
+      throw new IllegalArgumentException(
           "Invalid schema.mapping: inferred mapping entry (* = *) can be supplied at most once.");
     }
   }
@@ -463,7 +462,7 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
       }
       String offending =
           duplicates.stream().map(Object::toString).collect(Collectors.joining(", "));
-      throw new BulkConfigurationException(
+      throw new IllegalArgumentException(
           String.format(
               "Invalid schema.mapping: %s: %s. Please review schema.mapping for duplicates.",
               msg, offending));

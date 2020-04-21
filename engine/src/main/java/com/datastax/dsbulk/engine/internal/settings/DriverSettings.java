@@ -43,7 +43,6 @@ import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUES
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_WARN_IF_SET_KEYSPACE;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.TIMESTAMP_GENERATOR_CLASS;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.engine.internal.auth.AuthProviderFactory;
 import com.datastax.dsbulk.engine.internal.ssl.SslHandlerFactoryFactory;
@@ -129,13 +128,12 @@ public class DriverSettings {
     try {
       convertDriverDeprecatedConfig();
     } catch (ConfigException e) {
-      throw BulkConfigurationException.fromTypeSafeConfigException(e, "dsbulk.driver");
+      throw ConfigUtils.fromTypeSafeConfigException(e, "dsbulk.driver");
     }
     try {
       convertContinuousPagingDeprecatedConfig(write);
     } catch (ConfigException e) {
-      throw BulkConfigurationException.fromTypeSafeConfigException(
-          e, "dsbulk.executor.continuousPaging");
+      throw ConfigUtils.fromTypeSafeConfigException(e, "dsbulk.executor.continuousPaging");
     }
     mergedDriverConfig = convertedConfig.withFallback(newDriverConfig).resolve();
     processCloudSettings(write);
@@ -174,7 +172,7 @@ public class DriverSettings {
           warnDeprecatedSetting("dsbulk.driver.protocol.compression", PROTOCOL_COMPRESSION);
           break;
         default:
-          throw new BulkConfigurationException(
+          throw new IllegalArgumentException(
               String.format(
                   "Invalid value for dsbulk.driver.protocol.compression, expecting one of NONE, SNAPPY, LZ4, got '%s'",
                   compression));
@@ -291,7 +289,7 @@ public class DriverSettings {
         default:
           // since this setting is now deprecated, we only support built-in values,
           // dynamic loading of user-provided classes is not supported anymore
-          throw new BulkConfigurationException(
+          throw new IllegalArgumentException(
               String.format(
                   "Invalid value for dsbulk.driver.protocol.timestampGenerator, "
                       + "expecting one of AtomicMonotonicTimestampGenerator, "
@@ -309,7 +307,7 @@ public class DriverSettings {
       // since this setting is now deprecated, we only support the single built-in value
       // IdentityTranslator, dynamic loading of user-provided classes is not supported anymore
       if (!translator.equals("IdentityTranslator")) {
-        throw new BulkConfigurationException(
+        throw new IllegalArgumentException(
             String.format(
                 "Invalid value for dsbulk.driver.protocol.addressTranslator, "
                     + "expecting IdentityTranslator, got '%s'",
@@ -379,7 +377,7 @@ public class DriverSettings {
                               String.format(
                                   "Could not resolve host: %s, please verify your %s setting",
                                   host, "policy.lbp.whiteList.hosts");
-                          throw new BulkConfigurationException(msg, e);
+                          throw new IllegalArgumentException(msg, e);
                         }
                       })
                   .map(host -> new InetSocketAddress(host, defaultPort))
@@ -420,7 +418,7 @@ public class DriverSettings {
                   "dsbulk.executor.continuousPaging.pageUnit", CONTINUOUS_PAGING_PAGE_SIZE_BYTES);
               break;
             default:
-              throw new BulkConfigurationException(
+              throw new IllegalArgumentException(
                   String.format(
                       "Invalid value for dsbulk.executor.continuousPaging.pageUnit, "
                           + "expecting one of BYTES, ROWS, got '%s'",

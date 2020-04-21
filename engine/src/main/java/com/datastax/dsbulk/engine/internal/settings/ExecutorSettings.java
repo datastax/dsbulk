@@ -8,7 +8,7 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.executor.api.AbstractBulkExecutor;
 import com.datastax.dsbulk.executor.api.AbstractBulkExecutorBuilder;
 import com.datastax.dsbulk.executor.api.listener.ExecutionListener;
@@ -51,7 +51,7 @@ public class ExecutorSettings {
       maxPerSecond = config.getInt("maxPerSecond");
       maxInFlight = config.getInt("maxInFlight");
     } catch (ConfigException e) {
-      throw BulkConfigurationException.fromTypeSafeConfigException(e, "dsbulk.executor");
+      throw ConfigUtils.fromTypeSafeConfigException(e, "dsbulk.executor");
     }
     Config continuousPagingConfig = config.getConfig("continuousPaging");
     try {
@@ -62,8 +62,7 @@ public class ExecutorSettings {
         maxConcurrentQueries = continuousPagingConfig.getInt("maxConcurrentQueries");
       }
     } catch (ConfigException e) {
-      throw BulkConfigurationException.fromTypeSafeConfigException(
-          e, "dsbulk.executor.continuousPaging");
+      throw ConfigUtils.fromTypeSafeConfigException(e, "dsbulk.executor.continuousPaging");
     }
   }
 

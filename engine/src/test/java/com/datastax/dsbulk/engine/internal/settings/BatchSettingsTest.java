@@ -14,7 +14,6 @@ import static com.datastax.dsbulk.executor.api.batch.StatementBatcher.BatchMode.
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.tests.driver.DriverUtils;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.executor.reactor.batch.ReactorStatementBatcher;
@@ -92,7 +91,7 @@ class BatchSettingsTest {
             "PARTITION_KEY");
     BatchSettings settings = new BatchSettings(config);
     assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Settings batch.maxBatchStatements and batch.maxBatchSize cannot be both defined; "
                 + "consider using batch.maxBatchStatements exclusively, "
@@ -151,7 +150,7 @@ class BatchSettingsTest {
             null);
     BatchSettings settings = new BatchSettings(config);
     assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Value for batch.bufferSize (5) must be greater than or equal to "
                 + "batch.maxBatchStatements OR batch.maxBatchSize (10). See settings.md for more information.");
@@ -164,7 +163,7 @@ class BatchSettingsTest {
             "dsbulk.batch", "maxBatchStatements", 10, "bufferSize", 5, "mode", "PARTITION_KEY");
     BatchSettings settings = new BatchSettings(config);
     assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Value for batch.bufferSize (5) must be greater than or equal to "
                 + "batch.maxBatchStatements OR batch.maxBatchSize (10). See settings.md for more information.");
@@ -177,7 +176,7 @@ class BatchSettingsTest {
             "dsbulk.batch", "maxBatchSize", "NotANumber", "maxBatchStatements", "null");
     BatchSettings settings = new BatchSettings(config);
     assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.batch.maxBatchSize, expecting NUMBER, got STRING");
   }
@@ -187,7 +186,7 @@ class BatchSettingsTest {
     Config config = createTestConfig("dsbulk.batch", "maxBatchStatements", "NotANumber");
     BatchSettings settings = new BatchSettings(config);
     assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.batch.maxBatchStatements, expecting NUMBER, got STRING");
   }
@@ -197,7 +196,7 @@ class BatchSettingsTest {
     Config config = createTestConfig("dsbulk.batch", "maxSizeInBytes", "NotANumber");
     BatchSettings settings = new BatchSettings(config);
     assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.batch.maxSizeInBytes, expecting NUMBER, got STRING");
   }
@@ -207,7 +206,7 @@ class BatchSettingsTest {
     Config config = createTestConfig("dsbulk.batch", "bufferSize", "NotANumber");
     BatchSettings settings = new BatchSettings(config);
     assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.batch.bufferSize, expecting NUMBER, got STRING");
   }
@@ -217,7 +216,7 @@ class BatchSettingsTest {
     Config config = createTestConfig("dsbulk.batch", "mode", "NotAMode");
     BatchSettings settings = new BatchSettings(config);
     assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.batch.mode, expecting one of DISABLED, PARTITION_KEY, REPLICA_SET, got: 'NotAMode'");
   }
@@ -229,7 +228,7 @@ class BatchSettingsTest {
             "dsbulk.batch", "mode", "PARTITION_KEY", "maxBatchStatements", -1, "maxSizeInBytes", 0);
     BatchSettings settings = new BatchSettings(config);
     assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "At least one of batch.maxSizeInBytes or batch.maxBatchStatements must be positive. See settings.md for more information.");
   }
@@ -249,7 +248,7 @@ class BatchSettingsTest {
             0);
     BatchSettings settings = new BatchSettings(config);
     assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Value for batch.bufferSize (0) must be positive if batch.maxBatchStatements is "
                 + "negative or zero. See settings.md for more information.");

@@ -11,7 +11,6 @@ package com.datastax.dsbulk.engine.internal.settings;
 import static com.datastax.dsbulk.commons.tests.assertions.CommonsAssertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.tests.utils.TestConfigUtils;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.csv.CSVConnector;
@@ -79,7 +78,7 @@ class ConnectorSettingsTest {
   @Test
   void should_fail_for_nonexistent_connector() {
     assertThrows(
-        BulkConfigurationException.class,
+        IllegalArgumentException.class,
         () -> {
           Config config = ConfigFactory.parseString("name: foo, foo {url:\"file:///a/b.txt\"}");
           ConnectorSettings connectorSettings = new ConnectorSettings(config, WorkflowType.LOAD);

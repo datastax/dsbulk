@@ -44,7 +44,6 @@ import com.datastax.dsbulk.commons.codecs.temporal.DateToUUIDCodec;
 import com.datastax.dsbulk.commons.codecs.temporal.TemporalToTemporalCodec;
 import com.datastax.dsbulk.commons.codecs.temporal.TemporalToUUIDCodec;
 import com.datastax.dsbulk.commons.codecs.util.TimeUUIDGenerator;
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.tests.driver.DriverUtils;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.oss.driver.api.core.type.DataTypes;
@@ -401,7 +400,7 @@ class CodecSettingsTest {
     Config config = createTestConfig("dsbulk.codec", "nullStrings", null);
     CodecSettings settings = new CodecSettings(config);
     assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.codec.nullStrings, expecting LIST, got NULL");
   }

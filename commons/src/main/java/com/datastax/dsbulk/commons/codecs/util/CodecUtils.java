@@ -14,7 +14,6 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.dsbulk.commons.codecs.ConvertingCodec;
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dse.driver.api.core.data.geometry.LineString;
 import com.datastax.dse.driver.api.core.data.geometry.Point;
 import com.datastax.dse.driver.api.core.data.geometry.Polygon;
@@ -1030,7 +1029,7 @@ public class CodecUtils {
         .forEach(
             tokenizer -> {
               if (tokenizer.countTokens() != 2) {
-                throw new BulkConfigurationException(
+                throw new IllegalArgumentException(
                     "Expecting codec.booleanStrings to contain a list of true:false pairs, got "
                         + list);
               }

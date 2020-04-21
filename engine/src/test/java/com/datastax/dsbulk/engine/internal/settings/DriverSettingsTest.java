@@ -16,7 +16,6 @@ import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.slf4j.event.Level.INFO;
 import static org.slf4j.event.Level.WARN;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
@@ -128,7 +127,7 @@ class DriverSettingsTest {
     Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Invalid value for dsbulk.driver.port, expecting NUMBER, got STRING");
   }
 
@@ -139,7 +138,7 @@ class DriverSettingsTest {
     Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.driver.pooling.local.connections, expecting NUMBER, got STRING");
   }
@@ -152,7 +151,7 @@ class DriverSettingsTest {
     Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.driver.pooling.remote.connections, expecting NUMBER, got STRING");
   }
@@ -164,7 +163,7 @@ class DriverSettingsTest {
     Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.driver.pooling.local.requests, expecting NUMBER, got STRING");
   }
@@ -176,7 +175,7 @@ class DriverSettingsTest {
     Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.driver.pooling.remote.requests, expecting NUMBER, got STRING");
   }
@@ -188,7 +187,7 @@ class DriverSettingsTest {
     Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.driver.query.fetchSize, expecting NUMBER, got STRING");
   }
@@ -201,7 +200,7 @@ class DriverSettingsTest {
     Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Invalid value for dsbulk.driver.socket.readTimeout")
         .hasMessageContaining("Could not parse time unit 'duration' (try ns, us, ms, s, m, h, d)");
   }
@@ -213,7 +212,7 @@ class DriverSettingsTest {
     Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.driver.policy.maxRetries, expecting NUMBER, got STRING");
   }
@@ -225,7 +224,7 @@ class DriverSettingsTest {
     Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.driver.query.idempotence, expecting BOOLEAN, got STRING");
   }
@@ -237,7 +236,7 @@ class DriverSettingsTest {
     Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.driver.protocol.timestampGenerator, "
                 + "expecting one of AtomicMonotonicTimestampGenerator, "
@@ -251,7 +250,7 @@ class DriverSettingsTest {
     Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.driver.protocol.addressTranslator, expecting IdentityTranslator, got 'Unknown'");
   }
@@ -263,7 +262,7 @@ class DriverSettingsTest {
     Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.driver.protocol.compression, expecting one of NONE, SNAPPY, LZ4, got 'Unknown'");
   }
@@ -275,7 +274,7 @@ class DriverSettingsTest {
     Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.driver.query.consistency, expecting one of ANY, ONE, TWO, THREE, QUORUM, ALL, LOCAL_ONE, LOCAL_QUORUM, EACH_QUORUM, SERIAL, LOCAL_SERIAL, got: 'Unknown'");
   }
@@ -287,7 +286,7 @@ class DriverSettingsTest {
     Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.driver.query.serialConsistency, expecting one of ANY, ONE, TWO, THREE, QUORUM, ALL, LOCAL_ONE, LOCAL_QUORUM, EACH_QUORUM, SERIAL, LOCAL_SERIAL, got: 'Unknown'");
   }
@@ -299,7 +298,7 @@ class DriverSettingsTest {
     Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(true))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.driver.pooling.heartbeat: No number in duration value 'NotADuration'");
   }
@@ -432,7 +431,7 @@ class DriverSettingsTest {
     Config newConfig = createTestConfig("datastax-java-driver");
     DriverSettings settings = new DriverSettings(oldConfig, cpConfig, newConfig, shortcuts);
     assertThatThrownBy(() -> settings.init(false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.executor.continuousPaging.pageUnit, expecting one of BYTES, ROWS, got 'NotAPageUnit'");
   }

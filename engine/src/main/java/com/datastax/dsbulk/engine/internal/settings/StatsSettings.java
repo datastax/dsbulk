@@ -8,7 +8,7 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import java.util.EnumSet;
@@ -40,9 +40,9 @@ public class StatsSettings {
       statisticsModes = config.getEnumList(StatisticsMode.class, MODES);
       numPartitions = config.getInt(NUM_PARTITIONS);
     } catch (ConfigException e) {
-      throw BulkConfigurationException.fromTypeSafeConfigException(e, "dsbulk.stats");
+      throw ConfigUtils.fromTypeSafeConfigException(e, "dsbulk.stats");
     } catch (IllegalArgumentException e) {
-      throw new BulkConfigurationException(e);
+      throw new IllegalArgumentException(e);
     }
   }
 

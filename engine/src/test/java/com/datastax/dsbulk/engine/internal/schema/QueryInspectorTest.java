@@ -14,7 +14,6 @@ import static com.datastax.dsbulk.engine.internal.schema.QueryInspector.INTERNAL
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -477,7 +476,7 @@ class QueryInspectorTest {
   @Test
   void should_error_out_if_syntax_error() {
     assertThatThrownBy(() -> new QueryInspector(" not a valid statement "))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid query: ' not a valid statement ' could not be parsed at line");
   }
@@ -485,26 +484,26 @@ class QueryInspectorTest {
   @Test
   void should_error_out_if_insert_json() {
     assertThatThrownBy(() -> new QueryInspector("INSERT INTO table1 JSON '{ \"col1\" : value }'"))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Invalid query: INSERT JSON is not supported:");
   }
 
   @Test
   void should_error_out_if_select_json() {
     assertThatThrownBy(() -> new QueryInspector("SELECT JSON col1 FROM table1"))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Invalid query: SELECT JSON is not supported:");
   }
 
   @Test
   void should_error_out_if_insert_values_mismatch() {
     assertThatThrownBy(() -> new QueryInspector("INSERT INTO ks.table1 (pk, cc, v) VALUES (?, ?)"))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid query: the number of columns to insert (3) does not match the number of terms (2)");
     assertThatThrownBy(
             () -> new QueryInspector("INSERT INTO ks.table1 (pk, cc, v) VALUES (:pk, :cc)"))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid query: the number of columns to insert (3) does not match the number of terms (2)");
   }

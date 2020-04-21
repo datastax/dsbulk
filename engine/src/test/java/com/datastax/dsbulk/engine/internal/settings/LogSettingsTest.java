@@ -16,7 +16,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.core.joran.spi.JoranException;
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.tests.driver.DriverUtils;
 import com.datastax.dsbulk.commons.tests.logging.StreamInterceptingExtension;
 import com.datastax.dsbulk.engine.WorkflowType;
@@ -230,7 +229,7 @@ class LogSettingsTest {
     Config config = createTestConfig("dsbulk.log", "stmt.maxQueryStringLength", "NotANumber");
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
     assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.log.stmt.maxQueryStringLength, expecting NUMBER, got STRING");
   }
@@ -240,7 +239,7 @@ class LogSettingsTest {
     Config config = createTestConfig("dsbulk.log", "stmt.maxBoundValueLength", "NotANumber");
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
     assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.log.stmt.maxBoundValueLength, expecting NUMBER, got STRING");
   }
@@ -250,7 +249,7 @@ class LogSettingsTest {
     Config config = createTestConfig("dsbulk.log", "stmt.maxBoundValues", "NotANumber");
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
     assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.log.stmt.maxBoundValues, expecting NUMBER, got STRING");
   }
@@ -260,7 +259,7 @@ class LogSettingsTest {
     Config config = createTestConfig("dsbulk.log", "row.maxResultSetValues", "NotANumber");
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
     assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.log.row.maxResultSetValues, expecting NUMBER, got STRING");
   }
@@ -270,7 +269,7 @@ class LogSettingsTest {
     Config config = createTestConfig("dsbulk.log", "row.maxResultSetValueLength", "NotANumber");
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
     assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.log.row.maxResultSetValueLength, expecting NUMBER, got STRING");
   }
@@ -280,7 +279,7 @@ class LogSettingsTest {
     Config config = createTestConfig("dsbulk.log", "stmt.maxInnerStatements", "NotANumber");
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
     assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.log.stmt.maxInnerStatements, expecting NUMBER, got STRING");
   }
@@ -290,7 +289,7 @@ class LogSettingsTest {
     Config config = createTestConfig("dsbulk.log", "stmt.level", "NotALevel");
     LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
     assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.log.stmt.level, expecting one of ABRIDGED, NORMAL, EXTENDED, got: 'NotALevel'");
   }
@@ -310,7 +309,7 @@ class LogSettingsTest {
     Config config = createTestConfig("dsbulk.log", "maxQueryWarnings", "20%");
     LogSettings settings = new LogSettings(config, "test");
     assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.log.maxQueryWarnings, expecting NUMBER, got STRING");
   }

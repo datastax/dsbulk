@@ -24,7 +24,6 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.internal.io.CompressedIOUtils;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
@@ -849,7 +848,7 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     Config settings = createTestConfig("dsbulk.connector.json", "url", "\"\"");
     assertThatThrownBy(() -> connector.configure(settings, true))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "A URL or URL file is mandatory when using the json connector for LOAD. Please set connector.json.url or connector.json.urlfile and "
                 + "try again. See settings.md or help for more information.");
@@ -863,7 +862,7 @@ class JsonConnectorTest {
         createTestConfig("dsbulk.connector.json", "urlfile", quoteJson(MULTIPLE_URLS_FILE));
 
     assertThatThrownBy(() -> connector.configure(settings, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("The urlfile parameter is not supported for UNLOAD");
   }
 
@@ -1065,7 +1064,7 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     Config settings = createTestConfig("dsbulk.connector.json", "recursive", "NotABoolean");
     assertThatThrownBy(() -> connector.configure(settings, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.json.recursive, expecting BOOLEAN, got STRING");
     connector.close();
@@ -1076,7 +1075,7 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     Config settings = createTestConfig("dsbulk.connector.json", "prettyPrint", "NotABoolean");
     assertThatThrownBy(() -> connector.configure(settings, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.json.prettyPrint, expecting BOOLEAN, got STRING");
     connector.close();
@@ -1087,7 +1086,7 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     Config settings = createTestConfig("dsbulk.connector.json", "skipRecords", "NotANumber");
     assertThatThrownBy(() -> connector.configure(settings, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.json.skipRecords, expecting NUMBER, got STRING");
     connector.close();
@@ -1098,7 +1097,7 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     Config settings = createTestConfig("dsbulk.connector.json", "maxRecords", "NotANumber");
     assertThatThrownBy(() -> connector.configure(settings, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.json.maxRecords, expecting NUMBER, got STRING");
     connector.close();
@@ -1109,7 +1108,7 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     Config settings = createTestConfig("dsbulk.connector.json", "maxConcurrentFiles", "NotANumber");
     assertThatThrownBy(() -> connector.configure(settings, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.json.maxConcurrentFiles, expecting integer or string in 'nC' syntax, got 'NotANumber'");
     connector.close();
@@ -1120,7 +1119,7 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     Config settings = createTestConfig("dsbulk.connector.json", "encoding", "NotAnEncoding");
     assertThatThrownBy(() -> connector.configure(settings, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.json.encoding, expecting valid charset name, got 'NotAnEncoding'");
     connector.close();
@@ -1131,7 +1130,7 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     // empty string test
     Config settings1 = createTestConfig("dsbulk.connector.json", "compression", "abc");
-    assertThrows(BulkConfigurationException.class, () -> connector.configure(settings1, false));
+    assertThrows(IllegalArgumentException.class, () -> connector.configure(settings1, false));
   }
 
   @Test

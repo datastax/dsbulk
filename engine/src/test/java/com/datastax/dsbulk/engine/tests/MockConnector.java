@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.engine.tests;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.connectors.api.ConnectorFeature;
 import com.datastax.dsbulk.connectors.api.Record;
@@ -213,7 +212,7 @@ public final class MockConnector implements Connector {
   }
 
   @Override
-  public void configure(@NonNull Config settings, boolean read) throws BulkConfigurationException {
+  public void configure(@NonNull Config settings, boolean read) throws IllegalArgumentException {
     delegate.configure(settings, read);
   }
 

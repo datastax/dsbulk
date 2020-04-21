@@ -14,7 +14,7 @@ import com.datastax.dsbulk.commons.codecs.json.JsonCodecUtils;
 import com.datastax.dsbulk.commons.codecs.util.CodecUtils;
 import com.datastax.dsbulk.commons.codecs.util.OverflowStrategy;
 import com.datastax.dsbulk.commons.codecs.util.TimeUUIDGenerator;
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -92,7 +92,7 @@ public class CodecSettings {
       try {
         epoch = ZonedDateTime.parse(epochStr);
       } catch (Exception e) {
-        throw new BulkConfigurationException(
+        throw new IllegalArgumentException(
             String.format(
                 "Expecting codec.%s to be in ISO_ZONED_DATE_TIME format but got '%s'",
                 NUMERIC_TIMESTAMP_EPOCH, epochStr));
@@ -107,7 +107,7 @@ public class CodecSettings {
               .map(BigDecimal::new)
               .collect(Collectors.toList());
       if (booleanNumbers.size() != 2) {
-        throw new BulkConfigurationException(
+        throw new IllegalArgumentException(
             "Invalid boolean numbers list, expecting two elements, got " + booleanNumbers);
       }
       booleanStrings = config.getStringList(BOOLEAN_STRINGS);
@@ -119,7 +119,7 @@ public class CodecSettings {
       objectMapper = JsonCodecUtils.getObjectMapper();
 
     } catch (ConfigException e) {
-      throw BulkConfigurationException.fromTypeSafeConfigException(e, "dsbulk.codec");
+      throw ConfigUtils.fromTypeSafeConfigException(e, "dsbulk.codec");
     }
   }
 

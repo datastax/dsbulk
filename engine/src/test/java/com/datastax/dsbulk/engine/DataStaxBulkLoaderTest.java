@@ -19,7 +19,6 @@ import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.slf4j.event.Level.ERROR;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
@@ -416,7 +415,7 @@ class DataStaxBulkLoaderTest {
     assertThat(error)
         .hasMessageContaining(
             "Invalid value for dsbulk.codec.booleanStrings, expecting LIST, got: '[a,b'")
-        .hasCauseInstanceOf(BulkConfigurationException.class);
+        .hasCauseInstanceOf(IllegalArgumentException.class);
     assertThat(error.getCause()).hasMessageContaining("h");
   }
 

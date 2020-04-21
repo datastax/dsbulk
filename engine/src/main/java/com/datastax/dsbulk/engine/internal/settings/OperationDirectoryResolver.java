@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
@@ -29,7 +28,7 @@ public class OperationDirectoryResolver {
     try {
       operationDirectory = logDirectory.resolve(executionId);
     } catch (InvalidPathException e) {
-      throw new BulkConfigurationException(
+      throw new IllegalArgumentException(
           String.format(
               "Execution ID '%s' is not a valid path name on the local filesytem", executionId),
           e);

@@ -29,7 +29,6 @@ import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 
 import com.datastax.dsbulk.commons.codecs.ExtendedCodecRegistry;
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.partitioner.TokenRangeReadStatementGenerator;
 import com.datastax.dsbulk.connectors.api.Field;
@@ -158,39 +157,39 @@ public class SchemaSettings {
       // Sanity Checks
 
       if (config.hasPath(KEYSPACE) && config.hasPath(GRAPH)) {
-        throw new BulkConfigurationException(
+        throw new IllegalArgumentException(
             "Settings schema.keyspace and schema.graph are mutually exclusive");
       }
       if (config.hasPath(TABLE) && config.hasPath(VERTEX)) {
-        throw new BulkConfigurationException(
+        throw new IllegalArgumentException(
             "Settings schema.table and schema.vertex are mutually exclusive");
       }
       if (config.hasPath(TABLE) && config.hasPath(EDGE)) {
-        throw new BulkConfigurationException(
+        throw new IllegalArgumentException(
             "Settings schema.table and schema.edge are mutually exclusive");
       }
       if (config.hasPath(VERTEX) && config.hasPath(EDGE)) {
-        throw new BulkConfigurationException(
+        throw new IllegalArgumentException(
             "Settings schema.vertex and schema.edge are mutually exclusive");
       }
       if (config.hasPath(EDGE)) {
         if (!config.hasPath(FROM)) {
-          throw new BulkConfigurationException(
+          throw new IllegalArgumentException(
               "Setting schema.from is required when schema.edge is specified");
         }
         if (!config.hasPath(TO)) {
-          throw new BulkConfigurationException(
+          throw new IllegalArgumentException(
               "Setting schema.to is required when schema.edge is specified");
         }
       }
       if (config.hasPath(QUERY)
           && (config.hasPath(TABLE) || config.hasPath(VERTEX) || config.hasPath(EDGE))) {
-        throw new BulkConfigurationException(
+        throw new IllegalArgumentException(
             "Setting schema.query must not be defined if schema.table, schema.vertex or schema.edge are defined");
       }
       if ((!config.hasPath(KEYSPACE) && !config.hasPath(GRAPH))
           && (config.hasPath(TABLE) || config.hasPath(VERTEX) || config.hasPath(EDGE))) {
-        throw new BulkConfigurationException(
+        throw new IllegalArgumentException(
             "Settings schema.keyspace or schema.graph must be defined if schema.table, schema.vertex or schema.edge are defined");
       }
 
@@ -227,7 +226,7 @@ public class SchemaSettings {
           Instant instant = ZonedDateTime.parse(timestampStr).toInstant();
           this.timestampMicros = instantToNumber(instant, MICROSECONDS, EPOCH);
         } catch (Exception e) {
-          throw new BulkConfigurationException(
+          throw new IllegalArgumentException(
               String.format(
                   "Expecting schema.queryTimestamp to be in ISO_ZONED_DATE_TIME format but got '%s'",
                   timestampStr));
@@ -248,19 +247,19 @@ public class SchemaSettings {
 
         if (queryInspector.getKeyspaceName().isPresent()) {
           if (keyspace != null) {
-            throw new BulkConfigurationException(
+            throw new IllegalArgumentException(
                 "Setting schema.keyspace must not be provided when schema.query contains a keyspace-qualified statement");
           }
           CQLWord keyspaceName = queryInspector.getKeyspaceName().get();
           keyspace = session.getMetadata().getKeyspace(keyspaceName.asIdentifier()).orElse(null);
           if (keyspace == null) {
-            throw new BulkConfigurationException(
+            throw new IllegalArgumentException(
                 String.format(
                     "Value for schema.query references a non-existent keyspace: %s",
                     keyspaceName.render(VARIABLE)));
           }
         } else if (keyspace == null) {
-          throw new BulkConfigurationException(
+          throw new IllegalArgumentException(
               "Setting schema.keyspace must be provided when schema.query does not contain a keyspace-qualified statement");
         }
 
@@ -269,7 +268,7 @@ public class SchemaSettings {
         if (table == null) {
           table = keyspace.getView(tableName.asIdentifier()).orElse(null);
           if (table == null) {
-            throw new BulkConfigurationException(
+            throw new IllegalArgumentException(
                 String.format(
                     "Value for schema.query references a non-existent table or materialized view: %s",
                     tableName.render(VARIABLE)));
@@ -278,7 +277,7 @@ public class SchemaSettings {
 
         // If a query is provided, ttl and timestamp must not be.
         if (timestampMicros != -1 || ttlSeconds != -1) {
-          throw new BulkConfigurationException(
+          throw new IllegalArgumentException(
               "Setting schema.query must not be defined if schema.queryTtl or schema.queryTimestamp is defined");
         }
 
@@ -297,7 +296,7 @@ public class SchemaSettings {
         if (keyspace == null || table == null) {
 
           // Either the keyspace and table must be present, or the query must be present.
-          throw new BulkConfigurationException(
+          throw new IllegalArgumentException(
               "When schema.query is not defined, "
                   + "then either schema.keyspace or schema.graph must be defined, "
                   + "and either schema.table, schema.vertex or schema.edge must be defined");
@@ -319,14 +318,14 @@ public class SchemaSettings {
       } else if (mappedMappingSupported) {
         mappingPreference = MAPPED_ONLY;
       } else {
-        throw new BulkConfigurationException(
+        throw new IllegalArgumentException(
             "Connector must support at least one of indexed or mapped mappings");
       }
 
       if (config.hasPath(MAPPING)) {
 
         if (workflowType == COUNT) {
-          throw new BulkConfigurationException(
+          throw new IllegalArgumentException(
               "Setting schema.mapping must not be defined when counting rows in a table");
         }
 
@@ -343,13 +342,13 @@ public class SchemaSettings {
 
         if (workflowType == LOAD && containsFunctionCalls(variables)) {
           // f1 = now() never allowed when loading
-          throw new BulkConfigurationException(
+          throw new IllegalArgumentException(
               "Misplaced function call detected on the right side of a mapping entry; "
                   + "please review your schema.mapping setting");
         }
         if (workflowType == UNLOAD && containsFunctionCalls(fields)) {
           // now() = c1 never allowed when unloading
-          throw new BulkConfigurationException(
+          throw new IllegalArgumentException(
               "Misplaced function call detected on the left side of a mapping entry; "
                   + "please review your schema.mapping setting");
         }
@@ -357,13 +356,13 @@ public class SchemaSettings {
         if (query != null) {
           if (workflowType == LOAD && containsFunctionCalls(fields)) {
             // now() = c1 only allowed if schema.query not present
-            throw new BulkConfigurationException(
+            throw new IllegalArgumentException(
                 "Setting schema.query must not be defined when loading if schema.mapping "
                     + "contains a function on the left side of a mapping entry");
           }
           if (workflowType == UNLOAD && containsFunctionCalls(variables)) {
             // f1 = now() only allowed if schema.query not present
-            throw new BulkConfigurationException(
+            throw new IllegalArgumentException(
                 "Setting schema.query must not be defined when unloading if schema.mapping "
                     + "contains a function on the right side of a mapping entry");
           }
@@ -422,13 +421,13 @@ public class SchemaSettings {
       }
 
     } catch (ConfigException e) {
-      throw BulkConfigurationException.fromTypeSafeConfigException(e, "dsbulk.schema");
+      throw ConfigUtils.fromTypeSafeConfigException(e, "dsbulk.schema");
     }
   }
 
   public RecordMapper createRecordMapper(
       CqlSession session, RecordMetadata recordMetadata, ExtendedCodecRegistry codecRegistry)
-      throws BulkConfigurationException {
+      throws IllegalArgumentException {
     DefaultMapping mapping =
         prepareStatementAndCreateMapping(
             session, codecRegistry, LOAD, EnumSet.noneOf(StatisticsMode.class));
@@ -453,7 +452,7 @@ public class SchemaSettings {
 
   public ReadResultMapper createReadResultMapper(
       CqlSession session, RecordMetadata recordMetadata, ExtendedCodecRegistry codecRegistry)
-      throws BulkConfigurationException {
+      throws IllegalArgumentException {
     // we don't check that mapping records are supported when unloading, the only thing that matters
     // is the order in which fields appear in the record.
     DefaultMapping mapping =
@@ -471,7 +470,7 @@ public class SchemaSettings {
     ProtocolVersion protocolVersion = session.getContext().getProtocolVersion();
     Metadata metadata = session.getMetadata();
     if (modes.contains(partitions) && table.getClusteringColumns().isEmpty()) {
-      throw new BulkConfigurationException(
+      throw new IllegalArgumentException(
           String.format(
               "Cannot count partitions for table %s: it has no clustering column.",
               tableName.render(VARIABLE)));
@@ -501,7 +500,7 @@ public class SchemaSettings {
       ok = !unrecognized.isPresent();
     }
     if (!ok) {
-      throw new BulkConfigurationException(
+      throw new IllegalArgumentException(
           "The provided statement (schema.query) contains unrecognized WHERE restrictions; "
               + "the WHERE clause is only allowed to contain one token range restriction "
               + "of the form: WHERE token(...) > ? AND token(...) <= ?");
@@ -607,7 +606,7 @@ public class SchemaSettings {
       }
       if (workflowType == COUNT) {
         if (modes.contains(partitions) || modes.contains(ranges) || modes.contains(hosts)) {
-          throw new BulkConfigurationException(
+          throw new IllegalArgumentException(
               String.format(
                   "Cannot count with stats.modes = %s when schema.query is provided; "
                       + "only stats.modes = [global] is allowed",
@@ -689,7 +688,7 @@ public class SchemaSettings {
   }
 
   private ImmutableMultimap<MappingField, CQLFragment> createFieldsToVariablesMap(
-      Collection<CQLFragment> columns) throws BulkConfigurationException {
+      Collection<CQLFragment> columns) throws IllegalArgumentException {
     ImmutableMultimap<MappingField, CQLFragment> fieldsToVariables;
     if (mapping.isInferring()) {
       fieldsToVariables = inferFieldsToVariablesMap(columns);
@@ -731,12 +730,12 @@ public class SchemaSettings {
               .findFirst();
       if (match.isPresent()) {
         String similarName = match.get().getName().asCql(true);
-        throw new BulkConfigurationException(
+        throw new IllegalArgumentException(
             String.format(
                 "Keyspace %s does not exist, however a keyspace %s was found. Did you mean to use -k %s?",
                 keyspaceName.asCql(true), similarName, similarName));
       } else {
-        throw new BulkConfigurationException(
+        throw new IllegalArgumentException(
             String.format("Keyspace %s does not exist", keyspaceName.asCql(true)));
       }
     }
@@ -758,13 +757,13 @@ public class SchemaSettings {
                   .findFirst();
           if (match.isPresent()) {
             String similarName = match.get().getName().asCql(true);
-            throw new BulkConfigurationException(
+            throw new IllegalArgumentException(
                 String.format(
                     "Table or materialized view %s does not exist, "
                         + "however a materialized view %s was found. Did you mean to use -t %s?",
                     tableName.asCql(true), similarName, similarName));
           } else {
-            throw new BulkConfigurationException(
+            throw new IllegalArgumentException(
                 String.format(
                     "Table or materialized view %s does not exist", tableName.asCql(true)));
           }
@@ -776,12 +775,12 @@ public class SchemaSettings {
                 .findFirst();
         if (match.isPresent()) {
           String similarName = match.get().getName().asCql(true);
-          throw new BulkConfigurationException(
+          throw new IllegalArgumentException(
               String.format(
                   "Table %s does not exist, however a table %s was found. Did you mean to use -t %s?",
                   tableName.asCql(true), similarName, similarName));
         } else {
-          throw new BulkConfigurationException(
+          throw new IllegalArgumentException(
               String.format("Table %s does not exist", tableName.asCql(true)));
         }
       }
@@ -811,12 +810,12 @@ public class SchemaSettings {
               .findFirst();
       if (match.isPresent()) {
         String similarName = match.get().getLabelName().asCql(true);
-        throw new BulkConfigurationException(
+        throw new IllegalArgumentException(
             String.format(
                 "Vertex label %s does not exist, however a vertex label %s was found. Did you mean to use -v %s?",
                 vertexLabel.asCql(true), similarName, similarName));
       } else {
-        throw new BulkConfigurationException(
+        throw new IllegalArgumentException(
             String.format("Vertex label %s does not exist", vertexLabel.asCql(true)));
       }
     }
@@ -852,7 +851,7 @@ public class SchemaSettings {
         String similarLabel = edgeMetadata.getLabelName().asCql(true);
         String similarFrom = edgeMetadata.getFromLabel().asCql(true);
         String similarTo = edgeMetadata.getToLabel().asCql(true);
-        throw new BulkConfigurationException(
+        throw new IllegalArgumentException(
             String.format(
                 "Edge label %s from %s to %s does not exist, "
                     + "however an edge label %s from %s to %s was found. "
@@ -867,7 +866,7 @@ public class SchemaSettings {
                 similarFrom,
                 similarTo));
       } else {
-        throw new BulkConfigurationException(
+        throw new IllegalArgumentException(
             String.format(
                 "Edge label %s from %s to %s does not exist",
                 edgeLabel.asCql(true), fromVertex.asCql(true), toVertex.asCql(true)));
@@ -899,13 +898,13 @@ public class SchemaSettings {
         (key, value) -> {
           if (value instanceof CQLWord && !isPseudoColumn(value) && !columns.contains(value)) {
             if (!config.hasPath(QUERY)) {
-              throw new BulkConfigurationException(
+              throw new IllegalArgumentException(
                   String.format(
                       "Schema mapping entry %s doesn't match any column found in table %s",
                       value.render(VARIABLE), tableName.render(VARIABLE)));
             } else {
               assert query != null;
-              throw new BulkConfigurationException(
+              throw new IllegalArgumentException(
                   String.format(
                       "Schema mapping entry %s doesn't match any bound variable found in query: '%s'",
                       value.render(VARIABLE), query));
@@ -953,7 +952,7 @@ public class SchemaSettings {
       CQLFragment queryVariable = queryVariables.get(pkVariable);
       // the provided query did not contain such column
       if (queryVariable == null) {
-        throw new BulkConfigurationException(
+        throw new IllegalArgumentException(
             "Missing required primary key column "
                 + pkVariable.render(VARIABLE)
                 + " from schema.mapping or schema.query");
@@ -963,7 +962,7 @@ public class SchemaSettings {
       if (queryVariable instanceof CQLWord) {
         // the mapping did not contain such column
         if (!mappingVariables.contains(queryVariable)) {
-          throw new BulkConfigurationException(
+          throw new IllegalArgumentException(
               "Missing required primary key column "
                   + pkVariable.render(VARIABLE)
                   + " from schema.mapping");
@@ -1052,7 +1051,7 @@ public class SchemaSettings {
       // for update queries there can be only one field mapped to a given column
       MappingField field = fieldsToVariables.inverse().get(col).iterator().next();
       if (field instanceof FunctionCall) {
-        throw new BulkConfigurationException(
+        throw new IllegalArgumentException(
             "Function calls are not allowed when updating a counter table.");
       }
       if (!isFirst) {
@@ -1085,7 +1084,7 @@ public class SchemaSettings {
         timestampMicros != -1 || (mapping != null && mapping.hasUsingTimestamp());
     if (hasTtl || hasTimestamp) {
       if (isCounterTable()) {
-        throw new BulkConfigurationException(
+        throw new IllegalArgumentException(
             "Cannot set TTL or timestamp when updating a counter table.");
       }
       sb.append(" USING ");

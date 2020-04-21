@@ -10,7 +10,6 @@ package com.datastax.dsbulk.connectors.commons;
 
 import static com.datastax.dsbulk.commons.internal.config.ConfigUtils.isValueFromReferenceConfig;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.io.CompressedIOUtils;
 import com.datastax.dsbulk.commons.internal.io.IOUtils;
@@ -94,7 +93,7 @@ public abstract class AbstractFileBasedConnector implements Connector {
     encoding = ConfigUtils.getCharset(settings, ENCODING);
     compression = settings.getString(COMPRESSION);
     if (!CompressedIOUtils.isSupportedCompression(compression, read)) {
-      throw new BulkConfigurationException(
+      throw new IllegalArgumentException(
           String.format(
               "Invalid value for connector.csv.%s, valid values: %s, got: '%s'",
               COMPRESSION,
@@ -274,7 +273,7 @@ public abstract class AbstractFileBasedConnector implements Connector {
     if (read) {
       // for LOAD
       if (!hasUrl && !hasUrlfile) {
-        throw new BulkConfigurationException(
+        throw new IllegalArgumentException(
             String.format(
                 "A URL or URL file is mandatory when using the %s connector for LOAD. Please set connector.%s.url or connector.%s.urlfile "
                     + "and try again. See settings.md or help for more information.",
@@ -286,10 +285,10 @@ public abstract class AbstractFileBasedConnector implements Connector {
     } else {
       // for UNLOAD we are not supporting urlfile parameter
       if (hasUrlfile) {
-        throw new BulkConfigurationException("The urlfile parameter is not supported for UNLOAD");
+        throw new IllegalArgumentException("The urlfile parameter is not supported for UNLOAD");
       }
       if (!hasUrl) {
-        throw new BulkConfigurationException(
+        throw new IllegalArgumentException(
             String.format(
                 "A URL is mandatory when using the %s connector for UNLOAD. Please set connector.%s.url "
                     + "and try again. See settings.md or help for more information.",
@@ -300,7 +299,7 @@ public abstract class AbstractFileBasedConnector implements Connector {
       try {
         return ConfigUtils.getURLsFromFile(ConfigUtils.getPath(settings, URLFILE));
       } catch (IOException e) {
-        throw new BulkConfigurationException(
+        throw new IllegalArgumentException(
             "Problem when retrieving urls from file specified by the URL file parameter", e);
       }
     } else {

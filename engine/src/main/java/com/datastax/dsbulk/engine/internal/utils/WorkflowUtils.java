@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.engine.internal.utils;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dse.driver.api.core.metadata.DseNodeProperties;
@@ -75,7 +74,7 @@ public class WorkflowUtils {
       }
       return executionId;
     } catch (Exception e) {
-      throw new BulkConfigurationException(
+      throw new IllegalArgumentException(
           "Could not generate execution ID with template: '" + template + "': " + e.getMessage(),
           e);
     }

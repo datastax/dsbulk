@@ -8,7 +8,7 @@
  */
 package com.datastax.dsbulk.connectors.json;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.io.CompressedIOUtils;
 import com.datastax.dsbulk.commons.internal.reactive.SimpleBackpressureController;
 import com.datastax.dsbulk.connectors.api.CommonConnectorFeature;
@@ -118,7 +118,7 @@ public class JsonConnector extends AbstractFileBasedConnector {
       serializationStrategy = settings.getEnum(JsonInclude.Include.class, SERIALIZATION_STRATEGY);
       prettyPrint = settings.getBoolean(PRETTY_PRINT);
     } catch (ConfigException e) {
-      throw BulkConfigurationException.fromTypeSafeConfigException(e, "dsbulk.connector.json");
+      throw ConfigUtils.fromTypeSafeConfigException(e, "dsbulk.connector.json");
     }
   }
 

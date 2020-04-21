@@ -18,7 +18,6 @@ import static com.datastax.dsbulk.commons.tests.utils.StringUtils.quoteJson;
 import static com.datastax.dsbulk.commons.tests.utils.TestConfigUtils.createTestConfig;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.typesafe.config.Config;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -83,7 +82,7 @@ class SslHandlerFactoryFactoryTest {
           createTestConfig(
               "dsbulk.driver.ssl", "provider", "JDK", "keystore.path", "" + quoteJson(keystore));
       assertThatThrownBy(() -> SslHandlerFactoryFactory.createSslHandlerFactory(config))
-          .isInstanceOf(BulkConfigurationException.class)
+          .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining(
               "dsbulk.driver.ssl.keystore.path, dsbulk.driver.ssl.keystore.password and dsbulk.driver.ssl.truststore.algorithm must be provided together");
     } finally {
@@ -96,7 +95,7 @@ class SslHandlerFactoryFactoryTest {
     Config config =
         createTestConfig("dsbulk.driver.ssl", "provider", "JDK", "keystore.password", "mypass");
     assertThatThrownBy(() -> SslHandlerFactoryFactory.createSslHandlerFactory(config))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "dsbulk.driver.ssl.keystore.path, dsbulk.driver.ssl.keystore.password and dsbulk.driver.ssl.truststore.algorithm must be provided together");
   }
@@ -109,7 +108,7 @@ class SslHandlerFactoryFactoryTest {
           createTestConfig(
               "dsbulk.driver.ssl", "provider", "OpenSSL", "openssl.keyCertChain", quoteJson(chain));
       assertThatThrownBy(() -> SslHandlerFactoryFactory.createSslHandlerFactory(config))
-          .isInstanceOf(BulkConfigurationException.class)
+          .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining(
               "dsbulk.driver.ssl.openssl.keyCertChain and "
                   + "dsbulk.driver.ssl.openssl.privateKey must be provided together");
@@ -126,7 +125,7 @@ class SslHandlerFactoryFactoryTest {
           createTestConfig(
               "dsbulk.driver.ssl", "provider", "OpenSSL", "openssl.privateKey", quoteJson(key));
       assertThatThrownBy(() -> SslHandlerFactoryFactory.createSslHandlerFactory(config))
-          .isInstanceOf(BulkConfigurationException.class)
+          .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining(
               "dsbulk.driver.ssl.openssl.keyCertChain and "
                   + "dsbulk.driver.ssl.openssl.privateKey must be provided together");
@@ -143,7 +142,7 @@ class SslHandlerFactoryFactoryTest {
           createTestConfig(
               "dsbulk.driver.ssl", "provider", "JDK", "truststore.path", quoteJson(truststore));
       assertThatThrownBy(() -> SslHandlerFactoryFactory.createSslHandlerFactory(config))
-          .isInstanceOf(BulkConfigurationException.class)
+          .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining(
               "dsbulk.driver.ssl.truststore.path, "
                   + "dsbulk.driver.ssl.truststore.password and "
@@ -158,7 +157,7 @@ class SslHandlerFactoryFactoryTest {
     Config config =
         createTestConfig("dsbulk.driver.ssl", "provider", "JDK", "truststore.password", "mypass");
     assertThatThrownBy(() -> SslHandlerFactoryFactory.createSslHandlerFactory(config))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "dsbulk.driver.ssl.truststore.path, "
                 + "dsbulk.driver.ssl.truststore.password and "
@@ -177,7 +176,7 @@ class SslHandlerFactoryFactoryTest {
             "truststore.password",
             "mypass");
     assertThatThrownBy(() -> SslHandlerFactoryFactory.createSslHandlerFactory(config))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageMatching(".*SSL truststore file .*noexist.truststore does not exist.*");
   }
 
@@ -193,7 +192,7 @@ class SslHandlerFactoryFactoryTest {
             "truststore.password",
             "mypass");
     assertThatThrownBy(() -> SslHandlerFactoryFactory.createSslHandlerFactory(config))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageMatching(".*SSL truststore file .* is not a file.*");
   }
 
@@ -226,7 +225,7 @@ class SslHandlerFactoryFactoryTest {
             "keystore.password",
             "mypass");
     assertThatThrownBy(() -> SslHandlerFactoryFactory.createSslHandlerFactory(config))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageMatching(".*SSL keystore file .*noexist.keystore does not exist.*");
   }
 
@@ -242,7 +241,7 @@ class SslHandlerFactoryFactoryTest {
             "keystore.password",
             "mypass");
     assertThatThrownBy(() -> SslHandlerFactoryFactory.createSslHandlerFactory(config))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageMatching(".*SSL keystore file .* is not a file.*");
   }
 
@@ -277,7 +276,7 @@ class SslHandlerFactoryFactoryTest {
               "openssl.privateKey",
               quoteJson(key));
       assertThatThrownBy(() -> SslHandlerFactoryFactory.createSslHandlerFactory(config))
-          .isInstanceOf(BulkConfigurationException.class)
+          .isInstanceOf(IllegalArgumentException.class)
           .hasMessageMatching(
               ".*OpenSSL key certificate chain file .*noexist.chain does not exist.*");
     } finally {
@@ -299,7 +298,7 @@ class SslHandlerFactoryFactoryTest {
               "openssl.privateKey",
               quoteJson(key));
       assertThatThrownBy(() -> SslHandlerFactoryFactory.createSslHandlerFactory(config))
-          .isInstanceOf(BulkConfigurationException.class)
+          .isInstanceOf(IllegalArgumentException.class)
           .hasMessageMatching(".*OpenSSL key certificate chain file .* is not a file.*");
     } finally {
       Files.delete(key);
@@ -320,7 +319,7 @@ class SslHandlerFactoryFactoryTest {
               "openssl.keyCertChain",
               quoteJson(chain));
       assertThatThrownBy(() -> SslHandlerFactoryFactory.createSslHandlerFactory(config))
-          .isInstanceOf(BulkConfigurationException.class)
+          .isInstanceOf(IllegalArgumentException.class)
           .hasMessageMatching(".*OpenSSL private key file .*noexist.key does not exist.*");
     } finally {
       Files.delete(chain);
@@ -341,7 +340,7 @@ class SslHandlerFactoryFactoryTest {
               "" + "openssl.keyCertChain",
               "" + quoteJson(chain));
       assertThatThrownBy(() -> SslHandlerFactoryFactory.createSslHandlerFactory(config))
-          .isInstanceOf(BulkConfigurationException.class)
+          .isInstanceOf(IllegalArgumentException.class)
           .hasMessageMatching(".*OpenSSL private key file .* is not a file.*");
     } finally {
       Files.delete(chain);

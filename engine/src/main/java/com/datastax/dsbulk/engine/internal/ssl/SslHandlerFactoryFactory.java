@@ -10,7 +10,6 @@ package com.datastax.dsbulk.engine.internal.ssl;
 
 import static com.datastax.dsbulk.commons.internal.io.IOUtils.assertAccessibleFile;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.oss.driver.api.core.ssl.ProgrammaticSslEngineFactory;
 import com.datastax.oss.driver.api.core.ssl.SslEngineFactory;
@@ -51,7 +50,7 @@ public class SslHandlerFactoryFactory {
       case "openssl":
         return createNettySslHandlerFactory(config);
       default:
-        throw new BulkConfigurationException(
+        throw new IllegalArgumentException(
             String.format(
                 "Invalid value for dsbulk.driver.ssl.provider, expecting None, JDK, or OpenSSL, got: '%s'",
                 sslProvider));
@@ -77,7 +76,7 @@ public class SslHandlerFactoryFactory {
   private static SslHandlerFactory createNettySslHandlerFactory(Config config)
       throws GeneralSecurityException, IOException {
     if (config.hasPath("openssl.keyCertChain") != config.hasPath("openssl.privateKey")) {
-      throw new BulkConfigurationException(
+      throw new IllegalArgumentException(
           "Settings "
               + "dsbulk.driver.ssl.openssl.keyCertChain"
               + " and "
@@ -107,7 +106,7 @@ public class SslHandlerFactoryFactory {
   private static TrustManagerFactory createTrustManagerFactory(Config config)
       throws KeyStoreException, IOException, NoSuchAlgorithmException, CertificateException {
     if (config.hasPath("truststore.path") != config.hasPath("truststore.password")) {
-      throw new BulkConfigurationException(
+      throw new IllegalArgumentException(
           "Settings "
               + "dsbulk.driver.ssl.truststore.path"
               + ", "
@@ -136,7 +135,7 @@ public class SslHandlerFactoryFactory {
       throws KeyStoreException, IOException, NoSuchAlgorithmException, CertificateException,
           UnrecoverableKeyException {
     if (config.hasPath("keystore.path") != config.hasPath("keystore.password")) {
-      throw new BulkConfigurationException(
+      throw new IllegalArgumentException(
           "Settings "
               + "dsbulk.driver.ssl.keystore.path"
               + ", "

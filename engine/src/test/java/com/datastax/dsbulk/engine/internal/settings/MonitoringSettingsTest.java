@@ -16,7 +16,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.codahale.metrics.MetricRegistry;
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.tests.utils.ReflectionUtils;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
@@ -112,7 +111,7 @@ class MonitoringSettingsTest {
     Config config = createTestConfig("dsbulk.monitoring", "expectedWrites", "NotANumber");
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.monitoring.expectedWrites, expecting NUMBER, got STRING");
   }
@@ -122,7 +121,7 @@ class MonitoringSettingsTest {
     Config config = createTestConfig("dsbulk.monitoring", "expectedReads", "NotANumber");
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.monitoring.expectedReads, expecting NUMBER, got STRING");
   }
@@ -132,7 +131,7 @@ class MonitoringSettingsTest {
     Config config = createTestConfig("dsbulk.monitoring", "trackBytes", "NotABoolean");
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.monitoring.trackBytes, expecting BOOLEAN, got STRING");
   }
@@ -142,7 +141,7 @@ class MonitoringSettingsTest {
     Config config = createTestConfig("dsbulk.monitoring", "jmx", "NotABoolean");
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.monitoring.jmx, expecting BOOLEAN, got STRING");
   }
@@ -152,7 +151,7 @@ class MonitoringSettingsTest {
     Config config = createTestConfig("dsbulk.monitoring", "rateUnit", "NotAUnit");
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.monitoring.rateUnit, expecting one of NANOSECONDS, MICROSECONDS, MILLISECONDS, SECONDS, MINUTES, HOURS, DAYS, got: 'NotAUnit'");
   }
@@ -162,7 +161,7 @@ class MonitoringSettingsTest {
     Config config = createTestConfig("dsbulk.monitoring", "durationUnit", "NotAUnit");
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.monitoring.durationUnit, expecting one of NANOSECONDS, MICROSECONDS, MILLISECONDS, SECONDS, MINUTES, HOURS, DAYS, got: 'NotAUnit'");
   }
@@ -172,7 +171,7 @@ class MonitoringSettingsTest {
     Config config = createTestConfig("dsbulk.monitoring", "reportRate", "NotADuration");
     MonitoringSettings settings = new MonitoringSettings(config, "test");
     assertThatThrownBy(settings::init)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.monitoring.reportRate: No number in duration value 'NotADuration'");
   }

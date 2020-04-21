@@ -10,7 +10,6 @@ package com.datastax.dsbulk.engine.internal.auth;
 
 import static com.datastax.dsbulk.commons.internal.io.IOUtils.assertAccessibleFile;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dse.driver.api.core.auth.DseGssApiAuthProviderBase.GssApiOptions;
 import com.datastax.oss.driver.api.core.auth.AuthProvider;
@@ -65,7 +64,7 @@ public class AuthProviderFactory {
         return createGssApiAuthProvider(config, authProvider, authorizationId);
 
       default:
-        throw new BulkConfigurationException(
+        throw new IllegalArgumentException(
             String.format(
                 "Invalid value for dsbulk.driver.auth.provider, expecting one of "
                     + "PlainTextAuthProvider, DsePlainTextAuthProvider, or DseGSSAPIAuthProvider, got: '%s'",
@@ -83,7 +82,7 @@ public class AuthProviderFactory {
   private static AuthProvider createGssApiAuthProvider(
       Config config, String authProvider, String authorizationId) {
     if (!config.hasPath("saslService")) {
-      throw new BulkConfigurationException(
+      throw new IllegalArgumentException(
           String.format(
               "dsbulk.driver.auth.saslService must be provided with %s. "
                   + "dsbulk.driver.auth.principal, dsbulk.driver.auth.keyTab, and "
@@ -117,7 +116,7 @@ public class AuthProviderFactory {
         //   authPrincipal = entries[0].getService().getName();
         //   LOGGER.debug("Found Kerberos principal %s in %s", authPrincipal, authKeyTab);
         // } else {
-        //   throw new BulkConfigurationException(
+        //   throw new IllegalArgumentException(
         //   String.format("Could not find any principals in %s", authKeyTab));
         // }
 
@@ -138,11 +137,11 @@ public class AuthProviderFactory {
             authPrincipal = (String) getNameMethod.invoke(getServiceMethod.invoke(entries[0]));
             LOGGER.debug("Found Kerberos principal {} in {}", authPrincipal, authKeyTab);
           } else {
-            throw new BulkConfigurationException(
+            throw new IllegalArgumentException(
                 String.format("Could not find any principals in %s", authKeyTab));
           }
         } catch (Exception e) {
-          throw new BulkConfigurationException(
+          throw new IllegalArgumentException(
               String.format("Could not find any principals in %s", authKeyTab), e);
         }
       }
@@ -166,7 +165,7 @@ public class AuthProviderFactory {
 
   private static void checkHasCredentials(Config config, String authProvider) {
     if (!config.hasPath("username") || !config.hasPath("password")) {
-      throw new BulkConfigurationException(
+      throw new IllegalArgumentException(
           "Both dsbulk.driver.auth.username and dsbulk.driver.auth.password must be provided with "
               + authProvider);
     }

@@ -44,7 +44,6 @@ import static org.mockito.Mockito.when;
 import static org.slf4j.event.Level.WARN;
 
 import com.datastax.dsbulk.commons.codecs.ExtendedCodecRegistry;
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptor;
@@ -290,7 +289,7 @@ class SchemaSettingsTest {
             "dsbulk.schema", "mapping", "\" 0 = f1, 1 = f1\"", "keyspace", "ks", "table", "t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, false, true))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Invalid schema.mapping: the following variables are mapped to more than one field: f1. Please review schema.mapping for duplicates.");
   }
@@ -1114,7 +1113,7 @@ class SchemaSettingsTest {
             "\" f1 = c1, f2 = now() \"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, false, true))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Misplaced function call detected on the right side of a mapping entry; "
                 + "please review your schema.mapping setting");
@@ -1133,7 +1132,7 @@ class SchemaSettingsTest {
             "\" f1 = c1, now() = c3 \"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(UNLOAD, session, false, true))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Misplaced function call detected on the left side of a mapping entry; "
                 + "please review your schema.mapping setting");
@@ -1399,7 +1398,7 @@ class SchemaSettingsTest {
             () ->
                 schemaSettings.createReadResultCounter(
                     session, codecRegistry, EnumSet.of(hosts, ranges, partitions), 10))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Cannot count with stats.modes = [ranges, hosts, partitions] when schema.query is provided; only stats.modes = [global] is allowed");
   }
@@ -1446,7 +1445,7 @@ class SchemaSettingsTest {
     schemaSettings.init(UNLOAD, session, false, true);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThatThrownBy(() -> schemaSettings.createReadStatements(session))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "The provided statement (schema.query) contains unrecognized WHERE restrictions; "
                 + "the WHERE clause is only allowed to contain one token range restriction of the form: "
@@ -1470,7 +1469,7 @@ class SchemaSettingsTest {
     schemaSettings.init(UNLOAD, session, false, true);
     schemaSettings.createReadResultMapper(session, recordMetadata, codecRegistry);
     assertThatThrownBy(() -> schemaSettings.createReadStatements(session))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "The provided statement (schema.query) contains unrecognized WHERE restrictions; "
                 + "the WHERE clause is only allowed to contain one token range restriction of the form: "
@@ -1482,7 +1481,7 @@ class SchemaSettingsTest {
     Config config = createTestConfig("dsbulk.schema", "keyspace", "KS", "table", "t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, false, true))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Keyspace \"KS\" does not exist, however a keyspace ks was found. Did you mean to use -k ks?");
   }
@@ -1492,7 +1491,7 @@ class SchemaSettingsTest {
     Config config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "T1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, false, true))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Table \"T1\" does not exist, however a table t1 was found. Did you mean to use -t t1?");
   }
@@ -1502,7 +1501,7 @@ class SchemaSettingsTest {
     Config config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "MV1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(UNLOAD, session, false, true))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Table or materialized view \"MV1\" does not exist, however a materialized view mv1 was found. Did you mean to use -t mv1?");
   }
@@ -1512,7 +1511,7 @@ class SchemaSettingsTest {
     Config config = createTestConfig("dsbulk.schema", "keyspace", "MyKs", "table", "t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, false, true))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Keyspace \"MyKs\" does not exist");
   }
 
@@ -1521,7 +1520,7 @@ class SchemaSettingsTest {
     Config config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "MyTable");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, false, true))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Table \"MyTable\" does not exist");
   }
 
@@ -1530,7 +1529,7 @@ class SchemaSettingsTest {
     Config config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "MyTable");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(UNLOAD, session, false, true))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Table or materialized view \"MyTable\" does not exist");
   }
 
@@ -1540,7 +1539,7 @@ class SchemaSettingsTest {
         createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1", "mapping", "\"c1=c1\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Schema mapping contains named fields, but connector only supports indexed fields");
   }
@@ -1550,7 +1549,7 @@ class SchemaSettingsTest {
     Config config = createTestConfig("dsbulk.schema");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "When schema.query is not defined, then either schema.keyspace or schema.graph must be defined, and either schema.table, schema.vertex or schema.edge must be defined");
   }
@@ -1560,7 +1559,7 @@ class SchemaSettingsTest {
     Config config = createTestConfig("dsbulk.schema", "mapping", "\"c1=c2\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "When schema.query is not defined, then either schema.keyspace or schema.graph must be defined, and either schema.table, schema.vertex or schema.edge must be defined");
   }
@@ -1572,7 +1571,7 @@ class SchemaSettingsTest {
             "dsbulk.schema", "query", "\"INSERT INTO ks.t1 (col1) VALUES (?)\"", "keyspace", "ks");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "schema.keyspace must not be provided when schema.query contains a keyspace-qualified statement");
   }
@@ -1583,7 +1582,7 @@ class SchemaSettingsTest {
         createTestConfig("dsbulk.schema", "query", "\"INSERT INTO t1 (col1) VALUES (?)\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "schema.keyspace must be provided when schema.query does not contain a keyspace-qualified statement");
   }
@@ -1595,7 +1594,7 @@ class SchemaSettingsTest {
         createTestConfig("dsbulk.schema", "query", "\"INSERT INTO ks.t1 (col1) VALUES (?)\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("schema.query references a non-existent keyspace: ks");
   }
 
@@ -1606,7 +1605,7 @@ class SchemaSettingsTest {
         createTestConfig("dsbulk.schema", "query", "\"INSERT INTO ks.t1 (col1) VALUES (?)\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "schema.query references a non-existent table or materialized view: t1");
   }
@@ -1624,7 +1623,7 @@ class SchemaSettingsTest {
             "ks");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "schema.query must not be defined if schema.queryTtl or schema.queryTimestamp is defined");
   }
@@ -1642,7 +1641,7 @@ class SchemaSettingsTest {
             "ks");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "schema.query must not be defined if schema.queryTtl or schema.queryTimestamp is defined");
   }
@@ -1660,7 +1659,7 @@ class SchemaSettingsTest {
             "ks");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, false, true))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "__timestamp variable is not allowed when schema.query does not contain a USING TIMESTAMP clause");
   }
@@ -1678,7 +1677,7 @@ class SchemaSettingsTest {
             "table");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "schema.query must not be defined if schema.table, schema.vertex or schema.edge are defined");
   }
@@ -1696,7 +1695,7 @@ class SchemaSettingsTest {
             "ks");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, false, true))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "__ttl variable is not allowed when schema.query does not contain a USING TTL clause");
   }
@@ -1708,7 +1707,7 @@ class SchemaSettingsTest {
             "dsbulk.schema", "keyspace", "ks", "table", "t1", "mapping", "\"col1,col2\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(WorkflowType.COUNT, session, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("schema.mapping must not be defined when counting rows in a table");
   }
 
@@ -1719,7 +1718,7 @@ class SchemaSettingsTest {
             "dsbulk.schema", "queryTimestamp", "junk", "keyspace", "ks", "table", "t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Expecting schema.queryTimestamp to be in ISO_ZONED_DATE_TIME format but got 'junk'");
   }
@@ -1729,7 +1728,7 @@ class SchemaSettingsTest {
     Config config = createTestConfig("dsbulk.schema", "table", "t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "schema.keyspace or schema.graph must be defined if schema.table, schema.vertex or schema.edge are defined");
   }
@@ -1747,7 +1746,7 @@ class SchemaSettingsTest {
             "ks");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Setting schema.query must not be defined when loading "
                 + "if schema.mapping contains a function on the left side of a mapping entry");
@@ -1766,7 +1765,7 @@ class SchemaSettingsTest {
             "ks");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(UNLOAD, session, false, true))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Setting schema.query must not be defined when unloading "
                 + "if schema.mapping contains a function on the right side of a mapping entry");
@@ -1779,7 +1778,7 @@ class SchemaSettingsTest {
             "dsbulk.schema", "keyspace", "ks", "table", "t1", "nullToUnset", "NotABoolean");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.schema.nullToUnset, expecting BOOLEAN, got STRING");
   }
@@ -1799,7 +1798,7 @@ class SchemaSettingsTest {
     schemaSettings.init(LOAD, session, false, true);
     assertThatThrownBy(
             () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Schema mapping entry \"nonExistentCol\" doesn't match any column found in table t1");
   }
@@ -1893,7 +1892,7 @@ class SchemaSettingsTest {
     schemaSettings.init(LOAD, session, false, true);
     assertThatThrownBy(
             () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Schema mapping entry \"nonExistentCol\" doesn't match any bound variable found in query: 'INSERT INTO ks.t1 (c1, c2) VALUES (:c1, :c2)'");
   }
@@ -1907,7 +1906,7 @@ class SchemaSettingsTest {
     schemaSettings.init(LOAD, session, false, true);
     assertThatThrownBy(
             () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Missing required primary key column c1 from schema.mapping or schema.query");
   }
 
@@ -1920,7 +1919,7 @@ class SchemaSettingsTest {
     schemaSettings.init(LOAD, session, false, true);
     assertThatThrownBy(
             () -> schemaSettings.createRecordMapper(session, recordMetadata, codecRegistry))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Missing required primary key column c1 from schema.mapping or schema.query");
   }
 
@@ -1947,7 +1946,7 @@ class SchemaSettingsTest {
             () ->
                 schemaSettings.createReadResultCounter(
                     session, codecRegistry, EnumSet.of(partitions), 10))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Cannot count partitions for table t1: it has no clustering column.");
   }
 
@@ -2085,7 +2084,7 @@ class SchemaSettingsTest {
     Config config = createTestConfig("dsbulk.schema", "keyspace", "ks", "graph", "graph1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Settings schema.keyspace and schema.graph are mutually exclusive");
   }
 
@@ -2094,7 +2093,7 @@ class SchemaSettingsTest {
     Config config = createTestConfig("dsbulk.schema", "table", "t1", "vertex", "v1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Settings schema.table and schema.vertex are mutually exclusive");
   }
 
@@ -2103,7 +2102,7 @@ class SchemaSettingsTest {
     Config config = createTestConfig("dsbulk.schema", "table", "t1", "edge", "e1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Settings schema.table and schema.edge are mutually exclusive");
   }
 
@@ -2112,7 +2111,7 @@ class SchemaSettingsTest {
     Config config = createTestConfig("dsbulk.schema", "vertex", "v1", "edge", "e1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Settings schema.vertex and schema.edge are mutually exclusive");
   }
 
@@ -2121,7 +2120,7 @@ class SchemaSettingsTest {
     Config config = createTestConfig("dsbulk.schema", "edge", "e1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Setting schema.from is required when schema.edge is specified");
   }
 
@@ -2130,7 +2129,7 @@ class SchemaSettingsTest {
     Config config = createTestConfig("dsbulk.schema", "edge", "e1", "from", "v1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Setting schema.to is required when schema.edge is specified");
   }
 
@@ -2177,7 +2176,7 @@ class SchemaSettingsTest {
     Config config = createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, false, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Connector must support at least one of indexed or mapped mappings");
   }
 
@@ -2277,7 +2276,7 @@ class SchemaSettingsTest {
     Config config = createTestConfig("dsbulk.schema", "graph", "ks", "vertex", "v1");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Vertex label v1 does not exist");
   }
 
@@ -2289,7 +2288,7 @@ class SchemaSettingsTest {
     Config config = createTestConfig("dsbulk.schema", "graph", "ks", "vertex", "\"V1\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Vertex label \"V1\" does not exist, however a vertex label v1 was found. Did you mean to use -v v1?");
   }
@@ -2300,7 +2299,7 @@ class SchemaSettingsTest {
         createTestConfig("dsbulk.schema", "graph", "ks", "edge", "e1", "from", "v1", "to", "v2");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Edge label e1 from v1 to v2 does not exist");
   }
 
@@ -2316,7 +2315,7 @@ class SchemaSettingsTest {
             "dsbulk.schema", "graph", "ks", "edge", "\"E1\"", "from", "\"V1\"", "to", "\"V2\"");
     SchemaSettings schemaSettings = new SchemaSettings(config);
     assertThatThrownBy(() -> schemaSettings.init(LOAD, session, true, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Edge label \"E1\" from \"V1\" to \"V2\" does not exist, however an edge label e1 from v1 to \"V2\" was found. Did you mean to use -e e1 -from v1 -to \"V2\"?");
   }

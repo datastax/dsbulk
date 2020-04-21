@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.engine.internal.cli;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.io.IOUtils;
 import com.datastax.dsbulk.commons.internal.utils.StringUtils;
@@ -298,8 +297,7 @@ public class CommandLineParser {
                       COMMAND_LINE_ARGUMENTS)
                   .withFallback(currentConfig);
         } catch (ConfigException e) {
-          BulkConfigurationException cause =
-              BulkConfigurationException.fromTypeSafeConfigException(e, "");
+          IllegalArgumentException cause = ConfigUtils.fromTypeSafeConfigException(e, "");
           if (optionType == null) {
             throw new ParseException(
                 String.format("Invalid value for %s: '%s'", optionName, optionValue), cause);

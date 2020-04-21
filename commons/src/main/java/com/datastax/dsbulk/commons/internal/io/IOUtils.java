@@ -10,7 +10,6 @@ package com.datastax.dsbulk.commons.internal.io;
 
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.oss.driver.shaded.guava.common.io.Resources;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -93,15 +92,15 @@ public final class IOUtils {
 
   public static void assertAccessibleFile(Path filePath, String descriptor) {
     if (!Files.exists(filePath)) {
-      throw new BulkConfigurationException(
+      throw new IllegalArgumentException(
           String.format("%s %s does not exist", descriptor, filePath));
     }
     if (!Files.isRegularFile(filePath)) {
-      throw new BulkConfigurationException(
+      throw new IllegalArgumentException(
           String.format("%s %s is not a file", descriptor, filePath));
     }
     if (!Files.isReadable(filePath)) {
-      throw new BulkConfigurationException(
+      throw new IllegalArgumentException(
           String.format("%s %s is not readable", descriptor, filePath));
     }
   }

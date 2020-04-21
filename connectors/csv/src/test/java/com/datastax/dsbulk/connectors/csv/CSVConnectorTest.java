@@ -25,7 +25,6 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.internal.io.CompressedIOUtils;
 import com.datastax.dsbulk.commons.tests.logging.LogCapture;
 import com.datastax.dsbulk.commons.tests.logging.LogInterceptingExtension;
@@ -1119,10 +1118,10 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     // empty string test
     Config settings1 = createTestConfig("dsbulk.connector.csv", "newline", "\"\"");
-    assertThrows(BulkConfigurationException.class, () -> connector.configure(settings1, false));
+    assertThrows(IllegalArgumentException.class, () -> connector.configure(settings1, false));
     // long string test
     Config settings2 = createTestConfig("dsbulk.connector.csv", "newline", "\"abc\"");
-    assertThrows(BulkConfigurationException.class, () -> connector.configure(settings2, false));
+    assertThrows(IllegalArgumentException.class, () -> connector.configure(settings2, false));
   }
 
   @Test
@@ -1303,7 +1302,7 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Config settings = createTestConfig("dsbulk.connector.csv", "url", null);
     assertThatThrownBy(() -> connector.configure(settings, true))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "A URL or URL file is mandatory when using the csv connector for LOAD. Please set connector.csv.url or connector.csv.urlfile and "
                 + "try again. See settings.md or help for more information.");
@@ -1314,7 +1313,7 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Config settings = createTestConfig("dsbulk.connector.csv", "recursive", "NotABoolean");
     assertThatThrownBy(() -> connector.configure(settings, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.csv.recursive, expecting BOOLEAN, got STRING");
     connector.close();
@@ -1325,7 +1324,7 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Config settings = createTestConfig("dsbulk.connector.csv", "header", "NotABoolean");
     assertThatThrownBy(() -> connector.configure(settings, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.csv.header, expecting BOOLEAN, got STRING");
     connector.close();
@@ -1336,7 +1335,7 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Config settings = createTestConfig("dsbulk.connector.csv", "skipRecords", "NotANumber");
     assertThatThrownBy(() -> connector.configure(settings, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.csv.skipRecords, expecting NUMBER, got STRING");
     connector.close();
@@ -1347,7 +1346,7 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Config settings = createTestConfig("dsbulk.connector.csv", "maxRecords", "NotANumber");
     assertThatThrownBy(() -> connector.configure(settings, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.csv.maxRecords, expecting NUMBER, got STRING");
     connector.close();
@@ -1358,7 +1357,7 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Config settings = createTestConfig("dsbulk.connector.csv", "maxConcurrentFiles", "NotANumber");
     assertThatThrownBy(() -> connector.configure(settings, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.csv.maxConcurrentFiles, expecting integer or string in 'nC' syntax, got 'NotANumber'");
     connector.close();
@@ -1369,7 +1368,7 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Config settings = createTestConfig("dsbulk.connector.csv", "encoding", "NotAnEncoding");
     assertThatThrownBy(() -> connector.configure(settings, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.csv.encoding, expecting valid charset name, got 'NotAnEncoding'");
     connector.close();
@@ -1380,7 +1379,7 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Config settings = createTestConfig("dsbulk.connector.csv", "delimiter", "\"\"");
     assertThatThrownBy(() -> connector.configure(settings, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.csv.delimiter, expecting single char, got ''");
     connector.close();
@@ -1391,7 +1390,7 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Config settings = createTestConfig("dsbulk.connector.csv", "quote", "\"\"");
     assertThatThrownBy(() -> connector.configure(settings, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.csv.quote, expecting single char, got ''");
     connector.close();
@@ -1402,7 +1401,7 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Config settings = createTestConfig("dsbulk.connector.csv", "escape", "\"\"");
     assertThatThrownBy(() -> connector.configure(settings, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.csv.escape, expecting single char, got ''");
     connector.close();
@@ -1413,7 +1412,7 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Config settings = createTestConfig("dsbulk.connector.csv", "comment", "\"\"");
     assertThatThrownBy(() -> connector.configure(settings, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.csv.comment, expecting single char, got ''");
     connector.close();
@@ -1424,7 +1423,7 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     // empty string test
     Config settings1 = createTestConfig("dsbulk.connector.csv", "compression", "\"abc\"");
-    assertThrows(BulkConfigurationException.class, () -> connector.configure(settings1, false));
+    assertThrows(IllegalArgumentException.class, () -> connector.configure(settings1, false));
   }
 
   @Test
@@ -1567,7 +1566,7 @@ class CSVConnectorTest {
         createTestConfig("dsbulk.connector.csv", "urlfile", quoteJson(MULTIPLE_URLS_FILE));
 
     assertThatThrownBy(() -> connector.configure(settings, false))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("The urlfile parameter is not supported for UNLOAD");
   }
 

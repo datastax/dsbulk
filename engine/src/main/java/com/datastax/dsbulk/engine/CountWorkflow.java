@@ -13,7 +13,6 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.codahale.metrics.MetricRegistry;
 import com.datastax.dsbulk.commons.codecs.ExtendedCodecRegistry;
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.internal.utils.StringUtils;
 import com.datastax.dsbulk.engine.internal.log.LogManager;
 import com.datastax.dsbulk.engine.internal.metrics.MetricsManager;
@@ -89,7 +88,7 @@ public class CountWorkflow implements Workflow {
     engineSettings.init();
     // First verify that dry-run is off; that's unsupported for count.
     if (engineSettings.isDryRun()) {
-      throw new BulkConfigurationException("Dry-run is not supported for count");
+      throw new IllegalArgumentException("Dry-run is not supported for count");
     }
     logSettings.init();
     driverSettings.init(false);

@@ -13,7 +13,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumingThat;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.internal.platform.PlatformUtils;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -97,7 +96,7 @@ class OperationDirectoryResolverTest {
     OperationDirectoryResolver resolver =
         new OperationDirectoryResolver(tempFolder, "invalid file \u0000 name");
     assertThatThrownBy(resolver::resolve)
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Execution ID 'invalid file \u0000 name' is not a valid path name on the local filesytem");
   }

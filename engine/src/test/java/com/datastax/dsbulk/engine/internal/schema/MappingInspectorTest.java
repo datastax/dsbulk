@@ -19,7 +19,6 @@ import static com.datastax.dsbulk.engine.internal.schema.QueryInspector.INTERNAL
 import static com.datastax.dsbulk.engine.internal.schema.QueryInspector.INTERNAL_TTL_VARNAME;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import org.junit.jupiter.api.Test;
 
 class MappingInspectorTest {
@@ -454,7 +453,7 @@ class MappingInspectorTest {
                     MAPPED_ONLY,
                     INTERNAL_TIMESTAMP_VARNAME,
                     INTERNAL_TTL_VARNAME))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("simple entries cannot contain function calls when loading");
   }
 
@@ -484,7 +483,7 @@ class MappingInspectorTest {
                     MAPPED_ONLY,
                     INTERNAL_TIMESTAMP_VARNAME,
                     INTERNAL_TTL_VARNAME))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Invalid schema.mapping: mapping could not be parsed");
     assertThatThrownBy(
             () ->
@@ -494,7 +493,7 @@ class MappingInspectorTest {
                     MAPPED_ONLY,
                     INTERNAL_TIMESTAMP_VARNAME,
                     INTERNAL_TTL_VARNAME))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Invalid schema.mapping: mapping could not be parsed");
   }
 
@@ -508,7 +507,7 @@ class MappingInspectorTest {
                     MAPPED_ONLY,
                     INTERNAL_TIMESTAMP_VARNAME,
                     INTERNAL_TTL_VARNAME))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid schema.mapping: inferred mapping entry (* = *) can be supplied at most once");
   }
@@ -533,7 +532,7 @@ class MappingInspectorTest {
                     MAPPED_ONLY,
                     INTERNAL_TIMESTAMP_VARNAME,
                     INTERNAL_TTL_VARNAME))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid schema.mapping: the following variables are mapped to more than one field: c1, c2");
   }
@@ -562,7 +561,7 @@ class MappingInspectorTest {
                     MAPPED_ONLY,
                     INTERNAL_TIMESTAMP_VARNAME,
                     INTERNAL_TTL_VARNAME))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid schema.mapping: the following fields are mapped to more than one variable: a, b");
     assertThatThrownBy(
@@ -573,7 +572,7 @@ class MappingInspectorTest {
                     MAPPED_ONLY,
                     INTERNAL_TIMESTAMP_VARNAME,
                     INTERNAL_TTL_VARNAME))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid schema.mapping: the following fields are mapped to more than one variable: a, b");
   }
@@ -608,7 +607,7 @@ class MappingInspectorTest {
                     INDEXED_ONLY,
                     INTERNAL_TIMESTAMP_VARNAME,
                     INTERNAL_TTL_VARNAME))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Schema mapping contains named fields, but connector only supports indexed fields");
   }
@@ -689,7 +688,7 @@ class MappingInspectorTest {
   void should_error_when_mapped_ttl_but_no_using_ttl_variable() {
     assertThatThrownBy(
             () -> new MappingInspector("f1 = c1, f2 = __ttl", LOAD, MAPPED_ONLY, null, null))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Invalid mapping: __ttl variable is not allowed when schema.query does not contain a USING TTL clause");
   }
@@ -698,7 +697,7 @@ class MappingInspectorTest {
   void should_error_when_mapped_timestamp_but_no_using_timestamp_variable() {
     assertThatThrownBy(
             () -> new MappingInspector("f1 = c1, f2 = __timestamp", LOAD, MAPPED_ONLY, null, null))
-        .isInstanceOf(BulkConfigurationException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Invalid mapping: __timestamp variable is not allowed when schema.query does not contain a USING TIMESTAMP clause");
   }

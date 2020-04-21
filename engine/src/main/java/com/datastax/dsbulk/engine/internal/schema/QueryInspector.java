@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.engine.internal.schema;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.generated.cql3.CqlBaseVisitor;
 import com.datastax.dsbulk.commons.generated.cql3.CqlLexer;
 import com.datastax.dsbulk.commons.generated.cql3.CqlParser;
@@ -111,7 +110,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
               int col,
               String msg,
               RecognitionException e) {
-            throw new BulkConfigurationException(
+            throw new IllegalArgumentException(
                 String.format(
                     "Invalid query: '%s' could not be parsed at line %d:%d: %s",
                     query, line, col, msg),
@@ -271,7 +270,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   @Override
   public CQLFragment visitNormalInsertStatement(NormalInsertStatementContext ctx) {
     if (ctx.cident().size() != ctx.term().size()) {
-      throw new BulkConfigurationException(
+      throw new IllegalArgumentException(
           String.format(
               "Invalid query: the number of columns to insert (%d) does not match the number of terms (%d): %s.",
               ctx.cident().size(), ctx.term().size(), query));
@@ -289,7 +288,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
 
   @Override
   public CQLFragment visitJsonInsertStatement(JsonInsertStatementContext ctx) {
-    throw new BulkConfigurationException(
+    throw new IllegalArgumentException(
         String.format("Invalid query: INSERT JSON is not supported: %s.", query));
   }
 
@@ -330,7 +329,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   @Override
   public CQLFragment visitSelectStatement(SelectStatementContext ctx) {
     if (ctx.K_JSON() != null) {
-      throw new BulkConfigurationException(
+      throw new IllegalArgumentException(
           String.format("Invalid query: SELECT JSON is not supported: %s.", query));
     }
     visitColumnFamilyName(ctx.columnFamilyName());
@@ -499,7 +498,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
       for (TermContext arg : ctx.functionArgs().term()) {
         CQLFragment term = visitTerm(arg);
         if (term == QUESTION_MARK) {
-          throw new BulkConfigurationException(
+          throw new IllegalArgumentException(
               String.format(
                   "Invalid query: positional variables are not allowed as function parameters: %s.",
                   query));

@@ -8,7 +8,7 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
+import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.executor.api.batch.StatementBatcher;
 import com.datastax.dsbulk.executor.reactor.batch.ReactorStatementBatcher;
 import com.datastax.oss.driver.api.core.CqlSession;
@@ -69,7 +69,7 @@ public class BatchSettings {
       if (config.hasPath(MAX_BATCH_SIZE)) {
 
         if (config.hasPath(MAX_BATCH_STATEMENTS)) {
-          throw new BulkConfigurationException(
+          throw new IllegalArgumentException(
               "Settings batch.maxBatchStatements and batch.maxBatchSize "
                   + "cannot be both defined; "
                   + "consider using batch.maxBatchStatements exclusively, "
@@ -86,7 +86,7 @@ public class BatchSettings {
       }
 
       if (maxSizeInBytes <= 0 && maxBatchStatements <= 0) {
-        throw new BulkConfigurationException(
+        throw new IllegalArgumentException(
             "At least one of batch.maxSizeInBytes or batch.maxBatchStatements must be positive. "
                 + "See settings.md for more information.");
       }
@@ -95,7 +95,7 @@ public class BatchSettings {
       bufferSize = bufferConfig > 0 ? bufferConfig : 4 * maxBatchStatements;
 
       if (maxBatchStatements <= 0 && bufferSize <= 0) {
-        throw new BulkConfigurationException(
+        throw new IllegalArgumentException(
             String.format(
                 "Value for batch.bufferSize (%d) must be positive if "
                     + "batch.maxBatchStatements is negative or zero. "
@@ -104,7 +104,7 @@ public class BatchSettings {
       }
 
       if (bufferSize < maxBatchStatements) {
-        throw new BulkConfigurationException(
+        throw new IllegalArgumentException(
             String.format(
                 "Value for batch.bufferSize (%d) must be greater than or equal to "
                     + "batch.maxBatchStatements OR batch.maxBatchSize (%d). "
@@ -112,7 +112,7 @@ public class BatchSettings {
                 bufferSize, maxBatchStatements));
       }
     } catch (ConfigException e) {
-      throw BulkConfigurationException.fromTypeSafeConfigException(e, "dsbulk.batch");
+      throw ConfigUtils.fromTypeSafeConfigException(e, "dsbulk.batch");
     }
   }
 

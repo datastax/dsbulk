@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.engine.internal.settings;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.connectors.api.Connector;
 import com.datastax.dsbulk.engine.WorkflowType;
 import com.typesafe.config.Config;
@@ -41,12 +40,12 @@ public class ConnectorSettings {
       connectorConfig = config.getConfig(connectorName).withoutPath("metaSettings");
       connector.configure(connectorConfig, read);
     } else {
-      throw new BulkConfigurationException(
+      throw new IllegalArgumentException(
           String.format("Cannot find configuration entry for connector '%s'", connectorName));
     }
   }
 
-  public Connector getConnector() throws BulkConfigurationException {
+  public Connector getConnector() throws IllegalArgumentException {
     return connector;
   }
 
@@ -70,7 +69,7 @@ public class ConnectorSettings {
         return connector;
       }
     }
-    throw new BulkConfigurationException(
+    throw new IllegalArgumentException(
         String.format(
             "Cannot find connector '%s'; available connectors are: %s",
             name,

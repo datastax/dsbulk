@@ -8,7 +8,6 @@
  */
 package com.datastax.dsbulk.connectors.api;
 
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.typesafe.config.Config;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.util.function.Function;
@@ -143,10 +142,9 @@ public interface Connector extends AutoCloseable {
    *
    * @param settings the connector settings.
    * @param read whether the connector should be configured for reading or writing.
-   * @throws BulkConfigurationException if the connector fails to configure properly.
+   * @throws IllegalArgumentException if the connector fails to configure properly.
    */
-  default void configure(@NonNull Config settings, boolean read)
-      throws BulkConfigurationException {}
+  default void configure(@NonNull Config settings, boolean read) throws IllegalArgumentException {}
 
   /**
    * Initializes the connector.

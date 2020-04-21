@@ -16,7 +16,6 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.Appender;
 import ch.qos.logback.core.FileAppender;
 import ch.qos.logback.core.filter.Filter;
-import com.datastax.dsbulk.commons.config.BulkConfigurationException;
 import com.datastax.dsbulk.commons.internal.config.ConfigUtils;
 import com.datastax.dsbulk.commons.internal.format.row.RowFormatter;
 import com.datastax.dsbulk.commons.internal.format.statement.StatementFormatVerbosity;
@@ -193,7 +192,7 @@ public class LogSettings {
       }
       this.verbosity = Verbosity.values()[verbosity];
     } catch (ConfigException e) {
-      throw BulkConfigurationException.fromTypeSafeConfigException(e, "dsbulk.log");
+      throw ConfigUtils.fromTypeSafeConfigException(e, "dsbulk.log");
     }
   }
 
@@ -328,14 +327,14 @@ public class LogSettings {
 
   private static void validatePercentageRange(float maxErrorRatio) {
     if (maxErrorRatio <= 0 || maxErrorRatio >= 1) {
-      throw new BulkConfigurationException(
+      throw new IllegalArgumentException(
           "maxErrors must either be a number, or percentage between 0 and 100 exclusive.");
     }
   }
 
   private static void validateVerbosity(int verbosity) {
     if (verbosity < 0 || verbosity > 2) {
-      throw new BulkConfigurationException(
+      throw new IllegalArgumentException(
           "verbosity must either be 0 (quiet), 1 (normal) or 2 (verbose).");
     }
   }
