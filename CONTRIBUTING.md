@@ -75,19 +75,6 @@ use capitalized words for acronyms of 4 letters and more (`Json`).
 Keep source files short. Short files are easy to understand and test. The average should probably 
 be around 200-300 lines. 
 
-### API vs Internal packages
-
-Packages are considered part of the API by default, _unless_ they contain the word `internal`: 
-`com.datastax.dsbulk.foo` is API, but `com.datastax.dsbulk.internal.foo` is internal.
-
-API packages must offer a stable API and guarantee binary compatibility between 
-minor and bugfix releases. Binary compatibility breaks are only allowed between major releases.
-
-Internal packages do not need to preserve binary compatibility. 
-While developers should strive to maintain that compatibility as much as possible, there is
-no strong commitment around it; users importing internal packages directly should be prepared
-for breaking changes at any time.
-
 ### Javadoc
 
 All types in "API" packages must be documented. For "internal" packages, documentation is optional,

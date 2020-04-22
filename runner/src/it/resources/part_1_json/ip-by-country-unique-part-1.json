@@ -1,0 +1,80 @@
+{
+  "beginning_ip_address": "209.170.125.208",
+  "ending_ip_address": "209.170.125.223",
+  "beginning_ip_number": 3517611472,
+  "ending_ip_number": 3517611487,
+  "country_code": "SE",
+  "country_name": "Sweden"
+}
+{
+  "beginning_ip_address": "80.242.192.0",
+  "ending_ip_address": "80.242.207.255",
+  "beginning_ip_number": 1358086144,
+  "ending_ip_number": 1358090239,
+  "country_code": "CH",
+  "country_name": "Switzerland"
+}
+{
+  "beginning_ip_address": "200.31.64.0",
+  "ending_ip_address": "200.31.95.255",
+  "beginning_ip_number": 3357491200,
+  "ending_ip_number": 3357499391,
+  "country_code": "CO",
+  "country_name": "Colombia"
+}
+{
+  "beginning_ip_address": "203.190.128.0",
+  "ending_ip_address": "203.190.159.255",
+  "beginning_ip_number": 3418259456,
+  "ending_ip_number": 3418267647,
+  "country_code": "IN",
+  "country_name": "India"
+}
+{
+  "beginning_ip_address": "207.132.98.0",
+  "ending_ip_address": "207.133.255.255",
+  "beginning_ip_number": 3481559552,
+  "ending_ip_number": 3481665535,
+  "country_code": "US",
+  "country_name": "United States"
+}
+{
+  "beginning_ip_address": "66.178.81.200",
+  "ending_ip_address": "66.178.81.207",
+  "beginning_ip_number": 1118982600,
+  "ending_ip_number": 1118982607,
+  "country_code": "A2",
+  "country_name": "Satellite Provider"
+}
+{
+  "beginning_ip_address": "213.152.115.0",
+  "ending_ip_address": "213.152.117.255",
+  "beginning_ip_number": 3583537920,
+  "ending_ip_number": 3583538687,
+  "country_code": "IL",
+  "country_name": "Israel"
+}
+{
+  "beginning_ip_address": "62.146.105.136",
+  "ending_ip_address": "62.146.109.207",
+  "beginning_ip_number": 1049782664,
+  "ending_ip_number": 1049783759,
+  "country_code": "DE",
+  "country_name": "Germany"
+}
+{
+  "beginning_ip_address": "212.63.180.20",
+  "ending_ip_address": "212.63.180.23",
+  "beginning_ip_number": 3560944660,
+  "ending_ip_number": 3560944663,
+  "country_code": "MZ",
+  "country_name": "Mozambique"
+}
+{
+  "beginning_ip_address": "195.79.12.0",
+  "ending_ip_address": "195.79.12.79",
+  "beginning_ip_number": 3276737536,
+  "ending_ip_number": 3276737615,
+  "country_code": "IT",
+  "country_name": "Italy"
+}

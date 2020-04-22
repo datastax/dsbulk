@@ -13,20 +13,36 @@
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <artifactId>dsbulk-connectors</artifactId>
-    <groupId>com.datastax.dse</groupId>
-    <version>1.5.1-SNAPSHOT</version>
+    <groupId>com.datastax.oss</groupId>
+    <version>1.6.0-SNAPSHOT</version>
   </parent>
   <artifactId>dsbulk-connectors-csv</artifactId>
   <name>DataStax Bulk Loader - Connectors - CSV</name>
   <description>CSV connector for the DataStax Bulk Loader.</description>
   <dependencies>
     <dependency>
-      <groupId>com.datastax.dse</groupId>
+      <groupId>com.datastax.oss</groupId>
       <artifactId>dsbulk-commons</artifactId>
     </dependency>
     <dependency>
-      <groupId>com.datastax.dse</groupId>
+      <groupId>com.datastax.oss</groupId>
       <artifactId>dsbulk-connectors-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
+      <artifactId>dsbulk-connectors-commons</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
+      <artifactId>dsbulk-compression</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.typesafe</groupId>
+      <artifactId>config</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
+      <artifactId>java-driver-shaded-guava</artifactId>
     </dependency>
     <dependency>
       <groupId>com.univocity</groupId>
@@ -37,17 +53,12 @@
       <artifactId>reactor-core</artifactId>
     </dependency>
     <dependency>
-      <groupId>com.github.spotbugs</groupId>
-      <artifactId>spotbugs-annotations</artifactId>
-    </dependency>
-    <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
     </dependency>
     <dependency>
-      <groupId>com.datastax.dse</groupId>
-      <artifactId>dsbulk-commons</artifactId>
-      <type>test-jar</type>
+      <groupId>com.datastax.oss</groupId>
+      <artifactId>dsbulk-tests</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -58,11 +69,6 @@
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-params</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.mockito</groupId>
-      <artifactId>mockito-core</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -86,13 +92,9 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>com.fasterxml.jackson.core</groupId>
-      <artifactId>jackson-core</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.dse</groupId>
-      <artifactId>dsbulk-connectors-commons</artifactId>
+      <groupId>com.github.spotbugs</groupId>
+      <artifactId>spotbugs-annotations</artifactId>
+      <scope>provided</scope>
     </dependency>
   </dependencies>
 </project>

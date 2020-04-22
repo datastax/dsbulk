@@ -21,7 +21,7 @@ REM Attempt to find the window width, to make help output look nicer.
 for /F "usebackq tokens=2* delims=: " %%W in (`mode con ^| findstr Columns`) do set COLUMNS=%%W
 
 REM Run the Java tool.
-"%JAVA%" %DSBULK_JAVA_OPTS% com.datastax.dsbulk.engine.DataStaxBulkLoader %*
+"%JAVA%" %DSBULK_JAVA_OPTS% DataStaxBulkLoader %*
 GOTO :eof
 
 REM Helper for adding a particular item to CLASSPATH.

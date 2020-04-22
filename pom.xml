@@ -11,9 +11,9 @@
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>com.datastax.dse</groupId>
+  <groupId>com.datastax.oss</groupId>
   <artifactId>dsbulk-parent</artifactId>
-  <version>1.5.1-SNAPSHOT</version>
+  <version>1.6.0-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>DataStax Bulk Loader</name>
   <description>A unified tool for loading into and unloading from DSE storage engines (i.e., Cassandra/Apollo and DataStax Enterprise).</description>
@@ -25,16 +25,25 @@
   </organization>
   <modules>
     <module>commons</module>
+    <module>cql</module>
+    <module>tests</module>
+    <module>codecs</module>
+    <module>compression</module>
+    <module>format</module>
     <module>connectors</module>
     <module>executor</module>
-    <module>engine</module>
-    <module>dist</module>
+    <module>mapping</module>
+    <module>partitioner</module>
+    <module>workflow</module>
+    <module>runner</module>
+    <module>docs</module>
+    <module>distribution</module>
   </modules>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <java.version>1.8</java.version>
-    <oss.driver.version>4.5.0</oss.driver.version>
+    <oss.driver.version>4.5.1</oss.driver.version>
     <!--
     When upgrading library versions make sure the resulting binary tarball contains only
     required jars, and that no jar has an offending license.
@@ -47,8 +56,6 @@
     <netty.version>4.1.45.Final</netty.version>
     <caffeine.version>2.8.0</caffeine.version>
     <jctools.version>2.1.2</jctools.version>
-    <jnr-ffi.version>2.1.11</jnr-ffi.version>
-    <jnr-posix.version>3.0.51</jnr-posix.version>
     <slf4j.version>1.7.26</slf4j.version>
     <logback.version>1.2.3</logback.version>
     <metrics.version>4.1.1</metrics.version>
@@ -76,60 +83,114 @@
   <dependencyManagement>
     <dependencies>
       <dependency>
-        <groupId>com.datastax.dse</groupId>
+        <groupId>com.datastax.oss</groupId>
         <artifactId>dsbulk-commons</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>com.datastax.dse</groupId>
-        <artifactId>dsbulk-commons</artifactId>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>dsbulk-cql</artifactId>
         <version>${project.version}</version>
-        <type>test-jar</type>
       </dependency>
       <dependency>
-        <groupId>com.datastax.dse</groupId>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>dsbulk-mapping</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>dsbulk-tests</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>dsbulk-codecs-api</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>dsbulk-codecs-text</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>dsbulk-compression</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>dsbulk-format</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>dsbulk-partitioner</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.datastax.oss</groupId>
         <artifactId>dsbulk-executor-api</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>com.datastax.dse</groupId>
+        <groupId>com.datastax.oss</groupId>
         <artifactId>dsbulk-executor-api</artifactId>
         <version>${project.version}</version>
         <type>test-jar</type>
       </dependency>
       <dependency>
-        <groupId>com.datastax.dse</groupId>
-        <artifactId>dsbulk-executor-rxjava</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.datastax.dse</groupId>
+        <groupId>com.datastax.oss</groupId>
         <artifactId>dsbulk-executor-reactor</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>com.datastax.dse</groupId>
+        <groupId>com.datastax.oss</groupId>
         <artifactId>dsbulk-connectors-api</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>com.datastax.dse</groupId>
+        <groupId>com.datastax.oss</groupId>
         <artifactId>dsbulk-connectors-commons</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>com.datastax.dse</groupId>
+        <groupId>com.datastax.oss</groupId>
         <artifactId>dsbulk-connectors-csv</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>com.datastax.dse</groupId>
+        <groupId>com.datastax.oss</groupId>
         <artifactId>dsbulk-connectors-json</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>com.datastax.dse</groupId>
-        <artifactId>dsbulk-engine</artifactId>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>dsbulk-workflow-api</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>dsbulk-workflow-commons</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>dsbulk-workflow-load</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>dsbulk-workflow-unload</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>dsbulk-workflow-count</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>dsbulk-runner</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
@@ -181,6 +242,16 @@
         <groupId>com.github.ben-manes.caffeine</groupId>
         <artifactId>caffeine</artifactId>
         <version>${caffeine.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>org.checkerframework</groupId>
+            <artifactId>checker-qual</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.google.errorprone</groupId>
+            <artifactId>error_prone_annotations</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
       <dependency>
         <groupId>org.jctools</groupId>
@@ -196,16 +267,6 @@
         <groupId>io.dropwizard.metrics</groupId>
         <artifactId>metrics-jmx</artifactId>
         <version>${metrics.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.github.jnr</groupId>
-        <artifactId>jnr-ffi</artifactId>
-        <version>${jnr-ffi.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.github.jnr</groupId>
-        <artifactId>jnr-posix</artifactId>
-        <version>${jnr-posix.version}</version>
       </dependency>
       <dependency>
         <groupId>org.lz4</groupId>
@@ -293,33 +354,13 @@
         <version>3.1.12</version>
       </dependency>
       <dependency>
-        <groupId>io.netty</groupId>
-        <artifactId>netty-buffer</artifactId>
-        <version>${netty.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>io.netty</groupId>
-        <artifactId>netty-codec</artifactId>
-        <version>${netty.version}</version>
+        <groupId>com.esri.geometry</groupId>
+        <artifactId>esri-geometry-api</artifactId>
+        <version>1.2.1</version>
       </dependency>
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-common</artifactId>
-        <version>${netty.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>io.netty</groupId>
-        <artifactId>netty-handler</artifactId>
-        <version>${netty.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>io.netty</groupId>
-        <artifactId>netty-resolver</artifactId>
-        <version>${netty.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>io.netty</groupId>
-        <artifactId>netty-transport</artifactId>
         <version>${netty.version}</version>
       </dependency>
       <dependency>
@@ -436,7 +477,7 @@
         </plugin>
         <plugin>
           <artifactId>maven-javadoc-plugin</artifactId>
-          <version>3.0.0</version>
+          <version>3.2.0</version>
         </plugin>
         <plugin>
           <artifactId>maven-jar-plugin</artifactId>
@@ -478,6 +519,7 @@
         <configuration>
           <excludes>
             <exclude>ci/**</exclude>
+            <exclude>perf/**</exclude>
             <exclude>.idea/**</exclude>
             <exclude>**/target/**</exclude>
             <exclude>**/dependency-reduced-pom.xml</exclude>
@@ -495,11 +537,6 @@
             </goals>
           </execution>
         </executions>
-        <configuration>
-          <additionalSourceDirectories>
-            <additionalSourceDirectory>src/it/java</additionalSourceDirectory>
-          </additionalSourceDirectories>
-        </configuration>
       </plugin>
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
@@ -700,49 +737,6 @@ https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
           </execution>
         </executions>
       </plugin>
-      <plugin>
-        <artifactId>maven-source-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>attach-sources</id>
-            <phase>package</phase>
-            <goals>
-              <goal>jar-no-fork</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <artifactId>maven-javadoc-plugin</artifactId>
-        <inherited>true</inherited>
-        <configuration>
-          <quiet>true</quiet>
-          <verbose>false</verbose>
-          <doclint>all,-missing</doclint>
-          <links>
-            <link>https://docs.oracle.com/javase/8/docs/api/</link>
-            <link>http://fasterxml.github.io/jackson-core/javadoc/2.9/</link>
-            <link>http://fasterxml.github.io/jackson-databind/javadoc/2.9/</link>
-          </links>
-        </configuration>
-        <executions>
-          <execution>
-            <id>attach-javadocs</id>
-            <goals>
-              <goal>jar</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <artifactId>maven-release-plugin</artifactId>
-        <configuration>
-          <tagNameFormat>@{project.version}</tagNameFormat>
-          <autoVersionSubmodules>true</autoVersionSubmodules>
-          <useReleaseProfile>false</useReleaseProfile>
-          <releaseProfiles>release</releaseProfiles>
-        </configuration>
-      </plugin>
     </plugins>
   </build>
   <profiles>
@@ -767,12 +761,33 @@ https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
           </plugin>
           <plugin>
             <artifactId>maven-javadoc-plugin</artifactId>
+            <configuration>
+              <verbose>false</verbose>
+              <quiet>true</quiet>
+              <doclint>all,-missing</doclint>
+            </configuration>
             <executions>
               <execution>
                 <id>attach-javadocs</id>
                 <goals>
                   <goal>jar</goal>
                 </goals>
+                <configuration>
+                  <header><![CDATA[<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-TWSQ28');</script>
+<!-- End Google Tag Manager -->
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-TWSQ28"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->]]></header>
+                  <additionalOptions>
+                    <additionalOption>--allow-script-in-comments</additionalOption>
+                  </additionalOptions>
+                </configuration>
               </execution>
             </executions>
           </plugin>
@@ -842,31 +857,6 @@ https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
       </build>
     </profile>
   </profiles>
-  <repositories>
-    <repository>
-      <id>datastax-releases-local</id>
-      <name>DataStax Local Releases</name>
-      <url>https://repo.sjc.dsinternal.org/artifactory/datastax-releases-local/</url>
-      <releases>
-        <enabled>true</enabled>
-      </releases>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-    </repository>
-  </repositories>
-  <distributionManagement>
-    <repository>
-      <id>datastax-releases-local</id>
-      <name>DataStax Local Releases</name>
-      <url>https://repo.sjc.dsinternal.org/artifactory/datastax-releases-local/</url>
-    </repository>
-    <snapshotRepository>
-      <id>datastax-snapshots-local</id>
-      <name>DataStax Local Snapshots</name>
-      <url>https://repo.sjc.dsinternal.org/artifactory/datastax-snapshots-local/</url>
-    </snapshotRepository>
-  </distributionManagement>
   <licenses>
     <license>
       <name>DataStax DSE Bulk Utility License</name>

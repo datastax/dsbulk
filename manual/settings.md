@@ -1,4 +1,4 @@
-# DataStax Bulk Loader v1.5.1-SNAPSHOT Options
+# DataStax Bulk Loader v1.6.0-SNAPSHOT Options
 
 *NOTE:* The long options described here can be persisted in `conf/application.conf` and thus permanently override defaults and avoid specifying options on the command line.
 
@@ -239,7 +239,7 @@ In addition, for mapped data sources, it is also possible to specify that the ma
 
 One can specify that all like-named fields be mapped, except for `c2`: `* = -c2`. To skip `c2` and `c3`: `* = [-c2, -c3]`.
 
-Any identifier, field or column, that is not strictly alphanumeric (i.e. not matching [a-zA-Z0-9_]+) must be surrounded by double-quotes, just like you would do in CQL: `"Field ""A""" = "Column 2"` (to escape a double-quote, simply double it). Note that, contrary to the CQL grammar, unquoted identifiers will not be lower-cased: an identifier such as `MyColumn1` will match a column named `"MyColumn1"` and not `mycolumn1`.
+Any identifier, field or column, that is not strictly alphanumeric (i.e. not matching `[a-zA-Z0-9_]+`) must be surrounded by double-quotes, just like you would do in CQL: `"Field ""A""" = "Column 2"` (to escape a double-quote, simply double it). Note that, contrary to the CQL grammar, unquoted identifiers will not be lower-cased: an identifier such as `MyColumn1` will match a column named `"MyColumn1"` and not `mycolumn1`.
 
 The exact type of mapping to use depends on the connector being used. Some connectors can only produce indexed records; others can only produce mapped ones, while others are capable of producing both indexed and mapped records at the same time. Refer to the connector's documentation to know which kinds of mapping it supports.
 
@@ -719,7 +719,7 @@ In addition, for mapped data sources, it is also possible to specify that the ma
 
 One can specify that all like-named fields be mapped, except for `c2`: `* = -c2`. To skip `c2` and `c3`: `* = [-c2, -c3]`.
 
-Any identifier, field or column, that is not strictly alphanumeric (i.e. not matching [a-zA-Z0-9_]+) must be surrounded by double-quotes, just like you would do in CQL: `"Field ""A""" = "Column 2"` (to escape a double-quote, simply double it). Note that, contrary to the CQL grammar, unquoted identifiers will not be lower-cased: an identifier such as `MyColumn1` will match a column named `"MyColumn1"` and not `mycolumn1`.
+Any identifier, field or column, that is not strictly alphanumeric (i.e. not matching `[a-zA-Z0-9_]+`) must be surrounded by double-quotes, just like you would do in CQL: `"Field ""A""" = "Column 2"` (to escape a double-quote, simply double it). Note that, contrary to the CQL grammar, unquoted identifiers will not be lower-cased: an identifier such as `MyColumn1` will match a column named `"MyColumn1"` and not `mycolumn1`.
 
 The exact type of mapping to use depends on the connector being used. Some connectors can only produce indexed records; others can only produce mapped ones, while others are capable of producing both indexed and mapped records at the same time. Refer to the connector's documentation to know which kinds of mapping it supports.
 
@@ -1543,7 +1543,7 @@ The class of the retry policy. If it is not qualified, the driver assumes that i
 
 You can also specify a custom class that implements `RetryPolicy` and has a public constructor with two arguments: the `DriverContext` and a `String` representing the profile name.
 
-Default: **"com.datastax.dsbulk.engine.internal.policies.retry.MultipleRetryPolicy"**.
+Default: **"com.datastax.oss.dsbulk.workflow.commons.policies.retry.MultipleRetryPolicy"**.
 
 #### -maxRetries,<br />--driver.advanced.retry-policy.max-retries<br />--datastax-java-driver.advanced.retry-policy.max-retries _&lt;number&gt;_
 

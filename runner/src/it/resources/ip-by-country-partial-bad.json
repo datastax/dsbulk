@@ -1,0 +1,183 @@
+{
+  "beginning_ip_address": "209.170.125.208",
+  "ending_ip_address": "209.170.125.223",
+  "beginning_ip_number": 3517611472,
+  "ending_ip_number": 3517611487,
+  "country_code": "SE",
+  "country_name": "Sweden"
+}
+{
+  "beginning_ip_address": "80.242.192.0",
+  "ending_ip_address": "80.242.207.255",
+  "beginning_ip_number": 1358086144,
+  "ending_ip_number": 1358090239,
+  "country_code": "CH",
+  "country_name": "Switzerland"
+}
+{
+  "beginning_ip_address": "200.31.64.0",
+  "ending_ip_address": "200.31.95.255",
+  "beginning_ip_number": 3357491200,
+  "ending_ip_number": 3357499391,
+  "country_code": "CO",
+  "country_name": "Colombia"
+}
+{
+  "beginning_ip_address": "203.190.128.0",
+  "ending_ip_address": "203.190.159.255",
+  "beginning_ip_number": 3418259456,
+  "ending_ip_number": 3418267647,
+  "country_code": "IN",
+  "country_name": "India"
+}
+{
+  "beginning_ip_address": "207.132.98.0",
+  "ending_ip_address": "207.133.255.255",
+  "beginning_ip_number": 3481559552,
+  "ending_ip_number": 3481665535,
+  "country_code": "US",
+  "country_name": "United States"
+}
+{
+  "beginning_ip_address": "66.178.81.275",
+  "ending_ip_address": "66.178.81.207",
+  "beginning_ip_number": 1118982600,
+  "ending_ip_number": 1118982607,
+  "country_code": "A2",
+  "country_name": "bad ip"
+}
+{
+  "beginning_ip_address": "213.152.115.0",
+  "ending_ip_address": "213.152.117.255",
+  "beginning_ip_number": 3583537920,
+  "ending_ip_number": 3583538687,
+  "country_code": "IL",
+  "country_name": "Israel"
+}
+{
+  "beginning_ip_address": "62.146.105.136",
+  "ending_ip_address": "62.146.109.207",
+  "beginning_ip_number": 1049782664,
+  "ending_ip_number": 1049783759,
+  "country_code": "DE",
+  "country_name": "Germany"
+}
+{
+  "beginning_ip_address": "212.63.180.20",
+  "ending_ip_address": "212.63.180.23",
+  "beginning_ip_number": 3560944660,
+  "ending_ip_number": 3560944663,
+  "country_code": "MZ",
+  "country_name": "Mozambique"
+}
+{
+  "beginning_ip_address": "195.79.12.0",
+  "ending_ip_address": "195.79.12.79",
+  "beginning_ip_number": 3276737536,
+  "ending_ip_number": 3276737615,
+  "country_code": "IT",
+  "country_name": "Italy"
+}
+{
+  "beginning_ip_address": "72.12.128.0",
+  "ending_ip_address": "72.12.159.255",
+  "beginning_ip_number": 1208778752,
+  "ending_ip_number": 1208786943,
+  "country_code": "Missing field"
+}
+{
+  "beginning_ip_address": "81.31.194.4",
+  "ending_ip_address": "81.31.194.7",
+  "beginning_ip_number": 1361035780,
+  "ending_ip_number": 1361035783,
+  "country_code": "KW",
+  "country_name": "Kuwait"
+}
+{
+  "beginning_ip_address": "195.213.251.112",
+  "ending_ip_address": "195.213.251.255",
+  "beginning_ip_number": 3285580656,
+  "ending_ip_number": 3285580799,
+  "country_code": "BE",
+  "country_name": "Belgium"
+}
+{
+  "beginning_ip_address": "195.212.32.0",
+  "ending_ip_address": "195.212.34.255",
+  "beginning_ip_number": 3285458944,
+  "ending_ip_number": 3285459711,
+  "country_code": "DK",
+  "country_name": "Denmark"
+}
+{
+  "beginning_ip_address": "195.80.128.0",
+  "ending_ip_address": "195.80.159.255",
+  "beginning_ip_number": 3276832768,
+  "ending_ip_number": 3276840959,
+  "country_code": "FR",
+  "country_name": "France"
+}
+{
+  "beginning_ip_address": "64.49.211.192",
+  "ending_ip_address": "64.49.211.199",
+  "beginning_ip_number": 1077007296,
+  "ending_ip_number": 1077007303,
+  "country_code": "AU",
+  "country_name": "Australia"
+}
+{
+  "beginning_ip_address": "195.119.131.0",
+  "ending_ip_address": "195.119.132.15",
+  "beginning_ip_number": 3279389440,
+  "ending_ip_number": 3279389711,
+  "country_code": "EU",
+  "country_name": "Europe"
+}
+{
+  "beginning_ip_address": "193.251.145.26",
+  "ending_ip_address": "193.251.145.26",
+  "beginning_ip_number": 3254489370,
+  "ending_ip_number": 3254489370,
+  "country_code": "MR",
+  "country_name": "Mauritania"
+}
+{
+  "beginning_ip_address": "202.20.114.0",
+  "ending_ip_address": "202.20.116.255",
+  "beginning_ip_number": 3390337536,
+  "ending_ip_number": 3390338303,
+  "country_code": "SG",
+  "country_name": "Singapore"
+}
+{
+  "beginning_ip_address": "65.75.129.220",
+  "ending_ip_address": "65.75.129.227",
+  "beginning_ip_number": 1095467484,
+  "ending_ip_number": 1095467491,
+  "country_code": "TR",
+  "country_name": "Turkey"
+}
+{
+  "beginning_ip_address": "207.209.96.0",
+  "ending_ip_address": "207.209.96.255",
+  "beginning_ip_number": 3486605312,
+  "ending_ip_number": 3486605567,
+  "country_code": "NL",
+  "country_name": "Netherlands"
+}
+{
+  "beginning_ip_address": "badtype",
+  "ending_ip_address": "213.236.127.255",
+  "beginning_ip_number": 3589044320,
+  "ending_ip_number": 3589046271,
+  "country_code": "ES",
+  "country_name": "Spain"
+}
+{
+  "beginning_ip_address": "202.162.160.0",
+  "ending_ip_address": "202.162.175.255",
+  "beginning_ip_number": 3399655424,
+  "ending_ip_number": 3399659519,
+  "country_code": "PH",
+  "country_name": "Philippines"
+}

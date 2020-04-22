@@ -47,18 +47,18 @@ build:
     version: 3.2.5
     goals: verify -P$TEST_GROUPS --fail-never -B
     properties: |
-      com.datastax.dsbulk.commons.tests.ccm.CCM_VERSION=$CCM_VERSION
-      com.datastax.dsbulk.commons.tests.ccm.CCM_IS_DDAC=$CCM_IS_DDAC
-      com.datastax.dsbulk.commons.tests.ccm.CCM_IS_DSE=$CCM_IS_DSE
-      com.datastax.dsbulk.commons.tests.ccm.JAVA_HOME=$CCM_JAVA_HOME
-      com.datastax.dsbulk.commons.tests.ccm.PATH=$CCM_JAVA_HOME/bin
-      com.datastax.dsbulk.commons.tests.cloud.PROXY_PATH=$HOME/proxy
+      com.datastax.oss.dsbulk.tests.ccm.CCM_VERSION=$CCM_VERSION
+      com.datastax.oss.dsbulk.tests.ccm.CCM_IS_DDAC=$CCM_IS_DDAC
+      com.datastax.oss.dsbulk.tests.ccm.CCM_IS_DSE=$CCM_IS_DSE
+      com.datastax.oss.dsbulk.tests.ccm.JAVA_HOME=$CCM_JAVA_HOME
+      com.datastax.oss.dsbulk.tests.ccm.PATH=$CCM_JAVA_HOME/bin
+      com.datastax.oss.dsbulk.tests.cloud.PROXY_PATH=$HOME/proxy
       failIfNoTests=false
       maven.test.failure.ignore=true
       maven.javadoc.skip=true
   - xunit:
-    - "**/target/surefire-reports/TEST-*.xml"
-    - "**/target/failsafe-reports/TEST-*.xml"
+      - "**/target/surefire-reports/TEST-*.xml"
+      - "**/target/failsafe-reports/TEST-*.xml"
   - jacoco:
     exec_pattern: "**/target/**.exec"
     exclusion_pattern: "**/generated/**"

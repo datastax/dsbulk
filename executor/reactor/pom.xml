@@ -13,16 +13,20 @@
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <artifactId>dsbulk-executor</artifactId>
-    <groupId>com.datastax.dse</groupId>
-    <version>1.5.1-SNAPSHOT</version>
+    <groupId>com.datastax.oss</groupId>
+    <version>1.6.0-SNAPSHOT</version>
   </parent>
   <artifactId>dsbulk-executor-reactor</artifactId>
   <name>DataStax Bulk Loader - Executor - Reactor</name>
   <description>Reactor implementation of the Bulk Executor API for the DataStax Bulk Loader.</description>
   <dependencies>
     <dependency>
-      <groupId>com.datastax.dse</groupId>
+      <groupId>com.datastax.oss</groupId>
       <artifactId>dsbulk-executor-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
+      <artifactId>java-driver-core</artifactId>
     </dependency>
     <dependency>
       <groupId>io.projectreactor</groupId>
@@ -34,35 +38,13 @@
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>
-      <artifactId>java-driver-shaded-guava</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>io.dropwizard.metrics</groupId>
-      <artifactId>metrics-core</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.github.spotbugs</groupId>
-      <artifactId>spotbugs-annotations</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-api</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.dse</groupId>
       <artifactId>dsbulk-executor-api</artifactId>
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>com.datastax.dse</groupId>
-      <artifactId>dsbulk-commons</artifactId>
-      <type>test-jar</type>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
       <groupId>com.datastax.oss</groupId>
-      <artifactId>java-driver-test-infra</artifactId>
+      <artifactId>dsbulk-tests</artifactId>
       <scope>test</scope>
     </dependency>
     <!--
@@ -105,19 +87,9 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.commons</groupId>
-      <artifactId>commons-exec</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.awaitility</groupId>
-      <artifactId>awaitility</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.univocity</groupId>
-      <artifactId>univocity-parsers</artifactId>
-      <scope>test</scope>
+      <groupId>com.github.spotbugs</groupId>
+      <artifactId>spotbugs-annotations</artifactId>
+      <scope>provided</scope>
     </dependency>
   </dependencies>
 </project>

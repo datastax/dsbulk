@@ -13,15 +13,15 @@
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <artifactId>dsbulk-executor</artifactId>
-    <groupId>com.datastax.dse</groupId>
-    <version>1.5.1-SNAPSHOT</version>
+    <groupId>com.datastax.oss</groupId>
+    <version>1.6.0-SNAPSHOT</version>
   </parent>
   <artifactId>dsbulk-executor-api</artifactId>
   <name>DataStax Bulk Loader - Executor - API</name>
   <description>Bulk Executor API for the DataStax Bulk Loader.</description>
   <dependencies>
     <dependency>
-      <groupId>com.datastax.dse</groupId>
+      <groupId>com.datastax.oss</groupId>
       <artifactId>dsbulk-commons</artifactId>
     </dependency>
     <dependency>
@@ -51,10 +51,6 @@
     <dependency>
       <groupId>org.hdrhistogram</groupId>
       <artifactId>HdrHistogram</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.github.spotbugs</groupId>
-      <artifactId>spotbugs-annotations</artifactId>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
@@ -92,9 +88,8 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>com.datastax.dse</groupId>
-      <artifactId>dsbulk-commons</artifactId>
-      <type>test-jar</type>
+      <groupId>com.datastax.oss</groupId>
+      <artifactId>dsbulk-tests</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -108,19 +103,9 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>com.univocity</groupId>
-      <artifactId>univocity-parsers</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.commons</groupId>
-      <artifactId>commons-exec</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.awaitility</groupId>
-      <artifactId>awaitility</artifactId>
-      <scope>test</scope>
+      <groupId>com.github.spotbugs</groupId>
+      <artifactId>spotbugs-annotations</artifactId>
+      <scope>provided</scope>
     </dependency>
   </dependencies>
   <build>

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Copyright DataStax, Inc.
+
+    This software is subject to the below license agreement.
+    DataStax may make changes to the agreement from time to time,
+    and will post the amended terms at
+    https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
+
+-->
+<configuration>
+  <!--
+  When editing this file, check that LogSettings
+  is still working as expected, since it modifies the Logback configuration
+  programmatically.
+  Also, make sure that logback-test.xml is modified accordingly (it should contain the same
+  appender definitions and loggers).
+  -->
+  <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator"/>
+  <conversionRule conversionWord="msgx" converterClass="com.datastax.oss.dsbulk.workflow.commons.log.HighlightingMessageConverter"/>
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <target>System.err</target>
+    <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+      <level>INFO</level>
+    </filter>
+    <!--
+    Don't print metrics on the console;
+    metrics for the console are handled by ConsoleReporter
+    which bypasses the logging system.
+    -->
+    <filter class="ch.qos.logback.core.filter.EvaluatorFilter">
+      <evaluator class="ch.qos.logback.classic.boolex.OnMarkerEvaluator">
+        <marker>METRICS</marker>
+      </evaluator>
+      <onMismatch>NEUTRAL</onMismatch>
+      <onMatch>DENY</onMatch>
+    </filter>
+    <encoder>
+      <pattern>%nopex%msgx%n</pattern>
+      <charset>UTF-8</charset>
+    </encoder>
+  </appender>
+  <root level="INFO">
+    <!-- main log file appender is created programmatically in LogSettings -->
+    <appender-ref ref="CONSOLE"/>
+  </root>
+  <logger name="com.datastax.oss.driver" level="WARN"/>
+  <logger name="com.datastax.dse.driver" level="WARN"/>
+  <logger name="io.netty" level="WARN"/>
+  <logger name="reactor.core" level="WARN"/>
+</configuration>

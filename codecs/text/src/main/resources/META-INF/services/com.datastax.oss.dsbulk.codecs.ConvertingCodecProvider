@@ -1,0 +1,2 @@
+com.datastax.oss.dsbulk.codecs.text.string.StringConvertingCodecProvider
+com.datastax.oss.dsbulk.codecs.text.json.JsonNodeConvertingCodecProvider
