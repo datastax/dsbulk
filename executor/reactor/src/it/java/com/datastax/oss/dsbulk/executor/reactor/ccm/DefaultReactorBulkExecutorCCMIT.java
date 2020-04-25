@@ -9,7 +9,7 @@
 package com.datastax.oss.dsbulk.executor.reactor.ccm;
 
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.datastax.oss.dsbulk.executor.api.SerializedSession;
+import com.datastax.oss.dsbulk.tests.driver.SerializedSession;
 import com.datastax.oss.dsbulk.executor.api.ccm.BulkExecutorCCMITBase;
 import com.datastax.oss.dsbulk.executor.reactor.DefaultReactorBulkExecutor;
 import com.datastax.oss.dsbulk.tests.ccm.CCMCluster;

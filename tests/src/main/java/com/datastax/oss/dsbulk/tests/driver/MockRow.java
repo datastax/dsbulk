@@ -6,7 +6,7 @@
  * and will post the amended terms at
  * https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
  */
-package com.datastax.oss.dsbulk.executor.api.publisher;
+package com.datastax.oss.dsbulk.tests.driver;
 
 import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.ProtocolVersion;
@@ -18,11 +18,11 @@ import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
 import java.nio.ByteBuffer;
 
 @SuppressWarnings("NullableProblems")
-final class MockRow implements Row {
+public final class MockRow implements Row {
 
   private int index;
 
-  MockRow(int index) {
+  public MockRow(int index) {
     this.index = index;
   }
 

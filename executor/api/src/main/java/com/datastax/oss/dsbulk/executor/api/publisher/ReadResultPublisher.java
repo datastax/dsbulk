@@ -27,6 +27,7 @@ import org.reactivestreams.Subscriber;
  *
  * @see AbstractBulkExecutor#readReactive(Statement)
  */
+@SuppressWarnings("ReactiveStreamsPublisherImplementation")
 public class ReadResultPublisher implements Publisher<ReadResult> {
 
   private final Statement<?> statement;

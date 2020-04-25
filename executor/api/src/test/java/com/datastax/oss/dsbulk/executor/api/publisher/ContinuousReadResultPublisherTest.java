@@ -18,13 +18,14 @@ import com.datastax.oss.driver.api.core.cql.ExecutionInfo;
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.dsbulk.executor.api.result.ReadResult;
-import io.reactivex.Flowable;
+import com.datastax.oss.dsbulk.tests.driver.MockContinuousAsyncResultSet;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import org.reactivestreams.Publisher;
+import reactor.core.publisher.Flux;
 
 public class ContinuousReadResultPublisherTest extends ResultPublisherTestBase<ReadResult> {
 
@@ -61,7 +62,8 @@ public class ContinuousReadResultPublisherTest extends ResultPublisherTestBase<R
     if (effective > 0) {
       // create pages of 5 elements each to exercise pagination
       List<Integer> pages =
-          Flowable.range(0, effective).buffer(PAGE_SIZE).map(List::size).toList().blockingGet();
+          Flux.range(0, effective).buffer(PAGE_SIZE).map(List::size).collectList().block();
+      assert pages != null;
       Collections.reverse(pages);
       for (Integer size : pages) {
         previous = mockPage(previous, size);

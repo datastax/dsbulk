@@ -19,8 +19,6 @@ import com.datastax.oss.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.oss.dsbulk.executor.api.result.ReadResult;
 import com.datastax.oss.dsbulk.executor.api.result.Result;
 import com.datastax.oss.dsbulk.executor.api.result.WriteResult;
-import io.reactivex.Flowable;
-import io.reactivex.plugins.RxJavaPlugins;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -30,12 +28,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
+import reactor.core.publisher.Flux;
 
 public abstract class BulkExecutorITBase {
 
@@ -49,17 +47,17 @@ public abstract class BulkExecutorITBase {
   protected static final String FAILED_QUERY = "should fail";
   private static final SimpleStatement FAILED_STATEMENT = SimpleStatement.newInstance(FAILED_QUERY);
 
-  private static final Flowable<String> WRITE_QUERIES =
-      Flowable.range(0, 100).map(i -> String.format(WRITE_QUERY, i, i));
+  private static final Flux<String> WRITE_QUERIES =
+      Flux.range(0, 100).map(i -> String.format(WRITE_QUERY, i, i));
 
-  private static final Flowable<String> WRITE_QUERIES_WITH_LAST_BAD =
-      WRITE_QUERIES.skipLast(1).concatWith(Flowable.just(FAILED_QUERY));
+  private static final Flux<String> WRITE_QUERIES_WITH_LAST_BAD =
+      WRITE_QUERIES.skipLast(1).concatWith(Flux.just(FAILED_QUERY));
 
-  private static final Flowable<SimpleStatement> WRITE_STATEMENTS =
+  private static final Flux<SimpleStatement> WRITE_STATEMENTS =
       WRITE_QUERIES.map(SimpleStatement::newInstance);
 
-  private static final Flowable<SimpleStatement> WRITE_STATEMENTS_WITH_LAST_BAD =
-      WRITE_STATEMENTS.skipLast(1).concatWith(Flowable.just(FAILED_STATEMENT));
+  private static final Flux<SimpleStatement> WRITE_STATEMENTS_WITH_LAST_BAD =
+      WRITE_STATEMENTS.skipLast(1).concatWith(Flux.just(FAILED_STATEMENT));
 
   protected final BulkExecutor failFastExecutor;
   protected final BulkExecutor failSafeExecutor;
@@ -72,11 +70,6 @@ public abstract class BulkExecutorITBase {
     this.failSafeExecutor = failSafeExecutor;
   }
 
-  @BeforeAll
-  static void disableStackTraces() {
-    RxJavaPlugins.setErrorHandler((t) -> {});
-  }
-
   @BeforeEach
   void resetMocks() {
     initMocks(this);
@@ -86,7 +79,7 @@ public abstract class BulkExecutorITBase {
 
   @Test
   void writeSyncStringTest() {
-    String query = WRITE_QUERIES.blockingFirst();
+    String query = WRITE_QUERIES.blockFirst();
     WriteResult r = failFastExecutor.writeSync(query);
     verifySuccessfulWriteResult(r, query);
   }
@@ -131,8 +124,7 @@ public abstract class BulkExecutorITBase {
 
   @Test
   void writeSyncStreamTest() {
-    Stream<SimpleStatement> records =
-        stream(WRITE_STATEMENTS.blockingIterable().spliterator(), false);
+    Stream<SimpleStatement> records = WRITE_STATEMENTS.toStream();
     failFastExecutor.writeSync(records);
     verifyWrites(100);
   }
@@ -140,8 +132,7 @@ public abstract class BulkExecutorITBase {
   @Test
   void writeSyncStreamFailFastTest() {
     try {
-      Stream<SimpleStatement> records =
-          stream(WRITE_STATEMENTS_WITH_LAST_BAD.blockingIterable().spliterator(), false);
+      Stream<SimpleStatement> records = WRITE_STATEMENTS_WITH_LAST_BAD.toStream();
       failFastExecutor.writeSync(records);
       fail("Should have thrown an exception");
     } catch (BulkExecutionException e) {
@@ -152,16 +143,14 @@ public abstract class BulkExecutorITBase {
 
   @Test
   void writeSyncStreamFailSafeTest() {
-    Stream<SimpleStatement> records =
-        stream(WRITE_STATEMENTS_WITH_LAST_BAD.blockingIterable().spliterator(), false);
+    Stream<SimpleStatement> records = WRITE_STATEMENTS_WITH_LAST_BAD.toStream();
     failSafeExecutor.writeSync(records);
     verifyWrites(99);
   }
 
   @Test
   void writeSyncStreamConsumerTest() {
-    Stream<SimpleStatement> records =
-        stream(WRITE_STATEMENTS.blockingIterable().spliterator(), false);
+    Stream<SimpleStatement> records = WRITE_STATEMENTS.toStream();
     failFastExecutor.writeSync(records, writeConsumer);
     verifyWrites(100);
     verifyWriteConsumer(100, 0);
@@ -181,8 +170,7 @@ public abstract class BulkExecutorITBase {
 
   @Test
   void writeSyncStreamConsumerFailSafeTest() {
-    Stream<SimpleStatement> records =
-        stream(WRITE_STATEMENTS_WITH_LAST_BAD.blockingIterable().spliterator(), false);
+    Stream<SimpleStatement> records = WRITE_STATEMENTS_WITH_LAST_BAD.toStream();
     failSafeExecutor.writeSync(records, writeConsumer);
     verifyWrites(99);
     verifyWriteConsumer(99, 1);
@@ -190,7 +178,7 @@ public abstract class BulkExecutorITBase {
 
   @Test
   void writeSyncIterableTest() {
-    Iterable<SimpleStatement> records = WRITE_STATEMENTS.blockingIterable();
+    Iterable<SimpleStatement> records = WRITE_STATEMENTS.toIterable();
     failFastExecutor.writeSync(records);
     verifyWrites(100);
   }
@@ -198,7 +186,7 @@ public abstract class BulkExecutorITBase {
   @Test
   void writeSyncIterableFailFastTest() {
     try {
-      Iterable<SimpleStatement> records = WRITE_STATEMENTS_WITH_LAST_BAD.blockingIterable();
+      Iterable<SimpleStatement> records = WRITE_STATEMENTS_WITH_LAST_BAD.toIterable();
       failFastExecutor.writeSync(records);
       fail("Should have thrown an exception");
     } catch (BulkExecutionException e) {
@@ -209,14 +197,14 @@ public abstract class BulkExecutorITBase {
 
   @Test
   void writeSyncIterableFailSafeTest() {
-    Iterable<SimpleStatement> records = WRITE_STATEMENTS_WITH_LAST_BAD.blockingIterable();
+    Iterable<SimpleStatement> records = WRITE_STATEMENTS_WITH_LAST_BAD.toIterable();
     failSafeExecutor.writeSync(records);
     verifyWrites(99);
   }
 
   @Test
   void writeSyncIterableConsumer() {
-    Iterable<SimpleStatement> records = WRITE_STATEMENTS.blockingIterable();
+    Iterable<SimpleStatement> records = WRITE_STATEMENTS.toIterable();
     failFastExecutor.writeSync(records, writeConsumer);
     verifyWrites(100);
     verifyWriteConsumer(100, 0);
@@ -236,7 +224,7 @@ public abstract class BulkExecutorITBase {
 
   @Test
   void writeSyncIterableConsumerFailSafeTest() {
-    Iterable<SimpleStatement> records = WRITE_STATEMENTS_WITH_LAST_BAD.blockingIterable();
+    Iterable<SimpleStatement> records = WRITE_STATEMENTS_WITH_LAST_BAD.toIterable();
     failSafeExecutor.writeSync(records, writeConsumer);
     verifyWrites(99);
     verifyWriteConsumer(99, 1);
@@ -275,7 +263,7 @@ public abstract class BulkExecutorITBase {
   @Test
   void writeSyncPublisherConsumerFailFastTest() {
     try {
-      failFastExecutor.writeSync(Flowable.just(FAILED_STATEMENT), writeConsumer);
+      failFastExecutor.writeSync(Flux.just(FAILED_STATEMENT), writeConsumer);
       fail("Should have thrown an exception");
     } catch (BulkExecutionException e) {
       verifyException(e);
@@ -295,7 +283,7 @@ public abstract class BulkExecutorITBase {
 
   @Test
   void writeAsyncStringTest() throws Exception {
-    String query = WRITE_QUERIES.blockingFirst();
+    String query = WRITE_QUERIES.blockFirst();
     WriteResult r = failFastExecutor.writeAsync(query).get();
     verifySuccessfulWriteResult(r, query);
   }
@@ -340,8 +328,7 @@ public abstract class BulkExecutorITBase {
 
   @Test
   void writeAsyncStreamTest() throws Exception {
-    Stream<SimpleStatement> records =
-        stream(WRITE_STATEMENTS.blockingIterable().spliterator(), false);
+    Stream<SimpleStatement> records = stream(WRITE_STATEMENTS.toIterable().spliterator(), false);
     failFastExecutor.writeAsync(records).get();
     verifyWrites(100);
   }
@@ -350,7 +337,7 @@ public abstract class BulkExecutorITBase {
   void writeAsyncStreamFailFastTest() throws Exception {
     try {
       Stream<SimpleStatement> records =
-          stream(WRITE_STATEMENTS_WITH_LAST_BAD.blockingIterable().spliterator(), false);
+          stream(WRITE_STATEMENTS_WITH_LAST_BAD.toIterable().spliterator(), false);
       failFastExecutor.writeAsync(records).get();
       fail("Should have thrown an exception");
     } catch (ExecutionException e) {
@@ -362,15 +349,14 @@ public abstract class BulkExecutorITBase {
   @Test
   void writeAsyncStreamFailSafeTest() throws Exception {
     Stream<SimpleStatement> records =
-        stream(WRITE_STATEMENTS_WITH_LAST_BAD.blockingIterable().spliterator(), false);
+        stream(WRITE_STATEMENTS_WITH_LAST_BAD.toIterable().spliterator(), false);
     failSafeExecutor.writeAsync(records).get();
     verifyWrites(99);
   }
 
   @Test
   void writeAsyncStreamConsumerTest() throws Exception {
-    Stream<SimpleStatement> records =
-        stream(WRITE_STATEMENTS.blockingIterable().spliterator(), false);
+    Stream<SimpleStatement> records = stream(WRITE_STATEMENTS.toIterable().spliterator(), false);
     failFastExecutor.writeAsync(records, writeConsumer).get();
     verifyWrites(100);
     verifyWriteConsumer(100, 0);
@@ -391,7 +377,7 @@ public abstract class BulkExecutorITBase {
   @Test
   void writeAsyncStreamConsumerFailSafeTest() throws Exception {
     Stream<SimpleStatement> records =
-        stream(WRITE_STATEMENTS_WITH_LAST_BAD.blockingIterable().spliterator(), false);
+        stream(WRITE_STATEMENTS_WITH_LAST_BAD.toIterable().spliterator(), false);
     failSafeExecutor.writeAsync(records, writeConsumer).get();
     verifyWrites(99);
     verifyWriteConsumer(99, 1);
@@ -399,7 +385,7 @@ public abstract class BulkExecutorITBase {
 
   @Test
   void writeAsyncIterableTest() throws Exception {
-    Iterable<SimpleStatement> records = WRITE_STATEMENTS.blockingIterable();
+    Iterable<SimpleStatement> records = WRITE_STATEMENTS.toIterable();
     failFastExecutor.writeAsync(records).get();
     verifyWrites(100);
   }
@@ -407,7 +393,7 @@ public abstract class BulkExecutorITBase {
   @Test
   void writeAsyncIterableFailFastTest() throws Exception {
     try {
-      Iterable<SimpleStatement> records = WRITE_STATEMENTS_WITH_LAST_BAD.blockingIterable();
+      Iterable<SimpleStatement> records = WRITE_STATEMENTS_WITH_LAST_BAD.toIterable();
       failFastExecutor.writeAsync(records).get();
       fail("Should have thrown an exception");
     } catch (ExecutionException e) {
@@ -418,14 +404,14 @@ public abstract class BulkExecutorITBase {
 
   @Test
   void writeAsyncIterableFailSafeTest() throws Exception {
-    Iterable<SimpleStatement> records = WRITE_STATEMENTS_WITH_LAST_BAD.blockingIterable();
+    Iterable<SimpleStatement> records = WRITE_STATEMENTS_WITH_LAST_BAD.toIterable();
     failSafeExecutor.writeAsync(records).get();
     verifyWrites(99);
   }
 
   @Test
   void writeAsyncIterableConsumer() throws Exception {
-    Iterable<SimpleStatement> records = WRITE_STATEMENTS.blockingIterable();
+    Iterable<SimpleStatement> records = WRITE_STATEMENTS.toIterable();
     failFastExecutor.writeAsync(records, writeConsumer).get();
     verifyWrites(100);
     verifyWriteConsumer(100, 0);
@@ -445,7 +431,7 @@ public abstract class BulkExecutorITBase {
 
   @Test
   void writeAsyncIterableConsumerFailSafeTest() throws Exception {
-    Iterable<SimpleStatement> records = WRITE_STATEMENTS_WITH_LAST_BAD.blockingIterable();
+    Iterable<SimpleStatement> records = WRITE_STATEMENTS_WITH_LAST_BAD.toIterable();
     failSafeExecutor.writeAsync(records, writeConsumer).get();
     verifyWrites(99);
     verifyWriteConsumer(99, 1);
@@ -484,7 +470,7 @@ public abstract class BulkExecutorITBase {
   @Test
   void writeAsyncPublisherConsumerFailFastTest() throws Exception {
     try {
-      failFastExecutor.writeAsync(Flowable.just(FAILED_STATEMENT), writeConsumer).get();
+      failFastExecutor.writeAsync(Flux.just(FAILED_STATEMENT), writeConsumer).get();
       fail("Should have thrown an exception");
     } catch (ExecutionException e) {
       verifyException(e.getCause());
@@ -504,14 +490,14 @@ public abstract class BulkExecutorITBase {
 
   @Test
   void writeReactiveStringTest() {
-    WRITE_QUERIES.flatMap(failFastExecutor::writeReactive).blockingSubscribe();
+    WRITE_QUERIES.flatMap(failFastExecutor::writeReactive).blockLast();
     verifyWrites(100);
   }
 
   @Test
   void writeReactiveStringFailFastTest() {
     try {
-      WRITE_QUERIES_WITH_LAST_BAD.flatMap(failFastExecutor::writeReactive).blockingSubscribe();
+      WRITE_QUERIES_WITH_LAST_BAD.flatMap(failFastExecutor::writeReactive).blockLast();
       fail("Should have thrown an exception");
     } catch (BulkExecutionException e) {
       verifyException(e);
@@ -521,20 +507,20 @@ public abstract class BulkExecutorITBase {
 
   @Test
   void writeReactiveStringFailSafeTest() {
-    Flowable.just(FAILED_QUERY).flatMap(failSafeExecutor::writeReactive).blockingSubscribe();
+    Flux.just(FAILED_QUERY).flatMap(failSafeExecutor::writeReactive).blockLast();
     verifyWrites(0);
   }
 
   @Test
   void writeReactiveStatementTest() {
-    WRITE_STATEMENTS.flatMap(failFastExecutor::writeReactive).blockingSubscribe();
+    WRITE_STATEMENTS.flatMap(failFastExecutor::writeReactive).blockLast();
     verifyWrites(100);
   }
 
   @Test
   void writeReactiveStatementFailFastTest() {
     try {
-      WRITE_STATEMENTS_WITH_LAST_BAD.flatMap(failFastExecutor::writeReactive).blockingSubscribe();
+      WRITE_STATEMENTS_WITH_LAST_BAD.flatMap(failFastExecutor::writeReactive).blockLast();
       fail("Should have thrown an exception");
     } catch (BulkExecutionException e) {
       verifyException(e);
@@ -544,15 +530,14 @@ public abstract class BulkExecutorITBase {
 
   @Test
   void writeReactiveStatementFailSafeTest() {
-    Flowable.just(FAILED_STATEMENT).flatMap(failSafeExecutor::writeReactive).blockingSubscribe();
+    Flux.just(FAILED_STATEMENT).flatMap(failSafeExecutor::writeReactive).blockLast();
     verifyWrites(0);
   }
 
   @Test
   void writeReactiveStreamTest() {
-    Stream<SimpleStatement> statements =
-        stream(WRITE_STATEMENTS.blockingIterable().spliterator(), false);
-    Flowable.fromPublisher(failFastExecutor.writeReactive(statements)).blockingSubscribe();
+    Stream<SimpleStatement> statements = stream(WRITE_STATEMENTS.toIterable().spliterator(), false);
+    Flux.from(failFastExecutor.writeReactive(statements)).blockLast();
     verifyWrites(100);
   }
 
@@ -560,8 +545,8 @@ public abstract class BulkExecutorITBase {
   void writeReactiveStreamFailFastTest() {
     try {
       Stream<SimpleStatement> statements =
-          stream(WRITE_STATEMENTS_WITH_LAST_BAD.blockingIterable().spliterator(), false);
-      Flowable.fromPublisher(failFastExecutor.writeReactive(statements)).blockingSubscribe();
+          stream(WRITE_STATEMENTS_WITH_LAST_BAD.toIterable().spliterator(), false);
+      Flux.from(failFastExecutor.writeReactive(statements)).blockLast();
       fail("Should have thrown an exception");
     } catch (BulkExecutionException e) {
       verifyException(e);
@@ -572,23 +557,23 @@ public abstract class BulkExecutorITBase {
   @Test
   void writeReactiveStreamFailSafeTest() {
     Stream<SimpleStatement> statements =
-        stream(WRITE_STATEMENTS_WITH_LAST_BAD.blockingIterable().spliterator(), false);
-    Flowable.fromPublisher(failSafeExecutor.writeReactive(statements)).blockingSubscribe();
+        stream(WRITE_STATEMENTS_WITH_LAST_BAD.toIterable().spliterator(), false);
+    Flux.from(failSafeExecutor.writeReactive(statements)).blockLast();
     verifyWrites(99);
   }
 
   @Test
   void writeReactiveIterableTest() {
-    Iterable<SimpleStatement> statements = WRITE_STATEMENTS.blockingIterable();
-    Flowable.fromPublisher(failFastExecutor.writeReactive(statements)).blockingSubscribe();
+    Iterable<SimpleStatement> statements = WRITE_STATEMENTS.toIterable();
+    Flux.from(failFastExecutor.writeReactive(statements)).blockLast();
     verifyWrites(100);
   }
 
   @Test
   void writeReactiveIterableFailFastTest() {
     try {
-      Iterable<SimpleStatement> statements = WRITE_STATEMENTS_WITH_LAST_BAD.blockingIterable();
-      Flowable.fromPublisher(failFastExecutor.writeReactive(statements)).blockingSubscribe();
+      Iterable<SimpleStatement> statements = WRITE_STATEMENTS_WITH_LAST_BAD.toIterable();
+      Flux.from(failFastExecutor.writeReactive(statements)).blockLast();
       fail("Should have thrown an exception");
     } catch (BulkExecutionException e) {
       verifyException(e);
@@ -598,22 +583,21 @@ public abstract class BulkExecutorITBase {
 
   @Test
   void writeReactiveIterableFailSafeTest() {
-    Iterable<SimpleStatement> statements = WRITE_STATEMENTS_WITH_LAST_BAD.blockingIterable();
-    Flowable.fromPublisher(failSafeExecutor.writeReactive(statements)).blockingSubscribe();
+    Iterable<SimpleStatement> statements = WRITE_STATEMENTS_WITH_LAST_BAD.toIterable();
+    Flux.from(failSafeExecutor.writeReactive(statements)).blockLast();
     verifyWrites(99);
   }
 
   @Test
   void writeReactivePublisherTest() {
-    Flowable.fromPublisher(failFastExecutor.writeReactive(WRITE_STATEMENTS)).blockingSubscribe();
+    Flux.from(failFastExecutor.writeReactive(WRITE_STATEMENTS)).blockLast();
     verifyWrites(100);
   }
 
   @Test
   void writeReactivePublisherFailFastTest() {
     try {
-      Flowable.fromPublisher(failFastExecutor.writeReactive(WRITE_STATEMENTS_WITH_LAST_BAD))
-          .blockingSubscribe();
+      Flux.from(failFastExecutor.writeReactive(WRITE_STATEMENTS_WITH_LAST_BAD)).blockLast();
       fail("Should have thrown an exception");
     } catch (BulkExecutionException e) {
       verifyException(e);
@@ -623,8 +607,7 @@ public abstract class BulkExecutorITBase {
 
   @Test
   void writeReactivePublisherFailSafeTest() {
-    Flowable.fromPublisher(failSafeExecutor.writeReactive(WRITE_STATEMENTS_WITH_LAST_BAD))
-        .blockingSubscribe();
+    Flux.from(failSafeExecutor.writeReactive(WRITE_STATEMENTS_WITH_LAST_BAD)).blockLast();
     verifyWrites(99);
   }
 
@@ -736,7 +719,7 @@ public abstract class BulkExecutorITBase {
 
   @Test
   void readSyncPublisherConsumer() {
-    failFastExecutor.readSync(Flowable.just(READ_STATEMENT), readConsumer);
+    failFastExecutor.readSync(Flux.just(READ_STATEMENT), readConsumer);
     List<ReadResult> readResults = verifyReadConsumer(100, 0);
     verifyReads(100, 0, readResults);
   }
@@ -744,7 +727,7 @@ public abstract class BulkExecutorITBase {
   @Test
   void readSyncPublisherConsumerFailFastTest() {
     try {
-      failFastExecutor.readSync(Flowable.just(FAILED_STATEMENT), readConsumer);
+      failFastExecutor.readSync(Flux.just(FAILED_STATEMENT), readConsumer);
       fail("Should have thrown an exception");
     } catch (BulkExecutionException e) {
       verifyException(e);
@@ -755,7 +738,7 @@ public abstract class BulkExecutorITBase {
 
   @Test
   void readSyncPublisherConsumerFailSafeTest() {
-    failSafeExecutor.readSync(Flowable.fromArray(READ_STATEMENT, FAILED_STATEMENT), readConsumer);
+    failSafeExecutor.readSync(Flux.just(READ_STATEMENT, FAILED_STATEMENT), readConsumer);
     List<ReadResult> readResults = verifyReadConsumer(100, 1);
     verifyReads(100, 1, readResults);
   }
@@ -868,7 +851,7 @@ public abstract class BulkExecutorITBase {
 
   @Test
   void readAsyncPublisherConsumer() throws Exception {
-    failSafeExecutor.readAsync(Flowable.just(READ_STATEMENT), readConsumer).get();
+    failSafeExecutor.readAsync(Flux.just(READ_STATEMENT), readConsumer).get();
     List<ReadResult> readResults = verifyReadConsumer(100, 0);
     verifyReads(100, 0, readResults);
   }
@@ -876,7 +859,7 @@ public abstract class BulkExecutorITBase {
   @Test
   void readAsyncPublisherConsumerFailFastTest() throws Exception {
     try {
-      failFastExecutor.readAsync(Flowable.fromArray(FAILED_STATEMENT), readConsumer).get();
+      failFastExecutor.readAsync(Flux.just(FAILED_STATEMENT), readConsumer).get();
       fail("Should have thrown an exception");
     } catch (ExecutionException e) {
       verifyException(e.getCause());
@@ -887,9 +870,7 @@ public abstract class BulkExecutorITBase {
 
   @Test
   void readAsyncPublisherConsumerFailSafeTest() throws Exception {
-    failSafeExecutor
-        .readAsync(Flowable.fromArray(READ_STATEMENT, FAILED_STATEMENT), readConsumer)
-        .get();
+    failSafeExecutor.readAsync(Flux.just(READ_STATEMENT, FAILED_STATEMENT), readConsumer).get();
     List<ReadResult> readResults = verifyReadConsumer(100, 1);
     verifyReads(100, 1, readResults);
   }
@@ -899,7 +880,7 @@ public abstract class BulkExecutorITBase {
   @Test
   void readReactiveStringTest() {
     Iterable<ReadResult> readResults =
-        Flowable.just(READ_QUERY).flatMap(failFastExecutor::readReactive).blockingIterable();
+        Flux.just(READ_QUERY).flatMap(failFastExecutor::readReactive).toIterable();
     verifyReads(100, 0, readResults);
   }
 
@@ -907,7 +888,7 @@ public abstract class BulkExecutorITBase {
   void readReactiveStringFailFastTest() {
     Iterable<ReadResult> readResults = Collections.emptyList();
     try {
-      Flowable.just(FAILED_QUERY).flatMap(failFastExecutor::readReactive).blockingSubscribe();
+      Flux.just(FAILED_QUERY).flatMap(failFastExecutor::readReactive).blockLast();
       fail("Should have thrown an exception");
     } catch (BulkExecutionException e) {
       verifyException(e);
@@ -918,14 +899,14 @@ public abstract class BulkExecutorITBase {
   @Test
   void readReactiveStringFailSafeTest() {
     Iterable<ReadResult> readResults =
-        Flowable.just(FAILED_QUERY).flatMap(failSafeExecutor::readReactive).blockingIterable();
+        Flux.just(FAILED_QUERY).flatMap(failSafeExecutor::readReactive).toIterable();
     verifyReads(0, 1, readResults);
   }
 
   @Test
   void readReactiveStatementTest() {
     Iterable<ReadResult> readResults =
-        Flowable.just(READ_STATEMENT).flatMap(failFastExecutor::readReactive).blockingIterable();
+        Flux.just(READ_STATEMENT).flatMap(failFastExecutor::readReactive).toIterable();
     verifyReads(100, 0, readResults);
   }
 
@@ -933,7 +914,7 @@ public abstract class BulkExecutorITBase {
   void readReactiveStatementFailFastTest() {
     Iterable<ReadResult> readResults = Collections.emptyList();
     try {
-      Flowable.just(FAILED_STATEMENT).flatMap(failFastExecutor::readReactive).blockingSubscribe();
+      Flux.just(FAILED_STATEMENT).flatMap(failFastExecutor::readReactive).blockLast();
       fail("Should have thrown an exception");
     } catch (BulkExecutionException e) {
       verifyException(e);
@@ -944,16 +925,16 @@ public abstract class BulkExecutorITBase {
   @Test
   void readReactiveStatementFailSafeTest() {
     Iterable<ReadResult> readResults =
-        Flowable.just(FAILED_STATEMENT).flatMap(failSafeExecutor::readReactive).blockingIterable();
+        Flux.just(FAILED_STATEMENT).flatMap(failSafeExecutor::readReactive).toIterable();
     verifyReads(0, 1, readResults);
   }
 
   @Test
   void readReactiveStreamTest() {
     Queue<ReadResult> readResults = new ConcurrentLinkedQueue<>();
-    Flowable.fromPublisher(failFastExecutor.readReactive(Stream.of(READ_STATEMENT)))
+    Flux.from(failFastExecutor.readReactive(Stream.of(READ_STATEMENT)))
         .doOnNext(readResults::add)
-        .blockingSubscribe();
+        .blockLast();
     verifyReads(100, 0, readResults);
   }
 
@@ -961,9 +942,9 @@ public abstract class BulkExecutorITBase {
   void readReactiveStreamFailFastTest() {
     Queue<ReadResult> readResults = new ConcurrentLinkedQueue<>();
     try {
-      Flowable.fromPublisher(failFastExecutor.readReactive(Stream.of(FAILED_STATEMENT)))
+      Flux.from(failFastExecutor.readReactive(Stream.of(FAILED_STATEMENT)))
           .doOnNext(readResults::add)
-          .blockingSubscribe();
+          .blockLast();
       fail("Should have thrown an exception");
     } catch (BulkExecutionException e) {
       verifyException(e);
@@ -974,18 +955,17 @@ public abstract class BulkExecutorITBase {
   @Test
   void readReactiveStreamFailSafeTest() {
     Queue<ReadResult> readResults = new ConcurrentLinkedQueue<>();
-    Flowable.fromPublisher(
-            failSafeExecutor.readReactive(Stream.of(READ_STATEMENT, FAILED_STATEMENT)))
+    Flux.from(failSafeExecutor.readReactive(Stream.of(READ_STATEMENT, FAILED_STATEMENT)))
         .doOnNext(readResults::add)
-        .blockingSubscribe();
+        .blockLast();
     verifyReads(100, 1, readResults);
   }
 
   @Test
   void readReactiveIterableTest() {
     Iterable<ReadResult> readResults =
-        Flowable.fromPublisher(failFastExecutor.readReactive(Collections.singleton(READ_STATEMENT)))
-            .blockingIterable();
+        Flux.from(failFastExecutor.readReactive(Collections.singleton(READ_STATEMENT)))
+            .toIterable();
     verifyReads(100, 0, readResults);
   }
 
@@ -993,9 +973,9 @@ public abstract class BulkExecutorITBase {
   void readReactiveIterableFailFastTest() {
     Queue<ReadResult> readResults = new ConcurrentLinkedQueue<>();
     try {
-      Flowable.fromPublisher(failFastExecutor.readReactive(Collections.singleton(FAILED_STATEMENT)))
+      Flux.from(failFastExecutor.readReactive(Collections.singleton(FAILED_STATEMENT)))
           .doOnNext(readResults::add)
-          .blockingSubscribe();
+          .blockLast();
       fail("Should have thrown an exception");
     } catch (BulkExecutionException e) {
       verifyException(e);
@@ -1006,17 +986,15 @@ public abstract class BulkExecutorITBase {
   @Test
   void readReactiveIterableFailSafeTest() {
     Iterable<ReadResult> readResults =
-        Flowable.fromPublisher(
-                failSafeExecutor.readReactive(Arrays.asList(READ_STATEMENT, FAILED_STATEMENT)))
-            .blockingIterable();
+        Flux.from(failSafeExecutor.readReactive(Arrays.asList(READ_STATEMENT, FAILED_STATEMENT)))
+            .toIterable();
     verifyReads(100, 1, readResults);
   }
 
   @Test
   void readReactivePublisherTest() {
     Iterable<ReadResult> readResults =
-        Flowable.fromPublisher(failFastExecutor.readReactive(Flowable.just(READ_STATEMENT)))
-            .blockingIterable();
+        Flux.from(failFastExecutor.readReactive(Flux.just(READ_STATEMENT))).toIterable();
     verifyReads(100, 0, readResults);
   }
 
@@ -1024,9 +1002,9 @@ public abstract class BulkExecutorITBase {
   void readReactivePublisherFailFastTest() {
     Queue<ReadResult> readResults = new ConcurrentLinkedQueue<>();
     try {
-      Flowable.fromPublisher(failFastExecutor.readReactive(Flowable.just(FAILED_STATEMENT)))
+      Flux.from(failFastExecutor.readReactive(Flux.just(FAILED_STATEMENT)))
           .doOnNext(readResults::add)
-          .blockingSubscribe();
+          .blockLast();
       fail("Should have thrown an exception");
     } catch (BulkExecutionException e) {
       verifyException(e);
@@ -1037,10 +1015,8 @@ public abstract class BulkExecutorITBase {
   @Test
   void readReactivePublisherFailSafeTest() {
     Iterable<ReadResult> readResults =
-        Flowable.fromPublisher(
-                failSafeExecutor.readReactive(Flowable.fromArray(READ_STATEMENT, FAILED_STATEMENT)))
-            .toList()
-            .blockingGet();
+        Flux.from(failSafeExecutor.readReactive(Flux.just(READ_STATEMENT, FAILED_STATEMENT)))
+            .toIterable();
     verifyReads(100, 1, readResults);
   }
 
@@ -1050,21 +1026,21 @@ public abstract class BulkExecutorITBase {
       int expectedSuccessful, int expectedFailed, Iterable<ReadResult> actual) {
     AtomicInteger i = new AtomicInteger();
     long actualSuccessful =
-        Flowable.fromIterable(actual)
+        Flux.fromIterable(actual)
             .filter(Result::isSuccess)
             .map(result -> result.getRow().orElseThrow(AssertionError::new))
             .map(row -> row.getInt("pk"))
-            .sorted()
+            .sort()
             .doOnNext(
                 pk -> {
                   assertThat(pk).isEqualTo(i.get());
                   i.getAndIncrement();
                 })
             .count()
-            .blockingGet();
+            .blockOptional().orElse(0L);
     assertThat(actualSuccessful).isEqualTo(expectedSuccessful);
     long actualFailed =
-        Flowable.fromIterable(actual)
+        Flux.fromIterable(actual)
             .filter(r -> !r.isSuccess())
             .doOnNext(
                 r -> {
@@ -1074,7 +1050,8 @@ public abstract class BulkExecutorITBase {
                   verifyException(error);
                 })
             .count()
-            .blockingGet();
+            .blockOptional()
+            .orElse(0L);
     assertThat(actualFailed).isEqualTo(expectedFailed);
   }
 

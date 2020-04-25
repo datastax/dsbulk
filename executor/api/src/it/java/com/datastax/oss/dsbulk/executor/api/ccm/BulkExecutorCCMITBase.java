@@ -20,12 +20,12 @@ import com.datastax.oss.dsbulk.executor.api.result.WriteResult;
 import com.datastax.oss.dsbulk.tests.ccm.CCMCluster;
 import com.datastax.oss.dsbulk.tests.ccm.CCMExtension;
 import com.datastax.oss.dsbulk.tests.utils.Version;
-import io.reactivex.Flowable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
+import reactor.core.publisher.Flux;
 
 @ExtendWith(CCMExtension.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -117,7 +117,8 @@ public abstract class BulkExecutorCCMITBase extends BulkExecutorITBase {
     verifyReads(
         expected,
         0,
-        Flowable.fromPublisher(failFastExecutor.readReactive("SELECT pk, v FROM test_write"))
-            .blockingIterable());
+        Flux.from(failFastExecutor.readReactive("SELECT pk, v FROM test_write"))
+            .collectList()
+            .block());
   }
 }

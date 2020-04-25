@@ -6,7 +6,7 @@
  * and will post the amended terms at
  * https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
  */
-package com.datastax.oss.dsbulk.executor.api;
+package com.datastax.oss.dsbulk.tests.driver;
 
 import com.datastax.dse.driver.api.core.cql.continuous.ContinuousAsyncResultSet;
 import com.datastax.dse.driver.api.core.cql.continuous.ContinuousSession;

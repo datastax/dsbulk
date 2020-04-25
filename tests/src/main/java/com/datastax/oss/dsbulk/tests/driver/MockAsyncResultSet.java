@@ -6,7 +6,7 @@
  * and will post the amended terms at
  * https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
  */
-package com.datastax.oss.dsbulk.executor.api.publisher;
+package com.datastax.oss.dsbulk.tests.driver;
 
 import com.datastax.oss.driver.api.core.cql.AsyncResultSet;
 import com.datastax.oss.driver.api.core.cql.ColumnDefinitions;
@@ -20,7 +20,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-final class MockAsyncResultSet implements AsyncResultSet {
+public final class MockAsyncResultSet implements AsyncResultSet {
 
   private final List<Row> rows;
   private final Iterator<Row> iterator;
@@ -28,7 +28,7 @@ final class MockAsyncResultSet implements AsyncResultSet {
   private final ExecutionInfo executionInfo;
   private int remaining;
 
-  MockAsyncResultSet(
+  public MockAsyncResultSet(
       int size, ExecutionInfo executionInfo, CompletionStage<AsyncResultSet> nextPage) {
     rows = IntStream.range(0, size).boxed().map(MockRow::new).collect(Collectors.toList());
     this.executionInfo = executionInfo;

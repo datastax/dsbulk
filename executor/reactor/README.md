@@ -1,7 +1,7 @@
 # DataStax Bulk Loader Executor Reactor Implementation
 
-DSBulk's Executor is a pluggable abstraction that allows DSBulk to execute queries using reactive
-programming.
+DSBulk's Bulk Executor API is a pluggable abstraction that allows DSBulk to execute queries using 
+reactive programming.
 
 **Important**: this module exists solely because initially the DataStax Java driver did not contain 
 an API to execute queries reactively. Now that the driver exposes this feature, this module and its 

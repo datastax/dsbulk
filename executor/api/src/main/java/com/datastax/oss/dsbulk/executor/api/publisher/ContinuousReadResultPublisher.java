@@ -27,6 +27,7 @@ import org.reactivestreams.Subscriber;
  *
  * @see AbstractBulkExecutor#readReactive(Statement)
  */
+@SuppressWarnings("ReactiveStreamsPublisherImplementation")
 public class ContinuousReadResultPublisher implements Publisher<ReadResult> {
 
   private final @NonNull Statement<?> statement;

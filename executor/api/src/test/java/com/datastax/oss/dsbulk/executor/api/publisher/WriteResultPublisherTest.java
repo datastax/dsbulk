@@ -18,6 +18,7 @@ import com.datastax.oss.driver.api.core.cql.ExecutionInfo;
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.dsbulk.executor.api.result.WriteResult;
+import com.datastax.oss.dsbulk.tests.driver.MockAsyncResultSet;
 import java.util.concurrent.CompletableFuture;
 import org.reactivestreams.Publisher;
 
