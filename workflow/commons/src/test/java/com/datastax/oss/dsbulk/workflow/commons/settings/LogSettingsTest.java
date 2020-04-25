@@ -15,6 +15,7 @@
  */
 package com.datastax.oss.dsbulk.workflow.commons.settings;
 
+import static com.datastax.oss.dsbulk.tests.logging.StreamType.STDERR;
 import static com.datastax.oss.dsbulk.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.oss.dsbulk.tests.utils.StringUtils.quoteJson;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -25,7 +26,9 @@ import ch.qos.logback.core.joran.spi.JoranException;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.dsbulk.tests.driver.DriverUtils;
 import com.datastax.oss.dsbulk.tests.logging.LogUtils;
+import com.datastax.oss.dsbulk.tests.logging.StreamCapture;
 import com.datastax.oss.dsbulk.tests.logging.StreamInterceptingExtension;
+import com.datastax.oss.dsbulk.tests.logging.StreamInterceptor;
 import com.datastax.oss.dsbulk.tests.utils.TestConfigUtils;
 import com.datastax.oss.dsbulk.workflow.api.error.AbsoluteErrorThreshold;
 import com.datastax.oss.dsbulk.workflow.api.error.ErrorThreshold;
@@ -37,6 +40,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -157,7 +161,8 @@ class LogSettingsTest {
   }
 
   @Test
-  void should_log_to_main_log_file_in_normal_mode() throws Exception {
+  void should_log_to_main_log_file_in_normal_mode(@StreamCapture(STDERR) StreamInterceptor stdout)
+      throws Exception {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.log", "directory", quoteJson(tempFolder));
     ch.qos.logback.classic.Logger root =
@@ -177,8 +182,13 @@ class LogSettingsTest {
       LoggerFactory.getLogger("com.datastax.dse.driver").info("this should not appear");
       Path logFile = tempFolder.resolve("TEST_EXECUTION_ID").resolve("operation.log");
       assertThat(logFile).exists();
-      String contents = String.join("", Files.readAllLines(logFile));
+      List<String> contents = Files.readAllLines(logFile);
       assertThat(contents)
+          .anySatisfy(line -> assertThat(line).endsWith("this is a test 1"))
+          .anySatisfy(line -> assertThat(line).endsWith("this is a test 2"))
+          .anySatisfy(line -> assertThat(line).endsWith("this is a test 3"))
+          .noneSatisfy(line -> assertThat(line).contains("this should not appear"));
+      assertThat(stdout.getStreamLinesPlain())
           .contains("this is a test 1", "this is a test 2", "this is a test 3")
           .doesNotContain("this should not appear");
     } finally {
@@ -187,7 +197,8 @@ class LogSettingsTest {
   }
 
   @Test
-  void should_log_to_main_log_file_in_quiet_mode() throws Exception {
+  void should_log_to_main_log_file_in_quiet_mode(@StreamCapture(STDERR) StreamInterceptor stdout)
+      throws Exception {
     Config config =
         TestConfigUtils.createTestConfig(
             "dsbulk.log", "directory", quoteJson(tempFolder), "verbosity", 0);
@@ -207,14 +218,21 @@ class LogSettingsTest {
     dseDriverLogger.info("this should not appear");
     Path logFile = tempFolder.resolve("TEST_EXECUTION_ID").resolve("operation.log");
     assertThat(logFile).exists();
-    String contents = String.join("", Files.readAllLines(logFile));
+    List<String> contents = Files.readAllLines(logFile);
     assertThat(contents)
+        .anySatisfy(line -> assertThat(line).endsWith("this is a test 1"))
+        .anySatisfy(line -> assertThat(line).endsWith("this is a test 2"))
+        .anySatisfy(line -> assertThat(line).endsWith("this is a test 3"))
+        .anySatisfy(line -> assertThat(line).endsWith("this is a test 4"))
+        .noneSatisfy(line -> assertThat(line).contains("this should not appear"));
+    assertThat(stdout.getStreamLinesPlain())
         .contains("this is a test 1", "this is a test 2", "this is a test 3", "this is a test 4")
         .doesNotContain("this should not appear");
   }
 
   @Test
-  void should_log_to_main_log_file_in_verbose_mode() throws Exception {
+  void should_log_to_main_log_file_in_verbose_mode(@StreamCapture(STDERR) StreamInterceptor stdout)
+      throws Exception {
     Config config =
         TestConfigUtils.createTestConfig(
             "dsbulk.log", "directory", quoteJson(tempFolder), "verbosity", 2);
@@ -232,8 +250,14 @@ class LogSettingsTest {
     LoggerFactory.getLogger("com.datastax.dse.driver").debug("this should not appear");
     Path logFile = tempFolder.resolve("TEST_EXECUTION_ID").resolve("operation.log");
     assertThat(logFile).exists();
-    String contents = String.join("", Files.readAllLines(logFile));
+    List<String> contents = Files.readAllLines(logFile);
     assertThat(contents)
+        .anySatisfy(line -> assertThat(line).endsWith("this is a test 1"))
+        .anySatisfy(line -> assertThat(line).endsWith("this is a test 2"))
+        .anySatisfy(line -> assertThat(line).endsWith("this is a test 3"))
+        .anySatisfy(line -> assertThat(line).endsWith("this is a test 4"))
+        .noneSatisfy(line -> assertThat(line).contains("this should not appear"));
+    assertThat(stdout.getStreamLinesPlain())
         .contains("this is a test 1", "this is a test 2", "this is a test 3", "this is a test 4")
         .doesNotContain("this should not appear");
   }

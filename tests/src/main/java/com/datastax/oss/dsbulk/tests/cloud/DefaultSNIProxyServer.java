@@ -41,7 +41,7 @@ public class DefaultSNIProxyServer implements SNIProxyServer {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultSNIProxyServer.class);
 
-  private static final String PROXY_PATH = "com.datastax.oss.dsbulk.tests.cloud.PROXY_PATH";
+  private static final String PROXY_PATH = "dsbulk.cloud.PROXY_PATH";
 
   private final Path proxyPath;
 

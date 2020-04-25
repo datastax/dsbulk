@@ -47,12 +47,12 @@ build:
     version: 3.2.5
     goals: verify -P$TEST_GROUPS --fail-never -B
     properties: |
-      com.datastax.oss.dsbulk.tests.ccm.CCM_VERSION=$CCM_VERSION
-      com.datastax.oss.dsbulk.tests.ccm.CCM_IS_DDAC=$CCM_IS_DDAC
-      com.datastax.oss.dsbulk.tests.ccm.CCM_IS_DSE=$CCM_IS_DSE
-      com.datastax.oss.dsbulk.tests.ccm.JAVA_HOME=$CCM_JAVA_HOME
-      com.datastax.oss.dsbulk.tests.ccm.PATH=$CCM_JAVA_HOME/bin
-      com.datastax.oss.dsbulk.tests.cloud.PROXY_PATH=$HOME/proxy
+      dsbulk.ccm.CCM_VERSION=$CCM_VERSION
+      dsbulk.ccm.CCM_IS_DDAC=$CCM_IS_DDAC
+      dsbulk.ccm.CCM_IS_DSE=$CCM_IS_DSE
+      dsbulk.ccm.JAVA_HOME=$CCM_JAVA_HOME
+      dsbulk.ccm.PATH=$CCM_JAVA_HOME/bin
+      dsbulk.cloud.PROXY_PATH=$HOME/proxy
       failIfNoTests=false
       maven.test.failure.ignore=true
       maven.javadoc.skip=true

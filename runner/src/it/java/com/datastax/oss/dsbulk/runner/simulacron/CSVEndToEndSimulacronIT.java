@@ -42,6 +42,7 @@ import com.datastax.oss.dsbulk.tests.logging.StreamCapture;
 import com.datastax.oss.dsbulk.tests.logging.StreamInterceptor;
 import com.datastax.oss.dsbulk.tests.simulacron.SimulacronUtils;
 import com.datastax.oss.dsbulk.tests.simulacron.SimulacronUtils.Column;
+import com.datastax.oss.dsbulk.tests.simulacron.SimulacronUtils.Keyspace;
 import com.datastax.oss.dsbulk.tests.simulacron.SimulacronUtils.Table;
 import com.datastax.oss.dsbulk.tests.utils.FileUtils;
 import com.datastax.oss.dsbulk.tests.utils.StringUtils;
@@ -512,7 +513,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
 
     SimulacronUtils.primeTables(
         simulacron,
-        new SimulacronUtils.Keyspace(
+        new Keyspace(
             "ks1",
             new Table(
                 "table1",
@@ -553,8 +554,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
 
     SimulacronUtils.primeTables(
         simulacron,
-        new SimulacronUtils.Keyspace(
-            "ks1", new Table("table1", new Column("a", INT), new Column("b", TEXT))));
+        new Keyspace("ks1", new Table("table1", new Column("a", INT), new Column("b", TEXT))));
 
     String[] args = {
       "load",

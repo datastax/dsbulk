@@ -70,11 +70,20 @@ public class DefaultCCMCluster implements CCMCluster {
   static final Type CCM_TYPE;
   static final Version CCM_VERSION;
 
+  // System properties
+  public static final String CCM_IS_DSE_PROPERTY = "dsbulk.ccm.CCM_IS_DSE";
+  public static final String CCM_IS_DDAC_PROPERTY = "dsbulk.ccm.CCM_IS_DDAC";
+  public static final String CCM_VERSION_PROPERTY = "dsbulk.ccm.CCM_VERSION";
+  public static final String CCM_DIRECTORY_PROPERTY = "dsbulk.ccm.CCM_DIRECTORY";
+  public static final String CCM_BRANCH_PROPERTY = "dsbulk.ccm.CCM_BRANCH";
+  public static final String CCM_PATH_PROPERTY = "dsbulk.ccm.PATH";
+  public static final String CCM_JAVA_HOME_PROPERTY = "dsbulk.ccm.JAVA_HOME";
+
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultCCMCluster.class);
-  private static final Logger CCM_OUT_LOGGER =
-      LoggerFactory.getLogger("com.datastax.oss.dsbulk.tests.ccm.CCM_OUT");
-  private static final Logger CCM_ERR_LOGGER =
-      LoggerFactory.getLogger("com.datastax.oss.dsbulk.tests.ccm.CCM_ERR");
+
+  // Logger for remote CCM processes
+  private static final Logger CCM_OUT_LOGGER = LoggerFactory.getLogger("dsbulk.ccm.CCM_OUT");
+  private static final Logger CCM_ERR_LOGGER = LoggerFactory.getLogger("dsbulk.ccm.CCM_ERR");
 
   public static final String DEFAULT_CLIENT_TRUSTSTORE_PASSWORD = "cassandra1sfun";
   public static final String DEFAULT_CLIENT_KEYSTORE_PASSWORD = "cassandra1sfun";
@@ -120,7 +129,7 @@ public class DefaultCCMCluster implements CCMCluster {
   /**
    * The environment variables to use when invoking CCM. Inherits the current processes environment,
    * but will also prepend to the PATH variable the value of the 'ccm.path' property and set
-   * JAVA_HOME variable to the 'com.datastax.oss.dsbulk.tests.ccm.JAVA_HOME' variable.
+   * JAVA_HOME variable to the 'dsbulk.ccm.JAVA_HOME' variable.
    */
   private static final Map<String, String> ENVIRONMENT_MAP;
 
@@ -128,18 +137,14 @@ public class DefaultCCMCluster implements CCMCluster {
   private static final String CCM_COMMAND;
 
   static {
-    boolean dse =
-        Boolean.parseBoolean(
-            System.getProperty("com.datastax.oss.dsbulk.tests.ccm.CCM_IS_DSE", "false"));
-    boolean ddac =
-        Boolean.parseBoolean(
-            System.getProperty("com.datastax.oss.dsbulk.tests.ccm.CCM_IS_DDAC", "false"));
+    boolean dse = Boolean.parseBoolean(System.getProperty(CCM_IS_DSE_PROPERTY, "false"));
+    boolean ddac = Boolean.parseBoolean(System.getProperty(CCM_IS_DDAC_PROPERTY, "false"));
     CCM_TYPE = dse ? DSE : (ddac ? DDAC : OSS);
-    String versionStr = System.getProperty("com.datastax.oss.dsbulk.tests.ccm.CCM_VERSION");
+    String versionStr = System.getProperty(CCM_VERSION_PROPERTY);
     CCM_VERSION = Version.parse(versionStr == null ? CCM_TYPE.getDefaultVersion() : versionStr);
     LOGGER.info("CCM tests configured to use {} version {}", CCM_TYPE, CCM_VERSION);
-    String installDirectory = System.getProperty("com.datastax.oss.dsbulk.tests.ccm.CCM_DIRECTORY");
-    String branch = System.getProperty("com.datastax.oss.dsbulk.tests.ccm.CCM_BRANCH");
+    String installDirectory = System.getProperty(CCM_DIRECTORY_PROPERTY);
+    String branch = System.getProperty(CCM_BRANCH_PROPERTY);
 
     Set<String> defaultCreateOptions = new LinkedHashSet<>();
     if (installDirectory != null && !installDirectory.trim().isEmpty()) {
@@ -155,7 +160,7 @@ public class DefaultCCMCluster implements CCMCluster {
     // Inherit the current environment.
     Map<String, String> envMap = new HashMap<>(new ProcessBuilder().environment());
     // If ccm path is set, override the PATH variable with it.
-    String ccmPath = System.getProperty("com.datastax.oss.dsbulk.tests.ccm.PATH");
+    String ccmPath = System.getProperty(CCM_PATH_PROPERTY);
     if (ccmPath != null) {
       String existingPath = envMap.get("PATH");
       if (existingPath == null) {
@@ -164,7 +169,7 @@ public class DefaultCCMCluster implements CCMCluster {
       envMap.put("PATH", ccmPath + File.pathSeparator + existingPath);
     }
     // If ccm Java home is set, override the JAVA_HOME variable with it.
-    String ccmJavaHome = System.getProperty("com.datastax.oss.dsbulk.tests.ccm.JAVA_HOME");
+    String ccmJavaHome = System.getProperty(CCM_JAVA_HOME_PROPERTY);
     if (ccmJavaHome != null) {
       envMap.put("JAVA_HOME", ccmJavaHome);
     }
@@ -631,18 +636,24 @@ public class DefaultCCMCluster implements CCMCluster {
           new LogOutputStream() {
             @Override
             protected void processLine(String line, int logLevel) {
-              CCM_OUT_LOGGER.debug(line);
-              pw.println(line);
-              pwOut.println(line);
+              line = line.trim();
+              if (!line.isEmpty()) {
+                CCM_OUT_LOGGER.debug(line);
+                pw.println(line);
+                pwOut.println(line);
+              }
             }
           };
       LogOutputStream errStream =
           new LogOutputStream() {
             @Override
             protected void processLine(String line, int logLevel) {
-              CCM_ERR_LOGGER.error(line);
-              pw.println(line);
-              pwErr.println(line);
+              line = line.trim();
+              if (!line.isEmpty()) {
+                CCM_ERR_LOGGER.error(line);
+                pw.println(line);
+                pwErr.println(line);
+              }
             }
           };
       closer.register(outStream);

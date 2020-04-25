@@ -25,7 +25,11 @@
   <root level="${log.root.level:-ERROR}">
     <appender-ref ref="STDOUT"/>
   </root>
+  <!-- log messages from CCM bridge, set to DEBUG or TRACE for detailed logs -->
   <logger name="com.datastax.oss.dsbulk.tests.ccm" level="ERROR"/>
-  <logger name="com.datastax.oss.dsbulk.tests.cloud" level="ERROR"/>
+  <!-- log messages from remote CCM process, set to DEBUG to see -->
+  <logger name="dsbulk.ccm.CCM_OUT" level="ERROR"/>
+  <logger name="dsbulk.ccm.CCM_ERR" level="ERROR"/>
   <logger name="com.datastax.oss.dsbulk.tests.simulacron" level="ERROR"/>
+  <logger name="com.datastax.oss.dsbulk.tests.cloud" level="ERROR"/>
 </configuration>

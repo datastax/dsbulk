@@ -19,6 +19,7 @@ import com.datastax.oss.dsbulk.tests.utils.URLUtils;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.Charset;
+import org.fusesource.jansi.AnsiString;
 
 public class DefaultStreamInterceptor implements StreamInterceptor {
 
@@ -39,6 +40,11 @@ public class DefaultStreamInterceptor implements StreamInterceptor {
   @Override
   public String getStreamAsString(Charset charset) {
     return new String(baos.toByteArray(), charset);
+  }
+
+  @Override
+  public String getStreamAsStringPlain(Charset charset) {
+    return new AnsiString(getStreamAsString()).getPlain().toString();
   }
 
   @Override

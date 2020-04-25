@@ -16,6 +16,7 @@
 package com.datastax.oss.dsbulk.runner.ccm;
 
 import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat;
+import static com.datastax.oss.dsbulk.tests.logging.StreamType.STDERR;
 import static org.awaitility.Awaitility.await;
 import static org.awaitility.Durations.ONE_MINUTE;
 import static org.slf4j.event.Level.WARN;
@@ -35,9 +36,9 @@ import com.datastax.oss.dsbulk.tests.ccm.annotations.CCMRequirements;
 import com.datastax.oss.dsbulk.tests.ccm.annotations.CCMVersionRequirement;
 import com.datastax.oss.dsbulk.tests.ccm.annotations.CCMWorkload;
 import com.datastax.oss.dsbulk.tests.logging.LogCapture;
-import com.datastax.oss.dsbulk.tests.logging.LogInterceptingExtension;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptor;
-import com.datastax.oss.dsbulk.tests.logging.LogResource;
+import com.datastax.oss.dsbulk.tests.logging.StreamCapture;
+import com.datastax.oss.dsbulk.tests.logging.StreamInterceptor;
 import com.datastax.oss.dsbulk.tests.utils.StringUtils;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,25 +46,27 @@ import org.assertj.core.data.Index;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 
-@ExtendWith(LogInterceptingExtension.class)
 @Tag("medium")
 @CCMConfig(workloads = @CCMWorkload(Workload.solr))
 @CCMRequirements(
     compatibleTypes = Type.DSE,
     versionRequirements = @CCMVersionRequirement(type = Type.DSE, min = "5.1"))
-@LogResource("logback.xml")
 class SearchEndToEndCCMIT extends EndToEndCCMITBase {
 
   private final LogInterceptor logs;
+  private final StreamInterceptor stderr;
 
   private List<Record> records;
 
   SearchEndToEndCCMIT(
-      CCMCluster ccm, CqlSession session, @LogCapture(level = WARN) LogInterceptor logs) {
+      CCMCluster ccm,
+      CqlSession session,
+      @LogCapture(level = WARN) LogInterceptor logs,
+      @StreamCapture(STDERR) StreamInterceptor stderr) {
     super(ccm, session);
     this.logs = logs;
+    this.stderr = stderr;
   }
 
   @BeforeEach
@@ -106,7 +109,12 @@ class SearchEndToEndCCMIT extends EndToEndCCMITBase {
     EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
 
     assertThat(logs)
+        .hasMessageContaining("completed successfully")
         .hasMessageContaining(
+            "Continuous paging is enabled but is not compatible with search queries; disabling");
+    assertThat(stderr.getStreamAsStringPlain())
+        .contains("completed successfully")
+        .contains(
             "Continuous paging is enabled but is not compatible with search queries; disabling");
 
     assertThat(records)

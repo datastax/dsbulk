@@ -16,6 +16,7 @@
 package com.datastax.oss.dsbulk.runner.ccm;
 
 import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat;
+import static com.datastax.oss.dsbulk.tests.logging.StreamType.STDERR;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader;
@@ -25,9 +26,9 @@ import com.datastax.oss.dsbulk.tests.ccm.CCMCluster;
 import com.datastax.oss.dsbulk.tests.ccm.annotations.CCMConfig;
 import com.datastax.oss.dsbulk.tests.driver.annotations.SessionConfig;
 import com.datastax.oss.dsbulk.tests.logging.LogCapture;
-import com.datastax.oss.dsbulk.tests.logging.LogInterceptingExtension;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptor;
-import com.datastax.oss.dsbulk.tests.logging.LogResource;
+import com.datastax.oss.dsbulk.tests.logging.StreamCapture;
+import com.datastax.oss.dsbulk.tests.logging.StreamInterceptor;
 import com.datastax.oss.dsbulk.tests.utils.FileUtils;
 import com.datastax.oss.dsbulk.tests.utils.StringUtils;
 import java.util.ArrayList;
@@ -35,7 +36,6 @@ import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -43,18 +43,19 @@ import org.junit.jupiter.params.provider.ValueSource;
     config = "authenticator:PasswordAuthenticator",
     jvmArgs = "-Dcassandra.superuser_setup_delay_ms=0")
 @Tag("medium")
-@ExtendWith(LogInterceptingExtension.class)
-@LogResource("logback.xml")
 class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
 
   private final LogInterceptor logs;
+  private final StreamInterceptor stderr;
 
   PlainTextAuthEndToEndCCMIT(
       CCMCluster ccm,
       @SessionConfig(credentials = {"cassandra", "cassandra"}) CqlSession session,
-      @LogCapture LogInterceptor logs) {
+      @LogCapture LogInterceptor logs,
+      @StreamCapture(STDERR) StreamInterceptor stderr) {
     super(ccm, session);
     this.logs = logs;
+    this.stderr = stderr;
   }
 
   @BeforeAll
@@ -101,9 +102,14 @@ class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
           .hasMessageContaining(
               "Username and password provided but auth provider not specified, "
                   + "inferring PlainTextAuthProvider");
+      assertThat(stderr.getStreamAsString())
+          .contains(
+              "Username and password provided but auth provider not specified, "
+                  + "inferring PlainTextAuthProvider");
     }
     FileUtils.deleteDirectory(logDir);
     logs.clear();
+    stderr.clear();
 
     args = new ArrayList<>();
     args.add("unload");
@@ -132,6 +138,10 @@ class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
     if (inferAuthProvider) {
       assertThat(logs)
           .hasMessageContaining(
+              "Username and password provided but auth provider not specified, "
+                  + "inferring PlainTextAuthProvider");
+      assertThat(stderr.getStreamAsString())
+          .contains(
               "Username and password provided but auth provider not specified, "
                   + "inferring PlainTextAuthProvider");
     }
@@ -170,9 +180,18 @@ class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
             "Setting dsbulk.driver.auth.* is deprecated and will be removed in a future release; "
                 + "please configure the driver directly using "
                 + "--datastax-java-driver.advanced.auth-provider.* instead");
+    assertThat(stderr.getStreamAsString())
+        .contains(
+            "Setting dsbulk.driver.auth.* is deprecated and will be removed in a future release; "
+                + "please configure the driver directly using "
+                + "--datastax-java-driver.advanced.auth-provider.* instead");
     if (inferAuthProvider) {
       assertThat(logs)
           .hasMessageContaining(
+              "Username and password provided but auth provider not specified, "
+                  + "inferring PlainTextAuthProvider");
+      assertThat(stderr.getStreamAsString())
+          .contains(
               "Username and password provided but auth provider not specified, "
                   + "inferring PlainTextAuthProvider");
     }
@@ -208,9 +227,18 @@ class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
             "Setting dsbulk.driver.auth.* is deprecated and will be removed in a future release; "
                 + "please configure the driver directly using "
                 + "--datastax-java-driver.advanced.auth-provider.* instead");
+    assertThat(stderr.getStreamAsString())
+        .contains(
+            "Setting dsbulk.driver.auth.* is deprecated and will be removed in a future release; "
+                + "please configure the driver directly using "
+                + "--datastax-java-driver.advanced.auth-provider.* instead");
     if (inferAuthProvider) {
       assertThat(logs)
           .hasMessageContaining(
+              "Username and password provided but auth provider not specified, "
+                  + "inferring PlainTextAuthProvider");
+      assertThat(stderr.getStreamAsString())
+          .contains(
               "Username and password provided but auth provider not specified, "
                   + "inferring PlainTextAuthProvider");
     }

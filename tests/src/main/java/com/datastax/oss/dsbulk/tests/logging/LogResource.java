@@ -20,6 +20,12 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * The classpath resource that should be used to configure Logback. If this annotation is present,
+ * {@link LogInterceptingExtension} will reset Logback's configuration and use this resource to
+ * configure it. This can be useful in situations where a test is sensitive to Logback's
+ * configuration.
+ */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 public @interface LogResource {

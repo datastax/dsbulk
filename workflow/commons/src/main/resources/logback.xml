@@ -18,11 +18,10 @@
 -->
 <configuration>
   <!--
-  When editing this file, check that LogSettings
-  is still working as expected, since it modifies the Logback configuration
-  programmatically.
-  Also, make sure that logback-test.xml is modified accordingly (it should contain the same
-  appender definitions and loggers).
+  This is DSBulk's log configuration file.
+
+  When editing this file, check that com.datastax.oss.dsbulk.workflow.commons.settings.LogSettings
+  is still working as expected, since it modifies the Logback configuration programmatically.
   -->
   <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator"/>
   <conversionRule conversionWord="msgx" converterClass="com.datastax.oss.dsbulk.workflow.commons.log.HighlightingMessageConverter"/>

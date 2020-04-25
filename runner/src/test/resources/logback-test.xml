@@ -23,14 +23,18 @@
   some tests, you may want to switch to the ConsoleAppender below.
   -->
   <appender name="DEFAULT" class="ch.qos.logback.core.helpers.NOPAppender"/>
-  <!--
-    <appender name="DEFAULT" class="ch.qos.logback.core.ConsoleAppender">
-      <encoder>
-        <pattern>%-5level [%thread] %logger{40} - %msg%n</pattern>
-      </encoder>
-    </appender>
-  -->
+  <!--  <appender name="DEFAULT" class="ch.qos.logback.core.ConsoleAppender">-->
+  <!--    <encoder>-->
+  <!--      <pattern>%-5level [%thread] %logger{40} - %msg%n</pattern>-->
+  <!--    </encoder>-->
+  <!--  </appender>-->
   <root level="${log.root.level:-OFF}">
     <appender-ref ref="DEFAULT"/>
   </root>
+  <!--  Uncomment the following to debug CCM tests: -->
+  <!--  &lt;!&ndash; log messages from CCM bridge &ndash;&gt;-->
+  <!--  <logger name="com.datastax.oss.dsbulk.tests.ccm" level="TRACE"/>-->
+  <!--  &lt;!&ndash; log messages from remote CCM process &ndash;&gt;-->
+  <!--  <logger name="dsbulk.ccm.CCM_OUT" level="DEBUG"/>-->
+  <!--  <logger name="dsbulk.ccm.CCM_ERR" level="DEBUG"/>-->
 </configuration>

@@ -16,6 +16,8 @@
 package com.datastax.oss.dsbulk.runner.ccm;
 
 import static com.datastax.oss.dsbulk.tests.driver.annotations.SessionConfig.UseKeyspaceMode.NONE;
+import static com.datastax.oss.dsbulk.tests.logging.StreamType.STDERR;
+import static com.datastax.oss.dsbulk.tests.logging.StreamType.STDOUT;
 import static org.slf4j.event.Level.INFO;
 
 import com.datastax.oss.driver.api.core.CqlSession;
@@ -35,8 +37,9 @@ class M3PTokenVnodeTableReadEndToEndCCMIT extends TableReadEndToEndCCMITBase {
   M3PTokenVnodeTableReadEndToEndCCMIT(
       CCMCluster ccm,
       @SessionConfig(useKeyspace = NONE) CqlSession session,
-      @LogCapture(level = INFO) LogInterceptor interceptor,
-      @StreamCapture StreamInterceptor stdout) {
-    super(ccm, session, interceptor, stdout);
+      @LogCapture(level = INFO) LogInterceptor logs,
+      @StreamCapture(STDOUT) StreamInterceptor stdout,
+      @StreamCapture(STDERR) StreamInterceptor stderr) {
+    super(ccm, session, logs, stdout, stderr);
   }
 }

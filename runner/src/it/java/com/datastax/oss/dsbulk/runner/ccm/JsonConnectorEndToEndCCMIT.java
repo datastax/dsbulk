@@ -18,9 +18,10 @@ package com.datastax.oss.dsbulk.runner.ccm;
 import static com.datastax.oss.dsbulk.runner.ccm.CSVConnectorEndToEndCCMIT.assertComplexRows;
 import static com.datastax.oss.dsbulk.runner.ccm.CSVConnectorEndToEndCCMIT.checkNumbersWritten;
 import static com.datastax.oss.dsbulk.runner.ccm.CSVConnectorEndToEndCCMIT.checkTemporalsWritten;
+import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat;
+import static com.datastax.oss.dsbulk.tests.logging.StreamType.STDERR;
 import static com.datastax.oss.dsbulk.tests.utils.StringUtils.quoteJson;
 import static java.math.RoundingMode.UNNECESSARY;
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.datastax.oss.driver.api.core.CqlIdentifier;
@@ -31,6 +32,10 @@ import com.datastax.oss.dsbulk.runner.tests.EndToEndUtils;
 import com.datastax.oss.dsbulk.runner.tests.JsonUtils;
 import com.datastax.oss.dsbulk.tests.ccm.CCMCluster;
 import com.datastax.oss.dsbulk.tests.ccm.annotations.CCMConfig;
+import com.datastax.oss.dsbulk.tests.logging.LogCapture;
+import com.datastax.oss.dsbulk.tests.logging.LogInterceptor;
+import com.datastax.oss.dsbulk.tests.logging.StreamCapture;
+import com.datastax.oss.dsbulk.tests.logging.StreamInterceptor;
 import com.datastax.oss.dsbulk.tests.utils.FileUtils;
 import com.datastax.oss.dsbulk.tests.utils.StringUtils;
 import com.datastax.oss.dsbulk.tests.utils.Version;
@@ -58,10 +63,19 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   private static final Version V3 = Version.parse("3.0");
   private static final Version V2_1 = Version.parse("2.1");
 
+  private final LogInterceptor logs;
+  private final StreamInterceptor stderr;
+
   private Path urlFile;
 
-  JsonConnectorEndToEndCCMIT(CCMCluster ccm, CqlSession session) {
+  JsonConnectorEndToEndCCMIT(
+      CCMCluster ccm,
+      CqlSession session,
+      @LogCapture LogInterceptor logs,
+      @StreamCapture(STDERR) StreamInterceptor stderr) {
     super(ccm, session);
+    this.logs = logs;
+    this.stderr = stderr;
   }
 
   @BeforeAll
@@ -135,6 +149,65 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
     EndToEndUtils.validateOutputFiles(24, unloadDir);
+  }
+
+  /** Test for DAT-451. */
+  @Test
+  void full_load_query_warnings() throws Exception {
+
+    assumeTrue(
+        ccm.getCassandraVersion().compareTo(V3) >= 0,
+        "Query warnings are only present in C* >= 3.0");
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--connector.name");
+    args.add("json");
+    args.add("--log.maxQueryWarnings");
+    args.add("1");
+    args.add("--connector.json.url");
+    args.add(StringUtils.quoteJson(JsonUtils.JSON_RECORDS));
+    args.add("--batch.mode");
+    args.add("REPLICA_SET");
+    args.add("--schema.keyspace");
+    args.add(session.getKeyspace().get().asInternal());
+    args.add("--schema.table");
+    args.add("ip_by_country");
+
+    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    validateResultSetSize(500, "SELECT * FROM ip_by_country");
+    EndToEndUtils.validatePositionsFile(JsonUtils.JSON_RECORDS, 500);
+    /*
+    Unlogged batch covering N partitions detected against table [ks1.ip_by_country].
+    You should use a logged batch for atomicity, or asynchronous writes for performance.
+    DSE 6.0+:
+    Unlogged batch covering 20 partitions detected against table {ks1.ip_by_country}.
+    You should use a logged batch for atomicity, or asynchronous writes for performance.
+     */
+    assertThat(logs)
+        .hasMessageContaining("Query generated server-side warning")
+        .hasMessageMatching("Unlogged batch covering \\d+ partitions detected")
+        .hasMessageContaining(session.getKeyspace().get().asCql(true) + ".ip_by_country")
+        .hasMessageContaining(
+            "The maximum number of logged query warnings has been exceeded (1); "
+                + "subsequent warnings will not be logged.");
+    assertThat(stderr.getStreamLinesPlain())
+        .anySatisfy(line -> assertThat(line).contains("Query generated server-side warning"))
+        .anySatisfy(
+            line ->
+                assertThat(line)
+                    .containsPattern("Unlogged batch covering \\d+ partitions detected"))
+        .anySatisfy(
+            line ->
+                assertThat(line)
+                    .contains(session.getKeyspace().get().asCql(true) + ".ip_by_country"))
+        .anySatisfy(
+            line ->
+                assertThat(line)
+                    .contains(
+                        "The maximum number of logged query warnings has been exceeded (1); "
+                            + "subsequent warnings will not be logged."));
   }
 
   @Test

@@ -15,6 +15,9 @@
  */
 package com.datastax.oss.dsbulk.runner.ccm;
 
+import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat;
+import static com.datastax.oss.dsbulk.tests.logging.StreamType.STDERR;
+
 import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.internal.core.ssl.DefaultSslEngineFactory;
@@ -25,6 +28,10 @@ import com.datastax.oss.dsbulk.tests.ccm.CCMCluster;
 import com.datastax.oss.dsbulk.tests.ccm.DefaultCCMCluster;
 import com.datastax.oss.dsbulk.tests.ccm.annotations.CCMConfig;
 import com.datastax.oss.dsbulk.tests.driver.annotations.SessionConfig;
+import com.datastax.oss.dsbulk.tests.logging.LogCapture;
+import com.datastax.oss.dsbulk.tests.logging.LogInterceptor;
+import com.datastax.oss.dsbulk.tests.logging.StreamCapture;
+import com.datastax.oss.dsbulk.tests.logging.StreamInterceptor;
 import com.datastax.oss.dsbulk.tests.utils.FileUtils;
 import com.datastax.oss.dsbulk.tests.utils.StringUtils;
 import java.util.ArrayList;
@@ -38,10 +45,17 @@ import org.junit.jupiter.api.Test;
 @Tag("medium")
 class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
 
+  private final LogInterceptor logs;
+  private final StreamInterceptor stderr;
+
   SSLEncryptionEndToEndCCMIT(
       CCMCluster ccm,
-      @SessionConfig(ssl = true, hostnameVerification = true, auth = true) CqlSession session) {
+      @SessionConfig(ssl = true, hostnameVerification = true, auth = true) CqlSession session,
+      @LogCapture LogInterceptor logs,
+      @StreamCapture(STDERR) StreamInterceptor stderr) {
     super(ccm, session);
+    this.logs = logs;
+    this.stderr = stderr;
   }
 
   @BeforeAll
@@ -90,6 +104,11 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
 
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    assertThat(logs).hasMessageContaining("completed successfully");
+    assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
+    logs.clear();
+    stderr.clear();
+
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
     FileUtils.deleteDirectory(logDir);
 
@@ -129,6 +148,8 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
     EndToEndUtils.validateOutputFiles(24, unloadDir);
+    assertThat(logs).hasMessageContaining("completed successfully");
+    assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
   }
 
   @Test
@@ -168,6 +189,10 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
+    assertThat(logs).hasMessageContaining("completed successfully");
+    assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
+    logs.clear();
+    stderr.clear();
     FileUtils.deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -206,6 +231,8 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
     EndToEndUtils.validateOutputFiles(24, unloadDir);
+    assertThat(logs).hasMessageContaining("completed successfully");
+    assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
   }
 
   @Test
@@ -245,6 +272,10 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
+    assertThat(logs).hasMessageContaining("completed successfully");
+    assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
+    logs.clear();
+    stderr.clear();
     FileUtils.deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -283,5 +314,7 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
     EndToEndUtils.validateOutputFiles(24, unloadDir);
+    assertThat(logs).hasMessageContaining("completed successfully");
+    assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
   }
 }

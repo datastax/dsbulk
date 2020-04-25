@@ -40,10 +40,7 @@ import com.datastax.oss.dsbulk.tests.ccm.CCMCluster;
 import com.datastax.oss.dsbulk.tests.ccm.CCMCluster.Type;
 import com.datastax.oss.dsbulk.tests.ccm.annotations.CCMRequirements;
 import com.datastax.oss.dsbulk.tests.ccm.annotations.CCMVersionRequirement;
-import com.datastax.oss.dsbulk.tests.logging.LogInterceptingExtension;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptor;
-import com.datastax.oss.dsbulk.tests.logging.LogResource;
-import com.datastax.oss.dsbulk.tests.logging.StreamInterceptingExtension;
 import com.datastax.oss.dsbulk.tests.logging.StreamInterceptor;
 import com.datastax.oss.dsbulk.tests.utils.CQLUtils;
 import com.datastax.oss.dsbulk.tests.utils.StringUtils;
@@ -61,7 +58,6 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -69,21 +65,20 @@ import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.junit.jupiter.params.provider.CsvSource;
 
-@ExtendWith(LogInterceptingExtension.class)
-@ExtendWith(StreamInterceptingExtension.class)
 // restrict the matrix to avoid utilizing too many resources on CI
 @CCMRequirements(
+    compatibleTypes = {Type.OSS, Type.DSE},
     versionRequirements = {
-      @CCMVersionRequirement(type = Type.DSE, min = "5.1"),
+      @CCMVersionRequirement(type = Type.DSE, min = "6.0"),
       @CCMVersionRequirement(type = Type.OSS, min = "3.11")
     })
-@LogResource("logback.xml")
 abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
 
   private static final Version V3 = Version.parse("3.0");
 
   private final LogInterceptor logs;
   private final StreamInterceptor stdout;
+  private final StreamInterceptor stderr;
 
   private AtomicInteger records;
   private int expectedTotal;
@@ -92,10 +87,15 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
   private Map<String, Map<String, Map<String, Integer>>> allBiggestPartitions;
 
   TableReadEndToEndCCMITBase(
-      CCMCluster ccm, CqlSession session, LogInterceptor logs, StreamInterceptor stdout) {
+      CCMCluster ccm,
+      CqlSession session,
+      LogInterceptor logs,
+      StreamInterceptor stdout,
+      StreamInterceptor stderr) {
     super(ccm, session);
     this.logs = logs;
     this.stdout = stdout;
+    this.stderr = stderr;
   }
 
   @ParameterizedTest(name = "[{index}] unload keyspace {0} table {1}")
@@ -277,11 +277,13 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
 
   private void assertUnload() {
     assertThat(logs).hasMessageContaining(String.format("Reads: total: %,d", expectedTotal));
+    assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
     assertThat(records).hasValue(expectedTotal);
   }
 
   private void assertCount(String keyspace, String table, Set<String> modes) {
     assertThat(logs).hasMessageContaining(String.format("Reads: total: %,d", expectedTotal));
+    assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
     List<String> lines = stdout.getStreamLines();
     if (modes.contains("global")) {
       assertThat(lines).contains(Integer.toString(expectedTotal));

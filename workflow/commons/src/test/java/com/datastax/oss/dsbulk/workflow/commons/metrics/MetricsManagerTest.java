@@ -95,7 +95,9 @@ class MetricsManagerTest {
   }
 
   @Test
-  void should_increment_records() {
+  void should_increment_records(
+      @LogCapture(value = MetricsManager.class, level = INFO) LogInterceptor logs,
+      @StreamCapture(STDERR) StreamInterceptor stderr) {
     try (MetricsManager manager =
         new MetricsManager(
             new MetricRegistry(),
@@ -129,11 +131,16 @@ class MetricsManagerTest {
           (MetricRegistry) ReflectionUtils.getInternalState(manager, "registry");
       assertThat(registry.counter("records/total").getCount()).isEqualTo(3);
       assertThat(registry.counter("records/failed").getCount()).isEqualTo(1);
+      assertThat(logs.getLoggedEvents()).isEmpty();
+      assertThat(stderr.getStreamLinesPlain())
+          .anySatisfy(line -> assertThat(line).startsWith("    0 |      1 |"));
     }
   }
 
   @Test
-  void should_increment_batches() {
+  void should_increment_batches(
+      @LogCapture(value = MetricsManager.class, level = INFO) LogInterceptor logs,
+      @StreamCapture(STDERR) StreamInterceptor stderr) {
     try (MetricsManager manager =
         new MetricsManager(
             new MetricRegistry(),
@@ -165,6 +172,9 @@ class MetricsManagerTest {
       assertThat(registry.histogram("batches/size").getCount()).isEqualTo(2);
       assertThat(registry.histogram("batches/size").getSnapshot().getMean())
           .isEqualTo((2f + 1f) / 2f);
+      assertThat(logs.getLoggedEvents()).isEmpty();
+      assertThat(stderr.getStreamLinesPlain())
+          .anySatisfy(line -> assertThat(line).startsWith("    0 |      0 |"));
     }
   }
 
