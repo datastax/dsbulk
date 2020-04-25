@@ -13,7 +13,7 @@ import com.datastax.oss.driver.api.core.Version;
 import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.driver.api.core.session.Session;
 import com.datastax.oss.driver.api.core.uuid.Uuids;
-import com.datastax.oss.dsbulk.commons.platform.PlatformUtils;
+import com.datastax.oss.dsbulk.commons.utils.PlatformUtils;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.time.format.DateTimeFormatter;
 import java.util.Collection;

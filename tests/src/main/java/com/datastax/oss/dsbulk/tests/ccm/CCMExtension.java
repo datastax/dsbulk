@@ -13,7 +13,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.oss.driver.api.core.metadata.EndPoint;
 import com.datastax.oss.driver.shaded.guava.common.util.concurrent.Uninterruptibles;
-import com.datastax.oss.dsbulk.commons.platform.PlatformUtils;
+import com.datastax.oss.dsbulk.commons.utils.PlatformUtils;
 import com.datastax.oss.dsbulk.tests.RemoteClusterExtension;
 import com.datastax.oss.dsbulk.tests.ccm.annotations.CCMRequirements;
 import com.datastax.oss.dsbulk.tests.ccm.annotations.CCMVersionRequirement;

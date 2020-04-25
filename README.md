@@ -14,6 +14,8 @@ supported settings.
 
 The most up-to-date documentation is available [online][onlineDocs]. 
 
+Developers and contributors: please read our [Contribution Guidelines](./CONTRIBUTING.md).
+
 ## Basic Usage
 
 The `dsbulk` command takes a subcommand argument followed by options:

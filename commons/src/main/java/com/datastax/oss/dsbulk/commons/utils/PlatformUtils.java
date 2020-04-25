@@ -6,7 +6,7 @@
  * and will post the amended terms at
  * https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
  */
-package com.datastax.oss.dsbulk.commons.platform;
+package com.datastax.oss.dsbulk.commons.utils;
 
 import static java.time.Instant.EPOCH;
 import static java.time.ZoneOffset.UTC;

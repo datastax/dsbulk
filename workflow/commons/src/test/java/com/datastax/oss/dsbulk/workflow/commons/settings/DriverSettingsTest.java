@@ -15,7 +15,7 @@ import static org.slf4j.event.Level.INFO;
 import static org.slf4j.event.Level.WARN;
 
 import com.datastax.oss.driver.api.core.DefaultConsistencyLevel;
-import com.datastax.oss.dsbulk.commons.platform.PlatformUtils;
+import com.datastax.oss.dsbulk.commons.utils.PlatformUtils;
 import com.datastax.oss.dsbulk.tests.logging.LogCapture;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptingExtension;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptor;

@@ -8,7 +8,6 @@
  */
 package com.datastax.oss.dsbulk.commons.utils;
 
-import com.datastax.oss.dsbulk.commons.platform.PlatformUtils;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.BufferedReader;
 import java.io.InputStream;

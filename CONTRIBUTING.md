@@ -6,15 +6,69 @@
 
 Read the [manual](manual/) or the [online docs](https://docs.datastax.com/en/dsbulk/doc/). 
 
+## Understanding DSBulk's architecture 
+
+Make sure you understand how DSBulk works by reading the manual page about 
+[DSBulk's architecture](https://docs.datastax.com/en/dsbulk/doc/dsbulk/dsbulkArch.html).
+
+DSBulk code is divided in several modules:
+
+1. [dsbulk-commons](./commons): This module contains common utilities for DSBulk.
+2. [dsbulk-codecs](./codecs): This module groups together submodules related to codec handling in 
+   DSBulk:
+    1. The [dsbulk-codecs-api](./codecs/api) submodule contains an API for codec handling in DSBulk.
+    2. The [dsbulk-codecs-text](./codecs/text) submodule contains implementations of that API for 
+       plain text and Json.
+3. [dsbulk-compression](./compression): This module contains utilities for reading and writing to 
+   compressed files.
+4. [dsbulk-connectors](./connectors): Connectors form a pluggable abstraction that allows DSBulk to 
+   read and write to a variety of backends.
+   1. The [dsbulk-connectors-api](./connectors/api) submodule contains the Connector API.
+   2. The [dsbulk-connectors-commons](./connectors/commons) submodule contains common base classes 
+      for text-based connectors.
+   3. The [dsbulk-connectors-csv](./connectors/csv) submodule contains the CSV connector.
+   4. The [dsbulk-connectors-json](./connectors/json) submodule contains the Json connector.
+5. [dsbulk-cql](./cql): This module contains a lightweight ANTLR 4 grammar and parser for the CQL 
+   language.
+6. [dsbulk-mapping](./mapping): This module contains an ANTLR 4 grammar and parser for DSBulk's 
+   mapping syntax.
+7. [dsbulk-format](./format): This module contains utilities to format common DataStax Java driver 
+   objects: statements and rows.
+8. [dsbulk-partitioner](./partitioner): This module contains the `TokenRangeSplitter` API, that 
+    DSBulk uses to parallelize reads by targeting all the token subranges simultaneously from 
+    different replicas.
+9. [dsbulk-executor](./executor): DSBulk's Bulk Executor API is a pluggable abstraction that allows 
+   DSBulk to execute queries using reactive programming.
+    1. The [dsbulk-executor-api](./executor/api) submodule contains the Executor API.
+    2. The [dsbulk-executor-reactor](./executor/reactor) submodule contains an implementation of 
+       the Executor API using Reactor.
+10. [dsbulk-workflow](./workflow): Workflows form a pluggable abstraction that allows DSBulk to 
+   execute virtually any kind of operation.
+    1. The [dsbulk-workflow-api](./workflow/api) submodule contains the Workflow API.
+    2. The [dsbulk-workflow-commons](./workflow/commons) submodule contains common base classes for 
+       workflows, and especially configuration utilities shared by DSBulk's built-in workflows 
+       (load, unload and count).
+    3. The [dsbulk-workflow-load](./workflow/load) submodule contains the Load Workflow.
+    4. The [dsbulk-workflow-unload](./workflow/unload) submodule contains the Unload Workflow.
+    5. The [dsbulk-workflow-count](./workflow/count) submodule contains the Count Workflow.
+11. [dsbulk-runner](./runner): This module contains the DSBulk's runner, and a parser for command 
+   lines.
+12. [dsbulk-docs](./docs): This module generates DSBulk's documentation. 
+13. [dsbulk-distribution](./distribution): This module assembles DSBulk's binary distributions.  
+14. [dsbulk-tests](./tests): This module contains test utilities for DSBulk.
+
 ## Issue Management
 
-DataStax Bulk Loader has its own [Jira project](https://datastax.jira.com/projects/DAT/summary).
+DataStax Bulk Loader has its own [Jira project](https://datastax.jira.com/projects/DAT/summary), but
+it's private to DataStax. For external contributors, feel free to open an issue in DSBulk's 
+GitHub repository.
 
 # Contribution guidelines
 
 ## Branching model
 
-DSBulk uses [semantic versioning](http://semver.org/) and our development branches use the following scheme:
+DSBulk uses [semantic versioning](http://semver.org/) and our development branches use the 
+following scheme:
 
 ```
             1.0.1      1.0.2 ...                1.1.1 ...
@@ -30,8 +84,10 @@ Legend:
  * tag
 ```
 
-- new features are developed on "minor" branches such as `1.x`, where minor releases (ending in `.0`) happen.
-- bugfixes go to "patch" branches such as `1.0.x` and `1.1.x`, where patch releases (ending in `.1`, `.2`...) happen.
+- new features are developed on "minor" branches such as `1.x`, where minor releases (ending in 
+  `.0`) happen.
+- bugfixes go to "patch" branches such as `1.0.x` and `1.1.x`, where patch releases (ending in 
+  `.1`, `.2`...) happen.
 - patch branches are regularly merged to the bottom (`1.0.x` to `1.x`) so that bugfixes are 
   applied to newer versions too.
 
@@ -54,7 +110,10 @@ Some aspects are not covered by the formatter:
 * braces must be used with `if`, `else`, `for`, `do` and `while` statements, even when the body is
   empty or contains only a single statement.
 * implementation comments: wrap them to respect the column limit of 100 characters.
-* XML files: indent with two spaces and wrap to respect the column limit of 100 characters.
+
+XML files are formatted with a Maven plugin as well. Make sure your IDE follows the rule below:
+
+* Indent with two spaces and wrap to respect the column limit of 100 characters.
 
 ## Coding style -- production code
 
@@ -77,10 +136,6 @@ be around 200-300 lines.
 
 ### Javadoc
 
-All types in "API" packages must be documented. For "internal" packages, documentation is optional,
-but in no way discouraged: it's generally a good idea to have a class-level comment that explains
-where the component fits in the architecture, and anything else that you feel is important.
-
 You don't need to document every parameter or return type, or even every method. Don't document 
 something if it is completely obvious, we don't want to end up with this:
 
@@ -98,8 +153,8 @@ least a one-line comment. Use common sense.
 
 Users importing the DataStax Bulk API should find the right documentation at the right time 
 using their IDE. Try to think of how they will come into contact with the class. 
-For example, if a type is constructed with
-a builder, each builder method should probably explain what the default is when you don't call it.
+For example, if a type is constructed with a builder, each builder method should probably explain 
+what the default is when you don't call it.
 
 Avoid using too many links, they can make comments harder to read, especially in the IDE. Link to a
 type the first time it's mentioned, then use a text description ("this registry"...) or an `@code`
@@ -128,10 +183,11 @@ Logs are intended for two personae:
 
 The first 3 log levels are for ops:
 
-* `ERROR`: something that renders the loader&nbsp;— or a part of it&nbsp;— completely unusable. An action is
-  required to fix it, and a re-run should probably be scheduled.
+* `ERROR`: something that renders the loader&nbsp;— or a part of it&nbsp;— completely unusable. An 
+  action is required to fix it, and a re-run should probably be scheduled.
 * `WARN`: something that the loader can recover from automatically, but indicates a configuration or
-  programming error that should be addressed. For example: the loader cannot read a file that was found inside the directory to scan.
+  programming error that should be addressed. For example: the loader cannot read a file that was 
+  found inside the directory to scan.
 * `INFO`: something that is part of the normal operation of the loader, but might be useful to know
   for an operator. For example: the loader has initialized successfully and is ready to ingest
   records, or the loader finished loading successfully in X minutes.
@@ -143,19 +199,21 @@ The last 2 levels are for developers:
 * `TRACE`: same thing, but for events that happen very often, produce a lot of output, or should be
   irrelevant most of the time (this is a bit more subjective and left to your interpretation).
 
-Tests are run with the Logback configuration file defined for each module in `src/test/resources/logback-test.xml`. 
-The default level for all loggers is `OFF`, which means that no log output is produced, 
-but you can override it with a system property: `-Dlog.root.level=DEBUG`.
+Tests are run with the Logback configuration file defined for each module in 
+`src/test/resources/logback-test.xml`. The default level for all loggers is `OFF`, which means that 
+no log output is produced, but you can override it with a system property: `-Dlog.root.level=DEBUG`.
 A nice setup is to use `DEBUG` when you run from your IDE, and keep the default for the command
-line.
+line. Also, some modules use the special `NOPAppender` by default, to reduce clutter printed on the
+console; you can temporarily change that appender to a regular `ConsoleAppender`, especially while
+debugging tests, but avoid committing that change.
 
 When you add or review new code, take a moment to run the tests in `DEBUG` mode and check if the
 output looks good.
 
 ### Fair usage of Stream API
 
-Please use the Stream API with parsimony. Streams were designed for *data 
-processing*, not to make collection traversals "functional".
+Please use the Stream API with parsimony. Streams were designed for *data processing*, not to make 
+collection traversals "functional".
 
 ### Never assume a specific format for `toString()`
 
@@ -174,7 +232,7 @@ it to produce CQL literals.
 
 Static imports are encouraged in a couple of places to make assertions more fluid:
 
-* AssertJ's `assertThat` / `fail`.
+* All AssertJ's methods.
 * All Mockito methods.
 
 Test methods names use lower snake case, generally start with `should`, and clearly indicate the
@@ -202,27 +260,6 @@ run:
 ```
 mvn license:format
 ```
-
-## Pre-commit hook
- 
-Ensure `pre-commit.sh` is executable, then install it:
-
-```
-chmod +x ./pre-commit.sh
-ln -s pre-commit.sh .git/hooks/pre-commit
-```
-
-The pre-commit hook will only allow commits if:
- 
-* All files to be committed have the expected license headers;
-* All source files to be committed are properly formatted;
-* All unit tests pass. 
-
-Note that the pre-commit hook will stash all files that are not staged
-for commit, then restore them. This way, the hook script tests
-really what is about to be committed.
-
-The pre-commit hook is also a good reminder to keep the test suite short.
 
 ## Commits
 
@@ -290,7 +327,8 @@ Example:
 
 - [new feature] DAT-14: Implement configuration service.
 
-The first commit message should reference the JIRA issue for automatic linking where applicable. The recommended template for the commit title is:
+The first commit message should reference the JIRA issue for automatic linking where applicable. 
+The recommended template for the commit title is:
 
     DAT-XXX: Issue title
 

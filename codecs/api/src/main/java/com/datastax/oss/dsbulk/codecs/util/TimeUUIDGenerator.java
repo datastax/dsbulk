@@ -11,7 +11,7 @@ package com.datastax.oss.dsbulk.codecs.util;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.datastax.oss.driver.shaded.guava.common.base.Charsets;
-import com.datastax.oss.dsbulk.commons.platform.PlatformUtils;
+import com.datastax.oss.dsbulk.commons.utils.PlatformUtils;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;

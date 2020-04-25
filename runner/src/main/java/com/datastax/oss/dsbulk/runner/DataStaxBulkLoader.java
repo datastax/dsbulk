@@ -8,7 +8,6 @@
  */
 package com.datastax.oss.dsbulk.runner;
 
-import com.datastax.oss.driver.shaded.guava.common.collect.BiMap;
 import com.datastax.oss.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.oss.dsbulk.commons.utils.ConsoleUtils;
 import com.datastax.oss.dsbulk.commons.utils.ThrowableUtils;
