@@ -1,129 +1,202 @@
-DSE Bulk Utility License Terms
 
-Last Updated:  December 12, 2019
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
 
-PLEASE READ THIS DATASTAX BULK UTILITY TERMS (“AGREEMENT”) CAREFULLY. BY
-CLICKING A BOX INDICATING ACCEPTANCE, DOWNLOADING OR USING THE SOFTWARE
-DOWNLOADED (“Licensed Software”), YOU ACKNOWLEDGE THAT YOU HAVE READ THE TERMS
-AND AGREE TO THEM. IF YOU ARE AGREEING TO THESE TERMS ON BEHALF OF A COMPANY OR
-OTHER LEGAL ENTITY, YOU REPRESENT THAT YOU HAVE THE LEGAL AUTHORITY TO BIND THE
-LEGAL ENTITY TO THESE TERMS. IF YOU DO NOT HAVE SUCH AUTHORITY, OR IF YOU DO NOT
-WISH TO BE BOUND BY THE TERMS, THEN YOU MUST NOT USE THE LICENSED SOFTWARE.
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
 
-1. Software License
+   1. Definitions.
 
-Subject to the terms and conditions of this Agreement, DataStax grants you a
-non-exclusive, non-transferable, non-sublicensable, limited, royalty-free
-license to use the unmodified Licensed Software, without the right to
-re-distribute to any third party. The Licensed Software may be used for: (a)
-writing data to (i) any DataStax product for which you have an active, paid
-subscription and (ii) other Apache CassandraTM or other CQL compatible
-databases; and (b) reading data from (i) any DataStax product for which you have
-an active, paid subscription; (ii)other NoSQL or relational databases; (iii)
-other Apache CassandraTM or other CQL compatible databases, and (iv) other
-sources as may be approved in writing by DataStax.
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
 
-2. Restrictions
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
 
-Licensed Software is confidential and copyrighted. Except as expressly permitted
-under this Agreement, you agree not to assign, distribute, transfer, lease,
-disassemble, decompile, reverse engineer, modify, or create derivative works of
-the Licensed Software, in whole or in part, or permit or authorize a third party
-to do so. For the avoidance of doubt, the Licensed Software cannot be used by
-you to run a software-as-a-service offering or other similar offering.
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
 
-3. Ownership
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
 
-The Licensed Software is licensed, not sold. DataStax retains title, ownership,
-and all associated intellectual property of Licensed Software. You will not
-delete or in any manner alter the copyright, trademark, and other proprietary
-rights notices or markings appearing on the Licensed Software as delivered to
-you. If the Licensed Software is being used by or on behalf of the U.S.
-Government, then the U.S. Government’s rights in them will be only those
-specified in this Agreement, consistent with FAR 12.212 and DFARS 227.7202-1
-through 227.7202-4, as applicable.
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
 
-4. Term
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
 
-This Agreement is effective until terminated. DataStax reserves the right, in
-its sole discretion, to terminate this Agreement upon 30-days’ written notice.
-You may terminate this Agreement at any time by destroying all copies of
-Licensed Software. This Agreement will terminate immediately without notice from
-DataStax if you fail to comply with any provision of this Agreement. Either
-party may terminate this Agreement immediately should any Licensed Software
-become, or in either party’s opinion be likely to become, the subject of a claim
-of infringement of any intellectual property right. Upon termination, you must
-destroy all copies of Licensed Software.
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
 
-5. Feedback
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
 
-If you provide any suggestions, feedback, or improvements to the Licensed
-Software, DataStax will have the right to use and have others use such
-suggestions, feedback, and improvements for any purpose. You hereby irrevocably
-assign to DataStax all rights, title and interest in such suggestions, feedback,
-or improvements.
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
 
-6. Disclaimer of Warranty
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
 
-Unless required by applicable law or agreed to in writing, DataStax provides
-Licensed Software on an “as-is” basis. EXCEPT AS EXPRESSLY PROVIDED IN THIS
-AGREEMENT, DATASTAX PROVIDES NO OTHER WARRANTIES REGARDING THE LICENSED
-SOFTWARE, AND TO THE FULLEST EXTENT PERMITTED BY LAW DISCLAIMS ALL OTHER
-WARRANTIES, TERMS AND CONDITIONS, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
-TO ANY IMPLIED WARRANTIES AND CONDITIONS OF MERCHANTABILITY, QUALITY, FITNESS
-FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT, AND ANY WARRANTIES, TERMS AND
-CONDITIONS ARISING OUT OF COURSE OF DEALING OR USAGE OF TRADE. NO ADVICE OR
-INFORMATION, WHETHER ORAL OR WRITTEN, OBTAINED FROM DATASTAX OR ELSEWHERE WILL
-CREATE ANY WARRANTY, TERM OR CONDITION UNLESS EXPRESSLY STATED IN THIS
-AGREEMENT.
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
 
-7. Limitation of Liability
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
 
-To the fullest extent permitted by applicable law, in no event shall DataStax be
-liable for the cost of procurement of substitute goods or technology, loss of
-profits, or for any special, consequential, incidental, punitive or indirect
-damages on any theory of liability, whether in contract, tort, strict liability
-or otherwise, even if advised of the possibility of such damages. To the fullest
-extent permitted by applicable law, in no event shall the total liability of
-DataStax to you under this Agreement exceed one hundred US dollars ($100.00).
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
 
-8. Miscellaneous
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
 
-8.1. Assignment. You may not assign this Agreement by operation of law or
-otherwise. DataStax may assign this Agreement upon written notice.
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
 
-8.2. Entire Agreement. This Agreement constitutes the complete Agreement between
-the parties and supersedes all prior or contemporaneous agreements or
-representations, written or oral, concerning the subject matter of this
-Agreement. No modification of this Agreement will be binding, unless in writing
-and signed by an authorized representative of each party.
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
 
-8.3. Export Controls. By using the Licensed Software, you agree to comply with
-all import, export, and re-export restrictions and regulations of the United
-States and other countries.
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
 
-8.4. Inspection. During the term of this Agreement and for one year thereafter,
-DataStax or its designated agent may inspect your facilities and records to
-verify your compliance with the Agreement. Any such inspection will take place
-only during your normal business hours and upon no less than 15 days prior
-written notice.
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
 
-8.5. Governing Law. This Agreement is to be construed in accordance with the
-laws of the State of California and controlling U.S. federal laws, without
-regard to the choice of law rules of any jurisdiction.
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
 
-8.6. Severability and Waiver. If any provision of this Agreement (or any portion
-hereof) is held to be unenforceable, this Agreement will remain in effect with
-the provision omitted, unless omission would frustrate the intent of the
-parties. The waiver by either party of any default or breach of this Agreement
-will not constitute a waiver of any other or subsequent default or breach.
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
 
-8.7. Third Party Code. Additional copyright notices and license terms that may
-be applicable to portions of the Licensed Software are set forth, if any, in a
-THIRD-PARTY.txt file.
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
 
-9. Questions
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
 
-If you have questions, please contact us here: www.datastax.com/contact.
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
 
-Apache Cassandra is a trademark of The Apache Software Foundation
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.

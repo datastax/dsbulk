@@ -1,10 +1,17 @@
 /*
  * Copyright DataStax, Inc.
  *
- * This software is subject to the below license agreement.
- * DataStax may make changes to the agreement from time to time,
- * and will post the amended terms at
- * https://www.datastax.com/terms/datastax-dse-bulk-utility-license-terms.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package com.datastax.oss.dsbulk.workflow.api.log;
 
