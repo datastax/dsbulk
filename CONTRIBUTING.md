@@ -19,6 +19,8 @@ DSBulk code is divided in several modules:
     1. The [dsbulk-codecs-api](./codecs/api) submodule contains an API for codec handling in DSBulk.
     2. The [dsbulk-codecs-text](./codecs/text) submodule contains implementations of that API for 
        plain text and Json.
+    3. The [dsbulk-codecs-jdk](./codecs/jdk) submodule contains implementations of that API for 
+       converting to and from common JDK types: Boolean, Number, Temporal, Collections, etc.
 3. [dsbulk-compression](./compression): This module contains utilities for reading and writing to 
    compressed files.
 4. [dsbulk-connectors](./connectors): Connectors form a pluggable abstraction that allows DSBulk to 
