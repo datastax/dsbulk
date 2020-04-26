@@ -55,7 +55,8 @@ DSBulk code is divided in several modules:
     5. The [dsbulk-workflow-count](./workflow/count) submodule contains the Count Workflow.
 11. [dsbulk-runner](./runner): This module contains the DSBulk's runner, and a parser for command 
    lines.
-12. [dsbulk-docs](./docs): This module generates DSBulk's documentation. 
+12. [dsbulk-docs](./docs): This module generates DSBulk's in-tree documentation, template files and
+    javadocs. 
 13. [dsbulk-distribution](./distribution): This module assembles DSBulk's binary distributions.  
 14. [dsbulk-tests](./tests): This module contains test utilities for DSBulk.
 
