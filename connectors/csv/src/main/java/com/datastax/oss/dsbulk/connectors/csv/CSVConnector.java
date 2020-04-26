@@ -63,8 +63,8 @@ import reactor.core.publisher.FluxSink;
  * handler} installed for it. For file URLs, it is also capable of reading several files at once
  * from a given root directory.
  *
- * <p>This connector is highly configurable; see its {@code reference.conf} file, bundled within its
- * jar archive, for detailed information.
+ * <p>This connector is highly configurable; see its {@code dsbulk-reference.conf} file, bundled
+ * within its jar archive, for detailed information.
  */
 public class CSVConnector extends AbstractFileBasedConnector {
 

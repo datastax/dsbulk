@@ -47,9 +47,11 @@ public class HelpEmitter {
 
   public static void emitGlobalHelp(@Nullable String connectorName) {
 
-    Config referenceConfig = ConfigUtils.createReferenceConfig();
-
     Map<String, SettingsGroup> groups = SettingsGroupFactory.createDSBulkConfigurationGroups(false);
+
+    Config referenceConfig =
+        ConfigUtils.standaloneDSBulkReference()
+            .withFallback(ConfigUtils.standaloneDriverReference());
 
     Map<String, String> longToShortOptions =
         ShortcutsFactory.createShortcutsMap(referenceConfig, connectorName).inverse();
@@ -106,8 +108,6 @@ public class HelpEmitter {
 
   public static void emitSectionHelp(@NonNull String sectionName, @Nullable String connectorName) {
 
-    Config referenceConfig = ConfigUtils.createReferenceConfig();
-
     boolean driverSection = sectionName.equals("datastax-java-driver");
 
     Map<String, SettingsGroup> groups =
@@ -125,6 +125,10 @@ public class HelpEmitter {
     if (sectionName.startsWith("dsbulk.connector.")) {
       connectorName = sectionName.substring("dsbulk.connector.".length());
     }
+
+    Config referenceConfig =
+        ConfigUtils.standaloneDSBulkReference()
+            .withFallback(ConfigUtils.standaloneDriverReference());
 
     Map<String, String> longToShortOptions =
         ShortcutsFactory.createShortcutsMap(referenceConfig, connectorName).inverse();

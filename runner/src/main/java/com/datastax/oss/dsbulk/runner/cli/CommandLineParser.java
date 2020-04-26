@@ -79,6 +79,7 @@ public class CommandLineParser {
 
     checkHelpRequest(connectorName);
 
+    ConfigFactory.invalidateCaches();
     Config referenceConfig = ConfigUtils.createReferenceConfig();
     Config applicationConfig = ConfigUtils.createApplicationConfig(applicationPath);
 

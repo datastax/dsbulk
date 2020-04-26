@@ -56,14 +56,16 @@ public class SettingsDocumentor {
     try (PrintWriter out =
         new PrintWriter(
             Files.newBufferedWriter(filePath, UTF_8, WRITE, CREATE, TRUNCATE_EXISTING))) {
-      Config referenceConfig = ConfigUtils.createReferenceConfig();
       Map<String, SettingsGroup> groups =
           SettingsGroupFactory.createDSBulkConfigurationGroups(true);
       SettingsGroup driverGroup = groups.remove("datastax-java-driver");
+      Config referenceConfig =
+          ConfigUtils.standaloneDSBulkReference()
+              .withFallback(ConfigUtils.standaloneDriverReference());
       Map<String, String> longToShortOptions = createLongToShortOptions(referenceConfig);
       printTitle(out);
       printLinks(out, groups);
-      printDsbulkSections(out, referenceConfig, groups, longToShortOptions);
+      printDSBulkSections(out, referenceConfig, groups, longToShortOptions);
       printDriverSection(out, referenceConfig, driverGroup, longToShortOptions);
     }
   }
@@ -91,7 +93,7 @@ public class SettingsDocumentor {
         "%s<a href=\"#%s\">%s</a><br>%n", tocIndent(""), "datastax-java-driver", "Driver Settings");
   }
 
-  private static void printDsbulkSections(
+  private static void printDSBulkSections(
       PrintWriter out,
       Config referenceConfig,
       Map<String, SettingsGroup> groups,

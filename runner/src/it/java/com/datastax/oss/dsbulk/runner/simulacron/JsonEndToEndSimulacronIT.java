@@ -30,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
+import com.datastax.oss.dsbulk.commons.config.ConfigUtils;
 import com.datastax.oss.dsbulk.connectors.api.ConnectorFeature;
 import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.datastax.oss.dsbulk.connectors.json.JsonConnector;
@@ -681,7 +682,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
             settings =
                 ConfigFactory.parseString(
                         "url = " + StringUtils.quoteJson(unloadDir) + ", maxConcurrentFiles = 4")
-                    .withFallback(ConfigFactory.load().getConfig("dsbulk.connector.json"));
+                    .withFallback(
+                        ConfigUtils.createReferenceConfig().getConfig("dsbulk.connector.json"));
             super.configure(settings, read);
           }
 

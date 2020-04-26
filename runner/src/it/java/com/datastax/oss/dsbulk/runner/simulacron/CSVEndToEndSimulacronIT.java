@@ -30,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
+import com.datastax.oss.dsbulk.commons.config.ConfigUtils;
 import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.datastax.oss.dsbulk.connectors.csv.CSVConnector;
 import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader;
@@ -777,7 +778,8 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
                         "url = "
                             + quoteJson(unloadDir)
                             + ", header = false, maxConcurrentFiles = 4")
-                    .withFallback(ConfigFactory.load().getConfig("dsbulk.connector.csv"));
+                    .withFallback(
+                        ConfigUtils.createReferenceConfig().getConfig("dsbulk.connector.csv"));
             super.configure(settings, read);
           }
 

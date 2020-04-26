@@ -160,7 +160,7 @@ public class ConfigurationFileCreator {
     pw.println("dsbulk {");
     pw.println();
 
-    Config referenceConfig = ConfigUtils.createReferenceConfig();
+    Config referenceConfig = ConfigUtils.standaloneDSBulkReference();
 
     Map<String, SettingsGroup> groups = SettingsGroupFactory.createDSBulkConfigurationGroups(false);
 

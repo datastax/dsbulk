@@ -90,8 +90,20 @@ public class ConfigUtils {
   }
 
   /**
-   * Invalidates caches and creates a resolved config containing only the driver settings that
-   * DSBulk overrides.
+   * Creates a resolved config containing only DSBulk settings.
+   *
+   * <p>The reference config is obtained from all classpath resources named dsbulk-reference.conf.
+   *
+   * <p>This method is only useful for documentation purposes.
+   *
+   * @return a resolved reference config containing only the driver settings that DSBulk overrides.
+   */
+  public static Config standaloneDSBulkReference() {
+    return ConfigFactory.parseResourcesAnySyntax("dsbulk-reference").resolve();
+  }
+
+  /**
+   * Creates a resolved config containing only the driver settings that DSBulk overrides.
    *
    * <p>The reference config is obtained from all classpath resources named driver-reference.conf.
    *
@@ -100,20 +112,18 @@ public class ConfigUtils {
    * @return a resolved reference config containing only the driver settings that DSBulk overrides.
    */
   public static Config standaloneDriverReference() {
-    ConfigFactory.invalidateCaches();
     return ConfigFactory.parseResourcesAnySyntax("driver-reference").resolve();
   }
 
   /**
-   * Invalidates caches and creates a resolved reference config for DSBulk.
+   * Creates a resolved reference config for DSBulk.
    *
    * <p>The reference config is obtained from the following stack:
    *
    * <ol>
-   *   <li>All classpath resources named dsbulk-reference.conf: DSBulk specific settings and driver
-   *       overrides.
-   *   <li>All classpath resources named dse-reference.conf: DSE driver specific settings.
-   *   <li>All classpath resources named reference.conf: OSS driver settings.
+   *   <li>All classpath resources named dsbulk-reference.conf: DSBulk specific settings.
+   *   <li>All classpath resources named driver-reference.conf: DSBulk driver overrides.
+   *   <li>All classpath resources named reference.conf: Java driver settings.
    * </ol>
    *
    * @return a resolved reference config for DSBulk
@@ -122,7 +132,7 @@ public class ConfigUtils {
   public static Config createReferenceConfig() {
     // parse errors should not happen here
     return ConfigFactory.parseResourcesAnySyntax("dsbulk-reference")
-        .withFallback(ConfigFactory.parseResourcesAnySyntax("dse-reference"))
+        .withFallback(ConfigFactory.parseResourcesAnySyntax("driver-reference"))
         .withFallback(ConfigFactory.defaultReference())
         .resolve();
   }

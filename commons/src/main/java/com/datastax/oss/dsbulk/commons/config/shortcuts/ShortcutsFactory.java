@@ -40,7 +40,7 @@ public class ShortcutsFactory {
    */
   @NonNull
   public static BiMap<String, String> createShortcutsMap() {
-    return createShortcutsMap(ConfigUtils.createReferenceConfig(), null);
+    return createShortcutsMap(ConfigUtils.standaloneDSBulkReference(), null);
   }
 
   /**

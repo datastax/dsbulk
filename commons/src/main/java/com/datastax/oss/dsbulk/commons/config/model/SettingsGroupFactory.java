@@ -73,7 +73,7 @@ public class SettingsGroupFactory {
    * @param includeDriver Whether to include a driver section or not.
    */
   public static Map<String, SettingsGroup> createDSBulkConfigurationGroups(boolean includeDriver) {
-    Config referenceConfig = ConfigUtils.createReferenceConfig();
+    Config referenceConfig = ConfigUtils.standaloneDSBulkReference();
     List<String> commonSettings = parseCommonSettings(referenceConfig);
     List<String> preferredSettings = parsePreferredSettings(referenceConfig, commonSettings);
     SettingsComparator comparator = new SettingsComparator(preferredSettings);

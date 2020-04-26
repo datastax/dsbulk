@@ -38,6 +38,7 @@ import com.datastax.oss.dsbulk.tests.utils.FileUtils;
 import com.datastax.oss.dsbulk.tests.utils.StringUtils;
 import com.datastax.oss.dsbulk.workflow.api.WorkflowProvider;
 import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
@@ -91,8 +92,10 @@ class DataStaxBulkLoaderTest {
     FileUtils.deleteDirectory(Paths.get("./logs"));
   }
 
+  @BeforeEach
   @AfterEach
-  void clearConfigFileProperty() {
+  void resetConfig() {
+    ConfigFactory.invalidateCaches();
     System.clearProperty("config.file");
   }
 
