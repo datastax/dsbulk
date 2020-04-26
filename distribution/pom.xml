@@ -180,12 +180,7 @@
               <skip>false</skip>
             </configuration>
           </plugin>
-          <plugin>
-            <artifactId>maven-deploy-plugin</artifactId>
-            <configuration>
-              <skip>false</skip>
-            </configuration>
-          </plugin>
+          <!-- Do not deploy binaries as they are too big for some Maven public repos -->
         </plugins>
       </build>
     </profile>
