@@ -21,7 +21,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 /**
- * An abstraction around an SNI Proxy server acting as an entry point to a DataStax Apollo Cloud
+ * An abstraction around an SNI Proxy server acting as an entry point to a DataStax Astra Cloud
  * database.
  *
  * <p>The SNI proxy server Docker image must be previously installed prior to using this

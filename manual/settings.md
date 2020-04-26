@@ -142,7 +142,7 @@ If the host is a DNS name that resolves to multiple A-records, all the correspon
 
 The heuristic to determine whether or not a contact point is in the form "host" or "host:port" is not 100% accurate for some IPv6 addresses; you should avoid ambiguous IPv6 addresses such as `fe80::f861:3eff:fe1d:1234`, because such a string can be seen either as a combination of IP `fe80::f861:3eff:fe1d` with port 1234, or as IP `fe80::f861:3eff:fe1d:1234` without port. In such cases, DSBulk will not change the contact point. This issue can be avoided by providing IPv6 addresses in full form, e.g. if instead of `fe80::f861:3eff:fe1d:1234` you provide `fe80:0:0:0:0:f861:3eff:fe1d:1234`, then the string is unequivocally parsed as IP `fe80:0:0:0:0:f861:3eff:fe1d` with port 1234.
 
-Note: on Cloud deployments, DSBulk automatically sets this option to an empty list, as contact points are not allowed to be explicitly provided when connecting to DataStax Apollo databases.
+Note: on Cloud deployments, DSBulk automatically sets this option to an empty list, as contact points are not allowed to be explicitly provided when connecting to DataStax Astra databases.
 
 Default: **["127.0.0.1:9042"]**.
 
@@ -154,7 +154,7 @@ Default: **9042**.
 
 #### -b,<br />--driver.basic.cloud.secure-connect-bundle<br />--datastax-java-driver.basic.cloud.secure-connect-bundle _&lt;string&gt;_
 
-The location of the secure bundle used to connect to a Datastax Apollo database. This setting must be a path on the local filesystem or a valid URL.
+The location of the secure bundle used to connect to a Datastax Astra database. This setting must be a path on the local filesystem or a valid URL.
 
 Examples:
 
@@ -166,7 +166,7 @@ Examples:
     "file:/a/path/to/bundle.zip"   # URL with file protocol
     "http://host.com/bundle.zip"   # URL with HTTP protocol
 
-Note: if you set this to a non-null value, DSBulk assumes that you are connecting to an DataStax Apollo database; in this case, you should not set any of the following settings because they are not compatible with Cloud deployments:
+Note: if you set this to a non-null value, DSBulk assumes that you are connecting to an DataStax Astra database; in this case, you should not set any of the following settings because they are not compatible with Cloud deployments:
 
 - `datastax-java-driver.basic.contact-points`
 - `datastax-java-driver.basic.request.consistency`
@@ -1333,7 +1333,7 @@ If the host is a DNS name that resolves to multiple A-records, all the correspon
 
 The heuristic to determine whether or not a contact point is in the form "host" or "host:port" is not 100% accurate for some IPv6 addresses; you should avoid ambiguous IPv6 addresses such as `fe80::f861:3eff:fe1d:1234`, because such a string can be seen either as a combination of IP `fe80::f861:3eff:fe1d` with port 1234, or as IP `fe80::f861:3eff:fe1d:1234` without port. In such cases, DSBulk will not change the contact point. This issue can be avoided by providing IPv6 addresses in full form, e.g. if instead of `fe80::f861:3eff:fe1d:1234` you provide `fe80:0:0:0:0:f861:3eff:fe1d:1234`, then the string is unequivocally parsed as IP `fe80:0:0:0:0:f861:3eff:fe1d` with port 1234.
 
-Note: on Cloud deployments, DSBulk automatically sets this option to an empty list, as contact points are not allowed to be explicitly provided when connecting to DataStax Apollo databases.
+Note: on Cloud deployments, DSBulk automatically sets this option to an empty list, as contact points are not allowed to be explicitly provided when connecting to DataStax Astra databases.
 
 Default: **["127.0.0.1:9042"]**.
 
@@ -1345,7 +1345,7 @@ Default: **9042**.
 
 #### -b,<br />--driver.basic.cloud.secure-connect-bundle<br />--datastax-java-driver.basic.cloud.secure-connect-bundle _&lt;string&gt;_
 
-The location of the secure bundle used to connect to a Datastax Apollo database. This setting must be a path on the local filesystem or a valid URL.
+The location of the secure bundle used to connect to a Datastax Astra database. This setting must be a path on the local filesystem or a valid URL.
 
 Examples:
 
@@ -1357,7 +1357,7 @@ Examples:
     "file:/a/path/to/bundle.zip"   # URL with file protocol
     "http://host.com/bundle.zip"   # URL with HTTP protocol
 
-Note: if you set this to a non-null value, DSBulk assumes that you are connecting to an DataStax Apollo database; in this case, you should not set any of the following settings because they are not compatible with Cloud deployments:
+Note: if you set this to a non-null value, DSBulk assumes that you are connecting to an DataStax Astra database; in this case, you should not set any of the following settings because they are not compatible with Cloud deployments:
 
 - `datastax-java-driver.basic.contact-points`
 - `datastax-java-driver.basic.request.consistency`

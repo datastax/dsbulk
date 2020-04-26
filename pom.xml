@@ -23,7 +23,7 @@
   <version>1.6.0-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>DataStax Bulk Loader</name>
-  <description>A unified tool for loading into and unloading from DSE storage engines (i.e., Cassandra/Apollo and DataStax Enterprise).</description>
+  <description>A unified tool for loading into and unloading from DSE storage engines (i.e., Cassandra/Astra and DataStax Enterprise).</description>
   <url>https://github.com/riptano/dsbulk</url>
   <inceptionYear>2017</inceptionYear>
   <organization>

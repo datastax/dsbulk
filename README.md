@@ -2,7 +2,7 @@
 
 The DataStax Bulk Loader tool (DSBulk) is a unified tool for loading into and unloading from 
 Cassandra-compatible storage engines, i.e., OSS Apache Cassandra&reg;, DataStax Distribution of
-Apache Cassandra (DDAC), DataStax Apollo and DataStax Enterprise (DSE).
+Apache Cassandra (DDAC), DataStax Astra and DataStax Enterprise (DSE).
 
 DSBulk provides the ability to load large amounts of data 
 into the database efficiently and reliably as well as conversely unload data from the
