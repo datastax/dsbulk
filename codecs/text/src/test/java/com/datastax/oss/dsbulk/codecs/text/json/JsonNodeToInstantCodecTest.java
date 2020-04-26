@@ -15,8 +15,8 @@
  */
 package com.datastax.oss.dsbulk.codecs.text.json;
 
-import static com.datastax.oss.dsbulk.codecs.text.TextConversionContext.JSON_NODE_TYPE;
 import static com.datastax.oss.dsbulk.codecs.text.json.JsonCodecUtils.JSON_NODE_FACTORY;
+import static com.datastax.oss.dsbulk.codecs.text.json.JsonCodecUtils.JSON_NODE_TYPE;
 import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat;
 import static java.util.concurrent.TimeUnit.MINUTES;
 

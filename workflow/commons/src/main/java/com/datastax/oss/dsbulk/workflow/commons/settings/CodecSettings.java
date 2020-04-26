@@ -17,6 +17,7 @@ package com.datastax.oss.dsbulk.workflow.commons.settings;
 
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
+import com.datastax.oss.dsbulk.codecs.ConversionContext;
 import com.datastax.oss.dsbulk.codecs.ConvertingCodecFactory;
 import com.datastax.oss.dsbulk.codecs.text.TextConversionContext;
 import com.datastax.oss.dsbulk.codecs.text.json.JsonCodecUtils;
@@ -132,8 +133,9 @@ public class CodecSettings {
 
   public ConvertingCodecFactory createCodecFactory(
       boolean allowExtraFields, boolean allowMissingFields) {
-    TextConversionContext context =
+    ConversionContext context =
         new TextConversionContext()
+            .setObjectMapper(objectMapper)
             .setLocale(locale)
             .setNullStrings(nullStrings)
             .setBooleanStrings(booleanStrings)
@@ -149,7 +151,6 @@ public class CodecSettings {
             .setTimeUnit(timeUnit)
             .setEpoch(epoch)
             .setTimeUUIDGenerator(generator)
-            .setObjectMapper(objectMapper)
             .setAllowExtraFields(allowExtraFields)
             .setAllowMissingFields(allowMissingFields);
     return new ConvertingCodecFactory(context);

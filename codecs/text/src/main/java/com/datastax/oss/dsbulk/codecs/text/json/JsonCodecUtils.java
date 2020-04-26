@@ -15,14 +15,18 @@
  */
 package com.datastax.oss.dsbulk.codecs.text.json;
 
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.math.BigDecimal;
 
 public class JsonCodecUtils {
+
+  public static final GenericType<JsonNode> JSON_NODE_TYPE = GenericType.of(JsonNode.class);
 
   /**
    * A {@link JsonNodeFactory} that preserves {@link BigDecimal} scales, used to generate Json

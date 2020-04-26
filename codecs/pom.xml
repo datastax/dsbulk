@@ -29,6 +29,7 @@
   <description>Codecs for the DataStax Bulk Loader.</description>
   <modules>
     <module>api</module>
+    <module>jdk</module>
     <module>text</module>
   </modules>
 </project>

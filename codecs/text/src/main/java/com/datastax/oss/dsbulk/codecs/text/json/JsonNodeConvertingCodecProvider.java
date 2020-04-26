@@ -20,7 +20,6 @@ import static com.datastax.oss.dsbulk.codecs.text.TextConversionContext.ALLOW_MI
 import static com.datastax.oss.dsbulk.codecs.text.TextConversionContext.BOOLEAN_INPUT_WORDS;
 import static com.datastax.oss.dsbulk.codecs.text.TextConversionContext.BOOLEAN_NUMBERS;
 import static com.datastax.oss.dsbulk.codecs.text.TextConversionContext.EPOCH;
-import static com.datastax.oss.dsbulk.codecs.text.TextConversionContext.JSON_NODE_TYPE;
 import static com.datastax.oss.dsbulk.codecs.text.TextConversionContext.LOCAL_DATE_FORMAT;
 import static com.datastax.oss.dsbulk.codecs.text.TextConversionContext.LOCAL_TIME_FORMAT;
 import static com.datastax.oss.dsbulk.codecs.text.TextConversionContext.NULL_STRINGS;
@@ -32,6 +31,7 @@ import static com.datastax.oss.dsbulk.codecs.text.TextConversionContext.TIMESTAM
 import static com.datastax.oss.dsbulk.codecs.text.TextConversionContext.TIME_UNIT;
 import static com.datastax.oss.dsbulk.codecs.text.TextConversionContext.TIME_UUID_GENERATOR;
 import static com.datastax.oss.dsbulk.codecs.text.TextConversionContext.TIME_ZONE;
+import static com.datastax.oss.dsbulk.codecs.text.json.JsonCodecUtils.JSON_NODE_TYPE;
 import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.ASCII;
 import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.BIGINT;
 import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.BLOB;

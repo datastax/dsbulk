@@ -16,7 +16,6 @@
 package com.datastax.oss.dsbulk.codecs;
 
 import com.datastax.oss.driver.api.core.type.DataType;
-import com.datastax.oss.driver.api.core.type.codec.CodecNotFoundException;
 import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import com.datastax.oss.driver.internal.core.type.codec.registry.DefaultCodecRegistry;
@@ -34,7 +33,7 @@ public class ConvertingCodecFactory {
   private final ConversionContext context;
 
   public ConvertingCodecFactory() {
-    this(DefaultCodecRegistry.DEFAULT, new ConversionContext());
+    this(DefaultCodecRegistry.DEFAULT, new CommonConversionContext());
   }
 
   public ConvertingCodecFactory(@NonNull ConversionContext context) {
@@ -65,7 +64,7 @@ public class ConvertingCodecFactory {
   @NonNull
   public <EXTERNAL, INTERNAL> ConvertingCodec<EXTERNAL, INTERNAL> createConvertingCodec(
       @NonNull DataType cqlType,
-      @NonNull GenericType<? extends EXTERNAL> externalJavaType,
+      @NonNull GenericType<EXTERNAL> externalJavaType,
       boolean rootCodec) {
     for (ConvertingCodecProvider provider : providers) {
       Optional<ConvertingCodec<?, ?>> maybeCodec =
@@ -77,6 +76,13 @@ public class ConvertingCodecFactory {
         return codec;
       }
     }
-    throw new CodecNotFoundException(cqlType, externalJavaType);
+    // If external and internal types are the same, the codec registry, may be able
+    // to create a matching TypeCodec; if that succeeds, wrap the returned code in
+    // an IdempotentConvertingCodec
+    @SuppressWarnings("unchecked")
+    ConvertingCodec<EXTERNAL, INTERNAL> codec =
+        (ConvertingCodec<EXTERNAL, INTERNAL>)
+            new IdempotentConvertingCodec<>(codecRegistry.codecFor(cqlType, externalJavaType));
+    return codec;
   }
 }

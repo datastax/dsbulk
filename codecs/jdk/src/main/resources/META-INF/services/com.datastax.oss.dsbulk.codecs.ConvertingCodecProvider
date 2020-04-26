@@ -1,0 +1,5 @@
+com.datastax.oss.dsbulk.codecs.jdk.bool.BooleanConvertingCodecsProvider
+com.datastax.oss.dsbulk.codecs.jdk.collection.CollectionConvertingCodecsProvider
+com.datastax.oss.dsbulk.codecs.jdk.map.MapConvertingCodecsProvider
+com.datastax.oss.dsbulk.codecs.jdk.number.NumericConvertingCodecsProvider
+com.datastax.oss.dsbulk.codecs.jdk.temporal.TemporalConvertingCodecsProvider
