@@ -25,7 +25,7 @@
   <includeBaseDirectory>true</includeBaseDirectory>
   <fileSets>
     <fileSet>
-      <directory>${project.basedir}/..</directory>
+      <directory>${project.parent.basedir}</directory>
       <outputDirectory>./</outputDirectory>
       <includes>
         <include>README*</include>
@@ -33,11 +33,11 @@
       </includes>
     </fileSet>
     <fileSet>
-      <directory>${project.basedir}/../manual</directory>
+      <directory>${project.parent.basedir}/manual</directory>
       <outputDirectory>manual</outputDirectory>
     </fileSet>
     <fileSet>
-      <directory>${project.basedir}/../bin</directory>
+      <directory>${project.parent.basedir}/bin</directory>
       <outputDirectory>bin</outputDirectory>
       <lineEnding>unix</lineEnding>
       <includes>
@@ -45,7 +45,7 @@
       </includes>
     </fileSet>
     <fileSet>
-      <directory>${project.basedir}/../bin</directory>
+      <directory>${project.parent.basedir}/bin</directory>
       <outputDirectory>bin</outputDirectory>
       <lineEnding>dos</lineEnding>
       <includes>
@@ -64,8 +64,8 @@
       </includes>
     </fileSet>
     <fileSet>
-      <directory>${project.basedir}/../docs/target/site/apidocs</directory>
-      <outputDirectory>./apidocs</outputDirectory>
+      <directory>${project.parent.basedir}/docs/target/site/apidocs</directory>
+      <outputDirectory>apidocs</outputDirectory>
     </fileSet>
   </fileSets>
   <dependencySets>
