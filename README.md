@@ -4,19 +4,36 @@ The DataStax Bulk Loader tool (DSBulk) is a unified tool for loading into and un
 Cassandra-compatible storage engines, i.e., OSS Apache Cassandra&reg;, DataStax Distribution of
 Apache Cassandra (DDAC), DataStax Astra and DataStax Enterprise (DSE).
 
-DSBulk provides the ability to load large amounts of data 
-into the database efficiently and reliably as well as conversely unload data from the
-database. In this release, csv and json file loading/unloading is supported.  
+Out of the box, DSBulk provides the ability to:
+ 
+1. Load (import) large amounts of data into the database efficiently and reliably; 
+2. Unload (export) large amounts of data from the database efficiently and reliably; 
+3. Count elements in a database table: how many rows in total, how many rows per replica and per 
+   token range, and how many rows in the top N largest partitions.
 
-Launch the tool with the appropriate script in the bin directory of
-your distribution. The help text of the tool provides summaries of all 
-supported settings.
+Currently, CSV and Json formats are supported for both loading and unloading data.  
+
+## Documentation
 
 The most up-to-date documentation is available [online][onlineDocs]. 
+
+We also recommend reading the series of blog posts made by 
+[Brian Hess](https://github.com/brianmhess); they target a somewhat older version of DSBulk, but
+most of the contents are still valid and very useful:
+
+1. [DataStax Bulk Loader Pt. 1 — Introduction and Loading]
+2. [DataStax Bulk Loader Pt. 2 — More Loading]
+3. [DataStax Bulk Loader Pt. 3 — Common Settings]
+4. [DataStax Bulk Loader Pt. 4 — Unloading]
+5. [DataStax Bulk Loader Pt. 5 — Counting]
+5. [DataStax Bulk Loader: Examples for Loading From Other Locations]
 
 Developers and contributors: please read our [Contribution Guidelines](./CONTRIBUTING.md).
 
 ## Basic Usage
+
+Launch the tool with the appropriate script in the bin directory of your distribution. The help text 
+of the tool provides summaries of all supported settings.
 
 The `dsbulk` command takes a subcommand argument followed by options:
 
@@ -322,3 +339,10 @@ available on the command-line via the `help` subcommand.
   
 [onlineDocs]:https://docs.datastax.com/en/dsbulk/doc/
 [HOCON]:https://github.com/lightbend/config/blob/master/HOCON.md
+[DataStax Bulk Loader Pt. 1 — Introduction and Loading]: https://www.datastax.com/blog/2019/03/datastax-bulk-loader-introduction-and-loading
+[DataStax Bulk Loader Pt. 2 — More Loading]: https://www.datastax.com/blog/2019/04/datastax-bulk-loader-more-loading
+[DataStax Bulk Loader Pt. 3 — Common Settings]: https://www.datastax.com/blog/2019/04/datastax-bulk-loader-common-settings
+[DataStax Bulk Loader Pt. 4 — Unloading]: https://www.datastax.com/blog/2019/06/datastax-bulk-loader-unloading
+[DataStax Bulk Loader Pt. 5 — Counting]: https://www.datastax.com/blog/2019/07/datastax-bulk-loader-counting
+[DataStax Bulk Loader: Examples for Loading From Other Locations]: https://www.datastax.com/blog/2019/12/datastax-bulk-loader-examples-loading-other-locations
+ 
