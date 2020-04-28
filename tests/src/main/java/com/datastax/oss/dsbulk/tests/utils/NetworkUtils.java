@@ -164,9 +164,9 @@ public class NetworkUtils {
     boolean connectionSuccessful = false;
     try (Socket ignored = new Socket(address, port)) {
       connectionSuccessful = true;
-      LOGGER.debug("Successfully connected");
+      LOGGER.trace("Successfully connected");
     } catch (IOException e) {
-      LOGGER.debug("Connection failed", e);
+      LOGGER.trace("Connection failed", e);
     }
     return connectionSuccessful;
   }
