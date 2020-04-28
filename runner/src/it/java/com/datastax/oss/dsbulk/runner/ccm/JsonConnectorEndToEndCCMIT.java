@@ -296,7 +296,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.allowMissingFields");
     args.add("true");
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isEqualTo(1);
+    assertThat(status).isEqualTo(STATUS_COMPLETED_WITH_ERRORS);
     validateNumberOfBadRecords(4);
     validateExceptionsLog(
         1, "Primary key column pk cannot be mapped to null", "mapping-errors.log");
@@ -338,7 +338,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.allowMissingFields");
     args.add("true");
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    assertThat(status).isEqualTo(1);
+    assertThat(status).isEqualTo(STATUS_COMPLETED_WITH_ERRORS);
     validateNumberOfBadRecords(4);
     validateExceptionsLog(
         1, "Primary key column \"PK\" cannot be mapped to null", "mapping-errors.log");
