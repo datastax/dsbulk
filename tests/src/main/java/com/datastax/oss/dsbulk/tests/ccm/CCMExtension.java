@@ -131,10 +131,11 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
             f -> {
               int attempts = 1;
               while (true) {
+                CCMClusterFactory factory =
+                    CCMClusterFactory.createInstanceForClass(context.getRequiredTestClass());
+                DefaultCCMCluster ccm = null;
                 try {
-                  CCMClusterFactory factory =
-                      CCMClusterFactory.createInstanceForClass(context.getRequiredTestClass());
-                  DefaultCCMCluster ccm = factory.createCCMClusterBuilder().build();
+                  ccm = factory.createCCMClusterBuilder().build();
                   ccm.start();
                   return ccm;
                 } catch (Exception e) {
@@ -143,6 +144,13 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
                     throw e;
                   }
                   LOGGER.error("Could not start CCM cluster, retrying", e);
+                  if (ccm != null) {
+                    try {
+                      ccm.stop();
+                      ccm.remove();
+                    } catch (Exception ignored) {
+                    }
+                  }
                   Uninterruptibles.sleepUninterruptibly(10, SECONDS);
                 }
                 attempts++;
