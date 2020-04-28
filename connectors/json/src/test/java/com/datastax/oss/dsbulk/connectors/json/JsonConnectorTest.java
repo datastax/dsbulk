@@ -250,6 +250,8 @@ class JsonConnectorTest {
       List<Record> actual = Flux.from(connector.read()).collectList().block();
       assertThat(actual).hasSize(1);
       assertThat(actual.get(0).getSource()).isEqualTo(objectMapper.readTree(line));
+      assertThat(actual.get(0).getResource()).isEqualTo(URI.create("std:/"));
+      assertThat(actual.get(0).getPosition()).isEqualTo(1L);
       assertThat(actual.get(0).getFieldValue(new DefaultMappedField("fóô")))
           .isEqualTo(factory.textNode("bàr"));
       assertThat(actual.get(0).getFieldValue(new DefaultMappedField("qïx")))
@@ -1226,6 +1228,11 @@ class JsonConnectorTest {
             factory.textNode("Venture \"Extended Edition\""),
             factory.nullNode(),
             factory.numberNode(4900.00d));
+    assertThat(actual.get(0).getPosition()).isEqualTo(1L);
+    assertThat(actual.get(1).getPosition()).isEqualTo(2L);
+    assertThat(actual.get(2).getPosition()).isEqualTo(3L);
+    assertThat(actual.get(3).getPosition()).isEqualTo(4L);
+    assertThat(actual.get(4).getPosition()).isEqualTo(5L);
   }
 
   private List<Record> createRecords() {

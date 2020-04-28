@@ -48,6 +48,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Signal;
+import reactor.core.publisher.SynchronousSink;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
@@ -229,10 +230,58 @@ public abstract class AbstractFileBasedConnector implements Connector {
    * @return A stream of {@link Record}s; never null but may be empty.
    */
   @NonNull
-  protected abstract Flux<Record> readSingleFile(@NonNull URL url);
+  protected Flux<Record> readSingleFile(@NonNull URL url) {
+    return Flux.generate(
+        () -> newSingleFileReader(url),
+        RecordReader::readNext,
+        recordReader -> {
+          try {
+            recordReader.close();
+          } catch (IOException e) {
+            LOGGER.error("Error closing " + url, e);
+          }
+        });
+  }
 
   /**
-   * Returns a new {@link RecordWriter} instance; cannot be null. Only used when writing. each
+   * Returns a new {@link RecordReader} instance; cannot be null. Only used when reading. Each
+   * invocation of this method is expected to return a newly-allocated instance. The reader is
+   * expected to be initialized already, and ready to emit its first record. It is possible to throw
+   * {@link IOException} if the reader cannot be initialized.
+   */
+  @NonNull
+  protected abstract RecordReader newSingleFileReader(@NonNull URL url) throws IOException;
+
+  /**
+   * A reader for {@link Record}s. Implementors are not expected to deal with thread-safety issues,
+   * these are handled by this class.
+   */
+  protected interface RecordReader extends AutoCloseable {
+
+    /**
+     * Reads the next record and emits the record to the sink, if any. It may also signal
+     * completion, if there are no more records to be read, or an error if the next record cannot be
+     * parsed.
+     *
+     * @param sink The {@link SynchronousSink} that will receive the parsed record, or a termination
+     *     signal.
+     * @return this reader.
+     */
+    @NonNull
+    RecordReader readNext(@NonNull SynchronousSink<Record> sink);
+
+    /**
+     * Closes the underlying file being read. Once this method is called, it is guaranteed that
+     * {@link #readNext(SynchronousSink)} will not be called anymore.
+     *
+     * @throws IOException If an I/O error occurs while closing.
+     */
+    @Override
+    void close() throws IOException;
+  }
+
+  /**
+   * Returns a new {@link RecordWriter} instance; cannot be null. Only used when writing. Each
    * invocation of this method is expected to return a newly-allocated instance.
    */
   @NonNull
