@@ -16,6 +16,11 @@
 package com.datastax.oss.dsbulk.runner.cloud;
 
 import static com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus.STATUS_OK;
+import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED;
+import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.assertStatus;
+import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.createIpByCountryTable;
+import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.validateOutputFiles;
+import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.validatePositionsFile;
 import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.any;
@@ -30,7 +35,6 @@ import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader;
 import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus;
 import com.datastax.oss.dsbulk.runner.tests.CsvUtils;
-import com.datastax.oss.dsbulk.runner.tests.EndToEndUtils;
 import com.datastax.oss.dsbulk.tests.cloud.SNIProxyServer;
 import com.datastax.oss.dsbulk.tests.cloud.SNIProxyServerExtension;
 import com.datastax.oss.dsbulk.tests.logging.LogCapture;
@@ -80,7 +84,7 @@ class EndToEndCloudIT {
 
   @BeforeAll
   void createTables() {
-    EndToEndUtils.createIpByCountryTable(session);
+    createIpByCountryTable(session);
   }
 
   @BeforeEach
@@ -147,15 +151,15 @@ class EndToEndCloudIT {
             "--schema.table",
             "ip_by_country",
             "--schema.mapping",
-            EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED);
+            IP_BY_COUNTRY_MAPPING_INDEXED);
     loadArgs.addAll(Arrays.asList(specificArgs));
     loadArgs.addAll(commonArgs());
     ExitStatus status = new DataStaxBulkLoader(loadArgs.toArray(new String[0])).run();
-    EndToEndUtils.assertStatus(status, STATUS_OK);
+    assertStatus(status, STATUS_OK);
     ResultSet set = session.execute("SELECT * FROM ip_by_country");
     List<Row> results = set.all();
     assertThat(results.size()).isEqualTo(24);
-    EndToEndUtils.validatePositionsFile(CsvUtils.CSV_RECORDS_UNIQUE, 24);
+    validatePositionsFile(CsvUtils.CSV_RECORDS_UNIQUE, 24);
     FileUtils.deleteDirectory(logDir);
   }
 
@@ -174,12 +178,12 @@ class EndToEndCloudIT {
             "--schema.table",
             "ip_by_country",
             "--schema.mapping",
-            EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED);
+            IP_BY_COUNTRY_MAPPING_INDEXED);
     unloadArgs.addAll(Arrays.asList(specificArgs));
     unloadArgs.addAll(commonArgs());
     ExitStatus status = new DataStaxBulkLoader(unloadArgs.toArray(new String[0])).run();
-    EndToEndUtils.assertStatus(status, STATUS_OK);
-    EndToEndUtils.validateOutputFiles(24, unloadDir);
+    assertStatus(status, STATUS_OK);
+    validateOutputFiles(24, unloadDir);
   }
 
   private List<String> commonArgs() {

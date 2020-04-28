@@ -18,6 +18,7 @@ package com.datastax.oss.dsbulk.runner.ccm;
 import static com.datastax.oss.driver.api.core.DefaultProtocolVersion.V4;
 import static com.datastax.oss.driver.internal.core.util.RoutingKey.compose;
 import static com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus.STATUS_OK;
+import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.assertStatus;
 import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.awaitility.Durations.ONE_MINUTE;
@@ -36,7 +37,6 @@ import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import com.datastax.oss.dsbulk.commons.utils.TokenUtils;
 import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader;
 import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus;
-import com.datastax.oss.dsbulk.runner.tests.EndToEndUtils;
 import com.datastax.oss.dsbulk.runner.tests.MockConnector;
 import com.datastax.oss.dsbulk.tests.ccm.CCMCluster;
 import com.datastax.oss.dsbulk.tests.ccm.CCMCluster.Type;
@@ -121,7 +121,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add(table);
 
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, STATUS_OK);
+    assertStatus(status, STATUS_OK);
 
     assertUnload();
   }
@@ -176,7 +176,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add(table + "_mv");
 
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, STATUS_OK);
+    assertStatus(status, STATUS_OK);
 
     assertUnload();
   }
@@ -200,7 +200,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add(StringUtils.quoteJson(String.format("SELECT * FROM \"%s\".\"%s\"", keyspace, table)));
 
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, STATUS_OK);
+    assertStatus(status, STATUS_OK);
 
     assertUnload();
   }
@@ -236,7 +236,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     }
 
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, STATUS_OK);
+    assertStatus(status, STATUS_OK);
 
     assertUnload();
   }
@@ -255,7 +255,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add(table);
 
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, STATUS_OK);
+    assertStatus(status, STATUS_OK);
 
     assertCount(keyspace, table, modes);
   }
@@ -272,7 +272,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add(StringUtils.quoteJson(String.format("SELECT * FROM \"%s\".\"%s\"", keyspace, table)));
 
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, STATUS_OK);
+    assertStatus(status, STATUS_OK);
 
     assertCount(keyspace, table, modes);
   }

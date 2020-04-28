@@ -16,6 +16,10 @@
 package com.datastax.oss.dsbulk.runner.ccm;
 
 import static com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus.STATUS_OK;
+import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED;
+import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.assertStatus;
+import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.createIpByCountryTable;
+import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.validateOutputFiles;
 import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat;
 import static com.datastax.oss.dsbulk.tests.logging.StreamType.STDERR;
 
@@ -25,7 +29,6 @@ import com.datastax.oss.driver.internal.core.ssl.DefaultSslEngineFactory;
 import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader;
 import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus;
 import com.datastax.oss.dsbulk.runner.tests.CsvUtils;
-import com.datastax.oss.dsbulk.runner.tests.EndToEndUtils;
 import com.datastax.oss.dsbulk.tests.ccm.CCMCluster;
 import com.datastax.oss.dsbulk.tests.ccm.DefaultCCMCluster;
 import com.datastax.oss.dsbulk.tests.ccm.annotations.CCMConfig;
@@ -62,7 +65,7 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
 
   @BeforeAll
   void createTables() {
-    EndToEndUtils.createIpByCountryTable(session);
+    createIpByCountryTable(session);
   }
 
   @AfterEach
@@ -88,7 +91,7 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
-    args.add(EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED);
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
     args.add("--datastax-java-driver.advanced.auth-provider.username");
     args.add("cassandra");
     args.add("--datastax-java-driver.advanced.auth-provider.password");
@@ -105,7 +108,7 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, STATUS_OK);
+    assertStatus(status, STATUS_OK);
     assertThat(logs).hasMessageContaining("completed successfully");
     assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
     logs.clear();
@@ -131,7 +134,7 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
-    args.add(EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED);
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
     args.add("--datastax-java-driver.advanced.auth-provider.username");
     args.add("cassandra");
     args.add("--datastax-java-driver.advanced.auth-provider.password");
@@ -148,8 +151,8 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, STATUS_OK);
-    EndToEndUtils.validateOutputFiles(24, unloadDir);
+    assertStatus(status, STATUS_OK);
+    validateOutputFiles(24, unloadDir);
     assertThat(logs).hasMessageContaining("completed successfully");
     assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
   }
@@ -172,7 +175,7 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
-    args.add(EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED);
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
     args.add("--driver.auth.username");
     args.add("cassandra");
     args.add("--driver.auth.password");
@@ -189,7 +192,7 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, STATUS_OK);
+    assertStatus(status, STATUS_OK);
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
     assertThat(logs).hasMessageContaining("completed successfully");
     assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
@@ -214,7 +217,7 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
-    args.add(EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED);
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
     args.add("--driver.auth.username");
     args.add("cassandra");
     args.add("--driver.auth.password");
@@ -231,8 +234,8 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, STATUS_OK);
-    EndToEndUtils.validateOutputFiles(24, unloadDir);
+    assertStatus(status, STATUS_OK);
+    validateOutputFiles(24, unloadDir);
     assertThat(logs).hasMessageContaining("completed successfully");
     assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
   }
@@ -255,7 +258,7 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
-    args.add(EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED);
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
     args.add("--driver.auth.username");
     args.add("cassandra");
     args.add("--driver.auth.password");
@@ -272,7 +275,7 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, STATUS_OK);
+    assertStatus(status, STATUS_OK);
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
     assertThat(logs).hasMessageContaining("completed successfully");
     assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
@@ -297,7 +300,7 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("ip_by_country");
     args.add("--schema.mapping");
-    args.add(EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED);
+    args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
     args.add("--driver.auth.username");
     args.add("cassandra");
     args.add("--driver.auth.password");
@@ -314,8 +317,8 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, STATUS_OK);
-    EndToEndUtils.validateOutputFiles(24, unloadDir);
+    assertStatus(status, STATUS_OK);
+    validateOutputFiles(24, unloadDir);
     assertThat(logs).hasMessageContaining("completed successfully");
     assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
   }
