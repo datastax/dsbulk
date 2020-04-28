@@ -17,24 +17,40 @@
 
 -->
 <configuration>
-  <!--
-  The NOP appender is used by default to allow for testing log messages
-  at different levels while keeping the console clean. If you need to debug
-  some tests, you may want to switch to the ConsoleAppender below.
-  -->
-  <appender name="DEFAULT" class="ch.qos.logback.core.helpers.NOPAppender"/>
-  <!--  <appender name="DEFAULT" class="ch.qos.logback.core.ConsoleAppender">-->
-  <!--    <encoder>-->
-  <!--      <pattern>%-5level [%thread] %logger{40} - %msg%n</pattern>-->
-  <!--    </encoder>-->
-  <!--  </appender>-->
-  <root level="${log.root.level:-OFF}">
-    <appender-ref ref="DEFAULT"/>
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%-5level [%thread] %logger{40} - %msg%n</pattern>
+    </encoder>
+  </appender>
+  <appender name="NOP" class="ch.qos.logback.core.helpers.NOPAppender"/>
+  <root level="${log.root.level:-WARN}">
+    <appender-ref ref="${log.root.appender:-CONSOLE}"/>
   </root>
-  <!--  Uncomment the following to debug CCM tests: -->
-  <!--  &lt;!&ndash; log messages from CCM bridge &ndash;&gt;-->
-  <!--  <logger name="com.datastax.oss.dsbulk.tests.ccm" level="TRACE"/>-->
-  <!--  &lt;!&ndash; log messages from remote CCM process &ndash;&gt;-->
-  <!--  <logger name="dsbulk.ccm.CCM_OUT" level="DEBUG"/>-->
-  <!--  <logger name="dsbulk.ccm.CCM_ERR" level="DEBUG"/>-->
+  <!-- By default, messages from DSBulk and the driver are directed to the NOP
+  appender, which allows for testing log messages at different levels while
+  keeping the console clean. If you need to debug some tests, you may want to
+  switch to the CONSOLE appender. -->
+  <logger name="com.datastax.oss.dsbulk" level="${log.dsbulk.level:-INFO}" additivity="false">
+    <appender-ref ref="${log.dsbulk.appender:-NOP}"/>
+  </logger>
+  <logger name="com.datastax.oss.driver" level="${log.driver.level:-INFO}" additivity="false">
+    <appender-ref ref="${log.driver.appender:-NOP}"/>
+  </logger>
+  <logger name="com.datastax.dse.driver" level="${log.driver.level:-INFO}" additivity="false">
+    <appender-ref ref="${log.driver.appender:-NOP}"/>
+  </logger>
+  <!-- Log messages from DSBulk and driver test infrastructures -->
+  <logger name="com.datastax.oss.dsbulk.tests" level="${log.tests.level:-INFO}" additivity="false">
+    <appender-ref ref="${log.tests.appender:-CONSOLE}"/>
+  </logger>
+  <logger name="com.datastax.oss.driver.api.testinfra" level="${log.tests.level:-INFO}" additivity="false">
+    <appender-ref ref="${log.tests.appender:-CONSOLE}"/>
+  </logger>
+  <!-- Log messages from remote CCM processes -->
+  <logger name="dsbulk.ccm.CCM_OUT" level="${log.ccm.level:-INFO}" additivity="false">
+    <appender-ref ref="${log.ccm.appender:-CONSOLE}"/>
+  </logger>
+  <logger name="dsbulk.ccm.CCM_ERR" level="${log.ccm.level:-INFO}" additivity="false">
+    <appender-ref ref="${log.ccm.appender:-CONSOLE}"/>
+  </logger>
 </configuration>

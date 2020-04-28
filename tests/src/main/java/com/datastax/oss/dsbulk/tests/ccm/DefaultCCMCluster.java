@@ -331,12 +331,12 @@ public class DefaultCCMCluster implements CCMCluster {
         LOGGER.debug("Starting: {} - free memory: {} MB", this, MemoryUtils.getFreeMemoryMB());
       }
       try {
-        execute(CCM_COMMAND + " start " + jvmArgs);
+        execute(CCM_COMMAND + " start --wait-for-binary-proto " + jvmArgs);
         LOGGER.debug("Waiting for binary protocol to show up");
         for (EndPoint node : getInitialContactPoints()) {
           NetworkUtils.waitUntilPortIsUp((InetSocketAddress) node.resolve());
         }
-      } catch (CCMException e) {
+      } catch (RuntimeException e) {
         LOGGER.error("Could not start " + this, e);
         handleCCMException(e);
       }
@@ -355,7 +355,7 @@ public class DefaultCCMCluster implements CCMCluster {
       }
       try {
         execute(CCM_COMMAND + " stop");
-      } catch (CCMException e) {
+      } catch (RuntimeException e) {
         LOGGER.error("Could not stop " + this, e);
         handleCCMException(e);
       }
@@ -380,7 +380,7 @@ public class DefaultCCMCluster implements CCMCluster {
       }
       try {
         execute(CCM_COMMAND + " stop --not-gently");
-      } catch (CCMException e) {
+      } catch (RuntimeException e) {
         LOGGER.error("Could not force stop " + this, e);
         handleCCMException(e);
       }
@@ -400,7 +400,7 @@ public class DefaultCCMCluster implements CCMCluster {
         LOGGER.debug("Removing: {}", this);
         try {
           execute(CCM_COMMAND + " remove");
-        } catch (CCMException e) {
+        } catch (RuntimeException e) {
           LOGGER.error("Could not remove " + this, e);
           handleCCMException(e);
         } finally {
@@ -720,8 +720,7 @@ public class DefaultCCMCluster implements CCMCluster {
     return String.format("CCM cluster %s (%s %s)", clusterName, getClusterType(), getVersion());
   }
 
-  private void handleCCMException(CCMException e) {
-    LOGGER.error("CCM output:\n{}", e.getOut());
+  private void handleCCMException(RuntimeException e) {
     setKeepLogs();
     String errors = checkForErrors();
     if (errors != null && !errors.isEmpty()) {

@@ -18,6 +18,7 @@ package com.datastax.oss.dsbulk.tests.ccm;
 import static com.datastax.oss.dsbulk.tests.ccm.CCMCluster.Type.DSE;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
+import ch.qos.logback.core.joran.spi.JoranException;
 import com.datastax.oss.driver.api.core.metadata.EndPoint;
 import com.datastax.oss.driver.shaded.guava.common.util.concurrent.Uninterruptibles;
 import com.datastax.oss.dsbulk.commons.utils.PlatformUtils;
@@ -25,6 +26,7 @@ import com.datastax.oss.dsbulk.tests.RemoteClusterExtension;
 import com.datastax.oss.dsbulk.tests.ccm.annotations.CCMRequirements;
 import com.datastax.oss.dsbulk.tests.ccm.annotations.CCMVersionRequirement;
 import com.datastax.oss.dsbulk.tests.ccm.factory.CCMClusterFactory;
+import com.datastax.oss.dsbulk.tests.logging.LogUtils;
 import com.datastax.oss.dsbulk.tests.utils.ReflectionUtils;
 import com.datastax.oss.dsbulk.tests.utils.Version;
 import java.lang.reflect.Parameter;
@@ -44,6 +46,8 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
   private static final Logger LOGGER = LoggerFactory.getLogger(CCMExtension.class);
 
   private static final String CCM = "CCM";
+
+  private volatile RuntimeException createError;
 
   @Override
   public ConditionEvaluationResult evaluateExecutionCondition(ExtensionContext context) {
@@ -129,6 +133,9 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
         .getOrComputeIfAbsent(
             CCM,
             f -> {
+              if (createError != null) {
+                throw createError;
+              }
               int attempts = 1;
               while (true) {
                 CCMClusterFactory factory =
@@ -138,12 +145,15 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
                   ccm = factory.createCCMClusterBuilder().build();
                   ccm.start();
                   return ccm;
-                } catch (Exception e) {
+                } catch (RuntimeException e) {
                   if (attempts == 3) {
+                    createError = e;
                     LOGGER.error("Could not start CCM cluster, giving up", e);
                     throw e;
                   }
-                  LOGGER.error("Could not start CCM cluster, retrying", e);
+                  // Increase log verbosity for the next attempts
+                  LogUtils.setLogLevel("com.datastax.oss.dsbulk.tests.ccm", "TRACE");
+                  LogUtils.setLogLevel("dsbulk.ccm", "TRACE");
                   if (ccm != null) {
                     try {
                       ccm.stop();
@@ -151,6 +161,7 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
                     } catch (Exception ignored) {
                     }
                   }
+                  LOGGER.error("Could not start CCM cluster, retrying");
                   Uninterruptibles.sleepUninterruptibly(10, SECONDS);
                 }
                 attempts++;
@@ -163,6 +174,10 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
     CCMCluster ccm = context.getStore(TEST_NAMESPACE).remove(CCM, CCMCluster.class);
     if (ccm != null) {
       ccm.stop();
+      try {
+        LogUtils.resetLogbackConfiguration();
+      } catch (JoranException ignored) {
+      }
     }
   }
 }

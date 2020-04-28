@@ -15,12 +15,16 @@
  */
 package com.datastax.oss.dsbulk.tests.logging;
 
+import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.joran.JoranConfigurator;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.Appender;
 import ch.qos.logback.core.joran.spi.JoranException;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import java.net.URL;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class LogUtils {
@@ -45,6 +49,23 @@ public class LogUtils {
     context.reset();
     if (config != null) {
       configurator.doConfigure(config);
+    }
+  }
+
+  public static void setLogLevel(String loggerName, String level) {
+    ch.qos.logback.classic.Logger logger =
+        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(loggerName);
+    logger.setLevel(Level.toLevel(level));
+  }
+
+  public static void addAppender(String loggerName, String appenderName) {
+    ch.qos.logback.classic.Logger root =
+        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+    Appender<ILoggingEvent> appender = root.getAppender(appenderName);
+    if (appender != null) {
+      ch.qos.logback.classic.Logger logger =
+          (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(loggerName);
+      logger.addAppender(appender);
     }
   }
 }
