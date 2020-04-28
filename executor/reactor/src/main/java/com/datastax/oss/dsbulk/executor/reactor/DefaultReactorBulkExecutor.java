@@ -71,7 +71,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
   public void writeSync(
       Stream<? extends Statement> statements, Consumer<? super WriteResult> consumer)
       throws BulkExecutionException {
-    writeSync(Flux.fromIterable(statements::iterator), consumer);
+    writeSync(Flux.fromStream(statements), consumer);
   }
 
   @Override
@@ -95,7 +95,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
   public CompletableFuture<Void> writeAsync(
       Stream<? extends Statement> statements, Consumer<? super WriteResult> consumer)
       throws BulkExecutionException {
-    return writeAsync(Flux.fromIterable(statements::iterator), consumer);
+    return writeAsync(Flux.fromStream(statements), consumer);
   }
 
   @Override
@@ -135,7 +135,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
   @Override
   public Flux<WriteResult> writeReactive(Stream<? extends Statement> statements)
       throws BulkExecutionException {
-    return writeReactive(Flux.fromIterable(statements::iterator));
+    return writeReactive(Flux.fromStream(statements));
   }
 
   @Override
@@ -154,7 +154,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
   public void readSync(
       Stream<? extends Statement> statements, Consumer<? super ReadResult> consumer)
       throws BulkExecutionException {
-    readSync(Flux.fromIterable(statements::iterator), consumer);
+    readSync(Flux.fromStream(statements), consumer);
   }
 
   @Override
@@ -167,7 +167,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
   public CompletableFuture<Void> readAsync(
       Stream<? extends Statement> statements, Consumer<? super ReadResult> consumer)
       throws BulkExecutionException {
-    return readAsync(Flux.fromIterable(statements::iterator), consumer);
+    return readAsync(Flux.fromStream(statements), consumer);
   }
 
   @Override
@@ -219,7 +219,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
   @Override
   public Flux<ReadResult> readReactive(Stream<? extends Statement> statements)
       throws BulkExecutionException {
-    return readReactive(Flux.fromIterable(statements::iterator));
+    return readReactive(Flux.fromStream(statements));
   }
 
   @Override
