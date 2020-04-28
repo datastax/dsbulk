@@ -15,6 +15,7 @@
  */
 package com.datastax.oss.dsbulk.runner.cloud;
 
+import static com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus.STATUS_OK;
 import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.any;
@@ -27,6 +28,7 @@ import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader;
+import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus;
 import com.datastax.oss.dsbulk.runner.tests.CsvUtils;
 import com.datastax.oss.dsbulk.runner.tests.EndToEndUtils;
 import com.datastax.oss.dsbulk.tests.cloud.SNIProxyServer;
@@ -148,8 +150,8 @@ class EndToEndCloudIT {
             EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED);
     loadArgs.addAll(Arrays.asList(specificArgs));
     loadArgs.addAll(commonArgs());
-    int status = new DataStaxBulkLoader(loadArgs.toArray(new String[0])).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(loadArgs.toArray(new String[0])).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     ResultSet set = session.execute("SELECT * FROM ip_by_country");
     List<Row> results = set.all();
     assertThat(results.size()).isEqualTo(24);
@@ -175,8 +177,8 @@ class EndToEndCloudIT {
             EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED);
     unloadArgs.addAll(Arrays.asList(specificArgs));
     unloadArgs.addAll(commonArgs());
-    int status = new DataStaxBulkLoader(unloadArgs.toArray(new String[0])).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(unloadArgs.toArray(new String[0])).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     EndToEndUtils.validateOutputFiles(24, unloadDir);
   }
 

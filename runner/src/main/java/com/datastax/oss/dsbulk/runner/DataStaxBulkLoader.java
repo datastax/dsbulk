@@ -15,6 +15,13 @@
  */
 package com.datastax.oss.dsbulk.runner;
 
+import static com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus.STATUS_ABORTED_FATAL_ERROR;
+import static com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus.STATUS_ABORTED_TOO_MANY_ERRORS;
+import static com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus.STATUS_COMPLETED_WITH_ERRORS;
+import static com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus.STATUS_CRASHED;
+import static com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus.STATUS_INTERRUPTED;
+import static com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus.STATUS_OK;
+
 import com.datastax.oss.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
 import com.datastax.oss.dsbulk.commons.utils.ConsoleUtils;
 import com.datastax.oss.dsbulk.commons.utils.ThrowableUtils;
@@ -42,12 +49,25 @@ public class DataStaxBulkLoader {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataStaxBulkLoader.class);
 
-  public static final int STATUS_OK = 0;
-  public static final int STATUS_COMPLETED_WITH_ERRORS = 1;
-  public static final int STATUS_ABORTED_TOO_MANY_ERRORS = 2;
-  public static final int STATUS_ABORTED_FATAL_ERROR = 3;
-  public static final int STATUS_INTERRUPTED = 4;
-  public static final int STATUS_CRASHED = 5;
+  public enum ExitStatus {
+    STATUS_OK(0),
+    STATUS_COMPLETED_WITH_ERRORS(1),
+    STATUS_ABORTED_TOO_MANY_ERRORS(2),
+    STATUS_ABORTED_FATAL_ERROR(3),
+    STATUS_INTERRUPTED(4),
+    STATUS_CRASHED(5),
+    ;
+
+    private final int exitCode;
+
+    ExitStatus(int exitCode) {
+      this.exitCode = exitCode;
+    }
+
+    public int exitCode() {
+      return exitCode;
+    }
+  }
 
   /** A filter to exclude some errors from the sanitized message printed to the console. */
   private static final Predicate<Throwable> NO_REACTOR_ERRORS =
@@ -61,15 +81,15 @@ public class DataStaxBulkLoader {
 
   public static void main(String[] args) {
     URL.setURLStreamHandlerFactory(new LoaderURLStreamHandlerFactory());
-    int status = new DataStaxBulkLoader(args).run();
-    System.exit(status);
+    ExitStatus status = new DataStaxBulkLoader(args).run();
+    System.exit(status.exitCode());
   }
 
   public DataStaxBulkLoader(String... args) {
     this.args = args;
   }
 
-  public int run() {
+  public ExitStatus run() {
 
     Workflow workflow = null;
     try {
@@ -127,7 +147,7 @@ public class DataStaxBulkLoader {
   private static class WorkflowThread extends Thread {
 
     private final Workflow workflow;
-    private volatile int status = -1;
+    private volatile ExitStatus status = null;
 
     private WorkflowThread(Workflow workflow) {
       super("workflow-runner");
@@ -199,7 +219,7 @@ public class DataStaxBulkLoader {
     }
   }
 
-  private static int handleUnexpectedError(Workflow workflow, Throwable error) {
+  private static ExitStatus handleUnexpectedError(Workflow workflow, Throwable error) {
     // Reactor framework often wraps InterruptedException.
     if (ThrowableUtils.isInterrupted(error)) {
       return STATUS_INTERRUPTED;

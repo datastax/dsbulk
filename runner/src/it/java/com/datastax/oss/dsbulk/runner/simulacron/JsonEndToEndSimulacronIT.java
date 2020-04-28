@@ -19,6 +19,10 @@ import static com.datastax.oss.driver.api.core.type.DataTypes.BOOLEAN;
 import static com.datastax.oss.driver.api.core.type.DataTypes.FLOAT;
 import static com.datastax.oss.driver.api.core.type.DataTypes.INT;
 import static com.datastax.oss.driver.api.core.type.DataTypes.TEXT;
+import static com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus.STATUS_ABORTED_FATAL_ERROR;
+import static com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus.STATUS_ABORTED_TOO_MANY_ERRORS;
+import static com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus.STATUS_COMPLETED_WITH_ERRORS;
+import static com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus.STATUS_OK;
 import static com.datastax.oss.dsbulk.tests.logging.StreamType.STDERR;
 import static com.datastax.oss.dsbulk.tests.logging.StreamType.STDOUT;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.LOCAL_ONE;
@@ -35,6 +39,7 @@ import com.datastax.oss.dsbulk.connectors.api.ConnectorFeature;
 import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.datastax.oss.dsbulk.connectors.json.JsonConnector;
 import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader;
+import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus;
 import com.datastax.oss.dsbulk.runner.tests.EndToEndUtils;
 import com.datastax.oss.dsbulk.runner.tests.JsonUtils;
 import com.datastax.oss.dsbulk.runner.tests.MockConnector;
@@ -134,8 +139,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED
     };
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     assertThat(logs.getAllMessagesAsString())
         .contains("Records: total: 24, successful: 24, failed: 0")
         .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
@@ -166,8 +171,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED
     };
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     assertThat(logs.getAllMessagesAsString())
         .contains("Records: total: 24, successful: 24, failed: 0")
         .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
@@ -205,8 +210,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED
     };
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     EndToEndUtils.validateQueryCount(simulacron, 0, "INSERT INTO ip_by_country", ONE);
   }
 
@@ -232,8 +237,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED
     };
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     EndToEndUtils.validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", LOCAL_ONE);
   }
 
@@ -259,8 +264,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "{USE_BIG_INTEGER_FOR_INTS = false, USE_BIG_DECIMAL_FOR_FLOATS = false}",
     };
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     EndToEndUtils.validateQueryCount(
         simulacron, 1, "INSERT INTO ks1.table1 (key, value) VALUES (:key, :value)", LOCAL_ONE);
   }
@@ -289,8 +294,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "true"
     };
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_COMPLETED_WITH_ERRORS);
     EndToEndUtils.validateQueryCount(simulacron, 21, "INSERT INTO ip_by_country", LOCAL_ONE);
     EndToEndUtils.validateNumberOfBadRecords(2);
     EndToEndUtils.validateExceptionsLog(2, "Source:", "mapping-errors.log");
@@ -361,8 +366,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED
     };
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_COMPLETED_WITH_ERRORS);
 
     // There are 24 rows of data, but two extra queries due to the retry for the write timeout and
     // the unavailable.
@@ -399,8 +404,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "true"
     };
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_COMPLETED_WITH_ERRORS);
     EndToEndUtils.validateQueryCount(simulacron, 21, "INSERT INTO ip_by_country", LOCAL_ONE);
     EndToEndUtils.validateNumberOfBadRecords(3);
     EndToEndUtils.validateExceptionsLog(3, "Source:", "mapping-errors.log");
@@ -437,8 +442,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "--schema.allowMissingFields",
       "false"
     };
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_ABORTED_TOO_MANY_ERRORS);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_ABORTED_TOO_MANY_ERRORS);
     assertThat(logs.getAllMessagesAsString())
         .contains("aborted: Too many errors, the maximum allowed is 2")
         .contains("Records: total: 3, successful: 0, failed: 3");
@@ -474,8 +479,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "--schema.allowExtraFields",
       "false"
     };
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_ABORTED_TOO_MANY_ERRORS);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_ABORTED_TOO_MANY_ERRORS);
     assertThat(logs.getAllMessagesAsString())
         .contains("aborted: Too many errors, the maximum allowed is 1")
         .contains("Records: total: 3, successful: 1, failed: 2");
@@ -510,8 +515,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED
     };
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     assertThat(logs.getAllMessagesAsString())
         .contains("Records: total: 24, successful: 24, failed: 0")
         .contains("Reads: total: 24, successful: 24, failed: 0");
@@ -545,8 +550,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED
     };
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     EndToEndUtils.validateQueryCount(
         simulacron, 1, EndToEndUtils.SELECT_FROM_IP_BY_COUNTRY, LOCAL_ONE);
     EndToEndUtils.validateOutputFiles(1000, unloadDir);
@@ -588,8 +593,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "NON_NULL"
     };
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     EndToEndUtils.validateQueryCount(
         simulacron,
         1,
@@ -626,8 +631,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED
     };
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_ABORTED_FATAL_ERROR);
     EndToEndUtils.validateQueryCount(
         simulacron, 0, EndToEndUtils.SELECT_FROM_IP_BY_COUNTRY, LOCAL_ONE);
     EndToEndUtils.validatePrepare(simulacron, EndToEndUtils.SELECT_FROM_IP_BY_COUNTRY);
@@ -659,8 +664,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED
     };
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_ABORTED_FATAL_ERROR);
     EndToEndUtils.validateQueryCount(
         simulacron, 0, EndToEndUtils.SELECT_FROM_IP_BY_COUNTRY, LOCAL_ONE);
     EndToEndUtils.validatePrepare(simulacron, EndToEndUtils.SELECT_FROM_IP_BY_COUNTRY);
@@ -725,8 +730,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED
     };
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_ABORTED_FATAL_ERROR);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_ABORTED_FATAL_ERROR);
     assertThat(stdErr.getStreamAsString())
         .contains("failed")
         .containsPattern("output-00000[1-4].json");
@@ -759,8 +764,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED
     };
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     EndToEndUtils.validateQueryCount(
         simulacron, 1, EndToEndUtils.SELECT_FROM_IP_BY_COUNTRY, LOCAL_ONE);
     assertThat(stdOut.getStreamLines().size()).isEqualTo(24);

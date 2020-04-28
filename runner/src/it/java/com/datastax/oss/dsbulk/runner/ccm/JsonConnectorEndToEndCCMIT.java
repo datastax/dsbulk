@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.dsbulk.runner.ccm;
 
+import static com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus.STATUS_COMPLETED_WITH_ERRORS;
+import static com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus.STATUS_OK;
 import static com.datastax.oss.dsbulk.runner.ccm.CSVConnectorEndToEndCCMIT.assertComplexRows;
 import static com.datastax.oss.dsbulk.runner.ccm.CSVConnectorEndToEndCCMIT.checkNumbersWritten;
 import static com.datastax.oss.dsbulk.runner.ccm.CSVConnectorEndToEndCCMIT.checkTemporalsWritten;
@@ -28,6 +30,7 @@ import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.dsbulk.codecs.util.OverflowStrategy;
 import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader;
+import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus;
 import com.datastax.oss.dsbulk.runner.tests.EndToEndUtils;
 import com.datastax.oss.dsbulk.runner.tests.JsonUtils;
 import com.datastax.oss.dsbulk.tests.ccm.CCMCluster;
@@ -122,8 +125,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add(EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED);
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
     FileUtils.deleteDirectory(logDir);
 
@@ -147,7 +150,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED);
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     EndToEndUtils.validateOutputFiles(24, unloadDir);
   }
 
@@ -174,8 +177,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("ip_by_country");
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     validateResultSetSize(500, "SELECT * FROM ip_by_country");
     EndToEndUtils.validatePositionsFile(JsonUtils.JSON_RECORDS, 500);
     /*
@@ -230,8 +233,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add(EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED);
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
     FileUtils.deleteDirectory(logDir);
 
@@ -255,7 +258,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED);
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     EndToEndUtils.validateOutputFiles(24, unloadDir);
   }
 
@@ -285,7 +288,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("SINGLE_DOCUMENT");
     args.add("--schema.allowMissingFields");
     args.add("true");
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isEqualTo(1);
     EndToEndUtils.validateNumberOfBadRecords(4);
     EndToEndUtils.validateExceptionsLog(
@@ -329,7 +332,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("SINGLE_DOCUMENT");
     args.add("--schema.allowMissingFields");
     args.add("true");
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isEqualTo(1);
     EndToEndUtils.validateNumberOfBadRecords(4);
     EndToEndUtils.validateExceptionsLog(
@@ -366,8 +369,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add(EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED);
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
     FileUtils.deleteDirectory(logDir);
 
@@ -393,7 +396,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED);
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     EndToEndUtils.validateOutputFiles(24, unloadDir);
   }
 
@@ -420,8 +423,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add(EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED);
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
     FileUtils.deleteDirectory(logDir);
 
@@ -447,7 +450,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED);
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     EndToEndUtils.validateOutputFiles(24, unloadDir);
   }
 
@@ -500,8 +503,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("complex");
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
 
     assertComplexRows(session);
 
@@ -529,7 +532,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("complex");
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     // 2 documents + 2 lines for single document mode
     EndToEndUtils.validateOutputFiles(4, unloadDir);
 
@@ -553,7 +556,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("complex");
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    EndToEndUtils.assertStatus(status, STATUS_OK);
 
     assertComplexRows(session);
   }
@@ -579,8 +582,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add(EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED);
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     validateResultSetSize(500, "SELECT * FROM ip_by_country");
     FileUtils.deleteDirectory(logDir);
 
@@ -604,7 +607,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED);
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     EndToEndUtils.validateOutputFiles(500, unloadDir);
   }
 
@@ -629,8 +632,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("-t");
     args.add("WITH_SPACES");
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     validateResultSetSize(1, "SELECT * FROM \"MYKS\".\"WITH_SPACES\"");
     FileUtils.deleteDirectory(logDir);
 
@@ -650,7 +653,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("WITH_SPACES");
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     EndToEndUtils.validateOutputFiles(1, unloadDir);
   }
 
@@ -681,8 +684,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.allowMissingFields");
     args.add("true");
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_COMPLETED_WITH_ERRORS);
     validateResultSetSize(21, "SELECT * FROM ip_by_country");
     EndToEndUtils.validateNumberOfBadRecords(3);
     EndToEndUtils.validateExceptionsLog(3, "Source:", "mapping-errors.log");
@@ -708,7 +711,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(EndToEndUtils.IP_BY_COUNTRY_MAPPING_NAMED);
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     EndToEndUtils.validateOutputFiles(21, unloadDir);
   }
 
@@ -741,8 +744,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add("*=*");
 
-    int loadStatus = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(loadStatus, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus loadStatus = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(loadStatus, STATUS_OK);
     checkNumbersWritten(OverflowStrategy.TRUNCATE, UNNECESSARY, session);
     FileUtils.deleteDirectory(logDir);
 
@@ -767,8 +770,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.query");
     args.add("SELECT key, vdouble, vdecimal FROM numbers");
 
-    int unloadStatus = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(unloadStatus, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus unloadStatus = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(unloadStatus, STATUS_OK);
     checkNumbersRead(OverflowStrategy.TRUNCATE, unloadDir);
     FileUtils.deleteDirectory(logDir);
 
@@ -793,7 +796,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("*=*");
 
     loadStatus = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(loadStatus, DataStaxBulkLoader.STATUS_OK);
+    EndToEndUtils.assertStatus(loadStatus, STATUS_OK);
     // no rounding possible in json
     checkNumbersWritten(OverflowStrategy.TRUNCATE, UNNECESSARY, session);
   }
@@ -827,8 +830,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add("*=*");
 
-    int loadStatus = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(loadStatus, DataStaxBulkLoader.STATUS_COMPLETED_WITH_ERRORS);
+    ExitStatus loadStatus = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(loadStatus, STATUS_COMPLETED_WITH_ERRORS);
     EndToEndUtils.validateExceptionsLog(
         1,
         "ArithmeticException: Cannot convert 0.12345678901234567890123456789 from BigDecimal to Double",
@@ -857,8 +860,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.query");
     args.add("SELECT key, vdouble, vdecimal FROM numbers");
 
-    int unloadStatus = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(unloadStatus, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus unloadStatus = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(unloadStatus, STATUS_OK);
     checkNumbersRead(OverflowStrategy.REJECT, unloadDir);
     FileUtils.deleteDirectory(logDir);
 
@@ -883,7 +886,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("*=*");
 
     loadStatus = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(loadStatus, DataStaxBulkLoader.STATUS_OK);
+    EndToEndUtils.assertStatus(loadStatus, STATUS_OK);
     checkNumbersWritten(OverflowStrategy.REJECT, UNNECESSARY, session);
   }
 
@@ -928,8 +931,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add("*=*");
 
-    int loadStatus = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(loadStatus, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus loadStatus = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(loadStatus, STATUS_OK);
     checkTemporalsWritten(session);
     FileUtils.deleteDirectory(logDir);
 
@@ -962,8 +965,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.query");
     args.add("SELECT key, vdate, vtime, vtimestamp FROM temporals");
 
-    int unloadStatus = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(unloadStatus, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus unloadStatus = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(unloadStatus, STATUS_OK);
     checkTemporalsRead(unloadDir);
     FileUtils.deleteDirectory(logDir);
 
@@ -998,7 +1001,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("*=*");
 
     loadStatus = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(loadStatus, DataStaxBulkLoader.STATUS_OK);
+    EndToEndUtils.assertStatus(loadStatus, STATUS_OK);
     checkTemporalsWritten(session);
   }
 
@@ -1026,8 +1029,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.mapping");
     args.add("0=pk,1=cc,2=v");
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     validateResultSetSize(1, "SELECT * FROM numeric_fields");
   }
 
@@ -1091,8 +1094,8 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("test_truncation");
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
 
     Assertions.assertThat(FileUtils.readAllLinesInDirectoryAsStream(unloadDir))
         .containsExactlyInAnyOrder(

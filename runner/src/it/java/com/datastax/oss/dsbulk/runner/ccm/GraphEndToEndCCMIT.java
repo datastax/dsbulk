@@ -15,6 +15,7 @@
  */
 package com.datastax.oss.dsbulk.runner.ccm;
 
+import static com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus.STATUS_OK;
 import static com.datastax.oss.dsbulk.tests.logging.StreamType.STDERR;
 import static com.datastax.oss.dsbulk.tests.utils.StringUtils.quoteJson;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -25,6 +26,7 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.datastax.oss.driver.api.testinfra.session.SessionUtils;
 import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader;
+import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus;
 import com.datastax.oss.dsbulk.runner.tests.EndToEndUtils;
 import com.datastax.oss.dsbulk.tests.assertions.TestAssertions;
 import com.datastax.oss.dsbulk.tests.ccm.CCMCluster;
@@ -144,9 +146,8 @@ class GraphEndToEndCCMIT extends EndToEndCCMITBase {
             "--connector.csv.delimiter",
             "|");
 
-    DataStaxBulkLoader dataStaxBulkLoader = new DataStaxBulkLoader(addCommonSettings(args));
-    int status = dataStaxBulkLoader.run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     validateResultSetSize(34, SELECT_ALL_CUSTOMERS);
     GraphResultSet results =
         session.execute(
@@ -173,7 +174,7 @@ class GraphEndToEndCCMIT extends EndToEndCCMITBase {
             "1");
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     EndToEndUtils.validateOutputFiles(35, unloadDir);
     TestAssertions.assertThat(logs).hasMessageContaining("completed successfully");
     assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
@@ -195,7 +196,7 @@ class GraphEndToEndCCMIT extends EndToEndCCMITBase {
             "|");
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     validateResultSetSize(34, SELECT_ALL_CUSTOMERS);
     TestAssertions.assertThat(logs).hasMessageContaining("completed successfully");
     assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
@@ -226,8 +227,8 @@ class GraphEndToEndCCMIT extends EndToEndCCMITBase {
             "--connector.csv.delimiter",
             "|");
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     validateResultSetSize(14, SELECT_ALL_CUSTOMER_ORDERS);
     TestAssertions.assertThat(logs).hasMessageContaining("completed successfully");
     assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
@@ -260,7 +261,7 @@ class GraphEndToEndCCMIT extends EndToEndCCMITBase {
             "1");
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     EndToEndUtils.validateOutputFiles(15, unloadDir);
     TestAssertions.assertThat(logs).hasMessageContaining("completed successfully");
     assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
@@ -288,7 +289,7 @@ class GraphEndToEndCCMIT extends EndToEndCCMITBase {
             "|");
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     validateResultSetSize(14, SELECT_ALL_CUSTOMER_ORDERS);
     TestAssertions.assertThat(logs).hasMessageContaining("completed successfully");
     assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
@@ -314,8 +315,8 @@ class GraphEndToEndCCMIT extends EndToEndCCMITBase {
             "--connector.name",
             "json");
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     validateResultSetSize(34, SELECT_ALL_CUSTOMERS);
     TestAssertions.assertThat(logs).hasMessageContaining("completed successfully");
     assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
@@ -343,7 +344,7 @@ class GraphEndToEndCCMIT extends EndToEndCCMITBase {
             "1");
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     EndToEndUtils.validateOutputFiles(34, unloadDir);
     TestAssertions.assertThat(logs).hasMessageContaining("completed successfully");
     assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
@@ -366,7 +367,7 @@ class GraphEndToEndCCMIT extends EndToEndCCMITBase {
             "json");
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     validateResultSetSize(34, SELECT_ALL_CUSTOMERS);
     TestAssertions.assertThat(logs).hasMessageContaining("completed successfully");
     assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
@@ -398,8 +399,8 @@ class GraphEndToEndCCMIT extends EndToEndCCMITBase {
             "--connector.name",
             "json");
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     validateResultSetSize(14, SELECT_ALL_CUSTOMER_ORDERS);
     TestAssertions.assertThat(logs).hasMessageContaining("completed successfully");
     assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
@@ -433,7 +434,7 @@ class GraphEndToEndCCMIT extends EndToEndCCMITBase {
             "1");
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     EndToEndUtils.validateOutputFiles(14, unloadDir);
     TestAssertions.assertThat(logs).hasMessageContaining("completed successfully");
     assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
@@ -462,7 +463,7 @@ class GraphEndToEndCCMIT extends EndToEndCCMITBase {
             CUSTOMER_ORDER_MAPPINGS);
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     validateResultSetSize(14, SELECT_ALL_CUSTOMER_ORDERS);
     TestAssertions.assertThat(logs).hasMessageContaining("completed successfully");
     assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");

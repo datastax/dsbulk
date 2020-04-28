@@ -15,6 +15,7 @@
  */
 package com.datastax.oss.dsbulk.runner.ccm;
 
+import static com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus.STATUS_OK;
 import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat;
 import static com.datastax.oss.dsbulk.tests.logging.StreamType.STDERR;
 import static org.awaitility.Awaitility.await;
@@ -26,6 +27,7 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.dsbulk.connectors.api.DefaultMappedField;
 import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader;
+import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus;
 import com.datastax.oss.dsbulk.runner.tests.EndToEndUtils;
 import com.datastax.oss.dsbulk.runner.tests.MockConnector;
 import com.datastax.oss.dsbulk.tests.ccm.CCMCluster;
@@ -105,8 +107,8 @@ class SearchEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.query");
     args.add(StringUtils.quoteJson(query));
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
 
     assertThat(logs)
         .hasMessageContaining("completed successfully")
@@ -165,8 +167,8 @@ class SearchEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("test_search2");
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
 
     assertThat(records)
         .hasSize(3)

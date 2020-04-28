@@ -15,11 +15,13 @@
  */
 package com.datastax.oss.dsbulk.runner.ccm;
 
+import static com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus.STATUS_OK;
 import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat;
 import static com.datastax.oss.dsbulk.tests.logging.StreamType.STDERR;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader;
+import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus;
 import com.datastax.oss.dsbulk.runner.tests.CsvUtils;
 import com.datastax.oss.dsbulk.runner.tests.EndToEndUtils;
 import com.datastax.oss.dsbulk.tests.ccm.CCMCluster;
@@ -94,8 +96,8 @@ class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--datastax-java-driver.advanced.auth-provider.password");
     args.add("cassandra");
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
     if (inferAuthProvider) {
       assertThat(logs)
@@ -133,7 +135,7 @@ class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("cassandra");
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     EndToEndUtils.validateOutputFiles(24, unloadDir);
     if (inferAuthProvider) {
       assertThat(logs)
@@ -172,8 +174,8 @@ class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--driver.auth.password");
     args.add("cassandra");
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
     assertThat(logs)
         .hasMessageContaining(
@@ -220,7 +222,7 @@ class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("cassandra");
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     EndToEndUtils.validateOutputFiles(24, unloadDir);
     assertThat(logs)
         .hasMessageContaining(

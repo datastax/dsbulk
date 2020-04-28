@@ -15,6 +15,7 @@
  */
 package com.datastax.oss.dsbulk.runner.ccm;
 
+import static com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus.STATUS_OK;
 import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat;
 import static com.datastax.oss.dsbulk.tests.logging.StreamType.STDERR;
 
@@ -22,6 +23,7 @@ import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.internal.core.ssl.DefaultSslEngineFactory;
 import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader;
+import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus;
 import com.datastax.oss.dsbulk.runner.tests.CsvUtils;
 import com.datastax.oss.dsbulk.runner.tests.EndToEndUtils;
 import com.datastax.oss.dsbulk.tests.ccm.CCMCluster;
@@ -102,8 +104,8 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--driver.advanced.ssl-engine-factory.truststore-password");
     args.add(DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     assertThat(logs).hasMessageContaining("completed successfully");
     assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
     logs.clear();
@@ -146,7 +148,7 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     EndToEndUtils.validateOutputFiles(24, unloadDir);
     assertThat(logs).hasMessageContaining("completed successfully");
     assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
@@ -186,8 +188,8 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--driver.ssl.truststore.password");
     args.add(DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
     assertThat(logs).hasMessageContaining("completed successfully");
     assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
@@ -229,7 +231,7 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     EndToEndUtils.validateOutputFiles(24, unloadDir);
     assertThat(logs).hasMessageContaining("completed successfully");
     assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
@@ -269,8 +271,8 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--driver.ssl.truststore.password");
     args.add(DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
-    int status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
     assertThat(logs).hasMessageContaining("completed successfully");
     assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
@@ -312,7 +314,7 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(DefaultCCMCluster.DEFAULT_CLIENT_TRUSTSTORE_PASSWORD);
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
-    EndToEndUtils.assertStatus(status, DataStaxBulkLoader.STATUS_OK);
+    EndToEndUtils.assertStatus(status, STATUS_OK);
     EndToEndUtils.validateOutputFiles(24, unloadDir);
     assertThat(logs).hasMessageContaining("completed successfully");
     assertThat(stderr.getStreamAsStringPlain()).contains("completed successfully");
