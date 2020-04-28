@@ -17,7 +17,6 @@ package com.datastax.oss.dsbulk.connectors.csv;
 
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import com.datastax.oss.dsbulk.commons.config.ConfigUtils;
-import com.datastax.oss.dsbulk.commons.reactive.SimpleBackpressureController;
 import com.datastax.oss.dsbulk.compression.CompressedIOUtils;
 import com.datastax.oss.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.oss.dsbulk.connectors.api.ConnectorFeature;
@@ -53,8 +52,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxSink;
+import reactor.core.publisher.SynchronousSink;
 
 /**
  * A connector for CSV files.
@@ -219,98 +217,121 @@ public class CSVConnector extends AbstractFileBasedConnector {
 
   @Override
   @NonNull
-  protected Flux<Record> readSingleFile(@NonNull URL url) {
-    return Flux.create(
-        sink -> {
-          CsvParser parser = new CsvParser(parserSettings);
-          SimpleBackpressureController controller = new SimpleBackpressureController();
-          // DAT-177: Do not call sink.onDispose nor sink.onCancel,
-          // as doing so seems to prevent the flow from completing in rare occasions.
-          sink.onRequest(controller::signalRequested);
-          long recordNumber = 1;
-          LOGGER.debug("Reading {}", url);
-          URI resource = URI.create(url.toExternalForm());
-          try (Reader r = CompressedIOUtils.newBufferedReader(url, encoding, compression)) {
-            parser.beginParsing(r);
-            ParsingContext context = parser.getContext();
-            MappedField[] fieldNames = null;
-            if (header) {
-              fieldNames = getFieldNames(url, context);
-            }
-            while (!sink.isCancelled()) {
-              com.univocity.parsers.common.record.Record row = parser.parseNextRecord();
-              String source = context.currentParsedContent();
-              if (row == null) {
-                break;
-              }
-              Record record;
-              try {
-                Object[] values = row.getValues();
-                if (header) {
-                  record =
-                      DefaultRecord.mapped(source, resource, recordNumber++, fieldNames, values);
-                  // also emit indexed fields
-                  for (int i = 0; i < values.length; i++) {
-                    DefaultIndexedField field = new DefaultIndexedField(i);
-                    Object value = values[i];
-                    ((DefaultRecord) record).setFieldValue(field, value);
-                  }
-                } else {
-                  record = DefaultRecord.indexed(source, resource, recordNumber++, values);
-                }
-              } catch (Exception e) {
-                record = new DefaultErrorRecord(source, resource, recordNumber, e);
-              }
-              LOGGER.trace("Emitting record {}", record);
-              controller.awaitRequested(1);
-              sink.next(record);
-            }
-            LOGGER.debug("Done reading {}", url);
-            sink.complete();
-          } catch (TextParsingException e) {
-            IOException ioe = launderTextParsingException(e, url);
-            sink.error(ioe);
-          } catch (Exception e) {
-            if (e.getCause() instanceof TextParsingException) {
-              e = launderTextParsingException(((TextParsingException) e.getCause()), url);
-            }
-            sink.error(
-                new IOException(
-                    String.format("Error reading from %s at line %d", url, recordNumber), e));
-          }
-        },
-        FluxSink.OverflowStrategy.ERROR);
+  protected RecordReader newSingleFileReader(@NonNull URL url) throws IOException {
+    return new CSVRecordReader(url);
   }
 
-  private MappedField[] getFieldNames(URL url, ParsingContext context) throws IOException {
-    List<String> fieldNames = new ArrayList<>();
-    String[] parsedHeaders = context.parsedHeaders();
-    List<String> errors = new ArrayList<>();
-    for (int i = 0; i < parsedHeaders.length; i++) {
-      String name = parsedHeaders[i];
-      // DAT-427: prevent empty names and duplicated names
-      if (name == null || name.isEmpty() || WHITESPACE.matcher(name).matches()) {
-        errors.add(String.format("found empty field name at index %d", i));
-      } else if (fieldNames.contains(name)) {
-        errors.add(String.format("found duplicate field name at index %d", i));
+  private class CSVRecordReader implements RecordReader {
+
+    private final URL url;
+    private final URI resource;
+    private final CsvParser parser;
+    private final ParsingContext context;
+    private final MappedField[] fieldNames;
+
+    private long recordNumber = 1;
+    private volatile Thread thread;
+
+    private CSVRecordReader(URL url) throws IOException {
+      this.url = url;
+      try {
+        resource = URI.create(url.toExternalForm());
+        parser = new CsvParser(parserSettings);
+        Reader r = CompressedIOUtils.newBufferedReader(url, encoding, compression);
+        parser.beginParsing(r);
+        context = parser.getContext();
+        fieldNames = header ? getFieldNames(url, context) : null;
+      } catch (Exception e) {
+        throw asIOException(url, e, "Error creating CSV parser for " + url);
       }
-      fieldNames.add(name);
     }
-    if (errors.isEmpty()) {
-      return fieldNames.stream().map(DefaultMappedField::new).toArray(MappedField[]::new);
-    } else {
-      String msg = url + " has invalid header: " + String.join("; ", errors) + ".";
-      throw new IOException(msg);
+
+    private MappedField[] getFieldNames(URL url, ParsingContext context) throws IOException {
+      List<String> fieldNames = new ArrayList<>();
+      String[] parsedHeaders = context.parsedHeaders();
+      List<String> errors = new ArrayList<>();
+      for (int i = 0; i < parsedHeaders.length; i++) {
+        String name = parsedHeaders[i];
+        // DAT-427: prevent empty names and duplicated names
+        if (name == null || name.isEmpty() || WHITESPACE.matcher(name).matches()) {
+          errors.add(String.format("found empty field name at index %d", i));
+        } else if (fieldNames.contains(name)) {
+          errors.add(String.format("found duplicate field name at index %d", i));
+        }
+        fieldNames.add(name);
+      }
+      if (errors.isEmpty()) {
+        return fieldNames.stream().map(DefaultMappedField::new).toArray(MappedField[]::new);
+      } else {
+        String msg = url + " has invalid header: " + String.join("; ", errors) + ".";
+        throw new IOException(msg);
+      }
+    }
+
+    @NonNull
+    @Override
+    public RecordReader readNext(@NonNull SynchronousSink<Record> sink) {
+      Thread thread = Thread.currentThread();
+      if (this.thread != null && this.thread != thread) {
+        LOGGER.error("Thread changed");
+      }
+      try {
+        com.univocity.parsers.common.record.Record row = parser.parseNextRecord();
+        if (row != null) {
+          Record record = parseNext(row);
+          LOGGER.trace("Emitting record {}", record);
+          sink.next(record);
+        } else {
+          LOGGER.debug("Done reading {}", url);
+          sink.complete();
+        }
+      } catch (Exception e) {
+        IOException error =
+            asIOException(
+                url, e, String.format("Error reading from %s at line %d", url, recordNumber));
+        sink.error(error);
+      }
+      return this;
+    }
+
+    @NonNull
+    private Record parseNext(com.univocity.parsers.common.record.Record row) {
+      String source = context.currentParsedContent();
+      Record record;
+      try {
+        Object[] values = row.getValues();
+        if (header) {
+          record = DefaultRecord.mapped(source, resource, recordNumber++, fieldNames, values);
+          // also emit indexed fields
+          for (int i = 0; i < values.length; i++) {
+            DefaultIndexedField field = new DefaultIndexedField(i);
+            Object value = values[i];
+            ((DefaultRecord) record).setFieldValue(field, value);
+          }
+        } else {
+          record = DefaultRecord.indexed(source, resource, recordNumber++, values);
+        }
+      } catch (Exception e) {
+        record = new DefaultErrorRecord(source, resource, recordNumber, e);
+      }
+      return record;
+    }
+
+    @Override
+    public void close() {
+      if (parser != null) {
+        parser.stopParsing();
+      }
     }
   }
 
   @NonNull
   @Override
   protected RecordWriter newSingleFileWriter() {
-    return new CSVWriter();
+    return new CSVRecordWriter();
   }
 
-  private class CSVWriter implements RecordWriter {
+  private class CSVRecordWriter implements RecordWriter {
 
     private URL url;
     private CsvWriter writer;
@@ -373,6 +394,19 @@ public class CSVConnector extends AbstractFileBasedConnector {
         }
       }
     }
+  }
+
+  @NonNull
+  private IOException asIOException(@NonNull URL url, Exception e, String genericErrorMessage) {
+    IOException error;
+    if (e instanceof TextParsingException) {
+      error = launderTextParsingException(((TextParsingException) e), url);
+    } else if (e.getCause() instanceof TextParsingException) {
+      error = launderTextParsingException(((TextParsingException) e.getCause()), url);
+    } else {
+      error = new IOException(genericErrorMessage, e);
+    }
+    return error;
   }
 
   private IOException launderTextParsingException(TextParsingException e, URL url) {

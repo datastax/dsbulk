@@ -17,7 +17,6 @@ package com.datastax.oss.dsbulk.connectors.json;
 
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import com.datastax.oss.dsbulk.commons.config.ConfigUtils;
-import com.datastax.oss.dsbulk.commons.reactive.SimpleBackpressureController;
 import com.datastax.oss.dsbulk.compression.CompressedIOUtils;
 import com.datastax.oss.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.oss.dsbulk.connectors.api.ConnectorFeature;
@@ -59,8 +58,7 @@ import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxSink;
+import reactor.core.publisher.SynchronousSink;
 
 /**
  * A connector for Json files.
@@ -180,64 +178,84 @@ public class JsonConnector extends AbstractFileBasedConnector {
 
   @Override
   @NonNull
-  protected Flux<Record> readSingleFile(@NonNull URL url) {
-    return Flux.create(
-        sink -> {
-          LOGGER.debug("Reading {}", url);
-          URI resource = URI.create(url.toExternalForm());
-          SimpleBackpressureController controller = new SimpleBackpressureController();
-          sink.onRequest(controller::signalRequested);
-          // DAT-177: Do not call sink.onDispose nor sink.onCancel,
-          // as doing so seems to prevent the flow from completing in rare occasions.
-          JsonFactory factory = objectMapper.getFactory();
-          try (BufferedReader r = CompressedIOUtils.newBufferedReader(url, encoding, compression);
-              JsonParser parser = factory.createParser(r)) {
-            if (mode == DocumentMode.SINGLE_DOCUMENT) {
-              do {
-                parser.nextToken();
-              } while (parser.currentToken() != JsonToken.START_ARRAY
-                  && parser.currentToken() != null);
-              parser.nextToken();
-            }
-            MappingIterator<JsonNode> it = objectMapper.readValues(parser, JsonNode.class);
-            long recordNumber = 1;
-            while (!sink.isCancelled() && it.hasNext()) {
-              if (parser.currentToken() != JsonToken.START_OBJECT) {
-                throw new JsonParseException(
-                    parser,
-                    String.format(
-                        "Expecting START_OBJECT, got %s. Did you forget to set connector.json.mode to SINGLE_DOCUMENT?",
-                        parser.currentToken()));
-              }
-              Record record;
-              JsonNode node = it.next();
-              Map<String, JsonNode> values = objectMapper.convertValue(node, jsonNodeMapType);
-              Map<MappedField, JsonNode> fields =
-                  values.entrySet().stream()
-                      .collect(
-                          Collectors.toMap(
-                              e -> new DefaultMappedField(e.getKey()), Entry::getValue));
-              record = DefaultRecord.mapped(node, resource, recordNumber++, fields);
-              LOGGER.trace("Emitting record {}", record);
-              controller.awaitRequested(1);
-              sink.next(record);
-            }
-            LOGGER.debug("Done reading {}", url);
-            sink.complete();
-          } catch (Exception e) {
-            sink.error(new IOException(String.format("Error reading from %s", url), e));
+  protected RecordReader newSingleFileReader(@NonNull URL url) throws IOException {
+    return new JsonRecordReader(url);
+  }
+
+  private class JsonRecordReader implements RecordReader {
+
+    private final URL url;
+    private final URI resource;
+    private final JsonParser parser;
+    private final MappingIterator<JsonNode> nodesIterator;
+
+    private long recordNumber = 1;
+
+    private JsonRecordReader(URL url) throws IOException {
+      this.url = url;
+      resource = URI.create(url.toExternalForm());
+      try {
+        JsonFactory factory = objectMapper.getFactory();
+        BufferedReader r = CompressedIOUtils.newBufferedReader(url, encoding, compression);
+        parser = factory.createParser(r);
+        if (mode == DocumentMode.SINGLE_DOCUMENT) {
+          do {
+            parser.nextToken();
+          } while (parser.currentToken() != JsonToken.START_ARRAY && parser.currentToken() != null);
+          parser.nextToken();
+        }
+        nodesIterator = objectMapper.readValues(parser, JsonNode.class);
+      } catch (Exception e) {
+        throw new IOException(String.format("Error reading from %s", url), e);
+      }
+    }
+
+    @NonNull
+    @Override
+    public RecordReader readNext(@NonNull SynchronousSink<Record> sink) {
+      try {
+        if (nodesIterator.hasNext()) {
+          if (parser.currentToken() != JsonToken.START_OBJECT) {
+            throw new JsonParseException(
+                parser,
+                String.format(
+                    "Expecting START_OBJECT, got %s. Did you forget to set connector.json.mode to SINGLE_DOCUMENT?",
+                    parser.currentToken()));
           }
-        },
-        FluxSink.OverflowStrategy.ERROR);
+          JsonNode node = nodesIterator.next();
+          Map<String, JsonNode> values = objectMapper.convertValue(node, jsonNodeMapType);
+          Map<MappedField, JsonNode> fields =
+              values.entrySet().stream()
+                  .collect(
+                      Collectors.toMap(e -> new DefaultMappedField(e.getKey()), Entry::getValue));
+          Record record = DefaultRecord.mapped(node, resource, recordNumber++, fields);
+          LOGGER.trace("Emitting record {}", record);
+          sink.next(record);
+        } else {
+          LOGGER.debug("Done reading {}", url);
+          sink.complete();
+        }
+      } catch (Exception e) {
+        sink.error(new IOException(String.format("Error reading from %s", url), e));
+      }
+      return this;
+    }
+
+    @Override
+    public void close() throws IOException {
+      if (parser != null) {
+        parser.close();
+      }
+    }
   }
 
   @NonNull
   @Override
   protected RecordWriter newSingleFileWriter() {
-    return new JsonWriter();
+    return new JsonRecordWriter();
   }
 
-  private class JsonWriter implements RecordWriter {
+  private class JsonRecordWriter implements RecordWriter {
 
     private URL url;
     private JsonGenerator writer;
