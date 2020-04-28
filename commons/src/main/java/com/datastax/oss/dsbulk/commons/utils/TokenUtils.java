@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.dsbulk.partitioner;
+package com.datastax.oss.dsbulk.commons.utils;
 
 import com.datastax.oss.driver.api.core.metadata.token.Token;
 import com.datastax.oss.driver.internal.core.metadata.token.ByteOrderedToken;

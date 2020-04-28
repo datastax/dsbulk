@@ -15,13 +15,14 @@
  */
 package com.datastax.oss.dsbulk.partitioner;
 
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 /** Splits token ranges into smaller sub-ranges. */
-interface TokenRangeSplitter<V extends Number, T extends Token<V>> {
+public interface TokenRangeSplitter {
 
   /**
    * Splits the given ranges uniformly into (smaller) {@code splitCount} chunks.
@@ -32,13 +33,15 @@ interface TokenRangeSplitter<V extends Number, T extends Token<V>> {
    * @param splitCount The desired number of resulting chunks.
    * @return A list of ranges of approximately {@code splitCount} chunks.
    */
-  default List<TokenRange<V, T>> split(Iterable<TokenRange<V, T>> tokenRanges, int splitCount) {
+  @NonNull
+  default List<BulkTokenRange> split(
+      @NonNull Iterable<BulkTokenRange> tokenRanges, int splitCount) {
     double ringFractionPerSplit = 1.0 / (double) splitCount;
     return StreamSupport.stream(tokenRanges.spliterator(), false)
         .flatMap(
             range -> {
               int splits = (int) Math.max(1, Math.rint(range.fraction() / ringFractionPerSplit));
-              List<TokenRange<V, T>> split =
+              List<BulkTokenRange> split =
                   splits == 1 ? Collections.singletonList(range) : split(range, splits);
               return split.stream();
             })
@@ -54,5 +57,6 @@ interface TokenRangeSplitter<V extends Number, T extends Token<V>> {
    * @param splitCount The desired number of resulting chunks.
    * @return A list of ranges of approximately {@code splitCount} chunks.
    */
-  List<TokenRange<V, T>> split(TokenRange<V, T> tokenRange, int splitCount);
+  @NonNull
+  List<BulkTokenRange> split(@NonNull BulkTokenRange tokenRange, int splitCount);
 }

@@ -19,89 +19,99 @@ import static com.datastax.oss.dsbulk.partitioner.assertions.PartitionerAssertio
 
 import com.datastax.oss.driver.api.core.metadata.EndPoint;
 import com.datastax.oss.driver.api.core.metadata.Node;
-import com.datastax.oss.dsbulk.partitioner.Token;
-import com.datastax.oss.dsbulk.partitioner.TokenFactory;
-import com.datastax.oss.dsbulk.partitioner.TokenRange;
+import com.datastax.oss.driver.api.core.metadata.token.Token;
+import com.datastax.oss.driver.api.core.metadata.token.TokenRange;
+import com.datastax.oss.dsbulk.commons.utils.TokenUtils;
+import com.datastax.oss.dsbulk.partitioner.BulkTokenFactory;
+import com.datastax.oss.dsbulk.partitioner.BulkTokenRange;
+import com.datastax.oss.dsbulk.partitioner.murmur3.Murmur3BulkTokenFactory;
+import com.datastax.oss.dsbulk.partitioner.murmur3.Murmur3BulkTokenRange;
+import com.datastax.oss.dsbulk.partitioner.random.RandomBulkTokenFactory;
 import java.math.BigInteger;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.assertj.core.api.AbstractObjectAssert;
-import org.assertj.core.api.Assertions;
 import org.assertj.core.data.Offset;
 
 @SuppressWarnings("UnusedReturnValue")
-public class TokenRangeAssert<V extends Number, T extends Token<V>>
-    extends AbstractObjectAssert<TokenRangeAssert<V, T>, TokenRange<V, T>> {
+public class TokenRangeAssert extends AbstractObjectAssert<TokenRangeAssert, BulkTokenRange> {
 
-  TokenRangeAssert(TokenRange<V, T> actual) {
+  TokenRangeAssert(BulkTokenRange actual) {
     super(actual, TokenRangeAssert.class);
   }
 
-  public TokenRangeAssert<V, T> startsWith(Object value) {
-    Assertions.assertThat(actual.start().value())
+  public TokenRangeAssert startsWith(Object value) {
+    assertThat(TokenUtils.getTokenValue(actual.getStart()))
         .overridingErrorMessage(
-            "Expecting %s to start with %s but it starts with %s", actual, value, actual.start())
+            "Expecting %s to start with %s but it starts with %s",
+            actual, value, TokenUtils.getTokenValue(actual.getStart()))
         .isEqualTo(value);
     return this;
   }
 
-  public TokenRangeAssert<V, T> endsWith(Object value) {
-    Assertions.assertThat(actual.end().value())
+  public TokenRangeAssert endsWith(Object value) {
+    assertThat(TokenUtils.getTokenValue(actual.getEnd()))
         .overridingErrorMessage(
-            "Expecting %s to end with %s but it ends with %s", actual, value, actual.end())
+            "Expecting %s to end with %s but it ends with %s",
+            actual, value, TokenUtils.getTokenValue(actual.getEnd()))
         .isEqualTo(value);
     return this;
   }
 
-  public TokenRangeAssert<V, T> startsWith(Token<V> token) {
-    Assertions.assertThat(actual.start())
+  public TokenRangeAssert startsWith(Token token) {
+    assertThat(actual.getStart())
         .overridingErrorMessage(
-            "Expecting %s to start with %s but it starts with %s", actual, token, actual.start())
+            "Expecting %s to start with %s but it starts with %s",
+            actual, token, TokenUtils.getTokenValue(actual.getStart()))
         .isEqualTo(token);
     return this;
   }
 
-  public TokenRangeAssert<V, T> endsWith(Token<V> token) {
-    Assertions.assertThat(actual.end())
+  public TokenRangeAssert endsWith(Token token) {
+    assertThat(actual.getEnd())
         .overridingErrorMessage(
-            "Expecting %s to end with %s but it ends with %s", actual, token, actual.end())
+            "Expecting %s to end with %s but it ends with %s",
+            actual, token, TokenUtils.getTokenValue(actual.getEnd()))
         .isEqualTo(token);
     return this;
   }
 
-  public TokenRangeAssert<V, T> hasRange(Object start, Object end) {
-    Assertions.assertThat(actual.start().value())
+  public TokenRangeAssert hasRange(Object start, Object end) {
+    assertThat(TokenUtils.getTokenValue(actual.getStart()))
         .overridingErrorMessage(
-            "Expecting %s to start with %s but it starts with %s", actual, start, actual.start())
+            "Expecting %s to start with %s but it starts with %s",
+            actual, start, TokenUtils.getTokenValue(actual.getStart()))
         .isEqualTo(start);
-    Assertions.assertThat(actual.end().value())
+    assertThat(TokenUtils.getTokenValue(actual.getEnd()))
         .overridingErrorMessage(
-            "Expecting %s to end with %s but it ends with %s", actual, end, actual.start())
+            "Expecting %s to end with %s but it ends with %s",
+            actual, end, TokenUtils.getTokenValue(actual.getStart()))
         .isEqualTo(end);
     return this;
   }
 
-  public TokenRangeAssert<V, T> hasSize(long size) {
-    Assertions.assertThat(actual.size())
+  public TokenRangeAssert hasSize(long size) {
+    assertThat(actual.size())
         .overridingErrorMessage(
             "Expecting %s to have size %d but it has size %d", actual, size, actual.size())
         .isEqualTo(size);
     return this;
   }
 
-  public TokenRangeAssert<V, T> hasSize(BigInteger size) {
-    Assertions.assertThat(actual.size())
+  public TokenRangeAssert hasSize(BigInteger size) {
+    assertThat(actual.size())
         .overridingErrorMessage(
             "Expecting %s to have size %d but it has size %d", actual, size, actual.size())
         .isEqualTo(size);
     return this;
   }
 
-  public TokenRangeAssert<V, T> hasFraction(double fraction) {
-    Assertions.assertThat(actual.fraction())
+  public TokenRangeAssert hasFraction(double fraction) {
+    assertThat(actual.fraction())
         .overridingErrorMessage(
             "Expecting %s to have fraction %f but it has fraction %f",
             actual, fraction, actual.fraction())
@@ -109,8 +119,8 @@ public class TokenRangeAssert<V extends Number, T extends Token<V>>
     return this;
   }
 
-  public TokenRangeAssert<V, T> hasFraction(double fraction, Offset<Double> offset) {
-    Assertions.assertThat(actual.fraction())
+  public TokenRangeAssert hasFraction(double fraction, Offset<Double> offset) {
+    assertThat(actual.fraction())
         .overridingErrorMessage(
             "Expecting %s to have fraction %f (+- %s) but it has fraction %f",
             actual, fraction, offset, actual.fraction())
@@ -118,59 +128,63 @@ public class TokenRangeAssert<V extends Number, T extends Token<V>>
     return this;
   }
 
-  public TokenRangeAssert<V, T> hasReplicas(Node... hosts) {
+  public TokenRangeAssert hasReplicas(Node... hosts) {
     Set<EndPoint> expected =
         Arrays.stream(hosts).map(Node::getEndPoint).collect(Collectors.toSet());
-    Assertions.assertThat(actual.replicas())
+    assertThat(actual.replicas())
         .overridingErrorMessage(
             "Expecting %s to have replicas %s but it had %s", actual, expected, actual.replicas())
         .isEqualTo(expected);
     return this;
   }
 
-  public TokenRangeAssert<V, T> isEmpty() {
-    Assertions.assertThat(actual.isEmpty())
+  public TokenRangeAssert isEmpty() {
+    assertThat(actual.isEmpty())
         .overridingErrorMessage("Expecting %s to be empty but it was not", actual)
         .isTrue();
     return this;
   }
 
-  public TokenRangeAssert<V, T> isNotEmpty() {
-    Assertions.assertThat(actual.isEmpty())
+  public TokenRangeAssert isNotEmpty() {
+    assertThat(actual.isEmpty())
         .overridingErrorMessage("Expecting %s not to be empty but it was", actual)
         .isFalse();
     return this;
   }
 
-  public TokenRangeAssert<V, T> isWrappedAround() {
-    Assertions.assertThat(actual.isWrappedAround())
+  public TokenRangeAssert isWrappedAround() {
+    assertThat(actual.isWrappedAround())
         .overridingErrorMessage("Expecting %s to wrap around but it did not", actual)
         .isTrue();
-    TokenFactory<V, T> factory = actual.tokenFactory();
-    List<TokenRange<V, T>> unwrapped = actual.unwrap();
-    Assertions.assertThat(unwrapped.size())
+    BulkTokenFactory factory =
+        actual instanceof Murmur3BulkTokenRange
+            ? new Murmur3BulkTokenFactory()
+            : new RandomBulkTokenFactory();
+    List<TokenRange> unwrapped = actual.unwrap();
+    assertThat(unwrapped.size())
         .overridingErrorMessage(
             "%s should unwrap to two ranges, but unwrapped to %s", actual, unwrapped)
         .isEqualTo(2);
-    Iterator<TokenRange<V, T>> unwrappedIt = unwrapped.iterator();
-    TokenRange<V, T> firstRange = unwrappedIt.next();
-    assertThat(firstRange).endsWith(factory.minToken());
-    TokenRange<V, T> secondRange = unwrappedIt.next();
-    assertThat(secondRange).startsWith(factory.minToken());
+    Iterator<TokenRange> unwrappedIt = unwrapped.iterator();
+    TokenRange firstRange = unwrappedIt.next();
+    assertThat(factory.range(firstRange.getStart(), firstRange.getEnd(), Collections.emptySet()))
+        .endsWith(factory.minToken());
+    TokenRange secondRange = unwrappedIt.next();
+    assertThat(factory.range(secondRange.getStart(), secondRange.getEnd(), Collections.emptySet()))
+        .startsWith(factory.minToken());
     return this;
   }
 
-  public TokenRangeAssert<V, T> isNotWrappedAround() {
-    Assertions.assertThat(actual.isWrappedAround())
+  public TokenRangeAssert isNotWrappedAround() {
+    assertThat(actual.isWrappedAround())
         .overridingErrorMessage("Expecting %s to not wrap around but it did", actual)
         .isFalse();
-    Assertions.assertThat(actual.unwrap()).containsExactly(actual);
+    assertThat(actual.unwrap()).containsExactly(actual);
     return this;
   }
 
-  @SafeVarargs
-  public final TokenRangeAssert<V, T> unwrapsTo(TokenRange<V, T>... subRanges) {
-    Assertions.assertThat(actual.unwrap()).containsExactly(subRanges);
+  public final TokenRangeAssert unwrapsTo(BulkTokenRange... subRanges) {
+    assertThat(actual.unwrap()).containsExactly(subRanges);
     return this;
   }
 }

@@ -25,7 +25,11 @@ import org.junit.jupiter.api.Tag;
 @Tag("long")
 class RPTokenPartitionerCCMIT extends PartitionerCCMITBase {
 
-  RPTokenPartitionerCCMIT(@SessionConfig(useKeyspace = UseKeyspaceMode.NONE) CqlSession session) {
+  RPTokenPartitionerCCMIT(
+      @SessionConfig(
+              useKeyspace = UseKeyspaceMode.NONE,
+              settings = "basic.load-balancing-policy.slow-replica-avoidance=false")
+          CqlSession session) {
     super(session, false);
   }
 }

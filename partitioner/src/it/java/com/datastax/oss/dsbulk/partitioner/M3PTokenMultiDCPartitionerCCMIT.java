@@ -26,7 +26,11 @@ import org.junit.jupiter.api.Tag;
 @Tag("long")
 class M3PTokenMultiDCPartitionerCCMIT extends PartitionerCCMITBase {
 
-  M3PTokenMultiDCPartitionerCCMIT(@SessionConfig(useKeyspace = NONE) CqlSession session) {
+  M3PTokenMultiDCPartitionerCCMIT(
+      @SessionConfig(
+              useKeyspace = NONE,
+              settings = "basic.load-balancing-policy.slow-replica-avoidance=false")
+          CqlSession session) {
     super(session, true);
   }
 }

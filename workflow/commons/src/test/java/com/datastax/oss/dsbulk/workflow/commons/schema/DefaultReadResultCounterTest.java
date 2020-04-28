@@ -17,7 +17,7 @@ package com.datastax.oss.dsbulk.workflow.commons.schema;
 
 import static com.datastax.oss.driver.api.core.DefaultProtocolVersion.V4;
 import static com.datastax.oss.driver.api.core.type.DataTypes.INT;
-import static com.datastax.oss.dsbulk.partitioner.TokenUtils.getTokenValue;
+import static com.datastax.oss.dsbulk.commons.utils.TokenUtils.getTokenValue;
 import static com.datastax.oss.dsbulk.tests.driver.DriverUtils.newToken;
 import static com.datastax.oss.dsbulk.tests.driver.DriverUtils.newTokenRange;
 import static com.datastax.oss.dsbulk.workflow.commons.settings.StatsSettings.StatisticsMode.global;

@@ -28,7 +28,10 @@ import org.junit.jupiter.api.Tag;
 class M3PTokenVnodeMultiDCPartitionerCCMIT extends PartitionerCCMITBase {
 
   M3PTokenVnodeMultiDCPartitionerCCMIT(
-      @SessionConfig(useKeyspace = UseKeyspaceMode.NONE) CqlSession session) {
+      @SessionConfig(
+              useKeyspace = UseKeyspaceMode.NONE,
+              settings = "basic.load-balancing-policy.slow-replica-avoidance=false")
+          CqlSession session) {
     super(session, true);
   }
 }

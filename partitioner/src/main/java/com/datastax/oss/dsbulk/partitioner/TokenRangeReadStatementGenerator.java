@@ -15,13 +15,17 @@
  */
 package com.datastax.oss.dsbulk.partitioner;
 
+import static com.datastax.oss.dsbulk.commons.utils.TokenUtils.getTokenValue;
+
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.metadata.Metadata;
 import com.datastax.oss.driver.api.core.metadata.TokenMap;
 import com.datastax.oss.driver.api.core.metadata.schema.ColumnMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.RelationMetadata;
+import com.datastax.oss.driver.api.core.metadata.token.TokenRange;
 import com.datastax.oss.driver.internal.core.metadata.token.DefaultTokenMap;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
@@ -34,10 +38,11 @@ public class TokenRangeReadStatementGenerator {
   private final TokenMap tokenMap;
 
   /**
-   * @param table The table to scan.
+   * @param table The table (or materialized view) to scan.
    * @param metadata The cluster metadata to use.
    */
-  public TokenRangeReadStatementGenerator(RelationMetadata table, Metadata metadata) {
+  public TokenRangeReadStatementGenerator(
+      @NonNull RelationMetadata table, @NonNull Metadata metadata) {
     this.table = table;
     tokenMap =
         metadata
@@ -62,6 +67,7 @@ public class TokenRangeReadStatementGenerator {
    *     basis).
    * @return A list of SELECT statements to read the entire table.
    */
+  @NonNull
   public List<Statement<?>> generate(int splitCount) {
     return generate(splitCount, this::generateSimpleStatement);
   }
@@ -86,17 +92,17 @@ public class TokenRangeReadStatementGenerator {
    * @param statementFactory The factory to use to generate statements for each split.
    * @return A list of SELECT statements to read the entire table.
    */
+  @NonNull
   public List<Statement<?>> generate(
-      int splitCount, Function<TokenRange<?, ?>, Statement<?>> statementFactory) {
-    @SuppressWarnings("unchecked")
-    TokenFactory<Number, Token<Number>> tokenFactory =
-        (TokenFactory<Number, Token<Number>>)
-            TokenFactory.forDriverTokenFactory(((DefaultTokenMap) tokenMap).getTokenFactory());
-    PartitionGenerator<Number, Token<Number>> generator =
-        new PartitionGenerator<>(table.getKeyspace(), tokenMap, tokenFactory);
-    List<TokenRange<Number, Token<Number>>> partitions = generator.partition(splitCount);
+      int splitCount, @NonNull Function<TokenRange, Statement<?>> statementFactory) {
+    BulkTokenFactory tokenFactory =
+        BulkTokenFactory.forPartitioner(
+            ((DefaultTokenMap) tokenMap).getTokenFactory().getPartitionerName());
+    PartitionGenerator generator =
+        new PartitionGenerator(table.getKeyspace(), tokenMap, tokenFactory);
+    List<BulkTokenRange> partitions = generator.partition(splitCount);
     List<Statement<?>> statements = new ArrayList<>();
-    for (TokenRange<Number, Token<Number>> range : partitions) {
+    for (TokenRange range : partitions) {
       Statement<?> stmt = statementFactory.apply(range);
       if (stmt.getKeyspace() != null) {
         if (!stmt.getKeyspace().equals(table.getKeyspace())) {
@@ -108,13 +114,13 @@ public class TokenRangeReadStatementGenerator {
       } else {
         stmt = stmt.setRoutingKeyspace(table.getKeyspace());
       }
-      stmt = stmt.setRoutingToken(tokenMap.parse(range.end().toString()));
+      stmt = stmt.setRoutingToken(range.getEnd());
       statements.add(stmt);
     }
     return statements;
   }
 
-  private Statement<?> generateSimpleStatement(TokenRange<?, ?> range) {
+  private Statement<?> generateSimpleStatement(TokenRange range) {
     String all =
         table.getColumns().keySet().stream()
             .map(id -> id.asCql(true))
@@ -131,9 +137,9 @@ public class TokenRangeReadStatementGenerator {
             table.getKeyspace().asCql(true),
             table.getName().asCql(true),
             pks,
-            range.start().value(),
+            getTokenValue(range.getStart()),
             pks,
-            range.end().value());
+            getTokenValue(range.getEnd()));
     return SimpleStatement.newInstance(query);
   }
 }

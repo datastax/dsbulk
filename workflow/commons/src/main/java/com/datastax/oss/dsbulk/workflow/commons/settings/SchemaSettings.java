@@ -37,7 +37,6 @@ import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.DefaultProtocolVersion;
 import com.datastax.oss.driver.api.core.ProtocolVersion;
-import com.datastax.oss.driver.api.core.cql.BoundStatement;
 import com.datastax.oss.driver.api.core.cql.ColumnDefinitions;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.cql.Statement;
@@ -49,7 +48,6 @@ import com.datastax.oss.driver.api.core.metadata.schema.KeyspaceMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.RelationMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.ViewMetadata;
-import com.datastax.oss.driver.api.core.metadata.token.Token;
 import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.shaded.guava.common.base.Preconditions;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMultimap;
@@ -529,16 +527,15 @@ public class SchemaSettings {
     List<Statement<?>> statements =
         generator.generate(
             splits,
-            range -> {
-              BoundStatement bs = preparedStatement.bind();
-              int startIdx = queryInspector.getTokenRangeRestrictionStartVariableIndex();
-              Token startToken = tokenMap.parse(range.start().toString());
-              bs = bs.setToken(startIdx, startToken);
-              int endIdx = queryInspector.getTokenRangeRestrictionEndVariableIndex();
-              Token endToken = tokenMap.parse(range.end().toString());
-              bs = bs.setToken(endIdx, endToken);
-              return bs;
-            });
+            range ->
+                preparedStatement
+                    .bind()
+                    .setToken(
+                        queryInspector.getTokenRangeRestrictionStartVariableIndex(),
+                        range.getStart())
+                    .setToken(
+                        queryInspector.getTokenRangeRestrictionEndVariableIndex(), range.getEnd()));
+
     LOGGER.debug("Generated {} bound statements", statements.size());
     return statements;
   }

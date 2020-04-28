@@ -15,16 +15,22 @@
  */
 package com.datastax.oss.dsbulk.partitioner;
 
+import com.datastax.oss.driver.api.core.metadata.EndPoint;
+import com.datastax.oss.driver.api.core.metadata.token.TokenRange;
 import edu.umd.cs.findbugs.annotations.NonNull;
+import java.math.BigInteger;
+import java.util.Set;
 
-/**
- * A token in a ring.
- *
- * @param <T> The token value type.
- */
-public interface Token<T extends Number> extends Comparable<Token<T>> {
+public interface BulkTokenRange extends TokenRange {
 
-  /** @return This token's value. */
+  /** @return The replicas that own this range. */
   @NonNull
-  T value();
+  Set<EndPoint> replicas();
+
+  /** @return The range size (i.e. the number of tokens it contains). */
+  @NonNull
+  BigInteger size();
+
+  /** @return The ring fraction covered by this range. */
+  double fraction();
 }

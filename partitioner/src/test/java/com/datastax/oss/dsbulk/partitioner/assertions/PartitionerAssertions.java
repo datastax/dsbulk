@@ -15,14 +15,12 @@
  */
 package com.datastax.oss.dsbulk.partitioner.assertions;
 
-import com.datastax.oss.dsbulk.partitioner.Token;
-import com.datastax.oss.dsbulk.partitioner.TokenRange;
+import com.datastax.oss.dsbulk.partitioner.BulkTokenRange;
 import com.datastax.oss.dsbulk.tests.assertions.TestAssertions;
 
 public class PartitionerAssertions extends TestAssertions {
 
-  public static <V extends Number, T extends Token<V>> TokenRangeAssert<V, T> assertThat(
-      TokenRange<V, T> actual) {
-    return new TokenRangeAssert<>(actual);
+  public static TokenRangeAssert assertThat(BulkTokenRange actual) {
+    return new TokenRangeAssert(actual);
   }
 }

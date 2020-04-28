@@ -19,25 +19,23 @@ import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.metadata.EndPoint;
 import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.driver.api.core.metadata.TokenMap;
-import com.datastax.oss.driver.internal.core.metadata.token.Murmur3TokenRange;
-import com.datastax.oss.driver.internal.core.metadata.token.RandomToken;
-import com.datastax.oss.driver.internal.core.metadata.token.RandomTokenRange;
+import com.datastax.oss.driver.api.core.metadata.token.TokenRange;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class PartitionGenerator<V extends Number, T extends Token<V>> {
+public class PartitionGenerator {
 
   private final CqlIdentifier keyspace;
-  private final TokenFactory<V, T> tokenFactory;
+  private final BulkTokenFactory tokenFactory;
   private final TokenMap tokenMap;
 
   public PartitionGenerator(
-      CqlIdentifier keyspace, TokenMap tokenMap, TokenFactory<V, T> tokenFactory) {
+      CqlIdentifier keyspace, TokenMap tokenMap, BulkTokenFactory tokenFactory) {
     this.keyspace = keyspace;
-    this.tokenFactory = tokenFactory;
     this.tokenMap = tokenMap;
+    this.tokenFactory = tokenFactory;
   }
 
   /**
@@ -45,56 +43,41 @@ public class PartitionGenerator<V extends Number, T extends Token<V>> {
    *
    * @param splitCount The desired number of splits.
    */
-  public List<TokenRange<V, T>> partition(int splitCount) {
-    List<TokenRange<V, T>> tokenRanges = describeRing(splitCount);
-    int endpointCount = (int) tokenRanges.stream().map(TokenRange::replicas).distinct().count();
+  public List<BulkTokenRange> partition(int splitCount) {
+    List<BulkTokenRange> tokenRanges = describeRing(splitCount);
+    int endpointCount = (int) tokenRanges.stream().map(BulkTokenRange::replicas).distinct().count();
     int maxGroupSize = tokenRanges.size() / endpointCount;
-    TokenRangeSplitter<V, T> splitter = tokenFactory.splitter();
-    List<TokenRange<V, T>> splits = splitter.split(tokenRanges, splitCount);
+    TokenRangeSplitter splitter = tokenFactory.splitter();
+    List<BulkTokenRange> splits = splitter.split(tokenRanges, splitCount);
     checkRing(splits);
-    TokenRangeClusterer<V, T> clusterer = new TokenRangeClusterer<>(splitCount, maxGroupSize);
-    List<TokenRange<V, T>> groups = clusterer.group(splits);
+    TokenRangeClusterer clusterer = tokenFactory.clusterer();
+    List<BulkTokenRange> groups = clusterer.group(splits, splitCount, maxGroupSize);
     checkRing(groups);
     return groups;
   }
 
-  private List<TokenRange<V, T>> describeRing(int splitCount) {
-    List<TokenRange<V, T>> ranges =
-        tokenMap.getTokenRanges().stream().map(this::range).collect(Collectors.toList());
+  private List<BulkTokenRange> describeRing(int splitCount) {
+    List<BulkTokenRange> ranges =
+        tokenMap.getTokenRanges().stream().map(this::toBulkRange).collect(Collectors.toList());
     if (splitCount == 1) {
-      TokenRange<V, T> r = ranges.get(0);
+      BulkTokenRange r = ranges.get(0);
       return Collections.singletonList(
-          new TokenRange<>(
-              tokenFactory.minToken(), tokenFactory.minToken(), r.replicas(), tokenFactory));
+          tokenFactory.range(tokenFactory.minToken(), tokenFactory.minToken(), r.replicas()));
     } else {
       return ranges;
     }
   }
 
-  private TokenRange<V, T> range(com.datastax.oss.driver.api.core.metadata.token.TokenRange range) {
-    T startToken;
-    T endToken;
-    if (range instanceof Murmur3TokenRange) {
-      startToken =
-          tokenFactory.tokenFromString(TokenUtils.getTokenValue(range.getStart()).toString());
-      endToken = tokenFactory.tokenFromString(TokenUtils.getTokenValue(range.getEnd()).toString());
-    } else if (range instanceof RandomTokenRange) {
-      startToken =
-          tokenFactory.tokenFromString(((RandomToken) range.getStart()).getValue().toString());
-      endToken = tokenFactory.tokenFromString(((RandomToken) range.getEnd()).getValue().toString());
-    } else {
-      throw new IllegalArgumentException(
-          "Unsupported token range implementation: " + range.getClass());
-    }
+  private BulkTokenRange toBulkRange(TokenRange range) {
     Set<EndPoint> replicas =
         tokenMap.getReplicas(keyspace, range).stream()
             .map(Node::getEndPoint)
             .collect(Collectors.toSet());
-    return new TokenRange<>(startToken, endToken, replicas, tokenFactory);
+    return tokenFactory.range(range.getStart(), range.getEnd(), replicas);
   }
 
-  private void checkRing(List<TokenRange<V, T>> splits) {
-    double sum = splits.stream().map(TokenRange::fraction).reduce(0d, (f1, f2) -> f1 + f2);
+  private void checkRing(List<BulkTokenRange> splits) {
+    double sum = splits.stream().map(BulkTokenRange::fraction).reduce(0d, Double::sum);
     if (Math.rint(sum) != 1.0d) {
       throw new IllegalStateException(
           String.format(

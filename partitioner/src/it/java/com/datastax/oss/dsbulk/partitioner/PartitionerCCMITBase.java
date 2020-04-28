@@ -22,6 +22,7 @@ import static com.datastax.oss.dsbulk.tests.ccm.CCMCluster.Type.OSS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 import static org.awaitility.Durations.ONE_MINUTE;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.CqlSession;
@@ -30,7 +31,10 @@ import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.api.core.metadata.Node;
+import com.datastax.oss.driver.api.core.metadata.TokenMap;
 import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
+import com.datastax.oss.driver.api.core.metadata.token.Token;
 import com.datastax.oss.driver.api.testinfra.session.SessionUtils;
 import com.datastax.oss.driver.shaded.guava.common.util.concurrent.Uninterruptibles;
 import com.datastax.oss.dsbulk.tests.ccm.CCMExtension;
@@ -40,10 +44,13 @@ import com.datastax.oss.dsbulk.tests.utils.CQLUtils;
 import com.datastax.oss.dsbulk.tests.utils.StringUtils;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 @ExtendWith(CCMExtension.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -66,24 +73,46 @@ abstract class PartitionerCCMITBase {
     this.multiDc = multiDc;
   }
 
-  @ParameterizedTest(name = "[{index}] rf {0}")
-  @ValueSource(ints = {1, 2, 3})
-  void should_scan_table(int rf) {
+  @ParameterizedTest(name = "[{index}] rf {0} splitCount {1}")
+  @MethodSource
+  void should_scan_table(int rf, int splitCount) {
     CqlIdentifier ks = createSchema(rf);
     populateTable(ks);
     TableMetadata table = getTable(ks).orElseThrow(IllegalStateException::new);
     TokenRangeReadStatementGenerator generator =
         new TokenRangeReadStatementGenerator(table, session.getMetadata());
-    List<Statement<?>> statements = generator.generate(Runtime.getRuntime().availableProcessors());
+    List<Statement<?>> statements = generator.generate(splitCount);
     int total = 0;
+    TokenMap tokenMap = session.getMetadata().getTokenMap().get();
     for (Statement<?> stmt : statements) {
       stmt = stmt.setConsistencyLevel(ALL).setExecutionProfile(SessionUtils.slowProfile(session));
       ResultSet rs = session.execute(stmt);
       for (@SuppressWarnings("unused") Row ignored : rs) {
         total++;
       }
+      Token routingToken = stmt.getRoutingToken();
+      assertThat(routingToken).isNotNull();
+      Set<Node> replicas = tokenMap.getReplicas(ks, routingToken);
+      assertThat(rs.getExecutionInfo().getCoordinator()).isIn(replicas);
     }
     assertThat(total).isEqualTo(EXPECTED_TOTAL);
+  }
+
+  @SuppressWarnings("unused")
+  static Stream<Arguments> should_scan_table() {
+    return Stream.of(
+        arguments(1, 1),
+        arguments(1, 2),
+        arguments(1, Runtime.getRuntime().availableProcessors()),
+        arguments(1, 1000),
+        arguments(2, 1),
+        arguments(2, 2),
+        arguments(2, Runtime.getRuntime().availableProcessors()),
+        arguments(2, 1000),
+        arguments(3, 1),
+        arguments(3, 2),
+        arguments(3, Runtime.getRuntime().availableProcessors()),
+        arguments(3, 1000));
   }
 
   private CqlIdentifier createSchema(int rf) {

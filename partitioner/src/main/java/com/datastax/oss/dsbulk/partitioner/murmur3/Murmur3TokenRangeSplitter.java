@@ -13,55 +13,49 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.dsbulk.partitioner;
+package com.datastax.oss.dsbulk.partitioner.murmur3;
 
 import static java.math.BigInteger.ONE;
 import static java.math.BigInteger.ZERO;
 
+import com.datastax.oss.driver.internal.core.metadata.token.Murmur3Token;
+import com.datastax.oss.dsbulk.partitioner.BulkTokenRange;
+import com.datastax.oss.dsbulk.partitioner.TokenRangeSplitter;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
-class RandomTokenRangeSplitter implements TokenRangeSplitter<BigInteger, Token<BigInteger>> {
-
-  public static final RandomTokenRangeSplitter INSTANCE = new RandomTokenRangeSplitter();
-
-  private RandomTokenRangeSplitter() {}
+public class Murmur3TokenRangeSplitter implements TokenRangeSplitter {
 
   @Override
-  public List<TokenRange<BigInteger, Token<BigInteger>>> split(
-      TokenRange<BigInteger, Token<BigInteger>> tokenRange, int splitCount) {
+  public @NonNull List<BulkTokenRange> split(@NonNull BulkTokenRange tokenRange, int splitCount) {
     BigInteger rangeSize = tokenRange.size();
     BigInteger val = BigInteger.valueOf(splitCount);
     // If the range size is lesser than the number of splits,
     // use the range size as number of splits and yield (size-of-range) splits of size 1
     BigInteger splitPointsCount = rangeSize.compareTo(val) < 0 ? rangeSize : val;
-    BigInteger start = tokenRange.start().value();
-    List<Token<BigInteger>> splitPoints = new ArrayList<>();
+    BigInteger start = BigInteger.valueOf(((Murmur3Token) tokenRange.getStart()).getValue());
+    List<Murmur3Token> splitPoints = new ArrayList<>();
     for (BigInteger i = ZERO; i.compareTo(splitPointsCount) < 0; i = i.add(ONE)) {
       // instead of applying a fix increment we multiply and
       // divide again at each step to compensate for non-integral
       // increment sizes and thus to create splits of sizes as even as
       // possible (iow, to minimize the split sizes variance).
       BigInteger increment = rangeSize.multiply(i).divide(splitPointsCount);
-      RandomToken splitPoint = new RandomToken(wrap(start.add(increment)));
+      // DAT-334: use longValue() instead of longValueExact() to allow
+      // long overflows (a long overflow here means that we wrap around the ring).
+      Murmur3Token splitPoint = new Murmur3Token(start.add(increment).longValue());
       splitPoints.add(splitPoint);
     }
-    splitPoints.add(tokenRange.end());
-    List<TokenRange<BigInteger, Token<BigInteger>>> splits = new ArrayList<>();
+    splitPoints.add((Murmur3Token) tokenRange.getEnd());
+    List<BulkTokenRange> splits = new ArrayList<>();
     for (int i = 0; i < splitPoints.size() - 1; i++) {
-      List<Token<BigInteger>> window = splitPoints.subList(i, i + 2);
-      TokenRange<BigInteger, Token<BigInteger>> split =
-          new TokenRange<>(
-              window.get(0), window.get(1), tokenRange.replicas(), tokenRange.tokenFactory());
+      List<Murmur3Token> window = splitPoints.subList(i, i + 2);
+      Murmur3BulkTokenRange split =
+          new Murmur3BulkTokenRange(window.get(0), window.get(1), tokenRange.replicas());
       splits.add(split);
     }
     return splits;
-  }
-
-  private BigInteger wrap(BigInteger token) {
-    return token.compareTo(RandomTokenFactory.MAX_TOKEN_VALUE) <= 0
-        ? token
-        : token.subtract(RandomTokenFactory.MAX_TOKEN_VALUE);
   }
 }
