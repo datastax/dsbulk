@@ -25,6 +25,7 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
@@ -148,11 +149,11 @@ public class NetworkUtils {
   }
 
   public static void waitUntilPortIsUp(InetSocketAddress address) {
-    await().atMost(5, MINUTES).until(() -> pingPort(address));
+    await().atMost(5, MINUTES).pollInterval(Duration.ofSeconds(1)).until(() -> pingPort(address));
   }
 
   public static void waitUntilPortIsDown(InetSocketAddress address) {
-    await().atMost(5, MINUTES).until(() -> !pingPort(address));
+    await().atMost(5, MINUTES).pollInterval(Duration.ofSeconds(1)).until(() -> !pingPort(address));
   }
 
   private static boolean pingPort(InetSocketAddress address) {
