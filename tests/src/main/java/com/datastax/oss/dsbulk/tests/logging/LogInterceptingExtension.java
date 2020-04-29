@@ -17,6 +17,7 @@ package com.datastax.oss.dsbulk.tests.logging;
 
 import static org.slf4j.Logger.ROOT_LOGGER_NAME;
 
+import com.datastax.oss.dsbulk.tests.logging.LogCapture.Root;
 import com.datastax.oss.dsbulk.tests.utils.ReflectionUtils;
 import java.lang.reflect.Parameter;
 import java.util.concurrent.ConcurrentHashMap;
@@ -96,8 +97,9 @@ public class LogInterceptingExtension
 
   @Override
   public void beforeEach(ExtensionContext context) throws Exception {
-    LogResource annotation =
-        ReflectionUtils.locateClassAnnotation(context.getRequiredTestClass(), LogResource.class);
+    LogConfigurationResource annotation =
+        ReflectionUtils.locateClassAnnotation(
+            context.getRequiredTestClass(), LogConfigurationResource.class);
     if (annotation != null) {
       LogUtils.resetLogbackConfiguration(annotation.value());
     } else {

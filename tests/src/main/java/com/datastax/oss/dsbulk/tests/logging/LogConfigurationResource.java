@@ -28,7 +28,7 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
-public @interface LogResource {
+public @interface LogConfigurationResource {
 
   String value() default "logback-test.xml";
 }

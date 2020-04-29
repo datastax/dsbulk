@@ -29,7 +29,7 @@ import com.datastax.oss.dsbulk.runner.cli.ParseException;
 import com.datastax.oss.dsbulk.tests.logging.LogCapture;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptingExtension;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptor;
-import com.datastax.oss.dsbulk.tests.logging.LogResource;
+import com.datastax.oss.dsbulk.tests.logging.LogConfigurationResource;
 import com.datastax.oss.dsbulk.tests.logging.StreamCapture;
 import com.datastax.oss.dsbulk.tests.logging.StreamInterceptingExtension;
 import com.datastax.oss.dsbulk.tests.logging.StreamInterceptor;

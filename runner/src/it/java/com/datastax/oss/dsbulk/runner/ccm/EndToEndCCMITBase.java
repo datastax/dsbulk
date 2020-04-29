@@ -25,7 +25,7 @@ import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.dsbulk.tests.ccm.CCMCluster;
 import com.datastax.oss.dsbulk.tests.ccm.CCMExtension;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptingExtension;
-import com.datastax.oss.dsbulk.tests.logging.LogResource;
+import com.datastax.oss.dsbulk.tests.logging.LogConfigurationResource;
 import com.datastax.oss.dsbulk.tests.logging.StreamInterceptingExtension;
 import com.datastax.oss.dsbulk.tests.utils.FileUtils;
 import com.datastax.oss.dsbulk.tests.utils.StringUtils;
@@ -41,7 +41,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(CCMExtension.class)
 @ExtendWith(LogInterceptingExtension.class)
 @ExtendWith(StreamInterceptingExtension.class)
-@LogResource("logback.xml")
+@LogConfigurationResource("logback.xml")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 abstract class EndToEndCCMITBase {
 

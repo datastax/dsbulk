@@ -19,7 +19,7 @@ import static java.nio.file.Files.createTempDirectory;
 
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptingExtension;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptor;
-import com.datastax.oss.dsbulk.tests.logging.LogResource;
+import com.datastax.oss.dsbulk.tests.logging.LogConfigurationResource;
 import com.datastax.oss.dsbulk.tests.logging.StreamInterceptingExtension;
 import com.datastax.oss.dsbulk.tests.logging.StreamInterceptor;
 import com.datastax.oss.dsbulk.tests.simulacron.SimulacronExtension;
@@ -41,7 +41,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(LogInterceptingExtension.class)
 @ExtendWith(StreamInterceptingExtension.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@LogResource("logback.xml")
+@LogConfigurationResource("logback.xml")
 class EndToEndSimulacronITBase {
 
   final BoundCluster simulacron;
