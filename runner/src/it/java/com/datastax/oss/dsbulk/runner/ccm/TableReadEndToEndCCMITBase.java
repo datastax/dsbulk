@@ -24,7 +24,9 @@ import static org.awaitility.Awaitility.await;
 import static org.awaitility.Durations.ONE_MINUTE;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import com.datastax.oss.driver.api.core.ConsistencyLevel;
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.datastax.oss.driver.api.core.metadata.EndPoint;
 import com.datastax.oss.driver.api.core.metadata.Metadata;
 import com.datastax.oss.driver.api.core.metadata.Node;
@@ -119,6 +121,8 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add(keyspace);
     args.add("--schema.table");
     args.add(table);
+    args.add("--driver.basic.request.consistency");
+    args.add("ALL");
 
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
@@ -161,7 +165,10 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
             () ->
                 session
                         .execute(
-                            String.format("SELECT * FROM \"%1$s\".\"%2$s_mv\"", keyspace, table))
+                            SimpleStatement.newInstance(
+                                    String.format(
+                                        "SELECT * FROM \"%1$s\".\"%2$s_mv\"", keyspace, table))
+                                .setConsistencyLevel(ConsistencyLevel.ALL))
                         .all()
                         .size()
                     == expectedTotal);
@@ -174,6 +181,8 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add(keyspace);
     args.add("--schema.table");
     args.add(table + "_mv");
+    args.add("--driver.basic.request.consistency");
+    args.add("ALL");
 
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
@@ -198,6 +207,8 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add("mock");
     args.add("--schema.query");
     args.add(StringUtils.quoteJson(String.format("SELECT * FROM \"%s\".\"%s\"", keyspace, table)));
+    args.add("--driver.basic.request.consistency");
+    args.add("ALL");
 
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
@@ -234,6 +245,8 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
                   "SELECT \"PK1\", ttl(v), writetime(v), token(\"PK1\", \"PK2\"), now() FROM \"%s\".\"%s\"",
                   keyspace, table)));
     }
+    args.add("--driver.basic.request.consistency");
+    args.add("ALL");
 
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
@@ -253,6 +266,8 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add(keyspace);
     args.add("--schema.table");
     args.add(table);
+    args.add("--driver.basic.request.consistency");
+    args.add("ALL");
 
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
@@ -270,6 +285,8 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     args.add(String.join(",", modes));
     args.add("--schema.query");
     args.add(StringUtils.quoteJson(String.format("SELECT * FROM \"%s\".\"%s\"", keyspace, table)));
+    args.add("--driver.basic.request.consistency");
+    args.add("ALL");
 
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
