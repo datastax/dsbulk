@@ -22,6 +22,7 @@ import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.createIpByCount
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.validateOutputFiles;
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.validatePositionsFile;
 import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat;
+import static com.datastax.oss.dsbulk.tests.logging.StreamType.STDERR;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.any;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
@@ -37,11 +38,15 @@ import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus;
 import com.datastax.oss.dsbulk.runner.tests.CsvUtils;
 import com.datastax.oss.dsbulk.tests.cloud.SNIProxyServer;
 import com.datastax.oss.dsbulk.tests.cloud.SNIProxyServerExtension;
+import com.datastax.oss.dsbulk.tests.driver.annotations.SessionConfig;
+import com.datastax.oss.dsbulk.tests.driver.annotations.SessionConfig.UseKeyspaceMode;
 import com.datastax.oss.dsbulk.tests.logging.LogCapture;
 import com.datastax.oss.dsbulk.tests.logging.LogConfigurationResource;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptingExtension;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptor;
-import com.datastax.oss.dsbulk.tests.logging.LogResource;
+import com.datastax.oss.dsbulk.tests.logging.StreamCapture;
+import com.datastax.oss.dsbulk.tests.logging.StreamInterceptingExtension;
+import com.datastax.oss.dsbulk.tests.logging.StreamInterceptor;
 import com.datastax.oss.dsbulk.tests.utils.FileUtils;
 import com.datastax.oss.dsbulk.tests.utils.StringUtils;
 import com.github.tomakehurst.wiremock.WireMockServer;
@@ -62,6 +67,7 @@ import ru.lanwen.wiremock.ext.WiremockResolver;
 import ru.lanwen.wiremock.ext.WiremockResolver.Wiremock;
 
 @ExtendWith(LogInterceptingExtension.class)
+@ExtendWith(StreamInterceptingExtension.class)
 @ExtendWith(SNIProxyServerExtension.class)
 @ExtendWith(WiremockResolver.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -72,15 +78,21 @@ class EndToEndCloudIT {
   private final SNIProxyServer proxy;
   private final CqlSession session;
   private final LogInterceptor logs;
+  private final StreamInterceptor stdErr;
 
   private Path logDir;
   private Path unloadDir;
 
   EndToEndCloudIT(
-      SNIProxyServer proxy, CqlSession session, @LogCapture(level = INFO) LogInterceptor logs) {
+      SNIProxyServer proxy,
+      @SessionConfig(useKeyspace = UseKeyspaceMode.FIXED, loggedKeyspaceName = "ks1")
+          CqlSession session,
+      @LogCapture(level = INFO, loggerName = "com.datastax.oss.dsbulk") LogInterceptor logs,
+      @StreamCapture(STDERR) StreamInterceptor stdErr) {
     this.proxy = proxy;
     this.session = session;
     this.logs = logs;
+    this.stdErr = stdErr;
   }
 
   @BeforeAll
@@ -105,6 +117,8 @@ class EndToEndCloudIT {
     String bundlePath = proxy.getSecureBundlePath().toString();
     performLoad("-b", bundlePath);
     assertThat(logs).hasMessageContaining("changing default consistency level to LOCAL_QUORUM");
+    assertThat(stdErr.getStreamAsStringPlain())
+        .contains("changing default consistency level to LOCAL_QUORUM");
     performUnload("-b", bundlePath);
   }
 
@@ -120,6 +134,8 @@ class EndToEndCloudIT {
     String bundleUrl = server.baseUrl() + "/creds.zip";
     performLoad("-b", StringUtils.quoteJson(bundleUrl));
     assertThat(logs).hasMessageContaining("changing default consistency level to LOCAL_QUORUM");
+    assertThat(stdErr.getStreamAsStringPlain())
+        .contains("changing default consistency level to LOCAL_QUORUM");
     performUnload("-b", StringUtils.quoteJson(bundleUrl));
   }
 
@@ -128,6 +144,7 @@ class EndToEndCloudIT {
     String bundlePath = proxy.getSecureBundlePath().toString();
     performLoad("-b", bundlePath, "-cl", "LOCAL_QUORUM");
     assertThat(logs).hasMessageContaining("ignoring all explicit contact points");
+    assertThat(stdErr.getStreamAsStringPlain()).contains("ignoring all explicit contact points");
     performUnload("-b", bundlePath);
   }
 
@@ -136,6 +153,8 @@ class EndToEndCloudIT {
     String bundlePath = proxy.getSecureBundlePath().toString();
     performLoad("-b", bundlePath, "-cl", "LOCAL_ONE");
     assertThat(logs).hasMessageContaining("forcing default consistency level to LOCAL_QUORUM");
+    assertThat(stdErr.getStreamAsStringPlain())
+        .contains("forcing default consistency level to LOCAL_QUORUM");
     performUnload("-b", bundlePath);
   }
 
@@ -148,7 +167,7 @@ class EndToEndCloudIT {
             "--connector.csv.header",
             "false",
             "--schema.keyspace",
-            session.getKeyspace().get().asInternal(),
+            "ks1",
             "--schema.table",
             "ip_by_country",
             "--schema.mapping",
@@ -175,7 +194,7 @@ class EndToEndCloudIT {
             "--connector.csv.maxConcurrentFiles",
             "1",
             "--schema.keyspace",
-            session.getKeyspace().get().asInternal(),
+            "ks1",
             "--schema.table",
             "ip_by_country",
             "--schema.mapping",
