@@ -26,6 +26,10 @@
   <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator"/>
   <conversionRule conversionWord="msgx" converterClass="com.datastax.oss.dsbulk.workflow.commons.log.HighlightingMessageConverter"/>
   <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <!--
+    DSBulk log messages are printed to standard error, to leave standard out free for
+    output from workflow executions that print their results to that channel.
+    -->
     <target>System.err</target>
     <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
       <level>INFO</level>
@@ -47,10 +51,18 @@
       <charset>UTF-8</charset>
     </encoder>
   </appender>
-  <root level="INFO">
-    <!-- main log file appender is created programmatically in LogSettings -->
+  <root level="ERROR">
+    <!--
+    DSBulk also logs to a main log file, but this appender is
+    created programmatically in LogSettings.
+    -->
     <appender-ref ref="CONSOLE"/>
   </root>
+  <!--
+  Do not change the loggers below; they are programmatically manipulated
+  by LogSettings to apply the desired verbosity level.
+  -->
+  <logger name="com.datastax.oss.dsbulk" level="INFO"/>
   <logger name="com.datastax.oss.driver" level="WARN"/>
   <logger name="com.datastax.dse.driver" level="WARN"/>
   <logger name="io.netty" level="WARN"/>

@@ -165,21 +165,24 @@ class LogSettingsTest {
       throws Exception {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.log", "directory", quoteJson(tempFolder));
-    ch.qos.logback.classic.Logger root =
-        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-    Level oldLevel = root.getLevel();
+    ch.qos.logback.classic.Logger dsbulkLogger =
+        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger("com.datastax.oss.dsbulk");
+    Level oldLevel = dsbulkLogger.getLevel();
     try {
       LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
       settings.init();
-      assertThat(root.getLevel()).isEqualTo(Level.INFO);
-      root.info("this is a test 1");
-      root.debug("this should not appear");
+      assertThat(dsbulkLogger.getLevel()).isEqualTo(Level.INFO);
+      dsbulkLogger.info("this is a test 1");
+      dsbulkLogger.debug("this should not appear");
       LOGGER.info("this is a test 2");
       LOGGER.debug("this should not appear");
       // driver log level should be WARN
-      LoggerFactory.getLogger("com.datastax.oss.driver").warn("this is a test 3");
-      LoggerFactory.getLogger("com.datastax.oss.driver").info("this should not appear");
-      LoggerFactory.getLogger("com.datastax.dse.driver").info("this should not appear");
+      Logger ossDriverLogger = LoggerFactory.getLogger("com.datastax.oss.driver");
+      ossDriverLogger.warn("this is a test 3");
+      ossDriverLogger.info("this should not appear");
+      Logger dseDriverLogger = LoggerFactory.getLogger("com.datastax.dse.driver");
+      dseDriverLogger.warn("this is a test 4");
+      dseDriverLogger.info("this should not appear");
       Path logFile = tempFolder.resolve("TEST_EXECUTION_ID").resolve("operation.log");
       assertThat(logFile).exists();
       List<String> contents = Files.readAllLines(logFile);
@@ -187,12 +190,13 @@ class LogSettingsTest {
           .anySatisfy(line -> assertThat(line).endsWith("this is a test 1"))
           .anySatisfy(line -> assertThat(line).endsWith("this is a test 2"))
           .anySatisfy(line -> assertThat(line).endsWith("this is a test 3"))
+          .anySatisfy(line -> assertThat(line).endsWith("this is a test 4"))
           .noneSatisfy(line -> assertThat(line).contains("this should not appear"));
       assertThat(stdout.getStreamLinesPlain())
-          .contains("this is a test 1", "this is a test 2", "this is a test 3")
+          .contains("this is a test 1", "this is a test 2", "this is a test 3", "this is a test 4")
           .doesNotContain("this should not appear");
     } finally {
-      root.setLevel(oldLevel);
+      dsbulkLogger.setLevel(oldLevel);
     }
   }
 

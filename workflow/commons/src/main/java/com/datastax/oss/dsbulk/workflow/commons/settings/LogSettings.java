@@ -273,6 +273,12 @@ public class LogSettings {
   public static void setQuiet() {
     setAppenderThreshold(CONSOLE_APPENDER, "WARN");
     setAppenderThreshold(MAIN_LOG_FILE_APPENDER, "WARN");
+    // raise log levels to WARN across the board
+    seLoggerThreshold("com.datastax.oss.dsbulk", Level.WARN);
+    seLoggerThreshold("com.datastax.oss.driver", Level.WARN);
+    seLoggerThreshold("com.datastax.dse.driver", Level.WARN);
+    seLoggerThreshold("io.netty", Level.WARN);
+    seLoggerThreshold("reactor.core", Level.WARN);
   }
 
   @VisibleForTesting
@@ -291,7 +297,8 @@ public class LogSettings {
   public static void setNormal() {
     setAppenderThreshold(CONSOLE_APPENDER, "INFO");
     setAppenderThreshold(MAIN_LOG_FILE_APPENDER, "INFO");
-    // downgrade log levels to DEBUG (dsbulk) and INFO (driver, Netty, Reactor)
+    // These levels correspond to the ones declared in logback.xml,
+    // but it doesn't hurt to force them programmatically
     seLoggerThreshold("com.datastax.oss.dsbulk", Level.INFO);
     seLoggerThreshold("com.datastax.oss.driver", Level.WARN);
     seLoggerThreshold("com.datastax.dse.driver", Level.WARN);
