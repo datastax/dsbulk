@@ -18,7 +18,6 @@ package com.datastax.oss.dsbulk.runner.tests;
 import static com.datastax.oss.driver.api.core.type.DataTypes.BIGINT;
 import static com.datastax.oss.driver.api.core.type.DataTypes.INET;
 import static com.datastax.oss.driver.api.core.type.DataTypes.TEXT;
-import static com.datastax.oss.dsbulk.workflow.api.log.LogConstants.OPERATION_DIRECTORY_KEY;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -26,6 +25,7 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus;
 import com.datastax.oss.dsbulk.tests.simulacron.SimulacronUtils;
 import com.datastax.oss.dsbulk.tests.utils.FileUtils;
+import com.datastax.oss.dsbulk.workflow.api.log.OperationDirectory;
 import com.datastax.oss.simulacron.common.cluster.QueryLog;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
@@ -45,7 +45,6 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -185,13 +184,10 @@ public class EndToEndUtils {
     return new RequestPrime(when, then);
   }
 
-  public static Path getOperationDirectory() {
-    return Paths.get(System.getProperty(OPERATION_DIRECTORY_KEY));
-  }
-
   public static void validateExceptionsLog(int size, String keyword, String fileName)
       throws Exception {
-    Path logPath = getOperationDirectory();
+    Path logPath =
+        OperationDirectory.getCurrentOperationDirectory().orElseThrow(IllegalStateException::new);
     Path exceptionFile = logPath.resolve(fileName);
     try (Stream<String> lines = Files.lines(exceptionFile)) {
       long numErrors = lines.filter(l -> l.contains(keyword)).count();
@@ -225,7 +221,8 @@ public class EndToEndUtils {
   }
 
   public static String getFileContent(String fileName) {
-    Path logPath = getOperationDirectory();
+    Path logPath =
+        OperationDirectory.getCurrentOperationDirectory().orElseThrow(IllegalStateException::new);
     Path exceptionFile = logPath.resolve(fileName);
     try {
       return FileUtils.readFile(exceptionFile);
@@ -235,7 +232,8 @@ public class EndToEndUtils {
   }
 
   public static void addErrorFilesContent(Map<String, String> result) throws IOException {
-    Path logPath = getOperationDirectory();
+    Path logPath =
+        OperationDirectory.getCurrentOperationDirectory().orElseThrow(IllegalStateException::new);
     // find all available -errors.log files
     try (Stream<Path> stream = Files.walk(logPath, 1)) {
       stream
@@ -248,7 +246,8 @@ public class EndToEndUtils {
   }
 
   public static void validateNumberOfBadRecords(int size) throws Exception {
-    Path logPath = getOperationDirectory();
+    Path logPath =
+        OperationDirectory.getCurrentOperationDirectory().orElseThrow(IllegalStateException::new);
     PathMatcher badFileMatcher = FileSystems.getDefault().getPathMatcher("glob:**/*.bad");
     try (Stream<Path> paths = Files.list(logPath)) {
       long numBadOps =
@@ -268,7 +267,8 @@ public class EndToEndUtils {
   }
 
   public static void validatePositionsFile(URI resource, long lastPosition) throws IOException {
-    Path logPath = getOperationDirectory();
+    Path logPath =
+        OperationDirectory.getCurrentOperationDirectory().orElseThrow(IllegalStateException::new);
     Path positions = logPath.resolve("positions.txt");
     assertThat(positions).exists();
     List<String> lines = Files.readAllLines(positions, UTF_8);
@@ -276,7 +276,8 @@ public class EndToEndUtils {
   }
 
   public static void validatePositionsFile(Map<URI, Long> lastPositions) throws IOException {
-    Path logPath = getOperationDirectory();
+    Path logPath =
+        OperationDirectory.getCurrentOperationDirectory().orElseThrow(IllegalStateException::new);
     Path positions = logPath.resolve("positions.txt");
     assertThat(positions).exists();
     List<String> lines = Files.readAllLines(positions, UTF_8);

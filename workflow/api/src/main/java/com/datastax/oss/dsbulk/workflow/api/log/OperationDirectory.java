@@ -15,8 +15,26 @@
  */
 package com.datastax.oss.dsbulk.workflow.api.log;
 
-public class LogConstants {
+import edu.umd.cs.findbugs.annotations.NonNull;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Optional;
 
-  public static final String OPERATION_DIRECTORY_KEY =
+public class OperationDirectory {
+
+  private static final String OPERATION_DIRECTORY_KEY =
       "com.datastax.oss.dsbulk.OPERATION_DIRECTORY";
+
+  public static void setCurrentOperationDirectory(@NonNull Path operationDirectory) {
+    System.setProperty(OPERATION_DIRECTORY_KEY, operationDirectory.toFile().getAbsolutePath());
+  }
+
+  @NonNull
+  public static Optional<Path> getCurrentOperationDirectory() {
+    String path = System.getProperty(OPERATION_DIRECTORY_KEY);
+    if (path == null) {
+      return Optional.empty();
+    }
+    return Optional.of(Paths.get(path));
+  }
 }

@@ -15,8 +15,6 @@
  */
 package com.datastax.oss.dsbulk.workflow.commons.settings;
 
-import static com.datastax.oss.dsbulk.workflow.api.log.LogConstants.OPERATION_DIRECTORY_KEY;
-
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
@@ -36,6 +34,8 @@ import com.datastax.oss.dsbulk.format.row.RowFormatter;
 import com.datastax.oss.dsbulk.format.statement.StatementFormatVerbosity;
 import com.datastax.oss.dsbulk.format.statement.StatementFormatter;
 import com.datastax.oss.dsbulk.workflow.api.error.ErrorThreshold;
+import com.datastax.oss.dsbulk.workflow.api.log.OperationDirectory;
+import com.datastax.oss.dsbulk.workflow.api.log.OperationDirectoryResolver;
 import com.datastax.oss.dsbulk.workflow.commons.format.statement.BulkBoundStatementPrinter;
 import com.datastax.oss.dsbulk.workflow.commons.log.LogManager;
 import com.typesafe.config.Config;
@@ -140,7 +140,7 @@ public class LogSettings {
       operationDirectory =
           new OperationDirectoryResolver(ConfigUtils.getPath(config, "directory"), executionId)
               .resolve();
-      System.setProperty(OPERATION_DIRECTORY_KEY, operationDirectory.toFile().getAbsolutePath());
+      OperationDirectory.setCurrentOperationDirectory(operationDirectory);
       maxQueryStringLength = config.getInt(MAX_QUERY_STRING_LENGTH);
       maxBoundValueLength = config.getInt(MAX_BOUND_VALUE_LENGTH);
       maxBoundValues = config.getInt(MAX_BOUND_VALUES);

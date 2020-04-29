@@ -26,7 +26,6 @@ import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.assertStatus;
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.createIpByCountryCaseSensitiveTable;
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.createIpByCountryTable;
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.createWithSpacesTable;
-import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.getOperationDirectory;
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.validateExceptionsLog;
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.validateNumberOfBadRecords;
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.validateOutputFiles;
@@ -70,6 +69,7 @@ import com.datastax.oss.dsbulk.tests.utils.CQLUtils;
 import com.datastax.oss.dsbulk.tests.utils.FileUtils;
 import com.datastax.oss.dsbulk.tests.utils.StringUtils;
 import com.datastax.oss.dsbulk.tests.utils.Version;
+import com.datastax.oss.dsbulk.workflow.api.log.OperationDirectory;
 import java.io.IOException;
 import java.io.LineNumberReader;
 import java.math.BigDecimal;
@@ -3751,7 +3751,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_COMPLETED_WITH_ERRORS);
 
-    Path bad = getOperationDirectory().resolve("paxos.bad");
+    Path bad =
+        OperationDirectory.getCurrentOperationDirectory()
+            .map(dir -> dir.resolve("paxos.bad"))
+            .orElse(null);
     assertThat(bad).exists();
     assertThat(FileUtils.readAllLines(bad))
         .containsExactly(
@@ -3759,7 +3762,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             record2Failed.getSource().toString(),
             record3NotApplied.getSource().toString());
 
-    Path errors = getOperationDirectory().resolve("paxos-errors.log");
+    Path errors =
+        OperationDirectory.getCurrentOperationDirectory()
+            .map(dir -> dir.resolve("paxos-errors.log"))
+            .orElse(null);
     assertThat(errors).exists();
     assertThat(FileUtils.readAllLines(errors).collect(Collectors.joining("\n")))
         .contains(

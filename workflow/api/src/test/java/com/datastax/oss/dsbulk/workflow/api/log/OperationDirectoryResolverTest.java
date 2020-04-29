@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.dsbulk.workflow.commons.settings;
+package com.datastax.oss.dsbulk.workflow.api.log;
 
-import static com.datastax.oss.dsbulk.tests.utils.FileUtils.deleteDirectory;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumingThat;
 
 import com.datastax.oss.dsbulk.commons.utils.PlatformUtils;
+import com.datastax.oss.dsbulk.tests.utils.FileUtils;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -40,7 +40,7 @@ class OperationDirectoryResolverTest {
 
   @AfterEach
   void deleteTempFolder() {
-    deleteDirectory(tempFolder);
+    FileUtils.deleteDirectory(tempFolder);
   }
 
   @Test

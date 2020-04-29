@@ -13,8 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.dsbulk.workflow.commons.settings;
+package com.datastax.oss.dsbulk.workflow.api.log;
 
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
@@ -25,11 +26,12 @@ public class OperationDirectoryResolver {
   private final Path logDirectory;
   private final String executionId;
 
-  public OperationDirectoryResolver(Path logDirectory, String executionId) {
+  public OperationDirectoryResolver(@NonNull Path logDirectory, @NonNull String executionId) {
     this.logDirectory = logDirectory;
     this.executionId = executionId;
   }
 
+  @NonNull
   public Path resolve() throws IOException {
     Path operationDirectory;
     try {
