@@ -19,8 +19,9 @@ import com.datastax.oss.driver.api.core.metadata.EndPoint;
 import com.datastax.oss.driver.internal.core.config.cloud.CloudConfig;
 import com.datastax.oss.driver.internal.core.config.cloud.CloudConfigFactory;
 import edu.umd.cs.findbugs.annotations.NonNull;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -107,7 +108,16 @@ public class DefaultSNIProxyServer implements SNIProxyServer {
   private String execute(CommandLine cli) {
     LOGGER.debug("Executing: " + cli);
     ExecuteWatchdog watchDog = new ExecuteWatchdog(TimeUnit.MINUTES.toMillis(10));
-    try (ByteArrayOutputStream outStream = new ByteArrayOutputStream();
+    try (StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        LogOutputStream outStream =
+            new LogOutputStream() {
+              @Override
+              protected void processLine(String line, int logLevel) {
+                LOGGER.debug("sniendpointout> {}", line);
+                pw.println(line);
+              }
+            };
         LogOutputStream errStream =
             new LogOutputStream() {
               @Override
@@ -125,7 +135,7 @@ public class DefaultSNIProxyServer implements SNIProxyServer {
         LOGGER.error(
             "Non-zero exit code ({}) returned from executing ccm command: {}", retValue, cli);
       }
-      return outStream.toString();
+      return sw.toString();
     } catch (IOException ex) {
       if (watchDog.killedProcess()) {
         throw new RuntimeException("The command '" + cli + "' was killed after 10 minutes");
