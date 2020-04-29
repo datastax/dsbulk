@@ -123,11 +123,25 @@ public class LogInterceptingExtension
     private final Level level;
 
     private LogInterceptorKey(LogCapture annotation) {
-      this.loggerName =
-          annotation == null || annotation.value().equals(LogCapture.Root.class)
-              ? ROOT_LOGGER_NAME
-              : annotation.value().getName();
-      this.level = annotation == null ? Level.INFO : annotation.level();
+      if (annotation == null) {
+        this.loggerName = ROOT_LOGGER_NAME;
+        this.level = Level.INFO;
+      } else {
+        if (annotation.value().equals(Root.class)) {
+          if (annotation.loggerName().isEmpty()) {
+            this.loggerName = ROOT_LOGGER_NAME;
+          } else {
+            this.loggerName = annotation.loggerName();
+          }
+        } else {
+          if (annotation.loggerName().isEmpty()) {
+            this.loggerName = annotation.value().getName();
+          } else {
+            throw new IllegalStateException("Cannot set both value() and loggerName)_");
+          }
+        }
+        this.level = annotation.level();
+      }
     }
 
     @Override

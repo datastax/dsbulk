@@ -27,6 +27,8 @@ public @interface LogCapture {
 
   Class<?> value() default Root.class;
 
+  String loggerName() default "";
+
   Level level() default Level.INFO;
 
   class Root {}
