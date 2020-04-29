@@ -17,9 +17,9 @@ package com.datastax.oss.dsbulk.runner.simulacron;
 
 import static java.nio.file.Files.createTempDirectory;
 
+import com.datastax.oss.dsbulk.tests.logging.LogConfigurationResource;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptingExtension;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptor;
-import com.datastax.oss.dsbulk.tests.logging.LogConfigurationResource;
 import com.datastax.oss.dsbulk.tests.logging.StreamInterceptingExtension;
 import com.datastax.oss.dsbulk.tests.logging.StreamInterceptor;
 import com.datastax.oss.dsbulk.tests.simulacron.SimulacronExtension;
