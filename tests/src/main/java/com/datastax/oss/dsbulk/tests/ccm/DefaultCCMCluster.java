@@ -780,7 +780,8 @@ public class DefaultCCMCluster implements CCMCluster {
     private final Map<Integer, Workload[]> workloads = new HashMap<>();
 
     private Builder() {
-      cassandraConfiguration.put("start_rpc", false);
+      // C* 2.1 requires thrift otherwise --wait-for-binary-proto will hang
+      cassandraConfiguration.put("start_rpc", CCM_TYPE == OSS && CCM_VERSION.compareTo(V2_2_0) < 0);
       cassandraConfiguration.put("storage_port", RANDOM_PORT);
       cassandraConfiguration.put("rpc_port", RANDOM_PORT);
       cassandraConfiguration.put("native_transport_port", RANDOM_PORT);
