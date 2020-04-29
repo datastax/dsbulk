@@ -323,6 +323,7 @@ public class DefaultCCMCluster implements CCMCluster {
 
   @Override
   public void setKeepLogs() {
+    LOGGER.debug("C* logs will be kept in {}", getCcmDir());
     this.keepLogs = true;
   }
 
@@ -396,9 +397,7 @@ public class DefaultCCMCluster implements CCMCluster {
   @Override
   public synchronized void remove() {
     if (state.canTransitionTo(State.REMOVED)) {
-      if (keepLogs) {
-        LOGGER.debug("Error during tests, C* logs will be kept in {}", getCcmDir());
-      } else {
+      if (!keepLogs) {
         LOGGER.debug("Removing: {}", this);
         try {
           execute(CCM_COMMAND + " remove");
@@ -432,17 +431,10 @@ public class DefaultCCMCluster implements CCMCluster {
             "Starting: node %s (%s%s:%s) in %s",
             node, NetworkUtils.DEFAULT_IP_PREFIX, node, binaryPort, this));
     try {
-      execute(
-          CCM_COMMAND + " node%d start --wait-other-notice --wait-for-binary-proto" + jvmArgs,
-          node);
-    } catch (CCMException e) {
+      execute(CCM_COMMAND + " node%d start --wait-for-binary-proto" + jvmArgs, node);
+    } catch (RuntimeException e) {
       LOGGER.error(String.format("Could not start node %s in %s", node, this), e);
-      LOGGER.error("CCM output:\n{}", e.getOut());
-      setKeepLogs();
-      String errors = checkForErrors();
-      if (errors != null) {
-        LOGGER.error("CCM check errors:\n{}", errors);
-      }
+      handleCCMException(e);
       throw e;
     }
   }
@@ -727,6 +719,15 @@ public class DefaultCCMCluster implements CCMCluster {
     String errors = checkForErrors();
     if (errors != null && !errors.isEmpty()) {
       LOGGER.error("CCM check errors:\n{}", errors);
+    }
+    try {
+      String logs = execute(CCM_COMMAND + " node1 showlog");
+      if (logs != null && !logs.isEmpty()) {
+        logs = logs.substring(Math.max(0, logs.length() - 1000));
+        LOGGER.error("CCM node1 logs errors:\n...{}", logs);
+      }
+    } catch (Exception exception) {
+      LOGGER.warn("Check for node1 showlog failed");
     }
     throw e;
   }
