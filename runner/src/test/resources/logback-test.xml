@@ -17,6 +17,12 @@
 
 -->
 <configuration>
+  <!--
+  This file is only used in unit tests, and before/after integration tests,
+  by the test infrastructure code.
+  Actual integration tests will always switch to the "production" configuration
+  file "logback.xml" instead; this file is located in workflow-commons.
+  -->
   <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
     <encoder>
       <pattern>%-5level [%thread] %logger{40} - %msg%n</pattern>
@@ -24,12 +30,14 @@
   </appender>
   <appender name="NOP" class="ch.qos.logback.core.helpers.NOPAppender"/>
   <root level="${log.root.level:-WARN}">
-    <appender-ref ref="${log.root.appender:-CONSOLE}"/>
+    <appender-ref ref="${log.root.appender:-NOP}"/>
   </root>
-  <!-- By default, messages from DSBulk and the driver are directed to the NOP
+  <!--
+  By default, messages from DSBulk and the driver are directed to the NOP
   appender, which allows for testing log messages at different levels while
   keeping the console clean. If you need to debug some tests, you may want to
-  switch to the CONSOLE appender. -->
+  switch to the CONSOLE appender.
+  -->
   <logger name="com.datastax.oss.dsbulk" level="${log.dsbulk.level:-INFO}" additivity="false">
     <appender-ref ref="${log.dsbulk.appender:-NOP}"/>
   </logger>
