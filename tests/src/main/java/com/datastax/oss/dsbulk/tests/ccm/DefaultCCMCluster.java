@@ -85,22 +85,24 @@ public class DefaultCCMCluster implements CCMCluster {
   private static final Logger CCM_OUT_LOGGER = LoggerFactory.getLogger("dsbulk.ccm.CCM_OUT");
   private static final Logger CCM_ERR_LOGGER = LoggerFactory.getLogger("dsbulk.ccm.CCM_ERR");
 
-  public static final String DEFAULT_CLIENT_TRUSTSTORE_PASSWORD = "cassandra1sfun";
-  public static final String DEFAULT_CLIENT_KEYSTORE_PASSWORD = "cassandra1sfun";
-  private static final String DEFAULT_SERVER_TRUSTSTORE_PASSWORD = "cassandra1sfun";
-  private static final String DEFAULT_SERVER_KEYSTORE_PASSWORD = "cassandra1sfun";
+  public static final String DEFAULT_CLIENT_TRUSTSTORE_PASSWORD = "fakePasswordForTests";
+  public static final String DEFAULT_CLIENT_KEYSTORE_PASSWORD = "fakePasswordForTests";
+  private static final String DEFAULT_SERVER_TRUSTSTORE_PASSWORD = "fakePasswordForTests";
+  private static final String DEFAULT_SERVER_KEYSTORE_PASSWORD = "fakePasswordForTests";
 
-  public static final File DEFAULT_CLIENT_TRUSTSTORE_FILE = createTempStore("/client.truststore");
-  public static final File DEFAULT_CLIENT_KEYSTORE_FILE = createTempStore("/client.keystore");
+  public static final File DEFAULT_CLIENT_TRUSTSTORE_FILE =
+      createTempStore("/ssl/client.truststore");
+  public static final File DEFAULT_CLIENT_KEYSTORE_FILE = createTempStore("/ssl/client.keystore");
 
   // Contain the same keypair as the client keystore, but in format usable by OpenSSL
-  public static final File DEFAULT_CLIENT_CERT_CHAIN_FILE = createTempStore("/client.crt");
-  public static final File DEFAULT_CLIENT_PRIVATE_KEY_FILE = createTempStore("/client.key");
+  public static final File DEFAULT_CLIENT_CERT_CHAIN_FILE = createTempStore("/ssl/client.crt");
+  public static final File DEFAULT_CLIENT_PRIVATE_KEY_FILE = createTempStore("/ssl/client.key");
 
-  private static final File DEFAULT_SERVER_TRUSTSTORE_FILE = createTempStore("/server.truststore");
-  private static final File DEFAULT_SERVER_KEYSTORE_FILE = createTempStore("/server.keystore");
+  private static final File DEFAULT_SERVER_TRUSTSTORE_FILE =
+      createTempStore("/ssl/server.truststore");
+  private static final File DEFAULT_SERVER_KEYSTORE_FILE = createTempStore("/ssl/server.keystore");
   private static final File DEFAULT_SERVER_LOCALHOST_KEYSTORE_FILE =
-      createTempStore("/server_localhost.keystore");
+      createTempStore("/ssl/server_localhost.keystore");
 
   // major DSE versions
   private static final Version V6_0_0 = Version.parse("6.0.0");
