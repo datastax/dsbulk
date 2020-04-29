@@ -106,7 +106,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
 
   CSVEndToEndSimulacronIT(
       BoundCluster simulacron,
-      @LogCapture LogInterceptor logs,
+      @LogCapture(loggerName = "com.datastax.oss.dsbulk") LogInterceptor logs,
       @StreamCapture(STDOUT) StreamInterceptor stdOut,
       @StreamCapture(STDERR) StreamInterceptor stdErr) {
     super(simulacron, logs, stdOut, stdErr);

@@ -56,7 +56,7 @@ class PlainTextAuthEndToEndCCMIT extends EndToEndCCMITBase {
   PlainTextAuthEndToEndCCMIT(
       CCMCluster ccm,
       @SessionConfig(credentials = {"cassandra", "cassandra"}) CqlSession session,
-      @LogCapture LogInterceptor logs,
+      @LogCapture(loggerName = "com.datastax.oss.dsbulk") LogInterceptor logs,
       @StreamCapture(STDERR) StreamInterceptor stderr) {
     super(ccm, session);
     this.logs = logs;

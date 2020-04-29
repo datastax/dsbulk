@@ -59,7 +59,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 @ExtendWith(StreamInterceptingExtension.class)
 @ExtendWith(LogInterceptingExtension.class)
-@LogResource("logback.xml")
+@LogConfigurationResource("logback.xml")
 class DataStaxBulkLoaderTest {
 
   private final StreamInterceptor stdOut;
@@ -70,7 +70,7 @@ class DataStaxBulkLoaderTest {
   DataStaxBulkLoaderTest(
       @StreamCapture(StreamType.STDOUT) StreamInterceptor stdOut,
       @StreamCapture(StreamType.STDERR) StreamInterceptor stdErr,
-      @LogCapture(level = ERROR) LogInterceptor logs) {
+      @LogCapture(level = ERROR, loggerName = "com.datastax.oss.dsbulk") LogInterceptor logs) {
     this.stdOut = stdOut;
     this.stdErr = stdErr;
     this.logs = logs;

@@ -56,7 +56,7 @@ class SSLEncryptionEndToEndCCMIT extends EndToEndCCMITBase {
   SSLEncryptionEndToEndCCMIT(
       CCMCluster ccm,
       @SessionConfig(ssl = true, hostnameVerification = true, auth = true) CqlSession session,
-      @LogCapture LogInterceptor logs,
+      @LogCapture(loggerName = "com.datastax.oss.dsbulk") LogInterceptor logs,
       @StreamCapture(STDERR) StreamInterceptor stderr) {
     super(ccm, session);
     this.logs = logs;

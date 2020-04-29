@@ -37,7 +37,7 @@ class M3PTokenVnodeTableReadEndToEndCCMIT extends TableReadEndToEndCCMITBase {
   M3PTokenVnodeTableReadEndToEndCCMIT(
       CCMCluster ccm,
       @SessionConfig(useKeyspace = NONE) CqlSession session,
-      @LogCapture(level = INFO) LogInterceptor logs,
+      @LogCapture(level = INFO, loggerName = "com.datastax.oss.dsbulk") LogInterceptor logs,
       @StreamCapture(STDOUT) StreamInterceptor stdout,
       @StreamCapture(STDERR) StreamInterceptor stderr) {
     super(ccm, session, logs, stdout, stderr);

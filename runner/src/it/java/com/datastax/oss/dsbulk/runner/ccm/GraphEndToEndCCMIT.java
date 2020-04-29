@@ -107,7 +107,7 @@ class GraphEndToEndCCMIT extends EndToEndCCMITBase {
   GraphEndToEndCCMIT(
       CCMCluster ccm,
       @SessionConfig(settings = "basic.graph.name = " + FRAUD_GRAPH) CqlSession session,
-      @LogCapture LogInterceptor logs,
+      @LogCapture(loggerName = "com.datastax.oss.dsbulk") LogInterceptor logs,
       @StreamCapture(STDERR) StreamInterceptor stderr) {
     super(ccm, session);
     this.logs = logs;

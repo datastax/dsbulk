@@ -64,7 +64,7 @@ class SearchEndToEndCCMIT extends EndToEndCCMITBase {
   SearchEndToEndCCMIT(
       CCMCluster ccm,
       CqlSession session,
-      @LogCapture(level = WARN) LogInterceptor logs,
+      @LogCapture(level = WARN, loggerName = "com.datastax.oss.dsbulk") LogInterceptor logs,
       @StreamCapture(STDERR) StreamInterceptor stderr) {
     super(ccm, session);
     this.logs = logs;

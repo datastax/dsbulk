@@ -39,7 +39,7 @@ class RPTokenVnodeTableReadEndToEndCCMIT extends TableReadEndToEndCCMITBase {
   RPTokenVnodeTableReadEndToEndCCMIT(
       CCMCluster ccm,
       @SessionConfig(useKeyspace = NONE) CqlSession session,
-      @LogCapture(level = INFO) LogInterceptor logs,
+      @LogCapture(level = INFO, loggerName = "com.datastax.oss.dsbulk") LogInterceptor logs,
       @StreamCapture(STDOUT) StreamInterceptor stdout,
       @StreamCapture(STDERR) StreamInterceptor stderr) {
     super(ccm, session, logs, stdout, stderr);
