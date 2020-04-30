@@ -49,7 +49,8 @@ public class ConsoleUtils {
   public static String getBulkLoaderVersion() {
     // Get the version of dsbulk from version.txt.
     String version = "UNKNOWN";
-    try (InputStream versionStream = ConsoleUtils.class.getResourceAsStream("/version.txt")) {
+    try (InputStream versionStream =
+        ConsoleUtils.class.getResourceAsStream("/com/datastax/oss/dsbulk/version.txt")) {
       if (versionStream != null) {
         BufferedReader reader =
             new BufferedReader(new InputStreamReader(versionStream, StandardCharsets.UTF_8));
