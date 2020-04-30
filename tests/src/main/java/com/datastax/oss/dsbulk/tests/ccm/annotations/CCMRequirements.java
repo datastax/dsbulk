@@ -26,7 +26,7 @@ import java.lang.annotation.Target;
 @Target(TYPE)
 public @interface CCMRequirements {
 
-  Type[] compatibleTypes() default {Type.OSS, Type.DDAC, Type.DSE};
+  Type[] compatibleTypes() default {Type.OSS, Type.DSE};
 
   CCMVersionRequirement[] versionRequirements() default {};
 }

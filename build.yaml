@@ -1,11 +1,11 @@
 schedules:
   commit:
-    # Run short and medium suites on commit, on DDAC only.
+    # Run short and medium suites on commit, on DSE 6.8 only.
     schedule: per_commit
     matrix:
       exclude:
         - java: ['openjdk11']
-        - cassandra: ['dse-6.8', 'dse-6.7', 'dse-6.0', 'dse-5.1', 'dse-5.0', 'dse-4.8', 'dse-4.7', '3.11', '3.0', '2.2', '2.1']
+        - cassandra: ['dse-6.7', 'dse-6.0', 'dse-5.1', 'dse-5.0', 'dse-4.8', 'dse-4.7', '3.11', '3.0', '2.2', '2.1']
     env_vars: |
       TEST_GROUPS="medium"
   nightly:
@@ -30,11 +30,10 @@ java:
 os:
   - ubuntu/bionic64/java-driver
 cassandra:
-  - 3.11
-  - 3.0
-  - 2.2
   - 2.1
-  - ddac-5.1
+  - 2.2
+  - 3.0
+  - 3.11
   - dse-4.7
   - dse-4.8
   - dse-5.0
@@ -48,7 +47,6 @@ build:
     goals: verify -P$TEST_GROUPS --fail-never -B
     properties: |
       dsbulk.ccm.CCM_VERSION=$CCM_VERSION
-      dsbulk.ccm.CCM_IS_DDAC=$CCM_IS_DDAC
       dsbulk.ccm.CCM_IS_DSE=$CCM_IS_DSE
       dsbulk.ccm.JAVA_HOME=$CCM_JAVA_HOME
       dsbulk.ccm.PATH=$CCM_JAVA_HOME/bin

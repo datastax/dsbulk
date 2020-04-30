@@ -35,7 +35,7 @@ public @interface SimulacronConfig {
 
   /**
    * @return The Cassandra version the cluster should report. Setting this to a 4-part version will
-   *     imply a DDAC/DSE cluster.
+   *     imply a DSE cluster.
    */
   String cassandraVersion() default "4.0.0.2284";
 

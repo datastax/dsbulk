@@ -15,7 +15,6 @@
  */
 package com.datastax.oss.dsbulk.tests.ccm;
 
-import static com.datastax.oss.dsbulk.tests.ccm.CCMCluster.Type.DDAC;
 import static com.datastax.oss.dsbulk.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.oss.dsbulk.tests.ccm.CCMCluster.Type.OSS;
 
@@ -72,7 +71,6 @@ public class DefaultCCMCluster implements CCMCluster {
 
   // System properties
   public static final String CCM_IS_DSE_PROPERTY = "dsbulk.ccm.CCM_IS_DSE";
-  public static final String CCM_IS_DDAC_PROPERTY = "dsbulk.ccm.CCM_IS_DDAC";
   public static final String CCM_VERSION_PROPERTY = "dsbulk.ccm.CCM_VERSION";
   public static final String CCM_DIRECTORY_PROPERTY = "dsbulk.ccm.CCM_DIRECTORY";
   public static final String CCM_BRANCH_PROPERTY = "dsbulk.ccm.CCM_BRANCH";
@@ -114,7 +112,6 @@ public class DefaultCCMCluster implements CCMCluster {
 
   // mapped C* versions from DSE versions
   private static final Version V4_0_0 = Version.parse("4.0.0");
-  private static final Version V3_11_2 = Version.parse("3.11.2");
   private static final Version V3_10 = Version.parse("3.10");
   private static final Version V3_0_15 = Version.parse("3.0.15");
   private static final Version V2_2_0 = Version.parse("2.2.0");
@@ -140,8 +137,7 @@ public class DefaultCCMCluster implements CCMCluster {
 
   static {
     boolean dse = Boolean.parseBoolean(System.getProperty(CCM_IS_DSE_PROPERTY, "false"));
-    boolean ddac = Boolean.parseBoolean(System.getProperty(CCM_IS_DDAC_PROPERTY, "false"));
-    CCM_TYPE = dse ? DSE : (ddac ? DDAC : OSS);
+    CCM_TYPE = dse ? DSE : OSS;
     String versionStr = System.getProperty(CCM_VERSION_PROPERTY);
     CCM_VERSION = Version.parse(versionStr == null ? CCM_TYPE.getDefaultVersion() : versionStr);
     LOGGER.info("CCM tests configured to use {} version {}", CCM_TYPE, CCM_VERSION);
@@ -521,11 +517,9 @@ public class DefaultCCMCluster implements CCMCluster {
     String storageItf = ip + ":" + storagePort;
     String binaryItf = ip + ":" + binaryPort;
     String remoteLogItf = ip + ":" + NetworkUtils.findAvailablePort();
-    if (CCM_VERSION.compareTo(V6_0_0) >= 0) {
+    if (CCM_TYPE == DSE && CCM_VERSION.compareTo(V6_0_0) >= 0) {
       execute(
-          CCM_COMMAND
-              + " add node%d -d dc%s -i %s -l %s --binary-itf %s -j %d -r %s -s -b"
-              + (CCM_TYPE == DSE ? " --dse" : (CCM_TYPE == DDAC ? " --ddac" : "")),
+          CCM_COMMAND + " add node%d -d dc%s -i %s -l %s --binary-itf %s -j %d -r %s -s -b --dse",
           n,
           dc,
           ip,
@@ -537,7 +531,7 @@ public class DefaultCCMCluster implements CCMCluster {
       execute(
           CCM_COMMAND
               + " add node%d -d dc%s -i %s -t %s -l %s --binary-itf %s -j %d -r %s -s -b"
-              + (CCM_TYPE == DSE ? " --dse" : (CCM_TYPE == DDAC ? " --ddac" : "")),
+              + (CCM_TYPE == DSE ? " --dse" : ""),
           n,
           dc,
           ip,
@@ -940,9 +934,6 @@ public class DefaultCCMCluster implements CCMCluster {
         } else {
           return V2_0_14;
         }
-      }
-      if (CCM_TYPE == DDAC) {
-        return V3_11_2;
       }
       return CCM_VERSION;
     }

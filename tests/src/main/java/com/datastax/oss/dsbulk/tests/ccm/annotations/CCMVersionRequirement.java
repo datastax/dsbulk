@@ -26,7 +26,7 @@ import java.lang.annotation.Target;
 @Target(ElementType.ANNOTATION_TYPE)
 public @interface CCMVersionRequirement {
 
-  /** @return the cluster type this requirement refers to (OSS, DDAC or DSE). */
+  /** @return the cluster type this requirement refers to (OSS or DSE). */
   Type type();
 
   /** @return The minimum version required to execute this test (inclusive), i.e. "4.8.14" */

@@ -36,11 +36,8 @@ public interface CCMCluster extends Closeable {
     /** OSS Cassandra. */
     OSS("3.11.5", ""),
 
-    /** DataStax Distribution of Apache Cassandra. */
-    DDAC("5.1.11", "--ddac"),
-
     /** DataStax Enterprise. */
-    DSE("6.7.7", "--dse");
+    DSE("6.8.0", "--dse");
 
     private final String defaultVersion;
     private final String ccmCreateOption;
@@ -78,7 +75,7 @@ public interface CCMCluster extends Closeable {
    */
   String getClusterName();
 
-  /** @return the type of this cluster (OSS, DDAC or DSE). */
+  /** @return the type of this cluster (OSS, DSE). */
   Type getClusterType();
 
   /**
@@ -297,8 +294,8 @@ public interface CCMCluster extends Closeable {
   /**
    * Returns the Cassandra version of this CCM cluster, even if it is a DSE cluster.
    *
-   * <p>In case of a DSE cluster, returns the associated Cassandra version; for OSS Cassandra and
-   * DDAC, returns the same version as {@link #getVersion()}.
+   * <p>In case of a DSE cluster, returns the associated Cassandra version; for OSS Cassandra,
+   * returns the same version as {@link #getVersion()}.
    *
    * @return The Cassandra version of this CCM cluster.
    */
