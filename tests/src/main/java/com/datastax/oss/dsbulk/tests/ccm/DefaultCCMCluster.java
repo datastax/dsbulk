@@ -781,10 +781,12 @@ public class DefaultCCMCluster implements CCMCluster {
 
     private Builder() {
       // C* 2.1 requires thrift otherwise --wait-for-binary-proto will hang
-      cassandraConfiguration.put("start_rpc", CCM_TYPE == OSS && CCM_VERSION.compareTo(V2_2_0) < 0);
+      boolean startThrift = CCM_TYPE == OSS && CCM_VERSION.compareTo(V2_2_0) < 0;
+      cassandraConfiguration.put("start_rpc", startThrift);
+      cassandraConfiguration.put("rpc_port", startThrift ? RANDOM_PORT : 9600);
       cassandraConfiguration.put("storage_port", RANDOM_PORT);
-      cassandraConfiguration.put("rpc_port", RANDOM_PORT);
       cassandraConfiguration.put("native_transport_port", RANDOM_PORT);
+      cassandraConfiguration.put("auto_snapshot", false);
     }
 
     /** Number of hosts for each DC. Defaults to {@code [1]} (1 DC with 1 node). */
