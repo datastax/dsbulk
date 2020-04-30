@@ -41,7 +41,6 @@ import com.datastax.oss.driver.api.core.cql.ColumnDefinitions;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.metadata.Metadata;
-import com.datastax.oss.driver.api.core.metadata.TokenMap;
 import com.datastax.oss.driver.api.core.metadata.schema.ColumnMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.IndexMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.KeyspaceMetadata;
@@ -518,10 +517,6 @@ public class SchemaSettings {
               + "of the form: WHERE token(...) > ? AND token(...) <= ?");
     }
     Metadata metadata = session.getMetadata();
-    TokenMap tokenMap =
-        metadata
-            .getTokenMap()
-            .orElseThrow(() -> new IllegalStateException("Token metadata not present"));
     TokenRangeReadStatementGenerator generator =
         new TokenRangeReadStatementGenerator(table, metadata);
     List<Statement<?>> statements =
