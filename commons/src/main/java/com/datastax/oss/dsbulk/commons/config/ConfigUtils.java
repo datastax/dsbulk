@@ -15,7 +15,7 @@
  */
 package com.datastax.oss.dsbulk.commons.config;
 
-import com.datastax.oss.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
+import com.datastax.oss.dsbulk.commons.url.BulkLoaderURLStreamHandlerFactory;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigException.Missing;
@@ -326,7 +326,7 @@ public class ConfigUtils {
    *
    * <p>This method first tries to interpret the input as a valid URL, possibly expanding the
    * special {@code "-"} (single dash) URL into DSBulk's internal {@link
-   * LoaderURLStreamHandlerFactory#STD standard input/output} URL.
+   * BulkLoaderURLStreamHandlerFactory#STD standard input/output} URL.
    *
    * <p>If that fails, this method then attempts to interpret the input as a path object. See {@link
    * #resolvePath(String)}.

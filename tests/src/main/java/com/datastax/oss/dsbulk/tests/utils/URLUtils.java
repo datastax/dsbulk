@@ -15,14 +15,14 @@
  */
 package com.datastax.oss.dsbulk.tests.utils;
 
-import com.datastax.oss.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
+import com.datastax.oss.dsbulk.commons.url.BulkLoaderURLStreamHandlerFactory;
 import java.net.URL;
 
 public class URLUtils {
 
   public static void setURLFactoryIfNeeded() {
     try {
-      URL.setURLStreamHandlerFactory(new LoaderURLStreamHandlerFactory());
+      URL.setURLStreamHandlerFactory(new BulkLoaderURLStreamHandlerFactory());
     } catch (Throwable t) {
       // URL.setURLStreamHandlerFactory throws an Error if it's been set more then once
       // Ignore that and keep going.

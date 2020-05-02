@@ -40,7 +40,7 @@ import org.fusesource.jansi.Ansi;
 
 public class HelpEmitter {
 
-  private static final Pattern CONNECTOR_SETTINGS_PAT =
+  private static final Pattern CONNECTOR_SETTINGS_PATTERN =
       Pattern.compile("dsbulk\\.connector\\.[^.]+\\..+");
 
   private static final int INDENT = 4;
@@ -69,7 +69,7 @@ public class HelpEmitter {
               .filter(
                   name ->
                       name.startsWith("dsbulk.connector." + connectorName + ".")
-                          || !CONNECTOR_SETTINGS_PAT.matcher(name).matches())
+                          || !CONNECTOR_SETTINGS_PATTERN.matcher(name).matches())
               .collect(Collectors.toList());
 
       entries = HelpEntryFactory.createEntries(commonSettings, longToShortOptions, referenceConfig);

@@ -33,7 +33,7 @@ import java.net.URLStreamHandlerFactory;
  * <p>All non-standard URL schemes supported by DataStax loader should have an entry added here
  * forwarding to the appropriate URL stream handler.
  */
-public class LoaderURLStreamHandlerFactory implements URLStreamHandlerFactory {
+public class BulkLoaderURLStreamHandlerFactory implements URLStreamHandlerFactory {
 
   /**
    * The scheme for standard input and standard output URLs. The only supported URL with such scheme

@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assumptions.assumingThat;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
-import com.datastax.oss.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
+import com.datastax.oss.dsbulk.commons.url.BulkLoaderURLStreamHandlerFactory;
 import com.datastax.oss.dsbulk.commons.utils.PlatformUtils;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
@@ -60,7 +60,7 @@ class ConfigUtilsTest {
 
   static {
     try {
-      URL.setURLStreamHandlerFactory(new LoaderURLStreamHandlerFactory());
+      URL.setURLStreamHandlerFactory(new BulkLoaderURLStreamHandlerFactory());
     } catch (Throwable t) {
       // URL.setURLStreamHandlerFactory throws an Error if it's been set more then once
       // Ignore that and keep going.

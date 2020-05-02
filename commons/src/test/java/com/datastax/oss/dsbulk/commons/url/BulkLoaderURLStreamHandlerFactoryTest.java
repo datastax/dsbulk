@@ -17,14 +17,14 @@ package com.datastax.oss.dsbulk.commons.url;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.datastax.oss.dsbulk.commons.url.LoaderURLStreamHandlerFactory.StdinStdoutUrlStreamHandler;
+import com.datastax.oss.dsbulk.commons.url.BulkLoaderURLStreamHandlerFactory.StdinStdoutUrlStreamHandler;
 import org.junit.jupiter.api.Test;
 
-class LoaderURLStreamHandlerFactoryTest {
+class BulkLoaderURLStreamHandlerFactoryTest {
 
   @Test
   void should_handle_std_protocol() throws Exception {
-    LoaderURLStreamHandlerFactory factory = new LoaderURLStreamHandlerFactory();
+    BulkLoaderURLStreamHandlerFactory factory = new BulkLoaderURLStreamHandlerFactory();
     assertThat(factory.createURLStreamHandler("std"))
         .isNotNull()
         .isInstanceOf(StdinStdoutUrlStreamHandler.class);

@@ -22,7 +22,7 @@ import static com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus.STATU
 import static com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus.STATUS_INTERRUPTED;
 import static com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus.STATUS_OK;
 
-import com.datastax.oss.dsbulk.commons.url.LoaderURLStreamHandlerFactory;
+import com.datastax.oss.dsbulk.commons.url.BulkLoaderURLStreamHandlerFactory;
 import com.datastax.oss.dsbulk.commons.utils.ConsoleUtils;
 import com.datastax.oss.dsbulk.commons.utils.ThrowableUtils;
 import com.datastax.oss.dsbulk.runner.cli.AnsiConfigurator;
@@ -80,7 +80,7 @@ public class DataStaxBulkLoader {
   private final String[] args;
 
   public static void main(String[] args) {
-    URL.setURLStreamHandlerFactory(new LoaderURLStreamHandlerFactory());
+    URL.setURLStreamHandlerFactory(new BulkLoaderURLStreamHandlerFactory());
     ExitStatus status = new DataStaxBulkLoader(args).run();
     System.exit(status.exitCode());
   }
