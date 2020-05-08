@@ -16,7 +16,6 @@
 package com.datastax.oss.dsbulk.workflow.commons.settings;
 
 import static com.datastax.oss.dsbulk.tests.logging.StreamType.STDERR;
-import static com.datastax.oss.dsbulk.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.oss.dsbulk.tests.utils.StringUtils.quoteJson;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -29,6 +28,7 @@ import com.datastax.oss.dsbulk.tests.logging.LogUtils;
 import com.datastax.oss.dsbulk.tests.logging.StreamCapture;
 import com.datastax.oss.dsbulk.tests.logging.StreamInterceptingExtension;
 import com.datastax.oss.dsbulk.tests.logging.StreamInterceptor;
+import com.datastax.oss.dsbulk.tests.utils.FileUtils;
 import com.datastax.oss.dsbulk.tests.utils.TestConfigUtils;
 import com.datastax.oss.dsbulk.workflow.api.error.AbsoluteErrorThreshold;
 import com.datastax.oss.dsbulk.workflow.api.error.ErrorThreshold;
@@ -54,48 +54,54 @@ class LogSettingsTest {
   private static final Logger LOGGER = LoggerFactory.getLogger(LogSettingsTest.class);
 
   private CqlSession session;
-
-  private Path tempFolder;
+  private String executionId;
+  private Path defaultLogsDirectory;
+  private Path customLogsDirectory;
 
   @BeforeEach
   void setUp() {
     session = DriverUtils.mockSession();
+    executionId = "test" + System.nanoTime();
   }
 
   @BeforeEach
-  void createTempFolder() throws IOException {
-    tempFolder = Files.createTempDirectory("test");
-    Files.createDirectories(tempFolder);
+  void createLogsDirectories() throws IOException {
+    defaultLogsDirectory = Paths.get("./target/logs");
+    customLogsDirectory = Files.createTempDirectory("logs");
+    Files.createDirectories(defaultLogsDirectory);
+    Files.createDirectories(customLogsDirectory);
   }
 
   @AfterEach
-  void deleteTempFolder() {
-    deleteDirectory(tempFolder);
-    deleteDirectory(Paths.get("./target/logs"));
+  void deleteLogsDirectories() {
+    FileUtils.deleteDirectory(defaultLogsDirectory);
+    FileUtils.deleteDirectory(customLogsDirectory);
   }
 
   @BeforeEach
   void resetLogbackConfiguration() throws JoranException {
+    // Tests in this class require the production log configuration file
     LogUtils.resetLogbackConfiguration("logback.xml");
   }
 
   @Test
   void should_create_log_manager_with_default_output_directory() throws Exception {
     Config config = TestConfigUtils.createTestConfig("dsbulk.log");
-    LogSettings settings = new LogSettings(config, "test");
+    LogSettings settings = new LogSettings(config, executionId);
     settings.init();
     try (LogManager logManager = settings.newLogManager(session, true)) {
       logManager.init();
       assertThat(logManager).isNotNull();
       assertThat(logManager.getOperationDirectory().toFile().getAbsolutePath())
-          .isEqualTo(Paths.get("./target/logs/test").normalize().toFile().getAbsolutePath());
+          .isEqualTo(
+              defaultLogsDirectory.resolve(executionId).normalize().toFile().getAbsolutePath());
     }
   }
 
   @Test()
   void should_accept_maxErrors_as_absolute_number() throws IOException {
     Config config = TestConfigUtils.createTestConfig("dsbulk.log", "maxErrors", 20);
-    LogSettings settings = new LogSettings(config, "test");
+    LogSettings settings = new LogSettings(config, executionId);
     settings.init();
     ErrorThreshold threshold = settings.errorThreshold;
     assertThat(threshold).isInstanceOf(AbsoluteErrorThreshold.class);
@@ -105,7 +111,7 @@ class LogSettingsTest {
   @Test()
   void should_accept_maxErrors_as_percentage() throws IOException {
     Config config = TestConfigUtils.createTestConfig("dsbulk.log", "maxErrors", "20%");
-    LogSettings settings = new LogSettings(config, "test");
+    LogSettings settings = new LogSettings(config, executionId);
     settings.init();
     ErrorThreshold threshold = settings.errorThreshold;
     assertThat(threshold).isInstanceOf(RatioErrorThreshold.class);
@@ -117,7 +123,7 @@ class LogSettingsTest {
   @Test()
   void should_disable_maxErrors() throws IOException {
     Config config = TestConfigUtils.createTestConfig("dsbulk.log", "maxErrors", -42);
-    LogSettings settings = new LogSettings(config, "test");
+    LogSettings settings = new LogSettings(config, executionId);
     settings.init();
     ErrorThreshold threshold = settings.errorThreshold;
     assertThat(threshold).isInstanceOf(UnlimitedErrorThreshold.class);
@@ -126,21 +132,21 @@ class LogSettingsTest {
   @Test()
   void should_error_when_percentage_is_out_of_bounds() {
     Config config = TestConfigUtils.createTestConfig("dsbulk.log", "maxErrors", "112 %");
-    LogSettings settings = new LogSettings(config, "test");
+    LogSettings settings = new LogSettings(config, executionId);
     assertThatThrownBy(settings::init)
         .hasMessage(
             "maxErrors must either be a number, or percentage between 0 and 100 exclusive.");
 
     config = TestConfigUtils.createTestConfig("dsbulk.log", "maxErrors", "0%");
 
-    LogSettings settings2 = new LogSettings(config, "test");
+    LogSettings settings2 = new LogSettings(config, executionId);
     assertThatThrownBy(settings2::init)
         .hasMessage(
             "maxErrors must either be a number, or percentage between 0 and 100 exclusive.");
 
     config = TestConfigUtils.createTestConfig("dsbulk.log", "maxErrors", "-1%");
 
-    LogSettings settings3 = new LogSettings(config, "test");
+    LogSettings settings3 = new LogSettings(config, executionId);
     assertThatThrownBy(settings3::init)
         .hasMessage(
             "maxErrors must either be a number, or percentage between 0 and 100 exclusive.");
@@ -149,14 +155,14 @@ class LogSettingsTest {
   @Test
   void should_create_log_manager_when_output_directory_path_provided() throws Exception {
     Config config =
-        TestConfigUtils.createTestConfig("dsbulk.log", "directory", quoteJson(tempFolder));
-    LogSettings settings = new LogSettings(config, "test");
+        TestConfigUtils.createTestConfig("dsbulk.log", "directory", quoteJson(customLogsDirectory));
+    LogSettings settings = new LogSettings(config, executionId);
     settings.init();
     try (LogManager logManager = settings.newLogManager(session, true)) {
       logManager.init();
       assertThat(logManager).isNotNull();
       assertThat(logManager.getOperationDirectory().toFile())
-          .isEqualTo(tempFolder.resolve("test").toFile());
+          .isEqualTo(customLogsDirectory.resolve(executionId).toFile());
     }
   }
 
@@ -164,12 +170,12 @@ class LogSettingsTest {
   void should_log_to_main_log_file_in_normal_mode(@StreamCapture(STDERR) StreamInterceptor stdout)
       throws Exception {
     Config config =
-        TestConfigUtils.createTestConfig("dsbulk.log", "directory", quoteJson(tempFolder));
+        TestConfigUtils.createTestConfig("dsbulk.log", "directory", quoteJson(customLogsDirectory));
     ch.qos.logback.classic.Logger dsbulkLogger =
         (ch.qos.logback.classic.Logger) LoggerFactory.getLogger("com.datastax.oss.dsbulk");
     Level oldLevel = dsbulkLogger.getLevel();
     try {
-      LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
+      LogSettings settings = new LogSettings(config, executionId);
       settings.init();
       assertThat(dsbulkLogger.getLevel()).isEqualTo(Level.INFO);
       dsbulkLogger.info("this is a test 1");
@@ -183,7 +189,7 @@ class LogSettingsTest {
       Logger dseDriverLogger = LoggerFactory.getLogger("com.datastax.dse.driver");
       dseDriverLogger.warn("this is a test 4");
       dseDriverLogger.info("this should not appear");
-      Path logFile = tempFolder.resolve("TEST_EXECUTION_ID").resolve("operation.log");
+      Path logFile = customLogsDirectory.resolve(executionId).resolve("operation.log");
       assertThat(logFile).exists();
       List<String> contents = Files.readAllLines(logFile);
       assertThat(contents)
@@ -205,8 +211,8 @@ class LogSettingsTest {
       throws Exception {
     Config config =
         TestConfigUtils.createTestConfig(
-            "dsbulk.log", "directory", quoteJson(tempFolder), "verbosity", 0);
-    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
+            "dsbulk.log", "directory", quoteJson(customLogsDirectory), "verbosity", 0);
+    LogSettings settings = new LogSettings(config, executionId);
     settings.init();
     ch.qos.logback.classic.Logger dsbulkLogger =
         (ch.qos.logback.classic.Logger) LoggerFactory.getLogger("com.datastax.oss.dsbulk");
@@ -220,7 +226,7 @@ class LogSettingsTest {
     Logger dseDriverLogger = LoggerFactory.getLogger("com.datastax.dse.driver");
     dseDriverLogger.warn("this is a test 4");
     dseDriverLogger.info("this should not appear");
-    Path logFile = tempFolder.resolve("TEST_EXECUTION_ID").resolve("operation.log");
+    Path logFile = customLogsDirectory.resolve(executionId).resolve("operation.log");
     assertThat(logFile).exists();
     List<String> contents = Files.readAllLines(logFile);
     assertThat(contents)
@@ -239,8 +245,8 @@ class LogSettingsTest {
       throws Exception {
     Config config =
         TestConfigUtils.createTestConfig(
-            "dsbulk.log", "directory", quoteJson(tempFolder), "verbosity", 2);
-    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
+            "dsbulk.log", "directory", quoteJson(customLogsDirectory), "verbosity", 2);
+    LogSettings settings = new LogSettings(config, executionId);
     settings.init();
     ch.qos.logback.classic.Logger dsbulkLogger =
         (ch.qos.logback.classic.Logger) LoggerFactory.getLogger("com.datastax.oss.dsbulk");
@@ -252,7 +258,7 @@ class LogSettingsTest {
     LoggerFactory.getLogger("com.datastax.oss.driver").debug("this should not appear");
     LoggerFactory.getLogger("com.datastax.dse.driver").info("this is a test 4");
     LoggerFactory.getLogger("com.datastax.dse.driver").debug("this should not appear");
-    Path logFile = tempFolder.resolve("TEST_EXECUTION_ID").resolve("operation.log");
+    Path logFile = customLogsDirectory.resolve(executionId).resolve("operation.log");
     assertThat(logFile).exists();
     List<String> contents = Files.readAllLines(logFile);
     assertThat(contents)
@@ -270,7 +276,7 @@ class LogSettingsTest {
   void should_throw_exception_when_maxQueryStringLength_not_a_number() {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.log", "stmt.maxQueryStringLength", "NotANumber");
-    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
+    LogSettings settings = new LogSettings(config, executionId);
     assertThatThrownBy(settings::init)
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
@@ -281,7 +287,7 @@ class LogSettingsTest {
   void should_throw_exception_when_maxBoundValueLength_not_a_number() {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.log", "stmt.maxBoundValueLength", "NotANumber");
-    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
+    LogSettings settings = new LogSettings(config, executionId);
     assertThatThrownBy(settings::init)
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
@@ -292,7 +298,7 @@ class LogSettingsTest {
   void should_throw_exception_when_maxBoundValues_not_a_number() {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.log", "stmt.maxBoundValues", "NotANumber");
-    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
+    LogSettings settings = new LogSettings(config, executionId);
     assertThatThrownBy(settings::init)
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
@@ -303,7 +309,7 @@ class LogSettingsTest {
   void should_throw_exception_when_maxResultSetValues_not_a_number() {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.log", "row.maxResultSetValues", "NotANumber");
-    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
+    LogSettings settings = new LogSettings(config, executionId);
     assertThatThrownBy(settings::init)
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
@@ -314,7 +320,7 @@ class LogSettingsTest {
   void should_throw_exception_when_maxResultSetValueLength_not_a_number() {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.log", "row.maxResultSetValueLength", "NotANumber");
-    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
+    LogSettings settings = new LogSettings(config, executionId);
     assertThatThrownBy(settings::init)
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
@@ -325,7 +331,7 @@ class LogSettingsTest {
   void should_throw_exception_when_maxInnerStatements_not_a_number() {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.log", "stmt.maxInnerStatements", "NotANumber");
-    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
+    LogSettings settings = new LogSettings(config, executionId);
     assertThatThrownBy(settings::init)
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
@@ -335,7 +341,7 @@ class LogSettingsTest {
   @Test
   void should_throw_exception_when_level_invalid() {
     Config config = TestConfigUtils.createTestConfig("dsbulk.log", "stmt.level", "NotALevel");
-    LogSettings settings = new LogSettings(config, "TEST_EXECUTION_ID");
+    LogSettings settings = new LogSettings(config, executionId);
     assertThatThrownBy(settings::init)
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
@@ -345,7 +351,7 @@ class LogSettingsTest {
   @Test()
   void should_accept_maxQueryWarnings_as_absolute_number() throws IOException {
     Config config = TestConfigUtils.createTestConfig("dsbulk.log", "maxQueryWarnings", 20);
-    LogSettings settings = new LogSettings(config, "test");
+    LogSettings settings = new LogSettings(config, executionId);
     settings.init();
     ErrorThreshold threshold = settings.queryWarningsThreshold;
     assertThat(threshold).isInstanceOf(AbsoluteErrorThreshold.class);
@@ -355,7 +361,7 @@ class LogSettingsTest {
   @Test()
   void should_not_accept_maxQueryWarnings_as_percentage() {
     Config config = TestConfigUtils.createTestConfig("dsbulk.log", "maxQueryWarnings", "20%");
-    LogSettings settings = new LogSettings(config, "test");
+    LogSettings settings = new LogSettings(config, executionId);
     assertThatThrownBy(settings::init)
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
@@ -365,7 +371,7 @@ class LogSettingsTest {
   @Test()
   void should_disable_maxQueryWarnings() throws IOException {
     Config config = TestConfigUtils.createTestConfig("dsbulk.log", "maxQueryWarnings", -42);
-    LogSettings settings = new LogSettings(config, "test");
+    LogSettings settings = new LogSettings(config, executionId);
     settings.init();
     ErrorThreshold threshold = settings.queryWarningsThreshold;
     assertThat(threshold).isInstanceOf(UnlimitedErrorThreshold.class);
