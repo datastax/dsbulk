@@ -20,6 +20,7 @@ import com.datastax.oss.driver.api.core.metadata.EndPoint;
 import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.driver.api.core.metadata.TokenMap;
 import com.datastax.oss.driver.api.core.metadata.token.TokenRange;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -43,6 +44,7 @@ public class PartitionGenerator {
    *
    * @param splitCount The desired number of splits.
    */
+  @NonNull
   public List<BulkTokenRange> partition(int splitCount) {
     List<BulkTokenRange> tokenRanges = describeRing(splitCount);
     int endpointCount = (int) tokenRanges.stream().map(BulkTokenRange::replicas).distinct().count();

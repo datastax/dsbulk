@@ -47,11 +47,13 @@ public class RandomBulkTokenRange extends RandomTokenRange implements BulkTokenR
   }
 
   @NonNull
+  @Override
   public Set<EndPoint> replicas() {
     return replicas;
   }
 
   @NonNull
+  @Override
   public BigInteger size() {
     BigInteger left = getStart().getValue();
     BigInteger right = getEnd().getValue();
@@ -62,6 +64,7 @@ public class RandomBulkTokenRange extends RandomTokenRange implements BulkTokenR
     }
   }
 
+  @Override
   public double fraction() {
     return size().doubleValue() / RandomBulkTokenFactory.TOTAL_TOKEN_COUNT.doubleValue();
   }

@@ -29,8 +29,9 @@ import java.util.List;
 
 public class RandomTokenRangeSplitter implements TokenRangeSplitter {
 
+  @NonNull
   @Override
-  public @NonNull List<BulkTokenRange> split(@NonNull BulkTokenRange tokenRange, int splitCount) {
+  public List<BulkTokenRange> split(@NonNull BulkTokenRange tokenRange, int splitCount) {
     BigInteger rangeSize = tokenRange.size();
     BigInteger val = BigInteger.valueOf(splitCount);
     // If the range size is lesser than the number of splits,

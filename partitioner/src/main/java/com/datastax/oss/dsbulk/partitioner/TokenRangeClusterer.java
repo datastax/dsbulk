@@ -34,7 +34,7 @@ public class TokenRangeClusterer {
 
   private final BulkTokenFactory tokenFactory;
 
-  public TokenRangeClusterer(BulkTokenFactory tokenFactory) {
+  public TokenRangeClusterer(@NonNull BulkTokenFactory tokenFactory) {
     this.tokenFactory = tokenFactory;
   }
 

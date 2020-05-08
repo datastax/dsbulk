@@ -46,14 +46,14 @@ public class Murmur3BulkTokenRange extends Murmur3TokenRange implements BulkToke
     return (Murmur3Token) super.getEnd();
   }
 
-  @Override
   @NonNull
+  @Override
   public Set<EndPoint> replicas() {
     return replicas;
   }
 
-  @Override
   @NonNull
+  @Override
   public BigInteger size() {
     BigInteger left = BigInteger.valueOf(getStart().getValue());
     BigInteger right = BigInteger.valueOf(getEnd().getValue());
