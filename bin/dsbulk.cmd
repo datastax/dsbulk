@@ -1,3 +1,4 @@
+@ECHO OFF
 REM Copyright DataStax, Inc.
 REM
 REM Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +13,6 @@ REM WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 REM See the License for the specific language governing permissions and
 REM limitations under the License.
 
-@ECHO OFF
 SETLOCAL ENABLEDELAYEDEXPANSION
 
 SET ABSOLUTE_BATCH_DIRECTORY=%~DPS0
@@ -35,7 +35,7 @@ REM Attempt to find the window width, to make help output look nicer.
 for /F "usebackq tokens=2* delims=: " %%W in (`mode con ^| findstr Columns`) do set COLUMNS=%%W
 
 REM Run the Java tool.
-"%JAVA%" %DSBULK_JAVA_OPTS% DataStaxBulkLoader %*
+"%JAVA%" %DSBULK_JAVA_OPTS% com.datastax.oss.dsbulk.runner.DataStaxBulkLoader %*
 GOTO :eof
 
 REM Helper for adding a particular item to CLASSPATH.
