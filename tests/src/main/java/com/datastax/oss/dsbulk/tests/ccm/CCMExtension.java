@@ -20,6 +20,8 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 import ch.qos.logback.core.joran.spi.JoranException;
 import com.datastax.oss.driver.api.core.metadata.EndPoint;
+import com.datastax.oss.driver.api.core.servererrors.OverloadedException;
+import com.datastax.oss.driver.api.core.servererrors.ServerError;
 import com.datastax.oss.driver.shaded.guava.common.util.concurrent.Uninterruptibles;
 import com.datastax.oss.dsbulk.commons.utils.PlatformUtils;
 import com.datastax.oss.dsbulk.tests.RemoteClusterExtension;
@@ -37,11 +39,13 @@ import org.junit.jupiter.api.extension.ExecutionCondition;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
+import org.junit.jupiter.api.extension.TestExecutionExceptionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** A manager for {@link CCMCluster CCM} clusters that helps testing with JUnit 5 and Cassandra. */
-public class CCMExtension extends RemoteClusterExtension implements ExecutionCondition {
+public class CCMExtension extends RemoteClusterExtension
+    implements ExecutionCondition, TestExecutionExceptionHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CCMExtension.class);
 
@@ -106,6 +110,25 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
   }
 
   @Override
+  public void handleTestExecutionException(ExtensionContext context, Throwable throwable)
+      throws Throwable {
+    if (throwable instanceof CCMException
+        || throwable instanceof ServerError
+        || throwable instanceof OverloadedException) {
+      setTracing();
+      LOGGER.error("CCM test failed due to server failure", throwable);
+      CCMCluster ccm = getOrCreateCCM(context);
+      ccm.setKeepLogs();
+      String errors = ccm.checkForErrors();
+      if (errors != null && !errors.isEmpty()) {
+        LOGGER.error("Server errors:");
+        LOGGER.error(errors);
+      }
+    }
+    throw throwable;
+  }
+
+  @Override
   public void afterAll(ExtensionContext context) throws Exception {
     super.afterAll(context);
     stopCCM(context);
@@ -151,9 +174,7 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
                     LOGGER.error("Could not start CCM cluster, giving up", e);
                     throw e;
                   }
-                  // Increase log verbosity for the next attempts
-                  LogUtils.setLogLevel("com.datastax.oss.dsbulk.tests.ccm", "TRACE");
-                  LogUtils.setLogLevel("dsbulk.ccm", "TRACE");
+                  setTracing();
                   if (ccm != null) {
                     try {
                       ccm.stop();
@@ -168,6 +189,12 @@ public class CCMExtension extends RemoteClusterExtension implements ExecutionCon
               }
             },
             CCMCluster.class);
+  }
+
+  private void setTracing() {
+    // Increase log verbosity for the next attempts
+    LogUtils.setLogLevel("com.datastax.oss.dsbulk.tests.ccm", "TRACE");
+    LogUtils.setLogLevel("dsbulk.ccm", "TRACE");
   }
 
   private void stopCCM(ExtensionContext context) {

@@ -78,10 +78,15 @@ public abstract class RemoteClusterExtension implements AfterAllCallback, Parame
 
   protected CqlSession createSession(SessionFactory sessionFactory, ExtensionContext context) {
     List<EndPoint> contactPoints = getContactPoints(context);
-    CqlSession session =
-        sessionFactory.createSessionBuilder().addContactEndPoints(contactPoints).build();
-    sessionFactory.configureSession(session);
-    return session;
+    try {
+      CqlSession session =
+          sessionFactory.createSessionBuilder().addContactEndPoints(contactPoints).build();
+      sessionFactory.configureSession(session);
+      return session;
+    } catch (RuntimeException e) {
+      LOGGER.error("Could not create session", e);
+      throw e;
+    }
   }
 
   protected abstract String getLocalDatacenter(ExtensionContext context);
