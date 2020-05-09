@@ -24,7 +24,7 @@ import com.datastax.oss.driver.api.core.cql.BatchStatement;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.metadata.Metadata;
 import com.datastax.oss.driver.api.core.metadata.TokenMap;
-import com.datastax.oss.dsbulk.executor.api.batch.StatementBatcher.BatchMode;
+import com.datastax.oss.dsbulk.executor.api.batch.BatchMode;
 import com.datastax.oss.dsbulk.executor.api.batch.StatementBatcherTest;
 import java.util.HashSet;
 import java.util.Optional;
@@ -55,14 +55,13 @@ class ReactorStatementBatcherTest extends StatementBatcherTest {
         .contains(tuple(stmt1, stmt2, stmt5, stmt6), tuple(stmt3, stmt4));
   }
 
-  @SuppressWarnings("unchecked")
   @Test
   void should_batch_by_replica_set_and_routing_key_reactive() {
     assignRoutingKeys();
     Metadata metadata = mock(Metadata.class);
     TokenMap tokenMap = mock(TokenMap.class);
     when(session.getMetadata()).thenReturn(metadata);
-    when(metadata.getTokenMap()).thenReturn((Optional) Optional.of(tokenMap));
+    when(metadata.getTokenMap()).thenReturn(Optional.of(tokenMap));
     when(tokenMap.getReplicas(ks, key1)).thenReturn(replicaSet1);
     when(tokenMap.getReplicas(ks, key2)).thenReturn(replicaSet2);
     when(tokenMap.getReplicas(ks, key3)).thenReturn(replicaSet1);
@@ -74,14 +73,13 @@ class ReactorStatementBatcherTest extends StatementBatcherTest {
         .contains(tuple(stmt1, stmt2, stmt5, stmt6), tuple(stmt3, stmt4));
   }
 
-  @SuppressWarnings("unchecked")
   @Test
   void should_batch_by_replica_set_and_routing_token_reactive() {
     assignRoutingTokens();
     Metadata metadata = mock(Metadata.class);
     TokenMap tokenMap = mock(TokenMap.class);
     when(session.getMetadata()).thenReturn(metadata);
-    when(metadata.getTokenMap()).thenReturn((Optional) Optional.of(tokenMap));
+    when(metadata.getTokenMap()).thenReturn(Optional.of(tokenMap));
     when(tokenMap.getReplicas(ks, key1)).thenReturn(replicaSet1);
     when(tokenMap.getReplicas(ks, key2)).thenReturn(replicaSet2);
     when(tokenMap.getReplicas(ks, key3)).thenReturn(replicaSet1);
@@ -93,14 +91,13 @@ class ReactorStatementBatcherTest extends StatementBatcherTest {
         .contains(tuple(stmt1, stmt2, stmt5, stmt6), tuple(stmt3, stmt4));
   }
 
-  @SuppressWarnings("unchecked")
   @Test
   void should_batch_by_routing_key_when_replica_set_info_not_available_reactive() {
     assignRoutingKeys();
     Metadata metadata = mock(Metadata.class);
     TokenMap tokenMap = mock(TokenMap.class);
     when(session.getMetadata()).thenReturn(metadata);
-    when(metadata.getTokenMap()).thenReturn((Optional) Optional.of(tokenMap));
+    when(metadata.getTokenMap()).thenReturn(Optional.of(tokenMap));
     when(tokenMap.getReplicas(ks, key1)).thenReturn(new HashSet<>());
     when(tokenMap.getReplicas(ks, key2)).thenReturn(new HashSet<>());
     when(tokenMap.getReplicas(ks, key3)).thenReturn(new HashSet<>());
@@ -112,14 +109,13 @@ class ReactorStatementBatcherTest extends StatementBatcherTest {
         .contains(tuple(stmt1, stmt2, stmt6), tuple(stmt3, stmt4), tuple(stmt5));
   }
 
-  @SuppressWarnings("unchecked")
   @Test
   void should_batch_by_routing_token_when_replica_set_info_not_available_reactive() {
     assignRoutingTokens();
     Metadata metadata = mock(Metadata.class);
     TokenMap tokenMap = mock(TokenMap.class);
     when(session.getMetadata()).thenReturn(metadata);
-    when(metadata.getTokenMap()).thenReturn((Optional) Optional.of(tokenMap));
+    when(metadata.getTokenMap()).thenReturn(Optional.of(tokenMap));
     when(tokenMap.getReplicas(ks, key1)).thenReturn(new HashSet<>());
     when(tokenMap.getReplicas(ks, key2)).thenReturn(new HashSet<>());
     when(tokenMap.getReplicas(ks, key3)).thenReturn(new HashSet<>());

@@ -15,7 +15,6 @@
  */
 package com.datastax.oss.dsbulk.workflow.commons.settings;
 
-import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
 import com.datastax.oss.dsbulk.codecs.ConversionContext;
 import com.datastax.oss.dsbulk.codecs.ConvertingCodecFactory;
@@ -74,7 +73,6 @@ public class CodecSettings {
   private TimeUUIDGenerator generator;
   private List<String> booleanStrings;
 
-  @VisibleForTesting
   public CodecSettings(Config config) {
     this.config = config;
   }

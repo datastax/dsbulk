@@ -15,7 +15,7 @@
  */
 package com.datastax.oss.dsbulk.executor.api.batch;
 
-import static com.datastax.oss.dsbulk.executor.api.batch.StatementBatcher.BatchMode.REPLICA_SET;
+import static com.datastax.oss.dsbulk.executor.api.batch.BatchMode.REPLICA_SET;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.mock;
@@ -100,7 +100,7 @@ public class StatementBatcherTest {
   @Test
   void should_batch_by_routing_key() {
     assignRoutingKeys();
-    StatementBatcher batcher = new StatementBatcher();
+    StatementBatcher batcher = new DefaultStatementBatcher();
     List<Statement<?>> statements =
         batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements)
@@ -111,7 +111,7 @@ public class StatementBatcherTest {
   @Test
   void should_batch_by_routing_token() {
     assignRoutingTokens();
-    StatementBatcher batcher = new StatementBatcher();
+    StatementBatcher batcher = new DefaultStatementBatcher();
     List<Statement<?>> statements =
         batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements)
@@ -129,7 +129,7 @@ public class StatementBatcherTest {
     when(tokenMap.getReplicas(ks, key1)).thenReturn(replicaSet1);
     when(tokenMap.getReplicas(ks, key2)).thenReturn(replicaSet2);
     when(tokenMap.getReplicas(ks, key3)).thenReturn(replicaSet1);
-    StatementBatcher batcher = new StatementBatcher(session, REPLICA_SET);
+    StatementBatcher batcher = new DefaultStatementBatcher(session, REPLICA_SET);
     List<Statement<?>> statements =
         batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements)
@@ -147,7 +147,7 @@ public class StatementBatcherTest {
     when(tokenMap.getReplicas(ks, key1)).thenReturn(replicaSet1);
     when(tokenMap.getReplicas(ks, key2)).thenReturn(replicaSet2);
     when(tokenMap.getReplicas(ks, key3)).thenReturn(replicaSet1);
-    StatementBatcher batcher = new StatementBatcher(session, REPLICA_SET);
+    StatementBatcher batcher = new DefaultStatementBatcher(session, REPLICA_SET);
     List<Statement<?>> statements =
         batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements)
@@ -165,7 +165,7 @@ public class StatementBatcherTest {
     when(tokenMap.getReplicas(ks, key1)).thenReturn(new HashSet<>());
     when(tokenMap.getReplicas(ks, key2)).thenReturn(new HashSet<>());
     when(tokenMap.getReplicas(ks, key3)).thenReturn(new HashSet<>());
-    StatementBatcher batcher = new StatementBatcher(session, REPLICA_SET);
+    StatementBatcher batcher = new DefaultStatementBatcher(session, REPLICA_SET);
     List<Statement<?>> statements =
         batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements)
@@ -183,7 +183,7 @@ public class StatementBatcherTest {
     when(tokenMap.getReplicas(ks, key1)).thenReturn(new HashSet<>());
     when(tokenMap.getReplicas(ks, key2)).thenReturn(new HashSet<>());
     when(tokenMap.getReplicas(ks, key3)).thenReturn(new HashSet<>());
-    StatementBatcher batcher = new StatementBatcher(session, REPLICA_SET);
+    StatementBatcher batcher = new DefaultStatementBatcher(session, REPLICA_SET);
     List<Statement<?>> statements =
         batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements)
@@ -193,7 +193,7 @@ public class StatementBatcherTest {
 
   @Test
   void should_batch_all() {
-    StatementBatcher batcher = new StatementBatcher();
+    StatementBatcher batcher = new DefaultStatementBatcher();
     List<Statement<?>> statements = batcher.batchAll(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements).hasSize(1);
     Statement<?> statement = statements.get(0);
@@ -203,14 +203,14 @@ public class StatementBatcherTest {
 
   @Test
   void should_not_batch_one_statement_when_batching_by_routing_key() {
-    StatementBatcher batcher = new StatementBatcher();
+    StatementBatcher batcher = new DefaultStatementBatcher();
     List<Statement<?>> statements = batcher.batchByGroupingKey(stmt1);
     assertThat(statements).containsOnly(stmt1);
   }
 
   @Test
   void should_not_batch_one_statement_when_batching_all() {
-    StatementBatcher batcher = new StatementBatcher();
+    StatementBatcher batcher = new DefaultStatementBatcher();
     List<Statement<?>> statements = batcher.batchAll(stmt1);
     assertThat(statements).hasSize(1);
     Statement<?> statement = statements.get(0);
@@ -220,7 +220,7 @@ public class StatementBatcherTest {
   @Test
   void should_honor_max_statements_in_batch() {
     assignRoutingTokens();
-    StatementBatcher batcher = new StatementBatcher(2);
+    StatementBatcher batcher = new DefaultStatementBatcher(2);
     List<Statement<?>> statements =
         batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements)
@@ -235,7 +235,7 @@ public class StatementBatcherTest {
   @Test
   void should_honor_max_size_in_bytes() {
     assignRoutingTokensWitSize();
-    StatementBatcher batcher = new StatementBatcher(8L);
+    StatementBatcher batcher = new DefaultStatementBatcher(8L);
     List<Statement<?>> statements =
         batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements)
@@ -250,7 +250,7 @@ public class StatementBatcherTest {
   @Test
   void should_buffer_until_last_element_if_max_size_in_bytes_high() {
     assignRoutingTokensWitSize();
-    StatementBatcher batcher = new StatementBatcher(1000);
+    StatementBatcher batcher = new DefaultStatementBatcher(1000);
     List<Statement<?>> statements =
         batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements)
@@ -265,7 +265,7 @@ public class StatementBatcherTest {
   @Test
   void should_buffer_by_max_size_in_bytes_if_satisfied_before_max_batch_statements() {
     assignRoutingTokensWitSize();
-    StatementBatcher batcher = new StatementBatcher(10, 8L);
+    StatementBatcher batcher = new DefaultStatementBatcher(10, 8L);
     List<Statement<?>> statements =
         batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements)
@@ -280,7 +280,7 @@ public class StatementBatcherTest {
   @Test
   void should_buffer_by_max_batch_statements_if_satisfied_before_max_size_in_bytes() {
     assignRoutingTokensWitSize();
-    StatementBatcher batcher = new StatementBatcher(1, 8L);
+    StatementBatcher batcher = new DefaultStatementBatcher(1, 8L);
     List<Statement<?>> statements =
         batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements)
@@ -297,7 +297,7 @@ public class StatementBatcherTest {
   @Test
   void should_buffer_until_last_element_if_max_size_in_bytes_and_max_batch_statements_high() {
     assignRoutingTokensWitSize();
-    StatementBatcher batcher = new StatementBatcher(100, 1000);
+    StatementBatcher batcher = new DefaultStatementBatcher(100, 1000);
     List<Statement<?>> statements =
         batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements)
@@ -312,7 +312,7 @@ public class StatementBatcherTest {
   @Test
   void should_buffer_until_last_element_if_max_size_in_bytes_and_max_batch_statements_negative() {
     assignRoutingTokensWitSize();
-    StatementBatcher batcher = new StatementBatcher(-1, -1);
+    StatementBatcher batcher = new DefaultStatementBatcher(-1, -1);
     List<Statement<?>> statements =
         batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements)

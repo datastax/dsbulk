@@ -128,7 +128,7 @@ public class LogSettings {
   @VisibleForTesting ErrorThreshold queryWarningsThreshold;
   private Verbosity verbosity;
 
-  LogSettings(Config config, String executionId) {
+  public LogSettings(Config config, String executionId) {
     this.config = config;
     this.executionId = executionId;
   }

@@ -45,7 +45,7 @@
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-executor-reactor</artifactId>
+      <artifactId>dsbulk-executor-api</artifactId>
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>
@@ -54,6 +54,10 @@
     <dependency>
       <groupId>com.typesafe</groupId>
       <artifactId>config</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.projectreactor</groupId>
+      <artifactId>reactor-core</artifactId>
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>

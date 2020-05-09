@@ -18,37 +18,40 @@ package com.datastax.oss.dsbulk.workflow.commons.settings;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.DefaultBatchType;
 import com.datastax.oss.dsbulk.commons.config.ConfigUtils;
-import com.datastax.oss.dsbulk.executor.api.batch.StatementBatcher;
-import com.datastax.oss.dsbulk.executor.reactor.batch.ReactorStatementBatcher;
+import com.datastax.oss.dsbulk.executor.api.batch.BatchMode;
+import com.datastax.oss.dsbulk.executor.api.batch.ReactiveStatementBatcher;
+import com.datastax.oss.dsbulk.executor.api.batch.ReactiveStatementBatcherFactory;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
+import java.util.ServiceLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class BatchSettings {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(BatchSettings.class);
 
-  private enum BatchMode {
+  private enum WorkloadBatchMode {
     DISABLED {
       @Override
-      StatementBatcher.BatchMode asStatementBatcherMode() {
+      BatchMode asStatementBatcherMode() {
         throw new IllegalStateException("Batching is disabled");
       }
     },
     PARTITION_KEY {
       @Override
-      StatementBatcher.BatchMode asStatementBatcherMode() {
-        return StatementBatcher.BatchMode.PARTITION_KEY;
+      BatchMode asStatementBatcherMode() {
+        return BatchMode.PARTITION_KEY;
       }
     },
     REPLICA_SET {
       @Override
-      StatementBatcher.BatchMode asStatementBatcherMode() {
-        return StatementBatcher.BatchMode.REPLICA_SET;
+      BatchMode asStatementBatcherMode() {
+        return BatchMode.REPLICA_SET;
       }
     };
 
-    abstract StatementBatcher.BatchMode asStatementBatcherMode();
+    abstract BatchMode asStatementBatcherMode();
   }
 
   private static final String MODE = "mode";
@@ -59,18 +62,18 @@ public class BatchSettings {
 
   private final Config config;
 
-  private BatchMode mode;
+  private WorkloadBatchMode mode;
   private long maxSizeInBytes;
   private int maxBatchStatements;
   private int bufferSize;
 
-  BatchSettings(Config config) {
+  public BatchSettings(Config config) {
     this.config = config;
   }
 
   public void init() {
     try {
-      mode = config.getEnum(BatchMode.class, MODE);
+      mode = config.getEnum(WorkloadBatchMode.class, MODE);
       maxSizeInBytes = config.getLong(MAX_SIZE_IN_BYTES);
 
       if (config.hasPath(MAX_BATCH_SIZE)) {
@@ -124,15 +127,18 @@ public class BatchSettings {
   }
 
   public boolean isBatchingEnabled() {
-    return mode != BatchMode.DISABLED;
+    return mode != WorkloadBatchMode.DISABLED;
   }
 
   public int getBufferSize() {
     return bufferSize;
   }
 
-  public ReactorStatementBatcher newStatementBatcher(CqlSession session) {
-    return new ReactorStatementBatcher(
+  public ReactiveStatementBatcher newStatementBatcher(CqlSession session) {
+    ServiceLoader<ReactiveStatementBatcherFactory> loader =
+        ServiceLoader.load(ReactiveStatementBatcherFactory.class);
+    ReactiveStatementBatcherFactory factory = loader.iterator().next();
+    return factory.create(
         session,
         mode.asStatementBatcherMode(),
         DefaultBatchType.UNLOGGED,

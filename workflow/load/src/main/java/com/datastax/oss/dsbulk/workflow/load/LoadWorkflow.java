@@ -30,7 +30,7 @@ import com.datastax.oss.dsbulk.connectors.api.Connector;
 import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.datastax.oss.dsbulk.executor.api.result.EmptyWriteResult;
 import com.datastax.oss.dsbulk.executor.api.result.WriteResult;
-import com.datastax.oss.dsbulk.executor.reactor.writer.ReactorBulkWriter;
+import com.datastax.oss.dsbulk.executor.api.writer.BulkWriter;
 import com.datastax.oss.dsbulk.workflow.api.Workflow;
 import com.datastax.oss.dsbulk.workflow.commons.log.LogManager;
 import com.datastax.oss.dsbulk.workflow.commons.metrics.MetricsManager;
@@ -53,6 +53,7 @@ import com.typesafe.config.Config;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
+import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -73,7 +74,7 @@ public class LoadWorkflow implements Workflow {
   private MetricsManager metricsManager;
   private LogManager logManager;
   private CqlSession session;
-  private ReactorBulkWriter executor;
+  private BulkWriter executor;
   private boolean batchingEnabled;
   private boolean dryRun;
   private int resourceCount;
@@ -82,7 +83,7 @@ public class LoadWorkflow implements Workflow {
   private Scheduler scheduler;
 
   private Function<Record, BatchableStatement<?>> mapper;
-  private Function<Flux<BatchableStatement<?>>, Flux<Statement<?>>> batcher;
+  private Function<Publisher<BatchableStatement<?>>, Publisher<Statement<?>>> batcher;
   private Function<Flux<Record>, Flux<Record>> totalItemsMonitor;
   private Function<Flux<Record>, Flux<Record>> totalItemsCounter;
   private Function<Flux<Record>, Flux<Record>> failedRecordsMonitor;

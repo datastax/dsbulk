@@ -121,7 +121,7 @@ public class DriverSettings {
   @VisibleForTesting SslHandlerFactory sslHandlerFactory;
   private Predicate<Node> nodeFilter;
 
-  DriverSettings(
+  public DriverSettings(
       Config deprecatedDriverConfig,
       Config deprecatedContinuousPagingConfig,
       Config newDriverConfig) {

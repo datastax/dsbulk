@@ -28,8 +28,8 @@ import com.datastax.oss.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.oss.dsbulk.connectors.api.Connector;
 import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.datastax.oss.dsbulk.connectors.api.RecordMetadata;
+import com.datastax.oss.dsbulk.executor.api.reader.BulkReader;
 import com.datastax.oss.dsbulk.executor.api.result.ReadResult;
-import com.datastax.oss.dsbulk.executor.reactor.reader.ReactorBulkReader;
 import com.datastax.oss.dsbulk.workflow.api.Workflow;
 import com.datastax.oss.dsbulk.workflow.commons.log.LogManager;
 import com.datastax.oss.dsbulk.workflow.commons.metrics.MetricsManager;
@@ -76,7 +76,7 @@ public class UnloadWorkflow implements Workflow {
   private MetricsManager metricsManager;
   private LogManager logManager;
   private CqlSession session;
-  private ReactorBulkReader executor;
+  private BulkReader executor;
   private List<? extends Statement<?>> readStatements;
   private Function<? super Publisher<Record>, ? extends Publisher<Record>> writer;
   private Function<Flux<ReadResult>, Flux<ReadResult>> totalItemsMonitor;
@@ -213,8 +213,7 @@ public class UnloadWorkflow implements Workflow {
     return Flux.fromIterable(readStatements)
         .flatMap(
             statement ->
-                executor
-                    .readReactive(statement)
+                Flux.from(executor.readReactive(statement))
                     .transform(queryWarningsHandler)
                     .transform(totalItemsMonitor)
                     .transform(totalItemsCounter)

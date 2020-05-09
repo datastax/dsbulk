@@ -140,7 +140,7 @@ public class SchemaSettings {
   private MappingPreference mappingPreference;
   private ProtocolVersion protocolVersion;
 
-  SchemaSettings(Config config) {
+  public SchemaSettings(Config config) {
     this.config = config;
   }
 

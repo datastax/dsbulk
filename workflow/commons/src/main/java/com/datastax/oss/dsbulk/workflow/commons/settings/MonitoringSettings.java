@@ -52,7 +52,7 @@ public class MonitoringSettings {
   private boolean jmx;
   private boolean csv;
 
-  MonitoringSettings(Config config, String executionId) {
+  public MonitoringSettings(Config config, String executionId) {
     this.config = config;
     this.executionId = executionId;
   }

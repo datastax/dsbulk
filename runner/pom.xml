@@ -100,7 +100,7 @@
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-partitioner</artifactId>
+      <artifactId>dsbulk-executor-reactor</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>

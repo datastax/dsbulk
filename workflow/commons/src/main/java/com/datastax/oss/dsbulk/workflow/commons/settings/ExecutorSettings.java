@@ -21,20 +21,18 @@ import com.datastax.oss.driver.api.core.DefaultConsistencyLevel;
 import com.datastax.oss.driver.api.core.ProtocolVersion;
 import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
 import com.datastax.oss.dsbulk.commons.config.ConfigUtils;
-import com.datastax.oss.dsbulk.executor.api.AbstractBulkExecutor;
-import com.datastax.oss.dsbulk.executor.api.AbstractBulkExecutorBuilder;
+import com.datastax.oss.dsbulk.executor.api.BulkExecutor;
+import com.datastax.oss.dsbulk.executor.api.BulkExecutorBuilder;
+import com.datastax.oss.dsbulk.executor.api.BulkExecutorBuilderFactory;
 import com.datastax.oss.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.oss.dsbulk.executor.api.listener.MetricsCollectingExecutionListener;
-import com.datastax.oss.dsbulk.executor.reactor.ContinuousReactorBulkExecutor;
-import com.datastax.oss.dsbulk.executor.reactor.ContinuousReactorBulkExecutorBuilder;
-import com.datastax.oss.dsbulk.executor.reactor.DefaultReactorBulkExecutor;
-import com.datastax.oss.dsbulk.executor.reactor.DefaultReactorBulkExecutorBuilder;
-import com.datastax.oss.dsbulk.executor.reactor.ReactorBulkExecutor;
-import com.datastax.oss.dsbulk.executor.reactor.reader.ReactorBulkReader;
-import com.datastax.oss.dsbulk.executor.reactor.writer.ReactorBulkWriter;
+import com.datastax.oss.dsbulk.executor.api.reader.BulkReader;
+import com.datastax.oss.dsbulk.executor.api.writer.BulkWriter;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.util.Optional;
+import java.util.ServiceLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,58 +79,64 @@ public class ExecutorSettings {
     return maxConcurrentQueries > 0 ? Optional.of(maxConcurrentQueries) : Optional.empty();
   }
 
-  public ReactorBulkWriter newWriteExecutor(
-      CqlSession session, ExecutionListener executionListener) {
+  @NonNull
+  public BulkWriter newWriteExecutor(
+      @NonNull CqlSession session, @NonNull ExecutionListener executionListener) {
     return newBulkExecutor(session, executionListener, false, false);
   }
 
-  public ReactorBulkReader newReadExecutor(
-      CqlSession session,
-      MetricsCollectingExecutionListener executionListener,
+  @NonNull
+  public BulkReader newReadExecutor(
+      @NonNull CqlSession session,
+      @NonNull MetricsCollectingExecutionListener executionListener,
       boolean searchQuery) {
     return newBulkExecutor(session, executionListener, true, searchQuery);
   }
 
-  private ReactorBulkExecutor newBulkExecutor(
-      CqlSession session, ExecutionListener executionListener, boolean read, boolean searchQuery) {
-    if (read) {
-      if (continuousPagingEnabled) {
-        if (searchQuery) {
-          LOGGER.warn(
-              "Continuous paging is enabled but is not compatible with search queries; disabling.");
-          return newDefaultExecutor(session, executionListener);
-        }
-        if (continuousPagingAvailable(session)) {
-          return newContinuousExecutor(session, executionListener);
-        } else {
-          LOGGER.warn(
-              "Continuous paging is not available, read performance will not be optimal. "
-                  + "Check your remote DSE cluster configuration, and ensure that "
-                  + "the configured consistency level is either ONE or LOCAL_ONE.");
-        }
-      } else {
-        LOGGER.debug("Continuous paging was disabled by configuration.");
-      }
+  @NonNull
+  protected BulkExecutor newBulkExecutor(
+      @NonNull CqlSession session,
+      @NonNull ExecutionListener executionListener,
+      boolean read,
+      boolean searchQuery) {
+    boolean useContinuousPagingForReads = read && checkContinuousPaging(session, searchQuery);
+    ServiceLoader<BulkExecutorBuilderFactory> loader =
+        ServiceLoader.load(BulkExecutorBuilderFactory.class);
+    BulkExecutorBuilderFactory builderFactory = loader.iterator().next();
+    BulkExecutorBuilder<?> builder = builderFactory.create(session, useContinuousPagingForReads);
+    builder
+        .withExecutionListener(executionListener)
+        .withMaxInFlightRequests(maxInFlight)
+        .withMaxRequestsPerSecond(maxPerSecond)
+        .failSafe();
+    if (useContinuousPagingForReads) {
+      builder.withMaxInFlightQueries(maxConcurrentQueries);
     }
-    return newDefaultExecutor(session, executionListener);
+    return builder.build();
   }
 
-  private ReactorBulkExecutor newDefaultExecutor(
-      CqlSession session, ExecutionListener executionListener) {
-    DefaultReactorBulkExecutorBuilder builder = DefaultReactorBulkExecutor.builder(session);
-    return configureExecutor(builder, executionListener).build();
+  protected boolean checkContinuousPaging(@NonNull CqlSession session, boolean searchQuery) {
+    if (continuousPagingEnabled) {
+      if (searchQuery) {
+        LOGGER.warn(
+            "Continuous paging is enabled but is not compatible with search queries; disabling.");
+        return false;
+      }
+      if (continuousPagingAvailable(session)) {
+        return true;
+      } else {
+        LOGGER.warn(
+            "Continuous paging is not available, read performance will not be optimal. "
+                + "Check your remote DSE cluster configuration, and ensure that "
+                + "the configured consistency level is either ONE or LOCAL_ONE.");
+      }
+    } else {
+      LOGGER.debug("Continuous paging was disabled by configuration.");
+    }
+    return false;
   }
 
-  private ReactorBulkExecutor newContinuousExecutor(
-      CqlSession session, ExecutionListener executionListener) {
-    ContinuousReactorBulkExecutorBuilder builder =
-        ContinuousReactorBulkExecutor.continuousPagingBuilder(session);
-    return configureExecutor(builder, executionListener)
-        .withMaxInFlightQueries(maxConcurrentQueries)
-        .build();
-  }
-
-  private boolean continuousPagingAvailable(CqlSession session) {
+  protected boolean continuousPagingAvailable(@NonNull CqlSession session) {
     ProtocolVersion protocolVersion = session.getContext().getProtocolVersion();
     if (protocolVersion.getCode() >= DseProtocolVersion.DSE_V1.getCode()) {
       DefaultConsistencyLevel consistencyLevel =
@@ -146,14 +150,5 @@ public class ExecutorSettings {
           || consistencyLevel == DefaultConsistencyLevel.LOCAL_ONE;
     }
     return false;
-  }
-
-  private <T extends AbstractBulkExecutor> AbstractBulkExecutorBuilder<T> configureExecutor(
-      AbstractBulkExecutorBuilder<T> builder, ExecutionListener executionListener) {
-    return builder
-        .withExecutionListener(executionListener)
-        .withMaxInFlightRequests(maxInFlight)
-        .withMaxRequestsPerSecond(maxPerSecond)
-        .failSafe();
   }
 }

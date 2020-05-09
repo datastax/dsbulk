@@ -38,7 +38,7 @@ public class StatsSettings {
   private List<StatisticsMode> statisticsModes;
   private int numPartitions;
 
-  StatsSettings(Config config) {
+  public StatsSettings(Config config) {
     this.config = config;
   }
 

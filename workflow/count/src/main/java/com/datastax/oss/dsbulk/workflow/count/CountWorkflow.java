@@ -24,8 +24,8 @@ import com.datastax.oss.driver.api.core.metrics.Metrics;
 import com.datastax.oss.driver.shaded.guava.common.base.Stopwatch;
 import com.datastax.oss.dsbulk.codecs.ConvertingCodecFactory;
 import com.datastax.oss.dsbulk.commons.utils.StringUtils;
+import com.datastax.oss.dsbulk.executor.api.reader.BulkReader;
 import com.datastax.oss.dsbulk.executor.api.result.ReadResult;
-import com.datastax.oss.dsbulk.executor.reactor.reader.ReactorBulkReader;
 import com.datastax.oss.dsbulk.workflow.api.Workflow;
 import com.datastax.oss.dsbulk.workflow.commons.log.LogManager;
 import com.datastax.oss.dsbulk.workflow.commons.metrics.MetricsManager;
@@ -68,7 +68,7 @@ public class CountWorkflow implements Workflow {
   private MetricsManager metricsManager;
   private LogManager logManager;
   private CqlSession session;
-  private ReactorBulkReader executor;
+  private BulkReader executor;
   private List<? extends Statement<?>> readStatements;
   private volatile boolean success;
   private Function<Flux<ReadResult>, Flux<ReadResult>> totalItemsMonitor;
@@ -152,8 +152,7 @@ public class CountWorkflow implements Workflow {
     Flux.fromIterable(readStatements)
         .flatMap(
             statement ->
-                executor
-                    .readReactive(statement)
+                Flux.from(executor.readReactive(statement))
                     .transform(totalItemsMonitor)
                     .transform(totalItemsCounter)
                     .transform(failedItemsMonitor)

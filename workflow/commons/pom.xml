@@ -65,7 +65,7 @@
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-executor-reactor</artifactId>
+      <artifactId>dsbulk-executor-api</artifactId>
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>
@@ -74,6 +74,10 @@
     <dependency>
       <groupId>com.typesafe</groupId>
       <artifactId>config</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.projectreactor</groupId>
+      <artifactId>reactor-core</artifactId>
     </dependency>
     <dependency>
       <groupId>io.dropwizard.metrics</groupId>
@@ -138,6 +142,11 @@
     <dependency>
       <groupId>com.datastax.oss</groupId>
       <artifactId>dsbulk-connectors-json</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
+      <artifactId>dsbulk-executor-reactor</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>

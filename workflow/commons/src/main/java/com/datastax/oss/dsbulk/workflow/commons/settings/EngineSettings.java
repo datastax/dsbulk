@@ -45,7 +45,7 @@ public class EngineSettings {
     return dryRun;
   }
 
-  String getCustomExecutionIdTemplate() {
+  public String getCustomExecutionIdTemplate() {
     return executionId;
   }
 }

@@ -30,7 +30,7 @@ public class ConnectorSettings {
   private String connectorName;
   private Config connectorConfig;
 
-  ConnectorSettings(Config config, boolean read) {
+  public ConnectorSettings(Config config, boolean read) {
     this.config = config;
     this.read = read;
   }
@@ -62,7 +62,7 @@ public class ConnectorSettings {
     return connectorConfig;
   }
 
-  private static Connector locateConnector(String name) {
+  protected Connector locateConnector(String name) {
     ServiceLoader<Connector> connectors = ServiceLoader.load(Connector.class);
     for (Connector connector : connectors) {
       // matches fully qualified class name
