@@ -541,7 +541,7 @@ public class LogManager implements AutoCloseable {
    * @return a mapper from statements to records.
    */
   @NonNull
-  private Function<Flux<? extends Statement>, Flux<Record>> newStatementToRecordMapper() {
+  private Function<Flux<? extends Statement<?>>, Flux<Record>> newStatementToRecordMapper() {
     return upstream ->
         upstream
             .flatMap(
