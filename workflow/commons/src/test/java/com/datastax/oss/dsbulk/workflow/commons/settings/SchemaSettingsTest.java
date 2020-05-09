@@ -2086,7 +2086,7 @@ class SchemaSettingsTest {
             "keyspace",
             "ks",
             "query",
-            "\"SELECT a,b,c FROM t1 LIMIT 1000\"",
+            "\"SELECT a,b,c FROM t1 ALLOW FILTERING\"",
             "splits",
             3);
     SchemaSettings schemaSettings = new SchemaSettings(config);
@@ -2098,7 +2098,7 @@ class SchemaSettingsTest {
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
         .isEqualTo(
-            "SELECT a,b,c FROM t1 WHERE token(c1) > :start AND token(c1) <= :end LIMIT 1000");
+            "SELECT a,b,c FROM t1 WHERE token(c1) > :start AND token(c1) <= :end ALLOW FILTERING");
   }
 
   @ParameterizedTest
@@ -2132,7 +2132,7 @@ class SchemaSettingsTest {
             "keyspace",
             "ks",
             "query",
-            "\"SELECT a,b,c FROM \\\"MyTable\\\" LIMIT 1000\"",
+            "\"SELECT a,b,c FROM \\\"MyTable\\\" PER PARTITION LIMIT 1000\"",
             "splits",
             3);
     SchemaSettings schemaSettings = new SchemaSettings(config);
@@ -2144,7 +2144,7 @@ class SchemaSettingsTest {
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
         .isEqualTo(
-            "SELECT a,b,c FROM \"MyTable\" WHERE token(c1) > :start AND token(c1) <= :end LIMIT 1000");
+            "SELECT a,b,c FROM \"MyTable\" WHERE token(c1) > :start AND token(c1) <= :end PER PARTITION LIMIT 1000");
   }
 
   @Test
@@ -2436,6 +2436,16 @@ class SchemaSettingsTest {
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(SchemaGenerationType.MAP_AND_WRITE, session, true, false);
     assertThat(getInternalState(schemaSettings, "table")).isSameAs(table);
+  }
+
+  @Test
+  void should_generate_single_read_statement_when_query_not_parallelizable() {
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema", "query", "\"select * from ks.t1 LIMIT 10\"");
+    SchemaSettings schemaSettings = new SchemaSettings(config);
+    schemaSettings.init(SchemaGenerationType.READ_AND_MAP, session, true, true);
+    assertThat(getInternalState(schemaSettings, "query")).isEqualTo("select * from ks.t1 LIMIT 10");
   }
 
   private static void assertMapping(DefaultMapping mapping, Object... fieldsAndVars) {

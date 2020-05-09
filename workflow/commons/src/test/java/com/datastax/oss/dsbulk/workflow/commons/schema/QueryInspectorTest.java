@@ -723,4 +723,27 @@ class QueryInspectorTest {
         arguments("SELECT * FROM table1 WHERE pk = 0", false),
         arguments("SELECT * FROM table1 WHERE solr_query = 'irrelevant'", true));
   }
+
+  @ParameterizedTest
+  @MethodSource
+  void should_detect_parallelizable_query(String query, boolean expected) {
+    QueryInspector inspector = new QueryInspector(query);
+    assertThat(inspector.isParallelizable()).isEqualTo(expected);
+  }
+
+  @SuppressWarnings("unused")
+  static List<Arguments> should_detect_parallelizable_query() {
+    return Lists.newArrayList(
+        arguments("INSERT INTO table1 (pk, v) VALUES (1, 2)", true),
+        arguments("UPDATE table1 SET v = 1 WHERE pk = 0", true),
+        arguments("DELETE FROM table1 WHERE pk = 0", true),
+        arguments("SELECT * FROM table1", true),
+        arguments("SELECT * FROM table1 ALLOW FILTERING", true),
+        arguments("SELECT * FROM table1 WHERE pk = 0", false),
+        arguments("SELECT * FROM table1 ORDER BY foo", false),
+        arguments("SELECT * FROM table1 GROUP BY foo", false),
+        arguments("SELECT * FROM table1 LIMIT 10", false),
+        arguments("SELECT * FROM table1 PER PARTITION LIMIT 10 ALLOW FILTERING", true),
+        arguments("SELECT * FROM table1 PER PARTITION LIMIT 10 LIMIT 100", false));
+  }
 }

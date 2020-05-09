@@ -46,8 +46,8 @@ selectStatement
       ( K_WHERE whereClause )?
       ( K_GROUP K_BY groupByClause ( ',' groupByClause )* )?
       ( K_ORDER K_BY orderByClause ( ',' orderByClause )* )?
-      ( K_PER K_PARTITION K_LIMIT intValue )?
-      ( K_LIMIT intValue )?
+      ( perPartitionLimitClause )?
+      ( limitClause )?
       ( K_ALLOW K_FILTERING )?
     ;
 
@@ -101,6 +101,15 @@ orderByClause
 groupByClause
     : cident
     ;
+
+perPartitionLimitClause
+    : K_PER K_PARTITION K_LIMIT intValue
+    ;
+
+limitClause
+    : K_LIMIT intValue
+    ;
+
 
 /**
  * INSERT INTO <CF> (<column>, <column>, <column>, ...)

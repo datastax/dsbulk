@@ -399,6 +399,7 @@ public class SchemaSettings {
               "Graph operations requested but provided keyspace is not a graph: " + keyspaceName);
         }
         if (!isSupportedGraph(keyspace)) {
+          assert ((DseGraphKeyspaceMetadata) keyspace).getGraphEngine().isPresent();
           throw new IllegalStateException(
               String.format(
                   "Graph operations requested but provided graph %s was created with an unsupported graph engine: %s",
@@ -606,7 +607,7 @@ public class SchemaSettings {
     if (config.hasPath(QUERY)) {
       if ((schemaGenerationType == SchemaGenerationType.READ_AND_MAP
               || schemaGenerationType == SchemaGenerationType.READ_AND_COUNT)
-          && !queryInspector.hasWhereClause()) {
+          && queryInspector.isParallelizable()) {
         int whereClauseIndex = queryInspector.getFromClauseEndIndex() + 1;
         StringBuilder sb = new StringBuilder(query.substring(0, whereClauseIndex));
         appendTokenRangeRestriction(sb);
