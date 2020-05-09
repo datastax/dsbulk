@@ -78,6 +78,14 @@
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>
+      <artifactId>dsbulk-batcher-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
+      <artifactId>dsbulk-batcher-reactor</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
       <artifactId>dsbulk-executor-api</artifactId>
     </dependency>
     <dependency>
