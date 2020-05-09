@@ -17,10 +17,10 @@ package com.datastax.oss.dsbulk.workflow.commons.settings;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.DefaultBatchType;
+import com.datastax.oss.dsbulk.batcher.api.BatchMode;
+import com.datastax.oss.dsbulk.batcher.api.ReactiveStatementBatcher;
+import com.datastax.oss.dsbulk.batcher.api.ReactiveStatementBatcherFactory;
 import com.datastax.oss.dsbulk.commons.config.ConfigUtils;
-import com.datastax.oss.dsbulk.executor.api.batch.BatchMode;
-import com.datastax.oss.dsbulk.executor.api.batch.ReactiveStatementBatcher;
-import com.datastax.oss.dsbulk.executor.api.batch.ReactiveStatementBatcherFactory;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import java.util.ServiceLoader;

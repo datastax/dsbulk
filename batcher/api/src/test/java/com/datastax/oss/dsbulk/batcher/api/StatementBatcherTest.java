@@ -13,9 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.dsbulk.executor.api.batch;
+package com.datastax.oss.dsbulk.batcher.api;
 
-import static com.datastax.oss.dsbulk.executor.api.batch.BatchMode.REPLICA_SET;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.mock;
@@ -62,12 +61,12 @@ public class StatementBatcherTest {
         }
       };
 
-  protected ByteBuffer key1 = Bytes.fromHexString("0x1234");
-  protected ByteBuffer key2 = Bytes.fromHexString("0x5678");
-  protected ByteBuffer key3 = Bytes.fromHexString("0x9abc");
+  protected final ByteBuffer key1 = Bytes.fromHexString("0x1234");
+  protected final ByteBuffer key2 = Bytes.fromHexString("0x5678");
+  protected final ByteBuffer key3 = Bytes.fromHexString("0x9abc");
 
-  private final Token token1 = mock(Token.class);
-  private final Token token2 = mock(Token.class);
+  protected final Token token1 = mock(Token.class);
+  protected final Token token2 = mock(Token.class);
 
   protected final CqlIdentifier ks = CqlIdentifier.fromInternal("ks");
 
@@ -80,13 +79,13 @@ public class StatementBatcherTest {
 
   protected CqlSession session;
 
-  private final Node node1 = mock(Node.class);
-  private final Node node2 = mock(Node.class);
-  private final Node node3 = mock(Node.class);
-  private final Node node4 = mock(Node.class);
+  protected final Node node1 = mock(Node.class);
+  protected final Node node2 = mock(Node.class);
+  protected final Node node3 = mock(Node.class);
+  protected final Node node4 = mock(Node.class);
 
-  protected Set<Node> replicaSet1 = Sets.newHashSet(node1, node2, node3);
-  protected Set<Node> replicaSet2 = Sets.newHashSet(node2, node3, node4);
+  protected final Set<Node> replicaSet1 = Sets.newHashSet(node1, node2, node3);
+  protected final Set<Node> replicaSet2 = Sets.newHashSet(node2, node3, node4);
 
   @BeforeEach
   void setUp() {
@@ -129,7 +128,7 @@ public class StatementBatcherTest {
     when(tokenMap.getReplicas(ks, key1)).thenReturn(replicaSet1);
     when(tokenMap.getReplicas(ks, key2)).thenReturn(replicaSet2);
     when(tokenMap.getReplicas(ks, key3)).thenReturn(replicaSet1);
-    StatementBatcher batcher = new DefaultStatementBatcher(session, REPLICA_SET);
+    StatementBatcher batcher = new DefaultStatementBatcher(session, BatchMode.REPLICA_SET);
     List<Statement<?>> statements =
         batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements)
@@ -147,7 +146,7 @@ public class StatementBatcherTest {
     when(tokenMap.getReplicas(ks, key1)).thenReturn(replicaSet1);
     when(tokenMap.getReplicas(ks, key2)).thenReturn(replicaSet2);
     when(tokenMap.getReplicas(ks, key3)).thenReturn(replicaSet1);
-    StatementBatcher batcher = new DefaultStatementBatcher(session, REPLICA_SET);
+    StatementBatcher batcher = new DefaultStatementBatcher(session, BatchMode.REPLICA_SET);
     List<Statement<?>> statements =
         batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements)
@@ -165,7 +164,7 @@ public class StatementBatcherTest {
     when(tokenMap.getReplicas(ks, key1)).thenReturn(new HashSet<>());
     when(tokenMap.getReplicas(ks, key2)).thenReturn(new HashSet<>());
     when(tokenMap.getReplicas(ks, key3)).thenReturn(new HashSet<>());
-    StatementBatcher batcher = new DefaultStatementBatcher(session, REPLICA_SET);
+    StatementBatcher batcher = new DefaultStatementBatcher(session, BatchMode.REPLICA_SET);
     List<Statement<?>> statements =
         batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements)
@@ -183,7 +182,7 @@ public class StatementBatcherTest {
     when(tokenMap.getReplicas(ks, key1)).thenReturn(new HashSet<>());
     when(tokenMap.getReplicas(ks, key2)).thenReturn(new HashSet<>());
     when(tokenMap.getReplicas(ks, key3)).thenReturn(new HashSet<>());
-    StatementBatcher batcher = new DefaultStatementBatcher(session, REPLICA_SET);
+    StatementBatcher batcher = new DefaultStatementBatcher(session, BatchMode.REPLICA_SET);
     List<Statement<?>> statements =
         batcher.batchByGroupingKey(stmt1, stmt2, stmt3, stmt4, stmt5, stmt6);
     assertThat(statements)

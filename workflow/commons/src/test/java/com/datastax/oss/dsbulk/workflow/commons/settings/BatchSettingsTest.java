@@ -15,14 +15,14 @@
  */
 package com.datastax.oss.dsbulk.workflow.commons.settings;
 
-import static com.datastax.oss.dsbulk.executor.api.batch.BatchMode.PARTITION_KEY;
-import static com.datastax.oss.dsbulk.executor.api.batch.BatchMode.REPLICA_SET;
+import static com.datastax.oss.dsbulk.batcher.api.BatchMode.PARTITION_KEY;
+import static com.datastax.oss.dsbulk.batcher.api.BatchMode.REPLICA_SET;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.datastax.oss.dsbulk.executor.api.batch.ReactiveStatementBatcher;
-import com.datastax.oss.dsbulk.executor.reactor.batch.ReactorStatementBatcher;
+import com.datastax.oss.dsbulk.batcher.api.ReactiveStatementBatcher;
+import com.datastax.oss.dsbulk.batcher.reactor.ReactorStatementBatcher;
 import com.datastax.oss.dsbulk.tests.driver.DriverUtils;
 import com.datastax.oss.dsbulk.tests.utils.ReflectionUtils;
 import com.datastax.oss.dsbulk.tests.utils.TestConfigUtils;

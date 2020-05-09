@@ -13,61 +13,71 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.dsbulk.executor.api.batch;
+package com.datastax.oss.dsbulk.batcher.reactor;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.ProtocolVersion;
+import com.datastax.oss.driver.api.core.cql.BatchStatement;
 import com.datastax.oss.driver.api.core.cql.BatchType;
+import com.datastax.oss.driver.api.core.cql.BatchableStatement;
 import com.datastax.oss.driver.api.core.cql.DefaultBatchType;
+import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
+import com.datastax.oss.dsbulk.batcher.api.BatchMode;
+import com.datastax.oss.dsbulk.batcher.api.DefaultStatementBatcher;
+import com.datastax.oss.dsbulk.batcher.api.ReactiveStatementBatcher;
+import com.datastax.oss.dsbulk.batcher.api.ReactiveStatementBatcherFactory;
 import edu.umd.cs.findbugs.annotations.NonNull;
+import java.util.ArrayList;
+import org.reactivestreams.Publisher;
+import reactor.core.publisher.Flux;
 
-public interface ReactiveStatementBatcherFactory {
-
-  /** The default maximum number of statements that a batch can contain. */
-  int DEFAULT_MAX_BATCH_STATEMENTS = 100;
-
-  /** The default maximum data size in bytes that a batch can contain (unlimited). */
-  long DEFAULT_MAX_SIZE_BYTES = -1;
+public class ReactorStatementBatcher extends DefaultStatementBatcher
+    implements ReactiveStatementBatcher {
 
   /**
-   * Creates a new {@link ReactiveStatementBatcher} that produces {@linkplain
+   * Creates a new {@link ReactorStatementBatcher} that produces {@linkplain
    * DefaultBatchType#UNLOGGED unlogged} batches, operates in {@linkplain BatchMode#PARTITION_KEY
    * partition key} mode and uses the {@linkplain ProtocolVersion#DEFAULT latest stable} protocol
    * version and the default {@link CodecRegistry#DEFAULT CodecRegistry} instance. It also uses the
-   * default {@linkplain #DEFAULT_MAX_BATCH_STATEMENTS maximum number of statements} (100) and the
-   * default {@linkplain #DEFAULT_MAX_SIZE_BYTES maximum data size in bytes} (unlimited).
+   * default {@linkplain ReactiveStatementBatcherFactory#DEFAULT_MAX_BATCH_STATEMENTS maximum number
+   * of statements} (100) and the default {@linkplain
+   * ReactiveStatementBatcherFactory#DEFAULT_MAX_SIZE_BYTES maximum data size in bytes} (unlimited).
    */
-  ReactiveStatementBatcher create();
+  public ReactorStatementBatcher() {}
 
   /**
-   * Creates a new {@link ReactiveStatementBatcher} that produces {@linkplain
+   * Creates a new {@link ReactorStatementBatcher} that produces {@linkplain
    * DefaultBatchType#UNLOGGED unlogged} batches, operates in {@linkplain BatchMode#PARTITION_KEY
    * partition key} mode and uses the {@linkplain ProtocolVersion#DEFAULT latest stable} protocol
    * version and the default {@link CodecRegistry#DEFAULT CodecRegistry} instance and the default
-   * {@linkplain #DEFAULT_MAX_SIZE_BYTES maximum data size in bytes} (unlimited). It uses the given
-   * maximum number of statements.
+   * {@linkplain ReactiveStatementBatcherFactory#DEFAULT_MAX_SIZE_BYTES maximum data size in bytes}
+   * (unlimited). It uses the given maximum number of statements.
    *
    * @param maxBatchStatements The maximum number of statements in a batch. If set to zero or any
    *     negative value, the number of statements is considered unlimited.
    */
-  ReactiveStatementBatcher create(int maxBatchStatements);
+  public ReactorStatementBatcher(int maxBatchStatements) {
+    super(maxBatchStatements);
+  }
 
   /**
-   * Creates a new {@link ReactiveStatementBatcher} that produces {@linkplain
+   * Creates a new {@link ReactorStatementBatcher} that produces {@linkplain
    * DefaultBatchType#UNLOGGED unlogged} batches, operates in {@linkplain BatchMode#PARTITION_KEY
    * partition key} mode and uses the {@linkplain ProtocolVersion#DEFAULT latest stable} protocol
    * version and the default {@link CodecRegistry#DEFAULT CodecRegistry} instance and the default
-   * {@linkplain #DEFAULT_MAX_BATCH_STATEMENTS maximum number of statements} (100). It uses the
-   * given maximum data size in bytes.
+   * {@linkplain ReactiveStatementBatcherFactory#DEFAULT_MAX_BATCH_STATEMENTS maximum number of
+   * statements} (100). It uses the given maximum data size in bytes.
    *
    * @param maxSizeInBytes The maximum number of bytes of data in one batch. If set to zero or any
    *     negative value, the data size is considered unlimited.
    */
-  ReactiveStatementBatcher create(long maxSizeInBytes);
+  public ReactorStatementBatcher(long maxSizeInBytes) {
+    super(maxSizeInBytes);
+  }
 
   /**
-   * Creates a new {@link ReactiveStatementBatcher} that produces {@linkplain
+   * Creates a new {@link ReactorStatementBatcher} that produces {@linkplain
    * DefaultBatchType#UNLOGGED unlogged} batches, operates in {@linkplain BatchMode#PARTITION_KEY
    * partition key} mode and uses the {@linkplain ProtocolVersion#DEFAULT latest stable} protocol
    * version and the default {@link CodecRegistry#DEFAULT CodecRegistry} instance. It uses the given
@@ -78,46 +88,48 @@ public interface ReactiveStatementBatcherFactory {
    * @param maxSizeInBytes The maximum number of bytes of data in one batch. If set to zero or any
    *     negative value, the data size is considered unlimited.
    */
-  ReactiveStatementBatcher create(int maxBatchStatements, long maxSizeInBytes);
-
-  /**
-   * Creates a new {@link ReactiveStatementBatcher} that produces {@linkplain
-   * DefaultBatchType#UNLOGGED unlogged} batches, operates in {@linkplain BatchMode#PARTITION_KEY
-   * partition key} mode and uses the given {@linkplain CqlSession session} as its source for the
-   * {@linkplain ProtocolVersion protocol version} and the {@link CodecRegistry} instance to use. It
-   * also uses the default {@linkplain #DEFAULT_MAX_BATCH_STATEMENTS maximum number of statements}
-   * (100) and the default {@linkplain #DEFAULT_MAX_SIZE_BYTES maximum data size in bytes}
-   * (unlimited).
-   *
-   * @param session The {@linkplain CqlSession session} to use; cannot be {@code null}.
-   */
-  default ReactiveStatementBatcher create(@NonNull CqlSession session) {
-    return create(session, BatchMode.PARTITION_KEY);
+  public ReactorStatementBatcher(int maxBatchStatements, long maxSizeInBytes) {
+    super(maxBatchStatements, maxSizeInBytes);
   }
 
   /**
-   * Creates a new {@link ReactiveStatementBatcher} that produces {@linkplain
+   * Creates a new {@link ReactorStatementBatcher} that produces {@linkplain
+   * DefaultBatchType#UNLOGGED unlogged} batches, operates in {@linkplain BatchMode#PARTITION_KEY
+   * partition key} mode and uses the given {@linkplain CqlSession session} as its source for the
+   * {@linkplain ProtocolVersion protocol version} and the {@link CodecRegistry} instance to use. It
+   * also uses the default {@linkplain ReactiveStatementBatcherFactory#DEFAULT_MAX_BATCH_STATEMENTS
+   * maximum number of statements} (100) and the default {@linkplain
+   * ReactiveStatementBatcherFactory#DEFAULT_MAX_SIZE_BYTES maximum data size in bytes} (unlimited).
+   *
+   * @param session The {@linkplain CqlSession session} to use; cannot be {@code null}.
+   */
+  public ReactorStatementBatcher(@NonNull CqlSession session) {
+    super(session);
+  }
+
+  /**
+   * Creates a new {@link ReactorStatementBatcher} that produces {@linkplain
    * DefaultBatchType#UNLOGGED unlogged} batches, operates in the specified {@linkplain BatchMode
    * batch mode} and uses the given {@linkplain CqlSession session} as its source for the
    * {@linkplain ProtocolVersion protocol version} and the {@link CodecRegistry} instance to use. It
-   * also uses the default {@linkplain #DEFAULT_MAX_BATCH_STATEMENTS maximum number of statements}
-   * (100) and the default {@linkplain #DEFAULT_MAX_SIZE_BYTES maximum data size in bytes}
-   * (unlimited).
+   * also uses the default {@linkplain ReactiveStatementBatcherFactory#DEFAULT_MAX_BATCH_STATEMENTS
+   * maximum number of statements} (100) and the default {@linkplain
+   * ReactiveStatementBatcherFactory#DEFAULT_MAX_SIZE_BYTES maximum data size in bytes} (unlimited).
    *
    * @param session The {@linkplain CqlSession session} to use; cannot be {@code null}.
    * @param batchMode The batch mode to use; cannot be {@code null}.
    */
-  default ReactiveStatementBatcher create(
-      @NonNull CqlSession session, @NonNull BatchMode batchMode) {
-    return create(session, batchMode, DefaultBatchType.UNLOGGED, DEFAULT_MAX_BATCH_STATEMENTS);
+  public ReactorStatementBatcher(@NonNull CqlSession session, @NonNull BatchMode batchMode) {
+    super(session, batchMode);
   }
 
   /**
-   * Creates a new {@link ReactiveStatementBatcher} that produces batches of the given {@code
+   * Creates a new {@link ReactorStatementBatcher} that produces batches of the given {@code
    * batchType}, operates in the specified {@code batchMode} and uses the given {@linkplain
    * CqlSession session} as its source for the {@linkplain ProtocolVersion protocol version} and the
    * {@link CodecRegistry} instance to use. It uses the given maximum number of statements and the
-   * default {@linkplain #DEFAULT_MAX_SIZE_BYTES maximum data size in bytes} (unlimited).
+   * default {@linkplain ReactiveStatementBatcherFactory#DEFAULT_MAX_SIZE_BYTES maximum data size in
+   * bytes} (unlimited).
    *
    * @param session The {@linkplain CqlSession session} to use; cannot be {@code null}.
    * @param batchMode The batch mode to use; cannot be {@code null}.
@@ -125,16 +137,16 @@ public interface ReactiveStatementBatcherFactory {
    * @param maxBatchStatements The maximum number of statements in a batch. If set to zero or any
    *     negative value, the number of statements is considered unlimited.
    */
-  default ReactiveStatementBatcher create(
+  public ReactorStatementBatcher(
       @NonNull CqlSession session,
       @NonNull BatchMode batchMode,
       @NonNull BatchType batchType,
       int maxBatchStatements) {
-    return create(session, batchMode, batchType, maxBatchStatements, DEFAULT_MAX_SIZE_BYTES);
+    super(session, batchMode, batchType, maxBatchStatements);
   }
 
   /**
-   * Creates a new {@link ReactiveStatementBatcher} that produces batches of the given {@code
+   * Creates a new {@link ReactorStatementBatcher} that produces batches of the given {@code
    * batchType}, operates in the specified {@code batchMode} and uses the given {@linkplain
    * CqlSession session} as its source for the {@linkplain ProtocolVersion protocol version} and the
    * {@link CodecRegistry} instance to use. It uses the given maximum number of statements and the
@@ -148,10 +160,42 @@ public interface ReactiveStatementBatcherFactory {
    * @param maxSizeInBytes The maximum number of bytes of data in one batch. If set to zero or any
    *     negative value, the data size is considered unlimited.
    */
-  ReactiveStatementBatcher create(
+  public ReactorStatementBatcher(
       @NonNull CqlSession session,
       @NonNull BatchMode batchMode,
       @NonNull BatchType batchType,
       int maxBatchStatements,
-      long maxSizeInBytes);
+      long maxSizeInBytes) {
+    super(session, batchMode, batchType, maxBatchStatements, maxSizeInBytes);
+  }
+
+  @Override
+  @NonNull
+  public Flux<Statement<?>> batchByGroupingKey(
+      @NonNull Publisher<BatchableStatement<?>> statements) {
+    return Flux.from(statements).groupBy(this::groupingKey).flatMap(this::batchAll);
+  }
+
+  @Override
+  @NonNull
+  public Flux<Statement<?>> batchAll(@NonNull Publisher<BatchableStatement<?>> statements) {
+    return Flux.from(statements)
+        .windowUntil(new ReactorAdaptiveSizingBatchPredicate(), false)
+        .flatMap(
+            stmts ->
+                stmts
+                    .reduce(
+                        new ArrayList<BatchableStatement<?>>(),
+                        (children, child) -> {
+                          children.add(child);
+                          return children;
+                        })
+                    .map(
+                        children ->
+                            children.size() == 1
+                                ? children.get(0)
+                                : BatchStatement.newInstance(batchType, children)));
+  }
+
+  private class ReactorAdaptiveSizingBatchPredicate extends AdaptiveSizingBatchPredicate {}
 }

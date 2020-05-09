@@ -65,6 +65,10 @@
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>
+      <artifactId>dsbulk-batcher-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
       <artifactId>dsbulk-executor-api</artifactId>
     </dependency>
     <dependency>
@@ -142,6 +146,11 @@
     <dependency>
       <groupId>com.datastax.oss</groupId>
       <artifactId>dsbulk-connectors-json</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
+      <artifactId>dsbulk-batcher-reactor</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>

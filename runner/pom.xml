@@ -100,6 +100,11 @@
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>
+      <artifactId>dsbulk-batcher-reactor</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
       <artifactId>dsbulk-executor-reactor</artifactId>
       <scope>test</scope>
     </dependency>

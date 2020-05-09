@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.dsbulk.executor.reactor.batch;
+package com.datastax.oss.dsbulk.batcher.reactor;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
@@ -24,8 +24,8 @@ import com.datastax.oss.driver.api.core.cql.BatchStatement;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.metadata.Metadata;
 import com.datastax.oss.driver.api.core.metadata.TokenMap;
-import com.datastax.oss.dsbulk.executor.api.batch.BatchMode;
-import com.datastax.oss.dsbulk.executor.api.batch.StatementBatcherTest;
+import com.datastax.oss.dsbulk.batcher.api.BatchMode;
+import com.datastax.oss.dsbulk.batcher.api.StatementBatcherTest;
 import java.util.HashSet;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;

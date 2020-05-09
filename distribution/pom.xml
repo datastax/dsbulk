@@ -80,6 +80,15 @@
       <groupId>com.datastax.oss</groupId>
       <artifactId>dsbulk-workflow-count</artifactId>
     </dependency>
+    <!--    batcher and executor implementations -->
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
+      <artifactId>dsbulk-batcher-reactor</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
+      <artifactId>dsbulk-executor-reactor</artifactId>
+    </dependency>
     <!-- runner -->
     <dependency>
       <groupId>com.datastax.oss</groupId>

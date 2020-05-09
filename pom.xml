@@ -38,9 +38,10 @@
     <module>compression</module>
     <module>format</module>
     <module>connectors</module>
-    <module>executor</module>
+    <module>batcher</module>
     <module>mapping</module>
     <module>partitioner</module>
+    <module>executor</module>
     <module>workflow</module>
     <module>runner</module>
     <module>docs</module>
@@ -130,6 +131,22 @@
       <dependency>
         <groupId>com.datastax.oss</groupId>
         <artifactId>dsbulk-partitioner</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>dsbulk-batcher-api</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>dsbulk-batcher-api</artifactId>
+        <version>${project.version}</version>
+        <type>test-jar</type>
+      </dependency>
+      <dependency>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>dsbulk-batcher-reactor</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
