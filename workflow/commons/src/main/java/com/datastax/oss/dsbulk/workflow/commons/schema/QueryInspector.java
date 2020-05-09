@@ -29,7 +29,6 @@ import com.datastax.oss.dsbulk.generated.cql3.CqlParser.ColumnOperationDifferent
 import com.datastax.oss.dsbulk.generated.cql3.CqlParser.CqlStatementContext;
 import com.datastax.oss.dsbulk.generated.cql3.CqlParser.DeleteStatementContext;
 import com.datastax.oss.dsbulk.generated.cql3.CqlParser.FunctionContext;
-import com.datastax.oss.dsbulk.generated.cql3.CqlParser.GroupByClauseContext;
 import com.datastax.oss.dsbulk.generated.cql3.CqlParser.InsertStatementContext;
 import com.datastax.oss.dsbulk.generated.cql3.CqlParser.IntValueContext;
 import com.datastax.oss.dsbulk.generated.cql3.CqlParser.JsonInsertStatementContext;
@@ -37,7 +36,6 @@ import com.datastax.oss.dsbulk.generated.cql3.CqlParser.KeyspaceNameContext;
 import com.datastax.oss.dsbulk.generated.cql3.CqlParser.KsNameContext;
 import com.datastax.oss.dsbulk.generated.cql3.CqlParser.NoncolIdentContext;
 import com.datastax.oss.dsbulk.generated.cql3.CqlParser.NormalInsertStatementContext;
-import com.datastax.oss.dsbulk.generated.cql3.CqlParser.OrderByClauseContext;
 import com.datastax.oss.dsbulk.generated.cql3.CqlParser.RelationContext;
 import com.datastax.oss.dsbulk.generated.cql3.CqlParser.RelationTypeContext;
 import com.datastax.oss.dsbulk.generated.cql3.CqlParser.SelectClauseContext;
@@ -492,18 +490,6 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
     }
     // other relation types: unsupported
     return null;
-  }
-
-  @Override
-  public CQLFragment visitGroupByClause(GroupByClauseContext ctx) {
-    parallelizable = true;
-    return super.visitGroupByClause(ctx);
-  }
-
-  @Override
-  public CQLFragment visitOrderByClause(OrderByClauseContext ctx) {
-    parallelizable = true;
-    return super.visitOrderByClause(ctx);
   }
 
   // TERMS AND VALUES
