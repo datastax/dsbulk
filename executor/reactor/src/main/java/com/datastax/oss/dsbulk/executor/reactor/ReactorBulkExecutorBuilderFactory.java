@@ -22,6 +22,7 @@ import edu.umd.cs.findbugs.annotations.NonNull;
 
 public class ReactorBulkExecutorBuilderFactory implements BulkExecutorBuilderFactory {
 
+  @Override
   @NonNull
   public BulkExecutorBuilder<? extends ReactorBulkExecutor> create(
       @NonNull CqlSession session, boolean useContinuousPagingForReads) {
