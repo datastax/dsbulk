@@ -437,13 +437,29 @@ class ConfigUtilsTest {
   @Test
   void should_detect_value_from_reference() {
     Config config =
-        ConfigFactory.parseString("overriddenInApplication = -1, onlyInApplication = -2")
+        ConfigFactory.parseString(
+                "overriddenInApplication = -1, onlyInApplication = -2, onlyInApplicationButNull = null")
             .withFallback(ConfigFactory.defaultReference());
-    assertThat(ConfigUtils.isValueFromReferenceConfig(config, "overriddenInApplication")).isFalse();
-    assertThat(ConfigUtils.isValueFromReferenceConfig(config, "onlyInApplication")).isFalse();
-    assertThat(ConfigUtils.isValueFromReferenceConfig(config, "fromReference")).isTrue();
-    assertThat(ConfigUtils.isValueFromReferenceConfig(config, "fromReferenceButNull")).isTrue();
-    assertThat(ConfigUtils.isValueFromReferenceConfig(config, "nonExistent")).isFalse();
+    assertThat(ConfigUtils.hasReferenceValue(config, "overriddenInApplication")).isFalse();
+    assertThat(ConfigUtils.hasReferenceValue(config, "onlyInApplication")).isFalse();
+    assertThat(ConfigUtils.hasReferenceValue(config, "onlyInApplicationButNull")).isFalse();
+    assertThat(ConfigUtils.hasReferenceValue(config, "fromReference")).isTrue();
+    assertThat(ConfigUtils.hasReferenceValue(config, "fromReferenceButNull")).isTrue();
+    assertThat(ConfigUtils.hasReferenceValue(config, "nonExistent")).isFalse();
+  }
+
+  @Test
+  void should_detect_user_defined_value() {
+    Config config =
+        ConfigFactory.parseString(
+                "overriddenInApplication = -1, onlyInApplication = -2, onlyInApplicationButNull = null")
+            .withFallback(ConfigFactory.defaultReference());
+    assertThat(ConfigUtils.hasUserOverride(config, "overriddenInApplication")).isTrue();
+    assertThat(ConfigUtils.hasUserOverride(config, "onlyInApplication")).isTrue();
+    assertThat(ConfigUtils.hasUserOverride(config, "onlyInApplicationButNull")).isTrue();
+    assertThat(ConfigUtils.hasUserOverride(config, "fromReference")).isFalse();
+    assertThat(ConfigUtils.hasUserOverride(config, "fromReferenceButNull")).isFalse();
+    assertThat(ConfigUtils.hasUserOverride(config, "nonExistent")).isFalse();
   }
 
   static List<Arguments> urlsProvider() throws MalformedURLException {

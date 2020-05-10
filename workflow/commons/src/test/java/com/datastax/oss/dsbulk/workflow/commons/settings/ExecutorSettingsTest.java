@@ -201,44 +201,15 @@ class ExecutorSettingsTest {
   }
 
   @Test
-  void should_enable_maxConcurrentQueries() {
+  void should_log_warning_when_concurrentMaxQueries_is_user_defined(
+      @LogCapture LogInterceptor logs) {
     Config config =
         TestConfigUtils.createTestConfig(
-            "dsbulk.executor", "continuousPaging.maxConcurrentQueries", 100);
-    DriverExecutionProfile profile = session.getContext().getConfig().getDefaultProfile();
-    when(profile.getString(DefaultDriverOption.REQUEST_CONSISTENCY)).thenReturn("LOCAL_ONE");
-    when(session.getContext().getProtocolVersion()).thenReturn(DseProtocolVersion.DSE_V1);
+            "dsbulk.executor", "continuousPaging.maxConcurrentQueries", "10");
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
-    ReactiveBulkReader executor = settings.newReadExecutor(session, null, false);
-    Semaphore maxConcurrentQueries = (Semaphore) getInternalState(executor, "maxConcurrentQueries");
-    assertThat(maxConcurrentQueries.availablePermits()).isEqualTo(100);
-  }
-
-  @Test
-  void should_disable_maxConcurrentQueries() {
-    Config config =
-        TestConfigUtils.createTestConfig(
-            "dsbulk.executor", "continuousPaging.maxConcurrentQueries", 0);
-    ExecutorSettings settings = new ExecutorSettings(config);
-    DriverExecutionProfile profile = session.getContext().getConfig().getDefaultProfile();
-    when(profile.getString(DefaultDriverOption.REQUEST_CONSISTENCY)).thenReturn("ONE");
-    when(session.getContext().getProtocolVersion()).thenReturn(DseProtocolVersion.DSE_V1);
-    settings.init();
-    ReactiveBulkReader executor = settings.newReadExecutor(session, null, false);
-    Semaphore maxConcurrentQueries = (Semaphore) getInternalState(executor, "maxConcurrentQueries");
-    assertThat(maxConcurrentQueries).isNull();
-  }
-
-  @Test
-  void should_throw_exception_when_maxConcurrentQueries_not_a_number() {
-    Config config =
-        TestConfigUtils.createTestConfig(
-            "dsbulk.executor", "continuousPaging.maxConcurrentQueries", "NotANumber");
-    ExecutorSettings settings = new ExecutorSettings(config);
-    assertThatThrownBy(settings::init)
-        .isInstanceOf(IllegalArgumentException.class)
+    assertThat(logs)
         .hasMessageContaining(
-            "Invalid value for dsbulk.executor.continuousPaging.maxConcurrentQueries, expecting NUMBER, got STRING");
+            "Setting executor.continuousPaging.maxConcurrentQueries has been removed and is not honored anymore");
   }
 }

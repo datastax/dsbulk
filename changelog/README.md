@@ -15,6 +15,7 @@
 - [improvement] DAT-469: Raise the precision of kb/row to 3 decimal digits.
 - [improvement] DAT-547: Ability to specify a list of allowed or denied hosts.
 - [improvement] DAT-472: Ability to prompt for passwords when none specified in config.
+- [improvement] DAT-571: Generalize maxConcurrentQueries to all operations.
 
 
 ## 1.5.0

@@ -39,17 +39,9 @@ public class ContinuousReadResultSubscription
       @NonNull Statement<?> statement,
       @Nullable ExecutionListener listener,
       @Nullable Semaphore maxConcurrentRequests,
-      @Nullable Semaphore maxConcurrentQueries,
       @Nullable RateLimiter rateLimiter,
       boolean failFast) {
-    super(
-        subscriber,
-        statement,
-        listener,
-        maxConcurrentRequests,
-        maxConcurrentQueries,
-        rateLimiter,
-        failFast);
+    super(subscriber, statement, listener, maxConcurrentRequests, rateLimiter, failFast);
   }
 
   @Override

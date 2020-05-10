@@ -16,6 +16,7 @@
 package com.datastax.oss.dsbulk.workflow.commons.settings;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.datastax.oss.dsbulk.tests.utils.TestConfigUtils;
 import com.typesafe.config.Config;
@@ -45,6 +46,33 @@ class EngineSettingsTest {
         TestConfigUtils.createTestConfig("dsbulk.engine", "executionId", "MyExecutionId");
     EngineSettings settings = new EngineSettings(config);
     settings.init();
-    assertThat(settings.getCustomExecutionIdTemplate()).isEqualTo("MyExecutionId");
+    assertThat(settings.getCustomExecutionIdTemplate()).contains("MyExecutionId");
+  }
+
+  @Test
+  void should_report_max_concurrent_queries() {
+    Config config = TestConfigUtils.createTestConfig("dsbulk.engine", "maxConcurrentQueries", "10");
+    EngineSettings settings = new EngineSettings(config);
+    settings.init();
+    assertThat(settings.getMaxConcurrentQueries()).hasValue(10);
+  }
+
+  @Test
+  void should_throw_when_max_concurrent_queries_invalid() {
+    Config config = TestConfigUtils.createTestConfig("dsbulk.engine", "maxConcurrentQueries", "-1");
+    EngineSettings settings = new EngineSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining(
+            "Invalid value for dsbulk.engine.maxConcurrentQueries, expecting positive integer or string in 'nC' syntax, got '-1'");
+  }
+
+  @Test
+  void should_report_empty_max_concurrent_queries_when_AUTO() {
+    Config config =
+        TestConfigUtils.createTestConfig("dsbulk.engine", "maxConcurrentQueries", "AUTO");
+    EngineSettings settings = new EngineSettings(config);
+    settings.init();
+    assertThat(settings.getMaxConcurrentQueries()).isEmpty();
   }
 }

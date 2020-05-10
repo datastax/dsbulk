@@ -42,7 +42,7 @@ import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUES
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_TIMEOUT;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_WARN_IF_SET_KEYSPACE;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.TIMESTAMP_GENERATOR_CLASS;
-import static com.datastax.oss.dsbulk.commons.config.ConfigUtils.isValueFromReferenceConfig;
+import static com.datastax.oss.dsbulk.commons.config.ConfigUtils.hasReferenceValue;
 import static com.datastax.oss.dsbulk.commons.utils.ConsoleUtils.BULK_LOADER_APPLICATION_NAME;
 import static com.datastax.oss.dsbulk.commons.utils.ConsoleUtils.getBulkLoaderVersion;
 import static com.datastax.oss.dsbulk.workflow.commons.settings.BulkDriverOption.DEFAULT_PORT;
@@ -142,7 +142,7 @@ public class DriverSettings {
 
     convertedConfig = ConfigFactory.empty();
 
-    if (isUserDefined(deprecatedDriverConfig, "port")) {
+    if (ConfigUtils.hasUserOverride(deprecatedDriverConfig, "port")) {
       defaultPort = deprecatedDriverConfig.getInt("port");
       warnDeprecatedSetting("dsbulk.driver.port", DEFAULT_PORT);
     } else if (newDriverConfig.hasPath("basic.default-port")) {
@@ -151,7 +151,7 @@ public class DriverSettings {
       defaultPort = 9042;
     }
 
-    if (isUserDefined(deprecatedDriverConfig, "hosts")) {
+    if (ConfigUtils.hasUserOverride(deprecatedDriverConfig, "hosts")) {
       List<String> hosts = deprecatedDriverConfig.getStringList("hosts");
       List<String> contactPoints =
           hosts.stream().map(host -> host + ':' + defaultPort).collect(Collectors.toList());
@@ -159,7 +159,7 @@ public class DriverSettings {
       warnDeprecatedSetting("dsbulk.driver.hosts", CONTACT_POINTS);
     }
 
-    if (isUserDefined(deprecatedDriverConfig, "protocol.compression")) {
+    if (ConfigUtils.hasUserOverride(deprecatedDriverConfig, "protocol.compression")) {
       String compression = deprecatedDriverConfig.getString("protocol.compression");
       switch (compression.toLowerCase()) {
         case "lz4":
@@ -176,14 +176,14 @@ public class DriverSettings {
       }
     }
 
-    if (isUserDefined(deprecatedDriverConfig, "pooling.local.connections")) {
+    if (ConfigUtils.hasUserOverride(deprecatedDriverConfig, "pooling.local.connections")) {
       int localConnections = deprecatedDriverConfig.getInt("pooling.local.connections");
       convertedConfig =
           addConfigValue(convertedConfig, CONNECTION_POOL_LOCAL_SIZE, localConnections);
       warnDeprecatedSetting("dsbulk.driver.pooling.local.connections", CONNECTION_POOL_LOCAL_SIZE);
     }
 
-    if (isUserDefined(deprecatedDriverConfig, "pooling.remote.connections")) {
+    if (ConfigUtils.hasUserOverride(deprecatedDriverConfig, "pooling.remote.connections")) {
       int remoteConnections = deprecatedDriverConfig.getInt("pooling.remote.connections");
       convertedConfig =
           addConfigValue(convertedConfig, CONNECTION_POOL_REMOTE_SIZE, remoteConnections);
@@ -191,32 +191,32 @@ public class DriverSettings {
           "dsbulk.driver.pooling.remote.connections", CONNECTION_POOL_REMOTE_SIZE);
     }
 
-    if (isUserDefined(deprecatedDriverConfig, "pooling.local.requests")) {
+    if (ConfigUtils.hasUserOverride(deprecatedDriverConfig, "pooling.local.requests")) {
       int localRequests = deprecatedDriverConfig.getInt("pooling.local.requests");
       convertedConfig = addConfigValue(convertedConfig, CONNECTION_MAX_REQUESTS, localRequests);
       warnDeprecatedSetting("dsbulk.driver.pooling.local.requests", CONNECTION_MAX_REQUESTS);
     }
 
-    if (isUserDefined(deprecatedDriverConfig, "pooling.remote.requests")) {
+    if (ConfigUtils.hasUserOverride(deprecatedDriverConfig, "pooling.remote.requests")) {
       deprecatedDriverConfig.getInt("pooling.remote.requests");
       // don't set CONNECTION_MAX_REQUESTS, it's already done above
       warnDeprecatedSetting("dsbulk.driver.pooling.remote.requests", CONNECTION_MAX_REQUESTS);
     }
 
-    if (isUserDefined(deprecatedDriverConfig, "pooling.heartbeat")) {
+    if (ConfigUtils.hasUserOverride(deprecatedDriverConfig, "pooling.heartbeat")) {
       Duration heartbeat = deprecatedDriverConfig.getDuration("pooling.heartbeat");
       convertedConfig = addConfigValue(convertedConfig, HEARTBEAT_INTERVAL, heartbeat);
       warnDeprecatedSetting("dsbulk.driver.pooling.heartbeat", HEARTBEAT_INTERVAL);
     }
 
-    if (isUserDefined(deprecatedDriverConfig, "query.consistency")) {
+    if (ConfigUtils.hasUserOverride(deprecatedDriverConfig, "query.consistency")) {
       ConsistencyLevel consistency =
           deprecatedDriverConfig.getEnum(DefaultConsistencyLevel.class, "query.consistency");
       convertedConfig = addConfigValue(convertedConfig, REQUEST_CONSISTENCY, consistency.name());
       warnDeprecatedSetting("dsbulk.driver.query.consistency", REQUEST_CONSISTENCY);
     }
 
-    if (isUserDefined(deprecatedDriverConfig, "query.serialConsistency")) {
+    if (ConfigUtils.hasUserOverride(deprecatedDriverConfig, "query.serialConsistency")) {
       ConsistencyLevel consistency =
           deprecatedDriverConfig.getEnum(DefaultConsistencyLevel.class, "query.serialConsistency");
       convertedConfig =
@@ -224,19 +224,19 @@ public class DriverSettings {
       warnDeprecatedSetting("dsbulk.driver.query.serialConsistency", REQUEST_SERIAL_CONSISTENCY);
     }
 
-    if (isUserDefined(deprecatedDriverConfig, "query.fetchSize")) {
+    if (ConfigUtils.hasUserOverride(deprecatedDriverConfig, "query.fetchSize")) {
       int fetchSize = deprecatedDriverConfig.getInt("query.fetchSize");
       convertedConfig = addConfigValue(convertedConfig, REQUEST_PAGE_SIZE, fetchSize);
       warnDeprecatedSetting("dsbulk.driver.query.fetchSize", REQUEST_PAGE_SIZE);
     }
 
-    if (isUserDefined(deprecatedDriverConfig, "query.idempotence")) {
+    if (ConfigUtils.hasUserOverride(deprecatedDriverConfig, "query.idempotence")) {
       boolean idempotence = deprecatedDriverConfig.getBoolean("query.idempotence");
       convertedConfig = addConfigValue(convertedConfig, REQUEST_DEFAULT_IDEMPOTENCE, idempotence);
       warnDeprecatedSetting("dsbulk.driver.query.idempotence", REQUEST_DEFAULT_IDEMPOTENCE);
     }
 
-    if (isUserDefined(deprecatedDriverConfig, "socket.readTimeout")) {
+    if (ConfigUtils.hasUserOverride(deprecatedDriverConfig, "socket.readTimeout")) {
       Duration readTimeout = deprecatedDriverConfig.getDuration("socket.readTimeout");
       convertedConfig = addConfigValue(convertedConfig, REQUEST_TIMEOUT, readTimeout);
       // also modify continuous paging accordingly, to emulate old behavior
@@ -247,7 +247,7 @@ public class DriverSettings {
       warnDeprecatedSetting("dsbulk.driver.socket.readTimeout", REQUEST_TIMEOUT);
     }
 
-    if (isUserDefined(deprecatedDriverConfig, "auth")) {
+    if (ConfigUtils.hasUserOverride(deprecatedDriverConfig, "auth")) {
       authProvider =
           AuthProviderFactory.createAuthProvider(deprecatedDriverConfig.getConfig("auth"));
       warnDeprecatedSetting("dsbulk.driver.auth.*", "advanced.auth-provider.*");
@@ -264,13 +264,13 @@ public class DriverSettings {
               ConfigValueFactory.fromAnyRef(PlainTextAuthProvider.class.getSimpleName()));
     }
 
-    if (isUserDefined(deprecatedDriverConfig, "ssl")) {
+    if (ConfigUtils.hasUserOverride(deprecatedDriverConfig, "ssl")) {
       sslHandlerFactory =
           SslHandlerFactoryFactory.createSslHandlerFactory(deprecatedDriverConfig.getConfig("ssl"));
       warnDeprecatedSetting("dsbulk.driver.ssl.*", "advanced.ssl-engine-factory.*");
     }
 
-    if (isUserDefined(deprecatedDriverConfig, "timestampGenerator")) {
+    if (ConfigUtils.hasUserOverride(deprecatedDriverConfig, "timestampGenerator")) {
       String generator = deprecatedDriverConfig.getString("timestampGenerator");
       Class<? extends TimestampGenerator> generatorClass;
       switch (generator) {
@@ -299,7 +299,7 @@ public class DriverSettings {
       warnDeprecatedSetting("dsbulk.driver.timestampGenerator", TIMESTAMP_GENERATOR_CLASS);
     }
 
-    if (isUserDefined(deprecatedDriverConfig, "addressTranslator")) {
+    if (ConfigUtils.hasUserOverride(deprecatedDriverConfig, "addressTranslator")) {
       String translator = deprecatedDriverConfig.getString("addressTranslator");
       // since this setting is now deprecated, we only support the single built-in value
       // IdentityTranslator, dynamic loading of user-provided classes is not supported anymore
@@ -314,53 +314,56 @@ public class DriverSettings {
       warnDeprecatedSetting("dsbulk.driver.addressTranslator", ADDRESS_TRANSLATOR_CLASS);
     }
 
-    if (isUserDefined(deprecatedDriverConfig, "policy.maxRetries")) {
+    if (ConfigUtils.hasUserOverride(deprecatedDriverConfig, "policy.maxRetries")) {
       int maxRetries = deprecatedDriverConfig.getInt("policy.maxRetries");
       convertedConfig = addConfigValue(convertedConfig, RETRY_POLICY_MAX_RETRIES, maxRetries);
       warnDeprecatedSetting("dsbulk.driver.policy.maxRetries", RETRY_POLICY_MAX_RETRIES);
     }
 
-    if (isUserDefined(deprecatedDriverConfig, "policy.lbp")) {
+    if (ConfigUtils.hasUserOverride(deprecatedDriverConfig, "policy.lbp")) {
 
-      if (isUserDefined(deprecatedDriverConfig, "policy.lbp.name")) {
+      if (ConfigUtils.hasUserOverride(deprecatedDriverConfig, "policy.lbp.name")) {
         warnObsoleteLBPSetting("name");
       }
 
-      if (isUserDefined(deprecatedDriverConfig, "policy.lbp.dse.childPolicy")) {
+      if (ConfigUtils.hasUserOverride(deprecatedDriverConfig, "policy.lbp.dse.childPolicy")) {
         warnObsoleteLBPSetting("dse.childPolicy");
       }
 
-      if (isUserDefined(deprecatedDriverConfig, "policy.lbp.dcAwareRoundRobin.localDc")) {
+      if (ConfigUtils.hasUserOverride(
+          deprecatedDriverConfig, "policy.lbp.dcAwareRoundRobin.localDc")) {
         String localDc = deprecatedDriverConfig.getString("policy.lbp.dcAwareRoundRobin.localDc");
         convertedConfig = addConfigValue(convertedConfig, LOAD_BALANCING_LOCAL_DATACENTER, localDc);
         warnDeprecatedSetting(
             "dsbulk.driver.policy.lbp.dcAwareRoundRobin.localDc", LOAD_BALANCING_LOCAL_DATACENTER);
       }
 
-      if (isUserDefined(
+      if (ConfigUtils.hasUserOverride(
           deprecatedDriverConfig,
           "policy.lbp.dcAwareRoundRobin.allowRemoteDCsForLocalConsistencyLevel")) {
         warnObsoleteLBPSetting("dcAwareRoundRobin.allowRemoteDCsForLocalConsistencyLevel");
       }
 
-      if (isUserDefined(
+      if (ConfigUtils.hasUserOverride(
           deprecatedDriverConfig, "policy.lbp.dcAwareRoundRobin.usedHostsPerRemoteDc")) {
         warnObsoleteLBPSetting("dcAwareRoundRobin.usedHostsPerRemoteDc");
       }
 
-      if (isUserDefined(deprecatedDriverConfig, "policy.lbp.tokenAware.childPolicy")) {
+      if (ConfigUtils.hasUserOverride(
+          deprecatedDriverConfig, "policy.lbp.tokenAware.childPolicy")) {
         warnObsoleteLBPSetting("tokenAware.childPolicy");
       }
 
-      if (isUserDefined(deprecatedDriverConfig, "policy.lbp.tokenAware.replicaOrdering")) {
+      if (ConfigUtils.hasUserOverride(
+          deprecatedDriverConfig, "policy.lbp.tokenAware.replicaOrdering")) {
         warnObsoleteLBPSetting("tokenAware.replicaOrdering");
       }
 
-      if (isUserDefined(deprecatedDriverConfig, "policy.lbp.whiteList.childPolicy")) {
+      if (ConfigUtils.hasUserOverride(deprecatedDriverConfig, "policy.lbp.whiteList.childPolicy")) {
         warnObsoleteLBPSetting("whiteList.childPolicy");
       }
 
-      if (isUserDefined(deprecatedDriverConfig, "policy.lbp.whiteList.hosts")) {
+      if (ConfigUtils.hasUserOverride(deprecatedDriverConfig, "policy.lbp.whiteList.hosts")) {
         List<String> whiteList = deprecatedDriverConfig.getStringList("policy.lbp.whiteList.hosts");
         convertedConfig =
             addConfigValue(convertedConfig, LOAD_BALANCING_POLICY_FILTER_ALLOW, whiteList);
@@ -377,14 +380,14 @@ public class DriverSettings {
 
       if (continuousPagingEnabled) {
 
-        if (isUserDefined(deprecatedContinuousPagingConfig, "pageSize")) {
+        if (ConfigUtils.hasUserOverride(deprecatedContinuousPagingConfig, "pageSize")) {
           int pageSize = deprecatedContinuousPagingConfig.getInt("pageSize");
           convertedConfig = addConfigValue(convertedConfig, CONTINUOUS_PAGING_PAGE_SIZE, pageSize);
           warnDeprecatedSetting(
               "dsbulk.executor.continuousPaging.pageSize", CONTINUOUS_PAGING_PAGE_SIZE);
         }
 
-        if (isUserDefined(deprecatedContinuousPagingConfig, "pageUnit")) {
+        if (ConfigUtils.hasUserOverride(deprecatedContinuousPagingConfig, "pageUnit")) {
           String pageUnit = deprecatedContinuousPagingConfig.getString("pageUnit");
           switch (pageUnit.toLowerCase()) {
             case "bytes":
@@ -406,14 +409,14 @@ public class DriverSettings {
           }
         }
 
-        if (isUserDefined(deprecatedContinuousPagingConfig, "maxPages")) {
+        if (ConfigUtils.hasUserOverride(deprecatedContinuousPagingConfig, "maxPages")) {
           int maxPages = deprecatedContinuousPagingConfig.getInt("maxPages");
           convertedConfig = addConfigValue(convertedConfig, CONTINUOUS_PAGING_MAX_PAGES, maxPages);
           warnDeprecatedSetting(
               "dsbulk.executor.continuousPaging.maxPages", CONTINUOUS_PAGING_MAX_PAGES);
         }
 
-        if (isUserDefined(deprecatedContinuousPagingConfig, "maxPagesPerSecond")) {
+        if (ConfigUtils.hasUserOverride(deprecatedContinuousPagingConfig, "maxPagesPerSecond")) {
           int maxPagesPerSecond = deprecatedContinuousPagingConfig.getInt("maxPagesPerSecond");
           convertedConfig =
               addConfigValue(
@@ -440,7 +443,7 @@ public class DriverSettings {
               ConfigValueFactory.fromAnyRef(cloudSecureConnectBundle.toExternalForm()));
 
       if (mergedDriverConfig.hasPath(CONTACT_POINTS.getPath())) {
-        if (isValueFromReferenceConfig(mergedDriverConfig, CONTACT_POINTS.getPath())) {
+        if (hasReferenceValue(mergedDriverConfig, CONTACT_POINTS.getPath())) {
           LOGGER.info(
               "A cloud secure connect bundle was provided: ignoring all explicit contact points.");
         } else {
@@ -461,7 +464,7 @@ public class DriverSettings {
             mergedDriverConfig.getEnum(
                 DefaultConsistencyLevel.class, REQUEST_CONSISTENCY.getPath());
         if (!isCLCloudCompatible(write, cl)) {
-          if (isValueFromReferenceConfig(mergedDriverConfig, REQUEST_CONSISTENCY.getPath())) {
+          if (hasReferenceValue(mergedDriverConfig, REQUEST_CONSISTENCY.getPath())) {
             LOGGER.info(
                 "A cloud secure connect bundle was provided and selected operation performs writes: "
                     + "changing default consistency level to LOCAL_QUORUM.");
@@ -543,10 +546,6 @@ public class DriverSettings {
   private static Config addConfigValue(Config config, DriverOption option, Object value) {
     return config.withValue(
         option.getPath(), ConfigValueFactory.fromAnyRef(value, "DSBulk converted driver settings"));
-  }
-
-  private static boolean isUserDefined(Config config, String path) {
-    return config.hasPath(path) && !isValueFromReferenceConfig(config, path);
   }
 
   private void warnDeprecatedSetting(String deprecated, DriverOption replacement) {

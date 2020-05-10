@@ -119,7 +119,7 @@ public class UnloadWorkflow implements Workflow {
     connector.init();
     driverSettings.init(false);
     logSettings.logEffectiveSettings(
-        settingsManager.getBulkLoaderConfig(), driverSettings.getDriverConfig());
+        settingsManager.getEffectiveBulkLoaderConfig(), driverSettings.getDriverConfig());
     codecSettings.init();
     monitoringSettings.init();
     executorSettings.init();
@@ -165,11 +165,8 @@ public class UnloadWorkflow implements Workflow {
     terminationHandler = logManager.newTerminationHandler();
     numCores = Runtime.getRuntime().availableProcessors();
     scheduler = Schedulers.newParallel(numCores, new DefaultThreadFactory("workflow"));
-    readConcurrency =
-        executorSettings
-            .getMaxConcurrentQueries()
-            .map(maxConcurrentQueries -> Math.min(maxConcurrentQueries, numCores))
-            .orElse(numCores);
+    readConcurrency = engineSettings.getMaxConcurrentQueries().orElse(numCores);
+    LOGGER.debug("Using read concurrency: " + readConcurrency);
   }
 
   @Override
