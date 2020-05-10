@@ -118,12 +118,7 @@ public class CCMExtension extends RemoteClusterExtension
       setTracing();
       LOGGER.error("CCM test failed due to server failure", throwable);
       CCMCluster ccm = getOrCreateCCM(context);
-      ccm.setKeepLogs();
-      String errors = ccm.checkForErrors();
-      if (errors != null && !errors.isEmpty()) {
-        LOGGER.error("Server errors:");
-        LOGGER.error(errors);
-      }
+      ccm.printDiagnostics();
     }
     throw throwable;
   }

@@ -20,6 +20,7 @@ import static com.datastax.oss.dsbulk.partitioner.assertions.PartitionerAssertio
 import static com.datastax.oss.dsbulk.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.oss.dsbulk.tests.ccm.CCMCluster.Type.OSS;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.fail;
 import static org.awaitility.Awaitility.await;
 import static org.awaitility.Durations.ONE_MINUTE;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
@@ -51,6 +52,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @ExtendWith(CCMExtension.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -61,6 +64,8 @@ import org.junit.jupiter.params.provider.MethodSource;
       @CCMVersionRequirement(type = OSS, min = "3.11")
     })
 abstract class PartitionerCCMITBase {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PartitionerCCMITBase.class);
 
   private static final int EXPECTED_TOTAL = 10_000;
   private static final CqlIdentifier TABLE_NAME = CqlIdentifier.fromInternal("MY_TABLE");
@@ -86,7 +91,22 @@ abstract class PartitionerCCMITBase {
     TokenMap tokenMap = session.getMetadata().getTokenMap().get();
     for (Statement<?> stmt : statements) {
       stmt = stmt.setConsistencyLevel(ALL).setExecutionProfile(SessionUtils.slowProfile(session));
-      ResultSet rs = session.execute(stmt);
+      ResultSet rs = null;
+      try {
+        rs = session.execute(stmt);
+      } catch (Exception e) {
+        String failureMessage =
+            "Could not execute statement: " + ((SimpleStatement) stmt).getQuery();
+        LOGGER.error(failureMessage);
+        LOGGER.error("table definition: ");
+        LOGGER.error(table.describe(true));
+        LOGGER.error("keyspace definition: ");
+        session
+            .getMetadata()
+            .getKeyspace(ks)
+            .ifPresent(keyspace -> LOGGER.error(keyspace.describe(true)));
+        fail(failureMessage, e);
+      }
       for (@SuppressWarnings("unused") Row ignored : rs) {
         total++;
       }
