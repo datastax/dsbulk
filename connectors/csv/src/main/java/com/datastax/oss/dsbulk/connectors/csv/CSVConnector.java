@@ -230,7 +230,6 @@ public class CSVConnector extends AbstractFileBasedConnector {
     private final MappedField[] fieldNames;
 
     private long recordNumber = 1;
-    private volatile Thread thread;
 
     private CSVRecordReader(URL url) throws IOException {
       this.url = url;
@@ -271,10 +270,6 @@ public class CSVConnector extends AbstractFileBasedConnector {
     @NonNull
     @Override
     public RecordReader readNext(@NonNull SynchronousSink<Record> sink) {
-      Thread thread = Thread.currentThread();
-      if (this.thread != null && this.thread != thread) {
-        LOGGER.error("Thread changed");
-      }
       try {
         com.univocity.parsers.common.record.Record row = parser.parseNextRecord();
         if (row != null) {
