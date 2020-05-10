@@ -31,7 +31,6 @@ import com.datastax.oss.dsbulk.executor.api.writer.BulkWriter;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import edu.umd.cs.findbugs.annotations.NonNull;
-import java.util.Optional;
 import java.util.ServiceLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,7 +44,6 @@ public class ExecutorSettings {
   private int maxPerSecond;
   private int maxInFlight;
   private boolean continuousPagingEnabled;
-  private int maxConcurrentQueries;
 
   ExecutorSettings(Config config) {
     this.config = config;
@@ -64,19 +62,16 @@ public class ExecutorSettings {
       // deprecated continuous paging options are now parsed in DriverSettings where they are
       // converted into driver options
       if (continuousPagingEnabled) {
-        maxConcurrentQueries = continuousPagingConfig.getInt("maxConcurrentQueries");
+        if (ConfigUtils.hasUserOverride(config, "continuousPaging.maxConcurrentQueries")) {
+          LOGGER.warn(
+              "Setting executor.continuousPaging.maxConcurrentQueries has been removed and is not honored anymore; "
+                  + "please remove it from your configuration. To configure query concurrency, please use "
+                  + "--dsbulk.executor.maxConcurrentQueries instead.");
+        }
       }
     } catch (ConfigException e) {
       throw ConfigUtils.convertConfigException(e, "dsbulk.executor.continuousPaging");
     }
-  }
-
-  public Optional<Integer> getMaxInFlight() {
-    return maxInFlight > 0 ? Optional.of(maxInFlight) : Optional.empty();
-  }
-
-  public Optional<Integer> getMaxConcurrentQueries() {
-    return maxConcurrentQueries > 0 ? Optional.of(maxConcurrentQueries) : Optional.empty();
   }
 
   @NonNull
@@ -109,9 +104,6 @@ public class ExecutorSettings {
         .withMaxInFlightRequests(maxInFlight)
         .withMaxRequestsPerSecond(maxPerSecond)
         .failSafe();
-    if (useContinuousPagingForReads) {
-      builder.withMaxInFlightQueries(maxConcurrentQueries);
-    }
     return builder.build();
   }
 

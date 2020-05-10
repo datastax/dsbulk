@@ -176,13 +176,14 @@ workload:
               # 100b TPC
               echo "CSV - Loading 100B (multiple files)"
 
-              mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -header false \
+              mnt/data/dsbulk/bin/dsbulk load -verbosity 2 -k test -t test100b -header false \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/in/data100B/ \
                 --batch.mode REPLICA_SET \
                 --batch.maxBatchStatements 10 \
                 --driver.basic.request.timeout '5 minutes' \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs \
+                --engine.maxConcurrentQueries 64C \
                 --engine.executionId LOAD_CSV_100B_TPC \
                 &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/LOAD_CSV_100B_TPC_console.txt
               echo "Exit status" $?
@@ -193,13 +194,14 @@ workload:
 
               # 100b parallel
               echo "CSV - Loading 100B (single file)"
-              mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -header false \
+              mnt/data/dsbulk/bin/dsbulk load -verbosity 2 -k test -t test100b -header false \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/in/data100B_one_file/ \
                 --batch.mode REPLICA_SET \
                 --batch.maxBatchStatements 10 \
                 --driver.basic.request.timeout '5 minutes' \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs \
+                --engine.maxConcurrentQueries 8C \
                 --engine.executionId LOAD_CSV_100B_PARALLEL \
                 &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/LOAD_CSV_100B_PARALLEL_console.txt
               echo "Exit status" $?
@@ -210,7 +212,7 @@ workload:
 
               # 1 KB
               echo "CSV - Loading 1KB"
-              mnt/data/dsbulk/bin/dsbulk load -k test -t test1kb -header false \
+              mnt/data/dsbulk/bin/dsbulk load -verbosity 2 -k test -t test1kb -header false \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/in/data1KB/ \
                 --batch.mode REPLICA_SET \
@@ -227,7 +229,7 @@ workload:
 
               # 10 KB
               echo "CSV - Loading 10KB"
-              mnt/data/dsbulk/bin/dsbulk load -k test -t test10kb -header false \
+              mnt/data/dsbulk/bin/dsbulk load -verbosity 2 -k test -t test10kb -header false \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/in/data10KB/ \
                 --connector.csv.maxCharsPerColumn 11000 \
@@ -244,14 +246,14 @@ workload:
 
               # 1 MB
               echo "CSV - Loading 1MB"
-              mnt/data/dsbulk/bin/dsbulk load -k test -t test1mb -header false \
+              mnt/data/dsbulk/bin/dsbulk load -verbosity 2 -k test -t test1mb -header false \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/in/data1MB/ \
                 --connector.csv.maxCharsPerColumn 1100000 \
                 --batch.mode DISABLED \
                 --driver.basic.request.timeout '5 minutes' \
-                --executor.maxInFlight 64 \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs \
+                --engine.maxConcurrentQueries 1C \
                 --engine.executionId LOAD_CSV_1MB \
                 &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/LOAD_CSV_1MB_console.txt
               echo "Exit status" $?
@@ -262,13 +264,14 @@ workload:
 
               # 10 columns
               echo "CSV - Loading 10 cols"
-              mnt/data/dsbulk/bin/dsbulk load -k test -t test10 -header false \
+              mnt/data/dsbulk/bin/dsbulk load -verbosity 2 -k test -t test10 -header false \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/in/data10/ \
                 --batch.mode REPLICA_SET \
                 --batch.maxBatchStatements 10 \
                 --driver.basic.request.timeout '5 minutes'  \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs \
+                --engine.maxConcurrentQueries 16C \
                 --engine.executionId LOAD_CSV_10_COLS \
                 &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/LOAD_CSV_10_COLS_console.txt
               echo "Exit status" $?
@@ -279,7 +282,7 @@ workload:
 
               # transactions tpc
               echo "CSV - Loading transactions (multiple files)"
-              mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -header false \
+              mnt/data/dsbulk/bin/dsbulk load -verbosity 2 -k test -t transactions -header false \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/in/transactions/generated \
                 -delim '|' \
@@ -297,7 +300,7 @@ workload:
 
               # transactions parallel
               echo "CSV - Loading transactions (single file)"
-              mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -header false \
+              mnt/data/dsbulk/bin/dsbulk load -verbosity 2 -k test -t transactions -header false \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/in/transactions/generated_one_file \
                 -delim '|' \
@@ -312,8 +315,8 @@ workload:
               rm -Rf mnt/data/DSEBulkLoadTest/in/transactions/generated_one_file
 
               # transactions tpc batch disabled
-              echo "CSV - Loading transactions (multiple files)"
-              mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -header false \
+              echo "CSV - Loading transactions (multiple files, batch disabled)"
+              mnt/data/dsbulk/bin/dsbulk load -verbosity 2 -k test -t transactions -header false \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/in/transactions/generated \
                 -delim '|' \
@@ -330,8 +333,8 @@ workload:
               cqlsh ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} --cqlversion={{cql_version}} -e 'TRUNCATE test.transactions;'
 
               # transactions parallel batch disabled
-              echo "CSV - Loading transactions (single file)"
-              mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -header false \
+              echo "CSV - Loading transactions (single file, batch disabled)"
+              mnt/data/dsbulk/bin/dsbulk load -verbosity 2 -k test -t transactions -header false \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/in/transactions/generated_one_file \
                 -delim '|' \
@@ -364,13 +367,14 @@ workload:
 
               # 100b
               echo "JSON - Loading 100B"
-              mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -c json \
+              mnt/data/dsbulk/bin/dsbulk load -verbosity 2 -k test -t test100b -c json \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/json/data100B/ \
                 --batch.mode REPLICA_SET \
                 --batch.maxBatchStatements 10 \
                 --driver.basic.request.timeout '5 minutes' \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs \
+                --engine.maxConcurrentQueries 64C \
                 --engine.executionId LOAD_JSON_100B \
                 &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/LOAD_JSON_100B_console.txt
               echo "Exit status" $?
@@ -381,7 +385,7 @@ workload:
 
               # 1KB
               echo "JSON - Loading 1KB"
-              mnt/data/dsbulk/bin/dsbulk load -k test -t test1kb -c json \
+              mnt/data/dsbulk/bin/dsbulk load -verbosity 2 -k test -t test1kb -c json \
               -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
               -url mnt/data/DSEBulkLoadTest/json/data1KB/  \
               --batch.mode REPLICA_SET \
@@ -398,7 +402,7 @@ workload:
 
               # 10KB
               echo "JSON - Loading 10KB"
-              mnt/data/dsbulk/bin/dsbulk load -k test -t test10kb -c json  \
+              mnt/data/dsbulk/bin/dsbulk load -verbosity 2 -k test -t test10kb -c json  \
               -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
               -url mnt/data/DSEBulkLoadTest/json/data10KB/  \
               --batch.mode DISABLED  \
@@ -414,12 +418,13 @@ workload:
 
               # 1MB
               echo "JSON - Loading 1MB"
-              mnt/data/dsbulk/bin/dsbulk load -k test -t test1mb -c json  \
+              mnt/data/dsbulk/bin/dsbulk load -verbosity 2 -k test -t test1mb -c json  \
               -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
               -url mnt/data/DSEBulkLoadTest/json/data1MB/  \
-              --batch.mode DISABLED --executor.maxInFlight 64  \
+              --batch.mode DISABLED \
               --driver.basic.request.timeout '5 minutes'  \
               -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs  \
+              --engine.maxConcurrentQueries 1C \
               --engine.executionId LOAD_JSON_1MB  \
               &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/LOAD_JSON_1MB_console.txt
               echo "Exit status" $?
@@ -430,13 +435,14 @@ workload:
 
               # 10 columns
               echo "JSON - Loading 10 cols"
-              mnt/data/dsbulk/bin/dsbulk load -k test -t test10 -c json  \
+              mnt/data/dsbulk/bin/dsbulk load -verbosity 2 -k test -t test10 -c json  \
               -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
               -url mnt/data/DSEBulkLoadTest/json/data10/  \
               --batch.mode REPLICA_SET  \
               --batch.maxBatchStatements 10  \
               --driver.basic.request.timeout '5 minutes'  \
               -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs  \
+              --engine.maxConcurrentQueries 16C \
               --engine.executionId LOAD_JSON_10_COLS  \
               &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/LOAD_JSON_10_COLS_console.txt
               echo "Exit status" $?
@@ -447,7 +453,7 @@ workload:
 
               # transactions
               echo "JSON - Loading transactions"
-              mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -c json  \
+              mnt/data/dsbulk/bin/dsbulk load -verbosity 2 -k test -t transactions -c json  \
               -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
               -url mnt/data/DSEBulkLoadTest/json/transactions/generated  \
               --codec.timestamp ISO_ZONED_DATE_TIME  \
@@ -499,7 +505,7 @@ workload:
               # 100B TPC
               echo "CSV - Unloading 100B (multiple token ranges)"
               rm -Rf mnt/data/DSEBulkLoadTest/out/data100B/
-              mnt/data/dsbulk/bin/dsbulk unload -k test -t test100b -header false  \
+              mnt/data/dsbulk/bin/dsbulk unload -verbosity 2 -k test -t test100b -header false  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/out/data100B/  \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs  \
@@ -522,7 +528,7 @@ workload:
               # 100B TPC single file
               echo "CSV - Unloading 100B (multiple token ranges, single file)"
               rm -Rf mnt/data/DSEBulkLoadTest/out/data100B/
-              mnt/data/dsbulk/bin/dsbulk unload -k test -t test100b -header false  \
+              mnt/data/dsbulk/bin/dsbulk unload -verbosity 2 -k test -t test100b -header false  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/out/data100B/ \
                 -maxConcurrentFiles 1 \
@@ -535,7 +541,7 @@ workload:
               # 1KB
               echo "CSV - Unloading 1KB"
               rm -Rf mnt/data/DSEBulkLoadTest/out/data1KB/
-              mnt/data/dsbulk/bin/dsbulk unload -k test -t test1kb -header false  \
+              mnt/data/dsbulk/bin/dsbulk unload -verbosity 2 -k test -t test1kb -header false  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/out/data1KB/  \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs  \
@@ -547,7 +553,7 @@ workload:
               # 10KB
               echo "CSV - Unloading 10KB"
               rm -Rf mnt/data/DSEBulkLoadTest/out/data10KB/
-              mnt/data/dsbulk/bin/dsbulk unload -k test -t test10kb -header false  \
+              mnt/data/dsbulk/bin/dsbulk unload -verbosity 2 -k test -t test10kb -header false  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/out/data10KB/  \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs  \
@@ -559,7 +565,7 @@ workload:
               # 1MB
               echo "CSV - Unloading 1MB"
               rm -Rf mnt/data/DSEBulkLoadTest/out/data1MB/
-              mnt/data/dsbulk/bin/dsbulk unload -k test -t test1mb -header false  \
+              mnt/data/dsbulk/bin/dsbulk unload -verbosity 2 -k test -t test1mb -header false  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/out/data1MB/ \
                 --driver.advanced.continuous-paging.page-size 500000 \
@@ -573,7 +579,7 @@ workload:
               # 10 cols
               echo "CSV - Unloading 10 cols"
               rm -Rf mnt/data/DSEBulkLoadTest/out/data10/
-              mnt/data/dsbulk/bin/dsbulk unload -k test -t test10 -header false  \
+              mnt/data/dsbulk/bin/dsbulk unload -verbosity 2 -k test -t test10 -header false  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/out/data10/  \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs  \
@@ -585,7 +591,7 @@ workload:
               # transactions TPC
               echo "CSV - Unloading transactions (multiple token ranges)"
               rm -Rf mnt/data/DSEBulkLoadTest/in/transactions/out
-              mnt/data/dsbulk/bin/dsbulk unload -k test -t transactions -header false  \
+              mnt/data/dsbulk/bin/dsbulk unload -verbosity 2 -k test -t transactions -header false  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/in/transactions/out  \
                 -m 'user_id,date,item,price,quantity,total,currency,payment,contact'  \
@@ -610,7 +616,7 @@ workload:
               # transactions TPC single file
               echo "CSV - Unloading transactions (multiple token ranges, single file)"
               rm -Rf mnt/data/DSEBulkLoadTest/in/transactions/out
-              mnt/data/dsbulk/bin/dsbulk unload -k test -t transactions -header false  \
+              mnt/data/dsbulk/bin/dsbulk unload -verbosity 2 -k test -t transactions -header false  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/in/transactions/out  \
                 -maxConcurrentFiles 1 \
@@ -638,7 +644,7 @@ workload:
 
               echo "JSON - Unloading 100B"
               rm -Rf mnt/data/DSEBulkLoadTest/out/data100B/
-              mnt/data/dsbulk/bin/dsbulk unload -k test -t test100b -c json  \
+              mnt/data/dsbulk/bin/dsbulk unload -verbosity 2 -k test -t test100b -c json  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/out/data100B/  \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs  \
@@ -648,11 +654,10 @@ workload:
 
               echo "JSON - Unloading 100B single file"
               rm -Rf mnt/data/DSEBulkLoadTest/out/data100B/
-              mnt/data/dsbulk/bin/dsbulk unload -k test -t test100b -c json  \
+              mnt/data/dsbulk/bin/dsbulk unload -verbosity 2 -k test -t test100b -c json  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/out/data100B/  \
                 -maxConcurrentFiles 1 \
-                --executor.maxInFlight 10 \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs  \
                 --engine.executionId UNLOAD_JSON_100B_SINGLE_FILE  \
                 &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/UNLOAD_JSON_100B_SINGLE_FILE_console.txt
@@ -661,7 +666,7 @@ workload:
 
               echo "JSON - Unloading 1KB"
               rm -Rf mnt/data/DSEBulkLoadTest/out/data1KB/
-              mnt/data/dsbulk/bin/dsbulk unload -k test -t test1kb -c json  \
+              mnt/data/dsbulk/bin/dsbulk unload -verbosity 2 -k test -t test1kb -c json  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/out/data1KB/  \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs  \
@@ -672,7 +677,7 @@ workload:
 
               echo "JSON - Unloading 10KB"
               rm -Rf mnt/data/DSEBulkLoadTest/out/data10KB/
-              mnt/data/dsbulk/bin/dsbulk unload -k test -t test10kb -c json  \
+              mnt/data/dsbulk/bin/dsbulk unload -verbosity 2 -k test -t test10kb -c json  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/out/data10KB/  \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs  \
@@ -683,7 +688,7 @@ workload:
 
               echo "JSON - Unloading 1MB"
               rm -Rf mnt/data/DSEBulkLoadTest/out/data1MB/
-              mnt/data/dsbulk/bin/dsbulk unload -k test -t test1mb -c json  \
+              mnt/data/dsbulk/bin/dsbulk unload -verbosity 2 -k test -t test1mb -c json  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/out/data1MB/ \
                 --driver.advanced.continuous-paging.page-size 500000 \
@@ -696,7 +701,7 @@ workload:
 
               echo "JSON - Unloading 10 cols"
               rm -Rf mnt/data/DSEBulkLoadTest/out/data10/
-              mnt/data/dsbulk/bin/dsbulk unload -k test -t test10 -c json  \
+              mnt/data/dsbulk/bin/dsbulk unload -verbosity 2 -k test -t test10 -c json  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/out/data10/  \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs  \
@@ -707,7 +712,7 @@ workload:
 
               echo "JSON - Unloading transactions"
               rm -Rf mnt/data/DSEBulkLoadTest/json/transactions/out
-              mnt/data/dsbulk/bin/dsbulk unload -k test -t transactions -c json  \
+              mnt/data/dsbulk/bin/dsbulk unload -verbosity 2 -k test -t transactions -c json  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/json/transactions/out  \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs  \
@@ -717,11 +722,11 @@ workload:
 
               echo "JSON - Unloading transactions, single file"
               rm -Rf mnt/data/DSEBulkLoadTest/json/transactions/out
-              mnt/data/dsbulk/bin/dsbulk unload -k test -t transactions -c json  \
+              mnt/data/dsbulk/bin/dsbulk unload -verbosity 2 -k test -t transactions -c json  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/json/transactions/out  \
                 -maxConcurrentFiles 1 \
-                --executor.maxInFlight 10 \
+                --schema.splits 10 \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs  \
                 --engine.executionId UNLOAD_JSON_TRANSACTIONS_SINGLE_FILE  \
                 &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/UNLOAD_JSON_TRANSACTIONS_SINGLE_FILE_console.txt
@@ -745,23 +750,25 @@ workload:
               cd ${FALLOUT_SCRATCH_DIR}
 
               echo "Counting 100B"
-              mnt/data/dsbulk/bin/dsbulk count -k test -t test100b  \
+              mnt/data/dsbulk/bin/dsbulk count -verbosity 2 -k test -t test100b  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs  \
+                --engine.maxConcurrentQueries 16C \
                 --engine.executionId COUNT_100B  \
                 &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/COUNT_100B_console.txt
               echo "Exit status" $?
 
               echo "Counting 1KB"
-              mnt/data/dsbulk/bin/dsbulk count -k test -t test1kb  \
+              mnt/data/dsbulk/bin/dsbulk count -verbosity 2 -k test -t test1kb  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs  \
+                --engine.maxConcurrentQueries 16C \
                 --engine.executionId COUNT_1KB  \
                 &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/COUNT_1KB_console.txt
               echo "Exit status" $?
 
               echo "Counting 10KB"
-              mnt/data/dsbulk/bin/dsbulk count -k test -t test10kb  \
+              mnt/data/dsbulk/bin/dsbulk count -verbosity 2 -k test -t test10kb  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs  \
                 --engine.executionId COUNT_10KB  \
@@ -769,7 +776,7 @@ workload:
               echo "Exit status" $?
 
               echo "Counting 1MB"
-              mnt/data/dsbulk/bin/dsbulk count -k test -t test1mb  \
+              mnt/data/dsbulk/bin/dsbulk count -verbosity 2 -k test -t test1mb  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs  \
                 --engine.executionId COUNT_1MB  \
@@ -777,17 +784,19 @@ workload:
               echo "Exit status" $?
 
               echo "Counting 10 columns"
-              mnt/data/dsbulk/bin/dsbulk count -k test -t test10  \
+              mnt/data/dsbulk/bin/dsbulk count -verbosity 2 -k test -t test10  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs  \
+                --engine.maxConcurrentQueries 16C \
                 --engine.executionId COUNT_10  \
                 &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/COUNT_10_console.txt
               echo "Exit status" $?
 
               echo "Counting transactions"
-              mnt/data/dsbulk/bin/dsbulk count -k test -t transactions  \
+              mnt/data/dsbulk/bin/dsbulk count -verbosity 2 -k test -t transactions  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs  \
+                --engine.maxConcurrentQueries 16C \
                 --engine.executionId COUNT_TRANSACTIONS  \
                 &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/COUNT_TRANSACTIONS_console.txt
               echo "Exit status" $?

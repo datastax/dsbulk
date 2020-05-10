@@ -50,7 +50,6 @@ import java.util.List;
 import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -216,15 +215,14 @@ class ConfigUtilsTest {
   @Test
   void should_resolve_path() {
     // relative paths, should behave the same on all platforms
-    Assertions.assertThat(ConfigUtils.resolvePath("~"))
-        .isEqualTo(Paths.get(System.getProperty("user.home")));
-    Assertions.assertThat(ConfigUtils.resolvePath("~/foo"))
+    assertThat(ConfigUtils.resolvePath("~")).isEqualTo(Paths.get(System.getProperty("user.home")));
+    assertThat(ConfigUtils.resolvePath("~/foo"))
         .isEqualTo(Paths.get(System.getProperty("user.home"), "foo"));
-    Assertions.assertThat(ConfigUtils.resolvePath("foo/bar"))
+    assertThat(ConfigUtils.resolvePath("foo/bar"))
         .isEqualTo(Paths.get(System.getProperty("user.dir"), "foo", "bar"));
-    Assertions.assertThat(ConfigUtils.resolvePath("./foo/bar"))
+    assertThat(ConfigUtils.resolvePath("./foo/bar"))
         .isEqualTo(Paths.get(System.getProperty("user.dir"), "foo", "bar"));
-    Assertions.assertThat(ConfigUtils.resolvePath("./foo/../foo/bar"))
+    assertThat(ConfigUtils.resolvePath("./foo/../foo/bar"))
         .isEqualTo(Paths.get(System.getProperty("user.dir"), "foo", "bar"));
     assertThatThrownBy(() -> ConfigUtils.resolvePath("~otheruser/foo"))
         .isInstanceOf(InvalidPathException.class)
@@ -233,8 +231,7 @@ class ConfigUtilsTest {
     assumingThat(
         !PlatformUtils.isWindows(),
         () -> {
-          Assertions.assertThat(ConfigUtils.resolvePath("/foo/bar"))
-              .isEqualTo(Paths.get("/foo/bar"));
+          assertThat(ConfigUtils.resolvePath("/foo/bar")).isEqualTo(Paths.get("/foo/bar"));
           assertThatThrownBy(() -> ConfigUtils.resolvePath("\u0000"))
               .isInstanceOf(InvalidPathException.class)
               .hasMessageContaining("Nul character not allowed");
@@ -242,8 +239,7 @@ class ConfigUtilsTest {
     assumingThat(
         PlatformUtils.isWindows(),
         () -> {
-          Assertions.assertThat(ConfigUtils.resolvePath("C:\\foo\\bar"))
-              .isEqualTo(Paths.get("C:\\foo\\bar"));
+          assertThat(ConfigUtils.resolvePath("C:\\foo\\bar")).isEqualTo(Paths.get("C:\\foo\\bar"));
           assertThatThrownBy(() -> ConfigUtils.resolvePath("C:\\should:\\fail"))
               .isInstanceOf(InvalidPathException.class)
               .hasMessageContaining("Illegal char <:> at index");
@@ -252,9 +248,8 @@ class ConfigUtilsTest {
 
   @Test
   void should_resolve_url() throws MalformedURLException {
-    Assertions.assertThat(ConfigUtils.resolveURL("-")).isEqualTo(new URL("std:/"));
-    Assertions.assertThat(ConfigUtils.resolveURL("http://acme.com"))
-        .isEqualTo(new URL("http://acme.com"));
+    assertThat(ConfigUtils.resolveURL("-")).isEqualTo(new URL("std:/"));
+    assertThat(ConfigUtils.resolveURL("http://acme.com")).isEqualTo(new URL("http://acme.com"));
     assumingThat(
         !PlatformUtils.isWindows(),
         () ->
@@ -272,25 +267,25 @@ class ConfigUtilsTest {
                 .satisfies(
                     t -> assertThat(t.getSuppressed()[0]).isInstanceOf(MalformedURLException.class))
                 .hasMessageContaining("Illegal char <:> at index 17"));
-    Assertions.assertThat(ConfigUtils.resolveURL("~"))
+    assertThat(ConfigUtils.resolveURL("~"))
         .isEqualTo(Paths.get(System.getProperty("user.home")).toUri().normalize().toURL());
-    Assertions.assertThat(ConfigUtils.resolveURL("~/foo"))
+    assertThat(ConfigUtils.resolveURL("~/foo"))
         .isEqualTo(Paths.get(System.getProperty("user.home"), "foo").toUri().toURL());
     assumingThat(
         !PlatformUtils.isWindows(),
         () ->
-            Assertions.assertThat(ConfigUtils.resolveURL("/foo/bar"))
+            assertThat(ConfigUtils.resolveURL("/foo/bar"))
                 .isEqualTo(Paths.get("/foo/bar").toUri().toURL()));
     assumingThat(
         PlatformUtils.isWindows(),
         () ->
-            Assertions.assertThat(ConfigUtils.resolveURL("C:/foo/bar"))
+            assertThat(ConfigUtils.resolveURL("C:/foo/bar"))
                 .isEqualTo(Paths.get("C:/foo/bar").toUri().toURL()));
-    Assertions.assertThat(ConfigUtils.resolveURL("foo/bar"))
+    assertThat(ConfigUtils.resolveURL("foo/bar"))
         .isEqualTo(Paths.get(System.getProperty("user.dir"), "foo", "bar").toUri().toURL());
-    Assertions.assertThat(ConfigUtils.resolveURL("./foo/bar"))
+    assertThat(ConfigUtils.resolveURL("./foo/bar"))
         .isEqualTo(Paths.get(System.getProperty("user.dir"), "foo", "bar").toUri().toURL());
-    Assertions.assertThat(ConfigUtils.resolveURL("./foo/../foo/bar"))
+    assertThat(ConfigUtils.resolveURL("./foo/../foo/bar"))
         .isEqualTo(Paths.get(System.getProperty("user.dir"), "foo", "bar").toUri().toURL());
     assertThatThrownBy(() -> ConfigUtils.resolveURL("~otheruser/foo"))
         .isInstanceOf(InvalidPathException.class)
@@ -299,9 +294,9 @@ class ConfigUtilsTest {
 
   @Test
   void should_resolve_user_home() {
-    Assertions.assertThat(ConfigUtils.resolveUserHome("~"))
+    assertThat(ConfigUtils.resolveUserHome("~"))
         .contains(Paths.get(System.getProperty("user.home")));
-    Assertions.assertThat(ConfigUtils.resolveUserHome("~/foo"))
+    assertThat(ConfigUtils.resolveUserHome("~/foo"))
         .contains(Paths.get(System.getProperty("user.home"), "foo"));
     assertThatThrownBy(() -> ConfigUtils.resolveUserHome("~otheruser/foo"))
         .isInstanceOf(InvalidPathException.class)
@@ -310,8 +305,8 @@ class ConfigUtilsTest {
 
   @Test
   void should_resolve_threads() {
-    Assertions.assertThat(ConfigUtils.resolveThreads("123")).isEqualTo(123);
-    Assertions.assertThat(ConfigUtils.resolveThreads(" 8 c"))
+    assertThat(ConfigUtils.resolveThreads("123")).isEqualTo(123);
+    assertThat(ConfigUtils.resolveThreads(" 8 c"))
         .isEqualTo(8 * Runtime.getRuntime().availableProcessors());
     assertThatThrownBy(() -> ConfigUtils.resolveThreads("should fail"))
         .isInstanceOf(PatternSyntaxException.class)
@@ -327,13 +322,11 @@ class ConfigUtilsTest {
                 + "stringListField = [\"v1\", \"v2\"], "
                 + "numberListField = [9, 7], "
                 + "booleanField = false");
-    Assertions.assertThat(ConfigUtils.getTypeString(config, "intField")).contains("number");
-    Assertions.assertThat(ConfigUtils.getTypeString(config, "stringField")).contains("string");
-    Assertions.assertThat(ConfigUtils.getTypeString(config, "stringListField"))
-        .contains("list<string>");
-    Assertions.assertThat(ConfigUtils.getTypeString(config, "numberListField"))
-        .contains("list<number>");
-    Assertions.assertThat(ConfigUtils.getTypeString(config, "booleanField")).contains("boolean");
+    assertThat(ConfigUtils.getTypeString(config, "intField")).contains("number");
+    assertThat(ConfigUtils.getTypeString(config, "stringField")).contains("string");
+    assertThat(ConfigUtils.getTypeString(config, "stringListField")).contains("list<string>");
+    assertThat(ConfigUtils.getTypeString(config, "numberListField")).contains("list<number>");
+    assertThat(ConfigUtils.getTypeString(config, "booleanField")).contains("boolean");
     assertThatThrownBy(() -> ConfigUtils.getTypeString(config, "this.path.does.not.exist"))
         .isInstanceOf(ConfigException.Missing.class)
         .hasMessage("No configuration setting found for key 'this.path.does.not.exist'");
@@ -350,18 +343,12 @@ class ConfigUtilsTest {
                 + "nullField = [9, 7], "
                 + "booleanField = false,"
                 + "nullField = null");
-    Assertions.assertThat(ConfigUtils.getNullSafeValue(config, "intField").valueType())
-        .isEqualTo(NUMBER);
-    Assertions.assertThat(ConfigUtils.getNullSafeValue(config, "stringField").valueType())
-        .isEqualTo(STRING);
-    Assertions.assertThat(ConfigUtils.getNullSafeValue(config, "stringListField").valueType())
-        .isEqualTo(LIST);
-    Assertions.assertThat(ConfigUtils.getNullSafeValue(config, "numberListField").valueType())
-        .isEqualTo(LIST);
-    Assertions.assertThat(ConfigUtils.getNullSafeValue(config, "booleanField").valueType())
-        .isEqualTo(BOOLEAN);
-    Assertions.assertThat(ConfigUtils.getNullSafeValue(config, "nullField").valueType())
-        .isEqualTo(NULL);
+    assertThat(ConfigUtils.getNullSafeValue(config, "intField").valueType()).isEqualTo(NUMBER);
+    assertThat(ConfigUtils.getNullSafeValue(config, "stringField").valueType()).isEqualTo(STRING);
+    assertThat(ConfigUtils.getNullSafeValue(config, "stringListField").valueType()).isEqualTo(LIST);
+    assertThat(ConfigUtils.getNullSafeValue(config, "numberListField").valueType()).isEqualTo(LIST);
+    assertThat(ConfigUtils.getNullSafeValue(config, "booleanField").valueType()).isEqualTo(BOOLEAN);
+    assertThat(ConfigUtils.getNullSafeValue(config, "nullField").valueType()).isEqualTo(NULL);
     assertThatThrownBy(() -> ConfigUtils.getNullSafeValue(config, "this.path.does.not.exist"))
         .isInstanceOf(ConfigException.Missing.class)
         .hasMessage("No configuration setting found for key 'this.path.does.not.exist'");
@@ -379,12 +366,12 @@ class ConfigUtilsTest {
                 + "booleanField = false\n"
                 + "# @type string\n"
                 + "nullField = null");
-    Assertions.assertThat(ConfigUtils.getValueType(config, "intField")).isEqualTo(NUMBER);
-    Assertions.assertThat(ConfigUtils.getValueType(config, "stringField")).isEqualTo(STRING);
-    Assertions.assertThat(ConfigUtils.getValueType(config, "stringListField")).isEqualTo(LIST);
-    Assertions.assertThat(ConfigUtils.getValueType(config, "numberListField")).isEqualTo(LIST);
-    Assertions.assertThat(ConfigUtils.getValueType(config, "booleanField")).isEqualTo(BOOLEAN);
-    Assertions.assertThat(ConfigUtils.getValueType(config, "nullField")).isEqualTo(STRING);
+    assertThat(ConfigUtils.getValueType(config, "intField")).isEqualTo(NUMBER);
+    assertThat(ConfigUtils.getValueType(config, "stringField")).isEqualTo(STRING);
+    assertThat(ConfigUtils.getValueType(config, "stringListField")).isEqualTo(LIST);
+    assertThat(ConfigUtils.getValueType(config, "numberListField")).isEqualTo(LIST);
+    assertThat(ConfigUtils.getValueType(config, "booleanField")).isEqualTo(BOOLEAN);
+    assertThat(ConfigUtils.getValueType(config, "nullField")).isEqualTo(STRING);
     assertThatThrownBy(() -> ConfigUtils.getValueType(config, "this.path.does.not.exist"))
         .isInstanceOf(ConfigException.Missing.class)
         .hasMessage("No configuration setting found for key 'this.path.does.not.exist'");
@@ -394,15 +381,14 @@ class ConfigUtilsTest {
   void should_get_type_hint_for_value() {
     Config config =
         ConfigFactory.parseString("# This is a comment.\n# @type string\nmyField = foo");
-    Assertions.assertThat(ConfigUtils.getTypeHint(config.getValue("myField"))).contains("string");
+    assertThat(ConfigUtils.getTypeHint(config.getValue("myField"))).contains("string");
   }
 
   @Test
   void should_get_comments_for_value() {
     Config config =
         ConfigFactory.parseString("# This is a comment.\n# @type string\nmyField = foo");
-    Assertions.assertThat(ConfigUtils.getComments(config.getValue("myField")))
-        .isEqualTo("This is a comment.");
+    assertThat(ConfigUtils.getComments(config.getValue("myField"))).isEqualTo("This is a comment.");
   }
 
   @ParameterizedTest
@@ -446,16 +432,29 @@ class ConfigUtilsTest {
   @Test
   void should_detect_value_from_reference() {
     Config config =
-        ConfigFactory.parseString("overriddenInApplication = -1, onlyInApplication = -2")
+        ConfigFactory.parseString(
+                "overriddenInApplication = -1, onlyInApplication = -2, onlyInApplicationButNull = null")
             .withFallback(ConfigFactory.defaultReference());
-    Assertions.assertThat(ConfigUtils.isValueFromReferenceConfig(config, "overriddenInApplication"))
-        .isFalse();
-    Assertions.assertThat(ConfigUtils.isValueFromReferenceConfig(config, "onlyInApplication"))
-        .isFalse();
-    Assertions.assertThat(ConfigUtils.isValueFromReferenceConfig(config, "fromReference")).isTrue();
-    Assertions.assertThat(ConfigUtils.isValueFromReferenceConfig(config, "fromReferenceButNull"))
-        .isTrue();
-    Assertions.assertThat(ConfigUtils.isValueFromReferenceConfig(config, "nonExistent")).isFalse();
+    assertThat(ConfigUtils.hasReferenceValue(config, "overriddenInApplication")).isFalse();
+    assertThat(ConfigUtils.hasReferenceValue(config, "onlyInApplication")).isFalse();
+    assertThat(ConfigUtils.hasReferenceValue(config, "onlyInApplicationButNull")).isFalse();
+    assertThat(ConfigUtils.hasReferenceValue(config, "fromReference")).isTrue();
+    assertThat(ConfigUtils.hasReferenceValue(config, "fromReferenceButNull")).isTrue();
+    assertThat(ConfigUtils.hasReferenceValue(config, "nonExistent")).isFalse();
+  }
+
+  @Test
+  void should_detect_user_defined_value() {
+    Config config =
+        ConfigFactory.parseString(
+                "overriddenInApplication = -1, onlyInApplication = -2, onlyInApplicationButNull = null")
+            .withFallback(ConfigFactory.defaultReference());
+    assertThat(ConfigUtils.hasUserOverride(config, "overriddenInApplication")).isTrue();
+    assertThat(ConfigUtils.hasUserOverride(config, "onlyInApplication")).isTrue();
+    assertThat(ConfigUtils.hasUserOverride(config, "onlyInApplicationButNull")).isTrue();
+    assertThat(ConfigUtils.hasUserOverride(config, "fromReference")).isFalse();
+    assertThat(ConfigUtils.hasUserOverride(config, "fromReferenceButNull")).isFalse();
+    assertThat(ConfigUtils.hasUserOverride(config, "nonExistent")).isFalse();
   }
 
   static List<Arguments> urlsProvider() throws MalformedURLException {

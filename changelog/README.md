@@ -6,6 +6,7 @@
 - [improvement] DAT-402: Create an abstract RecordReader leveraging Flux.generate.
 - [bug] DAT-569: Do not parallelize queries containing GROUP BY, ORDER BY or LIMIT clauses.
 = [bug] DAT-573: Convert empty strings to zero-length arrays when loading blobs.
+- [improvement] DAT-571: Generalize maxConcurrentQueries to all operations.
 
 
 ## 1.5.0

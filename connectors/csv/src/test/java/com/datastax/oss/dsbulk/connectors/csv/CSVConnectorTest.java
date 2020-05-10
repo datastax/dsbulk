@@ -1425,7 +1425,7 @@ class CSVConnectorTest {
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
-            "Invalid value for dsbulk.connector.csv.maxConcurrentFiles, expecting integer or string in 'nC' syntax, got 'NotANumber'");
+            "Invalid value for dsbulk.connector.csv.maxConcurrentFiles, expecting positive integer or string in 'nC' syntax, got 'NotANumber'");
     connector.close();
   }
 

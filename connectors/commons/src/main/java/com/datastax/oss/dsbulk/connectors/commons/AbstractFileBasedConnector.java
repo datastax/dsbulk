@@ -107,12 +107,12 @@ public abstract class AbstractFileBasedConnector implements Connector {
     }
     pattern = settings.getString(FILE_NAME_PATTERN);
     if (!CompressedIOUtils.isNoneCompression(compression)
-        && ConfigUtils.isValueFromReferenceConfig(settings, FILE_NAME_PATTERN)) {
+        && ConfigUtils.hasReferenceValue(settings, FILE_NAME_PATTERN)) {
       pattern = pattern + CompressedIOUtils.getCompressionSuffix(compression);
     }
     fileNameFormat = settings.getString(FILE_NAME_FORMAT);
     if (!CompressedIOUtils.isNoneCompression(compression)
-        && ConfigUtils.isValueFromReferenceConfig(settings, FILE_NAME_FORMAT)) {
+        && ConfigUtils.hasReferenceValue(settings, FILE_NAME_FORMAT)) {
       fileNameFormat = fileNameFormat + CompressedIOUtils.getCompressionSuffix(compression);
     }
     recursive = settings.getBoolean(RECURSIVE);

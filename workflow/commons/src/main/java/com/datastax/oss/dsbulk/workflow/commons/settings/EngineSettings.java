@@ -18,15 +18,20 @@ package com.datastax.oss.dsbulk.workflow.commons.settings;
 import com.datastax.oss.dsbulk.commons.config.ConfigUtils;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
+import java.util.Optional;
+import java.util.OptionalInt;
 
 public class EngineSettings {
 
   private static final String DRY_RUN = "dryRun";
   private static final String EXECUTION_ID = "executionId";
+  private static final String MAX_CONCURRENT_QUERIES = "maxConcurrentQueries";
 
   private final Config config;
+
   private boolean dryRun;
   private String executionId;
+  private int maxConcurrentQueries;
 
   EngineSettings(Config config) {
     this.config = config;
@@ -36,6 +41,10 @@ public class EngineSettings {
     try {
       dryRun = config.getBoolean(DRY_RUN);
       executionId = config.hasPath(EXECUTION_ID) ? config.getString(EXECUTION_ID) : null;
+      maxConcurrentQueries =
+          config.getString(MAX_CONCURRENT_QUERIES).equalsIgnoreCase("AUTO")
+              ? -1
+              : ConfigUtils.getThreads(config, MAX_CONCURRENT_QUERIES);
     } catch (ConfigException e) {
       throw ConfigUtils.convertConfigException(e, "dsbulk.engine");
     }
@@ -45,7 +54,11 @@ public class EngineSettings {
     return dryRun;
   }
 
-  public String getCustomExecutionIdTemplate() {
-    return executionId;
+  public Optional<String> getCustomExecutionIdTemplate() {
+    return Optional.ofNullable(executionId);
+  }
+
+  public OptionalInt getMaxConcurrentQueries() {
+    return maxConcurrentQueries == -1 ? OptionalInt.empty() : OptionalInt.of(maxConcurrentQueries);
   }
 }
