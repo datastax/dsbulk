@@ -113,7 +113,6 @@ public class CCMExtension extends RemoteClusterExtension
   public void handleTestExecutionException(ExtensionContext context, Throwable throwable)
       throws Throwable {
     if (shouldPrintDiagnostic(throwable)) {
-      setTracing();
       LOGGER.error("CCM test failed due to server failure", throwable);
       CCMCluster ccm = getOrCreateCCM(context);
       ccm.printDiagnostics();
@@ -130,11 +129,9 @@ public class CCMExtension extends RemoteClusterExtension
     if (throwable instanceof AssertionError) {
       Throwable cause = throwable.getCause();
       if (cause != null) {
-        if (cause instanceof CCMException
+        return cause instanceof CCMException
             || cause instanceof ServerError
-            || cause instanceof OverloadedException) {
-          return true;
-        }
+            || cause instanceof OverloadedException;
       }
     }
     return false;
@@ -186,7 +183,6 @@ public class CCMExtension extends RemoteClusterExtension
                     LOGGER.error("Could not start CCM cluster, giving up", e);
                     throw e;
                   }
-                  setTracing();
                   if (ccm != null) {
                     try {
                       ccm.stop();
@@ -201,12 +197,6 @@ public class CCMExtension extends RemoteClusterExtension
               }
             },
             CCMCluster.class);
-  }
-
-  private void setTracing() {
-    // Increase log verbosity for the next attempts
-    LogUtils.setLogLevel("com.datastax.oss.dsbulk.tests.ccm", "TRACE");
-    LogUtils.setLogLevel("dsbulk.ccm", "TRACE");
   }
 
   private void stopCCM(ExtensionContext context) {
