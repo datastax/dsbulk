@@ -27,7 +27,7 @@ ensemble:
           product.install.type: {{server_install_type}}
           product.version: {{server_version}}
           enable.graph: false
-          cassandra.yaml:
+          cassandra.yaml.set:
             hinted_handoff_enabled: false
             auto_snapshot: false
             batch_size_warn_threshold_in_kb: 64
@@ -171,8 +171,11 @@ workload:
             if contains {{connectors}} csv && contains {{workloads}} load; then
               cd ${FALLOUT_SCRATCH_DIR}
 
+              cqlsh ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} --cqlversion={{cql_version}} -e 'TRUNCATE test.test100b;'
+
               # 100b TPC
               echo "CSV - Loading 100B (multiple files)"
+
               mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -header false \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/in/data100B/ \
@@ -183,6 +186,7 @@ workload:
                 --engine.executionId LOAD_CSV_100B_TPC \
                 &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/LOAD_CSV_100B_TPC_console.txt
               echo "Exit status" $?
+
               rm -Rf mnt/data/DSEBulkLoadTest/in/data100B
 
               cqlsh ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} --cqlversion={{cql_version}} -e 'TRUNCATE test.test100b;'
@@ -199,7 +203,10 @@ workload:
                 --engine.executionId LOAD_CSV_100B_PARALLEL \
                 &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/LOAD_CSV_100B_PARALLEL_console.txt
               echo "Exit status" $?
+
               rm -Rf mnt/data/DSEBulkLoadTest/in/data100B_one_file/
+
+              cqlsh ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} --cqlversion={{cql_version}} -e 'TRUNCATE test.test1kb;'
 
               # 1 KB
               echo "CSV - Loading 1KB"
@@ -213,7 +220,10 @@ workload:
                 --engine.executionId LOAD_CSV_1KB \
                 &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/LOAD_CSV_1KB_console.txt
               echo "Exit status" $?
+
               rm -Rf mnt/data/DSEBulkLoadTest/in/data1KB/
+
+              cqlsh ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} --cqlversion={{cql_version}} -e 'TRUNCATE test.test10kb;'
 
               # 10 KB
               echo "CSV - Loading 10KB"
@@ -227,7 +237,10 @@ workload:
                 --engine.executionId LOAD_CSV_10KB \
                 &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/LOAD_CSV_10KB_console.txt
               echo "Exit status" $?
+
               rm -Rf mnt/data/DSEBulkLoadTest/in/data10KB/
+
+              cqlsh ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} --cqlversion={{cql_version}} -e 'TRUNCATE test.test1mb;'
 
               # 1 MB
               echo "CSV - Loading 1MB"
@@ -242,7 +255,10 @@ workload:
                 --engine.executionId LOAD_CSV_1MB \
                 &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/LOAD_CSV_1MB_console.txt
               echo "Exit status" $?
+
               rm -Rf mnt/data/DSEBulkLoadTest/in/data1MB/
+
+              cqlsh ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} --cqlversion={{cql_version}} -e 'TRUNCATE test.test10;'
 
               # 10 columns
               echo "CSV - Loading 10 cols"
@@ -256,7 +272,10 @@ workload:
                 --engine.executionId LOAD_CSV_10_COLS \
                 &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/LOAD_CSV_10_COLS_console.txt
               echo "Exit status" $?
+
               rm -Rf mnt/data/DSEBulkLoadTest/in/data10/
+
+              cqlsh ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} --cqlversion={{cql_version}} -e 'TRUNCATE test.transactions;'
 
               # transactions tpc
               echo "CSV - Loading transactions (multiple files)"
@@ -271,6 +290,7 @@ workload:
                 --engine.executionId LOAD_CSV_TRANSACTIONS_TPC \
                 &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/LOAD_CSV_TRANSACTIONS_TPC_console.txt
               echo "Exit status" $?
+
               rm -Rf mnt/data/DSEBulkLoadTest/in/transactions/generated/
 
               cqlsh ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} --cqlversion={{cql_version}} -e 'TRUNCATE test.transactions;'
@@ -288,6 +308,7 @@ workload:
                 --engine.executionId LOAD_CSV_TRANSACTIONS_PARALLEL \
                 &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/LOAD_CSV_TRANSACTIONS_PARALLEL_console.txt
               echo "Exit status" $?
+
               rm -Rf mnt/data/DSEBulkLoadTest/in/transactions/generated_one_file
 
             else
@@ -305,6 +326,8 @@ workload:
             if contains {{connectors}} json && contains {{workloads}} load; then
               cd ${FALLOUT_SCRATCH_DIR}
 
+              cqlsh ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} --cqlversion={{cql_version}} -e 'TRUNCATE test.test100b;'
+
               # 100b
               echo "JSON - Loading 100B"
               mnt/data/dsbulk/bin/dsbulk load -k test -t test100b -c json \
@@ -317,7 +340,10 @@ workload:
                 --engine.executionId LOAD_JSON_100B \
                 &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/LOAD_JSON_100B_console.txt
               echo "Exit status" $?
+
               rm -Rf mnt/data/DSEBulkLoadTest/json/data100B/
+
+              cqlsh ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} --cqlversion={{cql_version}} -e 'TRUNCATE test.test1kb;'
 
               # 1KB
               echo "JSON - Loading 1KB"
@@ -331,7 +357,10 @@ workload:
               --engine.executionId LOAD_JSON_1KB  \
               &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/LOAD_JSON_1KB_console.txt
               echo "Exit status" $?
+
               rm -Rf mnt/data/DSEBulkLoadTest/json/data1KB/
+
+              cqlsh ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} --cqlversion={{cql_version}} -e 'TRUNCATE test.test10kb;'
 
               # 10KB
               echo "JSON - Loading 10KB"
@@ -344,7 +373,10 @@ workload:
               --engine.executionId LOAD_JSON_10KB  \
               &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/LOAD_JSON_10KB_console.txt
               echo "Exit status" $?
+
               rm -Rf mnt/data/DSEBulkLoadTest/json/data10KB/
+
+              cqlsh ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} --cqlversion={{cql_version}} -e 'TRUNCATE test.test1mb;'
 
               # 1MB
               echo "JSON - Loading 1MB"
@@ -357,7 +389,10 @@ workload:
               --engine.executionId LOAD_JSON_1MB  \
               &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/LOAD_JSON_1MB_console.txt
               echo "Exit status" $?
+
               rm -Rf mnt/data/DSEBulkLoadTest/json/data1MB/
+
+              cqlsh ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} --cqlversion={{cql_version}} -e 'TRUNCATE test.test10;'
 
               # 10 columns
               echo "JSON - Loading 10 cols"
@@ -371,7 +406,10 @@ workload:
               --engine.executionId LOAD_JSON_10_COLS  \
               &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/LOAD_JSON_10_COLS_console.txt
               echo "Exit status" $?
+
               rm -Rf mnt/data/DSEBulkLoadTest/json/data10/
+
+              cqlsh ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} --cqlversion={{cql_version}} -e 'TRUNCATE test.transactions;'
 
               # transactions
               echo "JSON - Loading transactions"
@@ -385,6 +423,7 @@ workload:
               --engine.executionId LOAD_JSON_TRANSACTIONS  \
               &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/LOAD_JSON_TRANSACTIONS_console.txt
               echo "Exit status" $?
+
               rm -Rf mnt/data/DSEBulkLoadTest/json/transactions/generated
 
               else
