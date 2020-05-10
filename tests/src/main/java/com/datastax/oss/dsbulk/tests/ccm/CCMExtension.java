@@ -112,15 +112,32 @@ public class CCMExtension extends RemoteClusterExtension
   @Override
   public void handleTestExecutionException(ExtensionContext context, Throwable throwable)
       throws Throwable {
-    if (throwable instanceof CCMException
-        || throwable instanceof ServerError
-        || throwable instanceof OverloadedException) {
+    if (shouldPrintDiagnostic(throwable)) {
       setTracing();
       LOGGER.error("CCM test failed due to server failure", throwable);
       CCMCluster ccm = getOrCreateCCM(context);
       ccm.printDiagnostics();
     }
     throw throwable;
+  }
+
+  private static boolean shouldPrintDiagnostic(Throwable throwable) {
+    if (throwable instanceof CCMException
+        || throwable instanceof ServerError
+        || throwable instanceof OverloadedException) {
+      return true;
+    }
+    if (throwable instanceof AssertionError) {
+      Throwable cause = throwable.getCause();
+      if (cause != null) {
+        if (cause instanceof CCMException
+            || cause instanceof ServerError
+            || cause instanceof OverloadedException) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   @Override
