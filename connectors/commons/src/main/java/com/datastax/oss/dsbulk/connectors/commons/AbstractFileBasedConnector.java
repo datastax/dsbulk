@@ -263,6 +263,8 @@ public abstract class AbstractFileBasedConnector implements Connector {
      * completion, if there are no more records to be read, or an error if the next record cannot be
      * parsed.
      *
+     * <p>This method must never throw; any error should be signaled to the sink.
+     *
      * @param sink The {@link SynchronousSink} that will receive the parsed record, or a termination
      *     signal.
      * @return this reader.
