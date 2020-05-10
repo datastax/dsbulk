@@ -54,6 +54,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.exec.DefaultExecutor;
 import org.apache.commons.exec.ExecuteStreamHandler;
@@ -124,6 +125,8 @@ public class DefaultCCMCluster implements CCMCluster {
 
   private static final Pattern DATACENTER_PATTERN =
       Pattern.compile("^Datacenter: (\\w+)$", Pattern.MULTILINE);
+
+  private static final Pattern NEW_LINE_PATTERN = Pattern.compile("\\R");
 
   /**
    * The environment variables to use when invoking CCM. Inherits the current processes environment,
@@ -337,7 +340,8 @@ public class DefaultCCMCluster implements CCMCluster {
         }
       } catch (RuntimeException e) {
         LOGGER.error("Could not start " + this, e);
-        handleCCMException(e);
+        printDiagnostics();
+        throw e;
       }
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug("Started: {} - Free memory: {} MB", this, MemoryUtils.getFreeMemoryMB());
@@ -356,7 +360,8 @@ public class DefaultCCMCluster implements CCMCluster {
         execute(CCM_COMMAND + " stop");
       } catch (RuntimeException e) {
         LOGGER.error("Could not stop " + this, e);
-        handleCCMException(e);
+        printDiagnostics();
+        throw e;
       }
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug("Stopped: {} - free memory: {} MB", this, MemoryUtils.getFreeMemoryMB());
@@ -381,7 +386,8 @@ public class DefaultCCMCluster implements CCMCluster {
         execute(CCM_COMMAND + " stop --not-gently");
       } catch (RuntimeException e) {
         LOGGER.error("Could not force stop " + this, e);
-        handleCCMException(e);
+        printDiagnostics();
+        throw e;
       }
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug("Stopped: {} - free memory: {} MB", this, MemoryUtils.getFreeMemoryMB());
@@ -399,7 +405,8 @@ public class DefaultCCMCluster implements CCMCluster {
           execute(CCM_COMMAND + " remove");
         } catch (RuntimeException e) {
           LOGGER.error("Could not remove " + this, e);
-          handleCCMException(e);
+          printDiagnostics();
+          throw e;
         } finally {
           FileUtils.deleteDirectory(getCcmDir().toPath());
         }
@@ -430,7 +437,7 @@ public class DefaultCCMCluster implements CCMCluster {
       execute(CCM_COMMAND + " node%d start --wait-for-binary-proto" + jvmArgs, node);
     } catch (RuntimeException e) {
       LOGGER.error(String.format("Could not start node %s in %s", node, this), e);
-      handleCCMException(e);
+      printDiagnostics();
       throw e;
     }
   }
@@ -441,7 +448,13 @@ public class DefaultCCMCluster implements CCMCluster {
         String.format(
             "Stopping: node %s (%s%s:%s) in %s",
             node, NetworkUtils.DEFAULT_IP_PREFIX, node, binaryPort, this));
-    execute(CCM_COMMAND + " node%d stop", node);
+    try {
+      execute(CCM_COMMAND + " node%d stop", node);
+    } catch (RuntimeException e) {
+      LOGGER.error(String.format("Could not stop node %s in %s", node, this), e);
+      printDiagnostics();
+      throw e;
+    }
   }
 
   @Override
@@ -603,6 +616,54 @@ public class DefaultCCMCluster implements CCMCluster {
     execute(CCM_COMMAND + " node%d setworkload %s", node, workloadStr);
   }
 
+  @Override
+  public String nodetool(int node, String command, String... args) {
+    try {
+      return execute(CCM_COMMAND + " node%d nodetool %s %s", node, command, String.join(" ", args));
+    } catch (Exception exception) {
+      LOGGER.warn("Command ccm node{} nodetool {} failed", node, command);
+      return null;
+    }
+  }
+
+  @Override
+  public String showLog(int node) {
+    try {
+      return execute(CCM_COMMAND + " node%d showlog", node);
+    } catch (Exception e) {
+      LOGGER.warn("Command ccm node{} showlog failed", node);
+      return null;
+    }
+  }
+
+  @Override
+  public void printDiagnostics() {
+    setKeepLogs();
+    String status = nodetool(1, "status");
+    if (status != null && !status.isEmpty()) {
+      LOGGER.error("CCM node1 nodetool status:\n{}", status);
+    }
+    String errors = checkForErrors();
+    if (errors != null && !errors.isEmpty()) {
+      LOGGER.error("CCM check errors:\n{}", errors);
+    }
+    int node = 1;
+    for (int nodesInDc : nodesPerDC) {
+      for (int i = 0; i < nodesInDc; i++) {
+        String logs = showLog(node);
+        if (logs != null && !logs.isEmpty()) {
+          List<String> logLines = NEW_LINE_PATTERN.splitAsStream(logs).collect(Collectors.toList());
+          if (logLines.size() > 50) {
+            logLines = logLines.subList(logLines.size() - 50, logLines.size());
+          }
+          LOGGER.error(
+              "CCM node {} logs (last 50 lines):\n> {}", node, String.join("\n> ", logLines));
+        }
+        node++;
+      }
+    }
+  }
+
   private synchronized String execute(String command, Object... args) {
     String fullCommand = String.format(command, args) + " --config-dir=" + ccmDir;
     // 10 minutes timeout
@@ -706,24 +767,6 @@ public class DefaultCCMCluster implements CCMCluster {
   @Override
   public String toString() {
     return String.format("CCM cluster %s (%s %s)", clusterName, getClusterType(), getVersion());
-  }
-
-  private void handleCCMException(RuntimeException e) {
-    setKeepLogs();
-    String errors = checkForErrors();
-    if (errors != null && !errors.isEmpty()) {
-      LOGGER.error("CCM check errors:\n{}", errors);
-    }
-    try {
-      String logs = execute(CCM_COMMAND + " node1 showlog");
-      if (logs != null && !logs.isEmpty()) {
-        logs = logs.substring(Math.max(0, logs.length() - 1000));
-        LOGGER.error("CCM node1 logs errors:\n...{}", logs);
-      }
-    } catch (Exception exception) {
-      LOGGER.warn("Check for node1 showlog failed");
-    }
-    throw e;
   }
 
   enum State {

@@ -473,4 +473,29 @@ public interface CCMCluster extends Closeable {
    * @param node the node number (starting from 1).
    */
   void setWorkload(int node, Workload... workload);
+
+  /**
+   * Runs a nodetool command on the given node and returns the output.
+   *
+   * @param node the node number (starting from 1).
+   * @param command the nodetool command to run.
+   * @param args the nodetool command arguments, if any.
+   * @return The output of the nodetool command.
+   */
+  String nodetool(int node, String command, String... args);
+
+  /**
+   * Returns the logs for the given node.
+   *
+   * @param node the node number (starting from 1).
+   * @return The contents of the node's logs.
+   */
+  String showLog(int node);
+
+  /**
+   * Prints a series of diagnostics for the cluster, typically including: the output of {@link
+   * #checkForErrors()}, the output of {@link #showLog(int) node1 showlog}, and the output of {@link
+   * #nodetool(int, String, String...) node1 nodetool status}.
+   */
+  void printDiagnostics();
 }
