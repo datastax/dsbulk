@@ -76,6 +76,7 @@ public class CountWorkflow implements Workflow {
   private Function<Flux<ReadResult>, Flux<ReadResult>> failedItemsMonitor;
   private Function<Flux<ReadResult>, Flux<ReadResult>> failedReadsHandler;
   private Function<Flux<Void>, Flux<Void>> terminationHandler;
+  private int readConcurrency;
 
   CountWorkflow(Config config) {
     settingsManager = new SettingsManager(config);
@@ -101,14 +102,11 @@ public class CountWorkflow implements Workflow {
     logSettings.init();
     driverSettings.init(false);
     logSettings.logEffectiveSettings(
-        settingsManager.getBulkLoaderConfig(), driverSettings.getDriverConfig());
+        settingsManager.getEffectiveBulkLoaderConfig(), driverSettings.getDriverConfig());
     codecSettings.init();
     monitoringSettings.init();
     executorSettings.init();
     statsSettings.init();
-    scheduler =
-        Schedulers.newParallel(
-            Runtime.getRuntime().availableProcessors(), new DefaultThreadFactory("workflow"));
     session = driverSettings.newSession(executionId);
     ClusterInformationUtils.printDebugInfoAboutCluster(session);
     schemaSettings.init(SchemaGenerationType.READ_AND_COUNT, session, false, false);
@@ -142,6 +140,10 @@ public class CountWorkflow implements Workflow {
     totalItemsCounter = logManager.newTotalItemsCounter();
     failedReadsHandler = logManager.newFailedReadsHandler();
     terminationHandler = logManager.newTerminationHandler();
+    int numCores = Runtime.getRuntime().availableProcessors();
+    scheduler = Schedulers.newParallel(numCores, new DefaultThreadFactory("workflow"));
+    readConcurrency = engineSettings.getMaxConcurrentQueries().orElse(numCores * 8);
+    LOGGER.debug("Using read concurrency: " + readConcurrency);
   }
 
   @Override
@@ -166,7 +168,7 @@ public class CountWorkflow implements Workflow {
                     .doOnNext(readResultCounter.newCountingUnit()::update)
                     .then()
                     .subscribeOn(scheduler),
-            Runtime.getRuntime().availableProcessors())
+            readConcurrency)
         .transform(terminationHandler)
         .blockLast();
     timer.stop();

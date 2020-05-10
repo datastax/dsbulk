@@ -77,7 +77,6 @@ public abstract class ResultSubscription<R extends Result, P extends AsyncPaging
 
   final @Nullable ExecutionListener listener;
   private final @Nullable Semaphore maxConcurrentRequests;
-  private final @Nullable Semaphore maxConcurrentQueries;
   final @Nullable RateLimiter rateLimiter;
   private final boolean failFast;
 
@@ -147,14 +146,12 @@ public abstract class ResultSubscription<R extends Result, P extends AsyncPaging
       @NonNull Statement<?> statement,
       @Nullable ExecutionListener listener,
       @Nullable Semaphore maxConcurrentRequests,
-      @Nullable Semaphore maxConcurrentQueries,
       @Nullable RateLimiter rateLimiter,
       boolean failFast) {
     this.statement = statement;
     this.subscriber = subscriber;
     this.listener = listener;
     this.maxConcurrentRequests = maxConcurrentRequests;
-    this.maxConcurrentQueries = maxConcurrentQueries;
     this.rateLimiter = rateLimiter;
     this.failFast = failFast;
     if (statement instanceof BatchStatement) {
@@ -173,9 +170,6 @@ public abstract class ResultSubscription<R extends Result, P extends AsyncPaging
     global.start();
     if (listener != null) {
       listener.onExecutionStarted(statement, global);
-    }
-    if (maxConcurrentQueries != null) {
-      maxConcurrentQueries.acquireUninterruptibly();
     }
     fetchNextPage(new Page(initial));
   }
@@ -356,12 +350,6 @@ public abstract class ResultSubscription<R extends Result, P extends AsyncPaging
             (rs, t) -> {
               if (maxConcurrentRequests != null) {
                 maxConcurrentRequests.release();
-              }
-              if (maxConcurrentQueries != null) {
-                boolean isLastPageOrError = t != null || !rs.hasMorePages();
-                if (isLastPageOrError) {
-                  maxConcurrentQueries.release();
-                }
               }
               local.stop();
               if (t == null) {

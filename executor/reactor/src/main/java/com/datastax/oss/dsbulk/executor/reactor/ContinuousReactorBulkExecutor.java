@@ -69,12 +69,6 @@ public class ContinuousReactorBulkExecutor extends DefaultReactorBulkExecutor
     Objects.requireNonNull(statement);
     return Flux.from(
         new ContinuousReadResultPublisher(
-            statement,
-            cqlSession,
-            failFast,
-            listener,
-            maxConcurrentRequests,
-            maxConcurrentQueries,
-            rateLimiter));
+            statement, cqlSession, failFast, listener, maxConcurrentRequests, rateLimiter));
   }
 }

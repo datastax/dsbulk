@@ -122,7 +122,7 @@ public class LoadWorkflow implements Workflow {
     EngineSettings engineSettings = settingsManager.getEngineSettings();
     driverSettings.init(true);
     logSettings.logEffectiveSettings(
-        settingsManager.getBulkLoaderConfig(), driverSettings.getDriverConfig());
+        settingsManager.getEffectiveBulkLoaderConfig(), driverSettings.getDriverConfig());
     monitoringSettings.init();
     codecSettings.init();
     batchSettings.init();
@@ -178,16 +178,9 @@ public class LoadWorkflow implements Workflow {
     terminationHandler = logManager.newTerminationHandler();
     numCores = Runtime.getRuntime().availableProcessors();
     scheduler = Schedulers.newParallel(numCores, new DefaultThreadFactory("workflow"));
-    // In order to keep a global number of X in-flight requests maximum, and in order to reduce lock
-    // contention around the semaphore that controls this number, and given that we have N threads
-    // executing requests, then each thread should strive to maintain a maximum of X / N in-flight
-    // requests. If the maximum number of in-flight requests is unbounded, then we use a standard
-    // concurrency constant.
-    writeConcurrency =
-        executorSettings.getMaxInFlight().isPresent()
-            ? Math.max(Queues.XS_BUFFER_SIZE, executorSettings.getMaxInFlight().get() / numCores)
-            : Queues.XS_BUFFER_SIZE;
+    writeConcurrency = engineSettings.getMaxConcurrentQueries().orElse(numCores * 4);
     resourceCount = connector.estimatedResourceCount();
+    LOGGER.debug("Using write concurrency: " + writeConcurrency);
   }
 
   @Override
@@ -195,11 +188,13 @@ public class LoadWorkflow implements Workflow {
     LOGGER.debug("{} started.", this);
     metricsManager.start();
     Stopwatch timer = Stopwatch.createStarted();
-    if (resourceCount >= WorkflowUtils.TPC_THRESHOLD) {
-      threadPerCoreFlux();
-    } else {
-      parallelFlux();
-    }
+    (resourceCount >= WorkflowUtils.TPC_THRESHOLD ? threadPerCoreFlux() : parallelFlux())
+        .transform(this::executeStatements)
+        .transform(queryWarningsHandler)
+        .transform(failedWritesHandler)
+        .transform(resultPositionsHndler)
+        .transform(terminationHandler)
+        .blockLast();
     timer.stop();
     metricsManager.stop();
     long seconds = timer.elapsed(SECONDS);
@@ -215,8 +210,8 @@ public class LoadWorkflow implements Workflow {
     return logManager.getTotalErrors() == 0;
   }
 
-  private void threadPerCoreFlux() {
-    Flux.defer(() -> connector.readByResource())
+  private Flux<Statement<?>> threadPerCoreFlux() {
+    return Flux.defer(() -> connector.readByResource())
         .flatMap(
             records ->
                 Flux.from(records)
@@ -228,18 +223,12 @@ public class LoadWorkflow implements Workflow {
                     .transform(failedStatementsMonitor)
                     .transform(unmappableStatementsHandler)
                     .transform(this::threadPerCoreBatch)
-                    .transform(this::executeStatements)
-                    .transform(queryWarningsHandler)
-                    .transform(failedWritesHandler)
-                    .transform(resultPositionsHndler)
                     .subscribeOn(scheduler),
-            numCores)
-        .transform(terminationHandler)
-        .blockLast();
+            numCores);
   }
 
-  private void parallelFlux() {
-    Flux.defer(() -> connector.read())
+  private Flux<Statement<?>> parallelFlux() {
+    return Flux.defer(() -> connector.read())
         .window(batchingEnabled ? batchBufferSize : Queues.SMALL_BUFFER_SIZE)
         .flatMap(
             records ->
@@ -252,14 +241,8 @@ public class LoadWorkflow implements Workflow {
                     .transform(failedStatementsMonitor)
                     .transform(unmappableStatementsHandler)
                     .transform(this::parallelBatch)
-                    .transform(this::executeStatements)
-                    .transform(queryWarningsHandler)
-                    .transform(failedWritesHandler)
-                    .transform(resultPositionsHndler)
                     .subscribeOn(scheduler),
-            numCores)
-        .transform(terminationHandler)
-        .blockLast();
+            numCores);
   }
 
   private Flux<? extends Statement<?>> threadPerCoreBatch(Flux<BatchableStatement<?>> stmts) {

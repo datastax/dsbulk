@@ -42,12 +42,11 @@ public class SettingsManager {
   public void init(String operationTitle, boolean configureConnectorForReads) {
     engineSettings = new EngineSettings(config.getConfig("dsbulk.engine"));
     engineSettings.init();
-    String executionIdTemplate = engineSettings.getCustomExecutionIdTemplate();
-    if (executionIdTemplate != null && !executionIdTemplate.isEmpty()) {
-      this.executionId = WorkflowUtils.newCustomExecutionId(executionIdTemplate, operationTitle);
-    } else {
-      this.executionId = WorkflowUtils.newExecutionId(operationTitle);
-    }
+    this.executionId =
+        engineSettings
+            .getCustomExecutionIdTemplate()
+            .map(template -> WorkflowUtils.newCustomExecutionId(template, operationTitle))
+            .orElse(WorkflowUtils.newDefaultExecutionId(operationTitle));
     logSettings = new LogSettings(config.getConfig("dsbulk.log"), this.executionId);
     driverSettings =
         new DriverSettings(
@@ -109,7 +108,7 @@ public class SettingsManager {
     return statsSettings;
   }
 
-  public Config getBulkLoaderConfig() {
+  public Config getEffectiveBulkLoaderConfig() {
     // must be called after connector settings initialized
     Config dsbulkConfig =
         config

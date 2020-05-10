@@ -253,7 +253,15 @@ Default: **false**.
 
 #### --executor.maxPerSecond<br />--dsbulk.executor.maxPerSecond _&lt;number&gt;_
 
-The maximum number of concurrent operations per second. When loading, this means the maximum number of write requests per second; when unloading or counting, this means the maximum number of rows per second. This acts as a safeguard to prevent overloading the cluster. Batch statements are counted by the number of statements included. Reduce this setting when the latencies get too high and a remote cluster cannot keep up with throughput, as `dsbulk` requests will eventually time out. Setting this option to any negative value or zero will disable it.
+The maximum number of concurrent operations per second. When writing to the database, this means the maximum number of writes per second (batch statements are counted by the number of statements included); when reading from the database, this means the maximum number of rows per second.
+
+This acts as a safeguard to prevent overloading the cluster. Reduce this value when the throughput for reads and writes cannot match the throughput of connectors, and latencies get too high; this is usually a sign that the workflow engine is not well calibrated and will eventually run out of memory, or some queries will timeout.
+
+This setting applies a "hard" limit to the gloabl throughput, capping it at a fixed value. If you need a a soft throughput limit, you should use `maxInFlight` instead.
+
+Note that this setting is implemented by a semaphore and may block application threads if there are too many in-flight requests.
+
+Setting this option to any negative value or zero will disable it.
 
 Default: **-1**.
 
@@ -803,7 +811,7 @@ Default: **-1**.
 
 #### --schema.splits<br />--dsbulk.schema.splits _&lt;string&gt;_
 
-The number of token range splits in which to divide the token ring. In other words, this setting determines how many read requests will be generated in order to read an entire table. Only used when unloading and counting; ignored otherwise. Note that the actual number of splits may be slightly greater or lesser than the number specified here, depending on the actual cluster topology and token ownership. Also, it is not possible to generate fewer splits than the total number of primary token ranges in the cluster, so the actual number of splits is always equal to or greater than that number. Set this to higher values if you experience timeouts when reading from DSE, specially if paging is disabled. The special syntax `NC` can be used to specify a number that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 splits.
+The number of token range splits in which to divide the token ring. In other words, this setting determines how many read requests will be generated in order to read an entire table. Only used when unloading and counting; ignored otherwise. Note that the actual number of splits may be slightly greater or lesser than the number specified here, depending on the actual cluster topology and token ownership. Also, it is not possible to generate fewer splits than the total number of primary token ranges in the cluster, so the actual number of splits is always equal to or greater than that number. Set this to higher values if you experience timeouts when reading from DSE, specially if paging is disabled. This setting should also be greater than `engine.maxConcurrentQueries`. The special syntax `NC` can be used to specify a number that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 splits.
 
 Default: **"8C"**.
 
@@ -1071,6 +1079,20 @@ When this identifier is user-supplied, it is important to guarantee its uniquene
 
 Default: **null**.
 
+#### --engine.maxConcurrentQueries<br />--dsbulk.engine.maxConcurrentQueries _&lt;string&gt;_
+
+The maximum number of concurrent queries that should be carried in parallel.
+
+This acts as a safeguard to prevent more queries executing in parallel than the cluster can handle, or to regulate throughput when latencies get too high. Batch statements count as one query.
+
+When using continuous paging, also make sure to set this number to a value equal to or lesser than the number of nodes in the local datacenter multiplied by the value configured server-side for `continuous_paging.max_concurrent_sessions` in the cassandra.yaml configuration file (60 by default); otherwise some requests might be rejected.
+
+The special syntax `NC` can be used to specify a number that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 concurrent queries.
+
+The default value is 'AUTO'; with this special value, DSBulk will optimize the number of concurrent queries according to the number of available cores, and the operation being executed. The actual value usually ranges from the number of cores to eight times that number.
+
+Default: **"AUTO"**.
+
 <a name="executor"></a>
 ## Executor Settings
 
@@ -1078,7 +1100,15 @@ Executor-specific settings.
 
 #### --executor.maxPerSecond<br />--dsbulk.executor.maxPerSecond _&lt;number&gt;_
 
-The maximum number of concurrent operations per second. When loading, this means the maximum number of write requests per second; when unloading or counting, this means the maximum number of rows per second. This acts as a safeguard to prevent overloading the cluster. Batch statements are counted by the number of statements included. Reduce this setting when the latencies get too high and a remote cluster cannot keep up with throughput, as `dsbulk` requests will eventually time out. Setting this option to any negative value or zero will disable it.
+The maximum number of concurrent operations per second. When writing to the database, this means the maximum number of writes per second (batch statements are counted by the number of statements included); when reading from the database, this means the maximum number of rows per second.
+
+This acts as a safeguard to prevent overloading the cluster. Reduce this value when the throughput for reads and writes cannot match the throughput of connectors, and latencies get too high; this is usually a sign that the workflow engine is not well calibrated and will eventually run out of memory, or some queries will timeout.
+
+This setting applies a "hard" limit to the gloabl throughput, capping it at a fixed value. If you need a a soft throughput limit, you should use `maxInFlight` instead.
+
+Note that this setting is implemented by a semaphore and may block application threads if there are too many in-flight requests.
+
+Setting this option to any negative value or zero will disable it.
 
 Default: **-1**.
 
@@ -1091,6 +1121,8 @@ Default: **true**.
 #### --executor.continuousPaging.maxConcurrentQueries<br />--dsbulk.executor.continuousPaging.maxConcurrentQueries _&lt;number&gt;_
 
 The maximum number of concurrent continuous paging queries that should be carried in parallel. Set this number to a value equal to or lesser than the value configured server-side for `continuous_paging.max_concurrent_sessions` in the cassandra.yaml configuration file (60 by default); otherwise some requests might be rejected. Settting this option to any negative value or zero will disable it.
+
+**DEPRECATED**: use `engine.maxConcurrentQueries` instead.
 
 Default: **60**.
 
@@ -1128,9 +1160,17 @@ Default: **"ROWS"**.
 
 #### --executor.maxInFlight<br />--dsbulk.executor.maxInFlight _&lt;number&gt;_
 
-The maximum number of "in-flight" requests, or maximum number of concurrent requests waiting for a response from the server. This acts as a safeguard to prevent more requests than the cluster can handle. Batch statements count as one request. Reduce this value when the throughput for reads and writes cannot match the throughput of mappers; this is usually a sign that the workflow engine is not well calibrated and will eventually run out of memory. Setting this option to any negative value or zero will disable it.
+The maximum number of "in-flight" queries, or maximum number of concurrent requests waiting for a response from the server. When writing to the database, batch statements count as one request. When reading from the database, each request for the next pages count as one request.
 
-Default: **1024**.
+This acts as a safeguard to prevent overloading the cluster. Reduce this value when the throughput for reads and writes cannot match the throughput of connectors, and latencies get too high; this is usually a sign that the workflow engine is not well calibrated and will eventually run out of memory, or some queries will timeout.
+
+This setting applies a "soft" limit to the gloabl throughput, without capping it at a fixed value. If you need a fixed maximum throughput, you should use `maxPerSecond` instead.
+
+Note that this setting is implemented by a semaphore and may block application threads if there are too many in-flight requests.
+
+Setting this option to any negative value or zero will disable it.
+
+Default: **-1**.
 
 <a name="log"></a>
 ## Log Settings
@@ -1302,7 +1342,6 @@ Which kind(s) of statistics to compute. Only applicaple for the count workflow, 
 * `ranges`: count the total number of rows per token range in the table.
 * `hosts`: count the total number of rows per hosts in the table.
 * `partitions`: count the total number of rows in the N biggest partitions in the table. When using this mode, you can chose how many partitions to track with the `numPartitions` setting.
-The default value is `[global]`.
 
 Default: **["global"]**.
 

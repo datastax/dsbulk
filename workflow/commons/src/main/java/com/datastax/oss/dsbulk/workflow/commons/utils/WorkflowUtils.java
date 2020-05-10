@@ -54,7 +54,7 @@ public class WorkflowUtils {
 
   private static final Version DSE_NATIVE_GRAPH_MIN_VERSION = Version.parse("6.8.0");
 
-  public static String newExecutionId(@NonNull String operationTitle) {
+  public static String newDefaultExecutionId(@NonNull String operationTitle) {
     return operationTitle.toUpperCase()
         + "_"
         + DEFAULT_TIMESTAMP_PATTERN.format(PlatformUtils.now());

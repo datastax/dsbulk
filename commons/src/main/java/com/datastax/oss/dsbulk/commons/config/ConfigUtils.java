@@ -256,7 +256,8 @@ public class ConfigUtils {
     } catch (Exception e) {
       throw new ConfigException.WrongType(
           config.origin(),
-          String.format("%s: Expecting integer or string in 'nC' syntax, got '%s'", path, setting),
+          String.format(
+              "%s: Expecting positive integer or string in 'nC' syntax, got '%s'", path, setting),
           e);
     }
   }
@@ -661,13 +662,15 @@ public class ConfigUtils {
   /**
    * Checks whether the given path has a default value or not.
    *
-   * <p>A default value is the value defined in reference.conf.
+   * <p>A default value is the value defined in reference.conf or dsbulk-reference.conf.
+   *
+   * <p>If the given path doesn't exist at all this method returns false.
    *
    * @param config The config.
    * @param path The path expression.
    * @return {@code true} if the given path has a default value, {@code false} otherwise.
    */
-  public static boolean isValueFromReferenceConfig(Config config, String path) {
+  public static boolean hasReferenceValue(Config config, String path) {
     if (!config.hasPathOrNull(path)) {
       return false;
     }
@@ -680,6 +683,21 @@ public class ConfigUtils {
     String resource = value.origin().resource();
     // Account for reference.conf and dsbulk-reference.conf
     return resource != null && resource.endsWith("reference.conf");
+  }
+
+  /**
+   * Checks whether the given path has a user-defined value or not.
+   *
+   * <p>A user-defined value is a value defined in application.conf.
+   *
+   * <p>If the given path doesn't exist at all this method returns false.
+   *
+   * @param config The config.
+   * @param path The path expression.
+   * @return {@code true} if the given path has a user-defined value, {@code false} otherwise.
+   */
+  public static boolean hasUserOverride(Config config, String path) {
+    return config.hasPathOrNull(path) && !hasReferenceValue(config, path);
   }
 
   /**
