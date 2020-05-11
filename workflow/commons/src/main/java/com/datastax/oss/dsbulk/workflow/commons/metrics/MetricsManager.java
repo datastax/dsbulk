@@ -437,21 +437,27 @@ public class MetricsManager implements AutoCloseable {
   }
 
   public void reportFinalMetrics() {
-    LOGGER.info(METRICS_MARKER, "Final stats:");
-    if (recordReporter != null) {
-      recordReporter.report();
-    }
-    if (batchesReporter != null) {
-      batchesReporter.report();
-    }
-    if (memoryReporter != null) {
-      memoryReporter.report();
-    }
-    if (writesReporter != null) {
-      writesReporter.report();
-    }
-    if (readsReporter != null) {
-      readsReporter.report();
+    if (recordReporter != null
+        || batchesReporter != null
+        || memoryReporter != null
+        || writesReporter != null
+        || readsReporter != null) {
+      LOGGER.info(METRICS_MARKER, "Final stats:");
+      if (recordReporter != null) {
+        recordReporter.report();
+      }
+      if (batchesReporter != null) {
+        batchesReporter.report();
+      }
+      if (memoryReporter != null) {
+        memoryReporter.report();
+      }
+      if (writesReporter != null) {
+        writesReporter.report();
+      }
+      if (readsReporter != null) {
+        readsReporter.report();
+      }
     }
   }
 
