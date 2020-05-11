@@ -311,6 +311,40 @@ workload:
 
               rm -Rf mnt/data/DSEBulkLoadTest/in/transactions/generated_one_file
 
+              # transactions tpc batch disabled
+              echo "CSV - Loading transactions (multiple files)"
+              mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -header false \
+                -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
+                -url mnt/data/DSEBulkLoadTest/in/transactions/generated \
+                -delim '|' \
+                -m 'user_id,date,item,price,quantity,total,currency,payment,contact' \
+                --codec.timestamp ISO_ZONED_DATE_TIME \
+                --batch.mode DISABLED \
+                -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs \
+                --engine.executionId LOAD_CSV_TRANSACTIONS_TPC \
+                &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/LOAD_CSV_TRANSACTIONS_TPC_console.txt
+              echo "Exit status" $?
+
+              rm -Rf mnt/data/DSEBulkLoadTest/in/transactions/generated/
+
+              cqlsh ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} --cqlversion={{cql_version}} -e 'TRUNCATE test.transactions;'
+
+              # transactions parallel batch disabled
+              echo "CSV - Loading transactions (single file)"
+              mnt/data/dsbulk/bin/dsbulk load -k test -t transactions -header false \
+                -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
+                -url mnt/data/DSEBulkLoadTest/in/transactions/generated_one_file \
+                -delim '|' \
+                -m 'user_id,date,item,price,quantity,total,currency,payment,contact' \
+                --codec.timestamp ISO_ZONED_DATE_TIME \
+                --batch.mode DISABLED \
+                -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs \
+                --engine.executionId LOAD_CSV_TRANSACTIONS_PARALLEL \
+                &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/LOAD_CSV_TRANSACTIONS_PARALLEL_console.txt
+              echo "Exit status" $?
+
+              rm -Rf mnt/data/DSEBulkLoadTest/in/transactions/generated_one_file
+
             else
               echo "ignoring load-csv-performance-test step"
             fi
@@ -479,7 +513,7 @@ workload:
               mnt/data/dsbulk/bin/dsbulk unload -header false  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/out/data100B/  \
-                -query 'SELECT * FROM test.test100b WHERE token(pkey) > -9223372036854775808 and token (pkey) <= 9223372036854775808'  \
+                -query 'SELECT * FROM test.test100b WHERE token(pkey) > -9223372036854775808 and token (pkey) <= -9223372036854775808'  \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs  \
                 --engine.executionId UNLOAD_CSV_100B_PARALLEL  \
                 &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/UNLOAD_CSV_100B_PARALLEL_console.txt
@@ -528,8 +562,8 @@ workload:
               mnt/data/dsbulk/bin/dsbulk unload -k test -t test1mb -header false  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/out/data1MB/ \
-                --executor.continuousPaging.pageSize 500000 \
-                --executor.continuousPaging.pageUnit BYTES  \
+                --driver.advanced.continuous-paging.page-size 500000 \
+                --driver.advanced.continuous-paging.page-size-in-bytes true  \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs  \
                 --engine.executionId UNLOAD_CSV_1MB  \
                 &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/UNLOAD_CSV_1MB_console.txt
@@ -566,7 +600,7 @@ workload:
               mnt/data/dsbulk/bin/dsbulk unload -header false  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/in/transactions/out  \
-                -query 'SELECT * FROM test.transactions WHERE token(user_id) > -9223372036854775808 and token (user_id) <= 9223372036854775808'  \
+                -query 'SELECT * FROM test.transactions WHERE token(user_id) > -9223372036854775808 and token (user_id) <= -9223372036854775808'  \
                 -m 'user_id,date,item,price,quantity,total,currency,payment,contact'  \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs  \
                 --engine.executionId UNLOAD_CSV_TRANSACTIONS_PARALLEL \
@@ -652,8 +686,8 @@ workload:
               mnt/data/dsbulk/bin/dsbulk unload -k test -t test1mb -c json  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/out/data1MB/ \
-                --executor.continuousPaging.pageSize 500000 \
-                --executor.continuousPaging.pageUnit BYTES  \
+                --driver.advanced.continuous-paging.page-size 500000 \
+                --driver.advanced.continuous-paging.page-size-in-bytes true  \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs  \
                 --engine.executionId UNLOAD_JSON_1MB  \
                 &> ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs/UNLOAD_JSON_1MB_console.txt
