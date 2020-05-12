@@ -218,24 +218,21 @@ public class LoadWorkflow implements Workflow {
   private void threadPerCoreFlux() {
     Flux.defer(() -> connector.readByResource())
         .flatMap(
-            records -> {
-              Flux<BatchableStatement<?>> stmts =
-                  Flux.from(records)
-                      .transform(totalItemsMonitor)
-                      .transform(totalItemsCounter)
-                      .transform(failedRecordsMonitor)
-                      .transform(failedRecordsHandler)
-                      .map(mapper)
-                      .transform(failedStatementsMonitor)
-                      .transform(unmappableStatementsHandler);
-              Flux<? extends Statement<?>> grouped;
-              if (batchingEnabled) {
-                grouped = stmts.window(batchBufferSize).flatMap(batcher).transform(batcherMonitor);
-              } else {
-                grouped = stmts;
-              }
-              return executeStatements(grouped).subscribeOn(scheduler);
-            },
+            records ->
+                Flux.from(records)
+                    .transform(totalItemsMonitor)
+                    .transform(totalItemsCounter)
+                    .transform(failedRecordsMonitor)
+                    .transform(failedRecordsHandler)
+                    .map(mapper)
+                    .transform(failedStatementsMonitor)
+                    .transform(unmappableStatementsHandler)
+                    .transform(this::threadPerCoreBatch)
+                    .transform(this::executeStatements)
+                    .transform(queryWarningsHandler)
+                    .transform(failedWritesHandler)
+                    .transform(resultPositionsHndler)
+                    .subscribeOn(scheduler),
             numCores)
         .transform(terminationHandler)
         .blockLast();
@@ -245,40 +242,40 @@ public class LoadWorkflow implements Workflow {
     Flux.defer(() -> connector.read())
         .window(batchingEnabled ? batchBufferSize : Queues.SMALL_BUFFER_SIZE)
         .flatMap(
-            records -> {
-              Flux<BatchableStatement<?>> stmts =
-                  records
-                      .transform(totalItemsMonitor)
-                      .transform(totalItemsCounter)
-                      .transform(failedRecordsMonitor)
-                      .transform(failedRecordsHandler)
-                      .map(mapper)
-                      .transform(failedStatementsMonitor)
-                      .transform(unmappableStatementsHandler);
-              Flux<? extends Statement<?>> grouped;
-              if (batchingEnabled) {
-                grouped = stmts.transform(batcher).transform(batcherMonitor);
-              } else {
-                grouped = stmts;
-              }
-              return executeStatements(grouped).subscribeOn(scheduler);
-            },
+            records ->
+                records
+                    .transform(totalItemsMonitor)
+                    .transform(totalItemsCounter)
+                    .transform(failedRecordsMonitor)
+                    .transform(failedRecordsHandler)
+                    .map(mapper)
+                    .transform(failedStatementsMonitor)
+                    .transform(unmappableStatementsHandler)
+                    .transform(this::parallelBatch)
+                    .transform(this::executeStatements)
+                    .transform(queryWarningsHandler)
+                    .transform(failedWritesHandler)
+                    .transform(resultPositionsHndler)
+                    .subscribeOn(scheduler),
             numCores)
         .transform(terminationHandler)
         .blockLast();
   }
 
-  private Flux<Void> executeStatements(Flux<? extends Statement<?>> stmts) {
-    Flux<WriteResult> results;
-    if (dryRun) {
-      results = stmts.map(EmptyWriteResult::new);
-    } else {
-      results = stmts.flatMap(executor::writeReactive, writeConcurrency);
-    }
-    return results
-        .transform(queryWarningsHandler)
-        .transform(failedWritesHandler)
-        .transform(resultPositionsHndler);
+  private Flux<? extends Statement<?>> threadPerCoreBatch(Flux<BatchableStatement<?>> stmts) {
+    return batchingEnabled
+        ? stmts.window(batchBufferSize).flatMap(batcher).transform(batcherMonitor)
+        : stmts;
+  }
+
+  private Flux<? extends Statement<?>> parallelBatch(Flux<BatchableStatement<?>> stmts) {
+    return batchingEnabled ? stmts.transform(batcher).transform(batcherMonitor) : stmts;
+  }
+
+  private Flux<WriteResult> executeStatements(Flux<? extends Statement<?>> stmts) {
+    return dryRun
+        ? stmts.map(EmptyWriteResult::new)
+        : stmts.flatMap(executor::writeReactive, writeConcurrency);
   }
 
   @Override

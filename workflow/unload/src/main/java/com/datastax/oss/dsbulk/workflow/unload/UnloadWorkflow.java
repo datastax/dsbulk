@@ -165,14 +165,11 @@ public class UnloadWorkflow implements Workflow {
     terminationHandler = logManager.newTerminationHandler();
     numCores = Runtime.getRuntime().availableProcessors();
     scheduler = Schedulers.newParallel(numCores, new DefaultThreadFactory("workflow"));
-    // Set the concurrency to the number of cores to maximize parallelism, unless a maximum number
-    // of concurrent queries has been set, in which case, if that number is lesser than the number
-    // of cores, cap the concurrency at that number to reduce lock contention around the semaphore
-    // that controls it.
     readConcurrency =
-        executorSettings.getMaxConcurrentQueries().isPresent()
-            ? Math.min(numCores, executorSettings.getMaxConcurrentQueries().get())
-            : numCores;
+        executorSettings
+            .getMaxConcurrentQueries()
+            .map(maxConcurrentQueries -> Math.min(maxConcurrentQueries, numCores))
+            .orElse(numCores);
   }
 
   @Override
@@ -180,13 +177,8 @@ public class UnloadWorkflow implements Workflow {
     LOGGER.debug("{} started.", this);
     metricsManager.start();
     Stopwatch timer = Stopwatch.createStarted();
-    Flux<Record> flux;
-    if (readStatements.size() >= WorkflowUtils.TPC_THRESHOLD) {
-      flux = threadPerCoreFlux();
-    } else {
-      flux = parallelFlux();
-    }
-    flux.transformDeferred(writer)
+    (readStatements.size() >= WorkflowUtils.TPC_THRESHOLD ? threadPerCoreFlux() : parallelFlux())
+        .transformDeferred(writer)
         .transform(failedRecordsMonitor)
         .transform(failedRecordsHandler)
         .then()
