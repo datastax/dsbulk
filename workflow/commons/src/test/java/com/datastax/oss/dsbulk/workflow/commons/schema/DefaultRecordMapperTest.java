@@ -225,7 +225,7 @@ class DefaultRecordMapperTest {
             true,
             false,
             (statement) -> boundStatementBuilder);
-    Statement result = mapper.map(record);
+    Statement<?> result = mapper.map(record);
     assertThat(result).isInstanceOf(BulkBoundStatement.class);
     Assertions.assertThat(ReflectionUtils.getInternalState(result, "delegate"))
         .isSameAs(boundStatement);
@@ -268,7 +268,7 @@ class DefaultRecordMapperTest {
             true,
             true,
             statement -> boundStatementBuilder);
-    Statement result = mapper.map(record);
+    Statement<?> result = mapper.map(record);
     assertThat(result).isInstanceOf(BulkBoundStatement.class);
     Assertions.assertThat(ReflectionUtils.getInternalState(result, "delegate"))
         .isSameAs(boundStatement);
@@ -308,7 +308,7 @@ class DefaultRecordMapperTest {
             true,
             true,
             statement -> boundStatementBuilder);
-    Statement result = mapper.map(record);
+    Statement<?> result = mapper.map(record);
     assertThat(result).isInstanceOf(BulkBoundStatement.class);
     Assertions.assertThat(ReflectionUtils.getInternalState(result, "delegate"))
         .isSameAs(boundStatement);
@@ -346,7 +346,7 @@ class DefaultRecordMapperTest {
             true,
             true,
             statement -> boundStatementBuilder);
-    Statement result = mapper.map(record);
+    Statement<?> result = mapper.map(record);
     assertThat(result).isInstanceOf(BulkBoundStatement.class);
     Assertions.assertThat(ReflectionUtils.getInternalState(result, "delegate"))
         .isSameAs(boundStatement);
@@ -388,7 +388,7 @@ class DefaultRecordMapperTest {
             true,
             true,
             statement -> boundStatementBuilder);
-    Statement result = mapper.map(record);
+    Statement<?> result = mapper.map(record);
     assertThat(result).isInstanceOf(BulkBoundStatement.class);
     Assertions.assertThat(ReflectionUtils.getInternalState(result, "delegate"))
         .isSameAs(boundStatement);
@@ -413,7 +413,7 @@ class DefaultRecordMapperTest {
             true,
             false,
             statement -> boundStatementBuilder);
-    Statement result = mapper.map(record);
+    Statement<?> result = mapper.map(record);
     assertThat(result).isInstanceOf(BulkBoundStatement.class);
     Assertions.assertThat(ReflectionUtils.getInternalState(result, "delegate"))
         .isSameAs(boundStatement);
@@ -439,7 +439,7 @@ class DefaultRecordMapperTest {
             true,
             true,
             statement -> boundStatementBuilder);
-    Statement result = mapper.map(record);
+    Statement<?> result = mapper.map(record);
     assertThat(result).isInstanceOf(BulkBoundStatement.class);
     Assertions.assertThat(ReflectionUtils.getInternalState(result, "delegate"))
         .isSameAs(boundStatement);
@@ -463,7 +463,7 @@ class DefaultRecordMapperTest {
             true,
             false,
             statement -> boundStatementBuilder);
-    Statement result = mapper.map(record);
+    Statement<?> result = mapper.map(record);
     assertThat(result).isNotSameAs(boundStatement).isInstanceOf(UnmappableStatement.class);
     assertThat(((UnmappableStatement) result).getSource()).isEqualTo(record);
     verify(boundStatementBuilder, times(2))
@@ -487,7 +487,7 @@ class DefaultRecordMapperTest {
             true,
             false,
             statement -> boundStatementBuilder);
-    Statement result = mapper.map(record);
+    Statement<?> result = mapper.map(record);
     assertThat(result).isNotSameAs(boundStatement).isInstanceOf(UnmappableStatement.class);
     UnmappableStatement unmappableStatement = (UnmappableStatement) result;
     assertThat(unmappableStatement.getError())
@@ -510,7 +510,7 @@ class DefaultRecordMapperTest {
             true,
             false,
             statement -> boundStatementBuilder);
-    Statement result = mapper.map(record);
+    Statement<?> result = mapper.map(record);
     assertThat(result).isInstanceOf(UnmappableStatement.class);
     UnmappableStatement unmappableStatement = (UnmappableStatement) result;
     assertThat(unmappableStatement.getError())
@@ -533,7 +533,7 @@ class DefaultRecordMapperTest {
             false,
             false,
             statement -> boundStatementBuilder);
-    Statement result = mapper.map(record);
+    Statement<?> result = mapper.map(record);
     assertThat(result).isNotSameAs(boundStatement).isInstanceOf(UnmappableStatement.class);
     UnmappableStatement unmappableStatement = (UnmappableStatement) result;
     assertThat(unmappableStatement.getError())
@@ -558,7 +558,7 @@ class DefaultRecordMapperTest {
             true,
             false,
             statement -> boundStatementBuilder);
-    Statement result = mapper.map(record);
+    Statement<?> result = mapper.map(record);
     assertThat(result).isNotSameAs(boundStatement).isInstanceOf(UnmappableStatement.class);
     UnmappableStatement unmappableStatement = (UnmappableStatement) result;
     assertThat(unmappableStatement.getError())
