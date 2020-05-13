@@ -46,7 +46,8 @@ class StringToBlobCodecTest {
         .convertsFromExternal("0x")
         .toInternal(emptyBb)
         .convertsFromExternal("")
-        .toInternal(null)
+        // DAT-573: consider empty string as empty byte array
+        .toInternal(emptyBb)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")

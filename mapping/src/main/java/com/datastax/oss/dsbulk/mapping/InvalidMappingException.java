@@ -54,7 +54,16 @@ public class InvalidMappingException extends RuntimeException {
     return new InvalidMappingException(
         "Primary key column "
             + variable.render(VARIABLE)
-            + " cannot be mapped to null. "
+            + " cannot be set to null. "
+            + "Check that your settings (schema.mapping or schema.query) match your dataset contents.");
+  }
+
+  @NonNull
+  public static InvalidMappingException emptyPrimaryKey(@NonNull CQLWord variable) {
+    return new InvalidMappingException(
+        "Primary key column "
+            + variable.render(VARIABLE)
+            + " cannot be set to empty. "
             + "Check that your settings (schema.mapping or schema.query) match your dataset contents.");
   }
 
@@ -63,7 +72,7 @@ public class InvalidMappingException extends RuntimeException {
     return new InvalidMappingException(
         "Primary key column "
             + variable.render(VARIABLE)
-            + " cannot be left unmapped. "
+            + " cannot be left unset. "
             + "Check that your settings (schema.mapping or schema.query) match your dataset contents.");
   }
 }

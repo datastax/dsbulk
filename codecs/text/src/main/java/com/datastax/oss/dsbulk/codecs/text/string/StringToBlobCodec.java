@@ -30,7 +30,8 @@ public class StringToBlobCodec extends StringConvertingCodec<ByteBuffer> {
 
   @Override
   public ByteBuffer externalToInternal(String s) {
-    if (isNullOrEmpty(s)) {
+    // DAT-573: consider empty strings as empty byte arrays
+    if (isNull(s)) {
       return null;
     }
     return CodecUtils.parseByteBuffer(s);
@@ -40,6 +41,9 @@ public class StringToBlobCodec extends StringConvertingCodec<ByteBuffer> {
   public String internalToExternal(ByteBuffer value) {
     if (value == null) {
       return nullString();
+    }
+    if (!value.hasRemaining()) {
+      return "";
     }
     return Base64.getEncoder().encodeToString(Bytes.getArray(value));
   }

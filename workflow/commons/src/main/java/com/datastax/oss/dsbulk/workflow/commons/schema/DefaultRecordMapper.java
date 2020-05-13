@@ -16,6 +16,7 @@
 package com.datastax.oss.dsbulk.workflow.commons.schema;
 
 import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.ASCII;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.BLOB;
 import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.VARCHAR;
 
 import com.datastax.oss.driver.api.core.CqlIdentifier;
@@ -54,7 +55,8 @@ import java.util.function.Function;
 public class DefaultRecordMapper implements RecordMapper {
 
   private final PreparedStatement insertStatement;
-  private final ImmutableSet<CQLWord> primaryKeyVariables;
+  private final ImmutableSet<CQLWord> partitionKeyVariables;
+  private final ImmutableSet<CQLWord> clusteringColumnVariables;
   private final ProtocolVersion protocolVersion;
   private final Mapping mapping;
   private final RecordMetadata recordMetadata;
@@ -66,7 +68,8 @@ public class DefaultRecordMapper implements RecordMapper {
 
   public DefaultRecordMapper(
       PreparedStatement insertStatement,
-      Set<CQLWord> primaryKeyVariables,
+      Set<CQLWord> partitionKeyVariables,
+      Set<CQLWord> clusteringColumnVariables,
       ProtocolVersion protocolVersion,
       Mapping mapping,
       RecordMetadata recordMetadata,
@@ -75,7 +78,8 @@ public class DefaultRecordMapper implements RecordMapper {
       boolean allowMissingFields) {
     this(
         insertStatement,
-        primaryKeyVariables,
+        partitionKeyVariables,
+        clusteringColumnVariables,
         protocolVersion,
         mapping,
         recordMetadata,
@@ -88,7 +92,8 @@ public class DefaultRecordMapper implements RecordMapper {
   @VisibleForTesting
   DefaultRecordMapper(
       PreparedStatement insertStatement,
-      Set<CQLWord> primaryKeyVariables,
+      Set<CQLWord> partitionKeyVariables,
+      Set<CQLWord> clusteringColumnVariables,
       ProtocolVersion protocolVersion,
       Mapping mapping,
       RecordMetadata recordMetadata,
@@ -97,7 +102,8 @@ public class DefaultRecordMapper implements RecordMapper {
       boolean allowMissingFields,
       Function<PreparedStatement, BoundStatementBuilder> boundStatementBuilderFactory) {
     this.insertStatement = insertStatement;
-    this.primaryKeyVariables = ImmutableSet.copyOf(primaryKeyVariables);
+    this.partitionKeyVariables = ImmutableSet.copyOf(partitionKeyVariables);
+    this.clusteringColumnVariables = ImmutableSet.copyOf(clusteringColumnVariables);
     this.protocolVersion = protocolVersion;
     this.mapping = mapping;
     this.recordMetadata = recordMetadata;
@@ -152,8 +158,16 @@ public class DefaultRecordMapper implements RecordMapper {
       GenericType<? extends T> javaType) {
     TypeCodec<T> codec = mapping.codec(variable, cqlType, javaType);
     ByteBuffer bb = codec.encode(raw, builder.protocolVersion());
-    if (isNull(bb, cqlType)) {
-      if (primaryKeyVariables.contains(variable)) {
+    boolean isNull = isNull(bb, cqlType);
+    if (isNull || isEmpty(bb)) {
+      if (partitionKeyVariables.contains(variable)) {
+        throw isNull
+            ? InvalidMappingException.nullPrimaryKey(variable)
+            : InvalidMappingException.emptyPrimaryKey(variable);
+      }
+    }
+    if (isNull) {
+      if (clusteringColumnVariables.contains(variable)) {
         throw InvalidMappingException.nullPrimaryKey(variable);
       }
       if (nullToUnset) {
@@ -170,18 +184,20 @@ public class DefaultRecordMapper implements RecordMapper {
     if (bb == null) {
       return true;
     }
-    if (bb.hasRemaining()) {
-      return false;
-    }
     switch (cqlType.getProtocolCode()) {
       case VARCHAR:
       case ASCII:
-        // empty strings are encoded as zero-length buffers,
-        // and should not be considered as nulls.
+      case BLOB:
+        // zero-length buffers should not be considered as nulls for
+        // these CQL types.
         return false;
       default:
-        return true;
+        return !bb.hasRemaining();
     }
+  }
+
+  private boolean isEmpty(ByteBuffer bb) {
+    return bb == null || !bb.hasRemaining();
   }
 
   private void ensureAllFieldsPresent(Set<Field> recordFields) {
@@ -199,7 +215,14 @@ public class DefaultRecordMapper implements RecordMapper {
   }
 
   private void ensurePrimaryKeySet(BoundStatementBuilder bs) {
-    for (CQLWord variable : primaryKeyVariables) {
+    for (CQLWord variable : partitionKeyVariables) {
+      for (int index : variablesToIndices.get(variable)) {
+        if (!bs.isSet(index)) {
+          throw InvalidMappingException.unsetPrimaryKey(variable);
+        }
+      }
+    }
+    for (CQLWord variable : clusteringColumnVariables) {
       for (int index : variablesToIndices.get(variable)) {
         if (!bs.isSet(index)) {
           throw InvalidMappingException.unsetPrimaryKey(variable);
