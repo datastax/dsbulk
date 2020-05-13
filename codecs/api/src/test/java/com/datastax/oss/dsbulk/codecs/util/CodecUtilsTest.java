@@ -997,7 +997,8 @@ class CodecUtilsTest {
     String data64 = Base64.getEncoder().encodeToString(data);
     String dataHex = Bytes.toHexString(data);
     assertThat(CodecUtils.parseByteBuffer(null)).isNull();
-    assertThat(CodecUtils.parseByteBuffer("")).isNull();
+    // DAT-573: consider empty string as empty byte array
+    assertThat(CodecUtils.parseByteBuffer("")).isEqualTo(ByteBuffer.wrap(new byte[] {}));
     assertThat(CodecUtils.parseByteBuffer("0x")).isEqualTo(ByteBuffer.wrap(new byte[] {}));
     assertThat(CodecUtils.parseByteBuffer(data64)).isEqualTo(ByteBuffer.wrap(data));
     assertThat(CodecUtils.parseByteBuffer(dataHex)).isEqualTo(ByteBuffer.wrap(data));

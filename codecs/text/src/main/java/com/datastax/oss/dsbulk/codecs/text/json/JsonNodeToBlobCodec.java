@@ -48,8 +48,10 @@ public class JsonNodeToBlobCodec extends JsonNodeConvertingCodec<ByteBuffer> {
 
   @Override
   public JsonNode internalToExternal(ByteBuffer value) {
-    return value == null
-        ? null
-        : JsonCodecUtils.JSON_NODE_FACTORY.binaryNode(Bytes.getArray(value));
+    if (value == null) {
+      return null;
+    }
+    byte[] array = Bytes.getArray(value);
+    return JsonCodecUtils.JSON_NODE_FACTORY.binaryNode(array);
   }
 }

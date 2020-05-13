@@ -1886,7 +1886,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     validateNumberOfBadRecords(10);
     validatePositionsFile(resource, 24);
     validateExceptionsLog(
-        10, "Primary key column \"COUNTRY CODE\" cannot be mapped to null", "mapping-errors.log");
+        10, "Primary key column \"COUNTRY CODE\" cannot be set to null", "mapping-errors.log");
   }
 
   @Test

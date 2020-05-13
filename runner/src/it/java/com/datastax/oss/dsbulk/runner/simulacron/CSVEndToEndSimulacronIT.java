@@ -512,7 +512,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     // the number of writes may vary due to the abortion
     validateNumberOfBadRecords(10);
     validateExceptionsLog(
-        10, "Primary key column country_code cannot be mapped to null", "mapping-errors.log");
+        10, "Primary key column country_code cannot be set to null", "mapping-errors.log");
   }
 
   @Test

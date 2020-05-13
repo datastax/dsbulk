@@ -450,7 +450,8 @@ public class SchemaSettings {
     }
     return new DefaultRecordMapper(
         preparedStatement,
-        mutatesOnlyStaticColumns() ? partitionKeyVariables() : primaryKeyVariables(),
+        partitionKeyVariables(),
+        mutatesOnlyStaticColumns() ? Collections.emptySet() : clusteringColumnVariables(),
         protocolVersion,
         mapping,
         recordMetadata,
@@ -1192,7 +1193,11 @@ public class SchemaSettings {
     return columnsToVariables(table.getPartitionKey());
   }
 
-  private Set<CQLWord> columnsToVariables(List<ColumnMetadata> columns) {
+  private Set<CQLWord> clusteringColumnVariables() {
+    return columnsToVariables(table.getClusteringColumns().keySet());
+  }
+
+  private Set<CQLWord> columnsToVariables(Collection<ColumnMetadata> columns) {
     Map<CQLWord, CQLFragment> boundVariables = queryInspector.getAssignments();
     Set<CQLWord> variables = new HashSet<>(columns.size());
     for (ColumnMetadata column : columns) {

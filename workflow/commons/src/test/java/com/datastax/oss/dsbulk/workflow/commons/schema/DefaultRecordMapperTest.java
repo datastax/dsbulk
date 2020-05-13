@@ -20,6 +20,7 @@ import static com.datastax.oss.driver.shaded.guava.common.collect.Lists.newArray
 import static java.math.BigDecimal.ONE;
 import static java.math.BigDecimal.ZERO;
 import static java.math.RoundingMode.HALF_EVEN;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.time.Instant.EPOCH;
 import static java.time.ZoneOffset.UTC;
 import static java.util.Collections.emptySet;
@@ -30,7 +31,6 @@ import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -74,7 +74,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
-import org.assertj.core.api.Assertions;
 import org.assertj.core.util.Sets;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -104,6 +103,8 @@ class DefaultRecordMapperTest {
   @Mock private BoundStatementBuilder boundStatementBuilder;
   @Mock private ColumnDefinitions variables;
   @Mock private ColumnDefinition c1Def;
+  @Mock private ColumnDefinition c2Def;
+  @Mock private ColumnDefinition c3Def;
   @Mock private StringToIntegerCodec codec1;
   @Mock private StringToLongCodec codec2;
   @Mock private StringToStringCodec codec3;
@@ -136,10 +137,6 @@ class DefaultRecordMapperTest {
         .thenReturn(boundStatementBuilder);
 
     when(insertStatement.getVariableDefinitions()).thenReturn(variables);
-
-    c1Def = mock(ColumnDefinition.class);
-    ColumnDefinition c2Def = mock(ColumnDefinition.class);
-    ColumnDefinition c3Def = mock(ColumnDefinition.class);
 
     when(variables.get(C1.asIdentifier())).thenReturn(c1Def);
     when(variables.get(C2.asIdentifier())).thenReturn(c2Def);
@@ -217,7 +214,8 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            set(C1, C2, C3),
+            set(C1),
+            set(C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -227,8 +225,7 @@ class DefaultRecordMapperTest {
             (statement) -> boundStatementBuilder);
     Statement<?> result = mapper.map(record);
     assertThat(result).isInstanceOf(BulkBoundStatement.class);
-    Assertions.assertThat(ReflectionUtils.getInternalState(result, "delegate"))
-        .isSameAs(boundStatement);
+    assertThat(ReflectionUtils.getInternalState(result, "delegate")).isSameAs(boundStatement);
     verify(boundStatementBuilder, times(3))
         .setBytesUnsafe(variableCaptor.capture(), valueCaptor.capture());
     assertParameter(0, 0, TypeCodecs.INT.encode(42, V4));
@@ -260,7 +257,8 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            set(C1, C2, C3),
+            set(C1),
+            set(C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -270,8 +268,7 @@ class DefaultRecordMapperTest {
             statement -> boundStatementBuilder);
     Statement<?> result = mapper.map(record);
     assertThat(result).isInstanceOf(BulkBoundStatement.class);
-    Assertions.assertThat(ReflectionUtils.getInternalState(result, "delegate"))
-        .isSameAs(boundStatement);
+    assertThat(ReflectionUtils.getInternalState(result, "delegate")).isSameAs(boundStatement);
     verify(boundStatementBuilder).setBytesUnsafe(0, TypeCodecs.BIGINT.encode(-123456L, V4));
   }
 
@@ -300,7 +297,8 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            set(C1, C2, C3),
+            set(C1),
+            set(C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -310,8 +308,7 @@ class DefaultRecordMapperTest {
             statement -> boundStatementBuilder);
     Statement<?> result = mapper.map(record);
     assertThat(result).isInstanceOf(BulkBoundStatement.class);
-    Assertions.assertThat(ReflectionUtils.getInternalState(result, "delegate"))
-        .isSameAs(boundStatement);
+    assertThat(ReflectionUtils.getInternalState(result, "delegate")).isSameAs(boundStatement);
     verify(boundStatementBuilder).setBytesUnsafe(0, TypeCodecs.BIGINT.encode(-1L, V4));
   }
 
@@ -338,7 +335,8 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            set(C1, C2, C3),
+            set(C1),
+            set(C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -348,8 +346,7 @@ class DefaultRecordMapperTest {
             statement -> boundStatementBuilder);
     Statement<?> result = mapper.map(record);
     assertThat(result).isInstanceOf(BulkBoundStatement.class);
-    Assertions.assertThat(ReflectionUtils.getInternalState(result, "delegate"))
-        .isSameAs(boundStatement);
+    assertThat(ReflectionUtils.getInternalState(result, "delegate")).isSameAs(boundStatement);
     verify(boundStatementBuilder)
         .setBytesUnsafe(
             0, TypeCodecs.BIGINT.encode(Instant.parse("2017-01-02T00:00:02Z").toEpochMilli(), V4));
@@ -380,7 +377,8 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            set(C1, C2, C3),
+            set(C1),
+            set(C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -390,8 +388,7 @@ class DefaultRecordMapperTest {
             statement -> boundStatementBuilder);
     Statement<?> result = mapper.map(record);
     assertThat(result).isInstanceOf(BulkBoundStatement.class);
-    Assertions.assertThat(ReflectionUtils.getInternalState(result, "delegate"))
-        .isSameAs(boundStatement);
+    assertThat(ReflectionUtils.getInternalState(result, "delegate")).isSameAs(boundStatement);
     verify(boundStatementBuilder)
         .setBytesUnsafe(
             0, TypeCodecs.BIGINT.encode(Instant.parse("2017-11-23T12:34:56Z").toEpochMilli(), V4));
@@ -405,7 +402,8 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            set(C1, C3),
+            set(C1),
+            set(C3),
             V4,
             mapping,
             recordMetadata,
@@ -415,8 +413,7 @@ class DefaultRecordMapperTest {
             statement -> boundStatementBuilder);
     Statement<?> result = mapper.map(record);
     assertThat(result).isInstanceOf(BulkBoundStatement.class);
-    Assertions.assertThat(ReflectionUtils.getInternalState(result, "delegate"))
-        .isSameAs(boundStatement);
+    assertThat(ReflectionUtils.getInternalState(result, "delegate")).isSameAs(boundStatement);
     verify(boundStatementBuilder, times(2))
         .setBytesUnsafe(variableCaptor.capture(), valueCaptor.capture());
     assertParameter(0, 0, TypeCodecs.INT.encode(42, V4));
@@ -431,7 +428,8 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            set(C2, C3),
+            set(C2),
+            set(C3),
             V4,
             mapping,
             recordMetadata,
@@ -441,8 +439,7 @@ class DefaultRecordMapperTest {
             statement -> boundStatementBuilder);
     Statement<?> result = mapper.map(record);
     assertThat(result).isInstanceOf(BulkBoundStatement.class);
-    Assertions.assertThat(ReflectionUtils.getInternalState(result, "delegate"))
-        .isSameAs(boundStatement);
+    assertThat(ReflectionUtils.getInternalState(result, "delegate")).isSameAs(boundStatement);
     verify(boundStatementBuilder).setBytesUnsafe(variableCaptor.capture(), valueCaptor.capture());
     assertParameter(0, 0, null);
   }
@@ -455,7 +452,8 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            set(C1, C2, C3),
+            set(C1),
+            set(C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -479,7 +477,8 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            set(C1, C2, C3),
+            set(C1),
+            set(C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -492,7 +491,7 @@ class DefaultRecordMapperTest {
     UnmappableStatement unmappableStatement = (UnmappableStatement) result;
     assertThat(unmappableStatement.getError())
         .isInstanceOf(InvalidMappingException.class)
-        .hasMessageContaining("Primary key column col1 cannot be mapped to null");
+        .hasMessageContaining("Primary key column col1 cannot be set to null");
   }
 
   @Test
@@ -502,7 +501,8 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            set(C1, C2, C3),
+            set(C1),
+            set(C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -515,7 +515,7 @@ class DefaultRecordMapperTest {
     UnmappableStatement unmappableStatement = (UnmappableStatement) result;
     assertThat(unmappableStatement.getError())
         .isInstanceOf(InvalidMappingException.class)
-        .hasMessageContaining("Primary key column col1 cannot be left unmapped");
+        .hasMessageContaining("Primary key column col1 cannot be left unset");
   }
 
   @Test
@@ -525,7 +525,8 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            set(C1, C2, C3),
+            set(C1),
+            set(C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -550,7 +551,8 @@ class DefaultRecordMapperTest {
     RecordMapper mapper =
         new DefaultRecordMapper(
             insertStatement,
-            set(C1, C2, C3),
+            set(C1),
+            set(C2, C3),
             V4,
             mapping,
             recordMetadata,
@@ -567,6 +569,153 @@ class DefaultRecordMapperTest {
             "Required field field3 (mapped to column \"My Fancy Column Name\") was missing from record. "
                 + "Please remove it from the mapping "
                 + "or set schema.allowMissingFields to true.");
+  }
+
+  @Test
+  void should_map_when_pk_column_is_empty_blob() {
+    when(record.fields()).thenReturn(set(F1, F2, F3));
+    when(c1Def.getType()).thenReturn(DataTypes.TEXT);
+    when(c2Def.getType()).thenReturn(DataTypes.ASCII);
+    when(c3Def.getType()).thenReturn(DataTypes.BLOB);
+    when(record.getFieldValue(F1)).thenReturn("foo");
+    when(record.getFieldValue(F2)).thenReturn("foo");
+    when(record.getFieldValue(F3)).thenReturn(""); // blobs can be empty
+    when(mapping.codec(C1, DataTypes.TEXT, GenericType.STRING)).thenReturn(codec1);
+    when(mapping.codec(C2, DataTypes.ASCII, GenericType.STRING)).thenReturn(codec2);
+    when(mapping.codec(C3, DataTypes.BLOB, GenericType.STRING)).thenReturn(codec3);
+    when(codec1.encode(any(), any())).thenReturn(ByteBuffer.wrap("foo".getBytes(UTF_8)));
+    when(codec2.encode(any(), any())).thenReturn(ByteBuffer.wrap("foo".getBytes(UTF_8)));
+    when(codec3.encode(any(), any())).thenReturn(ByteBuffer.allocate(0));
+    RecordMapper mapper =
+        new DefaultRecordMapper(
+            insertStatement,
+            set(C1),
+            set(C2, C3),
+            V4,
+            mapping,
+            recordMetadata,
+            false,
+            true,
+            false,
+            statement -> boundStatementBuilder);
+    Statement<?> result = mapper.map(record);
+    assertThat(result).isInstanceOf(BulkBoundStatement.class);
+    assertThat(ReflectionUtils.getInternalState(result, "delegate")).isSameAs(boundStatement);
+    verify(boundStatementBuilder, times(3))
+        .setBytesUnsafe(variableCaptor.capture(), valueCaptor.capture());
+    assertParameter(0, 0, ByteBuffer.wrap("foo".getBytes(UTF_8)));
+    assertParameter(1, 1, ByteBuffer.wrap("foo".getBytes(UTF_8)));
+    assertParameter(2, 2, ByteBuffer.allocate(0));
+  }
+
+  @Test
+  void should_not_map_when_partition_key_column_is_empty_string() {
+    when(record.fields()).thenReturn(set(F1, F2, F3));
+    when(record.getFieldValue(F1)).thenReturn("");
+    when(c1Def.getType()).thenReturn(DataTypes.TEXT);
+    when(mapping.codec(C1, DataTypes.TEXT, GenericType.STRING)).thenReturn(codec1);
+    when(codec1.encode(any(), any())).thenReturn(ByteBuffer.allocate(0));
+    RecordMapper mapper =
+        new DefaultRecordMapper(
+            insertStatement,
+            set(C1),
+            set(C2, C3),
+            V4,
+            mapping,
+            recordMetadata,
+            false,
+            true,
+            false,
+            statement -> boundStatementBuilder);
+    Statement<?> result = mapper.map(record);
+    assertThat(result).isNotSameAs(boundStatement).isInstanceOf(UnmappableStatement.class);
+    UnmappableStatement unmappableStatement = (UnmappableStatement) result;
+    assertThat(unmappableStatement.getError())
+        .isInstanceOf(InvalidMappingException.class)
+        .hasMessageContaining("Primary key column col1 cannot be set to empty");
+  }
+
+  @Test
+  void should_not_map_when_partition_key_column_is_empty_blob() {
+    when(record.fields()).thenReturn(set(F1, F2, F3));
+    when(c1Def.getType()).thenReturn(DataTypes.BLOB);
+    when(record.getFieldValue(F1)).thenReturn("");
+    when(mapping.codec(C1, DataTypes.BLOB, GenericType.STRING)).thenReturn(codec1);
+    when(codec1.encode(any(), any())).thenReturn(ByteBuffer.allocate(0));
+    RecordMapper mapper =
+        new DefaultRecordMapper(
+            insertStatement,
+            set(C1),
+            set(C2, C3),
+            V4,
+            mapping,
+            recordMetadata,
+            false,
+            true,
+            false,
+            statement -> boundStatementBuilder);
+    Statement<?> result = mapper.map(record);
+    assertThat(result).isNotSameAs(boundStatement).isInstanceOf(UnmappableStatement.class);
+    UnmappableStatement unmappableStatement = (UnmappableStatement) result;
+    assertThat(unmappableStatement.getError())
+        .isInstanceOf(InvalidMappingException.class)
+        .hasMessageContaining("Primary key column col1 cannot be set to empty");
+  }
+
+  @Test
+  void should_map_when_clustering_column_is_empty_string() {
+    when(record.fields()).thenReturn(set(F1, F2, F3));
+    when(record.getFieldValue(F3)).thenReturn("");
+    when(codec3.encode(any(), any())).thenReturn(ByteBuffer.allocate(0));
+    RecordMapper mapper =
+        new DefaultRecordMapper(
+            insertStatement,
+            set(C1),
+            set(C2, C3),
+            V4,
+            mapping,
+            recordMetadata,
+            false,
+            true,
+            false,
+            statement -> boundStatementBuilder);
+    Statement<?> result = mapper.map(record);
+    assertThat(result).isInstanceOf(BulkBoundStatement.class);
+    assertThat(ReflectionUtils.getInternalState(result, "delegate")).isSameAs(boundStatement);
+    verify(boundStatementBuilder, times(3))
+        .setBytesUnsafe(variableCaptor.capture(), valueCaptor.capture());
+    assertParameter(0, 0, TypeCodecs.INT.encode(42, V4));
+    assertParameter(1, 1, TypeCodecs.BIGINT.encode(4242L, V4));
+    assertParameter(2, 2, ByteBuffer.allocate(0));
+  }
+
+  @Test
+  void should_map_when_clustering_column_is_empty_blob() {
+    when(record.fields()).thenReturn(set(F1, F2, F3));
+    when(c3Def.getType()).thenReturn(DataTypes.BLOB);
+    when(record.getFieldValue(F3)).thenReturn("");
+    when(mapping.codec(C3, DataTypes.BLOB, GenericType.STRING)).thenReturn(codec3);
+    when(codec3.encode(any(), any())).thenReturn(ByteBuffer.allocate(0));
+    RecordMapper mapper =
+        new DefaultRecordMapper(
+            insertStatement,
+            set(C1),
+            set(C2, C3),
+            V4,
+            mapping,
+            recordMetadata,
+            false,
+            true,
+            false,
+            statement -> boundStatementBuilder);
+    Statement<?> result = mapper.map(record);
+    assertThat(result).isInstanceOf(BulkBoundStatement.class);
+    assertThat(ReflectionUtils.getInternalState(result, "delegate")).isSameAs(boundStatement);
+    verify(boundStatementBuilder, times(3))
+        .setBytesUnsafe(variableCaptor.capture(), valueCaptor.capture());
+    assertParameter(0, 0, TypeCodecs.INT.encode(42, V4));
+    assertParameter(1, 1, TypeCodecs.BIGINT.encode(4242L, V4));
+    assertParameter(2, 2, ByteBuffer.allocate(0));
   }
 
   private void assertParameter(int index, int expectedIndex, ByteBuffer expectedValue) {

@@ -36,6 +36,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.dsbulk.codecs.util.OverflowStrategy;
 import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader;
 import com.datastax.oss.dsbulk.runner.ExitStatus;
@@ -49,6 +50,7 @@ import com.datastax.oss.dsbulk.tests.logging.StreamInterceptor;
 import com.datastax.oss.dsbulk.tests.utils.FileUtils;
 import com.datastax.oss.dsbulk.tests.utils.StringUtils;
 import com.datastax.oss.dsbulk.tests.utils.Version;
+import com.datastax.oss.protocol.internal.util.Bytes;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -298,12 +300,10 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertThat(status).isEqualTo(STATUS_COMPLETED_WITH_ERRORS);
     validateNumberOfBadRecords(4);
-    validateExceptionsLog(
-        1, "Primary key column pk cannot be mapped to null", "mapping-errors.log");
-    validateExceptionsLog(
-        1, "Primary key column cc cannot be mapped to null", "mapping-errors.log");
-    validateExceptionsLog(1, "Primary key column pk cannot be left unmapped", "mapping-errors.log");
-    validateExceptionsLog(1, "Primary key column cc cannot be left unmapped", "mapping-errors.log");
+    validateExceptionsLog(1, "Primary key column pk cannot be set to null", "mapping-errors.log");
+    validateExceptionsLog(1, "Primary key column cc cannot be set to null", "mapping-errors.log");
+    validateExceptionsLog(1, "Primary key column pk cannot be left unset", "mapping-errors.log");
+    validateExceptionsLog(1, "Primary key column cc cannot be left unset", "mapping-errors.log");
     validateResultSetSize(0, "SELECT * FROM missing");
   }
 
@@ -341,13 +341,13 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(status).isEqualTo(STATUS_COMPLETED_WITH_ERRORS);
     validateNumberOfBadRecords(4);
     validateExceptionsLog(
-        1, "Primary key column \"PK\" cannot be mapped to null", "mapping-errors.log");
+        1, "Primary key column \"PK\" cannot be set to null", "mapping-errors.log");
     validateExceptionsLog(
-        1, "Primary key column \"CC\" cannot be mapped to null", "mapping-errors.log");
+        1, "Primary key column \"CC\" cannot be set to null", "mapping-errors.log");
     validateExceptionsLog(
-        1, "Primary key column \"PK\" cannot be left unmapped", "mapping-errors.log");
+        1, "Primary key column \"PK\" cannot be left unset", "mapping-errors.log");
     validateExceptionsLog(
-        1, "Primary key column \"CC\" cannot be left unmapped", "mapping-errors.log");
+        1, "Primary key column \"CC\" cannot be left unset", "mapping-errors.log");
     validateResultSetSize(0, "SELECT * FROM missing");
   }
 
@@ -1116,6 +1116,178 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             "{\"id\":\"test10\",\"list_text_column\":[],\"map_text_column\":{},\"set_text_column\":[\"122 more text\",\"8595 more text\"],\"text_column\":null}",
             "{\"id\":\"test11\",\"list_text_column\":[],\"map_text_column\":{\"1234 test text\":\"789 value text\"},\"set_text_column\":[],\"text_column\":null}",
             "{\"id\":\"test12\",\"list_text_column\":[\"1234 test text\",\"789 value text\"],\"map_text_column\":{},\"set_text_column\":[],\"text_column\":null}");
+  }
+
+  /** Test for DAT-573. */
+  @Test
+  void empty_strings() throws Exception {
+
+    session.execute("CREATE TABLE dat573 (pk text, cc text, v text,  PRIMARY KEY (pk, cc))");
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--connector.name");
+    args.add("json");
+    args.add("--connector.json.url");
+    args.add(StringUtils.quoteJson(ClassLoader.getSystemResource("empty-strings.json")));
+    args.add("--schema.keyspace");
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
+    args.add("--schema.table");
+    args.add("dat573");
+
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+
+    List<Row> rows = session.execute("SELECT * FROM dat573").all();
+    assertThat(rows.size()).isEqualTo(1);
+    Row row = rows.get(0);
+    assertThat(row.isNull("pk")).isFalse();
+    assertThat(row.isNull("cc")).isFalse();
+    assertThat(row.isNull("v")).isFalse();
+    assertThat(row.getString("pk")).isEqualTo("foo");
+    assertThat(row.getString("cc")).isEmpty();
+    assertThat(row.getString("v")).isEmpty();
+
+    FileUtils.deleteDirectory(logDir);
+
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--connector.name");
+    args.add("json");
+    args.add("--connector.json.url");
+    args.add(quoteJson(unloadDir));
+    args.add("--connector.json.maxConcurrentFiles");
+    args.add("1");
+    args.add("--schema.keyspace");
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
+    args.add("--schema.table");
+    args.add("dat573");
+
+    status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+    validateOutputFiles(1, unloadDir);
+
+    args = new ArrayList<>();
+    args.add("load");
+    args.add("--connector.name");
+    args.add("json");
+    args.add("--connector.json.url");
+    args.add(quoteJson(unloadDir));
+    args.add("--schema.keyspace");
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
+    args.add("--schema.table");
+    args.add("dat573");
+
+    status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+
+    rows = session.execute("SELECT * FROM dat573").all();
+    assertThat(rows.size()).isEqualTo(1);
+    row = rows.get(0);
+    assertThat(row.isNull("pk")).isFalse();
+    assertThat(row.isNull("cc")).isFalse();
+    assertThat(row.isNull("v")).isFalse();
+    assertThat(row.getString("pk")).isEqualTo("foo");
+    assertThat(row.getString("cc")).isEmpty();
+    assertThat(row.getString("v")).isEmpty();
+  }
+
+  /** Test for DAT-573. */
+  @Test
+  void empty_blobs() throws Exception {
+
+    session.execute("CREATE TABLE dat573b (pk blob, cc blob, v blob,  PRIMARY KEY (pk, cc))");
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--connector.name");
+    args.add("json");
+    args.add("--connector.json.url");
+    args.add(StringUtils.quoteJson(ClassLoader.getSystemResource("empty-blobs.json")));
+    args.add("--schema.keyspace");
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
+    args.add("--schema.table");
+    args.add("dat573b");
+
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+
+    List<Row> rows = session.execute("SELECT * FROM dat573b").all();
+    assertThat(rows.size()).isEqualTo(1);
+    Row row = rows.get(0);
+    assertThat(row.isNull("pk")).isFalse();
+    assertThat(row.isNull("cc")).isFalse();
+    assertThat(row.isNull("v")).isFalse();
+    assertThat(Bytes.toHexString(row.getByteBuffer("pk"))).isEqualTo("0xcafebabe");
+    assertThat(row.getByteBuffer("cc").hasRemaining()).isFalse();
+    assertThat(row.getByteBuffer("v").hasRemaining()).isFalse();
+
+    FileUtils.deleteDirectory(logDir);
+
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--connector.name");
+    args.add("json");
+    args.add("--connector.json.url");
+    args.add(quoteJson(unloadDir));
+    args.add("--connector.json.maxConcurrentFiles");
+    args.add("1");
+    args.add("--schema.keyspace");
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
+    args.add("--schema.table");
+    args.add("dat573b");
+
+    status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+    validateOutputFiles(1, unloadDir);
+
+    args = new ArrayList<>();
+    args.add("load");
+    args.add("--connector.name");
+    args.add("json");
+    args.add("--connector.json.url");
+    args.add(quoteJson(unloadDir));
+    args.add("--schema.keyspace");
+    args.add(
+        session
+            .getKeyspace()
+            .map(CqlIdentifier::asInternal)
+            .orElseThrow(IllegalStateException::new));
+    args.add("--schema.table");
+    args.add("dat573b");
+
+    status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+
+    rows = session.execute("SELECT * FROM dat573b").all();
+    assertThat(rows.size()).isEqualTo(1);
+    row = rows.get(0);
+    assertThat(row.isNull("pk")).isFalse();
+    assertThat(row.isNull("cc")).isFalse();
+    assertThat(row.isNull("v")).isFalse();
+    assertThat(Bytes.toHexString(row.getByteBuffer("pk"))).isEqualTo("0xcafebabe");
+    assertThat(row.getByteBuffer("cc").hasRemaining()).isFalse();
+    assertThat(row.getByteBuffer("v").hasRemaining()).isFalse();
   }
 
   private static void checkNumbersRead(OverflowStrategy overflowStrategy, Path unloadDir)

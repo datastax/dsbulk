@@ -852,8 +852,12 @@ public class CodecUtils {
    * @return the parsed {@link ByteBuffer}.
    */
   public static ByteBuffer parseByteBuffer(String s) {
-    if (s == null || s.isEmpty()) {
+    if (s == null) {
       return null;
+    }
+    // DAT-573: consider empty string as empty byte array
+    if (s.isEmpty()) {
+      return ByteBuffer.allocate(0);
     }
     try {
       return ByteUtils.fromHexString(s);

@@ -51,7 +51,8 @@ class JsonNodeToBlobCodecTest {
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("0x"))
         .toInternal(emptyBb)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode(""))
-        .toInternal(null)
+        // DAT-573: consider empty string as empty byte array
+        .toInternal(emptyBb)
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("NULL"))
