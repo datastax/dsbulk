@@ -15,7 +15,7 @@
  */
 package com.datastax.oss.dsbulk.runner.ccm;
 
-import static com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus.STATUS_OK;
+import static com.datastax.oss.dsbulk.runner.ExitStatus.STATUS_OK;
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.assertStatus;
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.validateOutputFiles;
 import static com.datastax.oss.dsbulk.tests.logging.StreamType.STDERR;
@@ -28,7 +28,7 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.datastax.oss.driver.api.testinfra.session.SessionUtils;
 import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader;
-import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus;
+import com.datastax.oss.dsbulk.runner.ExitStatus;
 import com.datastax.oss.dsbulk.tests.assertions.TestAssertions;
 import com.datastax.oss.dsbulk.tests.ccm.CCMCluster;
 import com.datastax.oss.dsbulk.tests.ccm.CCMCluster.Type;

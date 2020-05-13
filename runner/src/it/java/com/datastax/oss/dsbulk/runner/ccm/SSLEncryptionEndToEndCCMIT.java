@@ -15,7 +15,7 @@
  */
 package com.datastax.oss.dsbulk.runner.ccm;
 
-import static com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus.STATUS_OK;
+import static com.datastax.oss.dsbulk.runner.ExitStatus.STATUS_OK;
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED;
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.assertStatus;
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.createIpByCountryTable;
@@ -27,7 +27,7 @@ import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.internal.core.ssl.DefaultSslEngineFactory;
 import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader;
-import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus;
+import com.datastax.oss.dsbulk.runner.ExitStatus;
 import com.datastax.oss.dsbulk.runner.tests.CsvUtils;
 import com.datastax.oss.dsbulk.tests.ccm.CCMCluster;
 import com.datastax.oss.dsbulk.tests.ccm.DefaultCCMCluster;

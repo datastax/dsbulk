@@ -22,7 +22,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus;
+import com.datastax.oss.dsbulk.runner.ExitStatus;
 import com.datastax.oss.dsbulk.tests.simulacron.SimulacronUtils;
 import com.datastax.oss.dsbulk.tests.utils.FileUtils;
 import com.datastax.oss.dsbulk.workflow.api.log.OperationDirectory;

@@ -15,7 +15,7 @@
  */
 package com.datastax.oss.dsbulk.runner.cloud;
 
-import static com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus.STATUS_OK;
+import static com.datastax.oss.dsbulk.runner.ExitStatus.STATUS_OK;
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED;
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.assertStatus;
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.createIpByCountryTable;
@@ -34,7 +34,7 @@ import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader;
-import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus;
+import com.datastax.oss.dsbulk.runner.ExitStatus;
 import com.datastax.oss.dsbulk.runner.tests.CsvUtils;
 import com.datastax.oss.dsbulk.tests.cloud.SNIProxyServer;
 import com.datastax.oss.dsbulk.tests.cloud.SNIProxyServerExtension;

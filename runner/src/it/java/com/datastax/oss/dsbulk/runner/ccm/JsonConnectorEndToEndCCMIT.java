@@ -15,8 +15,8 @@
  */
 package com.datastax.oss.dsbulk.runner.ccm;
 
-import static com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus.STATUS_COMPLETED_WITH_ERRORS;
-import static com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus.STATUS_OK;
+import static com.datastax.oss.dsbulk.runner.ExitStatus.STATUS_COMPLETED_WITH_ERRORS;
+import static com.datastax.oss.dsbulk.runner.ExitStatus.STATUS_OK;
 import static com.datastax.oss.dsbulk.runner.ccm.CSVConnectorEndToEndCCMIT.assertComplexRows;
 import static com.datastax.oss.dsbulk.runner.ccm.CSVConnectorEndToEndCCMIT.checkNumbersWritten;
 import static com.datastax.oss.dsbulk.runner.ccm.CSVConnectorEndToEndCCMIT.checkTemporalsWritten;
@@ -38,7 +38,7 @@ import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.dsbulk.codecs.util.OverflowStrategy;
 import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader;
-import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader.ExitStatus;
+import com.datastax.oss.dsbulk.runner.ExitStatus;
 import com.datastax.oss.dsbulk.runner.tests.JsonUtils;
 import com.datastax.oss.dsbulk.tests.ccm.CCMCluster;
 import com.datastax.oss.dsbulk.tests.ccm.annotations.CCMConfig;
