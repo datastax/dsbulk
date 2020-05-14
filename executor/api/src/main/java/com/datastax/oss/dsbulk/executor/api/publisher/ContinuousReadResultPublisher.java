@@ -41,7 +41,6 @@ public class ContinuousReadResultPublisher implements Publisher<ReadResult> {
   private final @NonNull ContinuousSession session;
   private final @Nullable ExecutionListener listener;
   private final @Nullable Semaphore maxConcurrentRequests;
-  private final @Nullable Semaphore maxConcurrentQueries;
   private final @Nullable RateLimiter rateLimiter;
   private final boolean failFast;
 
@@ -55,7 +54,7 @@ public class ContinuousReadResultPublisher implements Publisher<ReadResult> {
    */
   public ContinuousReadResultPublisher(
       @NonNull Statement<?> statement, @NonNull ContinuousSession session, boolean failFast) {
-    this(statement, session, failFast, null, null, null, null);
+    this(statement, session, failFast, null, null, null);
   }
 
   /**
@@ -67,8 +66,6 @@ public class ContinuousReadResultPublisher implements Publisher<ReadResult> {
    * @param listener The {@link ExecutionListener} to use.
    * @param maxConcurrentRequests The {@link Semaphore} to use to regulate the amount of in-flight
    *     requests.
-   * @param maxConcurrentQueries The {@link Semaphore} to use to regulate the amount of in-flight
-   *     queries.
    * @param rateLimiter The {@link RateLimiter} to use to regulate throughput.
    */
   public ContinuousReadResultPublisher(
@@ -77,13 +74,11 @@ public class ContinuousReadResultPublisher implements Publisher<ReadResult> {
       boolean failFast,
       @Nullable ExecutionListener listener,
       @Nullable Semaphore maxConcurrentRequests,
-      @Nullable Semaphore maxConcurrentQueries,
       @Nullable RateLimiter rateLimiter) {
     this.statement = statement;
     this.session = session;
     this.listener = listener;
     this.maxConcurrentRequests = maxConcurrentRequests;
-    this.maxConcurrentQueries = maxConcurrentQueries;
     this.rateLimiter = rateLimiter;
     this.failFast = failFast;
   }
@@ -97,13 +92,7 @@ public class ContinuousReadResultPublisher implements Publisher<ReadResult> {
     // of the results.
     ContinuousReadResultSubscription subscription =
         new ContinuousReadResultSubscription(
-            subscriber,
-            statement,
-            listener,
-            maxConcurrentRequests,
-            maxConcurrentQueries,
-            rateLimiter,
-            failFast);
+            subscriber, statement, listener, maxConcurrentRequests, rateLimiter, failFast);
     try {
       subscriber.onSubscribe(subscription);
       // must be called after onSubscribe

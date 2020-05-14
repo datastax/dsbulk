@@ -1089,7 +1089,9 @@ When using continuous paging, also make sure to set this number to a value equal
 
 The special syntax `NC` can be used to specify a number that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 concurrent queries.
 
-Default: **"1C"**.
+The default value is 'AUTO'; with this special value, DSBulk will optimize the number of concurrent queries according to the number of available cores, and the operation being executed. The actual value usually ranges from the number of cores to eight times that number.
+
+Default: **"AUTO"**.
 
 <a name="executor"></a>
 ## Executor Settings

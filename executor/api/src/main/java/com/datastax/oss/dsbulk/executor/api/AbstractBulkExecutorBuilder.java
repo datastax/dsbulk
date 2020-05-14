@@ -28,8 +28,6 @@ public abstract class AbstractBulkExecutorBuilder<T extends BulkExecutor>
 
   protected int maxInFlightRequests = AbstractBulkExecutor.DEFAULT_MAX_IN_FLIGHT_REQUESTS;
 
-  protected int maxInFlightQueries = AbstractBulkExecutor.DEFAULT_MAX_IN_FLIGHT_QUERIES;
-
   protected int maxRequestsPerSecond = AbstractBulkExecutor.DEFAULT_MAX_REQUESTS_PER_SECOND;
 
   protected ExecutionListener listener;
@@ -49,13 +47,6 @@ public abstract class AbstractBulkExecutorBuilder<T extends BulkExecutor>
   @SuppressWarnings("UnusedReturnValue")
   public AbstractBulkExecutorBuilder<T> withMaxInFlightRequests(int maxInFlightRequests) {
     this.maxInFlightRequests = maxInFlightRequests;
-    return this;
-  }
-
-  @Override
-  @SuppressWarnings("UnusedReturnValue")
-  public AbstractBulkExecutorBuilder<T> withMaxInFlightQueries(int maxInFlightQueries) {
-    this.maxInFlightQueries = maxInFlightQueries;
     return this;
   }
 

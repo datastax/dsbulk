@@ -66,7 +66,7 @@ public class ExecutorSettings {
           LOGGER.warn(
               "Setting executor.continuousPaging.maxConcurrentQueries has been removed and is not honored anymore; "
                   + "please remove it from your configuration. To configure query concurrency, please use "
-                  + "--dsbulk.executor.maxConcurrentQueries instead.");
+                  + "--dsbulk.engine.maxConcurrentQueries instead.");
         }
       }
     } catch (ConfigException e) {

@@ -61,33 +61,11 @@ public interface BulkExecutorBuilder<T extends BulkExecutor> {
    * The default is {@link AbstractBulkExecutor#DEFAULT_MAX_IN_FLIGHT_REQUESTS}. Setting this option
    * to any negative value will disable it.
    *
-   * <p>This method acts on request level; its equivalent on the query level is {@link
-   * #withMaxInFlightQueries(int)}.
-   *
    * @param maxInFlightRequests the maximum number of in-flight requests.
    * @return this builder (for method chaining).
    */
   @SuppressWarnings("UnusedReturnValue")
   BulkExecutorBuilder<T> withMaxInFlightRequests(int maxInFlightRequests);
-
-  /**
-   * Sets the maximum number of in-flight queries. In other words, sets the maximum number of
-   * concurrent uncompleted queries waiting for completion. If that limit is reached, the executor
-   * will block until the number of in-flight queries drops below the threshold. <em>This feature
-   * should not be used in a fully non-blocking application</em>.
-   *
-   * <p>This acts as a safeguard against workflows that generate more queries than they can handle.
-   * The default is {@link AbstractBulkExecutor#DEFAULT_MAX_IN_FLIGHT_QUERIES}. Setting this option
-   * to any negative value will disable it.
-   *
-   * <p>This method acts on query level; its equivalent on the request level is {@link
-   * #withMaxInFlightRequests(int)}.
-   *
-   * @param maxInFlightQueries the maximum number of in-flight queries.
-   * @return this builder (for method chaining).
-   */
-  @SuppressWarnings("UnusedReturnValue")
-  BulkExecutorBuilder<T> withMaxInFlightQueries(int maxInFlightQueries);
 
   /**
    * Sets the maximum number of concurrent requests per second. If that limit is reached, the
