@@ -59,7 +59,7 @@ public interface SyncBulkWriter extends AutoCloseable {
    * @param statements The statements to execute.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
-  default void writeSync(Stream<? extends Statement> statements) throws BulkExecutionException {
+  default void writeSync(Stream<? extends Statement<?>> statements) throws BulkExecutionException {
     writeSync(statements, ignored -> {});
   }
 
@@ -71,7 +71,7 @@ public interface SyncBulkWriter extends AutoCloseable {
    * @param consumer A consumer for write results.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
-  void writeSync(Stream<? extends Statement> statements, Consumer<? super WriteResult> consumer)
+  void writeSync(Stream<? extends Statement<?>> statements, Consumer<? super WriteResult> consumer)
       throws BulkExecutionException;
 
   /**
@@ -83,7 +83,8 @@ public interface SyncBulkWriter extends AutoCloseable {
    * @param statements The statements to execute.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
-  default void writeSync(Iterable<? extends Statement> statements) throws BulkExecutionException {
+  default void writeSync(Iterable<? extends Statement<?>> statements)
+      throws BulkExecutionException {
     writeSync(statements, ignored -> {});
   }
 
@@ -95,7 +96,8 @@ public interface SyncBulkWriter extends AutoCloseable {
    * @param consumer A consumer for write results.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
-  void writeSync(Iterable<? extends Statement> statements, Consumer<? super WriteResult> consumer)
+  void writeSync(
+      Iterable<? extends Statement<?>> statements, Consumer<? super WriteResult> consumer)
       throws BulkExecutionException;
 
   /**
@@ -107,7 +109,8 @@ public interface SyncBulkWriter extends AutoCloseable {
    * @param statements The statements to execute.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
-  default void writeSync(Publisher<? extends Statement> statements) throws BulkExecutionException {
+  default void writeSync(Publisher<? extends Statement<?>> statements)
+      throws BulkExecutionException {
     writeSync(statements, ignored -> {});
   }
 
@@ -119,6 +122,7 @@ public interface SyncBulkWriter extends AutoCloseable {
    * @param consumer A consumer for write results.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
-  void writeSync(Publisher<? extends Statement> statements, Consumer<? super WriteResult> consumer)
+  void writeSync(
+      Publisher<? extends Statement<?>> statements, Consumer<? super WriteResult> consumer)
       throws BulkExecutionException;
 }

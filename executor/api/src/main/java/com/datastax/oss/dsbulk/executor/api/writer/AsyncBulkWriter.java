@@ -66,7 +66,7 @@ public interface AsyncBulkWriter extends AutoCloseable {
    *     operation completes.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
-  default CompletableFuture<Void> writeAsync(Stream<? extends Statement> statements)
+  default CompletableFuture<Void> writeAsync(Stream<? extends Statement<?>> statements)
       throws BulkExecutionException {
     return writeAsync(statements, ignored -> {});
   }
@@ -82,7 +82,7 @@ public interface AsyncBulkWriter extends AutoCloseable {
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
   CompletableFuture<Void> writeAsync(
-      Stream<? extends Statement> statements, Consumer<? super WriteResult> consumer)
+      Stream<? extends Statement<?>> statements, Consumer<? super WriteResult> consumer)
       throws BulkExecutionException;
 
   /**
@@ -96,7 +96,7 @@ public interface AsyncBulkWriter extends AutoCloseable {
    *     operation completes.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
-  default CompletableFuture<Void> writeAsync(Iterable<? extends Statement> statements)
+  default CompletableFuture<Void> writeAsync(Iterable<? extends Statement<?>> statements)
       throws BulkExecutionException {
     return writeAsync(statements, ignored -> {});
   }
@@ -112,7 +112,7 @@ public interface AsyncBulkWriter extends AutoCloseable {
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
   CompletableFuture<Void> writeAsync(
-      Iterable<? extends Statement> statements, Consumer<? super WriteResult> consumer)
+      Iterable<? extends Statement<?>> statements, Consumer<? super WriteResult> consumer)
       throws BulkExecutionException;
 
   /**
@@ -126,7 +126,7 @@ public interface AsyncBulkWriter extends AutoCloseable {
    *     operation completes.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
-  default CompletableFuture<Void> writeAsync(Publisher<? extends Statement> statements)
+  default CompletableFuture<Void> writeAsync(Publisher<? extends Statement<?>> statements)
       throws BulkExecutionException {
     return writeAsync(statements, ignored -> {});
   }
@@ -142,5 +142,5 @@ public interface AsyncBulkWriter extends AutoCloseable {
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
   CompletableFuture<Void> writeAsync(
-      Publisher<? extends Statement> statements, Consumer<? super WriteResult> consumer);
+      Publisher<? extends Statement<?>> statements, Consumer<? super WriteResult> consumer);
 }

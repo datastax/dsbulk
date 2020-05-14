@@ -69,14 +69,14 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
 
   @Override
   public void writeSync(
-      Stream<? extends Statement> statements, Consumer<? super WriteResult> consumer)
+      Stream<? extends Statement<?>> statements, Consumer<? super WriteResult> consumer)
       throws BulkExecutionException {
     writeSync(Flux.fromStream(statements), consumer);
   }
 
   @Override
   public void writeSync(
-      Iterable<? extends Statement> statements, Consumer<? super WriteResult> consumer)
+      Iterable<? extends Statement<?>> statements, Consumer<? super WriteResult> consumer)
       throws BulkExecutionException {
     writeSync(Flux.fromIterable(statements), consumer);
   }
@@ -93,21 +93,21 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
 
   @Override
   public CompletableFuture<Void> writeAsync(
-      Stream<? extends Statement> statements, Consumer<? super WriteResult> consumer)
+      Stream<? extends Statement<?>> statements, Consumer<? super WriteResult> consumer)
       throws BulkExecutionException {
     return writeAsync(Flux.fromStream(statements), consumer);
   }
 
   @Override
   public CompletableFuture<Void> writeAsync(
-      Iterable<? extends Statement> statements, Consumer<? super WriteResult> consumer)
+      Iterable<? extends Statement<?>> statements, Consumer<? super WriteResult> consumer)
       throws BulkExecutionException {
     return writeAsync(Flux.fromIterable(statements), consumer);
   }
 
   @Override
   public CompletableFuture<Void> writeAsync(
-      Publisher<? extends Statement> statements, Consumer<? super WriteResult> consumer) {
+      Publisher<? extends Statement<?>> statements, Consumer<? super WriteResult> consumer) {
     CompletableFuture<Void> future = new CompletableFuture<>();
     Flux.from(statements)
         .flatMap(this::writeReactive)
@@ -133,26 +133,26 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
   }
 
   @Override
-  public Flux<WriteResult> writeReactive(Stream<? extends Statement> statements)
+  public Flux<WriteResult> writeReactive(Stream<? extends Statement<?>> statements)
       throws BulkExecutionException {
     return writeReactive(Flux.fromStream(statements));
   }
 
   @Override
-  public Flux<WriteResult> writeReactive(Iterable<? extends Statement> statements)
+  public Flux<WriteResult> writeReactive(Iterable<? extends Statement<?>> statements)
       throws BulkExecutionException {
     return writeReactive(Flux.fromIterable(statements));
   }
 
   @Override
-  public Flux<WriteResult> writeReactive(Publisher<? extends Statement> statements)
+  public Flux<WriteResult> writeReactive(Publisher<? extends Statement<?>> statements)
       throws BulkExecutionException {
     return Flux.from(statements).flatMap(this::writeReactive);
   }
 
   @Override
   public void readSync(
-      Stream<? extends Statement> statements, Consumer<? super ReadResult> consumer)
+      Stream<? extends Statement<?>> statements, Consumer<? super ReadResult> consumer)
       throws BulkExecutionException {
     readSync(Flux.fromStream(statements), consumer);
   }
@@ -165,28 +165,28 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
 
   @Override
   public CompletableFuture<Void> readAsync(
-      Stream<? extends Statement> statements, Consumer<? super ReadResult> consumer)
+      Stream<? extends Statement<?>> statements, Consumer<? super ReadResult> consumer)
       throws BulkExecutionException {
     return readAsync(Flux.fromStream(statements), consumer);
   }
 
   @Override
   public void readSync(
-      Iterable<? extends Statement> statements, Consumer<? super ReadResult> consumer)
+      Iterable<? extends Statement<?>> statements, Consumer<? super ReadResult> consumer)
       throws BulkExecutionException {
     readSync(Flux.fromIterable(statements), consumer);
   }
 
   @Override
   public CompletableFuture<Void> readAsync(
-      Iterable<? extends Statement> statements, Consumer<? super ReadResult> consumer)
+      Iterable<? extends Statement<?>> statements, Consumer<? super ReadResult> consumer)
       throws BulkExecutionException {
     return readAsync(Flux.fromIterable(statements), consumer);
   }
 
   @Override
   public CompletableFuture<Void> readAsync(
-      Publisher<? extends Statement> statements, Consumer<? super ReadResult> consumer) {
+      Publisher<? extends Statement<?>> statements, Consumer<? super ReadResult> consumer) {
     CompletableFuture<Void> future = new CompletableFuture<>();
     Flux.from(statements)
         .flatMap(this::readReactive)
@@ -217,19 +217,19 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
   }
 
   @Override
-  public Flux<ReadResult> readReactive(Stream<? extends Statement> statements)
+  public Flux<ReadResult> readReactive(Stream<? extends Statement<?>> statements)
       throws BulkExecutionException {
     return readReactive(Flux.fromStream(statements));
   }
 
   @Override
-  public Flux<ReadResult> readReactive(Iterable<? extends Statement> statements)
+  public Flux<ReadResult> readReactive(Iterable<? extends Statement<?>> statements)
       throws BulkExecutionException {
     return readReactive(Flux.fromIterable(statements));
   }
 
   @Override
-  public Flux<ReadResult> readReactive(Publisher<? extends Statement> statements)
+  public Flux<ReadResult> readReactive(Publisher<? extends Statement<?>> statements)
       throws BulkExecutionException {
     return Flux.from(statements).flatMap(this::readReactive);
   }

@@ -47,7 +47,7 @@ public interface BulkWriter extends SyncBulkWriter, AsyncBulkWriter, ReactiveBul
 
   @Override
   default void writeSync(
-      Publisher<? extends Statement> statements, Consumer<? super WriteResult> consumer)
+      Publisher<? extends Statement<?>> statements, Consumer<? super WriteResult> consumer)
       throws BulkExecutionException {
     try {
       Uninterruptibles.getUninterruptibly(writeAsync(statements, consumer));

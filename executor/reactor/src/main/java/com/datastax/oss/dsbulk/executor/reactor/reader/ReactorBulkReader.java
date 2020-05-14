@@ -62,7 +62,7 @@ public interface ReactorBulkReader extends ReactiveBulkReader {
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
   @Override
-  Flux<ReadResult> readReactive(Stream<? extends Statement> statements)
+  Flux<ReadResult> readReactive(Stream<? extends Statement<?>> statements)
       throws BulkExecutionException;
 
   /**
@@ -73,7 +73,7 @@ public interface ReactorBulkReader extends ReactiveBulkReader {
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
   @Override
-  Flux<ReadResult> readReactive(Iterable<? extends Statement> statements)
+  Flux<ReadResult> readReactive(Iterable<? extends Statement<?>> statements)
       throws BulkExecutionException;
 
   /**
@@ -84,6 +84,6 @@ public interface ReactorBulkReader extends ReactiveBulkReader {
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
   @Override
-  Flux<ReadResult> readReactive(Publisher<? extends Statement> statements)
+  Flux<ReadResult> readReactive(Publisher<? extends Statement<?>> statements)
       throws BulkExecutionException;
 }

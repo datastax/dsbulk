@@ -65,7 +65,7 @@ public interface ReactorBulkWriter extends ReactiveBulkWriter {
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
   @Override
-  Flux<WriteResult> writeReactive(Stream<? extends Statement> statements)
+  Flux<WriteResult> writeReactive(Stream<? extends Statement<?>> statements)
       throws BulkExecutionException;
 
   /**
@@ -76,7 +76,7 @@ public interface ReactorBulkWriter extends ReactiveBulkWriter {
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
   @Override
-  Flux<WriteResult> writeReactive(Iterable<? extends Statement> statements)
+  Flux<WriteResult> writeReactive(Iterable<? extends Statement<?>> statements)
       throws BulkExecutionException;
 
   /**
@@ -87,6 +87,6 @@ public interface ReactorBulkWriter extends ReactiveBulkWriter {
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
   @Override
-  Flux<WriteResult> writeReactive(Publisher<? extends Statement> statements)
+  Flux<WriteResult> writeReactive(Publisher<? extends Statement<?>> statements)
       throws BulkExecutionException;
 }

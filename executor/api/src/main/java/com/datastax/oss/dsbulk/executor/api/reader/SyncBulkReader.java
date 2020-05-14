@@ -62,7 +62,7 @@ public interface SyncBulkReader extends AutoCloseable {
    * @param consumer A consumer for read results.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
-  void readSync(Stream<? extends Statement> statements, Consumer<? super ReadResult> consumer)
+  void readSync(Stream<? extends Statement<?>> statements, Consumer<? super ReadResult> consumer)
       throws BulkExecutionException;
 
   /**
@@ -73,7 +73,7 @@ public interface SyncBulkReader extends AutoCloseable {
    * @param consumer A consumer for read results.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
-  void readSync(Iterable<? extends Statement> statements, Consumer<? super ReadResult> consumer)
+  void readSync(Iterable<? extends Statement<?>> statements, Consumer<? super ReadResult> consumer)
       throws BulkExecutionException;
 
   /**
@@ -84,6 +84,6 @@ public interface SyncBulkReader extends AutoCloseable {
    * @param consumer A consumer for read results.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
-  void readSync(Publisher<? extends Statement> statements, Consumer<? super ReadResult> consumer)
+  void readSync(Publisher<? extends Statement<?>> statements, Consumer<? super ReadResult> consumer)
       throws BulkExecutionException;
 }

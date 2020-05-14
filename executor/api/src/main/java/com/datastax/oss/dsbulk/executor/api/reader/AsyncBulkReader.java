@@ -71,7 +71,7 @@ public interface AsyncBulkReader extends AutoCloseable {
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
   CompletableFuture<Void> readAsync(
-      Stream<? extends Statement> statements, Consumer<? super ReadResult> consumer)
+      Stream<? extends Statement<?>> statements, Consumer<? super ReadResult> consumer)
       throws BulkExecutionException;
 
   /**
@@ -85,7 +85,7 @@ public interface AsyncBulkReader extends AutoCloseable {
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
   CompletableFuture<Void> readAsync(
-      Iterable<? extends Statement> statements, Consumer<? super ReadResult> consumer)
+      Iterable<? extends Statement<?>> statements, Consumer<? super ReadResult> consumer)
       throws BulkExecutionException;
 
   /**
@@ -99,6 +99,6 @@ public interface AsyncBulkReader extends AutoCloseable {
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
   CompletableFuture<Void> readAsync(
-      Publisher<? extends Statement> statements, Consumer<? super ReadResult> consumer)
+      Publisher<? extends Statement<?>> statements, Consumer<? super ReadResult> consumer)
       throws BulkExecutionException;
 }

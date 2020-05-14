@@ -58,7 +58,7 @@ public interface ReactiveBulkWriter extends AutoCloseable {
    * @return A {@link Publisher publisher} of write results.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
-  Publisher<WriteResult> writeReactive(Stream<? extends Statement> statements)
+  Publisher<WriteResult> writeReactive(Stream<? extends Statement<?>> statements)
       throws BulkExecutionException;
 
   /**
@@ -68,7 +68,7 @@ public interface ReactiveBulkWriter extends AutoCloseable {
    * @return A {@link Publisher publisher} of write results.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
-  Publisher<WriteResult> writeReactive(Iterable<? extends Statement> statements)
+  Publisher<WriteResult> writeReactive(Iterable<? extends Statement<?>> statements)
       throws BulkExecutionException;
 
   /**
@@ -78,6 +78,6 @@ public interface ReactiveBulkWriter extends AutoCloseable {
    * @return A {@link Publisher publisher} of write results.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
-  Publisher<WriteResult> writeReactive(Publisher<? extends Statement> statements)
+  Publisher<WriteResult> writeReactive(Publisher<? extends Statement<?>> statements)
       throws BulkExecutionException;
 }

@@ -46,7 +46,7 @@ public interface BulkReader extends SyncBulkReader, AsyncBulkReader, ReactiveBul
 
   @Override
   default void readSync(
-      Publisher<? extends Statement> statements, Consumer<? super ReadResult> consumer)
+      Publisher<? extends Statement<?>> statements, Consumer<? super ReadResult> consumer)
       throws BulkExecutionException {
     try {
       Uninterruptibles.getUninterruptibly(readAsync(statements, consumer));

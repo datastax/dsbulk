@@ -56,7 +56,7 @@ public interface ReactiveBulkReader extends AutoCloseable {
    * @return A {@link Publisher publisher} of read results.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
-  Publisher<ReadResult> readReactive(Stream<? extends Statement> statements)
+  Publisher<ReadResult> readReactive(Stream<? extends Statement<?>> statements)
       throws BulkExecutionException;
 
   /**
@@ -66,7 +66,7 @@ public interface ReactiveBulkReader extends AutoCloseable {
    * @return A {@link Publisher publisher} of read results.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
-  Publisher<ReadResult> readReactive(Iterable<? extends Statement> statements)
+  Publisher<ReadResult> readReactive(Iterable<? extends Statement<?>> statements)
       throws BulkExecutionException;
 
   /**
@@ -76,6 +76,6 @@ public interface ReactiveBulkReader extends AutoCloseable {
    * @return A {@link Publisher publisher} of read results.
    * @throws BulkExecutionException if the operation cannot complete normally.
    */
-  Publisher<ReadResult> readReactive(Publisher<? extends Statement> statements)
+  Publisher<ReadResult> readReactive(Publisher<? extends Statement<?>> statements)
       throws BulkExecutionException;
 }
