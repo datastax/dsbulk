@@ -159,11 +159,11 @@ public class DefaultRecordMapper implements RecordMapper {
     TypeCodec<T> codec = mapping.codec(variable, cqlType, javaType);
     ByteBuffer bb = codec.encode(raw, builder.protocolVersion());
     boolean isNull = isNull(bb, cqlType);
-    if ((isNull || isNullOrEmpty(bb)) && partitionKeyVariables.contains(variable)) {
-      if (isNull) {
-        throw InvalidMappingException.nullPrimaryKey(variable);
-      } else {
-        throw InvalidMappingException.emptyPrimaryKey(variable);
+    if (isNull || isEmpty(bb)) {
+      if (partitionKeyVariables.contains(variable)) {
+        throw isNull
+            ? InvalidMappingException.nullPrimaryKey(variable)
+            : InvalidMappingException.emptyPrimaryKey(variable);
       }
     }
     if (isNull) {
@@ -196,7 +196,7 @@ public class DefaultRecordMapper implements RecordMapper {
     }
   }
 
-  private boolean isNullOrEmpty(ByteBuffer bb) {
+  private boolean isEmpty(ByteBuffer bb) {
     return bb == null || !bb.hasRemaining();
   }
 
