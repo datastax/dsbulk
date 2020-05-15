@@ -19,6 +19,7 @@ import static com.datastax.oss.dsbulk.tests.ccm.CCMCluster.Type.DSE;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import ch.qos.logback.core.joran.spi.JoranException;
+import com.datastax.oss.driver.api.core.DriverTimeoutException;
 import com.datastax.oss.driver.api.core.metadata.EndPoint;
 import com.datastax.oss.driver.api.core.servererrors.OverloadedException;
 import com.datastax.oss.driver.api.core.servererrors.ServerError;
@@ -113,7 +114,7 @@ public class CCMExtension extends RemoteClusterExtension
   public void handleTestExecutionException(ExtensionContext context, Throwable throwable)
       throws Throwable {
     if (shouldPrintDiagnostic(throwable)) {
-      LOGGER.error("CCM test failed due to server failure", throwable);
+      LOGGER.error("CCM test failed due to a server failure or timeout", throwable);
       CCMCluster ccm = getOrCreateCCM(context);
       ccm.printDiagnostics();
     }
@@ -121,20 +122,21 @@ public class CCMExtension extends RemoteClusterExtension
   }
 
   private static boolean shouldPrintDiagnostic(Throwable throwable) {
-    if (throwable instanceof CCMException
-        || throwable instanceof ServerError
-        || throwable instanceof OverloadedException) {
+    if (isServerFailureOrTimeout(throwable)) {
       return true;
     }
-    if (throwable instanceof AssertionError) {
-      Throwable cause = throwable.getCause();
-      if (cause != null) {
-        return cause instanceof CCMException
-            || cause instanceof ServerError
-            || cause instanceof OverloadedException;
-      }
+    Throwable cause = throwable.getCause();
+    if (cause != null) {
+      return isServerFailureOrTimeout(cause);
     }
     return false;
+  }
+
+  private static boolean isServerFailureOrTimeout(Throwable throwable) {
+    return throwable instanceof CCMException
+        || throwable instanceof ServerError
+        || throwable instanceof OverloadedException
+        || throwable instanceof DriverTimeoutException;
   }
 
   @Override
