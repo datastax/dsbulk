@@ -48,8 +48,6 @@ public class StatsSettings {
       numPartitions = config.getInt(NUM_PARTITIONS);
     } catch (ConfigException e) {
       throw ConfigUtils.convertConfigException(e, "dsbulk.stats");
-    } catch (IllegalArgumentException e) {
-      throw new IllegalArgumentException(e);
     }
   }
 
