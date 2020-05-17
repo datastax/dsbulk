@@ -15,20 +15,24 @@
  */
 package com.datastax.oss.dsbulk.workflow.load;
 
+import com.codahale.metrics.Histogram;
 import com.codahale.metrics.MetricRegistry;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.BatchableStatement;
+import com.datastax.oss.driver.api.core.cql.BoundStatement;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.metrics.Metrics;
 import com.datastax.oss.driver.shaded.guava.common.base.Stopwatch;
 import com.datastax.oss.dsbulk.codecs.ConvertingCodecFactory;
 import com.datastax.oss.dsbulk.commons.utils.DurationUtils;
+import com.datastax.oss.dsbulk.commons.utils.ThrowableUtils;
 import com.datastax.oss.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.oss.dsbulk.connectors.api.Connector;
 import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.datastax.oss.dsbulk.executor.api.result.EmptyWriteResult;
 import com.datastax.oss.dsbulk.executor.api.result.WriteResult;
 import com.datastax.oss.dsbulk.executor.api.writer.BulkWriter;
+import com.datastax.oss.dsbulk.sampler.DataSizeSampler;
 import com.datastax.oss.dsbulk.workflow.api.Workflow;
 import com.datastax.oss.dsbulk.workflow.commons.log.LogManager;
 import com.datastax.oss.dsbulk.workflow.commons.metrics.MetricsManager;
@@ -66,6 +70,9 @@ public class LoadWorkflow implements Workflow {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadWorkflow.class);
 
+  private static final int _1_KB = 1024;
+  private static final int _10_KB = 10 * _1_KB;
+
   private final SettingsManager settingsManager;
   private final AtomicBoolean closed = new AtomicBoolean(false);
 
@@ -77,10 +84,11 @@ public class LoadWorkflow implements Workflow {
   private BulkWriter executor;
   private boolean batchingEnabled;
   private boolean dryRun;
-  private int resourceCount;
   private int batchBufferSize;
   private int writeConcurrency;
   private Scheduler scheduler;
+  private int numCores;
+  private boolean useThreadPerCore;
 
   private Function<Record, BatchableStatement<?>> mapper;
   private Function<Publisher<BatchableStatement<?>>, Publisher<Statement<?>>> batcher;
@@ -97,7 +105,6 @@ public class LoadWorkflow implements Workflow {
   private Function<Flux<WriteResult>, Flux<WriteResult>> failedWritesHandler;
   private Function<Flux<WriteResult>, Flux<Void>> resultPositionsHndler;
   private Function<Flux<WriteResult>, Flux<WriteResult>> queryWarningsHandler;
-  private int numCores;
 
   LoadWorkflow(Config config) {
     settingsManager = new SettingsManager(config);
@@ -178,9 +185,15 @@ public class LoadWorkflow implements Workflow {
     terminationHandler = logManager.newTerminationHandler();
     numCores = Runtime.getRuntime().availableProcessors();
     scheduler = Schedulers.newParallel(numCores, new DefaultThreadFactory("workflow"));
-    writeConcurrency = engineSettings.getMaxConcurrentQueries().orElse(numCores * 4);
-    resourceCount = connector.estimatedResourceCount();
-    LOGGER.debug("Using write concurrency: " + writeConcurrency);
+    int resourceCount = connector.estimatedResourceCount();
+    useThreadPerCore = resourceCount >= WorkflowUtils.TPC_THRESHOLD;
+    LOGGER.debug("Using thread-per-core strategy: {}", useThreadPerCore);
+    writeConcurrency =
+        engineSettings.getMaxConcurrentQueries().orElseGet(this::determineWriteConcurrency);
+    LOGGER.debug(
+        "Using write concurrency: {} (user-supplied: {})",
+        writeConcurrency,
+        engineSettings.getMaxConcurrentQueries().isPresent());
   }
 
   @Override
@@ -188,7 +201,7 @@ public class LoadWorkflow implements Workflow {
     LOGGER.debug("{} started.", this);
     metricsManager.start();
     Stopwatch timer = Stopwatch.createStarted();
-    (resourceCount >= WorkflowUtils.TPC_THRESHOLD ? threadPerCoreFlux() : parallelFlux())
+    (useThreadPerCore ? threadPerCoreFlux() : parallelFlux())
         .transform(this::executeStatements)
         .transform(queryWarningsHandler)
         .transform(failedWritesHandler)
@@ -291,5 +304,55 @@ public class LoadWorkflow implements Workflow {
     } else {
       return "Operation " + executionId;
     }
+  }
+
+  private int determineWriteConcurrency() {
+    if (dryRun) {
+      return numCores;
+    }
+    LOGGER.debug("Sampling data...");
+    Histogram sample =
+        DataSizeSampler.sampleWrites(
+            session.getContext(),
+            Flux.from(connector.read())
+                .onErrorContinue(
+                    (error, v) ->
+                        LOGGER.debug(
+                            "Sampling failed: {}", ThrowableUtils.getSanitizedErrorMessage(error)))
+                .<Statement<?>>map(mapper)
+                .filter(BoundStatement.class::isInstance)
+                .take(1000)
+                .toIterable());
+    double meanSize;
+    if (sample.getCount() < 100) {
+      // sample too small, go with a common value
+      LOGGER.debug("Data sample is too small: {}, discarding", sample.getCount());
+      meanSize = _1_KB;
+    } else {
+      meanSize = sample.getSnapshot().getMean();
+      LOGGER.debug("Average write size in bytes: {}", meanSize);
+    }
+    int writeConcurrency;
+    if (meanSize <= 128) {
+      if (useThreadPerCore) {
+        writeConcurrency = numCores * 32;
+      } else {
+        writeConcurrency = numCores * 8;
+      }
+    } else if (meanSize <= _1_KB) {
+      if (useThreadPerCore) {
+        writeConcurrency = numCores * 16;
+      } else {
+        writeConcurrency = numCores * 4;
+      }
+    } else if (meanSize <= _10_KB) {
+      writeConcurrency = numCores * 2;
+    } else {
+      writeConcurrency = numCores;
+    }
+    if (!batchingEnabled && meanSize <= _1_KB) {
+      writeConcurrency *= 8;
+    }
+    return writeConcurrency;
   }
 }

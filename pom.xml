@@ -38,6 +38,7 @@
     <module>compression</module>
     <module>format</module>
     <module>connectors</module>
+    <module>sampler</module>
     <module>batcher</module>
     <module>mapping</module>
     <module>partitioner</module>
@@ -126,6 +127,11 @@
       <dependency>
         <groupId>com.datastax.oss</groupId>
         <artifactId>dsbulk-format</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>dsbulk-sampler</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>

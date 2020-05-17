@@ -15,19 +15,23 @@
  */
 package com.datastax.oss.dsbulk.workflow.unload;
 
+import com.codahale.metrics.Histogram;
 import com.codahale.metrics.MetricRegistry;
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.metrics.Metrics;
 import com.datastax.oss.driver.shaded.guava.common.base.Stopwatch;
 import com.datastax.oss.dsbulk.codecs.ConvertingCodecFactory;
 import com.datastax.oss.dsbulk.commons.utils.DurationUtils;
+import com.datastax.oss.dsbulk.commons.utils.ThrowableUtils;
 import com.datastax.oss.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.oss.dsbulk.connectors.api.Connector;
 import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.datastax.oss.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.oss.dsbulk.executor.api.reader.BulkReader;
 import com.datastax.oss.dsbulk.executor.api.result.ReadResult;
+import com.datastax.oss.dsbulk.sampler.DataSizeSampler;
 import com.datastax.oss.dsbulk.workflow.api.Workflow;
 import com.datastax.oss.dsbulk.workflow.commons.log.LogManager;
 import com.datastax.oss.dsbulk.workflow.commons.metrics.MetricsManager;
@@ -66,6 +70,8 @@ public class UnloadWorkflow implements Workflow {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(UnloadWorkflow.class);
 
+  private static final int _1KB = 1024;
+
   private final SettingsManager settingsManager;
   private final AtomicBoolean closed = new AtomicBoolean(false);
 
@@ -90,6 +96,7 @@ public class UnloadWorkflow implements Workflow {
   private Function<Flux<Void>, Flux<Void>> terminationHandler;
   private int readConcurrency;
   private int numCores;
+  private boolean useThreadPerCore;
 
   UnloadWorkflow(Config config) {
     settingsManager = new SettingsManager(config);
@@ -165,8 +172,14 @@ public class UnloadWorkflow implements Workflow {
     terminationHandler = logManager.newTerminationHandler();
     numCores = Runtime.getRuntime().availableProcessors();
     scheduler = Schedulers.newParallel(numCores, new DefaultThreadFactory("workflow"));
-    readConcurrency = engineSettings.getMaxConcurrentQueries().orElse(numCores);
-    LOGGER.debug("Using read concurrency: " + readConcurrency);
+    useThreadPerCore = readStatements.size() >= WorkflowUtils.TPC_THRESHOLD;
+    LOGGER.debug("Using thread-per-core strategy: {}", useThreadPerCore);
+    readConcurrency =
+        engineSettings.getMaxConcurrentQueries().orElseGet(this::determineReadConcurrency);
+    LOGGER.debug(
+        "Using read concurrency: {} (user-supplied: {})",
+        readConcurrency,
+        engineSettings.getMaxConcurrentQueries().isPresent());
   }
 
   @Override
@@ -174,7 +187,7 @@ public class UnloadWorkflow implements Workflow {
     LOGGER.debug("{} started.", this);
     metricsManager.start();
     Stopwatch timer = Stopwatch.createStarted();
-    (readStatements.size() >= WorkflowUtils.TPC_THRESHOLD ? threadPerCoreFlux() : parallelFlux())
+    (useThreadPerCore ? threadPerCoreFlux() : parallelFlux())
         .transformDeferred(writer)
         .transform(failedRecordsMonitor)
         .transform(failedRecordsHandler)
@@ -184,15 +197,15 @@ public class UnloadWorkflow implements Workflow {
         .blockLast();
     timer.stop();
     metricsManager.stop();
-    Duration duration = DurationUtils.round(timer.elapsed(), TimeUnit.SECONDS);
+    Duration elapsed = DurationUtils.round(timer.elapsed(), TimeUnit.SECONDS);
     if (logManager.getTotalErrors() == 0) {
-      LOGGER.info("{} completed successfully in {}.", this, DurationUtils.formatDuration(duration));
+      LOGGER.info("{} completed successfully in {}.", this, DurationUtils.formatDuration(elapsed));
     } else {
       LOGGER.warn(
           "{} completed with {} errors in {}.",
           this,
           logManager.getTotalErrors(),
-          DurationUtils.formatDuration(duration));
+          DurationUtils.formatDuration(elapsed));
     }
     return logManager.getTotalErrors() == 0;
   }
@@ -262,5 +275,40 @@ public class UnloadWorkflow implements Workflow {
     } else {
       return "Operation " + executionId;
     }
+  }
+
+  private int determineReadConcurrency() {
+    LOGGER.debug("Sampling data...");
+    Histogram sample =
+        DataSizeSampler.sampleReads(
+            Flux.fromIterable(readStatements)
+                .map(stmt -> stmt.setPageSize(1000).setTimeout(Duration.ofMinutes(1)))
+                .<Row>flatMap(session::executeReactive, 1)
+                .onErrorContinue(
+                    (error, v) ->
+                        LOGGER.debug(
+                            "Sampling failed: {}", ThrowableUtils.getSanitizedErrorMessage(error)))
+                .take(1000)
+                .toIterable());
+    double meanSize;
+    if (sample.getCount() < 100) {
+      // sample too small, go with a common value
+      LOGGER.debug("Data sample is too small: {}, discarding", sample.getCount());
+      meanSize = _1KB;
+    } else {
+      meanSize = sample.getSnapshot().getMean();
+      LOGGER.debug("Average read size in bytes: {}", meanSize);
+    }
+    int readConcurrency;
+    if (readStatements.size() >= WorkflowUtils.TPC_THRESHOLD) {
+      if (meanSize <= _1KB) {
+        readConcurrency = numCores;
+      } else {
+        readConcurrency = numCores / 2;
+      }
+    } else {
+      readConcurrency = numCores / 2;
+    }
+    return readConcurrency;
   }
 }

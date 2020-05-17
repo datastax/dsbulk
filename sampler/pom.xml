@@ -19,29 +19,21 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <artifactId>dsbulk-batcher</artifactId>
+    <artifactId>dsbulk-parent</artifactId>
     <groupId>com.datastax.oss</groupId>
     <version>1.6.0-SNAPSHOT</version>
   </parent>
-  <artifactId>dsbulk-batcher-api</artifactId>
-  <name>DataStax Bulk Loader - Batcher - API</name>
-  <description>Bulk Batcher API for the DataStax Bulk Loader.</description>
+  <artifactId>dsbulk-sampler</artifactId>
+  <name>DataStax Bulk Loader - Sampler</name>
+  <description>Sampler for the DataStax Bulk Loader.</description>
   <dependencies>
     <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-sampler</artifactId>
+      <groupId>io.dropwizard.metrics</groupId>
+      <artifactId>metrics-core</artifactId>
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>
       <artifactId>java-driver-core</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.reactivestreams</groupId>
-      <artifactId>reactive-streams</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>java-driver-shaded-guava</artifactId>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
@@ -74,19 +66,4 @@
       <scope>provided</scope>
     </dependency>
   </dependencies>
-  <build>
-    <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jar-plugin</artifactId>
-        <executions>
-          <execution>
-            <goals>
-              <goal>test-jar</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-    </plugins>
-  </build>
 </project>

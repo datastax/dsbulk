@@ -304,7 +304,9 @@ public class LogManager implements AutoCloseable {
               } else {
                 return Flux.just(stmt);
               }
-            });
+            },
+            1,
+            1);
   }
 
   /**
@@ -333,7 +335,9 @@ public class LogManager implements AutoCloseable {
               } else {
                 return Flux.just(r);
               }
-            });
+            },
+            1,
+            1);
   }
 
   /**
@@ -361,7 +365,9 @@ public class LogManager implements AutoCloseable {
               } else {
                 return Flux.just(r);
               }
-            });
+            },
+            1,
+            1);
   }
 
   /**
@@ -394,7 +400,9 @@ public class LogManager implements AutoCloseable {
               } catch (Exception e) {
                 return Flux.error(e);
               }
-            });
+            },
+            1,
+            1);
   }
 
   /**
@@ -424,7 +432,9 @@ public class LogManager implements AutoCloseable {
                   return Flux.error(e);
                 }
               }
-            });
+            },
+            1,
+            1);
   }
   /**
    * Handler for query warnings.

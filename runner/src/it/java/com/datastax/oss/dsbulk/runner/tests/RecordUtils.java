@@ -19,6 +19,8 @@ import com.datastax.oss.dsbulk.connectors.api.DefaultErrorRecord;
 import com.datastax.oss.dsbulk.connectors.api.DefaultIndexedField;
 import com.datastax.oss.dsbulk.connectors.api.DefaultMappedField;
 import com.datastax.oss.dsbulk.connectors.api.DefaultRecord;
+import com.datastax.oss.dsbulk.connectors.api.ErrorRecord;
+import com.datastax.oss.dsbulk.connectors.api.Field;
 import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.net.URI;
@@ -67,5 +69,22 @@ public class RecordUtils {
     int counter = COUNTER.incrementAndGet();
     return new DefaultErrorRecord(
         "source" + counter, URI.create("file://file" + counter + ".csv"), counter - 1, error);
+  }
+
+  public static Record cloneRecord(Record record) {
+    if (record instanceof ErrorRecord) {
+      return new DefaultErrorRecord(
+          record.getSource(),
+          record.getResource(),
+          record.getPosition(),
+          ((ErrorRecord) record).getError());
+    } else {
+      DefaultRecord clone =
+          new DefaultRecord(record.getSource(), record.getResource(), record.getPosition());
+      for (Field field : record.fields()) {
+        clone.setFieldValue(field, record.getFieldValue(field));
+      }
+      return clone;
+    }
   }
 }

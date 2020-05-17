@@ -80,7 +80,7 @@ public final class MockConnector implements Connector {
           @NonNull
           @Override
           public Publisher<Record> read() {
-            return Flux.just(records);
+            return Flux.just(records).map(RecordUtils::cloneRecord);
           }
 
           @NonNull

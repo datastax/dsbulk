@@ -16,6 +16,7 @@
 - [improvement] DAT-547: Ability to specify a list of allowed or denied hosts.
 - [improvement] DAT-472: Ability to prompt for passwords when none specified in config.
 - [improvement] DAT-571: Generalize maxConcurrentQueries to all operations.
+- [improvement] DAT-575: Automatically detect the best concurrency level by sampling data.
 
 
 ## 1.5.0
