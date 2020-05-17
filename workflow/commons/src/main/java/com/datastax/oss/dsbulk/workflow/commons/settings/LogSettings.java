@@ -196,7 +196,7 @@ public class LogSettings {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("DataStax Bulk Loader Effective settings:");
       dumpConfig(dsbulkConfig.withoutPath("driver"), Entry.comparingByKey());
-      LOGGER.debug("DataStax DSE Java Driver Effective settings:");
+      LOGGER.debug("DataStax Java Driver Effective settings:");
       dumpConfig(
           driverConfig,
           Comparator.comparing(
