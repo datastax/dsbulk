@@ -44,6 +44,7 @@ public class ExecutorSettings {
   private int maxPerSecond;
   private int maxInFlight;
   private boolean continuousPagingEnabled;
+  private boolean useContinuousPagingForReads;
 
   ExecutorSettings(Config config) {
     this.config = config;
@@ -94,7 +95,7 @@ public class ExecutorSettings {
       @NonNull ExecutionListener executionListener,
       boolean read,
       boolean searchQuery) {
-    boolean useContinuousPagingForReads = read && checkContinuousPaging(session, searchQuery);
+    useContinuousPagingForReads = read && checkContinuousPaging(session, searchQuery);
     ServiceLoader<BulkExecutorBuilderFactory> loader =
         ServiceLoader.load(BulkExecutorBuilderFactory.class);
     BulkExecutorBuilderFactory builderFactory = loader.iterator().next();
@@ -142,5 +143,9 @@ public class ExecutorSettings {
           || consistencyLevel == DefaultConsistencyLevel.LOCAL_ONE;
     }
     return false;
+  }
+
+  public boolean isContinuousPagingEnabled() {
+    return useContinuousPagingForReads;
   }
 }

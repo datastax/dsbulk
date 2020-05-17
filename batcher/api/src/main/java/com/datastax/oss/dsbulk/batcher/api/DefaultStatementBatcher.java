@@ -29,7 +29,7 @@ import com.datastax.oss.driver.api.core.metadata.token.Token;
 import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
 import com.datastax.oss.driver.shaded.guava.common.base.Preconditions;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
-import com.datastax.oss.dsbulk.commons.utils.StatementUtils;
+import com.datastax.oss.dsbulk.sampler.DataSizes;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import java.nio.ByteBuffer;
@@ -357,7 +357,7 @@ public class DefaultStatementBatcher implements StatementBatcher {
     }
 
     long calculateSize(@NonNull Statement<?> statement) {
-      return StatementUtils.getDataSize(statement, protocolVersion, codecRegistry);
+      return DataSizes.getDataSize(statement, protocolVersion, codecRegistry);
     }
 
     int getMaxBatchStatements() {

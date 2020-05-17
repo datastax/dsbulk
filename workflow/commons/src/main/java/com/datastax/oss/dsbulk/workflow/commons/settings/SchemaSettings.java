@@ -91,6 +91,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -534,6 +535,9 @@ public class SchemaSettings {
                         queryInspector.getTokenRangeRestrictionEndVariableIndex(), range.getEnd()));
 
     LOGGER.debug("Generated {} bound statements", statements.size());
+    // Shuffle the statements to avoid hitting the same replicas sequentially when
+    // the statements will be executed.
+    Collections.shuffle(statements);
     return statements;
   }
 
@@ -548,6 +552,11 @@ public class SchemaSettings {
     } else {
       return RowType.REGULAR;
     }
+  }
+
+  @NonNull
+  public RelationMetadata getTargetTable() {
+    return Objects.requireNonNull(table, "Cannot call this method before init()");
   }
 
   public boolean isAllowExtraFields() {

@@ -27,9 +27,9 @@ import com.datastax.oss.driver.api.core.cql.BatchStatement;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
-import com.datastax.oss.dsbulk.commons.utils.StatementUtils;
 import com.datastax.oss.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.oss.dsbulk.executor.api.histogram.HdrHistogramReservoir;
+import com.datastax.oss.dsbulk.sampler.DataSizes;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import java.util.Optional;
 
@@ -296,7 +296,7 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
   @Override
   public void onWriteRequestStarted(Statement<?> statement, ExecutionContext context) {
     if (bytesSentMeter != null) {
-      long size = StatementUtils.getDataSize(statement, protocolVersion, codecRegistry);
+      long size = DataSizes.getDataSize(statement, protocolVersion, codecRegistry);
       bytesSentMeter.mark(size);
     }
     inFlightRequestsCounter.inc();
@@ -340,7 +340,7 @@ public class MetricsCollectingExecutionListener implements ExecutionListener {
     successfulReadsCounter.inc(1);
     successfulReadsWritesCounter.inc(1);
     if (bytesReceivedMeter != null) {
-      long size = StatementUtils.getDataSize(row);
+      long size = DataSizes.getDataSize(row);
       bytesReceivedMeter.mark(size);
     }
   }

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.dsbulk.commons.utils;
+package com.datastax.oss.dsbulk.sampler;
 
 import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.ProtocolVersion;
@@ -31,7 +31,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 
-public class StatementUtils {
+public class DataSizes {
 
   /**
    * Evaluates the data size contained in the given statement. The data size is the total number of
@@ -84,6 +84,8 @@ public class StatementUtils {
       for (Statement<?> st : bs) {
         dataSize += getDataSize(st, version, registry);
       }
+    } else {
+      throw new IllegalArgumentException("Unknown statement type: " + stmt.getClass().getName());
     }
     return dataSize;
   }

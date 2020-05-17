@@ -9,6 +9,7 @@
 - [bug] DAT-581: Resolve configuration references after the final config has been computed.
 - [bug] DAT-585: Apply per-file limits when reading multiple resources.
 - [improvement] DAT-571: Generalize maxConcurrentQueries to all operations.
+- [improvement] DAT-575: Automatically detect the best concurrency level by sampling data.
 
 
 ## 1.5.0

@@ -21,6 +21,8 @@ import static com.datastax.oss.dsbulk.tests.logging.StreamType.STDOUT;
 import static org.slf4j.event.Level.INFO;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.metadata.token.Token;
+import com.datastax.oss.driver.internal.core.metadata.token.RandomTokenFactory;
 import com.datastax.oss.dsbulk.tests.ccm.CCMCluster;
 import com.datastax.oss.dsbulk.tests.ccm.annotations.CCMConfig;
 import com.datastax.oss.dsbulk.tests.driver.annotations.SessionConfig;
@@ -43,5 +45,15 @@ class RPTokenVnodeTableReadEndToEndCCMIT extends TableReadEndToEndCCMITBase {
       @StreamCapture(STDOUT) StreamInterceptor stdout,
       @StreamCapture(STDERR) StreamInterceptor stderr) {
     super(ccm, session, logs, stdout, stderr);
+  }
+
+  @Override
+  Token getMinToken() {
+    return RandomTokenFactory.MIN_TOKEN;
+  }
+
+  @Override
+  Token getMaxToken() {
+    return RandomTokenFactory.MIN_TOKEN;
   }
 }

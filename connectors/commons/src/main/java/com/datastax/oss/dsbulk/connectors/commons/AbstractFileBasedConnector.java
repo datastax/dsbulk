@@ -509,7 +509,7 @@ public abstract class AbstractFileBasedConnector implements Connector {
               } catch (Exception e) {
                 return Flux.error(e);
               }
-            });
+            }, 1, 1);
   }
 
   /**

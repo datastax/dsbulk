@@ -15,9 +15,12 @@
  */
 package com.datastax.oss.dsbulk.runner.tests;
 
+import com.datastax.oss.dsbulk.connectors.api.DefaultErrorRecord;
 import com.datastax.oss.dsbulk.connectors.api.DefaultIndexedField;
 import com.datastax.oss.dsbulk.connectors.api.DefaultMappedField;
 import com.datastax.oss.dsbulk.connectors.api.DefaultRecord;
+import com.datastax.oss.dsbulk.connectors.api.ErrorRecord;
+import com.datastax.oss.dsbulk.connectors.api.Field;
 import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.net.URI;
@@ -60,5 +63,22 @@ public class RecordUtils {
           new DefaultMappedField(tokens[i]), JsonNodeFactory.instance.textNode(tokens[i + 1]));
     }
     return record;
+  }
+
+  public static Record cloneRecord(Record record) {
+    if (record instanceof ErrorRecord) {
+      return new DefaultErrorRecord(
+          record.getSource(),
+          record.getResource(),
+          record.getPosition(),
+          ((ErrorRecord) record).getError());
+    } else {
+      DefaultRecord clone =
+          new DefaultRecord(record.getSource(), record.getResource(), record.getPosition());
+      for (Field field : record.fields()) {
+        clone.setFieldValue(field, record.getFieldValue(field));
+      }
+      return clone;
+    }
   }
 }

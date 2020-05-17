@@ -52,6 +52,7 @@ import com.datastax.oss.dsbulk.tests.utils.Version;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -254,6 +255,50 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     assertUnload();
   }
 
+  @ParameterizedTest(name = "[{index}] unload keyspace {0} table {1} (custom result set)")
+  @CsvSource({
+    "RF_1,SINGLE_PK",
+    "RF_1,composite_pk",
+    "rf_2,SINGLE_PK",
+    "rf_2,composite_pk",
+    "rf_3,SINGLE_PK",
+    "rf_3,composite_pk",
+  })
+  void full_unload_custom_where_clause(String keyspace, String table) {
+
+    List<String> args = new ArrayList<>();
+    args.add("unload");
+    args.add("--connector.name");
+    args.add("mock");
+    args.add("--schema.query");
+    if (table.equals("SINGLE_PK")) {
+      args.add(
+          StringUtils.quoteJson(
+              String.format(
+                  "SELECT * FROM \"%s\".\"%s\" WHERE token(pk) > %s AND token(pk) <= %s",
+                  keyspace,
+                  table,
+                  TokenUtils.getTokenValue(getMinToken()),
+                  TokenUtils.getTokenValue(getMaxToken()))));
+    } else {
+      args.add(
+          StringUtils.quoteJson(
+              String.format(
+                  "SELECT * FROM \"%s\".\"%s\"  WHERE token(\"PK1\", \"PK2\") > %s AND token(\"PK1\", \"PK2\") <= %s",
+                  keyspace,
+                  table,
+                  TokenUtils.getTokenValue(getMinToken()),
+                  TokenUtils.getTokenValue(getMaxToken()))));
+    }
+    args.add("--driver.basic.request.consistency");
+    args.add("ALL");
+
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+
+    assertUnload();
+  }
+
   @ParameterizedTest(name = "[{index}] count keyspace {0} table {1} modes {2}")
   @ArgumentsSource(CountWorkflowArgumentsProvider.class)
   void full_count(String keyspace, String table, Set<String> modes) {
@@ -275,24 +320,46 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
     assertCount(keyspace, table, modes);
   }
 
-  @ParameterizedTest(name = "[{index}] count keyspace {0} table {1} modes {2} (custom query)")
+  @ParameterizedTest(name = "[{index}] count keyspace {0} table {1} (custom query)")
   @ArgumentsSource(CountWorkflowCustomQueryArgumentsProvider.class)
-  void full_count_custom_query(String keyspace, String table, Set<String> modes) {
+  void full_count_custom_where_clause(String keyspace, String table) {
 
     List<String> args = new ArrayList<>();
     args.add("count");
     args.add("-stats");
-    args.add(String.join(",", modes));
+    args.add("global");
     args.add("--schema.query");
-    args.add(StringUtils.quoteJson(String.format("SELECT * FROM \"%s\".\"%s\"", keyspace, table)));
+    if (table.equals("SINGLE_PK")) {
+      args.add(
+          StringUtils.quoteJson(
+              String.format(
+                  "SELECT * FROM \"%s\".\"%s\" WHERE token(pk) > %s AND token(pk) <= %s",
+                  keyspace,
+                  table,
+                  TokenUtils.getTokenValue(getMinToken()),
+                  TokenUtils.getTokenValue(getMaxToken()))));
+    } else {
+      args.add(
+          StringUtils.quoteJson(
+              String.format(
+                  "SELECT * FROM \"%s\".\"%s\"  WHERE token(\"PK1\", \"PK2\") > %s AND token(\"PK1\", \"PK2\") <= %s",
+                  keyspace,
+                  table,
+                  TokenUtils.getTokenValue(getMinToken()),
+                  TokenUtils.getTokenValue(getMaxToken()))));
+    }
     args.add("--driver.basic.request.consistency");
     args.add("ALL");
 
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
 
-    assertCount(keyspace, table, modes);
+    assertCount(keyspace, table, Collections.singleton("global"));
   }
+
+  abstract Token getMinToken();
+
+  abstract Token getMaxToken();
 
   private void assertUnload() {
     assertThat(logs).hasMessageContaining(String.format("Reads: total: %,d", expectedTotal));
@@ -532,7 +599,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
       List<Arguments> args = new ArrayList<>();
       for (String keyspace : keyspaces) {
         for (String table : tables) {
-          args.add(Arguments.of(keyspace, table, ImmutableSet.of("global")));
+          args.add(Arguments.of(keyspace, table));
         }
       }
       return args.stream();

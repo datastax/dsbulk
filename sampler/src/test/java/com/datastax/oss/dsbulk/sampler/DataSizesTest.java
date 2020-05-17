@@ -13,16 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.dsbulk.commons.utils;
+package com.datastax.oss.dsbulk.sampler;
 
-import static com.datastax.dse.driver.api.core.DseProtocolVersion.DSE_V2;
-import static com.datastax.oss.driver.shaded.guava.common.base.Charsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.datastax.dse.driver.api.core.DseProtocolVersion;
 import com.datastax.oss.driver.api.core.cql.BatchStatement;
 import com.datastax.oss.driver.api.core.cql.BatchableStatement;
 import com.datastax.oss.driver.api.core.cql.BoundStatement;
@@ -48,9 +46,10 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.mockito.Mockito;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class StatementUtilsTest {
+class DataSizesTest {
 
   private static final ImmutableMap<String, ByteBuffer> MOCK_PAYLOAD =
       ImmutableMap.of("key1", Bytes.fromHexString("0xabcd"), "key2", Bytes.fromHexString("0xef"));
@@ -60,16 +59,20 @@ class StatementUtilsTest {
     String queryString = "SELECT release_version FROM system.local WHERE key = ?";
     SimpleStatement statement = SimpleStatement.newInstance(queryString);
     int expectedSize = 0;
-    assertThat(StatementUtils.getDataSize(statement, DSE_V2, DefaultCodecRegistry.DEFAULT))
+    assertThat(
+            DataSizes.getDataSize(
+                statement, DseProtocolVersion.DSE_V2, DefaultCodecRegistry.DEFAULT))
         .isEqualTo(expectedSize);
 
     SimpleStatement statementWithPositionalValue =
         SimpleStatement.newInstance(statement.getQuery(), "local");
     assertThat(
-            StatementUtils.getDataSize(
-                statementWithPositionalValue, DSE_V2, DefaultCodecRegistry.DEFAULT))
+            DataSizes.getDataSize(
+                statementWithPositionalValue,
+                DseProtocolVersion.DSE_V2,
+                DefaultCodecRegistry.DEFAULT))
         .isEqualTo(
-            expectedSize + "local".getBytes(UTF_8).length // value
+            expectedSize + "local".getBytes(StandardCharsets.UTF_8).length // value
             );
 
     SimpleStatement statementWithNamedValue =
@@ -77,14 +80,16 @@ class StatementUtilsTest {
             statement.getQuery(), ImmutableMap.of("key", "local")); // key not taken into account
 
     assertThat(
-            StatementUtils.getDataSize(
-                statementWithNamedValue, DSE_V2, DefaultCodecRegistry.DEFAULT))
+            DataSizes.getDataSize(
+                statementWithNamedValue, DseProtocolVersion.DSE_V2, DefaultCodecRegistry.DEFAULT))
         .isEqualTo(
-            expectedSize + "local".getBytes(UTF_8).length // value
+            expectedSize + "local".getBytes(StandardCharsets.UTF_8).length // value
             );
 
     statement = statement.setCustomPayload(MOCK_PAYLOAD);
-    assertThat(StatementUtils.getDataSize(statement, DSE_V2, DefaultCodecRegistry.DEFAULT))
+    assertThat(
+            DataSizes.getDataSize(
+                statement, DseProtocolVersion.DSE_V2, DefaultCodecRegistry.DEFAULT))
         .isEqualTo(expectedSize); // payload not taken into account
   }
 
@@ -93,12 +98,12 @@ class StatementUtilsTest {
     BoundStatement bs = mockBoundStatement(null, null);
 
     int expectedSize = 0;
-    assertThat(StatementUtils.getDataSize(bs, DSE_V2, DefaultCodecRegistry.DEFAULT))
+    assertThat(DataSizes.getDataSize(bs, DseProtocolVersion.DSE_V2, DefaultCodecRegistry.DEFAULT))
         .isEqualTo(expectedSize);
 
     bs = mockBoundStatement(0, "test");
     expectedSize = bs.getBytesUnsafe(0).remaining() + bs.getBytesUnsafe(1).remaining();
-    assertThat(StatementUtils.getDataSize(bs, DSE_V2, DefaultCodecRegistry.DEFAULT))
+    assertThat(DataSizes.getDataSize(bs, DseProtocolVersion.DSE_V2, DefaultCodecRegistry.DEFAULT))
         .isEqualTo(expectedSize);
 
     verify(bs, never()).getPagingState();
@@ -117,14 +122,16 @@ class StatementUtilsTest {
     int expectedSize =
         4 // setInt(1)
             + 4 // setInt(2)
-            + "test1".getBytes(UTF_8).length
-            + "test2".getBytes(UTF_8).length;
-    assertThat(StatementUtils.getDataSize(batch, DSE_V2, DefaultCodecRegistry.DEFAULT))
+            + "test1".getBytes(StandardCharsets.UTF_8).length
+            + "test2".getBytes(StandardCharsets.UTF_8).length;
+    assertThat(
+            DataSizes.getDataSize(batch, DseProtocolVersion.DSE_V2, DefaultCodecRegistry.DEFAULT))
         .isEqualTo(expectedSize);
 
     stmt1 = stmt1.setCustomPayload(MOCK_PAYLOAD);
     batch = mockBatchStatement(stmt1, stmt2, stmt3);
-    assertThat(StatementUtils.getDataSize(batch, DSE_V2, DefaultCodecRegistry.DEFAULT))
+    assertThat(
+            DataSizes.getDataSize(batch, DseProtocolVersion.DSE_V2, DefaultCodecRegistry.DEFAULT))
         .isEqualTo(expectedSize); // payload not taken into account
 
     verify(batch, never()).getPagingState();
@@ -137,27 +144,28 @@ class StatementUtilsTest {
 
   @Test
   void should_measure_size_of_row() {
-    Row row = mock(Row.class);
+    Row row = Mockito.mock(Row.class);
     when(row.getColumnDefinitions()).thenReturn(mockColumnDefinitions());
     when(row.getBytesUnsafe(0)).thenReturn(Bytes.fromHexString("0xCAFEBABE"));
     when(row.getBytesUnsafe(1)).thenReturn(ByteBuffer.wrap(new byte[0]));
     // 1st col: 4 bytes + 2nd col: 0 bytes
-    assertThat(StatementUtils.getDataSize(row)).isEqualTo(4);
+    assertThat(DataSizes.getDataSize(row)).isEqualTo(4);
   }
 
   private BatchStatement mockBatchStatement(BatchableStatement<?>... statements) {
-    BatchStatement batch = mock(BatchStatement.class);
+    BatchStatement batch = Mockito.mock(BatchStatement.class);
     when(batch.iterator()).thenAnswer(args -> Iterators.forArray(statements));
     return batch;
   }
 
   private BoundStatement mockBoundStatement(Integer col1, String col2) {
     PreparedStatement ps = mockPreparedStatement();
-    BoundStatement bs = mock(BoundStatement.class);
+    BoundStatement bs = Mockito.mock(BoundStatement.class);
     when(bs.getPreparedStatement()).thenReturn(ps);
-    ByteBuffer col1bb = new IntCodec().encode(col1, DSE_V2);
+    ByteBuffer col1bb = new IntCodec().encode(col1, DseProtocolVersion.DSE_V2);
     ByteBuffer col2bb =
-        new StringCodec(DataTypes.TEXT, StandardCharsets.UTF_8).encode(col2, DSE_V2);
+        new StringCodec(DataTypes.TEXT, StandardCharsets.UTF_8)
+            .encode(col2, DseProtocolVersion.DSE_V2);
     when(bs.getBytesUnsafe(0)).thenReturn(col1bb);
     when(bs.getBytesUnsafe(1)).thenReturn(col2bb);
     return bs;
@@ -165,7 +173,7 @@ class StatementUtilsTest {
 
   private PreparedStatement mockPreparedStatement() {
     ColumnDefinitions columnDefinitions = mockColumnDefinitions();
-    PreparedStatement ps = mock(PreparedStatement.class);
+    PreparedStatement ps = Mockito.mock(PreparedStatement.class);
     when(ps.getVariableDefinitions()).thenReturn(columnDefinitions);
     return ps;
   }
