@@ -47,7 +47,6 @@ import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Signal;
 import reactor.core.publisher.SynchronousSink;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
@@ -454,7 +453,7 @@ public abstract class AbstractFileBasedConnector implements Connector {
   protected Flux<URL> scanRootDirectory(@NonNull Path root) {
     try {
       // this stream will be closed by the flux, do not add it to a try-with-resources block
-      @SuppressWarnings("StreamResourceLeak")
+      @SuppressWarnings({"StreamResourceLeak", "BlockingMethodInNonBlockingContext"})
       Stream<Path> files = Files.walk(root, recursive ? Integer.MAX_VALUE : 1);
       PathMatcher matcher = root.getFileSystem().getPathMatcher("glob:" + pattern);
       return Flux.fromStream(files)
@@ -478,6 +477,7 @@ public abstract class AbstractFileBasedConnector implements Connector {
    * Applies per-file limits to a stream of records coming from {@link
    * #readSingleFile(java.net.URL)}.
    */
+  @SuppressWarnings("ReactiveStreamsUnusedPublisher")
   @NonNull
   protected Flux<Record> applyPerFileLimits(@NonNull Flux<Record> records) {
     if (skipRecords > 0) {
@@ -497,29 +497,19 @@ public abstract class AbstractFileBasedConnector implements Connector {
    * @return a function to apply to a flux of records; the function is expected to write each
    *     record, then return the record untouched. I/O errors should be propagated downstream.
    */
+  @SuppressWarnings("BlockingMethodInNonBlockingContext")
   @NonNull
   protected Function<Flux<Record>, Flux<Record>> writeRecords(@NonNull RecordWriter writer) {
     return upstream ->
-        upstream
-            .materialize()
-            .map(
-                signal -> {
-                  if (signal.isOnNext()) {
-                    Record record = signal.get();
-                    assert record != null;
-                    try {
-                      writer.write(record);
-                    } catch (Exception e) {
-                      // Note that we may be inside a parallel flux;
-                      // sending more than one onError signal to downstream will result
-                      // in all onError signals but the first to be dropped.
-                      // The framework is expected to deal with that.
-                      signal = Signal.error(e);
-                    }
-                  }
-                  return signal;
-                })
-            .dematerialize();
+        upstream.flatMapSequential(
+            record -> {
+              try {
+                writer.write(record);
+                return Flux.just(record);
+              } catch (Exception e) {
+                return Flux.error(e);
+              }
+            });
   }
 
   /**

@@ -62,6 +62,7 @@ import com.datastax.oss.dsbulk.workflow.commons.statement.UnmappableStatement;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URI;
@@ -82,7 +83,6 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Hooks;
-import reactor.core.publisher.Signal;
 import reactor.core.publisher.UnicastProcessor;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
@@ -307,25 +307,19 @@ public class LogManager implements AutoCloseable {
   public Function<Flux<BatchableStatement<?>>, Flux<BatchableStatement<?>>>
       newUnmappableStatementsHandler() {
     return upstream ->
-        upstream
-            .materialize()
-            .map(
-                signal -> {
-                  if (signal.isOnNext()) {
-                    Statement<?> stmt = signal.get();
-                    if (stmt instanceof UnmappableStatement) {
-                      try {
-                        unmappableStatementSink.next((UnmappableStatement) stmt);
-                        signal = maybeTriggerOnError(signal, errors.incrementAndGet());
-                      } catch (Exception e) {
-                        signal = Signal.error(e);
-                      }
-                    }
-                  }
-                  return signal;
-                })
-            .<BatchableStatement<?>>dematerialize()
-            .filter(r -> !(r instanceof UnmappableStatement));
+        upstream.flatMapSequential(
+            stmt -> {
+              if (stmt instanceof UnmappableStatement) {
+                try {
+                  unmappableStatementSink.next((UnmappableStatement) stmt);
+                  return maybeTriggerOnError(null, errors.incrementAndGet());
+                } catch (Exception e) {
+                  return Flux.error(e);
+                }
+              } else {
+                return Flux.just(stmt);
+              }
+            });
   }
 
   /**
@@ -342,25 +336,19 @@ public class LogManager implements AutoCloseable {
   @NonNull
   public Function<Flux<Record>, Flux<Record>> newFailedRecordsHandler() {
     return upstream ->
-        upstream
-            .materialize()
-            .map(
-                signal -> {
-                  if (signal.isOnNext()) {
-                    Record r = signal.get();
-                    if (r instanceof ErrorRecord) {
-                      try {
-                        failedRecordSink.next((ErrorRecord) r);
-                        signal = maybeTriggerOnError(signal, errors.incrementAndGet());
-                      } catch (Exception e) {
-                        signal = Signal.error(e);
-                      }
-                    }
-                  }
-                  return signal;
-                })
-            .<Record>dematerialize()
-            .filter(r -> !(r instanceof ErrorRecord));
+        upstream.flatMapSequential(
+            r -> {
+              if (r instanceof ErrorRecord) {
+                try {
+                  failedRecordSink.next((ErrorRecord) r);
+                  return maybeTriggerOnError(null, errors.incrementAndGet());
+                } catch (Exception e) {
+                  return Flux.error(e);
+                }
+              } else {
+                return Flux.just(r);
+              }
+            });
   }
 
   /**
@@ -376,25 +364,19 @@ public class LogManager implements AutoCloseable {
   @NonNull
   public Function<Flux<Record>, Flux<Record>> newUnmappableRecordsHandler() {
     return upstream ->
-        upstream
-            .materialize()
-            .map(
-                signal -> {
-                  if (signal.isOnNext()) {
-                    Record r = signal.get();
-                    if (r instanceof ErrorRecord) {
-                      try {
-                        unmappableRecordSink.next((ErrorRecord) r);
-                        signal = maybeTriggerOnError(signal, errors.incrementAndGet());
-                      } catch (Exception e) {
-                        signal = Signal.error(e);
-                      }
-                    }
-                  }
-                  return signal;
-                })
-            .<Record>dematerialize()
-            .filter(r -> !(r instanceof ErrorRecord));
+        upstream.flatMapSequential(
+            r -> {
+              if (r instanceof ErrorRecord) {
+                try {
+                  unmappableRecordSink.next((ErrorRecord) r);
+                  return maybeTriggerOnError(null, errors.incrementAndGet());
+                } catch (Exception e) {
+                  return Flux.error(e);
+                }
+              } else {
+                return Flux.just(r);
+              }
+            });
   }
 
   /**
@@ -410,42 +392,24 @@ public class LogManager implements AutoCloseable {
   @NonNull
   public Function<Flux<WriteResult>, Flux<WriteResult>> newFailedWritesHandler() {
     return upstream ->
-        upstream
-            .materialize()
-            .map(
-                signal -> {
-                  if (signal.isOnNext()) {
-                    WriteResult r = signal.get();
-                    if (r != null) {
-                      if (!r.isSuccess()) {
-                        try {
-                          failedWriteSink.next(r);
-                          assert r.getError().isPresent();
-                          Throwable cause = r.getError().get().getCause();
-                          if (isUnrecoverable(cause)) {
-                            signal = Signal.error(cause);
-                          } else {
-                            signal =
-                                maybeTriggerOnError(signal, errors.addAndGet(r.getBatchSize()));
-                          }
-                        } catch (Exception e) {
-                          signal = Signal.error(e);
-                        }
-                      } else if (!r.wasApplied()) {
-                        try {
-                          failedCASWriteSink.next(r);
-                          signal = maybeTriggerOnError(signal, errors.addAndGet(r.getBatchSize()));
-                        } catch (Exception e) {
-                          signal = Signal.error(e);
-                        }
-                      }
-                    }
-                  }
-                  return signal;
-                })
-            .<WriteResult>dematerialize()
-            .filter(Result::isSuccess)
-            .filter(WriteResult::wasApplied);
+        upstream.flatMapSequential(
+            r -> {
+              try {
+                if (!r.isSuccess()) {
+                  failedWriteSink.next(r);
+                  assert r.getError().isPresent();
+                  Throwable cause = r.getError().get().getCause();
+                  return maybeTriggerOnError(cause, errors.addAndGet(r.getBatchSize()));
+                } else if (!r.wasApplied()) {
+                  failedCASWriteSink.next(r);
+                  return maybeTriggerOnError(null, errors.addAndGet(r.getBatchSize()));
+                } else {
+                  return Flux.just(r);
+                }
+              } catch (Exception e) {
+                return Flux.error(e);
+              }
+            });
   }
 
   /**
@@ -461,31 +425,21 @@ public class LogManager implements AutoCloseable {
   @NonNull
   public Function<Flux<ReadResult>, Flux<ReadResult>> newFailedReadsHandler() {
     return upstream ->
-        upstream
-            .materialize()
-            .map(
-                signal -> {
-                  if (signal.isOnNext()) {
-                    ReadResult r = signal.get();
-                    if (r != null && !r.isSuccess()) {
-                      try {
-                        failedReadSink.next(r);
-                        assert r.getError().isPresent();
-                        Throwable cause = r.getError().get().getCause();
-                        if (isUnrecoverable(cause)) {
-                          signal = Signal.error(cause);
-                        } else {
-                          signal = maybeTriggerOnError(signal, errors.incrementAndGet());
-                        }
-                      } catch (Exception e) {
-                        signal = Signal.error(e);
-                      }
-                    }
-                  }
-                  return signal;
-                })
-            .<ReadResult>dematerialize()
-            .filter(Result::isSuccess);
+        upstream.flatMapSequential(
+            r -> {
+              if (r.isSuccess()) {
+                return Flux.just(r);
+              } else {
+                try {
+                  failedReadSink.next(r);
+                  assert r.getError().isPresent();
+                  Throwable cause = r.getError().get().getCause();
+                  return maybeTriggerOnError(cause, errors.incrementAndGet());
+                } catch (Exception e) {
+                  return Flux.error(e);
+                }
+              }
+            });
   }
   /**
    * Handler for query warnings.
@@ -830,11 +784,15 @@ public class LogManager implements AutoCloseable {
     positionsPrinter.println();
   }
 
-  private <T> Signal<T> maybeTriggerOnError(Signal<T> signal, int errorCount) {
-    if (errorThreshold.checkThresholdExceeded(errorCount, totalItems)) {
-      return Signal.error(new TooManyErrorsException(errorThreshold));
+  private <T> Flux<T> maybeTriggerOnError(@Nullable Throwable error, int currentErrorCount) {
+    if (error != null && isUnrecoverable(error)) {
+      return Flux.error(error);
+    } else if (errorThreshold.checkThresholdExceeded(currentErrorCount, totalItems)) {
+      return Flux.error(new TooManyErrorsException(errorThreshold));
+    } else {
+      // filter out the failed element
+      return Flux.empty();
     }
-    return signal;
   }
 
   private void maybeWarnInvalidMapping(UnmappableStatement stmt) {
