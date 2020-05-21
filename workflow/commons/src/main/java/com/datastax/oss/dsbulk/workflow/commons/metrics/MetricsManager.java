@@ -82,8 +82,8 @@ public class MetricsManager implements AutoCloseable {
   private final Verbosity verbosity;
   private final RowType rowType;
 
-  private Counter totalRecords;
-  private Counter failedRecords;
+  private Counter totalItems;
+  private Counter failedItems;
   private Histogram batchSize;
   private RecordReporter recordReporter;
   private BatchReporter batchesReporter;
@@ -140,8 +140,8 @@ public class MetricsManager implements AutoCloseable {
   }
 
   public void init() {
-    totalRecords = registry.counter("records/total");
-    failedRecords = registry.counter("records/failed");
+    totalItems = registry.counter("records/total");
+    failedItems = registry.counter("records/failed");
     batchSize = registry.histogram("batches/size", () -> new Histogram(new UniformReservoir()));
     createMemoryGauges();
     logSink =
@@ -366,8 +366,8 @@ public class MetricsManager implements AutoCloseable {
           new ConsoleReporter(
               registry,
               running,
-              () -> totalRecords.getCount(),
-              () -> failedRecords.getCount() + listener.getFailedWritesCounter().getCount(),
+              () -> totalItems.getCount(),
+              () -> failedItems.getCount(),
               listener.getTotalWritesTimer(),
               listener.getBytesSentMeter().orElse(null),
               batchingEnabled ? registry.histogram("batches/size") : null,
@@ -381,8 +381,8 @@ public class MetricsManager implements AutoCloseable {
           new ConsoleReporter(
               registry,
               running,
-              () -> listener.getTotalReadsTimer().getCount(),
-              () -> failedRecords.getCount() + listener.getFailedReadsCounter().getCount(),
+              () -> totalItems.getCount(),
+              () -> failedItems.getCount(),
               listener.getTotalReadsTimer(),
               listener.getBytesReceivedMeter().orElse(null),
               null,
@@ -462,7 +462,7 @@ public class MetricsManager implements AutoCloseable {
   }
 
   public <T> Function<Flux<T>, Flux<T>> newTotalItemsMonitor() {
-    return upstream -> upstream.doOnNext(item -> totalRecords.inc());
+    return upstream -> upstream.doOnNext(item -> totalItems.inc());
   }
 
   public <T> Function<Flux<T>, Flux<T>> newFailedItemsMonitor() {
@@ -472,7 +472,7 @@ public class MetricsManager implements AutoCloseable {
               if (item instanceof ErrorRecord
                   || item instanceof UnmappableStatement
                   || (item instanceof Result && !((Result) item).isSuccess())) {
-                failedRecords.inc();
+                failedItems.inc();
               }
             });
   }

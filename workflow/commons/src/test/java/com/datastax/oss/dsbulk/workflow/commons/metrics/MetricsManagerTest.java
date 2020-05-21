@@ -71,8 +71,8 @@ class MetricsManagerTest {
 
   private BatchStatement batch;
 
-  private ProtocolVersion protocolVersion = ProtocolVersion.DEFAULT;
-  private CodecRegistry codecRegistry = CodecRegistry.DEFAULT;
+  private final ProtocolVersion protocolVersion = ProtocolVersion.DEFAULT;
+  private final CodecRegistry codecRegistry = CodecRegistry.DEFAULT;
 
   @BeforeEach
   void setUp() throws Exception {
@@ -86,9 +86,9 @@ class MetricsManagerTest {
     record2 = DefaultRecord.indexed(source2, resource2, -1, "irrelevant");
     record3 =
         new DefaultErrorRecord(source3, () -> resource3, -1, new RuntimeException("irrelevant"));
-    BatchableStatement stmt1 =
+    BatchableStatement<?> stmt1 =
         new BulkSimpleStatement<>(record1, SimpleStatement.newInstance("irrelevant"));
-    BatchableStatement stmt2 =
+    BatchableStatement<?> stmt2 =
         new BulkSimpleStatement<>(record2, SimpleStatement.newInstance("irrelevant"));
     stmt3 = new UnmappableStatement(record3, new RuntimeException("irrelevant"));
     batch = BatchStatement.newInstance(DefaultBatchType.UNLOGGED).add(stmt1).add(stmt2);
@@ -133,7 +133,7 @@ class MetricsManagerTest {
       assertThat(registry.counter("records/failed").getCount()).isEqualTo(1);
       assertThat(logs.getLoggedEvents()).isEmpty();
       assertThat(stderr.getStreamLinesPlain())
-          .anySatisfy(line -> assertThat(line).startsWith("    0 |      1 |"));
+          .anySatisfy(line -> assertThat(line).startsWith("    3 |      1 |"));
     }
   }
 
