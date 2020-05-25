@@ -633,15 +633,13 @@ public class SchemaSettings {
                       + "only stats.modes = [global] is allowed",
                   modes));
         }
-        if (queryInspector.isSelectStar()) {
-          StringBuilder sb = new StringBuilder("SELECT ");
-          // reduce row size by only selecting one column instead of all columns
-          sb.append(getGlobalCountSelector());
-          query =
-              sb.append(' ')
-                  .append(query.substring(queryInspector.getFromClauseStartIndex()))
-                  .toString();
-        }
+        // reduce row size by only selecting one column
+        StringBuilder sb = new StringBuilder("SELECT ");
+        sb.append(getGlobalCountSelector());
+        query =
+            sb.append(' ')
+                .append(query.substring(queryInspector.getFromClauseStartIndex()))
+                .toString();
       }
       queryInspector = new QueryInspector(query);
     }
