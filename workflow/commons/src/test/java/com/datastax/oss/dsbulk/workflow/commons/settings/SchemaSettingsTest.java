@@ -1408,7 +1408,7 @@ class SchemaSettingsTest {
     assertThat(counter).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
-    assertThat(argument.getValue()).isEqualTo("SELECT c1, c3 FROM ks.t1 WHERE c1 = 0");
+    assertThat(argument.getValue()).isEqualTo("SELECT c1 FROM ks.t1 WHERE c1 = 0");
   }
 
   @Test
