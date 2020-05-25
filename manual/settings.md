@@ -1449,7 +1449,7 @@ Default: **null**.
 
 How long the driver waits for a request to complete. This is a global limit on the duration of a session.execute() call, including any internal retries the driver might do. By default, this value is set very high because DSBulk is optimized for good throughput, rather than good latencies.
 
-Default: **"60 seconds"**.
+Default: **"5 minutes"**.
 
 #### -cl,<br />--driver.basic.request.consistency<br />--datastax-java-driver.basic.request.consistency _&lt;string&gt;_
 
@@ -1726,23 +1726,23 @@ Default: **4**.
 
 How long to wait for the coordinator to send the first page.
 
-Default: **"60 seconds"**.
+Default: **"5 minutes"**.
 
 #### --driver.advanced.continuous-paging.timeout.other-pages<br />--datastax-java-driver.advanced.continuous-paging.timeout.other-pages _&lt;string&gt;_
 
 How long to wait for the coordinator to send subsequent pages.
 
-Default: **"120 seconds"**.
+Default: **"5 minutes"**.
 
 #### --driver.advanced.heartbeat.interval<br />--datastax-java-driver.advanced.heartbeat.interval _&lt;string&gt;_
 
 The heartbeat interval. If a connection stays idle for that duration (no reads), the driver sends a dummy message on it to make sure it's still alive. If not, the connection is trashed and replaced.
 
-Default: **"30 seconds"**.
+Default: **"1 minute"**.
 
 #### --driver.advanced.heartbeat.timeout<br />--datastax-java-driver.advanced.heartbeat.timeout _&lt;string&gt;_
 
 How long the driver waits for the response to a heartbeat. If this timeout fires, the heartbeat is considered failed.
 
-Default: **"60 seconds"**.
+Default: **"1 minute"**.
 
