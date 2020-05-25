@@ -185,7 +185,6 @@ workload:
                 -url mnt/data/DSEBulkLoadTest/in/data100B/ \
                 --batch.mode REPLICA_SET \
                 --batch.maxBatchStatements 10 \
-                --driver.basic.request.timeout '5 minutes' \
                 --engine.executionId LOAD_CSV_100B_TPC \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
@@ -196,7 +195,6 @@ workload:
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/in/data100B/ \
                 --batch.mode DISABLED \
-                --driver.basic.request.timeout '5 minutes' \
                 --engine.executionId LOAD_CSV_100B_TPC_BATCH_DISABLED \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
@@ -208,7 +206,6 @@ workload:
                 -url mnt/data/DSEBulkLoadTest/in/data100B_one_file/ \
                 --batch.mode REPLICA_SET \
                 --batch.maxBatchStatements 10 \
-                --driver.basic.request.timeout '5 minutes' \
                 --engine.executionId LOAD_CSV_100B_PARALLEL \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
@@ -219,7 +216,6 @@ workload:
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/in/data100B_one_file/ \
                 --batch.mode DISABLED \
-                --driver.basic.request.timeout '5 minutes' \
                 --engine.executionId LOAD_CSV_100B_PARALLEL_BATCH_DISABLED \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
@@ -231,7 +227,6 @@ workload:
                 -url mnt/data/DSEBulkLoadTest/in/data1KB/ \
                 --batch.mode REPLICA_SET \
                 --batch.maxBatchStatements 10 \
-                --driver.basic.request.timeout '5 minutes' \
                 --engine.executionId LOAD_CSV_1KB \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
@@ -243,7 +238,6 @@ workload:
                 -url mnt/data/DSEBulkLoadTest/in/data1KB/ \
                 --batch.mode REPLICA_SET \
                 --batch.maxBatchStatements 10 \
-                --driver.basic.request.timeout '5 minutes' \
                 --driver.advanced.protocol.compression LZ4 \
                 --engine.executionId LOAD_CSV_1KB_COMPRESSED \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
@@ -255,7 +249,6 @@ workload:
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/in/data1KB/ \
                 --batch.mode DISABLED \
-                --driver.basic.request.timeout '5 minutes' \
                 --engine.executionId LOAD_CSV_1KB_BATCH_DISABLED \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
@@ -266,7 +259,6 @@ workload:
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 -url mnt/data/DSEBulkLoadTest/in/data1KB/ \
                 --batch.mode DISABLED \
-                --driver.basic.request.timeout '5 minutes' \
                 --driver.advanced.protocol.compression LZ4 \
                 --engine.executionId LOAD_CSV_1KB_BATCH_DISABLED_COMPRESSED \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
@@ -279,7 +271,6 @@ workload:
                 -url mnt/data/DSEBulkLoadTest/in/data10KB/ \
                 --connector.csv.maxCharsPerColumn 11000 \
                 --batch.mode DISABLED \
-                --driver.basic.request.timeout '5 minutes' \
                 --engine.executionId LOAD_CSV_10KB \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
@@ -291,7 +282,6 @@ workload:
                 -url mnt/data/DSEBulkLoadTest/in/data10KB/ \
                 --connector.csv.maxCharsPerColumn 11000 \
                 --batch.mode DISABLED \
-                --driver.basic.request.timeout '5 minutes' \
                 --driver.advanced.protocol.compression LZ4 \
                 --engine.executionId LOAD_CSV_10KB_COMPRESSED \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
@@ -304,7 +294,6 @@ workload:
                 -url mnt/data/DSEBulkLoadTest/in/data1MB/ \
                 --connector.csv.maxCharsPerColumn 1100000 \
                 --batch.mode DISABLED \
-                --driver.basic.request.timeout '5 minutes' \
                 --engine.executionId LOAD_CSV_1MB \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
@@ -316,7 +305,6 @@ workload:
                 -url mnt/data/DSEBulkLoadTest/in/data1MB/ \
                 --connector.csv.maxCharsPerColumn 1100000 \
                 --batch.mode DISABLED \
-                --driver.basic.request.timeout '5 minutes' \
                 --driver.advanced.protocol.compression LZ4 \
                 --engine.executionId LOAD_CSV_1MB_COMPRESSED \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
@@ -329,7 +317,6 @@ workload:
                 -url mnt/data/DSEBulkLoadTest/in/data10/ \
                 --batch.mode REPLICA_SET \
                 --batch.maxBatchStatements 10 \
-                --driver.basic.request.timeout '5 minutes'  \
                 --engine.executionId LOAD_CSV_10_COLS \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
@@ -410,7 +397,6 @@ workload:
                 -url mnt/data/DSEBulkLoadTest/json/data100B/ \
                 --batch.mode REPLICA_SET \
                 --batch.maxBatchStatements 10 \
-                --driver.basic.request.timeout '5 minutes' \
                 --engine.executionId LOAD_JSON_100B \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
@@ -422,7 +408,6 @@ workload:
               -url mnt/data/DSEBulkLoadTest/json/data1KB/  \
               --batch.mode REPLICA_SET \
               --batch.maxBatchStatements 10 \
-              --driver.basic.request.timeout '5 minutes' \
               --engine.executionId LOAD_JSON_1KB  \
               -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
@@ -433,7 +418,6 @@ workload:
               -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
               -url mnt/data/DSEBulkLoadTest/json/data10KB/  \
               --batch.mode DISABLED  \
-              --driver.basic.request.timeout '5 minutes'  \
               --engine.executionId LOAD_JSON_10KB  \
               -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
@@ -444,7 +428,6 @@ workload:
               -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
               -url mnt/data/DSEBulkLoadTest/json/data1MB/  \
               --batch.mode DISABLED \
-              --driver.basic.request.timeout '5 minutes'  \
               --engine.executionId LOAD_JSON_1MB  \
               -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
@@ -456,7 +439,6 @@ workload:
               -url mnt/data/DSEBulkLoadTest/json/data10/  \
               --batch.mode REPLICA_SET  \
               --batch.maxBatchStatements 10  \
-              --driver.basic.request.timeout '5 minutes'  \
               --engine.executionId LOAD_JSON_10_COLS  \
               -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
@@ -468,7 +450,6 @@ workload:
               -url mnt/data/DSEBulkLoadTest/json/transactions/generated  \
               --codec.timestamp ISO_ZONED_DATE_TIME  \
               --batch.mode PARTITION_KEY  \
-              --driver.basic.request.timeout '5 minutes'  \
               --engine.executionId LOAD_JSON_TRANSACTIONS  \
               -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?

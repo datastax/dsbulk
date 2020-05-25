@@ -10,6 +10,7 @@
 - [bug] DAT-585: Apply per-file limits when reading multiple resources.
 - [improvement] DAT-571: Generalize maxConcurrentQueries to all operations.
 - [improvement] DAT-575: Automatically detect the best concurrency level by sampling data.
+- [improvement] DAT-578: Raise driver timeouts.
 
 
 ## 1.5.0
