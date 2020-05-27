@@ -91,7 +91,7 @@ public class CommandLineParser {
 
     Config finalConfig = parseArguments(referenceConfig, applicationConfig, shortcuts);
 
-    return new ParsedCommandLine(workflowProvider, finalConfig);
+    return new ParsedCommandLine(workflowProvider, finalConfig.resolve());
   }
 
   /**

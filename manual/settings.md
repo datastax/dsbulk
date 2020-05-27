@@ -1588,7 +1588,7 @@ Default: **"AtomicTimestampGenerator"**.
 
 #### --driver.advanced.continuous-paging.page-size<br />--datastax-java-driver.advanced.continuous-paging.page-size _&lt;number&gt;_
 
-The page size. The value specified here can be interpreted in number of rows or in number of bytes, depending on the unit defined with page-unit (see below). It controls how many rows (or how much data) will be retrieved simultaneously in a single network roundtrip (the goal being to avoid loading too many results in memory at the same time). If there are more results, additional requests will be used to retrieve them (either automatically if you iterate with the sync API, or explicitly with the async API's fetchNextPage method). The default is the same as the driver's normal request page size, i.e., 5000 (rows).
+The page size. The value specified here can be interpreted in number of rows or in number of bytes, depending on the unit defined with page-unit (see below). It controls how many rows (or how much data) will be retrieved simultaneously in a single network roundtrip (the goal being to avoid loading too many results in memory at the same time). If there are more results, additional requests will be used to retrieve them. The default is the same as the driver's normal request page size, i.e., 5000 (rows).
 
 Default: **5000**.
 

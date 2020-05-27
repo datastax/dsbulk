@@ -404,6 +404,28 @@ class DataStaxBulkLoaderTest {
   }
 
   @Test
+  void should_propagate_references() throws Exception {
+    Config result =
+        new CommandLineParser(
+                "load",
+                "--driver.basic.request.timeout",
+                "10 minutes",
+                "--driver.basic.request.page-size",
+                "1234")
+            .parse()
+            .getConfig();
+    assertThat(result.getString("datastax-java-driver.basic.request.timeout"))
+        .isEqualTo("10 minutes");
+    assertThat(result.getString("datastax-java-driver.advanced.metadata.schema.request-timeout"))
+        .isEqualTo("10 minutes");
+    assertThat(result.getString("datastax-java-driver.basic.request.page-size")).isEqualTo("1234");
+    assertThat(result.getString("datastax-java-driver.advanced.metadata.schema.request-page-size"))
+        .isEqualTo("1234");
+    assertThat(result.getString("datastax-java-driver.advanced.continuous-paging.page-size"))
+        .isEqualTo("1234");
+  }
+
+  @Test
   void should_accept_escaped_double_quote_in_complex_type() throws Exception {
     // double quotes should be provided escaped as valid HOCON
     Config result =
