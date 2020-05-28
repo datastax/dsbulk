@@ -501,7 +501,7 @@ public abstract class AbstractFileBasedConnector implements Connector {
   @NonNull
   protected Function<Flux<Record>, Flux<Record>> writeRecords(@NonNull RecordWriter writer) {
     return upstream ->
-        upstream.flatMapSequential(
+        upstream.flatMap(
             record -> {
               try {
                 writer.write(record);
@@ -509,7 +509,9 @@ public abstract class AbstractFileBasedConnector implements Connector {
               } catch (Exception e) {
                 return Flux.error(e);
               }
-            }, 1, 1);
+            },
+            1,
+            1);
   }
 
   /**
