@@ -1998,10 +1998,16 @@ class SchemaSettingsTest {
             "dsbulk.schema", "query", "\"INSERT INTO ks.t1 (c1, c3) VALUES (:c1, :c3)\"");
     when(table.getPrimaryKey()).thenReturn(newArrayList(col1, col2));
     when(table.getPartitionKey()).thenReturn(singletonList(col1));
+    when(table.getClusteringColumns()).thenReturn(ImmutableMap.of(col2, ClusteringOrder.ASC));
     when(col3.isStatic()).thenReturn(true);
     SchemaSettings schemaSettings = new SchemaSettings(config);
     schemaSettings.init(SchemaGenerationType.MAP_AND_WRITE, session, false, true);
-    schemaSettings.createRecordMapper(session, recordMetadata, codecFactory);
+    RecordMapper recordMapper =
+        schemaSettings.createRecordMapper(session, recordMetadata, codecFactory);
+    @SuppressWarnings("unchecked")
+    Set<CQLWord> clusteringColumnVariables =
+        (Set<CQLWord>) getInternalState(recordMapper, "clusteringColumnVariables");
+    assertThat(clusteringColumnVariables).isEmpty();
   }
 
   @Test

@@ -222,7 +222,7 @@ class DefaultRecordMapperTest {
             true,
             true,
             false,
-            (statement) -> boundStatementBuilder);
+            statement -> boundStatementBuilder);
     Statement<?> result = mapper.map(record);
     assertThat(result).isInstanceOf(BulkBoundStatement.class);
     assertThat(ReflectionUtils.getInternalState(result, "delegate")).isSameAs(boundStatement);
@@ -718,9 +718,11 @@ class DefaultRecordMapperTest {
     assertParameter(2, 2, ByteBuffer.allocate(0));
   }
 
-  private void assertParameter(int index, int expectedIndex, ByteBuffer expectedValue) {
-    assertThat(variableCaptor.getAllValues().get(index)).isEqualTo(expectedIndex);
-    assertThat(valueCaptor.getAllValues().get(index)).isEqualTo(expectedValue);
+  private void assertParameter(
+      int invocationIndex, int expectedVariableIndex, ByteBuffer expectedVariableValue) {
+    assertThat(variableCaptor.getAllValues().get(invocationIndex))
+        .isEqualTo(expectedVariableIndex);
+    assertThat(valueCaptor.getAllValues().get(invocationIndex)).isEqualTo(expectedVariableValue);
   }
 
   @SafeVarargs
