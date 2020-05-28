@@ -307,7 +307,7 @@ public class LogManager implements AutoCloseable {
   public Function<Flux<BatchableStatement<?>>, Flux<BatchableStatement<?>>>
       newUnmappableStatementsHandler() {
     return upstream ->
-        upstream.flatMapSequential(
+        upstream.flatMap(
             stmt -> {
               if (stmt instanceof UnmappableStatement) {
                 try {
@@ -338,7 +338,7 @@ public class LogManager implements AutoCloseable {
   @NonNull
   public Function<Flux<Record>, Flux<Record>> newFailedRecordsHandler() {
     return upstream ->
-        upstream.flatMapSequential(
+        upstream.flatMap(
             r -> {
               if (r instanceof ErrorRecord) {
                 try {
@@ -368,7 +368,7 @@ public class LogManager implements AutoCloseable {
   @NonNull
   public Function<Flux<Record>, Flux<Record>> newUnmappableRecordsHandler() {
     return upstream ->
-        upstream.flatMapSequential(
+        upstream.flatMap(
             r -> {
               if (r instanceof ErrorRecord) {
                 try {
@@ -398,7 +398,7 @@ public class LogManager implements AutoCloseable {
   @NonNull
   public Function<Flux<WriteResult>, Flux<WriteResult>> newFailedWritesHandler() {
     return upstream ->
-        upstream.flatMapSequential(
+        upstream.flatMap(
             r -> {
               try {
                 if (!r.isSuccess()) {
@@ -433,7 +433,7 @@ public class LogManager implements AutoCloseable {
   @NonNull
   public Function<Flux<ReadResult>, Flux<ReadResult>> newFailedReadsHandler() {
     return upstream ->
-        upstream.flatMapSequential(
+        upstream.flatMap(
             r -> {
               if (r.isSuccess()) {
                 return Flux.just(r);
