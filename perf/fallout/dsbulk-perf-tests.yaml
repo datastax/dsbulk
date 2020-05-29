@@ -100,12 +100,20 @@ workload:
 
             # download in and out form remote ftp
             echo "Transferring data from FTP server..."
-            lftp -e 'mirror /dsbulk/in /home/automaton/fallout_scratch/mnt/data/DSEBulkLoadTest/ && exit' -u 'dse_ftp','dse$#@RULES' ftp://fileserver001.datastax.lan/
-            lftp -e 'mirror /dsbulk/json /home/automaton/fallout_scratch/mnt/data/DSEBulkLoadTest/ && exit' -u 'dse_ftp','dse$#@RULES' ftp://fileserver001.datastax.lan/
-            echo "Transfer done"
 
-            du -sh /home/automaton/fallout_scratch/mnt/data/DSEBulkLoadTest/in
-            du -sh /home/automaton/fallout_scratch/mnt/data/DSEBulkLoadTest/json
+            contains() { for e in  $(echo "$1" | tr "," "\n"); do [[ "$e" == "$2" ]] && return 0; done; return 1; }
+
+            if contains {{connectors}} csv; then
+              lftp -e 'mirror /dsbulk/in /home/automaton/fallout_scratch/mnt/data/DSEBulkLoadTest/ && exit' -u 'dse_ftp','dse$#@RULES' ftp://fileserver001.datastax.lan/
+              echo "CSV Transfer done"
+              du -sh /home/automaton/fallout_scratch/mnt/data/DSEBulkLoadTest/in
+            fi
+
+            if contains {{connectors}} json; then
+              lftp -e 'mirror /dsbulk/json /home/automaton/fallout_scratch/mnt/data/DSEBulkLoadTest/ && exit' -u 'dse_ftp','dse$#@RULES' ftp://fileserver001.datastax.lan/
+              echo "JSON Transfer done"
+              du -sh /home/automaton/fallout_scratch/mnt/data/DSEBulkLoadTest/json
+            fi
 
             #install maven and java
             sudo apt-get -q install maven unzip --assume-yes
