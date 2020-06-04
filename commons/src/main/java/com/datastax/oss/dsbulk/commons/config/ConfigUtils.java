@@ -116,7 +116,7 @@ public class ConfigUtils {
   }
 
   /**
-   * Creates a resolved reference config for DSBulk.
+   * Creates an unresolved reference config for DSBulk.
    *
    * <p>The reference config is obtained from the following stack:
    *
@@ -126,19 +126,18 @@ public class ConfigUtils {
    *   <li>All classpath resources named reference.conf: Java driver settings.
    * </ol>
    *
-   * @return a resolved reference config for DSBulk
+   * @return an unresolved reference config for DSBulk.
    */
   @NonNull
   public static Config createReferenceConfig() {
     // parse errors should not happen here
     return ConfigFactory.parseResourcesAnySyntax("dsbulk-reference")
         .withFallback(ConfigFactory.parseResourcesAnySyntax("driver-reference"))
-        .withFallback(ConfigFactory.defaultReference())
-        .resolve();
+        .withFallback(ConfigFactory.defaultReferenceUnresolved());
   }
 
   /**
-   * Invalidates caches and creates a resolved application config for DSBulk, optionally pulling
+   * Invalidates caches and creates an unresolved application config for DSBulk, optionally pulling
    * application settings from the given alternate location.
    *
    * <p>The application config is obtained from the following stack:
@@ -154,7 +153,7 @@ public class ConfigUtils {
    * * @param appConfigPath An alternate location for the application settings, or null to use the
    * default application resources.
    *
-   * @return a resolved application config for DSBulk
+   * @return an unresolved application config for DSBulk.
    */
   @NonNull
   public static Config createApplicationConfig(@Nullable Path appConfigPath) {
@@ -167,8 +166,7 @@ public class ConfigUtils {
       Config referenceConfig = createReferenceConfig();
       return ConfigFactory.defaultOverrides()
           .withFallback(ConfigFactory.defaultApplication())
-          .withFallback(referenceConfig)
-          .resolve();
+          .withFallback(referenceConfig);
     } catch (ConfigException.Parse e) {
       throw new IllegalArgumentException(
           String.format(

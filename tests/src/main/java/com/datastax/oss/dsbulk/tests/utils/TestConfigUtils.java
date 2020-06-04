@@ -33,7 +33,7 @@ public class TestConfigUtils {
    * @return A test configuration containing all the settings under the section 'path'.
    */
   public static Config createTestConfig(String path, Object... additionalArgs) {
-    Config baseConfig = ConfigUtils.createApplicationConfig(null).getConfig(path);
+    Config baseConfig = ConfigUtils.createApplicationConfig(null).resolve().getConfig(path);
     if (additionalArgs != null && additionalArgs.length != 0) {
       Iterator<Object> it = Arrays.asList(additionalArgs).iterator();
       while (it.hasNext()) {
