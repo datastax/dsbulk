@@ -67,10 +67,6 @@ public class EndToEndUtils {
       "SELECT * FROM ip_by_country "
           + "WHERE token(country_code) > :start AND token(country_code) <= :end";
 
-  public static final String SELECT_FROM_IP_BY_COUNTRY_WITH_SPACES =
-      "SELECT * FROM \"MYKS\".\"WITH_SPACES\" "
-          + "WHERE token(key) > :start AND token(key) <= :end";
-
   public static final String IP_BY_COUNTRY_MAPPING_INDEXED =
       "0=beginning_ip_address,"
           + "1=ending_ip_address,"
@@ -116,8 +112,8 @@ public class EndToEndUtils {
     List<Map<String, Object>> rows = new ArrayList<>();
     for (int i = 0; i < numOfResults; i++) {
       HashMap<String, Object> row = new HashMap<>();
-      row.put("country_code", "country" + Integer.toString(i));
-      row.put("country_name", "country" + Integer.toString(i));
+      row.put("country_code", "country" + i);
+      row.put("country_name", "country" + i);
       row.put("beginning_ip_address", "127.0.0.1");
       row.put("ending_ip_address", "127.2.0.1");
       row.put("beginning_ip_number", Integer.toString(i));
@@ -140,10 +136,10 @@ public class EndToEndUtils {
     List<Map<String, Object>> rows = new ArrayList<>();
     for (int i = 0; i < numOfResults; i++) {
       HashMap<String, Object> row = new HashMap<>();
-      row.put("country_code", "country" + ";" + Integer.toString(i));
-      row.put("country_name", "country" + ";" + Integer.toString(i));
-      row.put("beginning_ip_address", "127.0.0." + Integer.toString(i));
-      row.put("ending_ip_address", "127.2.0." + Integer.toString(i));
+      row.put("country_code", "country" + ";" + i);
+      row.put("country_name", "country" + ";" + i);
+      row.put("beginning_ip_address", "127.0.0." + i);
+      row.put("ending_ip_address", "127.2.0." + i);
       row.put("beginning_ip_number", Integer.toString(i));
       row.put("ending_ip_number", Integer.toString(i));
       rows.add(row);
@@ -220,7 +216,7 @@ public class EndToEndUtils {
     assertThat(actual).withFailMessage(sw.toString()).isEqualTo(expected);
   }
 
-  public static String getFileContent(String fileName) {
+  private static String getFileContent(String fileName) {
     Path logPath =
         OperationDirectory.getCurrentOperationDirectory().orElseThrow(IllegalStateException::new);
     Path exceptionFile = logPath.resolve(fileName);
@@ -231,7 +227,7 @@ public class EndToEndUtils {
     }
   }
 
-  public static void addErrorFilesContent(Map<String, String> result) throws IOException {
+  private static void addErrorFilesContent(Map<String, String> result) throws IOException {
     Path logPath =
         OperationDirectory.getCurrentOperationDirectory().orElseThrow(IllegalStateException::new);
     // find all available -errors.log files
@@ -365,7 +361,7 @@ public class EndToEndUtils {
   public static void createWithSpacesTable(CqlSession session) {
     session.execute(
         "CREATE KEYSPACE IF NOT EXISTS \"MYKS\" "
-            + "WITH replication = { \'class\' : \'SimpleStrategy\', \'replication_factor\' : 3 }");
+            + "WITH replication = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 }");
     session.execute(
         "CREATE TABLE IF NOT EXISTS \"MYKS\".\"WITH_SPACES\" ("
             + "key int PRIMARY KEY, \"my destination\" text)");
@@ -374,7 +370,7 @@ public class EndToEndUtils {
   public static void createIpByCountryCaseSensitiveTable(CqlSession session) {
     session.execute(
         "CREATE KEYSPACE IF NOT EXISTS \"MYKS\" "
-            + "WITH replication = { \'class\' : \'SimpleStrategy\', \'replication_factor\' : 3 }");
+            + "WITH replication = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 }");
     session.execute(
         "CREATE TABLE IF NOT EXISTS \"MYKS\".\"IPBYCOUNTRY\" ("
             + "\"COUNTRY CODE\" varchar,"
