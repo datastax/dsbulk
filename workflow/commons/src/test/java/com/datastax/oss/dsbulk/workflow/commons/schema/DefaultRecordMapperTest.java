@@ -720,8 +720,7 @@ class DefaultRecordMapperTest {
 
   private void assertParameter(
       int invocationIndex, int expectedVariableIndex, ByteBuffer expectedVariableValue) {
-    assertThat(variableCaptor.getAllValues().get(invocationIndex))
-        .isEqualTo(expectedVariableIndex);
+    assertThat(variableCaptor.getAllValues().get(invocationIndex)).isEqualTo(expectedVariableIndex);
     assertThat(valueCaptor.getAllValues().get(invocationIndex)).isEqualTo(expectedVariableValue);
   }
 
