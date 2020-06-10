@@ -421,8 +421,6 @@ class DataStaxBulkLoaderTest {
     assertThat(result.getString("datastax-java-driver.basic.request.page-size")).isEqualTo("1234");
     assertThat(result.getString("datastax-java-driver.advanced.metadata.schema.request-page-size"))
         .isEqualTo("1234");
-    assertThat(result.getString("datastax-java-driver.advanced.continuous-paging.page-size"))
-        .isEqualTo("1234");
   }
 
   @Test
