@@ -146,7 +146,7 @@ public abstract class AbstractFileBasedConnector implements Connector {
     assert read;
     return Flux.concat(
             Flux.fromIterable(roots).flatMap(this::scanRootDirectory), Flux.fromIterable(files))
-        .map(this::readSingleFile);
+        .map(url -> readSingleFile(url).transform(this::applyPerFileLimits));
   }
 
   @NonNull

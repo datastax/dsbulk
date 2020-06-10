@@ -773,6 +773,7 @@ class CSVConnectorTest {
     connector.configure(settings, true);
     connector.init();
     assertThat(Flux.from(connector.read()).count().block()).isEqualTo(450);
+    assertThat(Flux.merge(connector.readByResource()).count().block()).isEqualTo(450);
     connector.close();
   }
 
@@ -785,6 +786,7 @@ class CSVConnectorTest {
     connector.configure(settings, true);
     connector.init();
     assertThat(Flux.from(connector.read()).count().block()).isEqualTo(0);
+    assertThat(Flux.merge(connector.readByResource()).count().block()).isEqualTo(0);
     connector.close();
   }
 
@@ -797,6 +799,7 @@ class CSVConnectorTest {
     connector.configure(settings, true);
     connector.init();
     assertThat(Flux.from(connector.read()).count().block()).isEqualTo(50);
+    assertThat(Flux.merge(connector.readByResource()).count().block()).isEqualTo(50);
     connector.close();
   }
 
@@ -809,6 +812,7 @@ class CSVConnectorTest {
     connector.configure(settings, true);
     connector.init();
     assertThat(Flux.from(connector.read()).count().block()).isEqualTo(5);
+    assertThat(Flux.merge(connector.readByResource()).count().block()).isEqualTo(5);
     connector.close();
   }
 

@@ -7,6 +7,7 @@
 - [bug] DAT-569: Do not parallelize queries containing GROUP BY, ORDER BY or LIMIT clauses.
 - [bug] DAT-573: Convert empty strings to zero-length arrays when loading blobs.
 - [bug] DAT-581: Resolve configuration references after the final config has been computed.
+- [bug] DAT-585: Apply per-file limits when reading multiple resources.
 
 
 ## 1.5.0
