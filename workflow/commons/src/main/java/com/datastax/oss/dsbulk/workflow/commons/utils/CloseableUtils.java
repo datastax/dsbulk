@@ -16,11 +16,14 @@
 package com.datastax.oss.dsbulk.workflow.commons.utils;
 
 import com.datastax.oss.driver.shaded.guava.common.base.Throwables;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import reactor.core.Disposable;
 
 public class CloseableUtils {
 
-  public static Exception closeQuietly(AutoCloseable closeable, Exception suppressed) {
+  @Nullable
+  public static Exception closeQuietly(
+      @Nullable AutoCloseable closeable, @Nullable Exception suppressed) {
     if (closeable != null) {
       try {
         closeable.close();
@@ -36,7 +39,9 @@ public class CloseableUtils {
     return suppressed;
   }
 
-  public static Exception closeQuietly(Disposable disposable, Exception suppressed) {
+  @Nullable
+  public static Exception closeQuietly(
+      @Nullable Disposable disposable, @Nullable Exception suppressed) {
     if (disposable != null && !disposable.isDisposed()) {
       try {
         disposable.dispose();
