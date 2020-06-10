@@ -180,8 +180,6 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(StringUtils.quoteJson(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
-    args.add("--connector.csv.maxConcurrentFiles");
-    args.add("1");
     args.add("--schema.keyspace");
     args.add(session.getKeyspace().get().asInternal());
     args.add("--schema.table");
@@ -221,8 +219,6 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(StringUtils.quoteJson(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
-    args.add("--connector.csv.maxConcurrentFiles");
-    args.add("1");
     args.add("--schema.keyspace");
     args.add(session.getKeyspace().get().asInternal());
     args.add("--schema.table");
@@ -268,8 +264,6 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(StringUtils.quoteJson(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
-    args.add("--connector.csv.maxConcurrentFiles");
-    args.add("1");
     args.add("--schema.keyspace");
     args.add(session.getKeyspace().get().asInternal());
     args.add("--schema.table");
@@ -315,8 +309,6 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(StringUtils.quoteJson(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
-    args.add("--connector.csv.maxConcurrentFiles");
-    args.add("1");
     args.add("--schema.keyspace");
     args.add(session.getKeyspace().get().asInternal());
     args.add("--schema.table");
@@ -746,8 +738,6 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add(StringUtils.quoteJson(unloadDir));
     args.add("--connector.csv.header");
     args.add("false");
-    args.add("--connector.csv.maxConcurrentFiles");
-    args.add("1");
     args.add("--schema.keyspace");
     args.add(session.getKeyspace().get().asInternal());
     args.add("--schema.table");
@@ -2577,7 +2567,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertStatus(unloadStatus, STATUS_OK);
     List<String> lines =
         FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
-    assertThat(lines).contains("1,ok1").contains("2,ok2");
+    assertThat(lines).hasSize(2).contains("1,ok1").contains("2,ok2");
   }
 
   /** Test for DAT-253. */
@@ -2625,7 +2615,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertStatus(unloadStatus, STATUS_OK);
     List<String> lines =
         FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
-    assertThat(lines).contains("ok1,1").contains("ok2,2");
+    assertThat(lines).hasSize(2).contains("ok1,1").contains("ok2,2");
   }
 
   /** Test for DAT-326. */

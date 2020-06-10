@@ -18,6 +18,7 @@
 - [improvement] DAT-571: Generalize maxConcurrentQueries to all operations.
 - [improvement] DAT-575: Automatically detect the best concurrency level by sampling data.
 - [improvement] DAT-578: Raise driver timeouts.
+- [improvement] DAT-454: Revisit threading model for Unload workflow.
 
 
 ## 1.5.0

@@ -50,7 +50,6 @@ import com.datastax.oss.dsbulk.workflow.commons.settings.SchemaSettings;
 import com.datastax.oss.dsbulk.workflow.commons.settings.SettingsManager;
 import com.datastax.oss.dsbulk.workflow.commons.utils.CloseableUtils;
 import com.datastax.oss.dsbulk.workflow.commons.utils.ClusterInformationUtils;
-import com.datastax.oss.dsbulk.workflow.commons.utils.WorkflowUtils;
 import com.typesafe.config.Config;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import java.time.Duration;
@@ -185,8 +184,10 @@ public class LoadWorkflow implements Workflow {
     terminationHandler = logManager.newTerminationHandler();
     numCores = Runtime.getRuntime().availableProcessors();
     scheduler = Schedulers.newParallel(numCores, new DefaultThreadFactory("workflow"));
-    int resourceCount = connector.estimatedResourceCount();
-    useThreadPerCore = resourceCount >= WorkflowUtils.TPC_THRESHOLD;
+    int readConcurrency = connector.readConcurrency();
+    LOGGER.debug("Using read concurrency: {}", readConcurrency);
+    useThreadPerCore =
+        readConcurrency >= Math.max(4, Runtime.getRuntime().availableProcessors() / 4);
     LOGGER.debug("Using thread-per-core strategy: {}", useThreadPerCore);
     writeConcurrency =
         engineSettings.getMaxConcurrentQueries().orElseGet(this::determineWriteConcurrency);
@@ -224,7 +225,7 @@ public class LoadWorkflow implements Workflow {
   }
 
   private Flux<Statement<?>> threadPerCoreFlux() {
-    return Flux.defer(() -> connector.readByResource())
+    return Flux.defer(() -> connector.readMultiple())
         .flatMap(
             records ->
                 Flux.from(records)
@@ -237,11 +238,12 @@ public class LoadWorkflow implements Workflow {
                     .transform(unmappableStatementsHandler)
                     .transform(this::threadPerCoreBatch)
                     .subscribeOn(scheduler),
+            // todo cap at read concurrency in prep for maxConcurrentFiles
             numCores);
   }
 
   private Flux<Statement<?>> parallelFlux() {
-    return Flux.defer(() -> connector.read())
+    return Flux.defer(() -> connector.readSingle())
         .window(batchingEnabled ? batchBufferSize : Queues.SMALL_BUFFER_SIZE)
         .flatMap(
             records ->
@@ -314,7 +316,7 @@ public class LoadWorkflow implements Workflow {
     Histogram sample =
         DataSizeSampler.sampleWrites(
             session.getContext(),
-            Flux.from(connector.read())
+            Flux.from(connector.readSingle())
                 .onErrorContinue(
                     (error, v) ->
                         LOGGER.debug(

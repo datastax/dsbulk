@@ -380,6 +380,17 @@ public class CSVConnector extends AbstractFileBasedConnector {
     }
 
     @Override
+    public void flush() throws IOException {
+      if (writer != null) {
+        try {
+          writer.flush();
+        } catch (RuntimeException e) {
+          throw new IOException(String.format("Error flushing %s", url), e);
+        }
+      }
+    }
+
+    @Override
     public void close() throws IOException {
       if (writer != null) {
         try {

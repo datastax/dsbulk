@@ -260,19 +260,19 @@ Enable or disable dry-run mode, a test mode that runs the command but does not l
 
 Default: **false**.
 
-#### --executor.maxPerSecond<br />--dsbulk.executor.maxPerSecond _&lt;number&gt;_
+#### -maxConcurrentQueries,<br />--engine.maxConcurrentQueries<br />--dsbulk.engine.maxConcurrentQueries _&lt;string&gt;_
 
-The maximum number of concurrent operations per second. When writing to the database, this means the maximum number of writes per second (batch statements are counted by the number of statements included); when reading from the database, this means the maximum number of rows per second.
+The maximum number of concurrent queries that should be carried in parallel.
 
-This acts as a safeguard to prevent overloading the cluster. Reduce this value when the throughput for reads and writes cannot match the throughput of connectors, and latencies get too high; this is usually a sign that the workflow engine is not well calibrated and will eventually run out of memory, or some queries will timeout.
+This acts as a safeguard to prevent more queries executing in parallel than the cluster can handle, or to regulate throughput when latencies get too high. Batch statements count as one query.
 
-This setting applies a "hard" limit to the gloabl throughput, capping it at a fixed value. If you need a a soft throughput limit, you should use `maxInFlight` instead.
+When using continuous paging, also make sure to set this number to a value equal to or lesser than the number of nodes in the local datacenter multiplied by the value configured server-side for `continuous_paging.max_concurrent_sessions` in the cassandra.yaml configuration file (60 by default); otherwise some requests might be rejected.
 
-Note that this setting is implemented by a semaphore and may block application threads if there are too many in-flight requests.
+The special syntax `NC` can be used to specify a number that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 concurrent queries.
 
-Setting this option to any negative value or zero will disable it.
+The default value is 'AUTO'; with this special value, DSBulk will optimize the number of concurrent queries according to the number of available cores, and the operation being executed. The actual value usually ranges from the number of cores to eight times that number.
 
-Default: **-1**.
+Default: **"AUTO"**.
 
 #### -maxErrors,<br />--log.maxErrors<br />--dsbulk.log.maxErrors _&lt;number&gt;_
 
@@ -468,7 +468,7 @@ Default: **512**.
 
 The maximum number of files that can be written simultaneously. This setting is ignored when reading and when the output URL is anything other than a directory on a filesystem. The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 
-Default: **"0.25C"**.
+Default: **"0.5C"**.
 
 #### -newline,<br />--connector.csv.newline<br />--dsbulk.connector.csv.newline _&lt;string&gt;_
 
@@ -631,7 +631,7 @@ Note that some Jackson features might not be supported, in particular features t
 
 The maximum number of files that can be written simultaneously. This setting is ignored when reading and when the output URL is anything other than a directory on a filesystem. The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 
-Default: **"0.25C"**.
+Default: **"0.5C"**.
 
 #### --connector.json.parserFeatures<br />--dsbulk.connector.json.parserFeatures _&lt;map&lt;string,boolean&gt;&gt;_
 
@@ -1082,6 +1082,20 @@ Enable or disable dry-run mode, a test mode that runs the command but does not l
 
 Default: **false**.
 
+#### -maxConcurrentQueries,<br />--engine.maxConcurrentQueries<br />--dsbulk.engine.maxConcurrentQueries _&lt;string&gt;_
+
+The maximum number of concurrent queries that should be carried in parallel.
+
+This acts as a safeguard to prevent more queries executing in parallel than the cluster can handle, or to regulate throughput when latencies get too high. Batch statements count as one query.
+
+When using continuous paging, also make sure to set this number to a value equal to or lesser than the number of nodes in the local datacenter multiplied by the value configured server-side for `continuous_paging.max_concurrent_sessions` in the cassandra.yaml configuration file (60 by default); otherwise some requests might be rejected.
+
+The special syntax `NC` can be used to specify a number that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 concurrent queries.
+
+The default value is 'AUTO'; with this special value, DSBulk will optimize the number of concurrent queries according to the number of available cores, and the operation being executed. The actual value usually ranges from the number of cores to eight times that number.
+
+Default: **"AUTO"**.
+
 #### --engine.executionId<br />--dsbulk.engine.executionId _&lt;string&gt;_
 
 A unique identifier to attribute to each execution. When unspecified or empty, the engine will automatically generate identifiers of the following form: *workflow*_*timestamp*, where :
@@ -1097,38 +1111,10 @@ When this identifier is user-supplied, it is important to guarantee its uniquene
 
 Default: **null**.
 
-#### --engine.maxConcurrentQueries<br />--dsbulk.engine.maxConcurrentQueries _&lt;string&gt;_
-
-The maximum number of concurrent queries that should be carried in parallel.
-
-This acts as a safeguard to prevent more queries executing in parallel than the cluster can handle, or to regulate throughput when latencies get too high. Batch statements count as one query.
-
-When using continuous paging, also make sure to set this number to a value equal to or lesser than the number of nodes in the local datacenter multiplied by the value configured server-side for `continuous_paging.max_concurrent_sessions` in the cassandra.yaml configuration file (60 by default); otherwise some requests might be rejected.
-
-The special syntax `NC` can be used to specify a number that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 concurrent queries.
-
-The default value is 'AUTO'; with this special value, DSBulk will optimize the number of concurrent queries according to the number of available cores, and the operation being executed. The actual value usually ranges from the number of cores to eight times that number.
-
-Default: **"AUTO"**.
-
 <a name="executor"></a>
 ## Executor Settings
 
 Executor-specific settings.
-
-#### --executor.maxPerSecond<br />--dsbulk.executor.maxPerSecond _&lt;number&gt;_
-
-The maximum number of concurrent operations per second. When writing to the database, this means the maximum number of writes per second (batch statements are counted by the number of statements included); when reading from the database, this means the maximum number of rows per second.
-
-This acts as a safeguard to prevent overloading the cluster. Reduce this value when the throughput for reads and writes cannot match the throughput of connectors, and latencies get too high; this is usually a sign that the workflow engine is not well calibrated and will eventually run out of memory, or some queries will timeout.
-
-This setting applies a "hard" limit to the gloabl throughput, capping it at a fixed value. If you need a a soft throughput limit, you should use `maxInFlight` instead.
-
-Note that this setting is implemented by a semaphore and may block application threads if there are too many in-flight requests.
-
-Setting this option to any negative value or zero will disable it.
-
-Default: **-1**.
 
 #### --executor.continuousPaging.enabled<br />--dsbulk.executor.continuousPaging.enabled _&lt;boolean&gt;_
 
@@ -1183,6 +1169,20 @@ The maximum number of "in-flight" queries, or maximum number of concurrent reque
 This acts as a safeguard to prevent overloading the cluster. Reduce this value when the throughput for reads and writes cannot match the throughput of connectors, and latencies get too high; this is usually a sign that the workflow engine is not well calibrated and will eventually run out of memory, or some queries will timeout.
 
 This setting applies a "soft" limit to the gloabl throughput, without capping it at a fixed value. If you need a fixed maximum throughput, you should use `maxPerSecond` instead.
+
+Note that this setting is implemented by a semaphore and may block application threads if there are too many in-flight requests.
+
+Setting this option to any negative value or zero will disable it.
+
+Default: **-1**.
+
+#### --executor.maxPerSecond<br />--dsbulk.executor.maxPerSecond _&lt;number&gt;_
+
+The maximum number of concurrent operations per second. When writing to the database, this means the maximum number of writes per second (batch statements are counted by the number of statements included); when reading from the database, this means the maximum number of rows per second.
+
+This acts as a safeguard to prevent overloading the cluster. Reduce this value when the throughput for reads and writes cannot match the throughput of connectors, and latencies get too high; this is usually a sign that the workflow engine is not well calibrated and will eventually run out of memory, or some queries will timeout.
+
+This setting applies a "hard" limit to the gloabl throughput, capping it at a fixed value. If you need a a soft throughput limit, you should use `maxInFlight` instead.
 
 Note that this setting is implemented by a semaphore and may block application threads if there are too many in-flight requests.
 

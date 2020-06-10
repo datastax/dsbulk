@@ -505,10 +505,6 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "json",
       "--connector.json.url",
       StringUtils.quoteJson(unloadDir),
-      "--connector.json.maxConcurrentFiles",
-      "1",
-      "--engine.maxConcurrentQueries",
-      "1C",
       "--schema.keyspace",
       "ks1",
       "--schema.query",
@@ -527,11 +523,10 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
   }
 
   @Test
-  void full_unload_multi_thread() throws Exception {
+  void full_unload_large_result_set() throws Exception {
 
     primeIpByCountryTable(simulacron);
-    // 1000 rows required to fully exercise writing to 4 files
-    RequestPrime prime = createQueryWithResultSet(SELECT_FROM_IP_BY_COUNTRY, 1000);
+    RequestPrime prime = createQueryWithResultSet(SELECT_FROM_IP_BY_COUNTRY, 10_000);
     simulacron.prime(new Prime(prime));
 
     String[] args = {
@@ -541,8 +536,6 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "--connector.json.url",
       StringUtils.quoteJson(unloadDir),
       "--connector.json.maxConcurrentFiles",
-      "4",
-      "--engine.maxConcurrentQueries",
       "1C",
       "--schema.keyspace",
       "ks1",
@@ -555,7 +548,7 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, LOCAL_ONE);
-    validateOutputFiles(1000, unloadDir);
+    validateOutputFiles(10_000, unloadDir);
   }
 
   @Test
@@ -586,8 +579,6 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       StringUtils.quoteJson(unloadDir),
       "--connector.json.maxConcurrentFiles",
       "1",
-      "--engine.maxConcurrentQueries",
-      "1C",
       "--schema.query",
       "SELECT pk, c1 FROM ks1.table1",
       "--connector.json.generatorFeatures",
@@ -693,7 +684,7 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
 
           @NonNull
           @Override
-          public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
+          public Function<Publisher<Record>, Publisher<Record>> write() {
             // will cause the write workers to fail because the files already exist
             try {
               Files.createFile(file1);
@@ -751,10 +742,6 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "json",
       "--connector.json.url",
       "-",
-      "--connector.json.maxConcurrentFiles",
-      "1",
-      "--engine.maxConcurrentQueries",
-      "1C",
       "--schema.keyspace",
       "ks1",
       "--schema.query",

@@ -309,6 +309,13 @@ public class JsonConnector extends AbstractFileBasedConnector {
     }
 
     @Override
+    public void flush() throws IOException {
+      if (writer != null) {
+        writer.flush();
+      }
+    }
+
+    @Override
     public void close() throws IOException {
       if (writer != null) {
         try {

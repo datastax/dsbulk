@@ -56,8 +56,13 @@ public final class MockConnector implements Connector {
           public void configure(@NonNull Config settings, boolean read) {}
 
           @Override
-          public int estimatedResourceCount() {
+          public int readConcurrency() {
             return -1;
+          }
+
+          @Override
+          public int writeConcurrency() {
+            return 1;
           }
 
           @Override
@@ -73,19 +78,19 @@ public final class MockConnector implements Connector {
 
           @NonNull
           @Override
-          public Publisher<Publisher<Record>> readByResource() {
-            return Flux.just(read());
+          public Publisher<Publisher<Record>> readMultiple() {
+            return Flux.just(readSingle());
           }
 
           @NonNull
           @Override
-          public Publisher<Record> read() {
+          public Publisher<Record> readSingle() {
             return Flux.just(records).map(RecordUtils::cloneRecord);
           }
 
           @NonNull
           @Override
-          public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
+          public Function<Publisher<Record>, Publisher<Record>> write() {
             return Functions.identity();
           }
         });
@@ -109,8 +114,13 @@ public final class MockConnector implements Connector {
           public void configure(@NonNull Config settings, boolean read) {}
 
           @Override
-          public int estimatedResourceCount() {
+          public int readConcurrency() {
             return -1;
+          }
+
+          @Override
+          public int writeConcurrency() {
+            return 1;
           }
 
           @Override
@@ -126,19 +136,19 @@ public final class MockConnector implements Connector {
 
           @NonNull
           @Override
-          public Publisher<Publisher<Record>> readByResource() {
+          public Publisher<Publisher<Record>> readMultiple() {
             return Flux::just;
           }
 
           @NonNull
           @Override
-          public Publisher<Record> read() {
+          public Publisher<Record> readSingle() {
             return Flux::just;
           }
 
           @NonNull
           @Override
-          public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
+          public Function<Publisher<Record>, Publisher<Record>> write() {
             return upstream -> Flux.from(upstream).doOnNext(records::add);
           }
         });
@@ -164,8 +174,13 @@ public final class MockConnector implements Connector {
           public void configure(@NonNull Config settings, boolean read) {}
 
           @Override
-          public int estimatedResourceCount() {
+          public int readConcurrency() {
             return -1;
+          }
+
+          @Override
+          public int writeConcurrency() {
+            return 1;
           }
 
           @Override
@@ -181,19 +196,19 @@ public final class MockConnector implements Connector {
 
           @NonNull
           @Override
-          public Publisher<Publisher<Record>> readByResource() {
+          public Publisher<Publisher<Record>> readMultiple() {
             return Flux::just;
           }
 
           @NonNull
           @Override
-          public Publisher<Record> read() {
+          public Publisher<Record> readSingle() {
             return Flux::just;
           }
 
           @NonNull
           @Override
-          public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
+          public Function<Publisher<Record>, Publisher<Record>> write() {
             return upstream -> Flux.from(upstream).doOnNext(r -> records.incrementAndGet());
           }
         });
@@ -202,19 +217,19 @@ public final class MockConnector implements Connector {
 
   @NonNull
   @Override
-  public Publisher<Record> read() {
-    return delegate.read();
+  public Publisher<Record> readSingle() {
+    return delegate.readSingle();
   }
 
   @NonNull
   @Override
-  public Publisher<Publisher<Record>> readByResource() {
-    return delegate.readByResource();
+  public Publisher<Publisher<Record>> readMultiple() {
+    return delegate.readMultiple();
   }
 
   @NonNull
   @Override
-  public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
+  public Function<Publisher<Record>, Publisher<Record>> write() {
     return delegate.write();
   }
 
@@ -245,7 +260,12 @@ public final class MockConnector implements Connector {
   }
 
   @Override
-  public int estimatedResourceCount() {
-    return delegate.estimatedResourceCount();
+  public int readConcurrency() {
+    return delegate.readConcurrency();
+  }
+
+  @Override
+  public int writeConcurrency() {
+    return delegate.writeConcurrency();
   }
 }

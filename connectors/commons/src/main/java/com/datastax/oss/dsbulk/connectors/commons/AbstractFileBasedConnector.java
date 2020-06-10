@@ -22,7 +22,6 @@ import com.datastax.oss.dsbulk.connectors.api.Connector;
 import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.typesafe.config.Config;
 import edu.umd.cs.findbugs.annotations.NonNull;
-import io.netty.util.concurrent.DefaultThreadFactory;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.MalformedURLException;
@@ -36,10 +35,10 @@ import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -47,9 +46,8 @@ import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.core.publisher.SynchronousSink;
-import reactor.core.scheduler.Scheduler;
-import reactor.core.scheduler.Schedulers;
 
 /** A parent class for connectors that read from and write to text-based files. */
 public abstract class AbstractFileBasedConnector implements Connector {
@@ -79,16 +77,26 @@ public abstract class AbstractFileBasedConnector implements Connector {
   protected long skipRecords;
   protected long maxRecords;
   protected int resourceCount;
-  protected Scheduler scheduler;
   protected int maxConcurrentFiles;
-  protected List<RecordWriter> writers;
-  protected AtomicInteger counter;
+  protected Deque<RecordWriter> writers;
+  protected RecordWriter singleWriter;
+  protected AtomicInteger fileCounter;
+  protected AtomicInteger nextWriterIndex;
 
   // Public API
 
   @Override
-  public int estimatedResourceCount() {
+  public int readConcurrency() {
     return resourceCount;
+  }
+
+  @Override
+  public int writeConcurrency() {
+    // When writing to an URL, force write concurrency to 1
+    if (roots.isEmpty()) {
+      return 1;
+    }
+    return maxConcurrentFiles;
   }
 
   @Override
@@ -127,13 +135,22 @@ public abstract class AbstractFileBasedConnector implements Connector {
       processURLsForRead();
     } else {
       processURLsForWrite();
-      counter = new AtomicInteger(0);
+      fileCounter = new AtomicInteger(0);
+      nextWriterIndex = new AtomicInteger(0);
+      if (!roots.isEmpty() && maxConcurrentFiles > 1) {
+        writers = new ConcurrentLinkedDeque<>();
+        for (int i = 0; i < maxConcurrentFiles; i++) {
+          writers.add(newSingleFileWriter());
+        }
+      } else {
+        singleWriter = newSingleFileWriter();
+      }
     }
   }
 
   @NonNull
   @Override
-  public Publisher<Record> read() {
+  public Publisher<Record> readSingle() {
     assert read;
     return Flux.concat(
             Flux.fromIterable(roots).flatMap(this::scanRootDirectory), Flux.fromIterable(files))
@@ -142,55 +159,82 @@ public abstract class AbstractFileBasedConnector implements Connector {
 
   @NonNull
   @Override
-  public Publisher<Publisher<Record>> readByResource() {
+  public Publisher<Publisher<Record>> readMultiple() {
     assert read;
     return Flux.concat(
             Flux.fromIterable(roots).flatMap(this::scanRootDirectory), Flux.fromIterable(files))
         .map(url -> readSingleFile(url).transform(this::applyPerFileLimits));
   }
 
+  @SuppressWarnings("BlockingMethodInNonBlockingContext")
   @NonNull
   @Override
-  public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
+  public Function<Publisher<Record>, Publisher<Record>> write() {
     assert !read;
-    writers = new CopyOnWriteArrayList<>();
     if (!roots.isEmpty() && maxConcurrentFiles > 1) {
-      return upstream -> {
-        ThreadFactory threadFactory = new DefaultThreadFactory(getConnectorName() + "-connector");
-        scheduler = Schedulers.newParallel(maxConcurrentFiles, threadFactory);
-        for (int i = 0; i < maxConcurrentFiles; i++) {
-          writers.add(newSingleFileWriter());
-        }
-        return Flux.from(upstream)
-            .parallel(maxConcurrentFiles)
-            .runOn(scheduler)
-            .groups()
-            .flatMap(
-                records -> {
-                  Integer key = records.key();
-                  assert key != null;
-                  return records.transform(writeRecords(writers.get(key)));
-                },
-                maxConcurrentFiles);
-      };
+      return records ->
+          Flux.from(records)
+              .concatMap(
+                  record ->
+                      Mono.subscriberContext()
+                          .flatMap(
+                              ctx -> {
+                                try {
+                                  RecordWriter writer = ctx.get("WRITER");
+                                  writer.write(record);
+                                  return Mono.just(record);
+                                } catch (Exception e) {
+                                  return Mono.error(e);
+                                }
+                              }),
+                  500)
+              .concatWith(
+                  Mono.subscriberContext()
+                      .flatMap(
+                          ctx -> {
+                            try {
+                              RecordWriter writer = ctx.get("WRITER");
+                              writer.flush();
+                              writers.offer(writer);
+                              return Mono.empty();
+                            } catch (Exception e) {
+                              return Mono.error(e);
+                            }
+                          }))
+              .subscriberContext(ctx -> ctx.put("WRITER", writers.remove()));
     } else {
-      return upstream -> {
-        RecordWriter writer = newSingleFileWriter();
-        writers.add(writer);
-        return Flux.from(upstream).transform(writeRecords(writer));
-      };
+      return records ->
+          Flux.from(records)
+              .concatMap(
+                  record -> {
+                    try {
+                      singleWriter.write(record);
+                      return Mono.just(record);
+                    } catch (Exception e) {
+                      return Mono.error(e);
+                    }
+                  },
+                  500)
+              .concatWith(
+                  Flux.create(
+                      sink -> {
+                        try {
+                          singleWriter.flush();
+                          sink.complete();
+                        } catch (Exception e) {
+                          sink.error(e);
+                        }
+                      }));
     }
   }
 
   @Override
   public void close() {
-    if (scheduler != null) {
-      scheduler.dispose();
-    }
     if (writers != null) {
       IOException e = null;
       for (RecordWriter writer : writers) {
         try {
+          writer.flush();
           writer.close();
         } catch (IOException e1) {
           if (e == null) {
@@ -201,6 +245,14 @@ public abstract class AbstractFileBasedConnector implements Connector {
         }
       }
       if (e != null) {
+        throw new UncheckedIOException(e);
+      }
+    }
+    if (singleWriter != null) {
+      try {
+        singleWriter.flush();
+        singleWriter.close();
+      } catch (IOException e) {
         throw new UncheckedIOException(e);
       }
     }
@@ -218,8 +270,8 @@ public abstract class AbstractFileBasedConnector implements Connector {
   protected abstract String getConnectorName();
 
   /**
-   * Reads a single text file accessible through the given URL. Used during the {@linkplain #read()
-   * data reading phase}.
+   * Reads a single text file accessible through the given URL. Used during the {@linkplain
+   * #readSingle() data reading phase}.
    *
    * <p>Implementors should not care about {@code maxRecords} and {@code skipRecords}, these will be
    * applied later on, see {@link #applyPerFileLimits(Flux)}.
@@ -303,6 +355,13 @@ public abstract class AbstractFileBasedConnector implements Connector {
      *     (open, close, etc.).
      */
     void write(@NonNull Record record) throws IOException;
+
+    /**
+     * Flushes all pending writes.
+     *
+     * @throws IOException If an I/O error occurs while flushing.
+     */
+    void flush() throws IOException;
 
     /**
      * Closes the underlying file being written. Once this method is called, it is guaranteed that
@@ -446,7 +505,7 @@ public abstract class AbstractFileBasedConnector implements Connector {
 
   /**
    * Scans a directory for readable files and returns the files found as a stream. Only used when
-   * reading, never when writing. Normally used as part of the actual {@linkplain #read() data
+   * reading, never when writing. Normally used as part of the actual {@linkplain #readSingle() data
    * reading phase}.
    */
   @NonNull
@@ -490,31 +549,6 @@ public abstract class AbstractFileBasedConnector implements Connector {
   }
 
   /**
-   * Creates a new writing function using the given {@link RecordWriter} to write records to a
-   * single destination.
-   *
-   * @param writer The writer to use; never null.
-   * @return a function to apply to a flux of records; the function is expected to write each
-   *     record, then return the record untouched. I/O errors should be propagated downstream.
-   */
-  @SuppressWarnings("BlockingMethodInNonBlockingContext")
-  @NonNull
-  protected Function<Flux<Record>, Flux<Record>> writeRecords(@NonNull RecordWriter writer) {
-    return upstream ->
-        upstream.flatMap(
-            record -> {
-              try {
-                writer.write(record);
-                return Flux.just(record);
-              } catch (Exception e) {
-                return Flux.error(e);
-              }
-            },
-            1,
-            1);
-  }
-
-  /**
    * Returns the URL that the connector should write to. Not used for reads.
    *
    * <p>This can be either a single file or a directory of files. If the former, each invocation of
@@ -525,7 +559,7 @@ public abstract class AbstractFileBasedConnector implements Connector {
   protected URL getOrCreateDestinationURL() {
     if (!roots.isEmpty()) {
       try {
-        String next = String.format(fileNameFormat, counter.incrementAndGet());
+        String next = String.format(fileNameFormat, fileCounter.incrementAndGet());
         return roots.get(0).resolve(next).toUri().toURL(); // for UNLOAD always one URL
       } catch (MalformedURLException e) {
         throw new UncheckedIOException(

@@ -623,13 +623,19 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
           public void init() {}
 
           @Override
-          public int estimatedResourceCount() {
+          public int readConcurrency() {
             return Integer.MAX_VALUE; // to force runner to use maximum parallelism
           }
 
           @NonNull
           @Override
-          public Publisher<Publisher<Record>> readByResource() {
+          public Publisher<Record> readSingle() {
+            return Flux.merge(readMultiple());
+          }
+
+          @NonNull
+          @Override
+          public Publisher<Publisher<Record>> readMultiple() {
             List<Publisher<Record>> resources = new ArrayList<>();
             for (int i = 0; i < 100; i++) {
               AtomicInteger counter = new AtomicInteger();
@@ -695,10 +701,6 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "false",
       "--connector.csv.url",
       quoteJson(unloadDir),
-      "--connector.csv.maxConcurrentFiles",
-      "1",
-      "--engine.maxConcurrentQueries",
-      "1C",
       "--schema.keyspace",
       "ks1",
       "--schema.query",
@@ -733,14 +735,10 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "false",
       "--connector.csv.url",
       quoteJson(unloadDir),
-      "--connector.csv.maxConcurrentFiles",
-      "1",
       "--connector.csv.delimiter",
       ";",
       "--connector.csv.quote",
       "<",
-      "--engine.maxConcurrentQueries",
-      "1C",
       "--schema.keyspace",
       "ks1",
       "--schema.query",
@@ -758,11 +756,10 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
   }
 
   @Test
-  void full_unload_multi_thread() throws Exception {
+  void full_unload_large_result_set() throws Exception {
 
     primeIpByCountryTable(simulacron);
-    // 1000 rows required to fully exercise writing to 4 files
-    RequestPrime prime = createQueryWithResultSet(SELECT_FROM_IP_BY_COUNTRY, 1000);
+    RequestPrime prime = createQueryWithResultSet(SELECT_FROM_IP_BY_COUNTRY, 10_000);
     simulacron.prime(new Prime(prime));
 
     String[] args = {
@@ -772,8 +769,6 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "--connector.csv.url",
       quoteJson(unloadDir),
       "--connector.csv.maxConcurrentFiles",
-      "4",
-      "--engine.maxConcurrentQueries",
       "1C",
       "--schema.keyspace",
       "ks1",
@@ -786,7 +781,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ConsistencyLevel.LOCAL_ONE);
-    validateOutputFiles(1000, unloadDir);
+    validateOutputFiles(10_000, unloadDir);
   }
 
   @Test
@@ -836,7 +831,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "--connector.csv.url",
       quoteJson(unloadDir),
       "--connector.csv.maxConcurrentFiles",
-      "4",
+      "1C",
       "--schema.keyspace",
       "ks1",
       "--schema.query",
@@ -876,7 +871,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
 
           @NonNull
           @Override
-          public Function<? super Publisher<Record>, ? extends Publisher<Record>> write() {
+          public Function<Publisher<Record>, Publisher<Record>> write() {
             // will cause the write workers to fail because the files already exist
             try {
               Files.createFile(file1);
@@ -929,10 +924,6 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "false",
       "--connector.csv.url",
       "-",
-      "--connector.csv.maxConcurrentFiles",
-      "1",
-      "--engine.maxConcurrentQueries",
-      "1C",
       "--schema.keyspace",
       "ks1",
       "--schema.query",

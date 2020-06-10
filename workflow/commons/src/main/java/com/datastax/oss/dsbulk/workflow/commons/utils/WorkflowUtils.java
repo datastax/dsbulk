@@ -38,17 +38,6 @@ public class WorkflowUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WorkflowUtils.class);
 
-  /**
-   * The threshold, in number of resources to read or write, that triggers a thread-per-core
-   * optimization.
-   *
-   * <p>This threshold actually varies a bit depending on the dataset to load or unload, but it
-   * generally starts to be advantageous when the number of resources is &gt;= 1/4 of the number of
-   * available cores.
-   */
-  public static final int TPC_THRESHOLD =
-      Math.max(4, Runtime.getRuntime().availableProcessors() / 4);
-
   private static final DateTimeFormatter DEFAULT_TIMESTAMP_PATTERN =
       DateTimeFormatter.ofPattern("uuuuMMdd-HHmmss-SSSSSS");
 

@@ -48,7 +48,6 @@ import com.datastax.oss.dsbulk.workflow.commons.settings.StatsSettings;
 import com.datastax.oss.dsbulk.workflow.commons.settings.StatsSettings.StatisticsMode;
 import com.datastax.oss.dsbulk.workflow.commons.utils.CloseableUtils;
 import com.datastax.oss.dsbulk.workflow.commons.utils.ClusterInformationUtils;
-import com.datastax.oss.dsbulk.workflow.commons.utils.WorkflowUtils;
 import com.typesafe.config.Config;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import io.netty.util.concurrent.DefaultThreadFactory;
@@ -163,7 +162,7 @@ public class CountWorkflow implements Workflow {
     numCores = Runtime.getRuntime().availableProcessors();
     scheduler = Schedulers.newParallel(numCores, new DefaultThreadFactory("workflow"));
     useThreadPerCore =
-        readStatements.size() >= WorkflowUtils.TPC_THRESHOLD
+        readStatements.size() >= Math.max(4, Runtime.getRuntime().availableProcessors() / 4)
             // parallel flux is not compatible with stats modes other than global
             || !statsSettings.getStatisticsModes().stream()
                 .allMatch(mode -> mode == StatisticsMode.global);

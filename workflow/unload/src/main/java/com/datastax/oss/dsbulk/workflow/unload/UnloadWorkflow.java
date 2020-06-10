@@ -15,23 +15,19 @@
  */
 package com.datastax.oss.dsbulk.workflow.unload;
 
-import com.codahale.metrics.Histogram;
 import com.codahale.metrics.MetricRegistry;
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.metrics.Metrics;
 import com.datastax.oss.driver.shaded.guava.common.base.Stopwatch;
 import com.datastax.oss.dsbulk.codecs.ConvertingCodecFactory;
 import com.datastax.oss.dsbulk.commons.utils.DurationUtils;
-import com.datastax.oss.dsbulk.commons.utils.ThrowableUtils;
 import com.datastax.oss.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.oss.dsbulk.connectors.api.Connector;
 import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.datastax.oss.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.oss.dsbulk.executor.api.reader.BulkReader;
 import com.datastax.oss.dsbulk.executor.api.result.ReadResult;
-import com.datastax.oss.dsbulk.sampler.DataSizeSampler;
 import com.datastax.oss.dsbulk.workflow.api.Workflow;
 import com.datastax.oss.dsbulk.workflow.commons.log.LogManager;
 import com.datastax.oss.dsbulk.workflow.commons.metrics.MetricsManager;
@@ -48,12 +44,12 @@ import com.datastax.oss.dsbulk.workflow.commons.settings.SchemaSettings;
 import com.datastax.oss.dsbulk.workflow.commons.settings.SettingsManager;
 import com.datastax.oss.dsbulk.workflow.commons.utils.CloseableUtils;
 import com.datastax.oss.dsbulk.workflow.commons.utils.ClusterInformationUtils;
-import com.datastax.oss.dsbulk.workflow.commons.utils.WorkflowUtils;
 import com.typesafe.config.Config;
-import edu.umd.cs.findbugs.annotations.NonNull;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
@@ -63,28 +59,25 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
-import reactor.util.concurrent.Queues;
 
 /** The main class for unload workflows. */
 public class UnloadWorkflow implements Workflow {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(UnloadWorkflow.class);
 
-  private static final int _1KB = 1024;
-
   private final SettingsManager settingsManager;
   private final AtomicBoolean closed = new AtomicBoolean(false);
 
   private String executionId;
   private Connector connector;
-  private Scheduler scheduler;
+  private Set<Scheduler> schedulers;
   private ReadResultMapper readResultMapper;
   private MetricsManager metricsManager;
   private LogManager logManager;
   private CqlSession session;
   private BulkReader executor;
-  private List<? extends Statement<?>> readStatements;
-  private Function<? super Publisher<Record>, ? extends Publisher<Record>> writer;
+  private List<Statement<?>> readStatements;
+  private Function<Publisher<Record>, Publisher<Record>> writer;
   private Function<Flux<ReadResult>, Flux<ReadResult>> totalItemsMonitor;
   private Function<Flux<Record>, Flux<Record>> failedRecordsMonitor;
   private Function<Flux<ReadResult>, Flux<ReadResult>> failedReadResultsMonitor;
@@ -96,7 +89,7 @@ public class UnloadWorkflow implements Workflow {
   private Function<Flux<Void>, Flux<Void>> terminationHandler;
   private int readConcurrency;
   private int numCores;
-  private boolean useThreadPerCore;
+  private int writeConcurrency;
 
   UnloadWorkflow(Config config) {
     settingsManager = new SettingsManager(config);
@@ -171,30 +164,38 @@ public class UnloadWorkflow implements Workflow {
     unmappableRecordsHandler = logManager.newUnmappableRecordsHandler();
     terminationHandler = logManager.newTerminationHandler();
     numCores = Runtime.getRuntime().availableProcessors();
-    scheduler = Schedulers.newParallel(numCores, new DefaultThreadFactory("workflow"));
-    useThreadPerCore = readStatements.size() >= WorkflowUtils.TPC_THRESHOLD;
-    LOGGER.debug("Using thread-per-core strategy: {}", useThreadPerCore);
+    if (connector.writeConcurrency() < 1) {
+      throw new IllegalArgumentException("Invalid write concurrency: " + 1);
+    }
+    writeConcurrency = connector.writeConcurrency();
+    LOGGER.debug("Using write concurrency: {}", writeConcurrency);
     readConcurrency =
-        engineSettings.getMaxConcurrentQueries().orElseGet(this::determineReadConcurrency);
+        Math.min(
+            readStatements.size(),
+            // Most connectors have a default of numCores/2 for writeConcurrency;
+            // a good readConcurrency is then numCores.
+            engineSettings.getMaxConcurrentQueries().orElse(numCores));
     LOGGER.debug(
         "Using read concurrency: {} (user-supplied: {})",
         readConcurrency,
         engineSettings.getMaxConcurrentQueries().isPresent());
+    schedulers = new HashSet<>();
   }
 
   @Override
   public boolean execute() {
     LOGGER.debug("{} started.", this);
     metricsManager.start();
+    Flux<Record> flux;
+    if (writeConcurrency == 1) {
+      flux = oneWriter();
+    } else if (writeConcurrency < numCores / 2 || readConcurrency < numCores / 2) {
+      flux = fewWriters();
+    } else {
+      flux = manyWriters();
+    }
     Stopwatch timer = Stopwatch.createStarted();
-    (useThreadPerCore ? threadPerCoreFlux() : parallelFlux())
-        .transformDeferred(writer)
-        .transform(failedRecordsMonitor)
-        .transform(failedRecordsHandler)
-        .then()
-        .flux()
-        .transform(terminationHandler)
-        .blockLast();
+    flux.then().flux().transform(terminationHandler).blockLast();
     timer.stop();
     metricsManager.stop();
     Duration elapsed = DurationUtils.round(timer.elapsed(), TimeUnit.SECONDS);
@@ -210,32 +211,15 @@ public class UnloadWorkflow implements Workflow {
     return logManager.getTotalErrors() == 0;
   }
 
-  @NonNull
-  private Flux<Record> threadPerCoreFlux() {
+  private Flux<Record> oneWriter() {
+    int numThreads = Math.min(numCores * 2, readConcurrency);
+    Scheduler scheduler = Schedulers.newParallel(numThreads, new DefaultThreadFactory("workflow"));
+    schedulers.add(scheduler);
     return Flux.fromIterable(readStatements)
-        .flatMap(
-            statement ->
-                Flux.from(executor.readReactive(statement))
-                    .transform(queryWarningsHandler)
-                    .transform(totalItemsMonitor)
-                    .transform(totalItemsCounter)
-                    .transform(failedReadResultsMonitor)
-                    .transform(failedReadsHandler)
-                    .map(readResultMapper::map)
-                    .transform(failedRecordsMonitor)
-                    .transform(unmappableRecordsHandler)
-                    .subscribeOn(scheduler),
-            readConcurrency);
-  }
-
-  @NonNull
-  private Flux<Record> parallelFlux() {
-    return Flux.fromIterable(readStatements)
-        .flatMap(executor::readReactive, readConcurrency)
-        .window(Queues.SMALL_BUFFER_SIZE)
         .flatMap(
             results ->
-                results
+                Flux.from(executor.readReactive(results))
+                    .publishOn(scheduler, 500)
                     .transform(queryWarningsHandler)
                     .transform(totalItemsMonitor)
                     .transform(totalItemsCounter)
@@ -243,9 +227,86 @@ public class UnloadWorkflow implements Workflow {
                     .transform(failedReadsHandler)
                     .map(readResultMapper::map)
                     .transform(failedRecordsMonitor)
-                    .transform(unmappableRecordsHandler)
-                    .subscribeOn(scheduler),
-            numCores);
+                    .transform(unmappableRecordsHandler),
+            readConcurrency,
+            500)
+        .transform(writer)
+        .transform(failedRecordsMonitor)
+        .transform(failedRecordsHandler);
+  }
+
+  private Flux<Record> fewWriters() {
+    Scheduler schedulerForReads =
+        Schedulers.newParallel(
+            Math.min(numCores, readConcurrency), new DefaultThreadFactory("workflow-read"));
+    Scheduler schedulerForWrites =
+        Schedulers.newParallel(
+            Math.min(numCores, writeConcurrency), new DefaultThreadFactory("workflow-write"));
+    schedulers.add(schedulerForReads);
+    schedulers.add(schedulerForWrites);
+    return Flux.fromIterable(readStatements)
+        .flatMap(
+            results ->
+                Flux.from(executor.readReactive(results))
+                    .publishOn(schedulerForReads, 500)
+                    .transform(queryWarningsHandler)
+                    .transform(totalItemsMonitor)
+                    .transform(totalItemsCounter)
+                    .transform(failedReadResultsMonitor)
+                    .transform(failedReadsHandler)
+                    .map(readResultMapper::map)
+                    .transform(failedRecordsMonitor)
+                    .transform(unmappableRecordsHandler),
+            readConcurrency,
+            500)
+        .parallel(writeConcurrency)
+        .runOn(schedulerForWrites)
+        .groups()
+        .flatMap(
+            records ->
+                records
+                    .transform(writer)
+                    .transform(failedRecordsMonitor)
+                    .transform(failedRecordsHandler),
+            writeConcurrency,
+            500);
+  }
+
+  private Flux<Record> manyWriters() {
+    // writeConcurrency and readConcurrency are >= 0.5C here
+    int actualConcurrency = Math.min(readConcurrency, writeConcurrency);
+    int numThreads = Math.min(numCores * 2, actualConcurrency);
+    Scheduler scheduler = Schedulers.newParallel(numThreads, new DefaultThreadFactory("workflow"));
+    schedulers.add(scheduler);
+    return Flux.fromIterable(readStatements)
+        .flatMap(
+            results -> {
+              Flux<Record> records =
+                  Flux.from(executor.readReactive(results))
+                      .publishOn(scheduler, 500)
+                      .transform(queryWarningsHandler)
+                      .transform(totalItemsMonitor)
+                      .transform(totalItemsCounter)
+                      .transform(failedReadResultsMonitor)
+                      .transform(failedReadsHandler)
+                      .map(readResultMapper::map)
+                      .transform(failedRecordsMonitor)
+                      .transform(unmappableRecordsHandler);
+              if (actualConcurrency == writeConcurrency) {
+                records = records.transform(writer);
+              } else {
+                // If the actual concurrency is lesser than the connector's desired write
+                // concurrency, we need to give the connector a chance to switch writers
+                // frequently so that it can really redirect records to all the final destinations
+                // (to that many files on disk for example). If the connector is correctly
+                // implemented, each window will be redirected to a different destination
+                // in a round-robin fashion.
+                records = records.window(500).flatMap(window -> window.transform(writer), 1, 500);
+              }
+              return records.transform(failedRecordsMonitor).transform(failedRecordsHandler);
+            },
+            actualConcurrency,
+            500);
   }
 
   @Override
@@ -255,7 +316,9 @@ public class UnloadWorkflow implements Workflow {
       Exception e = CloseableUtils.closeQuietly(metricsManager, null);
       e = CloseableUtils.closeQuietly(logManager, e);
       e = CloseableUtils.closeQuietly(connector, e);
-      e = CloseableUtils.closeQuietly(scheduler, e);
+      for (Scheduler scheduler : schedulers) {
+        e = CloseableUtils.closeQuietly(scheduler, e);
+      }
       e = CloseableUtils.closeQuietly(executor, e);
       e = CloseableUtils.closeQuietly(session, e);
       if (metricsManager != null) {
@@ -275,40 +338,5 @@ public class UnloadWorkflow implements Workflow {
     } else {
       return "Operation " + executionId;
     }
-  }
-
-  private int determineReadConcurrency() {
-    LOGGER.debug("Sampling data...");
-    Histogram sample =
-        DataSizeSampler.sampleReads(
-            Flux.fromIterable(readStatements)
-                .map(stmt -> stmt.setPageSize(1000).setTimeout(Duration.ofMinutes(1)))
-                .<Row>flatMap(session::executeReactive, 1)
-                .onErrorContinue(
-                    (error, v) ->
-                        LOGGER.debug(
-                            "Sampling failed: {}", ThrowableUtils.getSanitizedErrorMessage(error)))
-                .take(1000)
-                .toIterable());
-    double meanSize;
-    if (sample.getCount() < 100) {
-      // sample too small, go with a common value
-      LOGGER.debug("Data sample is too small: {}, discarding", sample.getCount());
-      meanSize = _1KB;
-    } else {
-      meanSize = sample.getSnapshot().getMean();
-      LOGGER.debug("Average read size in bytes: {}", meanSize);
-    }
-    int readConcurrency;
-    if (readStatements.size() >= WorkflowUtils.TPC_THRESHOLD) {
-      if (meanSize <= _1KB) {
-        readConcurrency = numCores;
-      } else {
-        readConcurrency = numCores / 2;
-      }
-    } else {
-      readConcurrency = numCores / 2;
-    }
-    return readConcurrency;
   }
 }
