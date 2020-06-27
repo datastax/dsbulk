@@ -17,6 +17,7 @@ package com.datastax.oss.dsbulk.workflow.count;
 
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Snapshot;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
@@ -45,11 +46,9 @@ import com.datastax.oss.dsbulk.workflow.commons.settings.SchemaGenerationType;
 import com.datastax.oss.dsbulk.workflow.commons.settings.SchemaSettings;
 import com.datastax.oss.dsbulk.workflow.commons.settings.SettingsManager;
 import com.datastax.oss.dsbulk.workflow.commons.settings.StatsSettings;
-import com.datastax.oss.dsbulk.workflow.commons.settings.StatsSettings.StatisticsMode;
 import com.datastax.oss.dsbulk.workflow.commons.utils.CloseableUtils;
 import com.datastax.oss.dsbulk.workflow.commons.utils.ClusterInformationUtils;
 import com.typesafe.config.Config;
-import edu.umd.cs.findbugs.annotations.NonNull;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import java.time.Duration;
 import java.util.EnumSet;
@@ -62,15 +61,15 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
-import reactor.util.concurrent.Queues;
 
 /** The main class for count workflows. */
 public class CountWorkflow implements Workflow {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CountWorkflow.class);
 
-  private static final int _1KB = 1024;
-  private static final int _10_KB = 10 * _1KB;
+  private static final int _1_KB = 1024;
+  private static final int _10_KB = 10 * _1_KB;
+  private static final int _100_KB = 100 * _1_KB;
 
   private final SettingsManager settingsManager;
   private final AtomicBoolean closed = new AtomicBoolean(false);
@@ -92,7 +91,6 @@ public class CountWorkflow implements Workflow {
   private Function<Flux<Void>, Flux<Void>> terminationHandler;
   private int readConcurrency;
   private int numCores;
-  private boolean useThreadPerCore;
   private SchemaSettings schemaSettings;
   private ExecutorSettings executorSettings;
 
@@ -160,19 +158,16 @@ public class CountWorkflow implements Workflow {
     queryWarningsHandler = logManager.newQueryWarningsHandler();
     terminationHandler = logManager.newTerminationHandler();
     numCores = Runtime.getRuntime().availableProcessors();
-    scheduler = Schedulers.newParallel(numCores, new DefaultThreadFactory("workflow"));
-    useThreadPerCore =
-        readStatements.size() >= Math.max(4, Runtime.getRuntime().availableProcessors() / 4)
-            // parallel flux is not compatible with stats modes other than global
-            || !statsSettings.getStatisticsModes().stream()
-                .allMatch(mode -> mode == StatisticsMode.global);
-    LOGGER.debug("Using thread-per-core strategy: {}", useThreadPerCore);
     readConcurrency =
-        engineSettings.getMaxConcurrentQueries().orElseGet(this::determineReadConcurrency);
+        Math.min(
+            readStatements.size(),
+            engineSettings.getMaxConcurrentQueries().orElseGet(this::determineReadConcurrency));
     LOGGER.debug(
         "Using read concurrency: {} (user-supplied: {})",
         readConcurrency,
         engineSettings.getMaxConcurrentQueries().isPresent());
+    int numThreads = Math.min(readConcurrency, numCores);
+    scheduler = Schedulers.newParallel(numThreads, new DefaultThreadFactory("workflow"));
   }
 
   @Override
@@ -180,7 +175,25 @@ public class CountWorkflow implements Workflow {
     LOGGER.debug("{} started.", this);
     metricsManager.start();
     Stopwatch timer = Stopwatch.createStarted();
-    (useThreadPerCore ? threadPerCoreFlux() : parallelFlux())
+    Flux.fromIterable(readStatements)
+        .flatMap(
+            statement ->
+                Flux.from(executor.readReactive(statement))
+                    .transform(queryWarningsHandler)
+                    .transform(totalItemsMonitor)
+                    .transform(totalItemsCounter)
+                    .transform(failedItemsMonitor)
+                    .transform(failedReadsHandler)
+                    // Important:
+                    // 1) there must be one counting unit per inner flow: this is guaranteed by
+                    // instantiating a new counting unit below for each inner flow.
+                    // 2) When counting partitions or ranges, a partition cannot be split in two
+                    // inner flows; this is guaranteed since statements are split by token range
+                    // (users cannot supply a custom query for these counting modes).
+                    .doOnNext(readResultCounter.newCountingUnit()::update)
+                    .then()
+                    .subscribeOn(scheduler),
+            readConcurrency)
         .transform(terminationHandler)
         .blockLast();
     timer.stop();
@@ -197,52 +210,6 @@ public class CountWorkflow implements Workflow {
           DurationUtils.formatDuration(elapsed));
     }
     return logManager.getTotalErrors() == 0;
-  }
-
-  @NonNull
-  private Flux<Void> threadPerCoreFlux() {
-    return Flux.fromIterable(readStatements)
-        .flatMap(
-            statement ->
-                Flux.from(executor.readReactive(statement))
-                    .transform(queryWarningsHandler)
-                    .transform(totalItemsMonitor)
-                    .transform(totalItemsCounter)
-                    .transform(failedItemsMonitor)
-                    .transform(failedReadsHandler)
-                    // Important:
-                    // 1) there must be one counting unit per thread / inner flow:
-                    // this is guaranteed by instantiating a new counting unit below for each
-                    // inner flow.
-                    // 2) When counting partitions or ranges, a partition cannot be split in two
-                    // inner flows; this is guaranteed in the thread-per-core strategy since
-                    // statements are split by token range (users cannot supply a custom query for
-                    // these counting modes);
-                    .doOnNext(readResultCounter.newCountingUnit()::update)
-                    .then()
-                    .subscribeOn(scheduler),
-            readConcurrency);
-  }
-
-  @NonNull
-  private Flux<Void> parallelFlux() {
-    return Flux.fromIterable(readStatements)
-        .flatMap(executor::readReactive, readConcurrency)
-        .window(Queues.SMALL_BUFFER_SIZE)
-        .flatMap(
-            results ->
-                results
-                    .transform(queryWarningsHandler)
-                    .transform(totalItemsMonitor)
-                    .transform(totalItemsCounter)
-                    .transform(failedItemsMonitor)
-                    .transform(failedReadsHandler)
-                    // Parallel flux does not preserve one-to-one mapping between token ranges
-                    // and counting units; it is only suitable for the global counting mode.
-                    .doOnNext(readResultCounter.newCountingUnit()::update)
-                    .then()
-                    .subscribeOn(scheduler),
-            numCores);
   }
 
   @Override
@@ -279,43 +246,19 @@ public class CountWorkflow implements Workflow {
   }
 
   private int determineReadConcurrency() {
-    LOGGER.debug("Sampling data...");
-    RelationMetadata table = schemaSettings.getTargetTable();
-    // Read the entire row to get a more accurate picture of the expected throughput
-    String fullReadCql =
-        String.format(
-            "SELECT * FROM %s.%s", table.getKeyspace().asCql(true), table.getName().asCql(true));
-    SimpleStatement fullReadStatement =
-        SimpleStatement.newInstance(fullReadCql)
-            .setPageSize(1000)
-            .setTimeout(Duration.ofMinutes(1));
-    Histogram sample =
-        DataSizeSampler.sampleReads(
-            Flux.just(fullReadStatement)
-                .<Row>flatMap(session::executeReactive)
-                .onErrorContinue(
-                    (error, v) ->
-                        LOGGER.debug(
-                            "Sampling failed: {}", ThrowableUtils.getSanitizedErrorMessage(error)))
-                .take(1000)
-                .toIterable());
-    double meanSize;
-    if (sample.getCount() < 100) {
-      // sample too small, go with a common value
-      LOGGER.debug("Data sample is too small: {}, discarding", sample.getCount());
-      meanSize = _1KB;
-    } else {
-      meanSize = sample.getSnapshot().getMean();
-      LOGGER.debug("Average row size in bytes: {}", meanSize);
+    if (readStatements.size() == 1) {
+      return 1;
     }
+    LOGGER.debug("Sampling data...");
+    double meanSize = getMeanRowSize();
     int readConcurrency;
     if (meanSize < 128) {
       readConcurrency = numCores * 16;
     } else if (meanSize < 512) {
       readConcurrency = numCores * 8;
-    } else if (meanSize < _1KB) {
-      readConcurrency = numCores * 4;
     } else if (meanSize < _10_KB) {
+      readConcurrency = numCores * 4;
+    } else if (meanSize < _100_KB) {
       readConcurrency = numCores * 2;
     } else {
       readConcurrency = numCores;
@@ -334,5 +277,40 @@ public class CountWorkflow implements Workflow {
       readConcurrency = Math.min(readConcurrency, maxContinuousPagingSessionsPerCluster);
     }
     return readConcurrency;
+  }
+
+  private double getMeanRowSize() {
+    RelationMetadata table = schemaSettings.getTargetTable();
+    // Read the entire row to get a more accurate picture of the expected throughput
+    String fullReadCql =
+        String.format(
+            "SELECT * FROM %s.%s", table.getKeyspace().asCql(true), table.getName().asCql(true));
+    SimpleStatement fullReadStatement =
+        SimpleStatement.newInstance(fullReadCql)
+            .setPageSize(10) // low page size to avoid errors with large datasets
+            .setTimeout(Duration.ofMinutes(1));
+    double meanSize;
+    try {
+      Histogram sample =
+          DataSizeSampler.sampleReads(
+              Flux.just(fullReadStatement)
+                  .<Row>flatMap(session::executeReactive)
+                  .take(1000)
+                  .toIterable());
+      if (sample.getCount() < 100) {
+        // sample too small, go with a common value
+        LOGGER.debug("Data sample is too small: {}, discarding", sample.getCount());
+        meanSize = _1_KB;
+      } else {
+        Snapshot snapshot = sample.getSnapshot();
+        meanSize = snapshot.getMean();
+        // TODO discard if std dev too high
+        LOGGER.debug("Average row size in bytes: {}, std dev: {}", meanSize, snapshot.getStdDev());
+      }
+    } catch (Exception e) {
+      LOGGER.debug("Sampling failed: {}", ThrowableUtils.getSanitizedErrorMessage(e));
+      meanSize = _1_KB;
+    }
+    return meanSize;
   }
 }
