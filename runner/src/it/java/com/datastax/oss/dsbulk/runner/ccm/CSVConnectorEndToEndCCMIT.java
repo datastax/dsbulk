@@ -31,6 +31,7 @@ import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.validateNumberO
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.validateOutputFiles;
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.validatePositionsFile;
 import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat;
+import static com.datastax.oss.dsbulk.tests.ccm.CCMCluster.Type.OSS;
 import static com.datastax.oss.dsbulk.tests.logging.StreamType.STDERR;
 import static java.math.RoundingMode.FLOOR;
 import static java.math.RoundingMode.UNNECESSARY;
@@ -38,6 +39,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.createTempDirectory;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.datastax.oss.driver.api.core.CqlSession;
@@ -588,7 +590,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     assumeTrue(
         (ccm.getClusterType() == Type.DSE && ccm.getVersion().compareTo(V5_1) >= 0)
-            || (ccm.getClusterType() == Type.OSS && ccm.getVersion().compareTo(V3_10) >= 0),
+            || (ccm.getClusterType() == OSS && ccm.getVersion().compareTo(V3_10) >= 0),
         "UPDATE SET += syntax is only supported in C* 3.10+ and DSE 5.1+");
 
     session.execute("DROP TABLE IF EXISTS counters");
@@ -658,7 +660,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     assumeTrue(
         (ccm.getClusterType() == Type.DSE && ccm.getVersion().compareTo(V5_1) >= 0)
-            || (ccm.getClusterType() == Type.OSS && ccm.getVersion().compareTo(V3_10) >= 0),
+            || (ccm.getClusterType() == OSS && ccm.getVersion().compareTo(V3_10) >= 0),
         "UPDATE SET += syntax is only supported in C* 3.10+ and DSE 5.1+");
 
     session.execute("DROP TABLE IF EXISTS counters");
@@ -2260,6 +2262,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   @Test
   void batch_with_custom_query() {
+
+    assumeFalse(
+        ccm.getClusterType() == OSS && ccm.getVersion().getMajor() >= 4,
+        "This test fails with OSS C* 4.0-alpha4");
 
     session.execute("DROP TABLE IF EXISTS test_batch1");
     session.execute("DROP TABLE IF EXISTS test_batch2");

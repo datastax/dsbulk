@@ -50,6 +50,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -104,21 +105,21 @@ public class DefaultCCMCluster implements CCMCluster {
       createTempStore("/ssl/server_localhost.keystore");
 
   // major DSE versions
-  private static final Version V6_0_0 = Version.parse("6.0.0");
-  private static final Version V5_1_0 = Version.parse("5.1.0");
-  private static final Version V5_0_0 = Version.parse("5.0.0");
-  private static final Version V4_8_0 = Version.parse("4.8.0");
-  private static final Version V4_7_0 = Version.parse("4.7.0");
-  private static final Version V4_6_0 = Version.parse("4.6.0");
+  private static final Version V6_0_0 = Objects.requireNonNull(Version.parse("6.0.0"));
+  private static final Version V5_1_0 = Objects.requireNonNull(Version.parse("5.1.0"));
+  private static final Version V5_0_0 = Objects.requireNonNull(Version.parse("5.0.0"));
+  private static final Version V4_8_0 = Objects.requireNonNull(Version.parse("4.8.0"));
+  private static final Version V4_7_0 = Objects.requireNonNull(Version.parse("4.7.0"));
+  private static final Version V4_6_0 = Objects.requireNonNull(Version.parse("4.6.0"));
 
   // mapped C* versions from DSE versions
-  private static final Version V4_0_0 = Version.parse("4.0.0");
-  private static final Version V3_10 = Version.parse("3.10");
-  private static final Version V3_0_15 = Version.parse("3.0.15");
-  private static final Version V2_2_0 = Version.parse("2.2.0");
-  private static final Version V2_1_19 = Version.parse("2.1.19");
-  private static final Version V2_1_11 = Version.parse("2.1.11");
-  private static final Version V2_0_14 = Version.parse("2.0.14");
+  private static final Version V4_0_0 = Objects.requireNonNull(Version.parse("4.0.0"));
+  private static final Version V3_10 = Objects.requireNonNull(Version.parse("3.10"));
+  private static final Version V3_0_15 = Objects.requireNonNull(Version.parse("3.0.15"));
+  private static final Version V2_2_0 = Objects.requireNonNull(Version.parse("2.2.0"));
+  private static final Version V2_1_19 = Objects.requireNonNull(Version.parse("2.1.19"));
+  private static final Version V2_1_11 = Objects.requireNonNull(Version.parse("2.1.11"));
+  private static final Version V2_0_14 = Objects.requireNonNull(Version.parse("2.0.14"));
 
   /** The install arguments to pass to CCM when creating the cluster. */
   private static final Set<String> DEFAULT_CREATE_OPTIONS;
@@ -153,7 +154,7 @@ public class DefaultCCMCluster implements CCMCluster {
     } else if (branch != null && !branch.trim().isEmpty()) {
       defaultCreateOptions.add("-v git:" + branch.trim().replaceAll("\"", ""));
     } else {
-      defaultCreateOptions.add("-v " + CCM_VERSION);
+      defaultCreateOptions.add("-v " + getCcmVersionString());
     }
     defaultCreateOptions.add(CCM_TYPE.getCreateOption());
     DEFAULT_CREATE_OPTIONS = Collections.unmodifiableSet(defaultCreateOptions);
@@ -181,6 +182,24 @@ public class DefaultCCMCluster implements CCMCluster {
     } else {
       CCM_COMMAND = "ccm";
     }
+  }
+
+  private static String getCcmVersionString() {
+    // for 4.0 pre-releases, the CCM version string needs to be "4.0-alpha1" or "4.0-alpha2"
+    // Version.toString() always adds a patch value, even if it's not specified when parsing.
+    if (CCM_VERSION.getMajor() == 4
+        && CCM_VERSION.getMinor() == 0
+        && CCM_VERSION.getPatch() == 0
+        && CCM_VERSION.getPreReleaseLabels() != null) {
+      // truncate the patch version from the Version string
+      StringBuilder sb = new StringBuilder();
+      sb.append(CCM_VERSION.getMajor()).append('.').append(CCM_VERSION.getMinor());
+      for (String preReleaseString : CCM_VERSION.getPreReleaseLabels()) {
+        sb.append('-').append(preReleaseString);
+      }
+      return sb.toString();
+    }
+    return CCM_VERSION.toString();
   }
 
   private final String clusterName;
@@ -923,7 +942,10 @@ public class DefaultCCMCluster implements CCMCluster {
       int thriftPort = Integer.parseInt(cassandraConfiguration.get("rpc_port").toString());
       int binaryPort =
           Integer.parseInt(cassandraConfiguration.get("native_transport_port").toString());
-      if (CCM_TYPE == DSE && CCM_VERSION.compareTo(V6_0_0) >= 0) {
+      boolean removeThriftConfig =
+          (CCM_TYPE == OSS && CCM_VERSION.getMajor() >= 4)
+              || (CCM_TYPE == DSE && CCM_VERSION.compareTo(V6_0_0) >= 0);
+      if (removeThriftConfig) {
         cassandraConfiguration.remove("start_rpc");
         cassandraConfiguration.remove("rpc_port");
       }
