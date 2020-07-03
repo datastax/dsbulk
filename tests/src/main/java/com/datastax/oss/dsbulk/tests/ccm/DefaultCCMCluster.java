@@ -18,6 +18,7 @@ package com.datastax.oss.dsbulk.tests.ccm;
 import static com.datastax.oss.dsbulk.tests.ccm.CCMCluster.Type.DSE;
 import static com.datastax.oss.dsbulk.tests.ccm.CCMCluster.Type.OSS;
 
+import com.datastax.oss.driver.api.core.Version;
 import com.datastax.oss.driver.api.core.metadata.EndPoint;
 import com.datastax.oss.driver.internal.core.metadata.DefaultEndPoint;
 import com.datastax.oss.driver.shaded.guava.common.base.Joiner;
@@ -30,7 +31,6 @@ import com.datastax.oss.dsbulk.tests.utils.FileUtils;
 import com.datastax.oss.dsbulk.tests.utils.MemoryUtils;
 import com.datastax.oss.dsbulk.tests.utils.NetworkUtils;
 import com.datastax.oss.dsbulk.tests.utils.StringUtils;
-import com.datastax.oss.dsbulk.tests.utils.Version;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;

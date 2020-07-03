@@ -20,6 +20,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 import ch.qos.logback.core.joran.spi.JoranException;
 import com.datastax.oss.driver.api.core.DriverTimeoutException;
+import com.datastax.oss.driver.api.core.Version;
 import com.datastax.oss.driver.api.core.metadata.EndPoint;
 import com.datastax.oss.driver.api.core.servererrors.OverloadedException;
 import com.datastax.oss.driver.api.core.servererrors.ServerError;
@@ -29,9 +30,9 @@ import com.datastax.oss.dsbulk.tests.RemoteClusterExtension;
 import com.datastax.oss.dsbulk.tests.ccm.annotations.CCMRequirements;
 import com.datastax.oss.dsbulk.tests.ccm.annotations.CCMVersionRequirement;
 import com.datastax.oss.dsbulk.tests.ccm.factory.CCMClusterFactory;
+import com.datastax.oss.dsbulk.tests.driver.VersionUtils;
 import com.datastax.oss.dsbulk.tests.logging.LogUtils;
 import com.datastax.oss.dsbulk.tests.utils.ReflectionUtils;
-import com.datastax.oss.dsbulk.tests.utils.Version;
 import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.List;
@@ -72,9 +73,9 @@ public class CCMExtension extends RemoteClusterExtension
       }
       for (CCMVersionRequirement requirement : requirements.versionRequirements()) {
         if (requirement.type() == DefaultCCMCluster.CCM_TYPE) {
-          Version min = Version.parse(requirement.min());
-          Version max = Version.parse(requirement.max());
-          if (!Version.isWithinRange(min, max, DefaultCCMCluster.CCM_VERSION)) {
+          Version min = requirement.min().isEmpty() ? null : Version.parse(requirement.min());
+          Version max = requirement.max().isEmpty() ? null : Version.parse(requirement.max());
+          if (!VersionUtils.isWithinRange(DefaultCCMCluster.CCM_VERSION, min, max)) {
             return ConditionEvaluationResult.disabled(
                 String.format(
                     "Test requires version in range [%s,%s[ but %s is configured.",

@@ -1185,10 +1185,6 @@ public class SchemaSettings {
     return table.getPartitionKey().get(0).getName().asCql(true);
   }
 
-  private Set<CQLWord> primaryKeyVariables() {
-    return columnsToVariables(table.getPrimaryKey());
-  }
-
   private Set<CQLWord> partitionKeyVariables() {
     return columnsToVariables(table.getPartitionKey());
   }

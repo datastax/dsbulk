@@ -36,6 +36,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.Version;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.dsbulk.codecs.util.OverflowStrategy;
 import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader;
@@ -49,7 +50,6 @@ import com.datastax.oss.dsbulk.tests.logging.StreamCapture;
 import com.datastax.oss.dsbulk.tests.logging.StreamInterceptor;
 import com.datastax.oss.dsbulk.tests.utils.FileUtils;
 import com.datastax.oss.dsbulk.tests.utils.StringUtils;
-import com.datastax.oss.dsbulk.tests.utils.Version;
 import com.datastax.oss.protocol.internal.util.Bytes;
 import java.io.IOException;
 import java.nio.file.Files;

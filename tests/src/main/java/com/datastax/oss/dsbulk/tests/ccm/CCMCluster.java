@@ -15,8 +15,8 @@
  */
 package com.datastax.oss.dsbulk.tests.ccm;
 
+import com.datastax.oss.driver.api.core.Version;
 import com.datastax.oss.driver.api.core.metadata.EndPoint;
-import com.datastax.oss.dsbulk.tests.utils.Version;
 import java.io.Closeable;
 import java.io.File;
 import java.net.InetSocketAddress;

@@ -20,13 +20,13 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.Version;
 import com.datastax.oss.driver.api.core.servererrors.SyntaxError;
 import com.datastax.oss.dsbulk.executor.api.BulkExecutor;
 import com.datastax.oss.dsbulk.executor.api.BulkExecutorITBase;
 import com.datastax.oss.dsbulk.executor.api.result.WriteResult;
 import com.datastax.oss.dsbulk.tests.ccm.CCMCluster;
 import com.datastax.oss.dsbulk.tests.ccm.CCMExtension;
-import com.datastax.oss.dsbulk.tests.utils.Version;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
