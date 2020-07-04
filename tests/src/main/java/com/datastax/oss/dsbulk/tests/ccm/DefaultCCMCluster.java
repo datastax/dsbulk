@@ -942,12 +942,18 @@ public class DefaultCCMCluster implements CCMCluster {
       int thriftPort = Integer.parseInt(cassandraConfiguration.get("rpc_port").toString());
       int binaryPort =
           Integer.parseInt(cassandraConfiguration.get("native_transport_port").toString());
-      boolean removeThriftConfig =
-          (CCM_TYPE == OSS && CCM_VERSION.getMajor() >= 4)
-              || (CCM_TYPE == DSE && CCM_VERSION.compareTo(V6_0_0) >= 0);
+      boolean isOssCassandra4OrHigher = CCM_TYPE == OSS && CCM_VERSION.getMajor() >= 4;
+      boolean isDse6OrHigher = CCM_TYPE == DSE && CCM_VERSION.compareTo(V6_0_0) >= 0;
+      boolean removeThriftConfig = isOssCassandra4OrHigher || isDse6OrHigher;
       if (removeThriftConfig) {
         cassandraConfiguration.remove("start_rpc");
         cassandraConfiguration.remove("rpc_port");
+      }
+      if (isOssCassandra4OrHigher) {
+        // enable features marked experimental in C* 4.0
+        cassandraConfiguration.put("enable_materialized_views", "true");
+        cassandraConfiguration.put("enable_sasi_indexes", "true");
+        cassandraConfiguration.put("enable_transient_replication", "true");
       }
       if (CCM_TYPE == DSE && CCM_VERSION.compareTo(V4_6_0) < 0) {
         dseConfiguration.remove("cql_slow_log_options.enabled");
