@@ -18,8 +18,6 @@ package com.datastax.oss.dsbulk.workflow.commons.log;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.WRITE;
-import static java.util.concurrent.TimeUnit.MINUTES;
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toList;
 
 import ch.qos.logback.classic.LoggerContext;
@@ -41,8 +39,6 @@ import com.datastax.oss.driver.api.core.servererrors.QueryExecutionException;
 import com.datastax.oss.driver.api.core.servererrors.ServerError;
 import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
 import com.datastax.oss.driver.shaded.guava.common.base.Joiner;
-import com.datastax.oss.driver.shaded.guava.common.util.concurrent.MoreExecutors;
-import com.datastax.oss.dsbulk.commons.concurrent.ScalableThreadPoolExecutor;
 import com.datastax.oss.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.datastax.oss.dsbulk.executor.api.result.ReadResult;
@@ -84,8 +80,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Hooks;
 import reactor.core.publisher.UnicastProcessor;
-import reactor.core.scheduler.Scheduler;
-import reactor.core.scheduler.Schedulers;
 
 public class LogManager implements AutoCloseable {
 
@@ -122,9 +116,6 @@ public class LogManager implements AutoCloseable {
   private final LoadingCache<Path, PrintWriter> openFiles =
       Caffeine.newBuilder()
           .build(path -> new PrintWriter(Files.newBufferedWriter(path, UTF_8, CREATE_NEW, WRITE)));
-
-  private ScalableThreadPoolExecutor executor;
-  private Scheduler scheduler;
 
   private CodecRegistry codecRegistry;
   private ProtocolVersion protocolVersion;
@@ -167,10 +158,6 @@ public class LogManager implements AutoCloseable {
   }
 
   public void init() {
-    executor =
-        // Only spawn 1 thread initially, but stretch up to 8 in case lots of errors arrive
-        new ScalableThreadPoolExecutor(1, 8, 60L, SECONDS);
-    scheduler = Schedulers.fromExecutorService(executor);
     codecRegistry = session.getContext().getCodecRegistry();
     protocolVersion = session.getContext().getProtocolVersion();
     stackTracePrinter = new StackTracePrinter();
@@ -214,8 +201,6 @@ public class LogManager implements AutoCloseable {
     failedReadSink.complete();
     uncaughtExceptionSink.complete();
     stackTracePrinter.stop();
-    MoreExecutors.shutdownAndAwaitTermination(executor, 1, MINUTES);
-    scheduler.dispose();
     // Forcibly close all open files on the thread that invokes close()
     // Using a cache removal listener is not an option because cache listeners
     // are invoked on the common ForkJoinPool, which uses daemon threads.
@@ -525,8 +510,7 @@ public class LogManager implements AutoCloseable {
   @NonNull
   private FluxSink<ErrorRecord> newFailedRecordSink() {
     UnicastProcessor<ErrorRecord> processor = UnicastProcessor.create();
-    Flux<ErrorRecord> flux =
-        processor.publishOn(scheduler).doOnNext(this::appendFailedRecordToDebugFile);
+    Flux<ErrorRecord> flux = processor.doOnNext(this::appendFailedRecordToDebugFile);
     if (trackPositions) {
       flux.doOnNext(record -> appendToBadFile(record, CONNECTOR_BAD_FILE))
           .doOnNext(record -> positionsSink.next(record))
@@ -549,10 +533,7 @@ public class LogManager implements AutoCloseable {
   @NonNull
   private FluxSink<ErrorRecord> newUnmappableRecordSink() {
     UnicastProcessor<ErrorRecord> processor = UnicastProcessor.create();
-    processor
-        .publishOn(scheduler)
-        .doOnNext(this::appendUnmappableReadResultToDebugFile)
-        .subscribe();
+    processor.doOnNext(this::appendUnmappableReadResultToDebugFile).subscribe();
     return processor.sink();
   }
 
@@ -570,7 +551,6 @@ public class LogManager implements AutoCloseable {
   private FluxSink<UnmappableStatement> newUnmappableStatementSink() {
     UnicastProcessor<UnmappableStatement> processor = UnicastProcessor.create();
     processor
-        .publishOn(scheduler)
         .doOnNext(this::maybeWarnInvalidMapping)
         .doOnNext(this::appendUnmappableStatementToDebugFile)
         .transform(newStatementToRecordMapper())
@@ -595,7 +575,6 @@ public class LogManager implements AutoCloseable {
   private FluxSink<WriteResult> newFailedWriteResultSink() {
     UnicastProcessor<WriteResult> processor = UnicastProcessor.create();
     processor
-        .publishOn(scheduler)
         .doOnNext(this::appendFailedWriteResultToDebugFile)
         .map(Result::getStatement)
         .transform(newStatementToRecordMapper())
@@ -620,7 +599,6 @@ public class LogManager implements AutoCloseable {
   private FluxSink<WriteResult> newFailedCASWriteSink() {
     UnicastProcessor<WriteResult> processor = UnicastProcessor.create();
     processor
-        .publishOn(scheduler)
         .doOnNext(this::appendFailedCASWriteResultToDebugFile)
         .map(Result::getStatement)
         .transform(newStatementToRecordMapper())
@@ -642,7 +620,7 @@ public class LogManager implements AutoCloseable {
   @NonNull
   private FluxSink<ReadResult> newFailedReadResultSink() {
     UnicastProcessor<ReadResult> processor = UnicastProcessor.create();
-    processor.publishOn(scheduler).doOnNext(this::appendFailedReadResultToDebugFile).subscribe();
+    processor.doOnNext(this::appendFailedReadResultToDebugFile).subscribe();
     return processor.sink();
   }
 
