@@ -127,8 +127,9 @@ public class CSVConnector extends AbstractFileBasedConnector {
       newline = settings.getString(NEWLINE);
       ignoreLeadingWhitespaces = settings.getBoolean(IGNORE_LEADING_WHITESPACES);
       ignoreTrailingWhitespaces = settings.getBoolean(IGNORE_TRAILING_WHITESPACES);
-      ignoreTrailingWhitespacesInQuotes = settings.getBoolean(IGNORE_LEADING_WHITESPACES_IN_QUOTES);
-      ignoreLeadingWhitespacesInQuotes = settings.getBoolean(IGNORE_TRAILING_WHITESPACES_IN_QUOTES);
+      ignoreLeadingWhitespacesInQuotes = settings.getBoolean(IGNORE_LEADING_WHITESPACES_IN_QUOTES);
+      ignoreTrailingWhitespacesInQuotes =
+          settings.getBoolean(IGNORE_TRAILING_WHITESPACES_IN_QUOTES);
       normalizeLineEndingsInQuotes = settings.getBoolean(NORMALIZE_LINE_ENDINGS_IN_QUOTES);
       nullValue = settings.getIsNull(NULL_VALUE) ? null : settings.getString(NULL_VALUE);
       emptyValue = settings.getIsNull(EMPTY_VALUE) ? null : settings.getString(EMPTY_VALUE);
@@ -167,8 +168,8 @@ public class CSVConnector extends AbstractFileBasedConnector {
       parserSettings.setNormalizeLineEndingsWithinQuotes(normalizeLineEndingsInQuotes);
       parserSettings.setIgnoreLeadingWhitespaces(ignoreLeadingWhitespaces);
       parserSettings.setIgnoreTrailingWhitespaces(ignoreTrailingWhitespaces);
-      parserSettings.setIgnoreLeadingWhitespacesInQuotes(ignoreTrailingWhitespacesInQuotes);
-      parserSettings.setIgnoreTrailingWhitespacesInQuotes(ignoreLeadingWhitespacesInQuotes);
+      parserSettings.setIgnoreLeadingWhitespacesInQuotes(ignoreLeadingWhitespacesInQuotes);
+      parserSettings.setIgnoreTrailingWhitespacesInQuotes(ignoreTrailingWhitespacesInQuotes);
       if (autoNewline) {
         parserSettings.setLineSeparatorDetectionEnabled(true);
       } else {
