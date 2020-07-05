@@ -15,6 +15,7 @@
  */
 package com.datastax.oss.dsbulk.runner.tests;
 
+import com.datastax.oss.dsbulk.connectors.api.DefaultErrorRecord;
 import com.datastax.oss.dsbulk.connectors.api.DefaultIndexedField;
 import com.datastax.oss.dsbulk.connectors.api.DefaultMappedField;
 import com.datastax.oss.dsbulk.connectors.api.DefaultRecord;
@@ -60,5 +61,11 @@ public class RecordUtils {
           new DefaultMappedField(tokens[i]), JsonNodeFactory.instance.textNode(tokens[i + 1]));
     }
     return record;
+  }
+
+  public static Record error(Throwable error) {
+    int counter = COUNTER.incrementAndGet();
+    return new DefaultErrorRecord(
+        "source" + counter, URI.create("file://file" + counter + ".csv"), counter - 1, error);
   }
 }
