@@ -15,6 +15,7 @@
  */
 package com.datastax.oss.dsbulk.codecs.text.string;
 
+import static com.datastax.oss.dsbulk.codecs.CommonConversionContext.BINARY_FORMAT;
 import static com.datastax.oss.dsbulk.codecs.text.TextConversionContext.BOOLEAN_INPUT_WORDS;
 import static com.datastax.oss.dsbulk.codecs.text.TextConversionContext.BOOLEAN_NUMBERS;
 import static com.datastax.oss.dsbulk.codecs.text.TextConversionContext.BOOLEAN_OUTPUT_WORDS;
@@ -279,7 +280,7 @@ public class StringConvertingCodecProvider implements ConvertingCodecProvider {
               nullStrings);
         }
       case BLOB:
-        return new StringToBlobCodec(nullStrings);
+        return new StringToBlobCodec(nullStrings, context.getAttribute(BINARY_FORMAT));
       case DURATION:
         return new StringToDurationCodec(nullStrings);
       case LIST:

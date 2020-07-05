@@ -16,16 +16,18 @@
 package com.datastax.oss.dsbulk.codecs.text.string;
 
 import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
+import com.datastax.oss.dsbulk.codecs.util.BinaryFormat;
 import com.datastax.oss.dsbulk.codecs.util.CodecUtils;
-import com.datastax.oss.protocol.internal.util.Bytes;
 import java.nio.ByteBuffer;
-import java.util.Base64;
 import java.util.List;
 
 public class StringToBlobCodec extends StringConvertingCodec<ByteBuffer> {
 
-  public StringToBlobCodec(List<String> nullStrings) {
+  private final BinaryFormat binaryFormat;
+
+  public StringToBlobCodec(List<String> nullStrings, BinaryFormat binaryFormat) {
     super(TypeCodecs.BLOB, nullStrings);
+    this.binaryFormat = binaryFormat;
   }
 
   @Override
@@ -42,9 +44,6 @@ public class StringToBlobCodec extends StringConvertingCodec<ByteBuffer> {
     if (value == null) {
       return nullString();
     }
-    if (!value.hasRemaining()) {
-      return "";
-    }
-    return Base64.getEncoder().encodeToString(Bytes.getArray(value));
+    return binaryFormat.format(value);
   }
 }

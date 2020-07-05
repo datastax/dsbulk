@@ -15,6 +15,7 @@
  */
 package com.datastax.oss.dsbulk.runner.simulacron;
 
+import static com.datastax.oss.driver.api.core.type.DataTypes.BLOB;
 import static com.datastax.oss.driver.api.core.type.DataTypes.BOOLEAN;
 import static com.datastax.oss.driver.api.core.type.DataTypes.INT;
 import static com.datastax.oss.driver.api.core.type.DataTypes.TEXT;
@@ -40,6 +41,7 @@ import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.validateQueryCo
 import static com.datastax.oss.dsbulk.tests.logging.StreamType.STDERR;
 import static com.datastax.oss.dsbulk.tests.logging.StreamType.STDOUT;
 import static com.datastax.oss.dsbulk.tests.utils.FileUtils.createURLFile;
+import static com.datastax.oss.dsbulk.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
 import static com.datastax.oss.dsbulk.tests.utils.StringUtils.quoteJson;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.LOCAL_ONE;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.ONE;
@@ -48,6 +50,8 @@ import static java.util.Collections.emptyMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
+import com.datastax.oss.driver.api.core.data.ByteUtils;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import com.datastax.oss.dsbulk.commons.config.ConfigUtils;
 import com.datastax.oss.dsbulk.connectors.api.Record;
@@ -64,7 +68,6 @@ import com.datastax.oss.dsbulk.tests.simulacron.SimulacronUtils;
 import com.datastax.oss.dsbulk.tests.simulacron.SimulacronUtils.Column;
 import com.datastax.oss.dsbulk.tests.simulacron.SimulacronUtils.Keyspace;
 import com.datastax.oss.dsbulk.tests.simulacron.SimulacronUtils.Table;
-import com.datastax.oss.dsbulk.tests.utils.FileUtils;
 import com.datastax.oss.dsbulk.tests.utils.StringUtils;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
@@ -85,6 +88,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -95,6 +99,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.reactivestreams.Publisher;
 
@@ -849,9 +854,47 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     assertThat(stdOut.getStreamLines()).hasSize(24);
   }
 
+  @ParameterizedTest
+  @CsvSource({"BASE64,1|yv66vg==", "HEX,1|0xcafebabe"})
+  void unload_binary(String format, String expected) throws Exception {
+
+    SimulacronUtils.primeTables(
+        simulacron,
+        new Keyspace(
+            "ks1",
+            new Table(
+                "table1",
+                Collections.singletonList(new Column("pk", INT)),
+                Collections.emptyList(),
+                Collections.singletonList(new Column("v", BLOB)),
+                Lists.newArrayList(
+                    ImmutableMap.of("pk", 1, "v", ByteUtils.fromHexString("0xcafebabe"))))));
+
+    String[] args = {
+      "unload",
+      "--connector.csv.header",
+      "false",
+      "--connector.csv.delimiter",
+      quoteJson("|"),
+      "--connector.csv.url",
+      quoteJson(unloadDir),
+      "--connector.csv.maxConcurrentFiles",
+      "1",
+      "--schema.keyspace",
+      "ks1",
+      "--schema.table",
+      "table1",
+      "--codec.binary",
+      format,
+    };
+
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+    assertThat(readAllLinesInDirectoryAsStream(unloadDir)).containsExactly(expected);
+  }
+
   private void verifyDelimiterCount(char delimiter, int expected) throws Exception {
-    String contents =
-        FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.joining("\n"));
+    String contents = readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.joining("\n"));
     assertThat(StringUtils.countOccurrences(delimiter, contents)).isEqualTo(expected);
   }
 }

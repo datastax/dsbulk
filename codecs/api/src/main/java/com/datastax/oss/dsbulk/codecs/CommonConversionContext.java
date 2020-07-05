@@ -20,6 +20,8 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
+import com.datastax.oss.dsbulk.codecs.util.Base64BinaryFormat;
+import com.datastax.oss.dsbulk.codecs.util.BinaryFormat;
 import com.datastax.oss.dsbulk.codecs.util.CodecUtils;
 import com.datastax.oss.dsbulk.codecs.util.OverflowStrategy;
 import com.datastax.oss.dsbulk.codecs.util.TemporalFormat;
@@ -84,6 +86,7 @@ public class CommonConversionContext extends ConversionContext {
   public static final String BOOLEAN_OUTPUT_WORDS = "BOOLEAN_OUTPUT_WORDS";
   public static final String BOOLEAN_NUMBERS = "BOOLEAN_NUMBERS";
   public static final String TIME_UUID_GENERATOR = "TIME_UUID_GENERATOR";
+  public static final String BINARY_FORMAT = "BINARY_FORMAT";
   public static final String ALLOW_EXTRA_FIELDS = "ALLOW_EXTRA_FIELDS";
   public static final String ALLOW_MISSING_FIELDS = "ALLOW_MISSING_FIELDS";
 
@@ -106,6 +109,7 @@ public class CommonConversionContext extends ConversionContext {
     addAttribute(BOOLEAN_NUMBERS, Lists.newArrayList(BigDecimal.ONE, BigDecimal.ZERO));
     addAttribute(ALLOW_EXTRA_FIELDS, false);
     addAttribute(ALLOW_MISSING_FIELDS, false);
+    addAttribute(BINARY_FORMAT, Base64BinaryFormat.INSTANCE);
     rebuildFormats();
   }
 
@@ -409,6 +413,16 @@ public class CommonConversionContext extends ConversionContext {
 
   public CommonConversionContext setAllowMissingFields(boolean allowMissingFields) {
     addAttribute(ALLOW_MISSING_FIELDS, allowMissingFields);
+    return this;
+  }
+
+  /**
+   * The binary format to use for conversions between {@code String} and CQL blob.
+   *
+   * @return this builder (for method chaining).
+   */
+  public CommonConversionContext setBinaryFormat(@NonNull BinaryFormat binaryFormat) {
+    addAttribute(BINARY_FORMAT, binaryFormat);
     return this;
   }
 

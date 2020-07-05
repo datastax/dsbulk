@@ -46,6 +46,8 @@ import com.datastax.oss.dsbulk.codecs.text.string.StringToTupleCodec;
 import com.datastax.oss.dsbulk.codecs.text.string.StringToUDTCodec;
 import com.datastax.oss.dsbulk.codecs.text.string.StringToUUIDCodec;
 import com.datastax.oss.dsbulk.codecs.text.string.StringToUnknownTypeCodec;
+import com.datastax.oss.dsbulk.codecs.util.Base64BinaryFormat;
+import com.datastax.oss.dsbulk.codecs.util.HexBinaryFormat;
 import com.datastax.oss.dsbulk.tests.driver.DriverUtils;
 import com.datastax.oss.dsbulk.tests.utils.ReflectionUtils;
 import com.datastax.oss.dsbulk.tests.utils.TestConfigUtils;
@@ -322,5 +324,33 @@ class CodecSettingsTest {
                 true))
         .isNotNull()
         .isInstanceOf(JsonNodeToUnknownTypeCodec.class);
+  }
+
+  @Test
+  void should_create_settings_when_valid_hex_binary_format() {
+    Config config = TestConfigUtils.createTestConfig("dsbulk.codec", "binary", "Hex");
+    CodecSettings settings = new CodecSettings(config);
+    settings.init();
+    assertThat(ReflectionUtils.getInternalState(settings, "binaryFormat"))
+        .isSameAs(HexBinaryFormat.INSTANCE);
+  }
+
+  @Test
+  void should_create_settings_when_valid_base64_binary_format() {
+    Config config = TestConfigUtils.createTestConfig("dsbulk.codec", "binary", "Base64");
+    CodecSettings settings = new CodecSettings(config);
+    settings.init();
+    assertThat(ReflectionUtils.getInternalState(settings, "binaryFormat"))
+        .isSameAs(Base64BinaryFormat.INSTANCE);
+  }
+
+  @Test
+  void should_throw_exception_when_invalid_binary_format() {
+    Config config = TestConfigUtils.createTestConfig("dsbulk.codec", "binary", "NotABinaryFormat");
+    CodecSettings settings = new CodecSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining(
+            "Invalid value for dsbulk.codec.binary, expecting HEX or BASE64, got NotABinaryFormat");
   }
 }
