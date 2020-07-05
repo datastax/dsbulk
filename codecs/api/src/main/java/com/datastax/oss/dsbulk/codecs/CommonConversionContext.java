@@ -70,7 +70,6 @@ public class CommonConversionContext extends ConversionContext {
   public static final String TIME_UUID_GENERATOR = "TIME_UUID_GENERATOR";
   public static final String ALLOW_EXTRA_FIELDS = "ALLOW_EXTRA_FIELDS";
   public static final String ALLOW_MISSING_FIELDS = "ALLOW_MISSING_FIELDS";
-  public static final String OBJECT_MAPPER = "OBJECT_MAPPER";
 
   public CommonConversionContext() {
     addAttribute(LOCALE, Locale.US);
