@@ -17,6 +17,7 @@ package com.datastax.oss.dsbulk.workflow.commons.settings;
 
 import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.entry;
 
 import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.api.core.type.TupleType;
@@ -50,7 +51,9 @@ import com.datastax.oss.dsbulk.tests.utils.ReflectionUtils;
 import com.datastax.oss.dsbulk.tests.utils.TestConfigUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.typesafe.config.Config;
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class CodecSettingsTest {
@@ -169,42 +172,45 @@ class CodecSettingsTest {
     assertThat(codec.externalToInternal("128")).isEqualTo((byte) 127);
   }
 
-  @SuppressWarnings("unchecked")
   @Test
   void should_create_settings_when_null_words_are_specified() {
     {
       Config config = TestConfigUtils.createTestConfig("dsbulk.codec", "nullStrings", "[NULL]");
       CodecSettings codecSettings = new CodecSettings(config);
       codecSettings.init();
-
-      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullStrings"))
-          .containsOnly("NULL");
+      @SuppressWarnings("unchecked")
+      List<String> nullStrings =
+          (List<String>) ReflectionUtils.getInternalState(codecSettings, "nullStrings");
+      assertThat(nullStrings).containsOnly("NULL");
     }
     {
       Config config =
           TestConfigUtils.createTestConfig("dsbulk.codec", "nullStrings", "[NIL, NULL]");
       CodecSettings codecSettings = new CodecSettings(config);
       codecSettings.init();
-
-      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullStrings"))
-          .containsOnly("NIL", "NULL");
+      @SuppressWarnings("unchecked")
+      List<String> nullStrings =
+          (List<String>) ReflectionUtils.getInternalState(codecSettings, "nullStrings");
+      assertThat(nullStrings).containsOnly("NIL", "NULL");
     }
     {
       Config config = TestConfigUtils.createTestConfig("dsbulk.codec", "nullStrings", "[\"NULL\"]");
       CodecSettings codecSettings = new CodecSettings(config);
       codecSettings.init();
-
-      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullStrings"))
-          .containsOnly("NULL");
+      @SuppressWarnings("unchecked")
+      List<String> nullStrings =
+          (List<String>) ReflectionUtils.getInternalState(codecSettings, "nullStrings");
+      assertThat(nullStrings).containsOnly("NULL");
     }
     {
       Config config =
           TestConfigUtils.createTestConfig("dsbulk.codec", "nullStrings", "[\"NIL\", \"NULL\"]");
       CodecSettings codecSettings = new CodecSettings(config);
       codecSettings.init();
-
-      assertThat((List<String>) ReflectionUtils.getInternalState(codecSettings, "nullStrings"))
-          .containsOnly("NIL", "NULL");
+      @SuppressWarnings("unchecked")
+      List<String> nullStrings =
+          (List<String>) ReflectionUtils.getInternalState(codecSettings, "nullStrings");
+      assertThat(nullStrings).containsOnly("NIL", "NULL");
     }
   }
 
@@ -216,6 +222,84 @@ class CodecSettingsTest {
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.codec.nullStrings, expecting LIST, got NULL");
+  }
+
+  @Test
+  void should_throw_exception_when_epoch_not_in_ISO_ZONED_DATE_TIME() {
+    Config config = TestConfigUtils.createTestConfig("dsbulk.codec", "epoch", "NotAValidTemporal");
+    CodecSettings settings = new CodecSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining(
+            "Invalid value for dsbulk.codec.epoch, expecting temporal in ISO_ZONED_DATE_TIME format, got 'NotAValidTemporal'");
+  }
+
+  @Test
+  void should_throw_exception_when_booleanNumbers_not_a_list_of_two_elements() {
+    Config config = TestConfigUtils.createTestConfig("dsbulk.codec", "booleanNumbers", "[0,1,2]");
+    CodecSettings settings = new CodecSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining(
+            "Invalid value for dsbulk.codec.booleanNumbers, expecting list with two numbers, got '[0, 1, 2]'");
+  }
+
+  @Test
+  void should_throw_exception_when_booleanNumbers_not_a_list_of_numbers() {
+    Config config =
+        TestConfigUtils.createTestConfig("dsbulk.codec", "booleanNumbers", "[0,NotANumber]");
+    CodecSettings settings = new CodecSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining(
+            "Invalid value for dsbulk.codec.booleanNumbers, expecting list with two numbers, got '[0, NotANumber]'");
+  }
+
+  @Test
+  void should_create_settings_when_valid_booleanNumbers() {
+    Config config = TestConfigUtils.createTestConfig("dsbulk.codec", "booleanNumbers", "[-1,0.5]");
+    CodecSettings settings = new CodecSettings(config);
+    settings.init();
+    @SuppressWarnings("unchecked")
+    List<BigDecimal> booleanNumbers =
+        (List<BigDecimal>) ReflectionUtils.getInternalState(settings, "booleanNumbers");
+    assertThat(booleanNumbers).containsExactly(new BigDecimal("-1"), new BigDecimal("0.5"));
+  }
+
+  @Test
+  void should_throw_exception_when_booleanStrings_empty() {
+    Config config = TestConfigUtils.createTestConfig("dsbulk.codec", "booleanStrings", "[]");
+    CodecSettings settings = new CodecSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining(
+            "Invalid value for dsbulk.codec.booleanStrings, expecting list with at least one true:false pair, got '[]'");
+  }
+
+  @Test
+  void should_throw_exception_when_booleanStrings_not_a_list_of_tokens() {
+    Config config =
+        TestConfigUtils.createTestConfig("dsbulk.codec", "booleanStrings", "[NotATrueFalsePair]");
+    CodecSettings settings = new CodecSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining(
+            "Invalid value for dsbulk.codec.booleanStrings, expecting list with at least one true:false pair, got '[NotATrueFalsePair]'");
+  }
+
+  @Test
+  void should_create_settings_when_valid_booleanStrings() {
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.codec", "booleanStrings", "[\"VRAI:FAUX\",\"Σωστό:Λάθος\"]");
+    CodecSettings settings = new CodecSettings(config);
+    settings.init();
+    @SuppressWarnings("unchecked")
+    Map<String, Boolean> booleanInputWords =
+        (Map<String, Boolean>) ReflectionUtils.getInternalState(settings, "booleanInputWords");
+    assertThat(booleanInputWords)
+        .containsOnly(
+            entry("vrai", true), entry("faux", false), entry("σωστό", true), entry("λάθος", false));
   }
 
   @Test

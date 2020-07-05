@@ -26,7 +26,6 @@ import com.datastax.dse.driver.api.core.data.time.DateRange;
 import com.datastax.oss.driver.api.core.data.ByteUtils;
 import com.datastax.oss.driver.internal.core.util.Strings;
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
-import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.dsbulk.codecs.ConvertingCodec;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import io.netty.util.concurrent.FastThreadLocal;
@@ -1023,30 +1022,5 @@ public class CodecUtils {
     } else {
       return new Locale(language);
     }
-  }
-
-  public static Map<String, Boolean> getBooleanInputWords(List<String> list) {
-    ImmutableMap.Builder<String, Boolean> builder = ImmutableMap.builder();
-    list.stream()
-        .map(str -> new StringTokenizer(str, ":"))
-        .forEach(
-            tokenizer -> {
-              if (tokenizer.countTokens() != 2) {
-                throw new IllegalArgumentException(
-                    "Expecting codec.booleanStrings to contain a list of true:false pairs, got "
-                        + list);
-              }
-              builder.put(tokenizer.nextToken().toLowerCase(), true);
-              builder.put(tokenizer.nextToken().toLowerCase(), false);
-            });
-    return builder.build();
-  }
-
-  public static Map<Boolean, String> getBooleanOutputWords(List<String> list) {
-    StringTokenizer tokenizer = new StringTokenizer(list.get(0), ":");
-    ImmutableMap.Builder<Boolean, String> builder = ImmutableMap.builder();
-    builder.put(true, tokenizer.nextToken().toLowerCase());
-    builder.put(false, tokenizer.nextToken().toLowerCase());
-    return builder.build();
   }
 }

@@ -18,6 +18,7 @@ package com.datastax.oss.dsbulk.codecs;
 import static java.math.RoundingMode.UNNECESSARY;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import com.datastax.oss.dsbulk.codecs.util.CodecUtils;
 import com.datastax.oss.dsbulk.codecs.util.OverflowStrategy;
@@ -36,6 +37,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
@@ -45,8 +47,22 @@ import java.util.concurrent.TimeUnit;
  */
 public class CommonConversionContext extends ConversionContext {
 
-  private static final ArrayList<String> DEFAULT_BOOLEAN_STRINGS =
-      Lists.newArrayList("1:0", "Y:N", "T:F", "YES:NO", "TRUE:FALSE");
+  private static final Map<String, Boolean> DEFAULT_BOOLEAN_INPUT_WORDS =
+      ImmutableMap.<String, Boolean>builder()
+          .put("1", true)
+          .put("0", false)
+          .put("y", true)
+          .put("n", false)
+          .put("t", true)
+          .put("f", false)
+          .put("yes", true)
+          .put("no", false)
+          .put("true", true)
+          .put("false", false)
+          .build();
+
+  private static final Map<Boolean, String> DEFAULT_BOOLEAN_OUTPUT_WORDS =
+      ImmutableMap.of(true, "1", false, "0");
 
   public static final String LOCALE = "LOCALE";
   public static final String FORMAT_NUMBERS = "FORMAT_NUMBERS";
@@ -85,9 +101,8 @@ public class CommonConversionContext extends ConversionContext {
     addAttribute(DATE_PATTERN, "ISO_LOCAL_DATE");
     addAttribute(TIME_PATTERN, "ISO_LOCAL_TIME");
     addAttribute(NULL_STRINGS, new ArrayList<>());
-    List<String> list = Objects.requireNonNull((List<String>) DEFAULT_BOOLEAN_STRINGS);
-    addAttribute(BOOLEAN_INPUT_WORDS, CodecUtils.getBooleanInputWords(list));
-    addAttribute(BOOLEAN_OUTPUT_WORDS, CodecUtils.getBooleanOutputWords(list));
+    addAttribute(BOOLEAN_INPUT_WORDS, DEFAULT_BOOLEAN_INPUT_WORDS);
+    addAttribute(BOOLEAN_OUTPUT_WORDS, DEFAULT_BOOLEAN_OUTPUT_WORDS);
     addAttribute(BOOLEAN_NUMBERS, Lists.newArrayList(BigDecimal.ONE, BigDecimal.ZERO));
     addAttribute(ALLOW_EXTRA_FIELDS, false);
     addAttribute(ALLOW_MISSING_FIELDS, false);
@@ -295,47 +310,24 @@ public class CommonConversionContext extends ConversionContext {
   }
 
   /**
-   * Specify how {@code true} and {@code false} representations can be used by dsbulk.
-   *
-   * <p>Each element of the list must be of the form {@code true_value:false_value},
-   * case-insensitive. The default list is {@code "1:0", "Y:N", "T:F", "YES:NO", "TRUE:FALSE"}.
-   *
-   * <p>For loading, all representations are honored: when a record field value exactly matches one
-   * of the specified strings, the value is replaced with {@code true} or {@code false} before
-   * writing to DSE.
-   *
-   * <p>For unloading, this setting is only applicable for string-based connectors, such as the CSV
-   * connector: the first representation will be used to format booleans before they are written
-   * out, and all others are ignored.
+   * Specify how strings map to {@code true} and {@code false}.
    *
    * @return this builder (for method chaining).
    */
-  public CommonConversionContext setBooleanStrings(@NonNull List<String> booleanStrings) {
-    List<String> list = Objects.requireNonNull(booleanStrings);
-    addAttribute(BOOLEAN_INPUT_WORDS, CodecUtils.getBooleanInputWords(list));
-    addAttribute(BOOLEAN_OUTPUT_WORDS, CodecUtils.getBooleanOutputWords(list));
+  public CommonConversionContext setBooleanInputWords(@NonNull Map<String, Boolean> inputWords) {
+    addAttribute(BOOLEAN_INPUT_WORDS, Objects.requireNonNull(inputWords));
     return this;
   }
 
   /**
-   * Specify how {@code true} and {@code false} representations can be used by dsbulk.
-   *
-   * <p>Each element of the list must be of the form {@code true_value:false_value},
-   * case-insensitive. The default list is {@code "1:0", "Y:N", "T:F", "YES:NO", "TRUE:FALSE"}.
-   *
-   * <p>For loading, all representations are honored: when a record field value exactly matches one
-   * of the specified strings, the value is replaced with {@code true} or {@code false} before
-   * writing to DSE.
-   *
-   * <p>For unloading, this setting is only applicable for string-based connectors, such as the CSV
-   * connector: the first representation will be used to format booleans before they are written
-   * out, and all others are ignored.
+   * Specify how {@code true} and {@code false} map to strings.
    *
    * @return this builder (for method chaining).
    */
   @SuppressWarnings("unused")
-  public CommonConversionContext setBooleanStrings(@NonNull String... booleanStrings) {
-    return setBooleanStrings(Arrays.asList(booleanStrings));
+  public CommonConversionContext setBooleanOutputWords(@NonNull Map<Boolean, String> outputWords) {
+    addAttribute(BOOLEAN_OUTPUT_WORDS, Objects.requireNonNull(outputWords));
+    return this;
   }
 
   /**
