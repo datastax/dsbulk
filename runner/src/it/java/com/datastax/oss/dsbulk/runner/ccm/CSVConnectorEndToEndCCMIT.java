@@ -2263,9 +2263,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   @Test
   void batch_with_custom_query() {
 
+    // FIXME remove this when CASSANDRA-15730 is fixed
     assumeFalse(
         ccm.getClusterType() == OSS && ccm.getVersion().getMajor() >= 4,
-        "This test fails with OSS C* 4.0-alpha4");
+        "This test fails with OSS C* 4.0-alpha4, see CASSANDRA-15730");
 
     session.execute("DROP TABLE IF EXISTS test_batch1");
     session.execute("DROP TABLE IF EXISTS test_batch2");
