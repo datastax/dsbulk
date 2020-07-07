@@ -60,6 +60,7 @@ import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader;
 import com.datastax.oss.dsbulk.runner.ExitStatus;
 import com.datastax.oss.dsbulk.runner.tests.CsvUtils;
 import com.datastax.oss.dsbulk.runner.tests.MockConnector;
+import com.datastax.oss.dsbulk.runner.tests.RecordUtils;
 import com.datastax.oss.dsbulk.tests.logging.LogCapture;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptor;
 import com.datastax.oss.dsbulk.tests.logging.StreamCapture;
@@ -88,10 +89,12 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterAll;
@@ -102,6 +105,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.reactivestreams.Publisher;
+import reactor.core.publisher.Flux;
 
 class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
 
@@ -592,6 +596,88 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
         .contains("Records: total: 3, successful: 0, failed: 3");
     validateNumberOfBadRecords(3);
     validateExceptionsLog(3, "Extraneous field C was found in record", "mapping-errors.log");
+  }
+
+  /**
+   * Test for DAT-593. Emulates 100 resources with 1000 records each, among which 100 bad records,
+   * for a total of 10,000 failed records. Verifies that LogManager is capable of handling a high
+   * number of bad records, without disrupting the main load workflow.
+   */
+  @Test
+  void massive_load_errors() throws Exception {
+
+    SimulacronUtils.primeTables(
+        simulacron,
+        new Keyspace(
+            "ks1",
+            new Table(
+                "table1", new Column("pk", TEXT), new Column("cc", TEXT), new Column("v", TEXT))));
+
+    MockConnector.setDelegate(
+        new CSVConnector() {
+
+          @Override
+          public void configure(@NonNull Config settings, boolean read) {}
+
+          @Override
+          public void init() {}
+
+          @Override
+          public int estimatedResourceCount() {
+            return Integer.MAX_VALUE; // to force runner to use maximum parallelism
+          }
+
+          @NonNull
+          @Override
+          public Publisher<Publisher<Record>> readByResource() {
+            List<Publisher<Record>> resources = new ArrayList<>();
+            for (int i = 0; i < 100; i++) {
+              AtomicInteger counter = new AtomicInteger();
+              resources.add(
+                  Flux.generate(
+                      (sink) -> {
+                        int next = counter.getAndIncrement();
+                        if (next == 1_000) {
+                          sink.complete();
+                        } else if (next % 10 == 0) {
+                          sink.next(
+                              RecordUtils.error(
+                                  new IllegalArgumentException(
+                                      "Record could not be read: " + next)));
+                        } else {
+                          sink.next(
+                              RecordUtils.indexedCSV(
+                                  "pk",
+                                  String.valueOf(next),
+                                  "cc",
+                                  String.valueOf(next),
+                                  "v",
+                                  String.valueOf(next)));
+                        }
+                      }));
+            }
+            return Flux.fromIterable(resources);
+          }
+        });
+
+    String[] args = {
+      "load",
+      "-c",
+      "mock",
+      "--log.maxErrors",
+      "10000",
+      "--schema.keyspace",
+      "ks1",
+      "--schema.table",
+      "table1"
+    };
+
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_COMPLETED_WITH_ERRORS);
+    assertThat(logs.getAllMessagesAsString())
+        .contains("completed with 10000 errors")
+        .contains("Records: total: 100,000, successful: 90,000, failed: 10,000");
+    validateExceptionsLog(10_000, "Record could not be read:", "connector-errors.log");
   }
 
   @Test

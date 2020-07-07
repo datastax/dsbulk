@@ -9,6 +9,7 @@
 - [bug] DAT-581: Resolve configuration references after the final config has been computed.
 - [bug] DAT-585: Apply per-file limits when reading multiple resources.
 - [new feature] DAT-588: Add option to unload blob data in hex format.
+- [improvement] DAT-593: Remove thread pools in LogManager.
 
 
 ## 1.5.0
