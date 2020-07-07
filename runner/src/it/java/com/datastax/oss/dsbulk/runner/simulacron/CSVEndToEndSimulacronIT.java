@@ -599,9 +599,9 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
   }
 
   /**
-   * Test for DAT-593. Emulates 100 resources with 1000 records each, among which 100 bad records.
-   * Verifies that LogManager is capable of handling the amount of bad records, without disrupting
-   * the main load workflow.
+   * Test for DAT-593. Emulates 100 resources with 1000 records each, among which 100 bad records,
+   * for a total of 10,000 failed records. Verifies that LogManager is capable of handling a high
+   * number of bad records, without disrupting the main load workflow.
    */
   @Test
   void massive_load_errors() throws Exception {
