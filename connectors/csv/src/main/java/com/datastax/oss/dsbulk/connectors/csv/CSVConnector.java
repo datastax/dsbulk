@@ -189,8 +189,6 @@ public class CSVConnector extends AbstractFileBasedConnector {
       } else {
         format.setLineSeparator(newline);
       }
-      // DAT-516: Always quote comment character when unloading
-      writerSettings.setQuotationTriggers(comment);
     }
   }
 
@@ -248,7 +246,7 @@ public class CSVConnector extends AbstractFileBasedConnector {
 
     private MappedField[] getFieldNames(URL url, ParsingContext context) throws IOException {
       List<String> fieldNames = new ArrayList<>();
-      String[] parsedHeaders = context.parsedHeaders();
+      String[] parsedHeaders = context.headers();
       List<String> errors = new ArrayList<>();
       for (int i = 0; i < parsedHeaders.length; i++) {
         String name = parsedHeaders[i];
