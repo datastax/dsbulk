@@ -641,7 +641,9 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
                           sink.complete();
                         } else if (next % 10 == 0) {
                           sink.next(
-                              RecordUtils.error(new IllegalArgumentException("boo: " + next)));
+                              RecordUtils.error(
+                                  new IllegalArgumentException(
+                                      "Record could not be read: " + next)));
                         } else {
                           sink.next(
                               RecordUtils.indexedCSV(
@@ -675,7 +677,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     assertThat(logs.getAllMessagesAsString())
         .contains("completed with 10000 errors")
         .contains("Records: total: 100,000, successful: 90,000, failed: 10,000");
-    validateExceptionsLog(10_000, "boo", "connector-errors.log");
+    validateExceptionsLog(10_000, "Record could not be read:", "connector-errors.log");
   }
 
   @Test
