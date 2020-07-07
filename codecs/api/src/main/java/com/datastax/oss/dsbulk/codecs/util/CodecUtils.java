@@ -23,11 +23,11 @@ import com.datastax.dse.driver.api.core.data.geometry.LineString;
 import com.datastax.dse.driver.api.core.data.geometry.Point;
 import com.datastax.dse.driver.api.core.data.geometry.Polygon;
 import com.datastax.dse.driver.api.core.data.time.DateRange;
-import com.datastax.oss.driver.api.core.data.ByteUtils;
 import com.datastax.oss.driver.internal.core.util.Strings;
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.dsbulk.codecs.ConvertingCodec;
 import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
@@ -52,7 +52,6 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.ResolverStyle;
 import java.time.temporal.TemporalAccessor;
 import java.time.temporal.TemporalQueries;
-import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -850,20 +849,14 @@ public class CodecUtils {
    * @param s the string to parse; may be {@code null}.
    * @return the parsed {@link ByteBuffer}.
    */
-  public static ByteBuffer parseByteBuffer(String s) {
-    if (s == null) {
-      return null;
-    }
-    // DAT-573: consider empty string as empty byte array
-    if (s.isEmpty()) {
-      return ByteBuffer.allocate(0);
-    }
+  @Nullable
+  public static ByteBuffer parseByteBuffer(@Nullable String s) {
     try {
-      return ByteUtils.fromHexString(s);
-    } catch (IllegalArgumentException e) {
+      return HexBinaryFormat.INSTANCE.parse(s);
+    } catch (Exception e) {
       try {
-        return ByteBuffer.wrap(Base64.getDecoder().decode(s));
-      } catch (IllegalArgumentException e1) {
+        return Base64BinaryFormat.INSTANCE.parse(s);
+      } catch (Exception e1) {
         e1.addSuppressed(e);
         throw new IllegalArgumentException("Invalid binary string: " + s, e1);
       }

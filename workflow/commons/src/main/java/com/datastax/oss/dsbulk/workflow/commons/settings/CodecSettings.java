@@ -21,7 +21,10 @@ import com.datastax.oss.dsbulk.codecs.ConversionContext;
 import com.datastax.oss.dsbulk.codecs.ConvertingCodecFactory;
 import com.datastax.oss.dsbulk.codecs.text.TextConversionContext;
 import com.datastax.oss.dsbulk.codecs.text.json.JsonCodecUtils;
+import com.datastax.oss.dsbulk.codecs.util.Base64BinaryFormat;
+import com.datastax.oss.dsbulk.codecs.util.BinaryFormat;
 import com.datastax.oss.dsbulk.codecs.util.CodecUtils;
+import com.datastax.oss.dsbulk.codecs.util.HexBinaryFormat;
 import com.datastax.oss.dsbulk.codecs.util.OverflowStrategy;
 import com.datastax.oss.dsbulk.codecs.util.TimeUUIDGenerator;
 import com.datastax.oss.dsbulk.commons.config.ConfigUtils;
@@ -56,6 +59,7 @@ public class CodecSettings {
   private static final String NUMERIC_TIMESTAMP_UNIT = "unit";
   private static final String NUMERIC_TIMESTAMP_EPOCH = "epoch";
   private static final String TIME_UUID_GENERATOR = "uuidStrategy";
+  private static final String BINARY = "binary";
 
   private final Config config;
 
@@ -76,6 +80,7 @@ public class CodecSettings {
   private TimeUUIDGenerator generator;
   private Map<String, Boolean> booleanInputWords;
   private Map<Boolean, String> booleanOutputWords;
+  private BinaryFormat binaryFormat;
 
   public CodecSettings(Config config) {
     this.config = config;
@@ -124,6 +129,9 @@ public class CodecSettings {
       // json
       objectMapper = JsonCodecUtils.getObjectMapper();
 
+      // Binary
+      binaryFormat = getBinaryFormat();
+
     } catch (ConfigException e) {
       throw ConfigUtils.convertConfigException(e, "dsbulk.codec");
     }
@@ -143,6 +151,20 @@ public class CodecSettings {
           String.format(
               "Invalid value for dsbulk.codec.%s, expecting list with two numbers, got '%s'",
               BOOLEAN_NUMBERS, booleanNumbersStr));
+    }
+  }
+
+  private BinaryFormat getBinaryFormat() {
+    String binaryFormatStr = config.getString(BINARY);
+    switch (binaryFormatStr.toLowerCase()) {
+      case "hex":
+        return HexBinaryFormat.INSTANCE;
+      case "base64":
+        return Base64BinaryFormat.INSTANCE;
+      default:
+        throw new IllegalArgumentException(
+            "Invalid value for dsbulk.codec.binary, expecting HEX or BASE64, got "
+                + binaryFormatStr);
     }
   }
 
@@ -167,6 +189,7 @@ public class CodecSettings {
             .setTimeUnit(timeUnit)
             .setEpoch(epoch)
             .setTimeUUIDGenerator(generator)
+            .setBinaryFormat(binaryFormat)
             .setAllowExtraFields(allowExtraFields)
             .setAllowMissingFields(allowMissingFields);
     return new ConvertingCodecFactory(context);

@@ -18,6 +18,8 @@ package com.datastax.oss.dsbulk.codecs.text.string;
 import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat;
 
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
+import com.datastax.oss.dsbulk.codecs.util.Base64BinaryFormat;
+import com.datastax.oss.dsbulk.codecs.util.HexBinaryFormat;
 import com.datastax.oss.protocol.internal.util.Bytes;
 import java.nio.ByteBuffer;
 import java.util.Base64;
@@ -34,11 +36,14 @@ class StringToBlobCodecTest {
   private final String data64 = Base64.getEncoder().encodeToString(data);
   private final String dataHex = Bytes.toHexString(data);
 
-  private final StringToBlobCodec codec = new StringToBlobCodec(Lists.newArrayList("NULL"));
+  private final StringToBlobCodec codec64 =
+      new StringToBlobCodec(Lists.newArrayList("NULL"), Base64BinaryFormat.INSTANCE);
+  private final StringToBlobCodec codecHex =
+      new StringToBlobCodec(Lists.newArrayList("NULL"), HexBinaryFormat.INSTANCE);
 
   @Test
-  void should_convert_from_valid_external() {
-    assertThat(codec)
+  void should_convert_from_valid_external_base64() {
+    assertThat(codec64)
         .convertsFromExternal(data64)
         .toInternal(dataBb)
         .convertsFromExternal(dataHex)
@@ -55,8 +60,26 @@ class StringToBlobCodecTest {
   }
 
   @Test
-  void should_convert_from_valid_internal() {
-    assertThat(codec)
+  void should_convert_from_valid_external_hex() {
+    assertThat(codecHex)
+        .convertsFromExternal(data64)
+        .toInternal(dataBb)
+        .convertsFromExternal(dataHex)
+        .toInternal(dataBb)
+        .convertsFromExternal("0x")
+        .toInternal(emptyBb)
+        .convertsFromExternal("")
+        // DAT-573: consider empty string as empty byte array
+        .toInternal(emptyBb)
+        .convertsFromExternal(null)
+        .toInternal(null)
+        .convertsFromExternal("NULL")
+        .toInternal(null);
+  }
+
+  @Test
+  void should_convert_from_valid_internal_base64() {
+    assertThat(codec64)
         .convertsFromInternal(dataBb)
         .toExternal(data64)
         .convertsFromInternal(emptyBb)
@@ -66,7 +89,19 @@ class StringToBlobCodecTest {
   }
 
   @Test
+  void should_convert_from_valid_internal_hex() {
+    assertThat(codecHex)
+        .convertsFromInternal(dataBb)
+        .toExternal(dataHex)
+        .convertsFromInternal(emptyBb)
+        .toExternal("0x")
+        .convertsFromInternal(null)
+        .toExternal("NULL");
+  }
+
+  @Test
   void should_not_convert_from_invalid_external() {
-    assertThat(codec).cannotConvertFromExternal("not a valid binary");
+    assertThat(codec64).cannotConvertFromExternal("not a valid binary");
+    assertThat(codecHex).cannotConvertFromExternal("not a valid binary");
   }
 }
