@@ -192,7 +192,7 @@ public class ConsoleReporter extends ScheduledReporter {
       double kbPerRow =
           throughputInRows == 0 ? 0 : (throughputInBytes / BYTES_PER_KB) / throughputInRows;
       String mbPerUnitStr = format("%,.2f", mbPerUnit);
-      String kbPerRowStr = format("%,.2f", kbPerRow);
+      String kbPerRowStr = format("%,.3f", kbPerRow);
       String mbPerRateUnitLabel = "mb/" + rateUnit;
       int mbPerUnitLength = max(mbPerRateUnitLabel.length(), mbPerUnitStr.length());
       int kbPerRowLength = max(("kb/" + rowType.singular()).length(), kbPerRowStr.length());

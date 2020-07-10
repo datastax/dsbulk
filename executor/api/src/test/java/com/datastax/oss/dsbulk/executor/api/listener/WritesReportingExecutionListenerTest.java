@@ -75,7 +75,7 @@ class WritesReportingExecutionListenerTest extends AbstractReportingExecutionLis
             false,
             new String[] {
               "Writes: total: 100,000, successful: 99,999, failed: 1, in-flight: 500",
-              "Throughput: 1,000 writes/second, 1.00 mb/second (1.02 kb/write)",
+              "Throughput: 1,000 writes/second, 1.00 mb/second (1.024 kb/write)",
               "Latencies: mean 50.00, 75p 0.00, 99p 100.00, 999p 250.00 milliseconds"
             }),
         Arguments.of(
@@ -83,7 +83,7 @@ class WritesReportingExecutionListenerTest extends AbstractReportingExecutionLis
             true,
             new String[] {
               "Writes: total: 100,000, successful:  99,999, failed: 1, in-flight: 500, progression: 100%",
-              "Throughput: 1,000 writes/second, 1.00 mb/second (1.02 kb/write)",
+              "Throughput: 1,000 writes/second, 1.00 mb/second (1.024 kb/write)",
               "Latencies: mean 50.00, 75p 0.00, 99p 100.00, 999p 250.00 milliseconds"
             }));
   }

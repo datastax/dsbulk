@@ -217,7 +217,7 @@ public class WritesReportingExecutionListener extends AbstractMetricsReportingEx
 
   private static String createThroughputMessageTemplate(boolean trackThroughputInBytes) {
     if (trackThroughputInBytes) {
-      return "Throughput: %,.0f writes/%s, %,.2f mb/%s (%,.2f kb/write)";
+      return "Throughput: %,.0f writes/%s, %,.2f mb/%s (%,.3f kb/write)";
     } else {
       return "Throughput: %,.0f writes/%s";
     }

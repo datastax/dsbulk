@@ -75,7 +75,7 @@ class ReadsReportingExecutionListenerTest extends AbstractReportingExecutionList
             false,
             new String[] {
               "Reads: total: 100,000, successful: 99,999, failed: 1, in-flight: 500",
-              "Throughput: 1,000 reads/second, 1.00 mb/second (1.02 kb/read)",
+              "Throughput: 1,000 reads/second, 1.00 mb/second (1.024 kb/read)",
               "Latencies: mean 50.00, 75p 0.00, 99p 100.00, 999p 250.00 milliseconds"
             }),
         Arguments.of(
@@ -83,7 +83,7 @@ class ReadsReportingExecutionListenerTest extends AbstractReportingExecutionList
             true,
             new String[] {
               "Reads: total: 100,000, successful:  99,999, failed: 1, in-flight: 500, progression: 100%",
-              "Throughput: 1,000 reads/second, 1.00 mb/second (1.02 kb/read)",
+              "Throughput: 1,000 reads/second, 1.00 mb/second (1.024 kb/read)",
               "Latencies: mean 50.00, 75p 0.00, 99p 100.00, 999p 250.00 milliseconds"
             }));
   }
