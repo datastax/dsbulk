@@ -881,6 +881,15 @@ When unloading, these settings determine how row cells emitted by DSE are format
 
 When counting, these settings are ignored.
 
+#### --codec.binary<br />--dsbulk.codec.binary _&lt;string&gt;_
+
+Strategy to use when converting binary data to strings. Only applicable when unloading columns of CQL type `blob`, and only if the connector in use requires stringification. Valid values are:
+
+- BASE64: Encode the binary data into a Base-64 string. This is the default strategy.
+- HEX: Encode the binary data as CQL blob literals. CQL blob literals follow the general syntax: `0[xX][0-9a-fA-F]+`, that is, `0x` followed by hexadecimal characters, for example: `0xcafebabe`. This format produces lengthier strings than BASE64, but is also the only format compatible with CQLSH.
+
+Default: **"BASE64"**.
+
 #### --codec.booleanNumbers<br />--dsbulk.codec.booleanNumbers _&lt;list&lt;number&gt;&gt;_
 
 Set how true and false representations of numbers are interpreted. The representation is of the form `true_value,false_value`. The mapping is reciprocal, so that numbers are mapping to Boolean and vice versa. All numbers unspecified in this setting are rejected.
