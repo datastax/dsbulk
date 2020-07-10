@@ -64,7 +64,7 @@ Default: **"-"**.
 
 #### -delim,<br />--connector.csv.delimiter<br />--dsbulk.connector.csv.delimiter _&lt;string&gt;_
 
-The character to use as field delimiter.
+The character(s) to use as field delimiter. Field delimiters containing more than one character are accepted.
 
 Default: **","**.
 
@@ -335,7 +335,7 @@ Default: **"-"**.
 
 #### -delim,<br />--connector.csv.delimiter<br />--dsbulk.connector.csv.delimiter _&lt;string&gt;_
 
-The character to use as field delimiter.
+The character(s) to use as field delimiter. Field delimiters containing more than one character are accepted.
 
 Default: **","**.
 
