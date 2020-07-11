@@ -15,6 +15,7 @@
  */
 package com.datastax.oss.dsbulk.commons.config;
 
+import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.dsbulk.commons.url.BulkLoaderURLStreamHandlerFactory;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
@@ -23,9 +24,11 @@ import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigList;
 import com.typesafe.config.ConfigObject;
 import com.typesafe.config.ConfigValue;
+import com.typesafe.config.ConfigValueFactory;
 import com.typesafe.config.ConfigValueType;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
+import java.io.Console;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -35,6 +38,7 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Matcher;
@@ -775,5 +779,23 @@ public class ConfigUtils {
     }
     // if the sanitizing fails, return an exception with original message
     return new IllegalArgumentException(e.getMessage());
+  }
+
+  /**
+   * Reads a password from the console, then returns a new {@link Config} object containing the
+   * password read under the given path.
+   *
+   * @param config The initial config; cannot be null.
+   * @param path The path of the password setting, relative to the config root; cannot be null.
+   * @param console The {@link Console}; cannot be null.
+   * @return A new {@link Config} containing the password read.
+   */
+  @NonNull
+  public static Config readPassword(
+      @NonNull Config config, @NonNull String path, @NonNull Console console) {
+    char[] password = console.readPassword("Please input value for setting %s: ", path);
+    config = config.withValue(path, ConfigValueFactory.fromAnyRef(new String(password), "stdin"));
+    Arrays.fill(password, ' ');
+    return config;
   }
 }

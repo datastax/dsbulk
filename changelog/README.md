@@ -10,6 +10,7 @@
 - [bug] DAT-585: Apply per-file limits when reading multiple resources.
 - [new feature] DAT-588: Add option to unload blob data in hex format.
 - [improvement] DAT-593: Remove thread pools in LogManager.
+- [improvement] DAT-472: Ability to prompt for passwords when none specified in config.
 
 
 ## 1.5.0
