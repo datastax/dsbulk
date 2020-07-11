@@ -77,10 +77,15 @@ import java.util.Set;
 import org.assertj.core.util.Sets;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class DefaultRecordMapperTest {
 
   private static final Field F1 = new DefaultMappedField("field1");
@@ -116,7 +121,6 @@ class DefaultRecordMapperTest {
 
   @BeforeEach
   void setUp() {
-    MockitoAnnotations.initMocks(this);
     variableCaptor = ArgumentCaptor.forClass(Integer.class);
     valueCaptor = ArgumentCaptor.forClass(ByteBuffer.class);
     recordMetadata =

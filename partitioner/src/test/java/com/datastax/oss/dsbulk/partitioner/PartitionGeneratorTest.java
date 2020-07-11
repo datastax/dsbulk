@@ -36,9 +36,14 @@ import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class PartitionGeneratorTest {
 
   private final Murmur3BulkTokenFactory tokenFactory = new Murmur3BulkTokenFactory();
@@ -46,9 +51,7 @@ class PartitionGeneratorTest {
   // A typical ring with Murmur3 and 3 nodes, single DC, SimpleStrategy:
 
   private final TokenRange rangeS1 = range(-9223372036854775808L, -3074457345618258603L);
-
   private final TokenRange rangeS2 = range(-3074457345618258603L, 3074457345618258602L);
-
   private final TokenRange rangeS3 = range(3074457345618258602L, -9223372036854775808L);
 
   private final Set<TokenRange> singleDCRanges = newLinkedHashSet(rangeS1, rangeS2, rangeS3);
@@ -56,15 +59,10 @@ class PartitionGeneratorTest {
   // A typical ring with Murmur3 and 6 nodes, 2 DCs, NetworkTopologyStrategy:
 
   private final TokenRange rangeM1 = range(-9223372036854775808L, -9223372036854775708L); // 100
-
   private final TokenRange rangeM2 = range(-9223372036854775708L, -3074457345618258603L);
-
   private final TokenRange rangeM3 = range(-3074457345618258603L, -3074457345618258503L); // 100
-
   private final TokenRange rangeM4 = range(-3074457345618258503L, 3074457345618258602L);
-
   private final TokenRange rangeM5 = range(3074457345618258602L, 3074457345618258702L); // 100
-
   private final TokenRange rangeM6 = range(3074457345618258702L, -9223372036854775808L);
 
   private final Set<TokenRange> multiDCRanges =
@@ -83,8 +81,6 @@ class PartitionGeneratorTest {
 
   @BeforeEach
   void setUp() {
-
-    MockitoAnnotations.initMocks(this);
 
     CqlIdentifier ks = CqlIdentifier.fromInternal("ks");
     when(keyspace.getName()).thenReturn(ks);

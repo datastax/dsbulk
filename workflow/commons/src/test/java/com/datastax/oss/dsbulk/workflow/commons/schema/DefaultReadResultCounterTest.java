@@ -60,9 +60,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 @ExtendWith(StreamInterceptingExtension.class)
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class DefaultReadResultCounterTest {
 
   private final Token token1 = newToken(-9223372036854775808L);
@@ -131,7 +135,6 @@ class DefaultReadResultCounterTest {
   @BeforeEach
   @SuppressWarnings("unchecked")
   void setUp() {
-    MockitoAnnotations.initMocks(this);
     when(metadata.getTokenMap()).thenReturn((Optional) Optional.of(tokenMap));
     when(metadata.getNodes())
         .thenReturn(
