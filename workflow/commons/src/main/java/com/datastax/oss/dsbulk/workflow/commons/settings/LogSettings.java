@@ -57,14 +57,16 @@ import org.slf4j.bridge.SLF4JBridgeHandler;
 
 public class LogSettings {
 
-  private static final String CONSOLE_APPENDER = "CONSOLE";
-  private static final int MIN_SAMPLE = 100;
-
   public enum Verbosity {
     quiet,
     normal,
     verbose
   }
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(LogSettings.class);
+  private static final String CONSOLE_APPENDER = "CONSOLE";
+
+  private static final int MIN_SAMPLE = 100;
 
   private static final String MAIN_LOG_FILE_APPENDER = "FILE";
   private static final String MAIN_LOG_FILE_NAME = "operation.log";
@@ -97,7 +99,15 @@ public class LogSettings {
           + Joiner.on(',').join(STACK_TRACE_PRINTER_OPTIONS)
           + "}";
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(LogSettings.class);
+  private static final Comparator<Entry<String, ConfigValue>> BASIC_SETTINGS_FIRST =
+      Comparator.comparing(
+          entry -> entry.getKey().replaceFirst("basic\\.", "0.").replaceFirst("advanced\\.", "1."));
+
+  private static final List<String> PATHS_TO_OBFUSCATE =
+      ImmutableList.of(
+          "advanced.auth-provider.password",
+          "advanced.ssl-engine-factory.truststore-password",
+          "advanced.ssl-engine-factory.keystore-password");
 
   // Path Constants
   private static final String STMT = "stmt";
@@ -197,11 +207,7 @@ public class LogSettings {
       LOGGER.debug("DataStax Bulk Loader Effective settings:");
       dumpConfig(dsbulkConfig.withoutPath("driver"), Entry.comparingByKey());
       LOGGER.debug("DataStax Java Driver Effective settings:");
-      dumpConfig(
-          driverConfig,
-          Comparator.comparing(
-              entry ->
-                  entry.getKey().replaceFirst("basic\\.", "0.").replaceFirst("advanced\\.", "1.")));
+      dumpConfig(driverConfig, BASIC_SETTINGS_FIRST);
     }
   }
 
@@ -209,9 +215,14 @@ public class LogSettings {
     Set<Entry<String, ConfigValue>> entries = new TreeSet<>(comparator);
     entries.addAll(config.entrySet());
     for (Entry<String, ConfigValue> entry : entries) {
-      LOGGER.debug(
-          String.format(
-              "- %s = %s", entry.getKey(), entry.getValue().render(ConfigRenderOptions.concise())));
+      String key = entry.getKey();
+      String value;
+      if (PATHS_TO_OBFUSCATE.contains(key)) {
+        value = "***************";
+      } else {
+        value = entry.getValue().render(ConfigRenderOptions.concise());
+      }
+      LOGGER.debug(String.format("- %s = %s", key, value));
     }
   }
 
