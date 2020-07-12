@@ -17,6 +17,7 @@ package com.datastax.oss.dsbulk.workflow.load;
 
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Snapshot;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.BatchableStatement;
 import com.datastax.oss.driver.api.core.cql.BoundStatement;
@@ -84,10 +85,10 @@ public class LoadWorkflow implements Workflow {
   private boolean batchingEnabled;
   private boolean dryRun;
   private int batchBufferSize;
-  private int writeConcurrency;
   private Scheduler scheduler;
   private int numCores;
-  private boolean useThreadPerCore;
+  private int writeConcurrency;
+  private boolean hasManyReaders;
 
   private Function<Record, BatchableStatement<?>> mapper;
   private Function<Publisher<BatchableStatement<?>>, Publisher<Statement<?>>> batcher;
@@ -185,10 +186,8 @@ public class LoadWorkflow implements Workflow {
     numCores = Runtime.getRuntime().availableProcessors();
     scheduler = Schedulers.newParallel(numCores, new DefaultThreadFactory("workflow"));
     int readConcurrency = connector.readConcurrency();
+    hasManyReaders = readConcurrency >= Math.max(4, numCores / 4);
     LOGGER.debug("Using read concurrency: {}", readConcurrency);
-    useThreadPerCore =
-        readConcurrency >= Math.max(4, Runtime.getRuntime().availableProcessors() / 4);
-    LOGGER.debug("Using thread-per-core strategy: {}", useThreadPerCore);
     writeConcurrency =
         engineSettings.getMaxConcurrentQueries().orElseGet(this::determineWriteConcurrency);
     LOGGER.debug(
@@ -202,7 +201,13 @@ public class LoadWorkflow implements Workflow {
     LOGGER.debug("{} started.", this);
     metricsManager.start();
     Stopwatch timer = Stopwatch.createStarted();
-    (useThreadPerCore ? threadPerCoreFlux() : parallelFlux())
+    Flux<Statement<?>> statements;
+    if (hasManyReaders) {
+      statements = manyReaders();
+    } else {
+      statements = fewReaders();
+    }
+    statements
         .transform(this::executeStatements)
         .transform(queryWarningsHandler)
         .transform(failedWritesHandler)
@@ -224,7 +229,7 @@ public class LoadWorkflow implements Workflow {
     return logManager.getTotalErrors() == 0;
   }
 
-  private Flux<Statement<?>> threadPerCoreFlux() {
+  private Flux<Statement<?>> manyReaders() {
     return Flux.defer(() -> connector.readMultiple())
         .flatMap(
             records ->
@@ -236,13 +241,12 @@ public class LoadWorkflow implements Workflow {
                     .map(mapper)
                     .transform(failedStatementsMonitor)
                     .transform(unmappableStatementsHandler)
-                    .transform(this::threadPerCoreBatch)
+                    .transform(this::bufferAndBatch)
                     .subscribeOn(scheduler),
-            // todo cap at read concurrency in prep for maxConcurrentFiles
             numCores);
   }
 
-  private Flux<Statement<?>> parallelFlux() {
+  private Flux<Statement<?>> fewReaders() {
     return Flux.defer(() -> connector.readSingle())
         .window(batchingEnabled ? batchBufferSize : Queues.SMALL_BUFFER_SIZE)
         .flatMap(
@@ -255,18 +259,18 @@ public class LoadWorkflow implements Workflow {
                     .map(mapper)
                     .transform(failedStatementsMonitor)
                     .transform(unmappableStatementsHandler)
-                    .transform(this::parallelBatch)
+                    .transform(this::batch)
                     .subscribeOn(scheduler),
             numCores);
   }
 
-  private Flux<? extends Statement<?>> threadPerCoreBatch(Flux<BatchableStatement<?>> stmts) {
+  private Flux<? extends Statement<?>> bufferAndBatch(Flux<BatchableStatement<?>> stmts) {
     return batchingEnabled
         ? stmts.window(batchBufferSize).flatMap(batcher).transform(batcherMonitor)
         : stmts;
   }
 
-  private Flux<? extends Statement<?>> parallelBatch(Flux<BatchableStatement<?>> stmts) {
+  private Flux<? extends Statement<?>> batch(Flux<BatchableStatement<?>> stmts) {
     return batchingEnabled ? stmts.transform(batcher).transform(batcherMonitor) : stmts;
   }
 
@@ -312,37 +316,16 @@ public class LoadWorkflow implements Workflow {
     if (dryRun) {
       return numCores;
     }
-    LOGGER.debug("Sampling data...");
-    Histogram sample =
-        DataSizeSampler.sampleWrites(
-            session.getContext(),
-            Flux.from(connector.readSingle())
-                .onErrorContinue(
-                    (error, v) ->
-                        LOGGER.debug(
-                            "Sampling failed: {}", ThrowableUtils.getSanitizedErrorMessage(error)))
-                .<Statement<?>>map(mapper)
-                .filter(BoundStatement.class::isInstance)
-                .take(1000)
-                .toIterable());
-    double meanSize;
-    if (sample.getCount() < 100) {
-      // sample too small, go with a common value
-      LOGGER.debug("Data sample is too small: {}, discarding", sample.getCount());
-      meanSize = _1_KB;
-    } else {
-      meanSize = sample.getSnapshot().getMean();
-      LOGGER.debug("Average write size in bytes: {}", meanSize);
-    }
+    double meanSize = getMeanRowSize();
     int writeConcurrency;
     if (meanSize <= 128) {
-      if (useThreadPerCore) {
+      if (hasManyReaders) {
         writeConcurrency = numCores * 32;
       } else {
         writeConcurrency = numCores * 8;
       }
     } else if (meanSize <= _1_KB) {
-      if (useThreadPerCore) {
+      if (hasManyReaders) {
         writeConcurrency = numCores * 16;
       } else {
         writeConcurrency = numCores * 4;
@@ -356,5 +339,36 @@ public class LoadWorkflow implements Workflow {
       writeConcurrency *= 8;
     }
     return writeConcurrency;
+  }
+
+  private double getMeanRowSize() {
+    double meanSize;
+    try {
+      LOGGER.debug("Sampling data...");
+      Histogram sample =
+          DataSizeSampler.sampleWrites(
+              session.getContext(),
+              Flux.from(connector.readSingle())
+                  .<Statement<?>>map(mapper)
+                  .filter(BoundStatement.class::isInstance)
+                  .take(1000)
+                  .toIterable());
+      if (sample.getCount() < 100) {
+        // sample too small, go with a common value
+        LOGGER.debug("Data sample is too small: {}, discarding", sample.getCount());
+        meanSize = _1_KB;
+      } else {
+        Snapshot snapshot = sample.getSnapshot();
+        meanSize = snapshot.getMean();
+        // TODO discard if std dev too high
+        LOGGER.debug(
+            "Average record size in bytes: {}, std dev: {}", meanSize, snapshot.getStdDev());
+      }
+      return meanSize;
+    } catch (Exception e) {
+      LOGGER.debug("Sampling failed: {}", ThrowableUtils.getSanitizedErrorMessage(e));
+      meanSize = _1_KB;
+    }
+    return meanSize;
   }
 }
