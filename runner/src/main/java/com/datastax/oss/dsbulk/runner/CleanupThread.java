@@ -17,6 +17,7 @@ package com.datastax.oss.dsbulk.runner;
 
 import static com.datastax.oss.dsbulk.runner.ExitStatus.STATUS_CRASHED;
 
+import com.datastax.oss.dsbulk.commons.utils.DurationUtils;
 import com.datastax.oss.dsbulk.workflow.api.Workflow;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.time.Duration;
@@ -54,8 +55,8 @@ public class CleanupThread extends Thread {
           workflowThread.setExitStatus(STATUS_CRASHED);
           LOGGER.error(
               String.format(
-                  "%s did not terminate within %d seconds, forcing termination.",
-                  workflow, SHUTDOWN_GRACE_PERIOD.getSeconds()));
+                  "%s did not terminate within %s, forcing termination.",
+                  workflow, DurationUtils.formatDuration(SHUTDOWN_GRACE_PERIOD)));
         }
       }
       // make sure System.err is flushed before the closing sequence is printed to System.out
