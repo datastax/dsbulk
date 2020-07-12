@@ -327,8 +327,7 @@ class DriverSettingsTest {
     "query.idempotence,true,basic.request.default-idempotence",
     "socket.readTimeout,60 seconds,basic.request.timeout",
     "timestampGenerator,AtomicMonotonicTimestampGenerator,advanced.timestamp-generator.class",
-    "addressTranslator,IdentityTranslator,advanced.address-translator.class",
-    "policy.lbp.whiteList.hosts,[127.0.0.1],basic.load-balancing-policy.filter.class"
+    "addressTranslator,IdentityTranslator,advanced.address-translator.class"
   })
   void should_log_warning_when_deprecated_driver_setting_present(
       String deprecatedSetting,
@@ -355,7 +354,8 @@ class DriverSettingsTest {
     "port,9042,basic.default-port,port",
     "query.consistency,ONE,basic.request.consistency,cl",
     "policy.maxRetries,100,advanced.retry-policy.max-retries,maxRetries",
-    "policy.lbp.dcAwareRoundRobin.localDc,testDC,basic.load-balancing-policy.local-datacenter,dc"
+    "policy.lbp.dcAwareRoundRobin.localDc,testDC,basic.load-balancing-policy.local-datacenter,dc",
+    "policy.lbp.whiteList.hosts,[127.0.0.1],basic.load-balancing-policy.filter.allow,allow"
   })
   void should_log_warning_when_deprecated_driver_setting_present_with_shortcut(
       String deprecatedSetting,
