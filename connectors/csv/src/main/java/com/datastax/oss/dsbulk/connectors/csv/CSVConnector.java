@@ -16,8 +16,7 @@
 package com.datastax.oss.dsbulk.connectors.csv;
 
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
-import com.datastax.oss.dsbulk.commons.config.ConfigUtils;
-import com.datastax.oss.dsbulk.compression.CompressedIOUtils;
+import com.datastax.oss.dsbulk.config.ConfigUtils;
 import com.datastax.oss.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.oss.dsbulk.connectors.api.ConnectorFeature;
 import com.datastax.oss.dsbulk.connectors.api.DefaultErrorRecord;
@@ -29,6 +28,7 @@ import com.datastax.oss.dsbulk.connectors.api.MappedField;
 import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.datastax.oss.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.oss.dsbulk.connectors.commons.AbstractFileBasedConnector;
+import com.datastax.oss.dsbulk.io.CompressedIOUtils;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.univocity.parsers.common.ParsingContext;

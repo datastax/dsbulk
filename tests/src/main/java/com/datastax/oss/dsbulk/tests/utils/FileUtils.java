@@ -15,7 +15,7 @@
  */
 package com.datastax.oss.dsbulk.tests.utils;
 
-import com.datastax.oss.dsbulk.commons.utils.PlatformUtils;
+import com.datastax.oss.dsbulk.commons.PlatformUtils;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URL;

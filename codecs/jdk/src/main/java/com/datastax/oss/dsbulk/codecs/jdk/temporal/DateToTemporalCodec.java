@@ -17,7 +17,7 @@ package com.datastax.oss.dsbulk.codecs.jdk.temporal;
 
 import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
-import com.datastax.oss.dsbulk.codecs.ConvertingCodec;
+import com.datastax.oss.dsbulk.codecs.api.ConvertingCodec;
 import java.sql.Time;
 import java.time.Instant;
 import java.time.LocalDate;

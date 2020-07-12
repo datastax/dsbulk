@@ -15,7 +15,7 @@
  */
 package com.datastax.oss.dsbulk.workflow.commons.metrics;
 
-import static com.datastax.oss.dsbulk.commons.utils.StringUtils.leftPad;
+import static com.datastax.oss.dsbulk.commons.StringUtils.leftPad;
 import static java.lang.Math.max;
 import static java.lang.String.format;
 import static org.fusesource.jansi.Ansi.ansi;
@@ -28,7 +28,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.ScheduledReporter;
 import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.Timer;
-import com.datastax.oss.dsbulk.commons.utils.ConsoleUtils;
+import com.datastax.oss.dsbulk.commons.ConsoleUtils;
 import com.datastax.oss.dsbulk.executor.api.listener.MetricsCollectingExecutionListener;
 import com.datastax.oss.dsbulk.workflow.commons.settings.RowType;
 import edu.umd.cs.findbugs.annotations.NonNull;

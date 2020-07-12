@@ -17,7 +17,7 @@ package com.datastax.oss.dsbulk.runner;
 
 import static com.datastax.oss.dsbulk.runner.ExitStatus.STATUS_CRASHED;
 
-import com.datastax.oss.dsbulk.commons.utils.DurationUtils;
+import com.datastax.oss.dsbulk.commons.DurationUtils;
 import com.datastax.oss.dsbulk.workflow.api.Workflow;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.time.Duration;

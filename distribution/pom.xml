@@ -46,15 +46,7 @@
         </exclusion>
         <exclusion>
           <groupId>org.apache.tinkerpop</groupId>
-          <artifactId>gremlin-core</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.tinkerpop</groupId>
-          <artifactId>gremlin-driver</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.tinkerpop</groupId>
-          <artifactId>tinkergraph-gremlin</artifactId>
+          <artifactId>*</artifactId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -80,7 +72,7 @@
       <groupId>com.datastax.oss</groupId>
       <artifactId>dsbulk-workflow-count</artifactId>
     </dependency>
-    <!--    batcher and executor implementations -->
+    <!-- batcher and executor implementations -->
     <dependency>
       <groupId>com.datastax.oss</groupId>
       <artifactId>dsbulk-batcher-reactor</artifactId>

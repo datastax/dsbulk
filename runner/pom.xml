@@ -37,6 +37,18 @@
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>
+      <artifactId>dsbulk-io</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
+      <artifactId>dsbulk-config</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
+      <artifactId>dsbulk-url</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
       <artifactId>java-driver-core</artifactId>
     </dependency>
     <dependency>

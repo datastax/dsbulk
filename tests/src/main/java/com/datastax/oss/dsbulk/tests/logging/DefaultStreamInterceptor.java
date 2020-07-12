@@ -15,7 +15,7 @@
  */
 package com.datastax.oss.dsbulk.tests.logging;
 
-import com.datastax.oss.dsbulk.tests.utils.URLUtils;
+import com.datastax.oss.dsbulk.url.BulkLoaderURLStreamHandlerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.Charset;
@@ -24,7 +24,7 @@ import org.fusesource.jansi.AnsiString;
 public class DefaultStreamInterceptor implements StreamInterceptor {
 
   static {
-    URLUtils.setURLFactoryIfNeeded();
+    BulkLoaderURLStreamHandlerFactory.install();
   }
 
   private final StreamType streamType;

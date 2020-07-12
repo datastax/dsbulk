@@ -19,7 +19,7 @@ import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.data.UdtValue;
 import com.datastax.oss.driver.api.core.type.UserDefinedType;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
-import com.datastax.oss.dsbulk.codecs.ConvertingCodec;
+import com.datastax.oss.dsbulk.codecs.api.ConvertingCodec;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

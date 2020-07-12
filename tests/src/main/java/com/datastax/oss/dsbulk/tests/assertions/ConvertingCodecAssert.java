@@ -18,7 +18,7 @@ package com.datastax.oss.dsbulk.tests.assertions;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
-import com.datastax.oss.dsbulk.codecs.ConvertingCodec;
+import com.datastax.oss.dsbulk.codecs.api.ConvertingCodec;
 import org.assertj.core.api.AbstractObjectAssert;
 
 public class ConvertingCodecAssert<EXTERNAL, INTERNAL>

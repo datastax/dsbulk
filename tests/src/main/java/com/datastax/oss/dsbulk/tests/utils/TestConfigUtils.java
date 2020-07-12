@@ -15,7 +15,7 @@
  */
 package com.datastax.oss.dsbulk.tests.utils;
 
-import com.datastax.oss.dsbulk.commons.config.ConfigUtils;
+import com.datastax.oss.dsbulk.config.ConfigUtils;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigParseOptions;

@@ -17,7 +17,7 @@ package com.datastax.oss.dsbulk.workflow.commons.schema;
 
 import static com.datastax.oss.driver.api.core.DefaultProtocolVersion.V4;
 import static com.datastax.oss.driver.api.core.type.DataTypes.INT;
-import static com.datastax.oss.dsbulk.commons.utils.TokenUtils.getTokenValue;
+import static com.datastax.oss.dsbulk.partitioner.utils.TokenUtils.getTokenValue;
 import static com.datastax.oss.dsbulk.tests.driver.DriverUtils.newToken;
 import static com.datastax.oss.dsbulk.tests.driver.DriverUtils.newTokenRange;
 import static com.datastax.oss.dsbulk.workflow.commons.settings.StatsSettings.StatisticsMode.global;
@@ -41,7 +41,7 @@ import com.datastax.oss.driver.api.core.metadata.token.TokenRange;
 import com.datastax.oss.driver.internal.core.metadata.DefaultEndPoint;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.driver.shaded.guava.common.collect.Sets;
-import com.datastax.oss.dsbulk.codecs.ConvertingCodecFactory;
+import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
 import com.datastax.oss.dsbulk.executor.api.result.ReadResult;
 import com.datastax.oss.dsbulk.tests.driver.DriverUtils;
 import com.datastax.oss.dsbulk.tests.logging.StreamInterceptingExtension;

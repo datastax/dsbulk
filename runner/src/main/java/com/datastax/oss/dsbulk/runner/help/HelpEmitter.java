@@ -15,15 +15,15 @@
  */
 package com.datastax.oss.dsbulk.runner.help;
 
-import static com.datastax.oss.dsbulk.commons.utils.ConsoleUtils.LINE_LENGTH;
+import static com.datastax.oss.dsbulk.commons.ConsoleUtils.LINE_LENGTH;
 
 import com.datastax.oss.driver.shaded.guava.common.base.CharMatcher;
-import com.datastax.oss.dsbulk.commons.config.ConfigUtils;
-import com.datastax.oss.dsbulk.commons.config.model.SettingsGroup;
-import com.datastax.oss.dsbulk.commons.config.model.SettingsGroupFactory;
-import com.datastax.oss.dsbulk.commons.config.shortcuts.ShortcutsFactory;
-import com.datastax.oss.dsbulk.commons.utils.ConsoleUtils;
-import com.datastax.oss.dsbulk.commons.utils.StringUtils;
+import com.datastax.oss.dsbulk.commons.ConsoleUtils;
+import com.datastax.oss.dsbulk.commons.StringUtils;
+import com.datastax.oss.dsbulk.config.ConfigUtils;
+import com.datastax.oss.dsbulk.config.model.SettingsGroup;
+import com.datastax.oss.dsbulk.config.model.SettingsGroupFactory;
+import com.datastax.oss.dsbulk.config.shortcuts.ShortcutsFactory;
 import com.datastax.oss.dsbulk.workflow.api.WorkflowProvider;
 import com.typesafe.config.Config;
 import edu.umd.cs.findbugs.annotations.NonNull;

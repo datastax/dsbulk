@@ -15,7 +15,7 @@
  */
 package com.datastax.oss.dsbulk.partitioner;
 
-import static com.datastax.oss.dsbulk.commons.utils.TokenUtils.getTokenValue;
+import static com.datastax.oss.dsbulk.partitioner.utils.TokenUtils.getTokenValue;
 
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.datastax.oss.driver.api.core.cql.Statement;

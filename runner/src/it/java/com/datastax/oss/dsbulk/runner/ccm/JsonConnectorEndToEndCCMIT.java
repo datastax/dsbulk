@@ -38,7 +38,7 @@ import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.Version;
 import com.datastax.oss.driver.api.core.cql.Row;
-import com.datastax.oss.dsbulk.codecs.util.OverflowStrategy;
+import com.datastax.oss.dsbulk.codecs.api.util.OverflowStrategy;
 import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader;
 import com.datastax.oss.dsbulk.runner.ExitStatus;
 import com.datastax.oss.dsbulk.runner.tests.JsonUtils;

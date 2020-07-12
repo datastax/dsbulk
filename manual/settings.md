@@ -1391,6 +1391,12 @@ See the [Java Driver configuration reference](https://docs.datastax.com/en/devel
 
 Note: driver settings always start with prefix `datastax-java-driver`; on the command line only, it is possible to abbreviate this prefix to just `driver`, as shown below.
 
+#### --driver.basic.session-name<br />--datastax-java-driver.basic.session-name _&lt;string&gt;_
+
+The driver session name. DSBulk simply calls it "driver". The session name is printed by all driver log messages, between square brackets.
+
+Default: **"driver"**.
+
 #### -h,<br />--driver.basic.contact-points<br />--datastax-java-driver.basic.contact-points _&lt;list&lt;string&gt;&gt;_
 
 The contact points to use for the initial connection to the cluster.

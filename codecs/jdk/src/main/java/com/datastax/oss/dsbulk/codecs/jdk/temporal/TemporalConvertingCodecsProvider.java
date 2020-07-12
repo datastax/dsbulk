@@ -15,9 +15,9 @@
  */
 package com.datastax.oss.dsbulk.codecs.jdk.temporal;
 
-import static com.datastax.oss.dsbulk.codecs.CommonConversionContext.EPOCH;
-import static com.datastax.oss.dsbulk.codecs.CommonConversionContext.TIME_UUID_GENERATOR;
-import static com.datastax.oss.dsbulk.codecs.CommonConversionContext.TIME_ZONE;
+import static com.datastax.oss.dsbulk.codecs.api.CommonConversionContext.EPOCH;
+import static com.datastax.oss.dsbulk.codecs.api.CommonConversionContext.TIME_UUID_GENERATOR;
+import static com.datastax.oss.dsbulk.codecs.api.CommonConversionContext.TIME_ZONE;
 import static com.datastax.oss.dsbulk.codecs.jdk.JdkCodecUtils.isTemporal;
 import static com.datastax.oss.dsbulk.codecs.jdk.JdkCodecUtils.isUUID;
 
@@ -26,10 +26,10 @@ import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
-import com.datastax.oss.dsbulk.codecs.ConversionContext;
-import com.datastax.oss.dsbulk.codecs.ConvertingCodec;
-import com.datastax.oss.dsbulk.codecs.ConvertingCodecFactory;
-import com.datastax.oss.dsbulk.codecs.ConvertingCodecProvider;
+import com.datastax.oss.dsbulk.codecs.api.ConversionContext;
+import com.datastax.oss.dsbulk.codecs.api.ConvertingCodec;
+import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
+import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecProvider;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.time.Instant;
 import java.time.temporal.Temporal;

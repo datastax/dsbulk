@@ -19,7 +19,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.datastax.oss.driver.api.core.ProtocolVersion;
 import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
 import com.datastax.oss.driver.shaded.guava.common.util.concurrent.ThreadFactoryBuilder;
-import com.datastax.oss.dsbulk.commons.config.ConfigUtils;
+import com.datastax.oss.dsbulk.config.ConfigUtils;
 import com.datastax.oss.dsbulk.workflow.commons.metrics.MetricsManager;
 import com.datastax.oss.dsbulk.workflow.commons.settings.LogSettings.Verbosity;
 import com.typesafe.config.Config;

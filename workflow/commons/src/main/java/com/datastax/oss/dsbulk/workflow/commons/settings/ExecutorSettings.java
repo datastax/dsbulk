@@ -20,7 +20,7 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.DefaultConsistencyLevel;
 import com.datastax.oss.driver.api.core.ProtocolVersion;
 import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
-import com.datastax.oss.dsbulk.commons.config.ConfigUtils;
+import com.datastax.oss.dsbulk.config.ConfigUtils;
 import com.datastax.oss.dsbulk.executor.api.BulkExecutor;
 import com.datastax.oss.dsbulk.executor.api.BulkExecutorBuilder;
 import com.datastax.oss.dsbulk.executor.api.BulkExecutorBuilderFactory;

@@ -17,8 +17,8 @@ package com.datastax.oss.dsbulk.codecs.text.string.dse;
 
 import com.datastax.dse.driver.api.core.data.geometry.Point;
 import com.datastax.dse.driver.api.core.type.codec.DseTypeCodecs;
+import com.datastax.oss.dsbulk.codecs.api.util.CodecUtils;
 import com.datastax.oss.dsbulk.codecs.text.string.StringConvertingCodec;
-import com.datastax.oss.dsbulk.codecs.util.CodecUtils;
 import java.util.List;
 
 public class StringToPointCodec extends StringConvertingCodec<Point> {

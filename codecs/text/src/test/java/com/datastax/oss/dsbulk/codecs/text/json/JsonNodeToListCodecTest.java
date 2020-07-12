@@ -22,8 +22,8 @@ import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat
 import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
-import com.datastax.oss.dsbulk.codecs.ConversionContext;
-import com.datastax.oss.dsbulk.codecs.ConvertingCodecFactory;
+import com.datastax.oss.dsbulk.codecs.api.ConversionContext;
+import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
 import com.datastax.oss.dsbulk.codecs.text.TextConversionContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

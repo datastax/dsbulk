@@ -29,7 +29,11 @@
   <dependencies>
     <dependency>
       <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-commons</artifactId>
+      <artifactId>dsbulk-url</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
+      <artifactId>dsbulk-config</artifactId>
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>

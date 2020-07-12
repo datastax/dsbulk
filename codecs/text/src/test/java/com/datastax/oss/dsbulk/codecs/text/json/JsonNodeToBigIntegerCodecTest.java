@@ -20,8 +20,8 @@ import static com.datastax.oss.dsbulk.codecs.text.json.JsonCodecUtils.JSON_NODE_
 import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat;
 
 import com.datastax.oss.driver.api.core.type.DataTypes;
-import com.datastax.oss.dsbulk.codecs.ConversionContext;
-import com.datastax.oss.dsbulk.codecs.ConvertingCodecFactory;
+import com.datastax.oss.dsbulk.codecs.api.ConversionContext;
+import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
 import com.datastax.oss.dsbulk.codecs.text.TextConversionContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.math.BigInteger;

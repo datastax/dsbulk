@@ -15,7 +15,7 @@
  */
 package com.datastax.oss.dsbulk.workflow.commons.settings;
 
-import static com.datastax.oss.dsbulk.codecs.util.CodecUtils.instantToNumber;
+import static com.datastax.oss.dsbulk.codecs.api.util.CodecUtils.instantToNumber;
 import static com.datastax.oss.dsbulk.mapping.CQLRenderMode.ALIASED_SELECTOR;
 import static com.datastax.oss.dsbulk.mapping.CQLRenderMode.INTERNAL;
 import static com.datastax.oss.dsbulk.mapping.CQLRenderMode.NAMED_ASSIGNMENT;
@@ -53,8 +53,8 @@ import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMultimap;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSet;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSetMultimap;
 import com.datastax.oss.driver.shaded.guava.common.collect.Multimap;
-import com.datastax.oss.dsbulk.codecs.ConvertingCodecFactory;
-import com.datastax.oss.dsbulk.commons.config.ConfigUtils;
+import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
+import com.datastax.oss.dsbulk.config.ConfigUtils;
 import com.datastax.oss.dsbulk.connectors.api.Field;
 import com.datastax.oss.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.oss.dsbulk.mapping.CQLFragment;

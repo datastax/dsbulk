@@ -15,7 +15,7 @@
  */
 package com.datastax.oss.dsbulk.codecs.text;
 
-import com.datastax.oss.dsbulk.codecs.CommonConversionContext;
+import com.datastax.oss.dsbulk.codecs.api.CommonConversionContext;
 import com.datastax.oss.dsbulk.codecs.text.json.JsonCodecUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.umd.cs.findbugs.annotations.NonNull;

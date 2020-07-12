@@ -33,15 +33,11 @@
       <exclusions>
         <exclusion>
           <groupId>io.netty</groupId>
-          <artifactId>netty-handler</artifactId>
+          <artifactId>*</artifactId>
         </exclusion>
         <exclusion>
           <groupId>com.github.jnr</groupId>
-          <artifactId>jnr-ffi</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>com.github.jnr</groupId>
-          <artifactId>jnr-posix</artifactId>
+          <artifactId>*</artifactId>
         </exclusion>
         <exclusion>
           <groupId>org.javatuples</groupId>
@@ -57,23 +53,11 @@
         </exclusion>
         <exclusion>
           <groupId>org.apache.tinkerpop</groupId>
-          <artifactId>gremlin-core</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.tinkerpop</groupId>
-          <artifactId>tinkergraph-gremlin</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.tinkerpop</groupId>
-          <artifactId>gremlin-driver</artifactId>
+          <artifactId>*</artifactId>
         </exclusion>
         <exclusion>
           <groupId>com.fasterxml.jackson.core</groupId>
-          <artifactId>jackson-core</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>com.fasterxml.jackson.core</groupId>
-          <artifactId>jackson-databind</artifactId>
+          <artifactId>*</artifactId>
         </exclusion>
         <exclusion>
           <groupId>org.reactivestreams</groupId>
@@ -86,18 +70,6 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>com.typesafe</groupId>
-      <artifactId>config</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>java-driver-shaded-guava</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-api</artifactId>
-    </dependency>
-    <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-engine</artifactId>
       <scope>test</scope>
@@ -108,18 +80,8 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.mockito</groupId>
-      <artifactId>mockito-core</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>io.netty</groupId>
-      <artifactId>netty-common</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>

@@ -15,7 +15,7 @@
  */
 package com.datastax.oss.dsbulk.workflow.commons.metrics;
 
-import static com.datastax.oss.dsbulk.commons.utils.StringUtils.quoteJMXIfNecessary;
+import static com.datastax.oss.dsbulk.commons.StringUtils.quoteJMXIfNecessary;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;

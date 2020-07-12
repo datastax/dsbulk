@@ -30,12 +30,10 @@
     <dependency>
       <groupId>com.datastax.oss</groupId>
       <artifactId>dsbulk-commons</artifactId>
-      <exclusions>
-        <exclusion>
-          <groupId>com.typesafe</groupId>
-          <artifactId>config</artifactId>
-        </exclusion>
-      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
+      <artifactId>java-driver-core</artifactId>
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>

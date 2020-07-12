@@ -19,7 +19,7 @@ import static com.datastax.oss.dsbulk.runner.ExitStatus.STATUS_ABORTED_FATAL_ERR
 import static com.datastax.oss.dsbulk.runner.ExitStatus.STATUS_CRASHED;
 import static com.datastax.oss.dsbulk.runner.ExitStatus.STATUS_INTERRUPTED;
 
-import com.datastax.oss.dsbulk.commons.utils.ThrowableUtils;
+import com.datastax.oss.dsbulk.commons.ThrowableUtils;
 import com.datastax.oss.dsbulk.workflow.api.Workflow;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;

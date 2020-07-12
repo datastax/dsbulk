@@ -16,7 +16,7 @@
 package com.datastax.oss.dsbulk.codecs.text.json;
 
 import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
-import com.datastax.oss.dsbulk.codecs.ConvertingCodec;
+import com.datastax.oss.dsbulk.codecs.api.ConvertingCodec;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;

@@ -25,8 +25,8 @@ import static java.util.concurrent.TimeUnit.DAYS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
-import com.datastax.oss.dsbulk.codecs.util.CodecUtils;
-import com.datastax.oss.dsbulk.codecs.util.TemporalFormat;
+import com.datastax.oss.dsbulk.codecs.api.util.CodecUtils;
+import com.datastax.oss.dsbulk.codecs.api.util.TemporalFormat;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.util.List;

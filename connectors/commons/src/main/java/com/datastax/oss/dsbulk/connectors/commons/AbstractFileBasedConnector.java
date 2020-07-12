@@ -15,11 +15,11 @@
  */
 package com.datastax.oss.dsbulk.connectors.commons;
 
-import com.datastax.oss.dsbulk.commons.config.ConfigUtils;
-import com.datastax.oss.dsbulk.commons.io.IOUtils;
-import com.datastax.oss.dsbulk.compression.CompressedIOUtils;
+import com.datastax.oss.dsbulk.config.ConfigUtils;
 import com.datastax.oss.dsbulk.connectors.api.Connector;
 import com.datastax.oss.dsbulk.connectors.api.Record;
+import com.datastax.oss.dsbulk.io.CompressedIOUtils;
+import com.datastax.oss.dsbulk.io.IOUtils;
 import com.typesafe.config.Config;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.IOException;

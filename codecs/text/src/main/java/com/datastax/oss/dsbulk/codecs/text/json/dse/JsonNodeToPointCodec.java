@@ -17,8 +17,8 @@ package com.datastax.oss.dsbulk.codecs.text.json.dse;
 
 import com.datastax.dse.driver.api.core.data.geometry.Point;
 import com.datastax.dse.driver.api.core.type.codec.DseTypeCodecs;
+import com.datastax.oss.dsbulk.codecs.api.util.CodecUtils;
 import com.datastax.oss.dsbulk.codecs.text.json.JsonNodeConvertingCodec;
-import com.datastax.oss.dsbulk.codecs.util.CodecUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

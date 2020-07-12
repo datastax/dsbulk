@@ -16,8 +16,8 @@
 package com.datastax.oss.dsbulk.codecs.text.string;
 
 import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
-import com.datastax.oss.dsbulk.codecs.util.CodecUtils;
-import com.datastax.oss.dsbulk.codecs.util.TemporalFormat;
+import com.datastax.oss.dsbulk.codecs.api.util.CodecUtils;
+import com.datastax.oss.dsbulk.codecs.api.util.TemporalFormat;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.TemporalAccessor;

@@ -16,7 +16,7 @@
 package com.datastax.oss.dsbulk.tests.assertions;
 
 import com.datastax.oss.driver.shaded.guava.common.collect.Multimap;
-import com.datastax.oss.dsbulk.codecs.ConvertingCodec;
+import com.datastax.oss.dsbulk.codecs.api.ConvertingCodec;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptor;
 import com.typesafe.config.Config;
 import org.assertj.core.api.Assertions;

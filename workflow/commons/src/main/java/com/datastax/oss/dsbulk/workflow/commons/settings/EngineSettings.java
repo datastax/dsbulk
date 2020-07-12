@@ -15,7 +15,7 @@
  */
 package com.datastax.oss.dsbulk.workflow.commons.settings;
 
-import com.datastax.oss.dsbulk.commons.config.ConfigUtils;
+import com.datastax.oss.dsbulk.config.ConfigUtils;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import java.util.Optional;

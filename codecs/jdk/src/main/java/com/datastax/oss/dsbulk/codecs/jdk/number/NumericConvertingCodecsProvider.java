@@ -15,11 +15,11 @@
  */
 package com.datastax.oss.dsbulk.codecs.jdk.number;
 
-import static com.datastax.oss.dsbulk.codecs.CommonConversionContext.BOOLEAN_NUMBERS;
-import static com.datastax.oss.dsbulk.codecs.CommonConversionContext.EPOCH;
-import static com.datastax.oss.dsbulk.codecs.CommonConversionContext.NUMBER_FORMAT;
-import static com.datastax.oss.dsbulk.codecs.CommonConversionContext.TIME_UNIT;
-import static com.datastax.oss.dsbulk.codecs.CommonConversionContext.TIME_UUID_GENERATOR;
+import static com.datastax.oss.dsbulk.codecs.api.CommonConversionContext.BOOLEAN_NUMBERS;
+import static com.datastax.oss.dsbulk.codecs.api.CommonConversionContext.EPOCH;
+import static com.datastax.oss.dsbulk.codecs.api.CommonConversionContext.NUMBER_FORMAT;
+import static com.datastax.oss.dsbulk.codecs.api.CommonConversionContext.TIME_UNIT;
+import static com.datastax.oss.dsbulk.codecs.api.CommonConversionContext.TIME_UUID_GENERATOR;
 import static com.datastax.oss.dsbulk.codecs.jdk.JdkCodecUtils.isNumeric;
 import static com.datastax.oss.dsbulk.codecs.jdk.JdkCodecUtils.isUUID;
 
@@ -28,10 +28,10 @@ import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
-import com.datastax.oss.dsbulk.codecs.ConversionContext;
-import com.datastax.oss.dsbulk.codecs.ConvertingCodec;
-import com.datastax.oss.dsbulk.codecs.ConvertingCodecFactory;
-import com.datastax.oss.dsbulk.codecs.ConvertingCodecProvider;
+import com.datastax.oss.dsbulk.codecs.api.ConversionContext;
+import com.datastax.oss.dsbulk.codecs.api.ConvertingCodec;
+import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
+import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecProvider;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.util.Optional;
 import java.util.UUID;

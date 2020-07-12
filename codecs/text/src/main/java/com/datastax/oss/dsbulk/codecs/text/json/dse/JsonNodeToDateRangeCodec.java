@@ -19,8 +19,8 @@ import static com.datastax.oss.dsbulk.codecs.text.json.JsonCodecUtils.JSON_NODE_
 
 import com.datastax.dse.driver.api.core.data.time.DateRange;
 import com.datastax.dse.driver.internal.core.type.codec.time.DateRangeCodec;
+import com.datastax.oss.dsbulk.codecs.api.util.CodecUtils;
 import com.datastax.oss.dsbulk.codecs.text.json.JsonNodeConvertingCodec;
-import com.datastax.oss.dsbulk.codecs.util.CodecUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 

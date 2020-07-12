@@ -29,15 +29,19 @@
   <dependencies>
     <dependency>
       <groupId>com.datastax.oss</groupId>
+      <artifactId>dsbulk-config</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
+      <artifactId>dsbulk-io</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
       <artifactId>dsbulk-connectors-api</artifactId>
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>
       <artifactId>dsbulk-connectors-commons</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-compression</artifactId>
     </dependency>
     <dependency>
       <groupId>com.typesafe</groupId>

@@ -26,7 +26,7 @@ import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
 import com.datastax.oss.driver.shaded.guava.common.io.Closer;
 import com.datastax.oss.driver.shaded.guava.common.io.Files;
 import com.datastax.oss.driver.shaded.guava.common.io.Resources;
-import com.datastax.oss.dsbulk.commons.utils.PlatformUtils;
+import com.datastax.oss.dsbulk.commons.PlatformUtils;
 import com.datastax.oss.dsbulk.tests.utils.FileUtils;
 import com.datastax.oss.dsbulk.tests.utils.MemoryUtils;
 import com.datastax.oss.dsbulk.tests.utils.NetworkUtils;

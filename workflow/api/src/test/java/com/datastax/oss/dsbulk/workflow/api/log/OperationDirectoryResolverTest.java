@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumingThat;
 
-import com.datastax.oss.dsbulk.commons.utils.PlatformUtils;
+import com.datastax.oss.dsbulk.commons.PlatformUtils;
 import com.datastax.oss.dsbulk.tests.utils.FileUtils;
 import java.io.IOException;
 import java.nio.file.Files;

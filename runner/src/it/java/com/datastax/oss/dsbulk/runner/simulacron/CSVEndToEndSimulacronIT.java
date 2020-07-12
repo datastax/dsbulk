@@ -53,7 +53,7 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 import com.datastax.oss.driver.api.core.data.ByteUtils;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
-import com.datastax.oss.dsbulk.commons.config.ConfigUtils;
+import com.datastax.oss.dsbulk.config.ConfigUtils;
 import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.datastax.oss.dsbulk.connectors.csv.CSVConnector;
 import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader;

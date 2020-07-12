@@ -37,6 +37,10 @@
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>
+      <artifactId>dsbulk-config</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
       <artifactId>dsbulk-cql</artifactId>
     </dependency>
     <dependency>
@@ -53,7 +57,7 @@
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-compression</artifactId>
+      <artifactId>dsbulk-io</artifactId>
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>

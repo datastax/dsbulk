@@ -18,8 +18,8 @@ package com.datastax.oss.dsbulk.codecs.text.string;
 import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat;
 
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
-import com.datastax.oss.dsbulk.codecs.util.Base64BinaryFormat;
-import com.datastax.oss.dsbulk.codecs.util.HexBinaryFormat;
+import com.datastax.oss.dsbulk.codecs.api.util.Base64BinaryFormat;
+import com.datastax.oss.dsbulk.codecs.api.util.HexBinaryFormat;
 import com.datastax.oss.protocol.internal.util.Bytes;
 import java.nio.ByteBuffer;
 import java.util.Base64;

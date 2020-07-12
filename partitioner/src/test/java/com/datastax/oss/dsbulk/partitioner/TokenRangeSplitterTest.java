@@ -15,7 +15,7 @@
  */
 package com.datastax.oss.dsbulk.partitioner;
 
-import static com.datastax.oss.dsbulk.commons.utils.TokenUtils.getTokenValue;
+import static com.datastax.oss.dsbulk.partitioner.utils.TokenUtils.getTokenValue;
 import static java.math.BigInteger.ONE;
 import static java.math.BigInteger.ZERO;
 import static org.assertj.core.api.Assertions.assertThat;

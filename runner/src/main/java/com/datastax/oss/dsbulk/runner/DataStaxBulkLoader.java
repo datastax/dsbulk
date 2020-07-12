@@ -18,8 +18,7 @@ package com.datastax.oss.dsbulk.runner;
 import static com.datastax.oss.dsbulk.runner.ExitStatus.STATUS_CRASHED;
 import static com.datastax.oss.dsbulk.runner.ExitStatus.STATUS_OK;
 
-import com.datastax.oss.dsbulk.commons.url.BulkLoaderURLStreamHandlerFactory;
-import com.datastax.oss.dsbulk.commons.utils.ConsoleUtils;
+import com.datastax.oss.dsbulk.commons.ConsoleUtils;
 import com.datastax.oss.dsbulk.runner.cli.AnsiConfigurator;
 import com.datastax.oss.dsbulk.runner.cli.CommandLineParser;
 import com.datastax.oss.dsbulk.runner.cli.GlobalHelpRequestException;
@@ -27,13 +26,13 @@ import com.datastax.oss.dsbulk.runner.cli.ParsedCommandLine;
 import com.datastax.oss.dsbulk.runner.cli.SectionHelpRequestException;
 import com.datastax.oss.dsbulk.runner.cli.VersionRequestException;
 import com.datastax.oss.dsbulk.runner.help.HelpEmitter;
+import com.datastax.oss.dsbulk.url.BulkLoaderURLStreamHandlerFactory;
 import com.datastax.oss.dsbulk.workflow.api.Workflow;
 import com.typesafe.config.Config;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.BufferedWriter;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
-import java.net.URL;
 import java.nio.charset.Charset;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +45,7 @@ public class DataStaxBulkLoader {
   private final String[] args;
 
   public static void main(String[] args) {
-    URL.setURLStreamHandlerFactory(new BulkLoaderURLStreamHandlerFactory());
+    BulkLoaderURLStreamHandlerFactory.install();
     ExitStatus status = new DataStaxBulkLoader(args).run();
     System.exit(status.exitCode());
   }

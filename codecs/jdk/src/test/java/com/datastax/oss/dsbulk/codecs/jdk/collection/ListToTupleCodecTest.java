@@ -24,7 +24,7 @@ import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.api.core.type.TupleType;
 import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
-import com.datastax.oss.dsbulk.codecs.ConvertingCodecFactory;
+import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;

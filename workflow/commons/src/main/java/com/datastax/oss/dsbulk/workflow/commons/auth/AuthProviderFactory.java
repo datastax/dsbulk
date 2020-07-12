@@ -15,14 +15,14 @@
  */
 package com.datastax.oss.dsbulk.workflow.commons.auth;
 
-import static com.datastax.oss.dsbulk.commons.io.IOUtils.assertAccessibleFile;
+import static com.datastax.oss.dsbulk.io.IOUtils.assertAccessibleFile;
 
 import com.datastax.dse.driver.api.core.auth.DseGssApiAuthProviderBase.GssApiOptions;
 import com.datastax.oss.driver.api.core.auth.AuthProvider;
 import com.datastax.oss.driver.internal.core.auth.ProgrammaticPlainTextAuthProvider;
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
-import com.datastax.oss.dsbulk.commons.config.ConfigUtils;
+import com.datastax.oss.dsbulk.config.ConfigUtils;
 import com.typesafe.config.Config;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import java.lang.reflect.Method;

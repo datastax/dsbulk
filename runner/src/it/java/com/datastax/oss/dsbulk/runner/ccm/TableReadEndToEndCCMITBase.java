@@ -37,7 +37,7 @@ import com.datastax.oss.driver.api.core.metadata.token.TokenRange;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSet;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
-import com.datastax.oss.dsbulk.commons.utils.TokenUtils;
+import com.datastax.oss.dsbulk.partitioner.utils.TokenUtils;
 import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader;
 import com.datastax.oss.dsbulk.runner.ExitStatus;
 import com.datastax.oss.dsbulk.runner.tests.MockConnector;

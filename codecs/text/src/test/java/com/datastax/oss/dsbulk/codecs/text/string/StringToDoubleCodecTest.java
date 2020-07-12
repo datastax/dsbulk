@@ -20,8 +20,8 @@ import static java.math.RoundingMode.HALF_EVEN;
 
 import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
-import com.datastax.oss.dsbulk.codecs.ConversionContext;
-import com.datastax.oss.dsbulk.codecs.ConvertingCodecFactory;
+import com.datastax.oss.dsbulk.codecs.api.ConversionContext;
+import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
 import com.datastax.oss.dsbulk.codecs.text.TextConversionContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

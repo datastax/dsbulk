@@ -16,8 +16,8 @@
 package com.datastax.oss.dsbulk.codecs.jdk.number;
 
 import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
-import com.datastax.oss.dsbulk.codecs.ConvertingCodec;
-import com.datastax.oss.dsbulk.codecs.util.TimeUUIDGenerator;
+import com.datastax.oss.dsbulk.codecs.api.ConvertingCodec;
+import com.datastax.oss.dsbulk.codecs.api.util.TimeUUIDGenerator;
 import java.time.Instant;
 import java.util.UUID;
 

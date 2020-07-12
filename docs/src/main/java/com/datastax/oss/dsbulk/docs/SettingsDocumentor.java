@@ -22,12 +22,12 @@ import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.nio.file.StandardOpenOption.WRITE;
 
 import com.datastax.oss.driver.shaded.guava.common.base.CharMatcher;
-import com.datastax.oss.dsbulk.commons.config.ConfigUtils;
-import com.datastax.oss.dsbulk.commons.config.model.SettingsGroup;
-import com.datastax.oss.dsbulk.commons.config.model.SettingsGroupFactory;
-import com.datastax.oss.dsbulk.commons.config.shortcuts.ShortcutsFactory;
-import com.datastax.oss.dsbulk.commons.utils.ConsoleUtils;
-import com.datastax.oss.dsbulk.commons.utils.StringUtils;
+import com.datastax.oss.dsbulk.commons.ConsoleUtils;
+import com.datastax.oss.dsbulk.commons.StringUtils;
+import com.datastax.oss.dsbulk.config.ConfigUtils;
+import com.datastax.oss.dsbulk.config.model.SettingsGroup;
+import com.datastax.oss.dsbulk.config.model.SettingsGroupFactory;
+import com.datastax.oss.dsbulk.config.shortcuts.ShortcutsFactory;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;

@@ -19,8 +19,8 @@ import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat
 
 import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
-import com.datastax.oss.dsbulk.codecs.ConversionContext;
-import com.datastax.oss.dsbulk.codecs.ConvertingCodecFactory;
+import com.datastax.oss.dsbulk.codecs.api.ConversionContext;
+import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
 import com.datastax.oss.dsbulk.codecs.text.TextConversionContext;
 import java.util.Set;
 import org.assertj.core.util.Sets;

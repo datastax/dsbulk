@@ -16,7 +16,7 @@
 package com.datastax.oss.dsbulk.codecs.text.json;
 
 import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
-import com.datastax.oss.dsbulk.codecs.util.CodecUtils;
+import com.datastax.oss.dsbulk.codecs.api.util.CodecUtils;
 import com.datastax.oss.protocol.internal.util.Bytes;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;

@@ -42,9 +42,8 @@ import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUES
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_TIMEOUT;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_WARN_IF_SET_KEYSPACE;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.TIMESTAMP_GENERATOR_CLASS;
-import static com.datastax.oss.dsbulk.commons.config.ConfigUtils.hasReferenceValue;
-import static com.datastax.oss.dsbulk.commons.utils.ConsoleUtils.BULK_LOADER_APPLICATION_NAME;
-import static com.datastax.oss.dsbulk.commons.utils.ConsoleUtils.getBulkLoaderVersion;
+import static com.datastax.oss.dsbulk.commons.ConsoleUtils.BULK_LOADER_APPLICATION_NAME;
+import static com.datastax.oss.dsbulk.commons.ConsoleUtils.getBulkLoaderVersion;
 import static com.datastax.oss.dsbulk.workflow.commons.settings.BulkDriverOption.DEFAULT_PORT;
 import static com.datastax.oss.dsbulk.workflow.commons.settings.BulkDriverOption.LOAD_BALANCING_POLICY_FILTER_ALLOW;
 import static com.datastax.oss.dsbulk.workflow.commons.settings.BulkDriverOption.RETRY_POLICY_MAX_RETRIES;
@@ -71,8 +70,8 @@ import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting
 import com.datastax.oss.driver.shaded.guava.common.base.Joiner;
 import com.datastax.oss.driver.shaded.guava.common.collect.BiMap;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
-import com.datastax.oss.dsbulk.commons.config.ConfigUtils;
-import com.datastax.oss.dsbulk.commons.config.shortcuts.ShortcutsFactory;
+import com.datastax.oss.dsbulk.config.ConfigUtils;
+import com.datastax.oss.dsbulk.config.shortcuts.ShortcutsFactory;
 import com.datastax.oss.dsbulk.workflow.commons.auth.AuthProviderFactory;
 import com.datastax.oss.dsbulk.workflow.commons.ssl.SslHandlerFactoryFactory;
 import com.datastax.oss.dsbulk.workflow.commons.utils.AddressUtils;
@@ -443,7 +442,7 @@ public class DriverSettings {
               ConfigValueFactory.fromAnyRef(cloudSecureConnectBundle.toExternalForm()));
 
       if (mergedDriverConfig.hasPath(CONTACT_POINTS.getPath())) {
-        if (hasReferenceValue(mergedDriverConfig, CONTACT_POINTS.getPath())) {
+        if (ConfigUtils.hasReferenceValue(mergedDriverConfig, CONTACT_POINTS.getPath())) {
           LOGGER.info(
               "A cloud secure connect bundle was provided: ignoring all explicit contact points.");
         } else {
@@ -464,7 +463,7 @@ public class DriverSettings {
             mergedDriverConfig.getEnum(
                 DefaultConsistencyLevel.class, REQUEST_CONSISTENCY.getPath());
         if (!isCLCloudCompatible(write, cl)) {
-          if (hasReferenceValue(mergedDriverConfig, REQUEST_CONSISTENCY.getPath())) {
+          if (ConfigUtils.hasReferenceValue(mergedDriverConfig, REQUEST_CONSISTENCY.getPath())) {
             LOGGER.info(
                 "A cloud secure connect bundle was provided and selected operation performs writes: "
                     + "changing default consistency level to LOCAL_QUORUM.");

@@ -16,8 +16,8 @@
 package com.datastax.oss.dsbulk.codecs.jdk.bool;
 
 import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
-import com.datastax.oss.dsbulk.codecs.ConvertingCodec;
-import com.datastax.oss.dsbulk.codecs.util.CodecUtils;
+import com.datastax.oss.dsbulk.codecs.api.ConvertingCodec;
+import com.datastax.oss.dsbulk.codecs.api.util.CodecUtils;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;

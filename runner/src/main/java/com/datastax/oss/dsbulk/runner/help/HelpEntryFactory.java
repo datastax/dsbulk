@@ -15,7 +15,7 @@
  */
 package com.datastax.oss.dsbulk.runner.help;
 
-import com.datastax.oss.dsbulk.commons.config.ConfigUtils;
+import com.datastax.oss.dsbulk.config.ConfigUtils;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;

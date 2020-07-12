@@ -22,13 +22,13 @@ import static org.slf4j.event.Level.INFO;
 import static org.slf4j.event.Level.WARN;
 
 import com.datastax.oss.driver.api.core.DefaultConsistencyLevel;
-import com.datastax.oss.dsbulk.commons.utils.PlatformUtils;
+import com.datastax.oss.dsbulk.commons.PlatformUtils;
 import com.datastax.oss.dsbulk.tests.logging.LogCapture;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptingExtension;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptor;
 import com.datastax.oss.dsbulk.tests.utils.StringUtils;
 import com.datastax.oss.dsbulk.tests.utils.TestConfigUtils;
-import com.datastax.oss.dsbulk.tests.utils.URLUtils;
+import com.datastax.oss.dsbulk.url.BulkLoaderURLStreamHandlerFactory;
 import com.typesafe.config.Config;
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -46,7 +46,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 class DriverSettingsTest {
 
   static {
-    URLUtils.setURLFactoryIfNeeded();
+    BulkLoaderURLStreamHandlerFactory.install();
   }
 
   @ParameterizedTest

@@ -16,7 +16,7 @@
 package com.datastax.oss.dsbulk.codecs.jdk.collection;
 
 import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
-import com.datastax.oss.dsbulk.codecs.ConvertingCodec;
+import com.datastax.oss.dsbulk.codecs.api.ConvertingCodec;
 import java.util.Collection;
 import java.util.function.Supplier;
 

@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.slf4j.event.Level.ERROR;
 
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
-import com.datastax.oss.dsbulk.commons.utils.ConsoleUtils;
+import com.datastax.oss.dsbulk.commons.ConsoleUtils;
 import com.datastax.oss.dsbulk.runner.cli.CommandLineParser;
 import com.datastax.oss.dsbulk.runner.cli.ParseException;
 import com.datastax.oss.dsbulk.tests.logging.LogCapture;

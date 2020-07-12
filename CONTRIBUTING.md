@@ -14,6 +14,8 @@ Make sure you understand how DSBulk works by reading the manual page about
 DSBulk code is divided in several modules:
 
 1. [dsbulk-commons](./commons): This module contains common utilities for DSBulk.
+1. [dsbulk-config](./config): This module contains utilities to configure DSBulk.
+1. [dsbulk-url](./url): This module contains utilities to deal with URLs.
 2. [dsbulk-codecs](./codecs): This module groups together submodules related to codec handling in 
    DSBulk:
     1. The [dsbulk-codecs-api](./codecs/api) submodule contains an API for codec handling in DSBulk.
@@ -21,7 +23,7 @@ DSBulk code is divided in several modules:
        plain text and Json.
     3. The [dsbulk-codecs-jdk](./codecs/jdk) submodule contains implementations of that API for 
        converting to and from common JDK types: Boolean, Number, Temporal, Collections, etc.
-3. [dsbulk-compression](./compression): This module contains utilities for reading and writing to 
+3. [dsbulk-io](./io): This module contains utilities for reading and writing to 
    compressed files.
 4. [dsbulk-connectors](./connectors): Connectors form a pluggable abstraction that allows DSBulk to 
    read and write to a variety of backends.
@@ -39,6 +41,7 @@ DSBulk code is divided in several modules:
 8. [dsbulk-partitioner](./partitioner): This module contains the `TokenRangeSplitter` API, that 
     DSBulk uses to parallelize reads by targeting all the token subranges simultaneously from 
     different replicas.
+8. [dsbulk-smapler](./sampler): This module contains utilities to sample row and statement sizes.
 9. [dsbulk-executor](./executor): DSBulk's Bulk Executor API is a pluggable abstraction that allows 
    DSBulk to execute queries using reactive programming.
     1. The [dsbulk-executor-api](./executor/api) submodule contains the Executor API.

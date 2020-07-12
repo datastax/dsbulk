@@ -15,7 +15,7 @@
  */
 package com.datastax.oss.dsbulk.codecs.jdk.bool;
 
-import static com.datastax.oss.dsbulk.codecs.CommonConversionContext.BOOLEAN_NUMBERS;
+import static com.datastax.oss.dsbulk.codecs.api.CommonConversionContext.BOOLEAN_NUMBERS;
 import static com.datastax.oss.dsbulk.codecs.jdk.JdkCodecUtils.isNumeric;
 
 import com.datastax.oss.driver.api.core.type.DataType;
@@ -23,10 +23,10 @@ import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
-import com.datastax.oss.dsbulk.codecs.ConvertingCodec;
-import com.datastax.oss.dsbulk.codecs.ConvertingCodecFactory;
-import com.datastax.oss.dsbulk.codecs.ConvertingCodecProvider;
-import com.datastax.oss.dsbulk.codecs.IdempotentConvertingCodec;
+import com.datastax.oss.dsbulk.codecs.api.ConvertingCodec;
+import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
+import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecProvider;
+import com.datastax.oss.dsbulk.codecs.api.IdempotentConvertingCodec;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.util.Optional;
 

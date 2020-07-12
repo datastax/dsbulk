@@ -28,13 +28,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.datastax.oss.driver.shaded.guava.common.base.Charsets;
-import com.datastax.oss.dsbulk.compression.CompressedIOUtils;
 import com.datastax.oss.dsbulk.connectors.api.DefaultIndexedField;
 import com.datastax.oss.dsbulk.connectors.api.DefaultMappedField;
 import com.datastax.oss.dsbulk.connectors.api.DefaultRecord;
 import com.datastax.oss.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.oss.dsbulk.connectors.api.Field;
 import com.datastax.oss.dsbulk.connectors.api.Record;
+import com.datastax.oss.dsbulk.io.CompressedIOUtils;
 import com.datastax.oss.dsbulk.tests.logging.LogCapture;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptingExtension;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptor;
@@ -42,7 +42,7 @@ import com.datastax.oss.dsbulk.tests.utils.FileUtils;
 import com.datastax.oss.dsbulk.tests.utils.ReflectionUtils;
 import com.datastax.oss.dsbulk.tests.utils.StringUtils;
 import com.datastax.oss.dsbulk.tests.utils.TestConfigUtils;
-import com.datastax.oss.dsbulk.tests.utils.URLUtils;
+import com.datastax.oss.dsbulk.url.BulkLoaderURLStreamHandlerFactory;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.typesafe.config.Config;
 import com.univocity.parsers.common.TextParsingException;
@@ -94,7 +94,7 @@ class CSVConnectorTest {
   private static final int IRRELEVANT_POSITION = -1;
 
   static {
-    URLUtils.setURLFactoryIfNeeded();
+    BulkLoaderURLStreamHandlerFactory.install();
     Thread.setDefaultUncaughtExceptionHandler((thread, t) -> {});
   }
 
@@ -1741,7 +1741,7 @@ class CSVConnectorTest {
             true);
     connector.configure(settings, true);
     connector.init();
-    List<Record> records = Flux.from(connector.read()).collectList().block();
+    List<Record> records = Flux.from(connector.readSingle()).collectList().block();
     assertThat(records).hasSize(1);
     Record record = records.get(0);
     assertThat(record.fields()).hasSize(6);

@@ -20,10 +20,10 @@ import static java.util.concurrent.TimeUnit.MINUTES;
 
 import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
-import com.datastax.oss.dsbulk.codecs.ConversionContext;
-import com.datastax.oss.dsbulk.codecs.ConvertingCodecFactory;
+import com.datastax.oss.dsbulk.codecs.api.ConversionContext;
+import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
+import com.datastax.oss.dsbulk.codecs.api.util.CqlTemporalFormat;
 import com.datastax.oss.dsbulk.codecs.text.TextConversionContext;
-import com.datastax.oss.dsbulk.codecs.util.CqlTemporalFormat;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZonedDateTime;

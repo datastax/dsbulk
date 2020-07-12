@@ -15,13 +15,13 @@
  */
 package com.datastax.oss.dsbulk.workflow.commons.ssl;
 
-import static com.datastax.oss.dsbulk.commons.io.IOUtils.assertAccessibleFile;
+import static com.datastax.oss.dsbulk.io.IOUtils.assertAccessibleFile;
 
 import com.datastax.oss.driver.api.core.ssl.ProgrammaticSslEngineFactory;
 import com.datastax.oss.driver.api.core.ssl.SslEngineFactory;
 import com.datastax.oss.driver.internal.core.ssl.JdkSslHandlerFactory;
 import com.datastax.oss.driver.internal.core.ssl.SslHandlerFactory;
-import com.datastax.oss.dsbulk.commons.config.ConfigUtils;
+import com.datastax.oss.dsbulk.config.ConfigUtils;
 import com.typesafe.config.Config;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import io.netty.handler.ssl.SslContext;

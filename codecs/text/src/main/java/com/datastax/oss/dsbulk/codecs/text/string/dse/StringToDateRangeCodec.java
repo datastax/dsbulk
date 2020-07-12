@@ -17,8 +17,8 @@ package com.datastax.oss.dsbulk.codecs.text.string.dse;
 
 import com.datastax.dse.driver.api.core.data.time.DateRange;
 import com.datastax.dse.driver.internal.core.type.codec.time.DateRangeCodec;
+import com.datastax.oss.dsbulk.codecs.api.util.CodecUtils;
 import com.datastax.oss.dsbulk.codecs.text.string.StringConvertingCodec;
-import com.datastax.oss.dsbulk.codecs.util.CodecUtils;
 import java.util.List;
 
 public class StringToDateRangeCodec extends StringConvertingCodec<DateRange> {

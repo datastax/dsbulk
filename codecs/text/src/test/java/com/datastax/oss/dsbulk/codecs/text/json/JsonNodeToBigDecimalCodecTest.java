@@ -22,8 +22,8 @@ import static java.math.BigDecimal.ONE;
 import static java.math.BigDecimal.ZERO;
 
 import com.datastax.oss.driver.api.core.type.DataTypes;
-import com.datastax.oss.dsbulk.codecs.ConversionContext;
-import com.datastax.oss.dsbulk.codecs.ConvertingCodecFactory;
+import com.datastax.oss.dsbulk.codecs.api.ConversionContext;
+import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
 import com.datastax.oss.dsbulk.codecs.text.TextConversionContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.math.BigDecimal;

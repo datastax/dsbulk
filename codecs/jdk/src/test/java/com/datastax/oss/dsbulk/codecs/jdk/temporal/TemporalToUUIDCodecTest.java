@@ -15,10 +15,10 @@
  */
 package com.datastax.oss.dsbulk.codecs.jdk.temporal;
 
-import static com.datastax.oss.dsbulk.codecs.util.TimeUUIDGenerator.FIXED;
-import static com.datastax.oss.dsbulk.codecs.util.TimeUUIDGenerator.MAX;
-import static com.datastax.oss.dsbulk.codecs.util.TimeUUIDGenerator.MIN;
-import static com.datastax.oss.dsbulk.codecs.util.TimeUUIDGenerator.RANDOM;
+import static com.datastax.oss.dsbulk.codecs.api.util.TimeUUIDGenerator.FIXED;
+import static com.datastax.oss.dsbulk.codecs.api.util.TimeUUIDGenerator.MAX;
+import static com.datastax.oss.dsbulk.codecs.api.util.TimeUUIDGenerator.MIN;
+import static com.datastax.oss.dsbulk.codecs.api.util.TimeUUIDGenerator.RANDOM;
 import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat;
 import static java.time.Instant.EPOCH;
 import static java.time.ZoneOffset.UTC;

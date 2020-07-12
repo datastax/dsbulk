@@ -16,8 +16,7 @@
 package com.datastax.oss.dsbulk.connectors.json;
 
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
-import com.datastax.oss.dsbulk.commons.config.ConfigUtils;
-import com.datastax.oss.dsbulk.compression.CompressedIOUtils;
+import com.datastax.oss.dsbulk.config.ConfigUtils;
 import com.datastax.oss.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.oss.dsbulk.connectors.api.ConnectorFeature;
 import com.datastax.oss.dsbulk.connectors.api.DefaultMappedField;
@@ -26,6 +25,7 @@ import com.datastax.oss.dsbulk.connectors.api.MappedField;
 import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.datastax.oss.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.oss.dsbulk.connectors.commons.AbstractFileBasedConnector;
+import com.datastax.oss.dsbulk.io.CompressedIOUtils;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
