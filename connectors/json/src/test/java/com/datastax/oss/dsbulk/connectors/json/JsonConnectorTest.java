@@ -30,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.datastax.oss.driver.shaded.guava.common.base.Charsets;
+import com.datastax.oss.dsbulk.config.ConfigUtils;
 import com.datastax.oss.dsbulk.connectors.api.DefaultMappedField;
 import com.datastax.oss.dsbulk.connectors.api.DefaultRecord;
 import com.datastax.oss.dsbulk.connectors.api.Field;
@@ -139,7 +140,8 @@ class JsonConnectorTest {
             StringUtils.quoteJson(compression));
     connector.configure(settings, true);
     connector.init();
-    List<Record> actual = Flux.from(connector.readSingle()).collectList().block();
+    assertThat(connector.readConcurrency()).isOne();
+    List<Record> actual = Flux.merge(connector.read()).collectList().block();
     verifyRecords(actual);
     connector.close();
   }
@@ -175,7 +177,8 @@ class JsonConnectorTest {
             "SINGLE_DOCUMENT");
     connector.configure(settings, true);
     connector.init();
-    List<Record> actual = Flux.from(connector.readSingle()).collectList().block();
+    assertThat(connector.readConcurrency()).isOne();
+    List<Record> actual = Flux.merge(connector.read()).collectList().block();
     verifyRecords(actual);
     connector.close();
   }
@@ -194,8 +197,9 @@ class JsonConnectorTest {
             "SINGLE_DOCUMENT");
     connector.configure(settings, true);
     connector.init();
+    assertThat(connector.readConcurrency()).isOne();
     // should complete with 0 records.
-    List<Record> actual = Flux.from(connector.readSingle()).collectList().block();
+    List<Record> actual = Flux.merge(connector.read()).collectList().block();
     assertThat(actual).hasSize(0);
     connector.close();
   }
@@ -214,8 +218,9 @@ class JsonConnectorTest {
             "MULTI_DOCUMENT");
     connector.configure(settings, true);
     connector.init();
+    assertThat(connector.readConcurrency()).isOne();
     // should complete with 0 records.
-    List<Record> actual = Flux.from(connector.readSingle()).collectList().block();
+    List<Record> actual = Flux.merge(connector.read()).collectList().block();
     assertThat(actual).hasSize(0);
     connector.close();
   }
@@ -234,7 +239,8 @@ class JsonConnectorTest {
             "{USE_BIG_DECIMAL_FOR_FLOATS : false}");
     connector.configure(settings, true);
     connector.init();
-    List<Record> actual = Flux.merge(connector.readMultiple()).collectList().block();
+    assertThat(connector.readConcurrency()).isOne();
+    List<Record> actual = Flux.merge(connector.read()).collectList().block();
     verifyRecords(actual);
     connector.close();
   }
@@ -251,7 +257,8 @@ class JsonConnectorTest {
           TestConfigUtils.createTestConfig("dsbulk.connector.json", "encoding", "ISO-8859-1");
       connector.configure(settings, true);
       connector.init();
-      List<Record> actual = Flux.from(connector.readSingle()).collectList().block();
+      assertThat(connector.readConcurrency()).isOne();
+      List<Record> actual = Flux.merge(connector.read()).collectList().block();
       assertThat(actual).hasSize(1);
       assertThat(actual.get(0).getSource()).isEqualTo(objectMapper.readTree(line));
       assertThat(actual.get(0).getResource()).isEqualTo(URI.create("std:/"));
@@ -278,6 +285,7 @@ class JsonConnectorTest {
           TestConfigUtils.createTestConfig("dsbulk.connector.json", "encoding", "ISO-8859-1");
       connector.configure(settings, false);
       connector.init();
+      assertThat(connector.writeConcurrency()).isOne();
       Flux.<Record>just(
               DefaultRecord.indexed(
                   "source",
@@ -301,22 +309,18 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     Config settings =
         TestConfigUtils.createTestConfig(
-            "dsbulk.connector.json", "url", url("/root"), "recursive", false);
+            "dsbulk.connector.json",
+            "url",
+            url("/root"),
+            "recursive",
+            false,
+            "maxConcurrentFiles",
+            4);
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.readSingle()).count().block()).isEqualTo(300);
-    connector.close();
-  }
-
-  @Test
-  void should_read_all_resources_in_directory_by_resource() throws Exception {
-    JsonConnector connector = new JsonConnector();
-    Config settings =
-        TestConfigUtils.createTestConfig(
-            "dsbulk.connector.json", "url", url("/root"), "recursive", false);
-    connector.configure(settings, true);
-    connector.init();
-    assertThat(Flux.merge(connector.readMultiple()).count().block()).isEqualTo(300);
+    // there are only 3 resources to read
+    assertThat(connector.readConcurrency()).isEqualTo(3);
+    assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(300);
     connector.close();
   }
 
@@ -326,10 +330,18 @@ class JsonConnectorTest {
     Path rootPath = Paths.get(getClass().getResource("/root").toURI());
     Config settings =
         TestConfigUtils.createTestConfig(
-            "dsbulk.connector.json", "url", StringUtils.quoteJson(rootPath), "recursive", false);
+            "dsbulk.connector.json",
+            "url",
+            StringUtils.quoteJson(rootPath),
+            "recursive",
+            false,
+            "maxConcurrentFiles",
+            4);
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.readSingle()).count().block()).isEqualTo(300);
+    // there are only 3 resources to read
+    assertThat(connector.readConcurrency()).isEqualTo(3);
+    assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(300);
     connector.close();
   }
 
@@ -338,22 +350,18 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     Config settings =
         TestConfigUtils.createTestConfig(
-            "dsbulk.connector.json", "url", url("/root"), "recursive", true);
+            "dsbulk.connector.json",
+            "url",
+            url("/root"),
+            "recursive",
+            true,
+            "maxConcurrentFiles",
+            4);
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.readSingle()).count().block()).isEqualTo(500);
-    connector.close();
-  }
-
-  @Test
-  void should_read_all_resources_in_directory_recursively_by_resource() throws Exception {
-    JsonConnector connector = new JsonConnector();
-    Config settings =
-        TestConfigUtils.createTestConfig(
-            "dsbulk.connector.json", "url", url("/root"), "recursive", true);
-    connector.configure(settings, true);
-    connector.init();
-    assertThat(Flux.merge(connector.readMultiple()).count().block()).isEqualTo(500);
+    // 5 resources to read, but maxConcurrentFiles is 4
+    assertThat(connector.readConcurrency()).isEqualTo(4);
+    assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(500);
     connector.close();
   }
 
@@ -371,7 +379,7 @@ class JsonConnectorTest {
             "\"**/part-*\"");
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.readSingle()).count().block()).isEqualTo(500);
+    assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(500);
     connector.close();
   }
 
@@ -491,6 +499,7 @@ class JsonConnectorTest {
               1);
       connector.configure(settings, false);
       connector.init();
+      assertThat(connector.writeConcurrency()).isOne();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
       connector.close();
       List<String> actual = Files.readAllLines(out.resolve("output-000001.json"));
@@ -527,6 +536,7 @@ class JsonConnectorTest {
               "SINGLE_DOCUMENT");
       connector.configure(settings, false);
       connector.init();
+      assertThat(connector.writeConcurrency()).isOne();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
       connector.close();
       List<String> actual = Files.readAllLines(out.resolve("output-000001.json"));
@@ -567,6 +577,7 @@ class JsonConnectorTest {
               "SINGLE_DOCUMENT");
       connector.configure(settings, false);
       connector.init();
+      assertThat(connector.writeConcurrency()).isOne();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
       connector.close();
       Path outPath = out.resolve("output-000001.json.gz");
@@ -615,6 +626,7 @@ class JsonConnectorTest {
               "SINGLE_DOCUMENT");
       connector.configure(settings, false);
       connector.init();
+      assertThat(connector.writeConcurrency()).isOne();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
       connector.close();
       Path outPath = out.resolve("file1");
@@ -661,6 +673,7 @@ class JsonConnectorTest {
               "NON_NULL");
       connector.configure(settings, false);
       connector.init();
+      assertThat(connector.writeConcurrency()).isOne();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
       connector.close();
       List<String> actual = Files.readAllLines(out.resolve("output-000001.json"));
@@ -696,6 +709,7 @@ class JsonConnectorTest {
               maxConcurrentFiles);
       connector.configure(settings, false);
       connector.init();
+      assertThat(connector.writeConcurrency()).isEqualTo(maxConcurrentFiles);
       // repeat the records 1000 times to fully exercise multiple file writing
       Scheduler scheduler = Schedulers.newParallel("workflow");
       Function<Publisher<Record>, Publisher<Record>> write = connector.write();
@@ -763,6 +777,7 @@ class JsonConnectorTest {
               3);
       connector.configure(settings, false);
       connector.init();
+      assertThat(connector.writeConcurrency()).isOne();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
       connector.close();
       List<String> json1 = Files.readAllLines(out.resolve("output-000001.json"));
@@ -791,8 +806,8 @@ class JsonConnectorTest {
             "dsbulk.connector.json", "url", url("/root"), "recursive", true, "skipRecords", 10);
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.readSingle()).count().block()).isEqualTo(450);
-    assertThat(Flux.merge(connector.readMultiple()).count().block()).isEqualTo(450);
+    assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(450);
+    assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(450);
     connector.close();
   }
 
@@ -804,8 +819,8 @@ class JsonConnectorTest {
             "dsbulk.connector.json", "url", url("/root"), "recursive", true, "skipRecords", 150);
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.readSingle()).count().block()).isEqualTo(0);
-    assertThat(Flux.merge(connector.readMultiple()).count().block()).isEqualTo(0);
+    assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(0);
+    assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(0);
     connector.close();
   }
 
@@ -817,8 +832,8 @@ class JsonConnectorTest {
             "dsbulk.connector.json", "url", url("/root"), "recursive", true, "maxRecords", 10);
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.readSingle()).count().block()).isEqualTo(50);
-    assertThat(Flux.merge(connector.readMultiple()).count().block()).isEqualTo(50);
+    assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(50);
+    assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(50);
     connector.close();
   }
 
@@ -830,8 +845,8 @@ class JsonConnectorTest {
             "dsbulk.connector.json", "url", url("/root"), "recursive", true, "maxRecords", 1);
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.readSingle()).count().block()).isEqualTo(5);
-    assertThat(Flux.merge(connector.readMultiple()).count().block()).isEqualTo(5);
+    assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(5);
+    assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(5);
     connector.close();
   }
 
@@ -851,7 +866,7 @@ class JsonConnectorTest {
             10);
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.readSingle()).count().block()).isEqualTo(25);
+    assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(25);
     connector.close();
   }
 
@@ -869,7 +884,7 @@ class JsonConnectorTest {
             1);
     connector.configure(settings, true);
     connector.init();
-    List<Record> records = Flux.from(connector.readSingle()).collectList().block();
+    List<Record> records = Flux.merge(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
     assertThat(records.get(0).getSource().toString().trim())
         .isEqualTo(
@@ -931,10 +946,14 @@ class JsonConnectorTest {
             "recursive",
             false,
             "fileNamePattern",
-            "\"**/part-*\"");
+            "\"**/part-*\"",
+            "maxConcurrentFiles",
+            8);
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.merge(connector.readMultiple()).count().block()).isEqualTo(400);
+    // maxConcurrentFiles 8 but only 4 files to read
+    assertThat(connector.readConcurrency()).isEqualTo(4);
+    assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(400);
     connector.close();
   }
 
@@ -1040,7 +1059,7 @@ class JsonConnectorTest {
             "MULTI_DOCUMENT");
     connector.configure(settings, true);
     connector.init();
-    assertThatThrownBy(() -> Flux.from(connector.readSingle()).collectList().block())
+    assertThatThrownBy(() -> Flux.merge(connector.read()).collectList().block())
         .hasRootCauseExactlyInstanceOf(JsonParseException.class)
         .satisfies(
             t ->
@@ -1073,7 +1092,8 @@ class JsonConnectorTest {
             "{USE_BIG_DECIMAL_FOR_FLOATS : false}");
     connector.configure(settings, true);
     connector.init();
-    List<Record> actual = Flux.from(connector.readSingle()).collectList().block();
+    assertThat(connector.readConcurrency()).isOne();
+    List<Record> actual = Flux.merge(connector.read()).collectList().block();
     verifyRecords(actual);
     connector.close();
   }
@@ -1160,6 +1180,20 @@ class JsonConnectorTest {
   }
 
   @Test
+  void should_accept_when_maxConcurrentFiles_AUTO() {
+    JsonConnector connector = new JsonConnector();
+    Config settings =
+        TestConfigUtils.createTestConfig("dsbulk.connector.json", "maxConcurrentFiles", "AUTO");
+    connector.configure(settings, false);
+    assertThat(ReflectionUtils.getInternalState(connector, "maxConcurrentFiles"))
+        .isEqualTo(ConfigUtils.resolveThreads("0.5C"));
+    connector.configure(settings, true);
+    assertThat(ReflectionUtils.getInternalState(connector, "maxConcurrentFiles"))
+        .isEqualTo(ConfigUtils.resolveThreads("1C"));
+    connector.close();
+  }
+
+  @Test
   void should_throw_exception_when_encoding_not_valid() {
     JsonConnector connector = new JsonConnector();
     Config settings =
@@ -1198,7 +1232,7 @@ class JsonConnectorTest {
             "bzip2");
     connector.configure(settings, true);
     connector.init();
-    assertThatThrownBy(() -> Flux.from(connector.readSingle()).collectList().block())
+    assertThatThrownBy(() -> Flux.merge(connector.read()).collectList().block())
         .hasRootCauseExactlyInstanceOf(IOException.class)
         .satisfies(
             t ->

@@ -87,6 +87,7 @@ public class LoadWorkflow implements Workflow {
   private int batchBufferSize;
   private Scheduler scheduler;
   private int numCores;
+  private int readConcurrency;
   private int writeConcurrency;
   private boolean hasManyReaders;
 
@@ -184,8 +185,10 @@ public class LoadWorkflow implements Workflow {
     resultPositionsHndler = logManager.newResultPositionsHandler();
     terminationHandler = logManager.newTerminationHandler();
     numCores = Runtime.getRuntime().availableProcessors();
-    scheduler = Schedulers.newParallel(numCores, new DefaultThreadFactory("workflow"));
-    int readConcurrency = connector.readConcurrency();
+    if (connector.readConcurrency() < 1) {
+      throw new IllegalArgumentException("Invalid read concurrency: " + 1);
+    }
+    readConcurrency = connector.readConcurrency();
     hasManyReaders = readConcurrency >= Math.max(4, numCores / 4);
     LOGGER.debug("Using read concurrency: {}", readConcurrency);
     writeConcurrency =
@@ -230,7 +233,9 @@ public class LoadWorkflow implements Workflow {
   }
 
   private Flux<Statement<?>> manyReaders() {
-    return Flux.defer(() -> connector.readMultiple())
+    int numThreads = Math.min(readConcurrency, numCores);
+    scheduler = Schedulers.newParallel(numThreads, new DefaultThreadFactory("workflow"));
+    return Flux.defer(() -> connector.read())
         .flatMap(
             records ->
                 Flux.from(records)
@@ -243,12 +248,17 @@ public class LoadWorkflow implements Workflow {
                     .transform(unmappableStatementsHandler)
                     .transform(this::bufferAndBatch)
                     .subscribeOn(scheduler),
-            numCores);
+            readConcurrency);
   }
 
   private Flux<Statement<?>> fewReaders() {
-    return Flux.defer(() -> connector.readSingle())
-        .window(batchingEnabled ? batchBufferSize : Queues.SMALL_BUFFER_SIZE)
+    scheduler = Schedulers.newParallel(numCores, new DefaultThreadFactory("workflow"));
+    return Flux.defer(() -> connector.read())
+        .flatMap(
+            records ->
+                Flux.from(records)
+                    .window(batchingEnabled ? batchBufferSize : Queues.SMALL_BUFFER_SIZE),
+            readConcurrency)
         .flatMap(
             records ->
                 records
@@ -259,7 +269,7 @@ public class LoadWorkflow implements Workflow {
                     .map(mapper)
                     .transform(failedStatementsMonitor)
                     .transform(unmappableStatementsHandler)
-                    .transform(this::batch)
+                    .transform(this::batchBuffered)
                     .subscribeOn(scheduler),
             numCores);
   }
@@ -270,7 +280,7 @@ public class LoadWorkflow implements Workflow {
         : stmts;
   }
 
-  private Flux<? extends Statement<?>> batch(Flux<BatchableStatement<?>> stmts) {
+  private Flux<? extends Statement<?>> batchBuffered(Flux<BatchableStatement<?>> stmts) {
     return batchingEnabled ? stmts.transform(batcher).transform(batcherMonitor) : stmts;
   }
 
@@ -348,7 +358,7 @@ public class LoadWorkflow implements Workflow {
       Histogram sample =
           DataSizeSampler.sampleWrites(
               session.getContext(),
-              Flux.from(connector.readSingle())
+              Flux.merge(connector.read())
                   .<Statement<?>>map(mapper)
                   .filter(BoundStatement.class::isInstance)
                   .take(1000)

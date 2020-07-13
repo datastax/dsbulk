@@ -32,7 +32,7 @@ import org.reactivestreams.Publisher;
  * <ol>
  *   <li>{@link #configure(Config, boolean)}
  *   <li>{@link #init()}
- *   <li>{@link #readSingle()}, {@link #readMultiple()} or {@link #write()}
+ *   <li>{@link #read()} or {@link #write()}
  *   <li>{@link #close()}
  * </ol>
  *
@@ -47,7 +47,7 @@ import org.reactivestreams.Publisher;
  *
  * <p><strong>Read operations</strong>
  *
- * <p>Read operations return {@link Publisher}s.
+ * <p>A {@link #read()} operation returns a {@link Publisher} of {@link Record}s.
  *
  * <p>All publishers returned by read methods are guaranteed to be subscribed only once;
  * implementors are allowed to optimize for single-subscriber use cases. Note however that the
@@ -56,21 +56,12 @@ import org.reactivestreams.Publisher;
  *
  * <p>Reading in parallel: connectors that are able to distinguish natural boundaries when reading
  * (e.g. when reading from more than one file, or reading from more than one database table) should
- * implement {@link #readMultiple()} by emitting their records grouped by such resources; this
- * allows DSBulk to optimize read operations, and is specially valuable if records in the original
- * dataset are grouped by partition key inside each resource, because this natural grouping can thus
- * be preserved. If, however, there is no distinguishable boundaries in the dataset, then this
- * method can be derived from the {@link #readSingle()} method, for example (using Reactor
- * Framework):
+ * implement {@link #read()} by emitting their records grouped by such resources; this allows DSBulk
+ * to optimize read operations, and is specially valuable if records in the original dataset are
+ * grouped by partition key inside each resource, because this natural grouping can thus be
+ * preserved.
  *
- * <pre>
- * public Publisher&lt;Publisher&lt;Record&gt;&gt;&gt; readMultiple() {
- *  return Flux.just(read());
- * }
- * </pre>
- *
- * DSBulk will optimize reads according to the read concurrency and will call {@link
- * #readMultiple()} whenever the read concurrency is high enough. Implementors should implement
+ * <p>DSBulk will optimize reads according to the read concurrency. Implementors should implement
  * {@link #readConcurrency()} carefully.
  *
  * <p><strong>Write operations</strong>
@@ -98,6 +89,9 @@ import org.reactivestreams.Publisher;
  * to optimize for single-subscriber use cases. Implementors are also allowed to memoize the
  * transforming functions.
  *
+ * <p>DSBulk will optimize writes according to the write concurrency. Implementors should implement
+ * {@link #writeConcurrency()} carefully.
+ *
  * <p><strong>Error handling</strong>
  *
  * <p>Unrecoverable errors (i.e., errors that put the connector in an unstable state, or in a state
@@ -112,31 +106,13 @@ import org.reactivestreams.Publisher;
 public interface Connector extends AutoCloseable {
 
   /**
-   * Reads all records from the datasource in one single flow.
-   *
-   * <p>The workflow runner will call this method rather than {@link #readMultiple()} if the
-   * {@linkplain #readConcurrency() read concurrency} is too low (that is, lesser than the number of
-   * available CPU cores and close to 1).
-   *
-   * <p>This method should only be called after the connector is properly {@link #configure(Config,
-   * boolean) configured} and {@link #init() initialized}.
-   *
-   * @return a {@link Publisher} of records read from the datasource.
-   */
-  @NonNull
-  Publisher<Record> readSingle();
-
-  /**
    * Reads all records from the datasource in a flow of flows that can be consumed in parallel.
    *
-   * <p>The actual number of parallel flows is expected to reflect the estimated {@linkplain
-   * #readConcurrency() read concurrency}. Therefore, the workflow runner will call this method
-   * rather than {@link #readSingle()} if the read concurrency is high enough (that is, equal to or
-   * greater than the number of available CPU cores).
+   * <p>The inner flows are guaranteed to be consumed with a parallelism no greater than the
+   * {@linkplain #readConcurrency() read concurrency}.
    *
    * <p>If the underlying datasource cannot split its records into multiple flows in any efficient
-   * manner, then this method should behave exactly as {@link #readSingle()} and return a publisher
-   * of one single inner publisher.
+   * manner, then this method should return a publisher of one single inner publisher.
    *
    * <p>This method should only be called after the connector is properly {@link #configure(Config,
    * boolean) configured} and {@link #init() initialized}.
@@ -144,7 +120,7 @@ public interface Connector extends AutoCloseable {
    * @return a {@link Publisher} of records read from the datasource, grouped by resources.
    */
   @NonNull
-  Publisher<Publisher<Record>> readMultiple();
+  Publisher<Publisher<Record>> read();
 
   /**
    * Returns a function that handles writing records to the datasource.
@@ -207,36 +183,38 @@ public interface Connector extends AutoCloseable {
   RecordMetadata getRecordMetadata();
 
   /**
-   * Returns an estimation of the total number of resources to read.
+   * Returns the desired read concurrency, that is, how many resources are expected to be read in
+   * parallel.
    *
-   * <p>This method should return {@code -1} if the number of resources to read is unknown, or if
-   * the dataset cannot be split by resources, or if the connector cannot read, or if the connector
-   * has not been configured to read but to write.
+   * <p>The workflow runner is guaranteed to never consume more inner flows in parallel than {@code
+   * readConcurrency}.
+   *
+   * <p>Depending on the read concurrency, and whether it is greater than the number of cores or
+   * not, the runner will try to assign one thread to each resource, thus eliminating any context
+   * switch, from the resource to read until the final statements to execute.
    *
    * <p>This method should only be called after the connector is properly {@link #configure(Config,
    * boolean) configured} and {@link #init() initialized}.
    *
-   * @return an estimation of the total number of resources to read.
+   * @return the desired read concurrency; must be strictly positive, that is, greater than zero.
    */
-  default int readConcurrency() {
-    return -1;
-  }
+  int readConcurrency();
 
   /**
-   * Returns the desired write concurrency, that is, how many resources are expected be written in
-   * parallel. The workflow runner is guaranteed to never invoke the {@link #write()} function by
-   * more than {@code writeConcurrency} threads concurrently.
+   * Returns the desired write concurrency, that is, how many resources are expected to be written
+   * in parallel.
    *
-   * <p>The best performance is achieved when this number is equal to or greater than the number of
-   * available cores.
+   * <p>The workflow runner is guaranteed to never invoke the {@link #write()} function by more than
+   * {@code writeConcurrency} threads concurrently.
    *
-   * <p>This method should return {@link Integer#MAX_VALUE} if the write concurrency is unbounded,
-   * or at least high enough to be considered as effectively unbounded.
+   * <p>Depending on the write concurrency, and whether it is greater than the number of cores or
+   * not, the runner will decide to assign one thread to each resource, thus eliminating any context
+   * switch, from the decoded rows until the final resource being written.
    *
    * <p>This method should only be called after the connector is properly {@link #configure(Config,
    * boolean) configured} and {@link #init() initialized}.
    *
-   * @return an estimation of the achievable write concurrency.
+   * @return the desired write concurrency; must be strictly positive, that is, greater than zero.
    */
   int writeConcurrency();
 }

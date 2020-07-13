@@ -57,7 +57,7 @@ public final class MockConnector implements Connector {
 
           @Override
           public int readConcurrency() {
-            return -1;
+            return 1;
           }
 
           @Override
@@ -78,14 +78,8 @@ public final class MockConnector implements Connector {
 
           @NonNull
           @Override
-          public Publisher<Publisher<Record>> readMultiple() {
-            return Flux.just(readSingle());
-          }
-
-          @NonNull
-          @Override
-          public Publisher<Record> readSingle() {
-            return Flux.just(records).map(RecordUtils::cloneRecord);
+          public Publisher<Publisher<Record>> read() {
+            return Flux.just(Flux.just(records).map(RecordUtils::cloneRecord));
           }
 
           @NonNull
@@ -136,13 +130,7 @@ public final class MockConnector implements Connector {
 
           @NonNull
           @Override
-          public Publisher<Publisher<Record>> readMultiple() {
-            return Flux::just;
-          }
-
-          @NonNull
-          @Override
-          public Publisher<Record> readSingle() {
+          public Publisher<Publisher<Record>> read() {
             return Flux::just;
           }
 
@@ -196,13 +184,7 @@ public final class MockConnector implements Connector {
 
           @NonNull
           @Override
-          public Publisher<Publisher<Record>> readMultiple() {
-            return Flux::just;
-          }
-
-          @NonNull
-          @Override
-          public Publisher<Record> readSingle() {
+          public Publisher<Publisher<Record>> read() {
             return Flux::just;
           }
 
@@ -217,14 +199,8 @@ public final class MockConnector implements Connector {
 
   @NonNull
   @Override
-  public Publisher<Record> readSingle() {
-    return delegate.readSingle();
-  }
-
-  @NonNull
-  @Override
-  public Publisher<Publisher<Record>> readMultiple() {
-    return delegate.readMultiple();
+  public Publisher<Publisher<Record>> read() {
+    return delegate.read();
   }
 
   @NonNull

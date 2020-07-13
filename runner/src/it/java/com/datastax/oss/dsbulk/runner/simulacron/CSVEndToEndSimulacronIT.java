@@ -629,13 +629,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
 
           @NonNull
           @Override
-          public Publisher<Record> readSingle() {
-            return Flux.merge(readMultiple());
-          }
-
-          @NonNull
-          @Override
-          public Publisher<Publisher<Record>> readMultiple() {
+          public Publisher<Publisher<Record>> read() {
             List<Publisher<Record>> resources = new ArrayList<>();
             for (int i = 0; i < 100; i++) {
               AtomicInteger counter = new AtomicInteger();

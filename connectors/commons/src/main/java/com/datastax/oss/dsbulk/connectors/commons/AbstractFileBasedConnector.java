@@ -87,11 +87,13 @@ public abstract class AbstractFileBasedConnector implements Connector {
 
   @Override
   public int readConcurrency() {
-    return resourceCount;
+    assert read;
+    return Math.min(resourceCount, maxConcurrentFiles);
   }
 
   @Override
   public int writeConcurrency() {
+    assert !read;
     // When writing to an URL, force write concurrency to 1
     if (roots.isEmpty()) {
       return 1;
@@ -124,7 +126,11 @@ public abstract class AbstractFileBasedConnector implements Connector {
       fileNameFormat = fileNameFormat + CompressedIOUtils.getCompressionSuffix(compression);
     }
     recursive = settings.getBoolean(RECURSIVE);
-    maxConcurrentFiles = ConfigUtils.getThreads(settings, MAX_CONCURRENT_FILES);
+    if ("AUTO".equals(settings.getString(MAX_CONCURRENT_FILES))) {
+      maxConcurrentFiles = ConfigUtils.resolveThreads(read ? "1C" : "0.5C");
+    } else {
+      maxConcurrentFiles = ConfigUtils.getThreads(settings, MAX_CONCURRENT_FILES);
+    }
     skipRecords = settings.getLong(SKIP_RECORDS);
     maxRecords = settings.getLong(MAX_RECORDS);
   }
@@ -150,16 +156,7 @@ public abstract class AbstractFileBasedConnector implements Connector {
 
   @NonNull
   @Override
-  public Publisher<Record> readSingle() {
-    assert read;
-    return Flux.concat(
-            Flux.fromIterable(roots).flatMap(this::scanRootDirectory), Flux.fromIterable(files))
-        .flatMap(url -> readSingleFile(url).transform(this::applyPerFileLimits));
-  }
-
-  @NonNull
-  @Override
-  public Publisher<Publisher<Record>> readMultiple() {
+  public Publisher<Publisher<Record>> read() {
     assert read;
     return Flux.concat(
             Flux.fromIterable(roots).flatMap(this::scanRootDirectory), Flux.fromIterable(files))
@@ -270,8 +267,8 @@ public abstract class AbstractFileBasedConnector implements Connector {
   protected abstract String getConnectorName();
 
   /**
-   * Reads a single text file accessible through the given URL. Used during the {@linkplain
-   * #readSingle() data reading phase}.
+   * Reads a single text file accessible through the given URL. Used during the {@linkplain #read()
+   * data reading phase}.
    *
    * <p>Implementors should not care about {@code maxRecords} and {@code skipRecords}, these will be
    * applied later on, see {@link #applyPerFileLimits(Flux)}.
@@ -442,7 +439,7 @@ public abstract class AbstractFileBasedConnector implements Connector {
           }
           roots.add(root);
           int inDirectoryResourceCount =
-              Objects.requireNonNull(scanRootDirectory(root).take(100).count().block()).intValue();
+              Objects.requireNonNull(scanRootDirectory(root).take(1000).count().block()).intValue();
           if (inDirectoryResourceCount == 0) {
             if (IOUtils.countReadableFiles(root, recursive) == 0) {
               LOGGER.warn("Directory {} has no readable files.", root);
@@ -505,7 +502,7 @@ public abstract class AbstractFileBasedConnector implements Connector {
 
   /**
    * Scans a directory for readable files and returns the files found as a stream. Only used when
-   * reading, never when writing. Normally used as part of the actual {@linkplain #readSingle() data
+   * reading, never when writing. Normally used as part of the actual {@linkplain #read() data
    * reading phase}.
    */
   @NonNull

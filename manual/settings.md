@@ -466,9 +466,11 @@ Default: **512**.
 
 #### -maxConcurrentFiles,<br />--connector.csv.maxConcurrentFiles<br />--dsbulk.connector.csv.maxConcurrentFiles _&lt;string&gt;_
 
-The maximum number of files that can be written simultaneously. This setting is ignored when reading and when the output URL is anything other than a directory on a filesystem. The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
+The maximum number of files that can be read or written simultaneously. This setting is effective only when reading from or writing to many resources in parallel, such as a collection of files in a root directory; it is ignored otherwise. The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 
-Default: **"0.5C"**.
+The default value is the special value AUTO; with this value, the connector will decide the best number of files.
+
+Default: **"AUTO"**.
 
 #### -newline,<br />--connector.csv.newline<br />--dsbulk.connector.csv.newline _&lt;string&gt;_
 
@@ -629,9 +631,11 @@ Note that some Jackson features might not be supported, in particular features t
 
 #### -maxConcurrentFiles,<br />--connector.json.maxConcurrentFiles<br />--dsbulk.connector.json.maxConcurrentFiles _&lt;string&gt;_
 
-The maximum number of files that can be written simultaneously. This setting is ignored when reading and when the output URL is anything other than a directory on a filesystem. The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
+The maximum number of files that can be read or written simultaneously. This setting is effective only when reading from or writing to many resources in parallel, such as a collection of files in a root directory; it is ignored otherwise. The special syntax `NC` can be used to specify a number of threads that is a multiple of the number of available cores, e.g. if the number of cores is 8, then 0.5C = 0.5 * 8 = 4 threads.
 
-Default: **"0.5C"**.
+The default value is the special value AUTO; with this value, the connector will decide the best number of files.
+
+Default: **"AUTO"**.
 
 #### --connector.json.parserFeatures<br />--dsbulk.connector.json.parserFeatures _&lt;map&lt;string,boolean&gt;&gt;_
 

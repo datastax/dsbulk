@@ -28,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.datastax.oss.driver.shaded.guava.common.base.Charsets;
+import com.datastax.oss.dsbulk.config.ConfigUtils;
 import com.datastax.oss.dsbulk.connectors.api.DefaultIndexedField;
 import com.datastax.oss.dsbulk.connectors.api.DefaultMappedField;
 import com.datastax.oss.dsbulk.connectors.api.DefaultRecord;
@@ -135,7 +136,8 @@ class CSVConnectorTest {
             StringUtils.quoteJson(compMethod));
     connector.configure(settings, true);
     connector.init();
-    List<Record> actual = Flux.from(connector.readSingle()).collectList().block();
+    assertThat(connector.readConcurrency()).isOne();
+    List<Record> actual = Flux.merge(connector.read()).collectList().block();
     assertRecords(actual);
     connector.close();
   }
@@ -153,27 +155,6 @@ class CSVConnectorTest {
         arguments("sample.csv.lzma", CompressedIOUtils.LZMA_COMPRESSION),
         arguments("sample.csv.xz", CompressedIOUtils.XZ_COMPRESSION),
         arguments("sample.csv.zstd", CompressedIOUtils.ZSTD_COMPRESSION));
-  }
-
-  @Test
-  void should_read_single_file_by_resource() throws Exception {
-    CSVConnector connector = new CSVConnector();
-    Config settings =
-        TestConfigUtils.createTestConfig(
-            "dsbulk.connector.csv",
-            "url",
-            url("/sample.csv"),
-            "normalizeLineEndingsInQuotes",
-            true,
-            "escape",
-            "\"\\\"\"",
-            "comment",
-            "\"#\"");
-    connector.configure(settings, true);
-    connector.init();
-    List<Record> actual = Flux.merge(connector.readMultiple()).collectList().block();
-    assertRecords(actual);
-    connector.close();
   }
 
   private static void assertRecords(List<Record> actual) {
@@ -258,7 +239,8 @@ class CSVConnectorTest {
               "dsbulk.connector.csv", "header", false, "url", "-", "encoding", "ISO-8859-1");
       connector.configure(settings, true);
       connector.init();
-      List<Record> actual = Flux.from(connector.readSingle()).collectList().block();
+      assertThat(connector.readConcurrency()).isOne();
+      List<Record> actual = Flux.merge(connector.read()).collectList().block();
       assertThat(actual).hasSize(1);
       assertThat(actual.get(0).getSource()).isEqualTo(line);
       assertThat(actual.get(0).getResource()).isEqualTo(URI.create("std:/"));
@@ -283,6 +265,7 @@ class CSVConnectorTest {
               "dsbulk.connector.csv", "header", false, "encoding", "ISO-8859-1");
       connector.configure(settings, false);
       connector.init();
+      assertThat(connector.writeConcurrency()).isOne();
       Flux.<Record>just(
               DefaultRecord.indexed("source", resource, IRRELEVANT_POSITION, "fóô", "bàr", "qïx"))
           .transform(connector.write())
@@ -308,7 +291,8 @@ class CSVConnectorTest {
               "dsbulk.connector.csv", "header", false, "url", "-", "newline", "\"\\r\\n\"");
       connector.configure(settings, true);
       connector.init();
-      List<Record> actual = Flux.from(connector.readSingle()).collectList().block();
+      assertThat(connector.readConcurrency()).isOne();
+      List<Record> actual = Flux.merge(connector.read()).collectList().block();
       assertThat(actual).hasSize(1);
       assertThat(actual.get(0).getSource()).isEqualTo(line);
       assertThat(actual.get(0).values()).containsExactly("abc", "de\nf", "ghk");
@@ -331,6 +315,7 @@ class CSVConnectorTest {
               "dsbulk.connector.csv", "header", false, "newline", "\"\\r\\n\"");
       connector.configure(settings, false);
       connector.init();
+      assertThat(connector.writeConcurrency()).isOne();
       Flux.<Record>just(
               DefaultRecord.indexed("source", resource, IRRELEVANT_POSITION, "abc", "de\nf", "ghk"))
           .transform(connector.write())
@@ -347,22 +332,18 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Config settings =
         TestConfigUtils.createTestConfig(
-            "dsbulk.connector.csv", "url", url("/root"), "recursive", false);
+            "dsbulk.connector.csv",
+            "url",
+            url("/root"),
+            "recursive",
+            false,
+            "maxConcurrentFiles",
+            4);
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.readSingle()).count().block()).isEqualTo(300);
-    connector.close();
-  }
-
-  @Test
-  void should_read_all_resources_in_directory_by_resource() throws Exception {
-    CSVConnector connector = new CSVConnector();
-    Config settings =
-        TestConfigUtils.createTestConfig(
-            "dsbulk.connector.csv", "url", url("/root"), "recursive", false);
-    connector.configure(settings, true);
-    connector.init();
-    assertThat(Flux.merge(connector.readMultiple()).count().block()).isEqualTo(300);
+    // there are only 3 resources to read
+    assertThat(connector.readConcurrency()).isEqualTo(3);
+    assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(300);
     connector.close();
   }
 
@@ -372,10 +353,18 @@ class CSVConnectorTest {
     Path rootPath = Paths.get(getClass().getResource("/root").toURI());
     Config settings =
         TestConfigUtils.createTestConfig(
-            "dsbulk.connector.csv", "url", StringUtils.quoteJson(rootPath), "recursive", false);
+            "dsbulk.connector.csv",
+            "url",
+            StringUtils.quoteJson(rootPath),
+            "recursive",
+            false,
+            "maxConcurrentFiles",
+            4);
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.readSingle()).count().block()).isEqualTo(300);
+    // there are only 3 resources to read
+    assertThat(connector.readConcurrency()).isEqualTo(3);
+    assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(300);
     connector.close();
   }
 
@@ -384,22 +373,18 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Config settings =
         TestConfigUtils.createTestConfig(
-            "dsbulk.connector.csv", "url", url("/root"), "recursive", true);
+            "dsbulk.connector.csv",
+            "url",
+            url("/root"),
+            "recursive",
+            true,
+            "maxConcurrentFiles",
+            4);
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.readSingle()).count().block()).isEqualTo(500);
-    connector.close();
-  }
-
-  @Test
-  void should_read_all_resources_in_directory_recursively_by_resource() throws Exception {
-    CSVConnector connector = new CSVConnector();
-    Config settings =
-        TestConfigUtils.createTestConfig(
-            "dsbulk.connector.csv", "url", url("/root"), "recursive", true);
-    connector.configure(settings, true);
-    connector.init();
-    assertThat(Flux.merge(connector.readMultiple()).count().block()).isEqualTo(500);
+    // 5 resources to read, but maxConcurrentFiles is 4
+    assertThat(connector.readConcurrency()).isEqualTo(4);
+    assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(500);
     connector.close();
   }
 
@@ -417,7 +402,7 @@ class CSVConnectorTest {
             "\"**/part-*\"");
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.readSingle()).count().block()).isEqualTo(500);
+    assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(500);
     connector.close();
   }
 
@@ -536,6 +521,7 @@ class CSVConnectorTest {
               1);
       connector.configure(settings, false);
       connector.init();
+      assertThat(connector.writeConcurrency()).isOne();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
       connector.close();
       List<String> actual = Files.readAllLines(out.resolve("output-000001.csv"));
@@ -574,6 +560,7 @@ class CSVConnectorTest {
               "\"gzip\"");
       connector.configure(settings, false);
       connector.init();
+      assertThat(connector.writeConcurrency()).isOne();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
       connector.close();
       Path outPath = out.resolve("output-000001.csv.gz");
@@ -620,6 +607,7 @@ class CSVConnectorTest {
               "file%d");
       connector.configure(settings, false);
       connector.init();
+      assertThat(connector.writeConcurrency()).isOne();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
       connector.close();
       Path outPath = out.resolve("file1");
@@ -661,6 +649,7 @@ class CSVConnectorTest {
               maxConcurrentFiles);
       connector.configure(settings, false);
       connector.init();
+      assertThat(connector.writeConcurrency()).isEqualTo(maxConcurrentFiles);
       // repeat the records 1000 times to fully exercise multiple file writing
       Scheduler scheduler = Schedulers.newParallel("workflow");
       Function<Publisher<Record>, Publisher<Record>> write = connector.write();
@@ -729,6 +718,7 @@ class CSVConnectorTest {
               4);
       connector.configure(settings, false);
       connector.init();
+      assertThat(connector.writeConcurrency()).isOne();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
       connector.close();
       List<String> csv1 = Files.readAllLines(out.resolve("output-000001.csv"));
@@ -764,7 +754,7 @@ class CSVConnectorTest {
       Config settings = TestConfigUtils.createTestConfig("dsbulk.connector.csv", "header", true);
       connector.configure(settings, true);
       connector.init();
-      List<Record> actual = Flux.from(connector.readSingle()).collectList().block();
+      List<Record> actual = Flux.merge(connector.read()).collectList().block();
       assertThat(actual).hasSize(1);
       assertThat(actual.get(0)).isInstanceOf(ErrorRecord.class);
       assertThat(actual.get(0).getSource()).isEqualTo("value1,value2,value3");
@@ -785,8 +775,8 @@ class CSVConnectorTest {
             "dsbulk.connector.csv", "url", url("/root"), "recursive", true, "skipRecords", 10);
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.readSingle()).count().block()).isEqualTo(450);
-    assertThat(Flux.merge(connector.readMultiple()).count().block()).isEqualTo(450);
+    assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(450);
+    assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(450);
     connector.close();
   }
 
@@ -798,8 +788,8 @@ class CSVConnectorTest {
             "dsbulk.connector.csv", "url", url("/root"), "recursive", true, "skipRecords", 150);
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.readSingle()).count().block()).isEqualTo(0);
-    assertThat(Flux.merge(connector.readMultiple()).count().block()).isEqualTo(0);
+    assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(0);
+    assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(0);
     connector.close();
   }
 
@@ -811,8 +801,8 @@ class CSVConnectorTest {
             "dsbulk.connector.csv", "url", url("/root"), "recursive", true, "maxRecords", 10);
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.readSingle()).count().block()).isEqualTo(50);
-    assertThat(Flux.merge(connector.readMultiple()).count().block()).isEqualTo(50);
+    assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(50);
+    assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(50);
     connector.close();
   }
 
@@ -824,8 +814,8 @@ class CSVConnectorTest {
             "dsbulk.connector.csv", "url", url("/root"), "recursive", true, "maxRecords", 1);
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.readSingle()).count().block()).isEqualTo(5);
-    assertThat(Flux.merge(connector.readMultiple()).count().block()).isEqualTo(5);
+    assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(5);
+    assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(5);
     connector.close();
   }
 
@@ -845,7 +835,7 @@ class CSVConnectorTest {
             10);
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.from(connector.readSingle()).count().block()).isEqualTo(25);
+    assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(25);
     connector.close();
   }
 
@@ -863,7 +853,7 @@ class CSVConnectorTest {
             1);
     connector.configure(settings, true);
     connector.init();
-    List<Record> records = Flux.from(connector.readSingle()).collectList().block();
+    List<Record> records = Flux.merge(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
     assertThat(records.get(0).getSource().toString().trim())
         .isEqualTo(
@@ -890,7 +880,7 @@ class CSVConnectorTest {
             false);
     connector.configure(settings, true);
     connector.init();
-    List<Record> records = Flux.from(connector.readSingle()).collectList().block();
+    List<Record> records = Flux.merge(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
     assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo(" foo ");
     connector.close();
@@ -915,7 +905,7 @@ class CSVConnectorTest {
             false);
     connector.configure(settings, true);
     connector.init();
-    List<Record> records = Flux.from(connector.readSingle()).collectList().block();
+    List<Record> records = Flux.merge(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
     assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo("foo");
     connector.close();
@@ -994,7 +984,7 @@ class CSVConnectorTest {
             false);
     connector.configure(settings, true);
     connector.init();
-    List<Record> records = Flux.from(connector.readSingle()).collectList().block();
+    List<Record> records = Flux.merge(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
     assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo(" foo ");
     connector.close();
@@ -1019,7 +1009,7 @@ class CSVConnectorTest {
             false);
     connector.configure(settings, true);
     connector.init();
-    List<Record> records = Flux.from(connector.readSingle()).collectList().block();
+    List<Record> records = Flux.merge(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
     assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo("foo");
     connector.close();
@@ -1041,7 +1031,7 @@ class CSVConnectorTest {
             false);
     connector.configure(settings, true);
     connector.init();
-    List<Record> records = Flux.from(connector.readSingle()).collectList().block();
+    List<Record> records = Flux.merge(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
     assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isNull();
     connector.close();
@@ -1063,7 +1053,7 @@ class CSVConnectorTest {
             false);
     connector.configure(settings, true);
     connector.init();
-    List<Record> records = Flux.from(connector.readSingle()).collectList().block();
+    List<Record> records = Flux.merge(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
     assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo("NULL");
     connector.close();
@@ -1140,7 +1130,7 @@ class CSVConnectorTest {
             false);
     connector.configure(settings, true);
     connector.init();
-    List<Record> records = Flux.from(connector.readSingle()).collectList().block();
+    List<Record> records = Flux.merge(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
     assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo("");
     connector.close();
@@ -1162,7 +1152,7 @@ class CSVConnectorTest {
             false);
     connector.configure(settings, true);
     connector.init();
-    List<Record> records = Flux.from(connector.readSingle()).collectList().block();
+    List<Record> records = Flux.merge(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
     assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo("EMPTY");
     connector.close();
@@ -1291,7 +1281,8 @@ class CSVConnectorTest {
             "\"#\"");
     connector.configure(settings, true);
     connector.init();
-    List<Record> actual = Flux.from(connector.readSingle()).collectList().block();
+    assertThat(connector.readConcurrency()).isOne();
+    List<Record> actual = Flux.merge(connector.read()).collectList().block();
     assertRecords(actual);
     connector.close();
   }
@@ -1332,7 +1323,7 @@ class CSVConnectorTest {
             15);
     connector.configure(settings, true);
     connector.init();
-    assertThatThrownBy(() -> Flux.from(connector.readSingle()).collectList().block())
+    assertThatThrownBy(() -> Flux.merge(connector.read()).collectList().block())
         .satisfies(
             t ->
                 assertThat(t.getCause())
@@ -1362,7 +1353,7 @@ class CSVConnectorTest {
             1);
     connector.configure(settings, true);
     connector.init();
-    assertThatThrownBy(() -> Flux.from(connector.readSingle()).collectList().block())
+    assertThatThrownBy(() -> Flux.merge(connector.read()).collectList().block())
         .satisfies(
             t ->
                 assertThat(t)
@@ -1447,6 +1438,20 @@ class CSVConnectorTest {
   }
 
   @Test
+  void should_accept_when_maxConcurrentFiles_AUTO() {
+    CSVConnector connector = new CSVConnector();
+    Config settings =
+        TestConfigUtils.createTestConfig("dsbulk.connector.csv", "maxConcurrentFiles", "AUTO");
+    connector.configure(settings, false);
+    assertThat(ReflectionUtils.getInternalState(connector, "maxConcurrentFiles"))
+        .isEqualTo(ConfigUtils.resolveThreads("0.5C"));
+    connector.configure(settings, true);
+    assertThat(ReflectionUtils.getInternalState(connector, "maxConcurrentFiles"))
+        .isEqualTo(ConfigUtils.resolveThreads("1C"));
+    connector.close();
+  }
+
+  @Test
   void should_throw_exception_when_encoding_not_valid() {
     CSVConnector connector = new CSVConnector();
     Config settings =
@@ -1527,7 +1532,7 @@ class CSVConnectorTest {
             "\"bzip2\"");
     connector.configure(settings, true);
     connector.init();
-    assertThatThrownBy(() -> Flux.from(connector.readSingle()).collectList().block())
+    assertThatThrownBy(() -> Flux.merge(connector.read()).collectList().block())
         .hasRootCauseExactlyInstanceOf(IOException.class)
         .satisfies(
             t ->
@@ -1545,7 +1550,7 @@ class CSVConnectorTest {
             "dsbulk.connector.csv", "url", url("/bad_header_empty.csv"));
     connector.configure(settings, true);
     connector.init();
-    assertThatThrownBy(() -> Flux.from(connector.readSingle()).collectList().block())
+    assertThatThrownBy(() -> Flux.merge(connector.read()).collectList().block())
         .satisfies(
             t -> {
               Throwable root = getRootCause(t.getCause());
@@ -1568,7 +1573,7 @@ class CSVConnectorTest {
             "dsbulk.connector.csv", "url", url("/bad_header_duplicate.csv"));
     connector.configure(settings, true);
     connector.init();
-    assertThatThrownBy(() -> Flux.from(connector.readSingle()).collectList().block())
+    assertThatThrownBy(() -> Flux.merge(connector.read()).collectList().block())
         .satisfies(
             t -> {
               Throwable root = getRootCause(t.getCause());
@@ -1689,10 +1694,14 @@ class CSVConnectorTest {
             "recursive",
             false,
             "fileNamePattern",
-            "\"**/part-*\"");
+            "\"**/part-*\"",
+            "maxConcurrentFiles",
+            8);
     connector.configure(settings, true);
     connector.init();
-    assertThat(Flux.merge(connector.readMultiple()).count().block()).isEqualTo(400);
+    // maxConcurrentFiles 8 but only 4 files to read
+    assertThat(connector.readConcurrency()).isEqualTo(4);
+    assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(400);
     connector.close();
   }
 
@@ -1741,7 +1750,7 @@ class CSVConnectorTest {
             true);
     connector.configure(settings, true);
     connector.init();
-    List<Record> records = Flux.from(connector.readSingle()).collectList().block();
+    List<Record> records = Flux.merge(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
     Record record = records.get(0);
     assertThat(record.fields()).hasSize(6);
