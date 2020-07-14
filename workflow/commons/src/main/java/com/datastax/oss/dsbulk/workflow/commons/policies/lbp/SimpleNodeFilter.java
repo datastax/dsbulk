@@ -88,21 +88,11 @@ public class SimpleNodeFilter implements Predicate<Node> {
   }
 
   private boolean isIncluded(Node node) {
-    for (EndPoint includedHost : includedHosts) {
-      if (node.getEndPoint().equals(includedHost)) {
-        return true;
-      }
-    }
     // an empty list means all nodes are included
-    return includedHosts.isEmpty();
+    return includedHosts.isEmpty() || includedHosts.contains(node.getEndPoint());
   }
 
   private boolean isNotExcluded(Node node) {
-    for (EndPoint excludedHost : excludedHosts) {
-      if (node.getEndPoint().equals(excludedHost)) {
-        return false;
-      }
-    }
-    return true;
+    return !excludedHosts.contains(node.getEndPoint());
   }
 }
