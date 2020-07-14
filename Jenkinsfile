@@ -279,13 +279,21 @@ pipeline {
           notifySlack('aborted')
         }
         success {
-          notifySlack('completed')
+          script {
+            if(currentBuild.previousBuild.result == 'SUCCESS') {
+              // do not notify success for fixed builds
+              notifySlack('completed')
+            }
+          }
         }
         unstable {
           notifySlack('unstable')
         }
         failure {
           notifySlack('failed')
+        }
+        fixed {
+          notifySlack('fixed')
         }
       }
     }
@@ -341,13 +349,21 @@ pipeline {
           notifySlack('aborted')
         }
         success {
-          notifySlack('completed')
+          script {
+            if(currentBuild.previousBuild.result == 'SUCCESS') {
+              // do not notify success for fixed builds
+              notifySlack('completed')
+            }
+          }
         }
         unstable {
           notifySlack('unstable')
         }
         failure {
           notifySlack('failed')
+        }
+        fixed {
+          notifySlack('fixed')
         }
       }
     }
