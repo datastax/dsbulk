@@ -280,7 +280,7 @@ pipeline {
         }
         success {
           script {
-            if(currentBuild.previousBuild.result == 'SUCCESS') {
+            if(currentBuild.previousBuild?.result == 'SUCCESS') {
               // do not notify success for fixed builds
               notifySlack('completed')
             }
@@ -350,7 +350,7 @@ pipeline {
         }
         success {
           script {
-            if(currentBuild.previousBuild.result == 'SUCCESS') {
+            if(currentBuild.previousBuild?.result == 'SUCCESS') {
               // do not notify success for fixed builds
               notifySlack('completed')
             }
