@@ -89,7 +89,7 @@ public class CSVConnector extends AbstractFileBasedConnector {
   private static final String NULL_VALUE = "nullValue";
   private static final String EMPTY_VALUE = "emptyValue";
 
-  private char delimiter;
+  private String delimiter;
   private char quote;
   private char escape;
   private char comment;
@@ -117,7 +117,13 @@ public class CSVConnector extends AbstractFileBasedConnector {
   public void configure(@NonNull Config settings, boolean read) {
     try {
       super.configure(settings, read);
-      delimiter = ConfigUtils.getChar(settings, DELIMITER);
+      delimiter = settings.getString(DELIMITER);
+      if (delimiter.isEmpty()) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Invalid value for dsbulk.connector.csv.%s: Expecting non-empty string",
+                DELIMITER));
+      }
       quote = ConfigUtils.getChar(settings, QUOTE);
       escape = ConfigUtils.getChar(settings, ESCAPE);
       comment = ConfigUtils.getChar(settings, COMMENT);
@@ -136,7 +142,7 @@ public class CSVConnector extends AbstractFileBasedConnector {
       if (!AUTO_NEWLINE.equalsIgnoreCase(newline) && (newline.isEmpty() || newline.length() > 2)) {
         throw new IllegalArgumentException(
             String.format(
-                "Invalid value for connector.csv.%s: Expecting '%s' or a string containing 1 or 2 chars, got: '%s'",
+                "Invalid value for dsbulk.connector.csv.%s: Expecting '%s' or a string containing 1 or 2 chars, got: '%s'",
                 NEWLINE, AUTO_NEWLINE, newline));
       }
     } catch (ConfigException e) {
