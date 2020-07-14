@@ -18,7 +18,6 @@ package com.datastax.oss.dsbulk.commons.utils;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.stream.Stream;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -92,15 +91,5 @@ class StringUtilsTest {
         Arguments.of("foo bar", "\"foo bar\""),
         Arguments.of("foo|bar", "\"foo|bar\""),
         Arguments.of("foo,bar", "\"foo,bar\""));
-  }
-
-  @Test
-  void should_format_elapsed_time() {
-    assertThat(StringUtils.formatElapsed(12)).isEqualTo("12 seconds");
-    assertThat(StringUtils.formatElapsed(12 * 60 + 34)).isEqualTo("12 minutes and 34 seconds");
-    assertThat(StringUtils.formatElapsed(12 * 60 * 60 + 34 * 60 + 56))
-        .isEqualTo("12 hours, 34 minutes and 56 seconds");
-    assertThat(StringUtils.formatElapsed(48 * 60 * 60 + 34 * 60 + 56))
-        .isEqualTo("48 hours, 34 minutes and 56 seconds");
   }
 }

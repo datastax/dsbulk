@@ -148,22 +148,21 @@ public class SslHandlerFactoryFactory {
               + ", "
               + "dsbulk.driver.ssl.keystore.password"
               + " and "
-              + "dsbulk.driver.ssl.truststore.algorithm"
+              + "dsbulk.driver.ssl.keystore.algorithm"
               + " must be provided together or not at all when using the JDK SSL provider");
     }
-
     KeyManagerFactory kmf = null;
     if (config.hasPath("keystore.path")) {
       Path sslKeyStorePath = ConfigUtils.getPath(config, "keystore.path");
       assertAccessibleFile(sslKeyStorePath, "SSL keystore file");
       String sslKeyStorePassword = config.getString("keystore.password");
-      String sslTrustStoreAlgorithm = config.getString("truststore.algorithm");
+      String sslKeyStoreAlgorithm = config.getString("keystore.algorithm");
       KeyStore ks = KeyStore.getInstance("JKS");
       ks.load(
           new BufferedInputStream(new FileInputStream(sslKeyStorePath.toFile())),
           sslKeyStorePassword.toCharArray());
 
-      kmf = KeyManagerFactory.getInstance(sslTrustStoreAlgorithm);
+      kmf = KeyManagerFactory.getInstance(sslKeyStoreAlgorithm);
       kmf.init(ks, sslKeyStorePassword.toCharArray());
     }
     return kmf;

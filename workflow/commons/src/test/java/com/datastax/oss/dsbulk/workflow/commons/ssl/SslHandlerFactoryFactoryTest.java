@@ -90,7 +90,7 @@ class SslHandlerFactoryFactoryTest {
       assertThatThrownBy(() -> SslHandlerFactoryFactory.createSslHandlerFactory(config))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining(
-              "dsbulk.driver.ssl.keystore.path, dsbulk.driver.ssl.keystore.password and dsbulk.driver.ssl.truststore.algorithm must be provided together");
+              "dsbulk.driver.ssl.keystore.path, dsbulk.driver.ssl.keystore.password and dsbulk.driver.ssl.keystore.algorithm must be provided together");
     } finally {
       Files.delete(keystore);
     }
@@ -104,7 +104,7 @@ class SslHandlerFactoryFactoryTest {
     assertThatThrownBy(() -> SslHandlerFactoryFactory.createSslHandlerFactory(config))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
-            "dsbulk.driver.ssl.keystore.path, dsbulk.driver.ssl.keystore.password and dsbulk.driver.ssl.truststore.algorithm must be provided together");
+            "dsbulk.driver.ssl.keystore.path, dsbulk.driver.ssl.keystore.password and dsbulk.driver.ssl.keystore.algorithm must be provided together");
   }
 
   @Test

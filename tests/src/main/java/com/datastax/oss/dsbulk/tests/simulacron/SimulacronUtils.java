@@ -547,6 +547,7 @@ public class SimulacronUtils {
           row.put("peer", addr.getAddress());
           row.put("preferred_ip", addr.getAddress());
           row.put("rpc_address", addr.getAddress());
+          row.put("host_id", UUID.randomUUID());
           systemPeersResultSet.add(row);
         }
       }
