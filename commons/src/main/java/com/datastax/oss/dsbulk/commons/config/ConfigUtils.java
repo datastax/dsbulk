@@ -15,7 +15,6 @@
  */
 package com.datastax.oss.dsbulk.commons.config;
 
-import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.dsbulk.commons.url.BulkLoaderURLStreamHandlerFactory;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
