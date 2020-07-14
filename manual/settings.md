@@ -1074,7 +1074,7 @@ Default: **"RANDOM"**.
 <a name="engine"></a>
 ## Engine Settings
 
-Workflow Engine-specific settings.
+Engine-specific settings. Engine settings control how workflows are configured, and notably, what is their execution ID, whether they should run in Dry-run mode, and the desired amount of concurrency.
 
 #### -dryRun,<br />--engine.dryRun<br />--dsbulk.engine.dryRun _&lt;boolean&gt;_
 
@@ -1114,7 +1114,7 @@ Default: **null**.
 <a name="executor"></a>
 ## Executor Settings
 
-Executor-specific settings.
+Executor-specific settings. Executor settings control how the DataStax Java driver is used by DSBulk, and notably, the desired amount of driver-level concurrency and throughput. These settings are for advanced users.
 
 #### --executor.continuousPaging.enabled<br />--dsbulk.executor.continuousPaging.enabled _&lt;boolean&gt;_
 
