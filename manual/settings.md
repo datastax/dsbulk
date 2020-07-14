@@ -281,7 +281,7 @@ Default: **1**.
 
 #### -reportRate,<br />--monitoring.reportRate<br />--dsbulk.monitoring.reportRate _&lt;string&gt;_
 
-The report interval. DSBulk will print useful metrics about the ongoing operation at this rate. Durations lesser than one second will be rounded up to 1 second.
+The report interval. DSBulk will print useful metrics about the ongoing operation at this rate; for example, if this value is set to 10 seconds, then DSBulk will print metrics every ten seconds. Valid values: any value specified in [HOCON duration syntax](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format), but durations lesser than one second will be rounded up to 1 second.
 
 Default: **"5 seconds"**.
 
@@ -1253,7 +1253,7 @@ Monitoring-specific settings.
 
 #### -reportRate,<br />--monitoring.reportRate<br />--dsbulk.monitoring.reportRate _&lt;string&gt;_
 
-The report interval. DSBulk will print useful metrics about the ongoing operation at this rate. Durations lesser than one second will be rounded up to 1 second.
+The report interval. DSBulk will print useful metrics about the ongoing operation at this rate; for example, if this value is set to 10 seconds, then DSBulk will print metrics every ten seconds. Valid values: any value specified in [HOCON duration syntax](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format), but durations lesser than one second will be rounded up to 1 second.
 
 Default: **"5 seconds"**.
 
@@ -1265,7 +1265,7 @@ Default: **false**.
 
 #### --monitoring.durationUnit<br />--dsbulk.monitoring.durationUnit _&lt;string&gt;_
 
-The time unit used when printing latency durations. Valid values: all `TimeUnit` enum constants.
+The time unit used when printing latency durations. For example, if this unit is MILLISECONDS, then the latencies will be displayed in milliseconds. Valid values: all `TimeUnit` enum constants.
 
 Default: **"MILLISECONDS"**.
 
@@ -1289,7 +1289,7 @@ Default: **true**.
 
 #### --monitoring.rateUnit<br />--dsbulk.monitoring.rateUnit _&lt;string&gt;_
 
-The time unit used when printing throughput rates. Valid values: all `TimeUnit` enum constants.
+The time unit used when printing throughput rates. For example, if this unit is SECONDS, then the throughput will be displayed in rows per second. Valid values: all `TimeUnit` enum constants.
 
 Default: **"SECONDS"**.
 
