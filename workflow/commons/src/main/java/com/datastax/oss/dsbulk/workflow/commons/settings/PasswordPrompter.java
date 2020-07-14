@@ -25,6 +25,7 @@ import edu.umd.cs.findbugs.annotations.Nullable;
 import java.io.Console;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,6 +36,8 @@ import org.slf4j.LoggerFactory;
 public class PasswordPrompter implements ConfigPostProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PasswordPrompter.class);
+
+  private static final String DEFAULT_ENABLEMENT_PATH = "dsbulk.runner.promptForPasswords";
 
   private static final Map<String, String> DEFAULT_PATHS_TO_CHECK =
       ImmutableMap.<String, String>builder()
@@ -56,35 +59,44 @@ public class PasswordPrompter implements ConfigPostProcessor {
 
   private final Map<String, String> pathsToCheck;
   private final Console console;
+  private final Function<Config, Boolean> enablementSupplier;
 
   public PasswordPrompter() {
-    this(DEFAULT_PATHS_TO_CHECK);
-  }
-
-  public PasswordPrompter(@NonNull Map<String, String> pathsToCheck) {
-    this(pathsToCheck, System.console());
+    this(
+        DEFAULT_PATHS_TO_CHECK,
+        System.console(),
+        config -> config.getBoolean(DEFAULT_ENABLEMENT_PATH));
   }
 
   @VisibleForTesting
-  PasswordPrompter(@NonNull Map<String, String> pathsToCheck, @Nullable Console console) {
+  PasswordPrompter(
+      @NonNull Map<String, String> pathsToCheck,
+      @Nullable Console console,
+      @NonNull Function<Config, Boolean> enablementSupplier) {
     this.pathsToCheck = ImmutableMap.copyOf(pathsToCheck);
     this.console = console;
+    this.enablementSupplier = enablementSupplier;
   }
 
   @Override
   public @NonNull Config postProcess(@NonNull Config config) {
-    if (console != null) {
-      for (Entry<String, String> entry : pathsToCheck.entrySet()) {
-        String pathToCheck = entry.getKey();
-        if (ConfigUtils.isPathPresentAndNotEmpty(config, pathToCheck)) {
-          String pathToPrompt = entry.getValue();
-          if (!config.hasPath(pathToPrompt)) {
-            config = ConfigUtils.readPassword(config, pathToPrompt, console);
+    boolean passwordPromptingEnabled = enablementSupplier.apply(config);
+    if (passwordPromptingEnabled) {
+      if (console != null) {
+        for (Entry<String, String> entry : pathsToCheck.entrySet()) {
+          String pathToCheck = entry.getKey();
+          if (ConfigUtils.isPathPresentAndNotEmpty(config, pathToCheck)) {
+            String pathToPrompt = entry.getValue();
+            if (!config.hasPath(pathToPrompt)) {
+              config = ConfigUtils.readPassword(config, pathToPrompt, console);
+            }
           }
         }
+      } else {
+        LOGGER.debug("Standard input not available.");
       }
     } else {
-      LOGGER.debug("Standard input not available.");
+      LOGGER.debug("Password prompting disabled in configuration.");
     }
     return config;
   }

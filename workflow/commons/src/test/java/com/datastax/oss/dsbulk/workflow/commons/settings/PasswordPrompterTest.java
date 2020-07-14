@@ -31,7 +31,7 @@ import org.junit.jupiter.api.Test;
 class PasswordPrompterTest {
 
   @Test
-  void should_prompt_for_missing_passwords() {
+  void should_prompt_for_missing_passwords_when_console_available_and_enabled_in_config() {
     // given
     Console console = mock(Console.class);
     when(console.readPassword("Please input value for setting %s: ", "my.password2"))
@@ -50,7 +50,8 @@ class PasswordPrompterTest {
                 "my.password2",
                 "my.username3", // not present at all in the config -> will not be prompted
                 "my.password3"),
-            console);
+            console,
+            cfg -> true);
     config = prompter.postProcess(config);
     // then
     // should not override existing password
@@ -65,5 +66,35 @@ class PasswordPrompterTest {
     assertThat(config.hasPath("my.password3")).isFalse();
     verify(console).readPassword("Please input value for setting %s: ", "my.password2");
     verifyNoMoreInteractions(console);
+  }
+
+  @Test
+  void should_not_prompt_for_missing_passwords_when_console_unavailable() {
+    // given
+    Config config =
+        ConfigFactory.parseString(
+            "my.username1 = alice",
+            ConfigParseOptions.defaults().setOriginDescription("Initial config"));
+    // when
+    PasswordPrompter prompter =
+        new PasswordPrompter(ImmutableMap.of("my.username1", "my.password1"), null, cfg -> true);
+    config = prompter.postProcess(config);
+    // then
+    assertThat(config.hasPath("my.password1")).isFalse();
+  }
+
+  @Test
+  void should_not_prompt_for_missing_passwords_when_disabled_in_config() {
+    // given
+    Config config =
+        ConfigFactory.parseString(
+            "my.username1 = alice",
+            ConfigParseOptions.defaults().setOriginDescription("Initial config"));
+    // when
+    PasswordPrompter prompter =
+        new PasswordPrompter(ImmutableMap.of("my.username1", "my.password1"), null, cfg -> false);
+    config = prompter.postProcess(config);
+    // then
+    assertThat(config.hasPath("my.password1")).isFalse();
   }
 }
