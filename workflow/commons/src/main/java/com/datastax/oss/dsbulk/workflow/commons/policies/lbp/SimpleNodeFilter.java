@@ -37,8 +37,8 @@ import java.util.stream.Collectors;
  * allowed.
  *
  * <p>Usually just one of the two lists would be non-empty, but the filter also functions properly
- * when both are non empty, in which case the allow list is evaluated first and has precedence over
- * the deny list.
+ * when both are non-empty, in which case the deny list wins. In other words, if a node appears in
+ * both lists, it will be excluded.
  *
  * <p>Nodes are resolved eagerly during startup and are not re-resolved after.
  *
