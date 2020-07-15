@@ -71,10 +71,7 @@ class PasswordPrompterTest {
   @Test
   void should_not_prompt_for_missing_passwords_when_console_unavailable() {
     // given
-    Config config =
-        ConfigFactory.parseString(
-            "my.username1 = alice",
-            ConfigParseOptions.defaults().setOriginDescription("Initial config"));
+    Config config = ConfigFactory.parseString("my.username1 = alice");
     // when
     PasswordPrompter prompter =
         new PasswordPrompter(ImmutableMap.of("my.username1", "my.password1"), null, cfg -> true);
@@ -86,10 +83,7 @@ class PasswordPrompterTest {
   @Test
   void should_not_prompt_for_missing_passwords_when_disabled_in_config() {
     // given
-    Config config =
-        ConfigFactory.parseString(
-            "my.username1 = alice",
-            ConfigParseOptions.defaults().setOriginDescription("Initial config"));
+    Config config = ConfigFactory.parseString("my.username1 = alice");
     // when
     PasswordPrompter prompter =
         new PasswordPrompter(ImmutableMap.of("my.username1", "my.password1"), null, cfg -> false);
