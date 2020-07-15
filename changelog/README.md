@@ -12,6 +12,7 @@
 - [improvement] DAT-593: Remove thread pools in LogManager.
 - [bug] DAT-410: Validate that monitoring report rate is greater than or equal to 1 second.
 - [improvement] DAT-346: Add support for multichar field delimiters in CSV connector.
+- [improvement] DAT-469: Raise the precision of kb/row to 3 decimal digits.
 
 
 ## 1.5.0
