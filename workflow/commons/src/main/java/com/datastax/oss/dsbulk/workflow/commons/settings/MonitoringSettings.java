@@ -29,8 +29,13 @@ import java.time.Duration;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MonitoringSettings {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(MonitoringSettings.class);
+
   private static final String RATE_UNIT = "rateUnit";
   private static final String DURATION_UNIT = "durationUnit";
   private static final String REPORT_RATE = "reportRate";
@@ -62,6 +67,13 @@ public class MonitoringSettings {
       rateUnit = config.getEnum(TimeUnit.class, RATE_UNIT);
       durationUnit = config.getEnum(TimeUnit.class, DURATION_UNIT);
       reportRate = config.getDuration(REPORT_RATE);
+      if (reportRate.getSeconds() == 0) {
+        LOGGER.warn(
+            "Invalid value for dsbulk.monitoring.{}: expecting duration >= 1 second, got '{}' – will use 1 second instead",
+            REPORT_RATE,
+            config.getString(REPORT_RATE));
+        reportRate = Duration.ofSeconds(1);
+      }
       expectedWrites = config.getLong(EXPECTED_WRITES);
       expectedReads = config.getLong(EXPECTED_READS);
       trackBytes = config.getBoolean(TRACK_BYTES);

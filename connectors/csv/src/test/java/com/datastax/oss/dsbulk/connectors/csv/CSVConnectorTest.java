@@ -1452,7 +1452,7 @@ class CSVConnectorTest {
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
-            "Invalid value for dsbulk.connector.csv.delimiter, expecting single char, got ''");
+            "Invalid value for dsbulk.connector.csv.delimiter: Expecting non-empty string");
     connector.close();
   }
 
@@ -1708,6 +1708,37 @@ class CSVConnectorTest {
     connector.close();
     List<String> actual = Files.readAllLines(out.resolve("output-000001.csv"));
     assertThat(actual).hasSize(1).containsExactly("\"#shouldbequoted\"");
+  }
+
+  @Test
+  void should_honor_multi_char_delimiter() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    Config settings =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.connector.csv",
+            "url",
+            url("/multi-char-delimiter.csv"),
+            "delimiter",
+            "\"||\"",
+            "ignoreLeadingWhitespaces",
+            true,
+            "ignoreTrailingWhitespaces",
+            true,
+            "header",
+            true);
+    connector.configure(settings, true);
+    connector.init();
+    List<Record> records = Flux.from(connector.read()).collectList().block();
+    assertThat(records).hasSize(1);
+    Record record = records.get(0);
+    assertThat(record.fields()).hasSize(6);
+    assertThat(record.getFieldValue(new DefaultIndexedField(0))).isEqualTo("foo");
+    assertThat(record.getFieldValue(new DefaultIndexedField(1))).isEqualTo("|bar|");
+    assertThat(record.getFieldValue(new DefaultIndexedField(2))).isEqualTo("foo||bar");
+    assertThat(record.getFieldValue(new DefaultMappedField("field A"))).isEqualTo("foo");
+    assertThat(record.getFieldValue(new DefaultMappedField("field B"))).isEqualTo("|bar|");
+    assertThat(record.getFieldValue(new DefaultMappedField("field C"))).isEqualTo("foo||bar");
+    connector.close();
   }
 
   private static String url(String resource) {

@@ -18,7 +18,6 @@ package com.datastax.oss.dsbulk.executor.api;
 import static java.util.stream.StreamSupport.stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
-import static org.mockito.MockitoAnnotations.initMocks;
 
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.datastax.oss.driver.api.core.servererrors.SyntaxError;
@@ -35,11 +34,14 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.MockitoSession;
+import org.mockito.quality.Strictness;
 import reactor.core.publisher.Flux;
 
 public abstract class BulkExecutorITBase {
@@ -72,14 +74,22 @@ public abstract class BulkExecutorITBase {
   @Mock private Consumer<? super WriteResult> writeConsumer;
   @Mock private Consumer<? super ReadResult> readConsumer;
 
+  private MockitoSession mockito;
+
   protected BulkExecutorITBase(BulkExecutor failFastExecutor, BulkExecutor failSafeExecutor) {
     this.failFastExecutor = failFastExecutor;
     this.failSafeExecutor = failSafeExecutor;
   }
 
   @BeforeEach
-  void resetMocks() {
-    initMocks(this);
+  void setupMocks() {
+    mockito =
+        Mockito.mockitoSession().initMocks(this).strictness(Strictness.STRICT_STUBS).startMocking();
+  }
+
+  @AfterEach
+  void tearDownMocks() {
+    mockito.finishMocking();
   }
 
   // Tests for synchronous write methods
@@ -1044,7 +1054,8 @@ public abstract class BulkExecutorITBase {
                   i.getAndIncrement();
                 })
             .count()
-            .blockOptional().orElse(0L);
+            .blockOptional()
+            .orElse(0L);
     assertThat(actualSuccessful).isEqualTo(expectedSuccessful);
     long actualFailed =
         Flux.fromIterable(actual)

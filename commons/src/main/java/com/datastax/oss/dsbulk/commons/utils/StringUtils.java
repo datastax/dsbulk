@@ -15,10 +15,6 @@
  */
 package com.datastax.oss.dsbulk.commons.utils;
 
-import static java.util.concurrent.TimeUnit.HOURS;
-import static java.util.concurrent.TimeUnit.MINUTES;
-import static java.util.concurrent.TimeUnit.SECONDS;
-
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.util.Collections;
 import java.util.regex.Pattern;
@@ -142,18 +138,5 @@ public class StringUtils {
       return value;
     }
     return ObjectName.quote(value);
-  }
-
-  public static String formatElapsed(long seconds) {
-    long hr = SECONDS.toHours(seconds);
-    long min = SECONDS.toMinutes(seconds - HOURS.toSeconds(hr));
-    long sec = seconds - HOURS.toSeconds(hr) - MINUTES.toSeconds(min);
-    if (hr > 0) {
-      return String.format("%d hours, %d minutes and %d seconds", hr, min, sec);
-    } else if (min > 0) {
-      return String.format("%d minutes and %d seconds", min, sec);
-    } else {
-      return String.format("%d seconds", sec);
-    }
   }
 }

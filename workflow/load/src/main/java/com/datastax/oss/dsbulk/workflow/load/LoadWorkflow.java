@@ -15,8 +15,6 @@
  */
 package com.datastax.oss.dsbulk.workflow.load;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
-
 import com.codahale.metrics.MetricRegistry;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.BatchableStatement;
@@ -24,7 +22,7 @@ import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.metrics.Metrics;
 import com.datastax.oss.driver.shaded.guava.common.base.Stopwatch;
 import com.datastax.oss.dsbulk.codecs.ConvertingCodecFactory;
-import com.datastax.oss.dsbulk.commons.utils.StringUtils;
+import com.datastax.oss.dsbulk.commons.utils.DurationUtils;
 import com.datastax.oss.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.oss.dsbulk.connectors.api.Connector;
 import com.datastax.oss.dsbulk.connectors.api.Record;
@@ -51,6 +49,8 @@ import com.datastax.oss.dsbulk.workflow.commons.utils.ClusterInformationUtils;
 import com.datastax.oss.dsbulk.workflow.commons.utils.WorkflowUtils;
 import com.typesafe.config.Config;
 import io.netty.util.concurrent.DefaultThreadFactory;
+import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import org.reactivestreams.Publisher;
@@ -202,15 +202,15 @@ public class LoadWorkflow implements Workflow {
     }
     timer.stop();
     metricsManager.stop();
-    long seconds = timer.elapsed(SECONDS);
+    Duration elapsed = DurationUtils.round(timer.elapsed(), TimeUnit.SECONDS);
     if (logManager.getTotalErrors() == 0) {
-      LOGGER.info("{} completed successfully in {}.", this, StringUtils.formatElapsed(seconds));
+      LOGGER.info("{} completed successfully in {}.", this, DurationUtils.formatDuration(elapsed));
     } else {
       LOGGER.warn(
           "{} completed with {} errors in {}.",
           this,
           logManager.getTotalErrors(),
-          StringUtils.formatElapsed(seconds));
+          DurationUtils.formatDuration(elapsed));
     }
     return logManager.getTotalErrors() == 0;
   }

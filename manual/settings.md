@@ -64,7 +64,7 @@ Default: **"-"**.
 
 #### -delim,<br />--connector.csv.delimiter<br />--dsbulk.connector.csv.delimiter _&lt;string&gt;_
 
-The character to use as field delimiter.
+The character(s) to use as field delimiter. Field delimiters containing more than one character are accepted.
 
 Default: **","**.
 
@@ -281,7 +281,7 @@ Default: **1**.
 
 #### -reportRate,<br />--monitoring.reportRate<br />--dsbulk.monitoring.reportRate _&lt;string&gt;_
 
-The report interval. DSBulk will print useful metrics about the ongoing operation at this rate. Durations lesser than one second will be rounded up to 1 second.
+The report interval. DSBulk will print useful metrics about the ongoing operation at this rate; for example, if this value is set to 10 seconds, then DSBulk will print metrics every ten seconds. Valid values: any value specified in [HOCON duration syntax](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format), but durations lesser than one second will be rounded up to 1 second.
 
 Default: **"5 seconds"**.
 
@@ -335,7 +335,7 @@ Default: **"-"**.
 
 #### -delim,<br />--connector.csv.delimiter<br />--dsbulk.connector.csv.delimiter _&lt;string&gt;_
 
-The character to use as field delimiter.
+The character(s) to use as field delimiter. Field delimiters containing more than one character are accepted.
 
 Default: **","**.
 
@@ -881,6 +881,15 @@ When unloading, these settings determine how row cells emitted by DSE are format
 
 When counting, these settings are ignored.
 
+#### --codec.binary<br />--dsbulk.codec.binary _&lt;string&gt;_
+
+Strategy to use when converting binary data to strings. Only applicable when unloading columns of CQL type `blob`, and only if the connector in use requires stringification. Valid values are:
+
+- BASE64: Encode the binary data into a Base-64 string. This is the default strategy.
+- HEX: Encode the binary data as CQL blob literals. CQL blob literals follow the general syntax: `0[xX][0-9a-fA-F]+`, that is, `0x` followed by hexadecimal characters, for example: `0xcafebabe`. This format produces lengthier strings than BASE64, but is also the only format compatible with CQLSH.
+
+Default: **"BASE64"**.
+
 #### --codec.booleanNumbers<br />--dsbulk.codec.booleanNumbers _&lt;list&lt;number&gt;&gt;_
 
 Set how true and false representations of numbers are interpreted. The representation is of the form `true_value,false_value`. The mapping is reciprocal, so that numbers are mapping to Boolean and vice versa. All numbers unspecified in this setting are rejected.
@@ -1244,7 +1253,7 @@ Monitoring-specific settings.
 
 #### -reportRate,<br />--monitoring.reportRate<br />--dsbulk.monitoring.reportRate _&lt;string&gt;_
 
-The report interval. DSBulk will print useful metrics about the ongoing operation at this rate. Durations lesser than one second will be rounded up to 1 second.
+The report interval. DSBulk will print useful metrics about the ongoing operation at this rate; for example, if this value is set to 10 seconds, then DSBulk will print metrics every ten seconds. Valid values: any value specified in [HOCON duration syntax](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format), but durations lesser than one second will be rounded up to 1 second.
 
 Default: **"5 seconds"**.
 
@@ -1256,7 +1265,7 @@ Default: **false**.
 
 #### --monitoring.durationUnit<br />--dsbulk.monitoring.durationUnit _&lt;string&gt;_
 
-The time unit used when printing latency durations. Valid values: all `TimeUnit` enum constants.
+The time unit used when printing latency durations. For example, if this unit is MILLISECONDS, then the latencies will be displayed in milliseconds. Valid values: all `TimeUnit` enum constants.
 
 Default: **"MILLISECONDS"**.
 
@@ -1280,7 +1289,7 @@ Default: **true**.
 
 #### --monitoring.rateUnit<br />--dsbulk.monitoring.rateUnit _&lt;string&gt;_
 
-The time unit used when printing throughput rates. Valid values: all `TimeUnit` enum constants.
+The time unit used when printing throughput rates. For example, if this unit is SECONDS, then the throughput will be displayed in rows per second. Valid values: all `TimeUnit` enum constants.
 
 Default: **"SECONDS"**.
 
