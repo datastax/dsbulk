@@ -213,7 +213,10 @@ public class UnloadWorkflow implements Workflow {
 
   private Flux<Record> oneWriter() {
     int numThreads = Math.min(numCores * 2, readConcurrency);
-    Scheduler scheduler = Schedulers.newParallel(numThreads, new DefaultThreadFactory("workflow"));
+    Scheduler scheduler =
+        numThreads == 1
+            ? Schedulers.immediate()
+            : Schedulers.newParallel(numThreads, new DefaultThreadFactory("workflow"));
     schedulers.add(scheduler);
     return Flux.fromIterable(readStatements)
         .flatMap(
@@ -236,12 +239,15 @@ public class UnloadWorkflow implements Workflow {
   }
 
   private Flux<Record> fewWriters() {
+    // writeConcurrency cannot be 1 here, but readConcurrency can
+    int numThreadsForReads = Math.min(numCores, readConcurrency);
     Scheduler schedulerForReads =
-        Schedulers.newParallel(
-            Math.min(numCores, readConcurrency), new DefaultThreadFactory("workflow-read"));
+        numThreadsForReads == 1
+            ? Schedulers.immediate()
+            : Schedulers.newParallel(numThreadsForReads, new DefaultThreadFactory("workflow-read"));
+    int numThreadsForWrites = Math.min(numCores, writeConcurrency);
     Scheduler schedulerForWrites =
-        Schedulers.newParallel(
-            Math.min(numCores, writeConcurrency), new DefaultThreadFactory("workflow-write"));
+        Schedulers.newParallel(numThreadsForWrites, new DefaultThreadFactory("workflow-write"));
     schedulers.add(schedulerForReads);
     schedulers.add(schedulerForWrites);
     return Flux.fromIterable(readStatements)
