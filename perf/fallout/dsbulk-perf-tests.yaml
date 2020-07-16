@@ -7,7 +7,6 @@ dsbulk_branch: 1.x
 connectors: csv,json
 workloads: load,unload,count
 verbosity: 2
-cluster_name: dsbulk-perf
 
 ---
 
@@ -20,7 +19,7 @@ ensemble:
         cloud.provider: openstack
         cloud.tenant: performance
         cloud.instance.type: ms1.small
-        name: {{cluster_name}}
+        cloud.instance.platform: xenial
         mark_for_reuse: {{reuse}}
     configuration_manager:
       - name: ctool
@@ -128,7 +127,7 @@ workload:
     - setup-schema:
         module: cqlsh
         properties:
-          num.nodes: 1
+          target.ordinals: 0
           command: >
             CREATE KEYSPACE IF NOT EXISTS test WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '3'};
             CREATE TABLE IF NOT EXISTS test.test100b(pkey TEXT, ccol BIGINT, data TEXT, PRIMARY KEY ((pkey), ccol));
@@ -188,7 +187,7 @@ workload:
             if contains {{connectors}} csv && contains {{workloads}} load; then
               cd ${FALLOUT_SCRATCH_DIR}
 
-              for MAX_FILES in 2C 1C 0.5C 0.25C 4 2 1
+              for MAX_FILES in 0.5C 1
               do
               for MAX_QUERIES in AUTO
               do
@@ -387,7 +386,7 @@ workload:
             if contains {{connectors}} json && contains {{workloads}} load; then
               cd ${FALLOUT_SCRATCH_DIR}
 
-              for MAX_FILES in 1C 0.5C 1
+              for MAX_FILES in 0.5C 1
               do
               for MAX_QUERIES in AUTO
               do
@@ -516,79 +515,88 @@ workload:
 
               echo "CSV - Unloading 100B maxConcurrentQueries $MAX_QUERIES maxConcurrentFiles $MAX_FILES"
               rm -Rf mnt/data/DSEBulkLoadTest/out/data100B/
-              mnt/data/dsbulk/bin/dsbulk unload -verbosity {{verbosity}} -k test -t test100b  \
+              mnt/data/dsbulk/bin/dsbulk unload -verbosity {{verbosity}} -k test -t test100b -header false \
               -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
               -url mnt/data/DSEBulkLoadTest/out/data100B/  \
               --engine.maxConcurrentQueries $MAX_QUERIES \
               -maxConcurrentFiles $MAX_FILES \
+              --schema.splits 32C \
               --engine.executionId UNLOAD_CSV_100B_${MAX_QUERIES}_QUERIES_${MAX_FILES}_FILES \
               -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
+              wc -l mnt/data/DSEBulkLoadTest/out/data100B/output*.csv
 
               echo "CSV - Unloading 1KB maxConcurrentQueries $MAX_QUERIES maxConcurrentFiles $MAX_FILES"
               rm -Rf mnt/data/DSEBulkLoadTest/out/data1KB/
-              mnt/data/dsbulk/bin/dsbulk unload -verbosity {{verbosity}} -k test -t test1kb  \
+              mnt/data/dsbulk/bin/dsbulk unload -verbosity {{verbosity}} -k test -t test1kb -header false \
               -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
               -url mnt/data/DSEBulkLoadTest/out/data1KB/  \
               --engine.maxConcurrentQueries $MAX_QUERIES \
               -maxConcurrentFiles $MAX_FILES \
+              --schema.splits 32C \
               --engine.executionId UNLOAD_CSV_1KB_${MAX_QUERIES}_QUERIES_${MAX_FILES}_FILES \
               -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
-              rm -Rf mnt/data/DSEBulkLoadTest/out/data1KB/
+              wc -l mnt/data/DSEBulkLoadTest/out/data1KB/output*.csv
 
               echo "CSV - Unloading 10KB maxConcurrentQueries $MAX_QUERIES maxConcurrentFiles $MAX_FILES"
               rm -Rf mnt/data/DSEBulkLoadTest/out/data10KB/
-              mnt/data/dsbulk/bin/dsbulk unload -verbosity {{verbosity}} -k test -t test10kb  \
+              mnt/data/dsbulk/bin/dsbulk unload -verbosity {{verbosity}} -k test -t test10kb -header false \
               -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
               -url mnt/data/DSEBulkLoadTest/out/data10KB/  \
               --engine.maxConcurrentQueries $MAX_QUERIES \
               -maxConcurrentFiles $MAX_FILES \
+              --schema.splits 32C \
               --engine.executionId UNLOAD_CSV_10KB_${MAX_QUERIES}_QUERIES_${MAX_FILES}_FILES \
               -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
-              rm -Rf mnt/data/DSEBulkLoadTest/out/data10KB/
+              wc -l mnt/data/DSEBulkLoadTest/out/data10KB/output*.csv
 
               echo "CSV - Unloading 1MB  maxConcurrentQueries $MAX_QUERIES maxConcurrentFiles $MAX_FILES"
               rm -Rf mnt/data/DSEBulkLoadTest/out/data1MB/
-              mnt/data/dsbulk/bin/dsbulk unload -verbosity {{verbosity}} -k test -t test1mb  \
+              mnt/data/dsbulk/bin/dsbulk unload -verbosity {{verbosity}} -k test -t test1mb -header false \
               -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
               -url mnt/data/DSEBulkLoadTest/out/data1MB/ \
               --driver.advanced.continuous-paging.page-size 100 \
               --engine.maxConcurrentQueries $MAX_QUERIES \
               -maxConcurrentFiles $MAX_FILES \
+              --schema.splits 32C \
               --engine.executionId UNLOAD_CSV_1MB_${MAX_QUERIES}_QUERIES_${MAX_FILES}_FILES \
               -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
-              rm -Rf mnt/data/DSEBulkLoadTest/out/data1MB/
+              wc -l mnt/data/DSEBulkLoadTest/out/data1MB/output*.csv
 
               echo "CSV - Unloading 10 cols  maxConcurrentQueries $MAX_QUERIES maxConcurrentFiles $MAX_FILES"
               rm -Rf mnt/data/DSEBulkLoadTest/out/data10/
-              mnt/data/dsbulk/bin/dsbulk unload -verbosity {{verbosity}} -k test -t test10  \
+              mnt/data/dsbulk/bin/dsbulk unload -verbosity {{verbosity}} -k test -t test10 -header false \
               -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
               -url mnt/data/DSEBulkLoadTest/out/data10/  \
               --engine.maxConcurrentQueries $MAX_QUERIES \
               -maxConcurrentFiles $MAX_FILES \
+              --schema.splits 32C \
               --engine.executionId UNLOAD_CSV_10_COLS_${MAX_QUERIES}_QUERIES_${MAX_FILES}_FILES \
               -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
-              rm -Rf mnt/data/DSEBulkLoadTest/out/data10/
+              wc -l mnt/data/DSEBulkLoadTest/out/data10/output*.csv
 
               echo "CSV - Unloading transactions  maxConcurrentQueries $MAX_QUERIES maxConcurrentFiles $MAX_FILES"
               rm -Rf mnt/data/DSEBulkLoadTest/out/transactions
-              mnt/data/dsbulk/bin/dsbulk unload -verbosity {{verbosity}} -k test -t transactions  \
+              mnt/data/dsbulk/bin/dsbulk unload -verbosity {{verbosity}} -k test -t transactions -header false \
               -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
               -url mnt/data/DSEBulkLoadTest/out/transactions/  \
               -m 'user_id,date,item,price,quantity,total,currency,payment,contact'  \
               --engine.maxConcurrentQueries $MAX_QUERIES \
               -maxConcurrentFiles $MAX_FILES \
+              --schema.splits 32C \
               --engine.executionId UNLOAD_CSV_TRANSACTIONS_${MAX_QUERIES}_QUERIES_${MAX_FILES}_FILES \
               -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
-              rm -Rf mnt/data/DSEBulkLoadTest/out/transactions
+              wc -l mnt/data/DSEBulkLoadTest/out/transactions/output*.csv
 
               done
               done
+
+              rm -Rf mnt/data/DSEBulkLoadTest/out/
 
             else
               echo "ignoring unload-csv-performance-test step"
@@ -617,9 +625,11 @@ workload:
               -url mnt/data/DSEBulkLoadTest/out/data100B/  \
               --engine.maxConcurrentQueries $MAX_QUERIES \
               -maxConcurrentFiles $MAX_FILES \
+              --schema.splits 32C \
               --engine.executionId UNLOAD_JSON_100B_${MAX_QUERIES}_QUERIES_${MAX_FILES}_FILES \
               -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
+              wc -l mnt/data/DSEBulkLoadTest/out/data100B/output*.json
 
               echo "JSON - Unloading 1KB maxConcurrentQueries $MAX_QUERIES maxConcurrentFiles $MAX_FILES"
               rm -Rf mnt/data/DSEBulkLoadTest/out/data1KB/
@@ -628,10 +638,11 @@ workload:
               -url mnt/data/DSEBulkLoadTest/out/data1KB/  \
               --engine.maxConcurrentQueries $MAX_QUERIES \
               -maxConcurrentFiles $MAX_FILES \
+              --schema.splits 32C \
               --engine.executionId UNLOAD_JSON_1KB_${MAX_QUERIES}_QUERIES_${MAX_FILES}_FILES \
               -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
-              rm -Rf mnt/data/DSEBulkLoadTest/out/data1KB/
+              wc -l mnt/data/DSEBulkLoadTest/out/data1KB/output*.json
 
               echo "JSON - Unloading 10KB maxConcurrentQueries $MAX_QUERIES maxConcurrentFiles $MAX_FILES"
               rm -Rf mnt/data/DSEBulkLoadTest/out/data10KB/
@@ -640,10 +651,11 @@ workload:
               -url mnt/data/DSEBulkLoadTest/out/data10KB/  \
               --engine.maxConcurrentQueries $MAX_QUERIES \
               -maxConcurrentFiles $MAX_FILES \
+              --schema.splits 32C \
               --engine.executionId UNLOAD_JSON_10KB_${MAX_QUERIES}_QUERIES_${MAX_FILES}_FILES \
               -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
-              rm -Rf mnt/data/DSEBulkLoadTest/out/data10KB/
+              wc -l mnt/data/DSEBulkLoadTest/out/data10KB/output*.json
 
               echo "JSON - Unloading 1MB  maxConcurrentQueries $MAX_QUERIES maxConcurrentFiles $MAX_FILES"
               rm -Rf mnt/data/DSEBulkLoadTest/out/data1MB/
@@ -653,10 +665,11 @@ workload:
               --driver.advanced.continuous-paging.page-size 100 \
               --engine.maxConcurrentQueries $MAX_QUERIES \
               -maxConcurrentFiles $MAX_FILES \
+              --schema.splits 32C \
               --engine.executionId UNLOAD_JSON_1MB_${MAX_QUERIES}_QUERIES_${MAX_FILES}_FILES \
               -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
-              rm -Rf mnt/data/DSEBulkLoadTest/out/data1MB/
+              wc -l mnt/data/DSEBulkLoadTest/out/data1MB/output*.json
 
               echo "JSON - Unloading 10 cols  maxConcurrentQueries $MAX_QUERIES maxConcurrentFiles $MAX_FILES"
               rm -Rf mnt/data/DSEBulkLoadTest/out/data10/
@@ -665,10 +678,11 @@ workload:
               -url mnt/data/DSEBulkLoadTest/out/data10/  \
               --engine.maxConcurrentQueries $MAX_QUERIES \
               -maxConcurrentFiles $MAX_FILES \
+              --schema.splits 32C \
               --engine.executionId UNLOAD_JSON_10_COLS_${MAX_QUERIES}_QUERIES_${MAX_FILES}_FILES \
               -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
-              rm -Rf mnt/data/DSEBulkLoadTest/out/data10/
+              wc -l mnt/data/DSEBulkLoadTest/out/data10/output*.json
 
               echo "JSON - Unloading transactions  maxConcurrentQueries $MAX_QUERIES maxConcurrentFiles $MAX_FILES"
               rm -Rf mnt/data/DSEBulkLoadTest/out/transactions/
@@ -678,13 +692,16 @@ workload:
               -m 'user_id,date,item,price,quantity,total,currency,payment,contact'  \
               --engine.maxConcurrentQueries $MAX_QUERIES \
               -maxConcurrentFiles $MAX_FILES \
+              --schema.splits 32C \
               --engine.executionId UNLOAD_JSON_TRANSACTIONS_${MAX_QUERIES}_QUERIES_${MAX_FILES}_FILES \
               -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
-              rm -Rf mnt/data/DSEBulkLoadTest/out/transactions/
+              wc -l mnt/data/DSEBulkLoadTest/out/transactions/output*.json
 
               done
               done
+
+              rm -Rf mnt/data/DSEBulkLoadTest/out/
 
             else
               echo "ignoring unload-json-performance-test step"
@@ -702,13 +719,14 @@ workload:
 
               cd ${FALLOUT_SCRATCH_DIR}
 
-              for MAX_QUERIES in AUTO 1
+              for MAX_QUERIES in AUTO 1C 0.5C 1
               do
 
               echo "Counting 100B (maxConcurrentQueries $MAX_QUERIES)"
               mnt/data/dsbulk/bin/dsbulk count -verbosity {{verbosity}} -k test -t test100b  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 --engine.maxConcurrentQueries $MAX_QUERIES \
+                --schema.splits 32C \
                 --engine.executionId COUNT_100B_${MAX_QUERIES}_QUERIES \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
@@ -717,6 +735,7 @@ workload:
               mnt/data/dsbulk/bin/dsbulk count -verbosity {{verbosity}} -k test -t test1kb  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 --engine.maxConcurrentQueries $MAX_QUERIES \
+                --schema.splits 32C \
                 --engine.executionId COUNT_1KB_${MAX_QUERIES}_QUERIES \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
@@ -725,6 +744,7 @@ workload:
               mnt/data/dsbulk/bin/dsbulk count -verbosity {{verbosity}} -k test -t test10kb  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 --engine.maxConcurrentQueries $MAX_QUERIES \
+                --schema.splits 32C \
                 --engine.executionId COUNT_10KB_${MAX_QUERIES}_QUERIES \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
@@ -733,6 +753,7 @@ workload:
               mnt/data/dsbulk/bin/dsbulk count -verbosity {{verbosity}} -k test -t test1mb  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 --engine.maxConcurrentQueries $MAX_QUERIES \
+                --schema.splits 32C \
                 --engine.executionId COUNT_1MB_${MAX_QUERIES}_QUERIES \
                 --driver.advanced.continuous-paging.page-size 100 \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
@@ -742,6 +763,7 @@ workload:
               mnt/data/dsbulk/bin/dsbulk count -verbosity {{verbosity}} -k test -t test10 \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 --engine.maxConcurrentQueries $MAX_QUERIES \
+                --schema.splits 32C \
                 --engine.executionId COUNT_10_${MAX_QUERIES}_QUERIES \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
@@ -750,6 +772,7 @@ workload:
               mnt/data/dsbulk/bin/dsbulk count -verbosity {{verbosity}} -k test -t transactions  \
                 -h ${FALLOUT_SERVER_PRODUCT_CONTACT_POINT} \
                 --engine.maxConcurrentQueries $MAX_QUERIES \
+                --schema.splits 32C \
                 --engine.executionId COUNT_TRANSACTIONS_${MAX_QUERIES}_QUERIES \
                 -logDir ${FALLOUT_ARTIFACT_DIR}/dsbulk-logs 2>/dev/null
               echo "Exit status" $?
