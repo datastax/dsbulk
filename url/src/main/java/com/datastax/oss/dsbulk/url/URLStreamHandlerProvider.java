@@ -21,7 +21,12 @@ import java.util.Optional;
 
 /**
  * A provider for {@link URLStreamHandler} instances. Provider instances are discovered using the
- * Service Loader API, see {@link java.net.URLStreamHandlerFactory}.
+ * Service Loader API, see {@link BulkLoaderURLStreamHandlerFactory}.
+ *
+ * <p>This interface and the URL stream handler discovery mechanism used in DSBulk are very close to
+ * the mechanism implemented by default in the JDK starting with JDK 9, see {@code
+ * java.net.spi.URLStreamHandlerProvider}. However DSBulk still supports Java 8 and thus has to
+ * implement its own discovery mechanism.
  */
 public interface URLStreamHandlerProvider {
 
