@@ -3432,7 +3432,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(doubles.get("regular_notation")).isEqualTo(doubles.get("scientific_notation"));
     assertThat(doubles.get("hex_notation")).isEqualTo(Double.MAX_VALUE);
     assertThat(doubles.get("irrational")).isEqualTo(0.1d);
-    assertThat(doubles.get("Double.NaN")).isEqualTo(Double.NaN);
+    assertThat(doubles.get("Double.NaN")).isNaN();
     assertThat(doubles.get("Double.POSITIVE_INFINITY")).isEqualTo(Double.POSITIVE_INFINITY);
     assertThat(doubles.get("Double.NEGATIVE_INFINITY")).isEqualTo(Double.NEGATIVE_INFINITY);
     assertThat(doubles.get("Double.MAX_VALUE")).isEqualTo(Double.MAX_VALUE);
@@ -3482,7 +3482,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(doubles.get("regular_notation")).isEqualTo(doubles.get("scientific_notation"));
     assertThat(doubles.get("hex_notation")).isEqualTo(Double.MAX_VALUE);
     assertThat(doubles.get("irrational")).isEqualTo(0.1d);
-    assertThat(doubles.get("Double.NaN")).isEqualTo(Double.NaN);
+    assertThat(doubles.get("Double.NaN")).isNaN();
     assertThat(doubles.get("Double.POSITIVE_INFINITY")).isEqualTo(Double.POSITIVE_INFINITY);
     assertThat(doubles.get("Double.NEGATIVE_INFINITY")).isEqualTo(Double.NEGATIVE_INFINITY);
     assertThat(doubles.get("Double.MAX_VALUE")).isEqualTo(Double.MAX_VALUE);

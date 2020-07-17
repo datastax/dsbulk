@@ -126,7 +126,6 @@ class MetricsManagerTest {
           .transform(manager.newFailedItemsMonitor())
           .blockLast();
       manager.stop();
-      manager.close();
       MetricRegistry registry =
           (MetricRegistry) ReflectionUtils.getInternalState(manager, "registry");
       assertThat(registry.counter("records/total").getCount()).isEqualTo(3);
@@ -166,7 +165,6 @@ class MetricsManagerTest {
       Flux<Statement<?>> statements = Flux.just(batch, stmt3);
       statements.transform(manager.newBatcherMonitor()).blockLast();
       manager.stop();
-      manager.close();
       MetricRegistry registry =
           (MetricRegistry) ReflectionUtils.getInternalState(manager, "registry");
       assertThat(registry.histogram("batches/size").getCount()).isEqualTo(2);
