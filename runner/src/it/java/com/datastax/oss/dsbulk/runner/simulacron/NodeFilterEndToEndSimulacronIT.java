@@ -262,13 +262,13 @@ class NodeFilterEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     public void init() {}
 
     @Override
-    public int estimatedResourceCount() {
+    public int readConcurrency() {
       return 1;
     }
 
     @NonNull
     @Override
-    public Publisher<Record> read() {
+    public Publisher<Publisher<Record>> read() {
       List<Record> records = new ArrayList<>(1000);
       for (int i = 0; i < 1000; i++) {
         Record record =
@@ -276,7 +276,7 @@ class NodeFilterEndToEndSimulacronIT extends EndToEndSimulacronITBase {
                 "pk", String.valueOf(i), "cc", String.valueOf(i), "v", String.valueOf(i));
         records.add(record);
       }
-      return Flux.fromIterable(records);
+      return Flux.just(Flux.fromIterable(records));
     }
   }
 }

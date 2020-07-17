@@ -17,7 +17,7 @@ package com.datastax.oss.dsbulk.workflow.commons.settings;
 
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
-import com.datastax.oss.dsbulk.commons.config.ConfigUtils;
+import com.datastax.oss.dsbulk.config.ConfigUtils;
 import com.datastax.oss.dsbulk.workflow.api.config.ConfigPostProcessor;
 import com.typesafe.config.Config;
 import edu.umd.cs.findbugs.annotations.NonNull;
@@ -61,6 +61,7 @@ public class PasswordPrompter implements ConfigPostProcessor {
   private final Console console;
   private final Function<Config, Boolean> enablementSupplier;
 
+  @SuppressWarnings("unused")
   public PasswordPrompter() {
     this(
         DEFAULT_PATHS_TO_CHECK,
