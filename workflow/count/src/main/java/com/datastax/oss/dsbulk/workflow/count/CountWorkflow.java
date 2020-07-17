@@ -15,23 +15,15 @@
  */
 package com.datastax.oss.dsbulk.workflow.count;
 
-import com.codahale.metrics.Histogram;
 import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.Snapshot;
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.datastax.oss.driver.api.core.cql.Row;
-import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.datastax.oss.driver.api.core.cql.Statement;
-import com.datastax.oss.driver.api.core.metadata.NodeState;
-import com.datastax.oss.driver.api.core.metadata.schema.RelationMetadata;
 import com.datastax.oss.driver.api.core.metrics.Metrics;
 import com.datastax.oss.driver.shaded.guava.common.base.Stopwatch;
 import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
 import com.datastax.oss.dsbulk.commons.DurationUtils;
-import com.datastax.oss.dsbulk.commons.ThrowableUtils;
 import com.datastax.oss.dsbulk.executor.api.reader.BulkReader;
 import com.datastax.oss.dsbulk.executor.api.result.ReadResult;
-import com.datastax.oss.dsbulk.sampler.DataSizeSampler;
 import com.datastax.oss.dsbulk.workflow.api.Workflow;
 import com.datastax.oss.dsbulk.workflow.commons.log.LogManager;
 import com.datastax.oss.dsbulk.workflow.commons.metrics.MetricsManager;
@@ -67,10 +59,6 @@ public class CountWorkflow implements Workflow {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CountWorkflow.class);
 
-  private static final int _1_KB = 1024;
-  private static final int _10_KB = 10 * _1_KB;
-  private static final int _100_KB = 100 * _1_KB;
-
   private final SettingsManager settingsManager;
   private final AtomicBoolean closed = new AtomicBoolean(false);
 
@@ -90,9 +78,6 @@ public class CountWorkflow implements Workflow {
   private Function<Flux<ReadResult>, Flux<ReadResult>> queryWarningsHandler;
   private Function<Flux<Void>, Flux<Void>> terminationHandler;
   private int readConcurrency;
-  private int numCores;
-  private SchemaSettings schemaSettings;
-  private ExecutorSettings executorSettings;
 
   CountWorkflow(Config config) {
     settingsManager = new SettingsManager(config);
@@ -104,8 +89,8 @@ public class CountWorkflow implements Workflow {
     executionId = settingsManager.getExecutionId();
     LogSettings logSettings = settingsManager.getLogSettings();
     DriverSettings driverSettings = settingsManager.getDriverSettings();
-    schemaSettings = settingsManager.getSchemaSettings();
-    executorSettings = settingsManager.getExecutorSettings();
+    SchemaSettings schemaSettings = settingsManager.getSchemaSettings();
+    ExecutorSettings executorSettings = settingsManager.getExecutorSettings();
     CodecSettings codecSettings = settingsManager.getCodecSettings();
     MonitoringSettings monitoringSettings = settingsManager.getMonitoringSettings();
     EngineSettings engineSettings = settingsManager.getEngineSettings();
@@ -157,11 +142,9 @@ public class CountWorkflow implements Workflow {
     failedReadsHandler = logManager.newFailedReadsHandler();
     queryWarningsHandler = logManager.newQueryWarningsHandler();
     terminationHandler = logManager.newTerminationHandler();
-    numCores = Runtime.getRuntime().availableProcessors();
+    int numCores = Runtime.getRuntime().availableProcessors();
     readConcurrency =
-        Math.min(
-            readStatements.size(),
-            engineSettings.getMaxConcurrentQueries().orElseGet(this::determineReadConcurrency));
+        Math.min(readStatements.size(), engineSettings.getMaxConcurrentQueries().orElse(numCores));
     LOGGER.debug(
         "Using read concurrency: {} (user-supplied: {})",
         readConcurrency,
@@ -243,74 +226,5 @@ public class CountWorkflow implements Workflow {
     } else {
       return "Operation " + executionId;
     }
-  }
-
-  private int determineReadConcurrency() {
-    if (readStatements.size() == 1) {
-      return 1;
-    }
-    LOGGER.debug("Sampling data...");
-    double meanSize = getMeanRowSize();
-    int readConcurrency;
-    if (meanSize < 128) {
-      readConcurrency = numCores * 16;
-    } else if (meanSize < 512) {
-      readConcurrency = numCores * 8;
-    } else if (meanSize < _10_KB) {
-      readConcurrency = numCores * 4;
-    } else if (meanSize < _100_KB) {
-      readConcurrency = numCores * 2;
-    } else {
-      readConcurrency = numCores;
-    }
-    if (executorSettings.isContinuousPagingEnabled()) {
-      // When using CP we cannot go over the maximum number of CP sessions per node,
-      // which by default is 60. Since this is a per-node limit, but we never hit
-      // just one node, we consider twice as many queries per node.
-      int maxContinuousPagingSessionsPerCluster =
-          (int)
-              (session.getMetadata().getNodes().values().stream()
-                      .filter(node -> node.getState() == NodeState.UP)
-                      .count()
-                  * 60
-                  * 2);
-      readConcurrency = Math.min(readConcurrency, maxContinuousPagingSessionsPerCluster);
-    }
-    return readConcurrency;
-  }
-
-  private double getMeanRowSize() {
-    RelationMetadata table = schemaSettings.getTargetTable();
-    // Read the entire row to get a more accurate picture of the expected throughput
-    String fullReadCql =
-        String.format(
-            "SELECT * FROM %s.%s", table.getKeyspace().asCql(true), table.getName().asCql(true));
-    SimpleStatement fullReadStatement =
-        SimpleStatement.newInstance(fullReadCql)
-            .setPageSize(10) // low page size to avoid errors with large datasets
-            .setTimeout(Duration.ofMinutes(1));
-    double meanSize;
-    try {
-      Histogram sample =
-          DataSizeSampler.sampleReads(
-              Flux.just(fullReadStatement)
-                  .<Row>flatMap(session::executeReactive)
-                  .take(1000)
-                  .toIterable());
-      if (sample.getCount() < 100) {
-        // sample too small, go with a common value
-        LOGGER.debug("Data sample is too small: {}, discarding", sample.getCount());
-        meanSize = _1_KB;
-      } else {
-        Snapshot snapshot = sample.getSnapshot();
-        meanSize = snapshot.getMean();
-        // TODO discard if std dev too high
-        LOGGER.debug("Average row size in bytes: {}, std dev: {}", meanSize, snapshot.getStdDev());
-      }
-    } catch (Exception e) {
-      LOGGER.debug("Sampling failed: {}", ThrowableUtils.getSanitizedErrorMessage(e));
-      meanSize = _1_KB;
-    }
-    return meanSize;
   }
 }
