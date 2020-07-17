@@ -25,6 +25,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.junit.jupiter.api.Assumptions.assumingThat;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import com.datastax.oss.dsbulk.commons.url.BulkLoaderURLStreamHandlerFactory;
@@ -33,6 +37,7 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigException.BadBean;
 import com.typesafe.config.ConfigFactory;
+import java.io.Console;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
@@ -511,6 +516,25 @@ class ConfigUtilsTest {
             "Invalid value for key, expecting NUMBER, got STRING [at: String: 1]"),
         // ConfigException.Other
         Arguments.of(new BadBean("Not a standard message"), "base.path", "Not a standard message"));
+  }
+
+  @Test
+  void should_read_password() {
+    // given
+    Console console = mock(Console.class);
+    String path = "my.password";
+    String password = "fakePasswordForTests";
+    when(console.readPassword("Please input value for setting %s: ", path))
+        .thenReturn(password.toCharArray());
+    Config config = ConfigFactory.empty();
+    // when
+    config = ConfigUtils.readPassword(config, path, console);
+    // then
+    assertThat(config.hasPath(path)).isTrue();
+    assertThat(config.getString(path)).isEqualTo(password);
+    assertThat(config.getValue(path).origin().description()).isEqualTo("stdin");
+    verify(console).readPassword("Please input value for setting %s: ", path);
+    verifyNoMoreInteractions(console);
   }
 
   private static Path createURLFile(URL... urls) throws IOException {

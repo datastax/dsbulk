@@ -23,6 +23,7 @@ import com.datastax.oss.dsbulk.commons.config.shortcuts.ShortcutsFactory;
 import com.datastax.oss.dsbulk.commons.io.IOUtils;
 import com.datastax.oss.dsbulk.commons.utils.StringUtils;
 import com.datastax.oss.dsbulk.workflow.api.WorkflowProvider;
+import com.datastax.oss.dsbulk.workflow.api.config.ConfigPostProcessor;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigException.Missing;
@@ -89,9 +90,10 @@ public class CommandLineParser {
 
     WorkflowProvider workflowProvider = resolveWorkflowType();
 
-    Config finalConfig = parseArguments(referenceConfig, applicationConfig, shortcuts);
+    Config finalConfig = parseArguments(referenceConfig, applicationConfig, shortcuts).resolve();
+    finalConfig = postProcess(finalConfig);
 
-    return new ParsedCommandLine(workflowProvider, finalConfig.resolve());
+    return new ParsedCommandLine(workflowProvider, finalConfig);
   }
 
   /**
@@ -227,6 +229,15 @@ public class CommandLineParser {
     throw new ParseException(
         String.format(
             "First argument must be subcommand \"%s\", or \"help\"", getAvailableCommands()));
+  }
+
+  @NonNull
+  private Config postProcess(Config config) {
+    ServiceLoader<ConfigPostProcessor> loader = ServiceLoader.load(ConfigPostProcessor.class);
+    for (ConfigPostProcessor processor : loader) {
+      config = processor.postProcess(config);
+    }
+    return config;
   }
 
   @NonNull

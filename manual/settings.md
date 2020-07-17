@@ -17,6 +17,7 @@ A template configuration file can be found [here](./application.template.conf).
 <a href="#executor">Executor Settings</a><br>
 <a href="#log">Log Settings</a><br>
 <a href="#monitoring">Monitoring Settings</a><br>
+<a href="#runner">Runner Settings</a><br>
 <a href="#stats">Stats Settings</a><br>
 <a href="#datastax-java-driver">Driver Settings</a><br>
 <a name="Common"></a>
@@ -1306,6 +1307,19 @@ Default: **"SECONDS"**.
 Whether or not to track the throughput in bytes. When enabled, DSBulk will track and display the number of bytes sent or received per second. While useful to evaluate how much data is actually being transferred, computing such metrics is CPU-intensive and may slow down the operation. This is why it is disabled by default. Also note that the heuristic used to compute data sizes is not 100% accurate and sometimes underestimates the actual size.
 
 Default: **false**.
+
+<a name="runner"></a>
+## Runner Settings
+
+Runner-specific settings. Runner settings control how DSBulk parses command lines and reads its configuration.
+
+#### --runner.promptForPasswords<br />--dsbulk.runner.promptForPasswords _&lt;boolean&gt;_
+
+Whether to prompt for passwords when they are missing from configuration files. When this option is true (the default value), if a login or username is present in the configuration, but not its corresponding password, DSBulk will prompt for it.
+
+Prompting from passwords require interactive shells; if the standard input is not connected to a terminal, no passwords will be prompted, even if this option is true. You should only disable this feature if DSBulk mistankenly assumes that it is running in an interactive shell.
+
+Default: **true**.
 
 <a name="stats"></a>
 ## Stats Settings

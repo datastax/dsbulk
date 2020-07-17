@@ -14,6 +14,7 @@
 - [improvement] DAT-346: Add support for multichar field delimiters in CSV connector.
 - [improvement] DAT-469: Raise the precision of kb/row to 3 decimal digits.
 - [improvement] DAT-547: Ability to specify a list of allowed or denied hosts.
+- [improvement] DAT-472: Ability to prompt for passwords when none specified in config.
 
 
 ## 1.5.0
