@@ -138,7 +138,15 @@ These are addresses of Cassandra nodes that the driver uses to discover the clus
 
 This must be a list of strings with each contact point specified as "host" or "host:port". If the specified host doesn't have a port, the default port specified in `basic.default-port` will be used. Note that Cassandra 3 and below and DSE 6.7 and below require all nodes in a cluster to share the same port (see CASSANDRA-7544).
 
-If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use "localhost" as the host name (since it resolves to both IPv4 and IPv6 addresses on some platforms).
+Valid examples of contact points are:
+- IPv4 addresses with ports: `[ "192.168.0.1:9042", "192.168.0.2:9042" ]`
+- IPv4 addresses without ports: `[ "192.168.0.1", "192.168.0.2" ]`
+- IPv6 addresses with ports: `[ "fe80:0:0:0:f861:3eff:fe1d:9d7b:9042", "fe80:0:0:f861:3eff:fe1d:9d7b:9044:9042" ]`
+- IPv6 addresses without ports: `[ "fe80:0:0:0:f861:3eff:fe1d:9d7b", "fe80:0:0:f861:3eff:fe1d:9d7b:9044" ]`
+- Host names with ports: `[ "host1.com:9042", "host2.com:9042" ]`
+- Host names without ports: `[ "host1.com", "host2.com:" ]`
+
+If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Avoid using "localhost" as the host name (since it resolves to both IPv4 and IPv6 addresses on some platforms).
 
 The heuristic to determine whether or not a contact point is in the form "host" or "host:port" is not 100% accurate for some IPv6 addresses; you should avoid ambiguous IPv6 addresses such as `fe80::f861:3eff:fe1d:1234`, because such a string can be seen either as a combination of IP `fe80::f861:3eff:fe1d` with port 1234, or as IP `fe80::f861:3eff:fe1d:1234` without port. In such cases, DSBulk will not change the contact point. This issue can be avoided by providing IPv6 addresses in full form, e.g. if instead of `fe80::f861:3eff:fe1d:1234` you provide `fe80:0:0:0:0:f861:3eff:fe1d:1234`, then the string is unequivocally parsed as IP `fe80:0:0:0:0:f861:3eff:fe1d` with port 1234.
 
@@ -1338,7 +1346,15 @@ These are addresses of Cassandra nodes that the driver uses to discover the clus
 
 This must be a list of strings with each contact point specified as "host" or "host:port". If the specified host doesn't have a port, the default port specified in `basic.default-port` will be used. Note that Cassandra 3 and below and DSE 6.7 and below require all nodes in a cluster to share the same port (see CASSANDRA-7544).
 
-If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Do not use "localhost" as the host name (since it resolves to both IPv4 and IPv6 addresses on some platforms).
+Valid examples of contact points are:
+- IPv4 addresses with ports: `[ "192.168.0.1:9042", "192.168.0.2:9042" ]`
+- IPv4 addresses without ports: `[ "192.168.0.1", "192.168.0.2" ]`
+- IPv6 addresses with ports: `[ "fe80:0:0:0:f861:3eff:fe1d:9d7b:9042", "fe80:0:0:f861:3eff:fe1d:9d7b:9044:9042" ]`
+- IPv6 addresses without ports: `[ "fe80:0:0:0:f861:3eff:fe1d:9d7b", "fe80:0:0:f861:3eff:fe1d:9d7b:9044" ]`
+- Host names with ports: `[ "host1.com:9042", "host2.com:9042" ]`
+- Host names without ports: `[ "host1.com", "host2.com:" ]`
+
+If the host is a DNS name that resolves to multiple A-records, all the corresponding addresses will be used. Avoid using "localhost" as the host name (since it resolves to both IPv4 and IPv6 addresses on some platforms).
 
 The heuristic to determine whether or not a contact point is in the form "host" or "host:port" is not 100% accurate for some IPv6 addresses; you should avoid ambiguous IPv6 addresses such as `fe80::f861:3eff:fe1d:1234`, because such a string can be seen either as a combination of IP `fe80::f861:3eff:fe1d` with port 1234, or as IP `fe80::f861:3eff:fe1d:1234` without port. In such cases, DSBulk will not change the contact point. This issue can be avoided by providing IPv6 addresses in full form, e.g. if instead of `fe80::f861:3eff:fe1d:1234` you provide `fe80:0:0:0:0:f861:3eff:fe1d:1234`, then the string is unequivocally parsed as IP `fe80:0:0:0:0:f861:3eff:fe1d` with port 1234.
 
@@ -1426,9 +1442,37 @@ Default: **null**.
 
 #### --driver.basic.load-balancing-policy.filter.class<br />--datastax-java-driver.basic.load-balancing-policy.filter.class _&lt;string&gt;_
 
-An optional custom filter to include/exclude nodes. This option is not required; if present, it must be the fully-qualified name of a class that implements `java.util.function.Predicate<Node>`, and has a public constructor taking a single `DriverContext` argument. The predicate's `test(Node)` method will be invoked each time the policy processes a topology or state change: if it returns false, the node will be set at distance `IGNORED` (meaning the driver won't ever connect to it), and never included in any query plan.
+An optional custom filter to include/exclude nodes. If present, it must be the fully-qualified name of a class that implements `java.util.function.Predicate<Node>`, and has a public constructor taking two arguments: a `DriverContext` instance and a String representing the current execution profile name.
 
-Default: **null**.
+The predicate's `test(Node)` method will be invoked each time the policy processes a topology or state change: if it returns false, the node will be set at distance `IGNORED` (meaning the driver won't ever connect to it), and never included in any query plan.
+
+By default, DSBulk ships with a node filter implementation that honors the following settings:
+- `datastax-java-driver.basic.load-balancing-policy.filter.allow`: a list of host names or host addresses that should be allowed.
+- `datastax-java-driver.basic.load-balancing-policy.filter.deny`: a list of host names or host addresses that should be denied.
+
+See the description of the above settings for more details.
+
+Default: **"com.datastax.oss.dsbulk.workflow.commons.policies.lbp.SimpleNodeFilter"**.
+
+#### -allow,<br />--driver.basic.load-balancing-policy.filter.allow<br />--datastax-java-driver.basic.load-balancing-policy.filter.allow _&lt;list&lt;string&gt;&gt;_
+
+An optional list of host names or host addresses that should be allowed to connect. See `datastax-java-driver.basic.contact-points` for a full description of accepted formats.
+
+This option only has effect when the setting `datastax-java-driver.basic.load-balancing-policy.filter.class` refers to DSBulk's default node filter implementation: `com.datastax.oss.dsbulk.workflow.commons.policies.lbp.SimpleNodeFilter`.
+
+Note: this option is not compatible with DataStax Astra databases.
+
+Default: **[]**.
+
+#### -deny,<br />--driver.basic.load-balancing-policy.filter.deny<br />--datastax-java-driver.basic.load-balancing-policy.filter.deny _&lt;list&lt;string&gt;&gt;_
+
+An optional list of host names or host addresses that should be denied to connect. See `datastax-java-driver.basic.contact-points` for a full description of accepted formats.
+
+This option only has effect when the setting `datastax-java-driver.basic.load-balancing-policy.filter.class` refers to DSBulk's default node filter implementation: `com.datastax.oss.dsbulk.workflow.commons.policies.lbp.SimpleNodeFilter`.
+
+Note: this option is not compatible with DataStax Astra databases.
+
+Default: **[]**.
 
 #### --driver.advanced.protocol.version<br />--datastax-java-driver.advanced.protocol.version _&lt;string&gt;_
 

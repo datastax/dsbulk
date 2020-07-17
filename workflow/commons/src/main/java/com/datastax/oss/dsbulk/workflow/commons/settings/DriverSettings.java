@@ -32,7 +32,6 @@ import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONNEC
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONTACT_POINTS;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONTROL_CONNECTION_TIMEOUT;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.HEARTBEAT_INTERVAL;
-import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.LOAD_BALANCING_FILTER_CLASS;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.LOAD_BALANCING_LOCAL_DATACENTER;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.PROTOCOL_COMPRESSION;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.REQUEST_CONSISTENCY;
@@ -47,6 +46,7 @@ import static com.datastax.oss.dsbulk.commons.config.ConfigUtils.isValueFromRefe
 import static com.datastax.oss.dsbulk.commons.utils.ConsoleUtils.BULK_LOADER_APPLICATION_NAME;
 import static com.datastax.oss.dsbulk.commons.utils.ConsoleUtils.getBulkLoaderVersion;
 import static com.datastax.oss.dsbulk.workflow.commons.settings.BulkDriverOption.DEFAULT_PORT;
+import static com.datastax.oss.dsbulk.workflow.commons.settings.BulkDriverOption.LOAD_BALANCING_POLICY_FILTER_ALLOW;
 import static com.datastax.oss.dsbulk.workflow.commons.settings.BulkDriverOption.RETRY_POLICY_MAX_RETRIES;
 
 import com.datastax.oss.driver.api.core.ConsistencyLevel;
@@ -57,7 +57,6 @@ import com.datastax.oss.driver.api.core.auth.AuthProvider;
 import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
 import com.datastax.oss.driver.api.core.config.DriverOption;
 import com.datastax.oss.driver.api.core.context.DriverContext;
-import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.driver.api.core.session.ProgrammaticArguments;
 import com.datastax.oss.driver.api.core.time.TimestampGenerator;
 import com.datastax.oss.driver.internal.core.auth.PlainTextAuthProvider;
@@ -71,34 +70,26 @@ import com.datastax.oss.driver.internal.core.time.ThreadLocalTimestampGenerator;
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.base.Joiner;
 import com.datastax.oss.driver.shaded.guava.common.collect.BiMap;
-import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
-import com.datastax.oss.driver.shaded.guava.common.net.InetAddresses;
 import com.datastax.oss.dsbulk.commons.config.ConfigUtils;
 import com.datastax.oss.dsbulk.commons.config.shortcuts.ShortcutsFactory;
 import com.datastax.oss.dsbulk.workflow.commons.auth.AuthProviderFactory;
 import com.datastax.oss.dsbulk.workflow.commons.ssl.SslHandlerFactoryFactory;
+import com.datastax.oss.dsbulk.workflow.commons.utils.AddressUtils;
 import com.datastax.oss.dsbulk.workflow.commons.utils.WorkflowUtils;
 import com.datastax.oss.protocol.internal.ProtocolConstants;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigValueFactory;
-import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
-import java.net.SocketAddress;
 import java.net.URL;
-import java.net.UnknownHostException;
 import java.security.GeneralSecurityException;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -119,7 +110,6 @@ public class DriverSettings {
   private int defaultPort;
   private AuthProvider authProvider;
   @VisibleForTesting SslHandlerFactory sslHandlerFactory;
-  private Predicate<Node> nodeFilter;
 
   public DriverSettings(
       Config deprecatedDriverConfig,
@@ -372,27 +362,10 @@ public class DriverSettings {
 
       if (isUserDefined(deprecatedDriverConfig, "policy.lbp.whiteList.hosts")) {
         List<String> whiteList = deprecatedDriverConfig.getStringList("policy.lbp.whiteList.hosts");
-        if (!whiteList.isEmpty()) {
-          List<SocketAddress> allowedHosts =
-              whiteList.stream()
-                  .flatMap(
-                      host -> {
-                        try {
-                          return Arrays.stream(InetAddress.getAllByName(host));
-                        } catch (UnknownHostException e) {
-                          String msg =
-                              String.format(
-                                  "Could not resolve host: %s, please verify your %s setting",
-                                  host, "policy.lbp.whiteList.hosts");
-                          throw new IllegalArgumentException(msg, e);
-                        }
-                      })
-                  .map(host -> new InetSocketAddress(host, defaultPort))
-                  .collect(ImmutableList.toImmutableList());
-          nodeFilter = node -> allowedHosts.contains(node.getEndPoint().resolve());
-        }
+        convertedConfig =
+            addConfigValue(convertedConfig, LOAD_BALANCING_POLICY_FILTER_ALLOW, whiteList);
         warnDeprecatedSetting(
-            "dsbulk.driver.policy.lbp.whiteList.hosts", LOAD_BALANCING_FILTER_CLASS);
+            "dsbulk.driver.policy.lbp.whiteList.hosts", LOAD_BALANCING_POLICY_FILTER_ALLOW);
       }
     }
   }
@@ -521,7 +494,9 @@ public class DriverSettings {
       // DSBulk allows contact points to be specified without port, but the driver doesn't.
       List<String> hosts = mergedDriverConfig.getStringList(CONTACT_POINTS.getPath());
       List<String> contactPoints =
-          hosts.stream().map(this::maybeAddPortToHost).collect(Collectors.toList());
+          hosts.stream()
+              .map(contactPoint -> AddressUtils.maybeAddPortToHost(contactPoint, defaultPort))
+              .collect(Collectors.toList());
       mergedDriverConfig = addConfigValue(mergedDriverConfig, CONTACT_POINTS, contactPoints);
     }
   }
@@ -562,9 +537,6 @@ public class DriverSettings {
             .withClientId(WorkflowUtils.clientId(executionId))
             .withAuthProvider(authProvider)
             .withConfigLoader(new DefaultDriverConfigLoader(this::getDriverConfig, false));
-    if (nodeFilter != null) {
-      sessionBuilder.withNodeFilter(nodeFilter);
-    }
     return sessionBuilder.build();
   }
 
@@ -617,40 +589,6 @@ public class DriverSettings {
     } else {
       // All levels accepted when reading
       return true;
-    }
-  }
-
-  @NonNull
-  private String maybeAddPortToHost(String contactPoint) {
-    int colon = contactPoint.lastIndexOf(':');
-    if (colon == -1) {
-      // is either ipv4 or hostname without port -> add port
-      return contactPoint + ':' + defaultPort;
-    } else {
-      String hostOrIp = contactPoint.substring(0, colon);
-      if (hostOrIp.indexOf(':') != -1) {
-        // is either ipv6 or ipv6:port -> disambiguate
-        boolean contactPointOk = InetAddresses.isInetAddress(contactPoint);
-        boolean hostOrIpOk = InetAddresses.isInetAddress(hostOrIp);
-        if (!contactPointOk && hostOrIpOk) {
-          // is ipv6 with port -> do nothing
-          return contactPoint;
-        }
-        if (contactPointOk && !hostOrIpOk) {
-          // is ipv6 without port -> add port
-          return contactPoint + ':' + defaultPort;
-        }
-        try {
-          Integer.parseInt(contactPoint.substring(colon + 1));
-        } catch (NumberFormatException e) {
-          // is ipv6 without port -> add port
-          return contactPoint + ':' + defaultPort;
-        }
-        // other cases: ambiguous -> do nothing
-      }
-      // ipv4:port or hostname:port -> do nothing
-      // ipv6 with ambiguous ending -> do nothing
-      return contactPoint;
     }
   }
 
