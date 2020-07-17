@@ -187,7 +187,7 @@ workload:
             if contains {{connectors}} csv && contains {{workloads}} load; then
               cd ${FALLOUT_SCRATCH_DIR}
 
-              for MAX_FILES in 0.5C 1
+              for MAX_FILES in 1C 0.5C 1
               do
               for MAX_QUERIES in AUTO
               do
@@ -386,7 +386,7 @@ workload:
             if contains {{connectors}} json && contains {{workloads}} load; then
               cd ${FALLOUT_SCRATCH_DIR}
 
-              for MAX_FILES in 0.5C 1
+              for MAX_FILES in 1C 1
               do
               for MAX_QUERIES in AUTO
               do
@@ -510,7 +510,7 @@ workload:
 
               for MAX_QUERIES in AUTO 1
               do
-              for MAX_FILES in 0.5C 1
+              for MAX_FILES in 1C 0.5C 1
               do
 
               echo "CSV - Unloading 100B maxConcurrentQueries $MAX_QUERIES maxConcurrentFiles $MAX_FILES"
