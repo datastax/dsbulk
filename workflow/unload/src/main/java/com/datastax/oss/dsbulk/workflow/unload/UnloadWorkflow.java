@@ -15,15 +15,13 @@
  */
 package com.datastax.oss.dsbulk.workflow.unload;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
-
 import com.codahale.metrics.MetricRegistry;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.metrics.Metrics;
 import com.datastax.oss.driver.shaded.guava.common.base.Stopwatch;
 import com.datastax.oss.dsbulk.codecs.ConvertingCodecFactory;
-import com.datastax.oss.dsbulk.commons.utils.StringUtils;
+import com.datastax.oss.dsbulk.commons.utils.DurationUtils;
 import com.datastax.oss.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.oss.dsbulk.connectors.api.Connector;
 import com.datastax.oss.dsbulk.connectors.api.Record;
@@ -50,7 +48,9 @@ import com.datastax.oss.dsbulk.workflow.commons.utils.WorkflowUtils;
 import com.typesafe.config.Config;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import io.netty.util.concurrent.DefaultThreadFactory;
+import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import org.reactivestreams.Publisher;
@@ -187,15 +187,15 @@ public class UnloadWorkflow implements Workflow {
         .blockLast();
     timer.stop();
     metricsManager.stop();
-    long seconds = timer.elapsed(SECONDS);
+    Duration duration = DurationUtils.round(timer.elapsed(), TimeUnit.SECONDS);
     if (logManager.getTotalErrors() == 0) {
-      LOGGER.info("{} completed successfully in {}.", this, StringUtils.formatElapsed(seconds));
+      LOGGER.info("{} completed successfully in {}.", this, DurationUtils.formatDuration(duration));
     } else {
       LOGGER.warn(
           "{} completed with {} errors in {}.",
           this,
           logManager.getTotalErrors(),
-          StringUtils.formatElapsed(seconds));
+          DurationUtils.formatDuration(duration));
     }
     return logManager.getTotalErrors() == 0;
   }
