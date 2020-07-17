@@ -15,21 +15,43 @@
  */
 package com.datastax.oss.dsbulk.workflow.commons.settings;
 
+import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
 import com.datastax.oss.driver.api.core.config.DriverOption;
+import com.datastax.oss.dsbulk.workflow.commons.policies.lbp.SimpleNodeFilter;
 import com.datastax.oss.dsbulk.workflow.commons.policies.retry.MultipleRetryPolicy;
 import edu.umd.cs.findbugs.annotations.NonNull;
 
+/** Driver options that are defined by DSBulk. */
 public enum BulkDriverOption implements DriverOption {
 
   /**
-   * The default port to use when {@link
-   * com.datastax.oss.driver.api.core.config.DefaultDriverOption#CONTACT_POINTS} contains hosts
-   * without ports.
+   * The default port to use when {@link DefaultDriverOption#CONTACT_POINTS} contains hosts without
+   * ports.
+   *
+   * <p>Expected type: int.
    */
   DEFAULT_PORT("basic.default-port"),
 
-  /** The maximum number of attemps to retry, when using {@link MultipleRetryPolicy}. */
+  /**
+   * The maximum number of attempts to retry, when using {@link MultipleRetryPolicy}.
+   *
+   * <p>Expected type: int.
+   */
   RETRY_POLICY_MAX_RETRIES("advanced.retry-policy.max-retries"),
+
+  /**
+   * The list of allowed nodes, for use when {@link SimpleNodeFilter} is used.
+   *
+   * <p>Expected type: String List.
+   */
+  LOAD_BALANCING_POLICY_FILTER_ALLOW("basic.load-balancing-policy.filter.allow"),
+
+  /**
+   * The list of denied nodes, for use when {@link SimpleNodeFilter} is used.
+   *
+   * <p>Expected type: String List.
+   */
+  LOAD_BALANCING_POLICY_FILTER_DENY("basic.load-balancing-policy.filter.deny"),
   ;
 
   private final String path;

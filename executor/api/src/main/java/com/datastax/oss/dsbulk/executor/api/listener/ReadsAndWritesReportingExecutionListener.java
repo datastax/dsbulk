@@ -240,8 +240,8 @@ public class ReadsAndWritesReportingExecutionListener
           + "%,.0f reads-writes/%s, "
           + "%,.2f mb/%s sent, "
           + "%,.2f mb/%s received ("
-          + "%,.2f kb/write, "
-          + "%,.2f kb/read)";
+          + "%,.3f kb/write, "
+          + "%,.3f kb/read)";
     } else {
       return "Throughput: %,.0f reads-writes/%s";
     }

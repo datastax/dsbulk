@@ -15,15 +15,17 @@
  */
 package com.datastax.oss.dsbulk.workflow.commons.settings;
 
+import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.codahale.metrics.MetricRegistry;
 import com.datastax.oss.driver.api.core.ProtocolVersion;
 import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
+import com.datastax.oss.dsbulk.tests.logging.LogInterceptingExtension;
+import com.datastax.oss.dsbulk.tests.logging.LogInterceptor;
 import com.datastax.oss.dsbulk.tests.utils.ReflectionUtils;
 import com.datastax.oss.dsbulk.tests.utils.TestConfigUtils;
 import com.datastax.oss.dsbulk.workflow.commons.metrics.MetricsManager;
@@ -32,7 +34,9 @@ import java.nio.file.Path;
 import java.time.Duration;
 import org.assertj.core.util.Files;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(LogInterceptingExtension.class)
 class MonitoringSettingsTest {
 
   private ProtocolVersion protocolVersion = ProtocolVersion.DEFAULT;
@@ -185,5 +189,17 @@ class MonitoringSettingsTest {
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.monitoring.reportRate: No number in duration value 'NotADuration'");
+  }
+
+  @Test
+  void should_log_warning_when_reportRate_lesser_than_one_second(LogInterceptor logs) {
+    Config config =
+        TestConfigUtils.createTestConfig("dsbulk.monitoring", "reportRate", "10 milliseconds");
+    MonitoringSettings settings = new MonitoringSettings(config, "test");
+    settings.init();
+    assertThat(logs)
+        .hasMessageContaining(
+            "Invalid value for dsbulk.monitoring.reportRate: "
+                + "expecting duration >= 1 second, got '10 milliseconds' – will use 1 second instead");
   }
 }

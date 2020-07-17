@@ -126,7 +126,7 @@ class ConsoleReporterTest {
             ""
                 + "  total | failed | rows/s | mb/s | kb/row | p50ms |  p99ms | p999ms"
                 + System.lineSeparator()
-                + "100,000 |      1 | 10,000 | 1.00 |   0.10 | 50.00 | 100.00 | 250.00"
+                + "100,000 |      1 | 10,000 | 1.00 |  0.102 | 50.00 | 100.00 | 250.00"
                 + System.lineSeparator()),
         Arguments.of(
             RowType.REGULAR,
@@ -136,7 +136,7 @@ class ConsoleReporterTest {
             ""
                 + "  total | failed | rows/s | mb/s | kb/row | p50ms |  p99ms | p999ms | batches"
                 + System.lineSeparator()
-                + "100,000 |      1 | 10,000 | 1.00 |   0.10 | 50.00 | 100.00 | 250.00 |   32.00"
+                + "100,000 |      1 | 10,000 | 1.00 |  0.102 | 50.00 | 100.00 | 250.00 |   32.00"
                 + System.lineSeparator()),
         Arguments.of(
             RowType.REGULAR,
@@ -146,7 +146,7 @@ class ConsoleReporterTest {
             ""
                 + "  total | failed | achieved | rows/s | mb/s | kb/row | p50ms |  p99ms | p999ms"
                 + System.lineSeparator()
-                + "100,000 |      1 |     100% | 10,000 | 1.00 |   0.10 | 50.00 | 100.00 | 250.00"
+                + "100,000 |      1 |     100% | 10,000 | 1.00 |  0.102 | 50.00 | 100.00 | 250.00"
                 + System.lineSeparator()),
         Arguments.of(
             RowType.REGULAR,
@@ -156,7 +156,7 @@ class ConsoleReporterTest {
             ""
                 + "  total | failed | achieved | rows/s | mb/s | kb/row | p50ms |  p99ms | p999ms | batches"
                 + System.lineSeparator()
-                + "100,000 |      1 |     100% | 10,000 | 1.00 |   0.10 | 50.00 | 100.00 | 250.00 |   32.00"
+                + "100,000 |      1 |     100% | 10,000 | 1.00 |  0.102 | 50.00 | 100.00 | 250.00 |   32.00"
                 + System.lineSeparator()),
         // Vertices
         Arguments.of(
@@ -207,7 +207,7 @@ class ConsoleReporterTest {
             ""
                 + "  total | failed | vertices/s | mb/s | kb/vertex | p50ms |  p99ms | p999ms"
                 + System.lineSeparator()
-                + "100,000 |      1 |     10,000 | 1.00 |      0.10 | 50.00 | 100.00 | 250.00"
+                + "100,000 |      1 |     10,000 | 1.00 |     0.102 | 50.00 | 100.00 | 250.00"
                 + System.lineSeparator()),
         Arguments.of(
             RowType.VERTEX,
@@ -217,7 +217,7 @@ class ConsoleReporterTest {
             ""
                 + "  total | failed | vertices/s | mb/s | kb/vertex | p50ms |  p99ms | p999ms | batches"
                 + System.lineSeparator()
-                + "100,000 |      1 |     10,000 | 1.00 |      0.10 | 50.00 | 100.00 | 250.00 |   32.00"
+                + "100,000 |      1 |     10,000 | 1.00 |     0.102 | 50.00 | 100.00 | 250.00 |   32.00"
                 + System.lineSeparator()),
         Arguments.of(
             RowType.VERTEX,
@@ -227,7 +227,7 @@ class ConsoleReporterTest {
             ""
                 + "  total | failed | achieved | vertices/s | mb/s | kb/vertex | p50ms |  p99ms | p999ms"
                 + System.lineSeparator()
-                + "100,000 |      1 |     100% |     10,000 | 1.00 |      0.10 | 50.00 | 100.00 | 250.00"
+                + "100,000 |      1 |     100% |     10,000 | 1.00 |     0.102 | 50.00 | 100.00 | 250.00"
                 + System.lineSeparator()),
         Arguments.of(
             RowType.VERTEX,
@@ -237,7 +237,7 @@ class ConsoleReporterTest {
             ""
                 + "  total | failed | achieved | vertices/s | mb/s | kb/vertex | p50ms |  p99ms | p999ms | batches"
                 + System.lineSeparator()
-                + "100,000 |      1 |     100% |     10,000 | 1.00 |      0.10 | 50.00 | 100.00 | 250.00 |   32.00"
+                + "100,000 |      1 |     100% |     10,000 | 1.00 |     0.102 | 50.00 | 100.00 | 250.00 |   32.00"
                 + System.lineSeparator()),
 
         // Edges
@@ -289,7 +289,7 @@ class ConsoleReporterTest {
             ""
                 + "  total | failed | edges/s | mb/s | kb/edge | p50ms |  p99ms | p999ms"
                 + System.lineSeparator()
-                + "100,000 |      1 |  10,000 | 1.00 |    0.10 | 50.00 | 100.00 | 250.00"
+                + "100,000 |      1 |  10,000 | 1.00 |   0.102 | 50.00 | 100.00 | 250.00"
                 + System.lineSeparator()),
         Arguments.of(
             RowType.EDGE,
@@ -299,7 +299,7 @@ class ConsoleReporterTest {
             ""
                 + "  total | failed | edges/s | mb/s | kb/edge | p50ms |  p99ms | p999ms | batches"
                 + System.lineSeparator()
-                + "100,000 |      1 |  10,000 | 1.00 |    0.10 | 50.00 | 100.00 | 250.00 |   32.00"
+                + "100,000 |      1 |  10,000 | 1.00 |   0.102 | 50.00 | 100.00 | 250.00 |   32.00"
                 + System.lineSeparator()),
         Arguments.of(
             RowType.EDGE,
@@ -309,7 +309,7 @@ class ConsoleReporterTest {
             ""
                 + "  total | failed | achieved | edges/s | mb/s | kb/edge | p50ms |  p99ms | p999ms"
                 + System.lineSeparator()
-                + "100,000 |      1 |     100% |  10,000 | 1.00 |    0.10 | 50.00 | 100.00 | 250.00"
+                + "100,000 |      1 |     100% |  10,000 | 1.00 |   0.102 | 50.00 | 100.00 | 250.00"
                 + System.lineSeparator()),
         Arguments.of(
             RowType.EDGE,
@@ -319,7 +319,7 @@ class ConsoleReporterTest {
             ""
                 + "  total | failed | achieved | edges/s | mb/s | kb/edge | p50ms |  p99ms | p999ms | batches"
                 + System.lineSeparator()
-                + "100,000 |      1 |     100% |  10,000 | 1.00 |    0.10 | 50.00 | 100.00 | 250.00 |   32.00"
+                + "100,000 |      1 |     100% |  10,000 | 1.00 |   0.102 | 50.00 | 100.00 | 250.00 |   32.00"
                 + System.lineSeparator()));
   }
 

@@ -218,7 +218,7 @@ public class ReadsReportingExecutionListener extends AbstractMetricsReportingExe
 
   private static String createThroughputMessageTemplate(boolean trackThroughputInBytes) {
     if (trackThroughputInBytes) {
-      return "Throughput: %,.0f reads/%s, %,.2f mb/%s (%,.2f kb/read)";
+      return "Throughput: %,.0f reads/%s, %,.2f mb/%s (%,.3f kb/read)";
     } else {
       return "Throughput: %,.0f reads/%s";
     }

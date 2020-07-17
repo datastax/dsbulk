@@ -97,6 +97,11 @@ def notifySlack(status = 'started') {
     return
   }
 
+  if (status == 'started' || status == 'completed') {
+    // started and completed events are now disabled
+    return
+  }
+
   if (status == 'started') {
     if (env.SLACK_START_NOTIFIED == 'true') {
       return
@@ -207,7 +212,7 @@ pipeline {
   triggers {
     parameterizedCron(branchPatternCron.matcher(env.BRANCH_NAME).matches() ? """
       # Every weeknight (Monday - Friday) around 6:00 AM
-      H 6 * * 1-5 % MATRIX_TYPE=FULL; RUN_LONG_TESTS=true; RUN_VERY_LONG_TESTS=true; GENERATE_DISTRO=true; SLACK_ENABLED=false
+      H 6 * * 1-5 % MATRIX_TYPE=FULL; RUN_LONG_TESTS=true; RUN_VERY_LONG_TESTS=true; GENERATE_DISTRO=true
     """ : "")
   }
 
