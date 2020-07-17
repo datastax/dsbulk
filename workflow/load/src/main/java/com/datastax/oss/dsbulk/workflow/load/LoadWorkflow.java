@@ -232,6 +232,12 @@ public class LoadWorkflow implements Workflow {
     return logManager.getTotalErrors() == 0;
   }
 
+  /**
+   * Reads the resources in parallel with {@code readConcurrency} parallelism.
+   *
+   * <p>Each thread in the workflow thread pool is responsible for reading one file and processing
+   * its records.
+   */
   private Flux<Statement<?>> manyReaders() {
     int numThreads = Math.min(readConcurrency, numCores);
     scheduler = Schedulers.newParallel(numThreads, new DefaultThreadFactory("workflow"));
@@ -251,6 +257,14 @@ public class LoadWorkflow implements Workflow {
             readConcurrency);
   }
 
+  /**
+   * Reads the resources one by one.
+   *
+   * <p>Even if resources are subscribed with {@code readConcurrency} parallelism, they are read one
+   * by one by the main workflow thread. The chunks of parsed records are then dispatched to the
+   * workflow thread pool. Each thread in the workflow thread pool is responsible for processing a
+   * chunk of records, with {@code numCores} parallelism.
+   */
   private Flux<Statement<?>> fewReaders() {
     scheduler = Schedulers.newParallel(numCores, new DefaultThreadFactory("workflow"));
     return Flux.defer(() -> connector.read())
@@ -274,16 +288,32 @@ public class LoadWorkflow implements Workflow {
             numCores);
   }
 
+  /**
+   * Batches the given statement flow, if batching is enabled; otherwise do nothing.
+   *
+   * <p>The flow is expected to be unbuffered, so this method first applies buffering by {@code
+   * batchBufferSize} before batching the resulting chunks.
+   */
   private Flux<? extends Statement<?>> bufferAndBatch(Flux<BatchableStatement<?>> stmts) {
     return batchingEnabled
         ? stmts.window(batchBufferSize).flatMap(batcher).transform(batcherMonitor)
         : stmts;
   }
 
+  /**
+   * Batches the given statement flow, if batching is enabled; otherwise do nothing.
+   *
+   * <p>The flow is expected to be already buffered by {@code batchBufferSize} so this method
+   * applies batching immediately.
+   */
   private Flux<? extends Statement<?>> batchBuffered(Flux<BatchableStatement<?>> stmts) {
     return batchingEnabled ? stmts.transform(batcher).transform(batcherMonitor) : stmts;
   }
 
+  /**
+   * Executes the given statement flow, unless we are running in dry-run mode, in which case a
+   * successful write is emulated.
+   */
   private Flux<WriteResult> executeStatements(Flux<? extends Statement<?>> stmts) {
     return dryRun
         ? stmts.map(EmptyWriteResult::new)
