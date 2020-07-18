@@ -26,6 +26,17 @@
   <artifactId>dsbulk-workflow-api</artifactId>
   <name>DataStax Bulk Loader - Workflow - API</name>
   <description>Workflow API for the DataStax Bulk Loader.</description>
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>dsbulk-bom</artifactId>
+        <version>${project.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
   <dependencies>
     <dependency>
       <groupId>com.typesafe</groupId>

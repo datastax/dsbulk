@@ -31,6 +31,7 @@
     <url>http://www.datastax.com</url>
   </organization>
   <modules>
+    <module>bom</module>
     <module>commons</module>
     <module>url</module>
     <module>io</module>
@@ -54,11 +55,12 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <java.version>1.8</java.version>
-    <oss.driver.version>4.7.2</oss.driver.version>
     <!--
-    When upgrading library versions make sure the resulting binary tarball contains only
+    When upgrading compile-time and runtime library versions,
+    make sure the resulting binary tarball contains only
     required jars, and that no jar has an offending license.
     -->
+    <driver.version>4.7.2</driver.version>
     <reactive-streams.version>1.0.3</reactive-streams.version>
     <reactor.version>Dysprosium-SR9</reactor.version>
     <config.version>1.4.0</config.version>
@@ -72,55 +74,29 @@
     <snappy.version>1.1.7.3</snappy.version>
     <hdr.version>2.1.12</hdr.version>
     <jackson.version>2.11.1</jackson.version>
-    <jackson-databind.version>2.11.1</jackson-databind.version>
-    <junit.version>5.6.2</junit.version>
     <univocity.version>2.8.4</univocity.version>
-    <assertj.version>3.16.1</assertj.version>
-    <mockito.version>3.4.2</mockito.version>
-    <commons-exec.version>1.3</commons-exec.version>
     <commons-compress.version>1.19</commons-compress.version>
     <compress.zstd.version>1.4.5-5</compress.zstd.version>
     <compress.xz.version>1.8</compress.xz.version>
     <compress.brotli.version>0.1.2</compress.brotli.version>
+    <antlr4.version>4.8-1</antlr4.version>
+    <!-- Test dependencies -->
+    <junit.version>5.6.2</junit.version>
+    <assertj.version>3.16.1</assertj.version>
+    <mockito.version>3.4.2</mockito.version>
     <simulacron.version>0.10.0</simulacron.version>
     <awaitility.version>4.0.3</awaitility.version>
+    <commons-exec.version>1.3</commons-exec.version>
     <surefire.version>2.22.2</surefire.version>
-    <antlr4.version>4.8-1</antlr4.version>
     <max.simulacron.clusters>4</max.simulacron.clusters>
     <max.ccm.clusters>2</max.ccm.clusters>
   </properties>
   <dependencyManagement>
     <dependencies>
-      <dependency>
-        <groupId>com.datastax.oss</groupId>
-        <artifactId>dsbulk-commons</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.datastax.oss</groupId>
-        <artifactId>dsbulk-url</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.datastax.oss</groupId>
-        <artifactId>dsbulk-io</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.datastax.oss</groupId>
-        <artifactId>dsbulk-config</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.datastax.oss</groupId>
-        <artifactId>dsbulk-cql</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.datastax.oss</groupId>
-        <artifactId>dsbulk-mapping</artifactId>
-        <version>${project.version}</version>
-      </dependency>
+      <!--
+      Compile-time and runtime dependencies are declared in DSBulk's BOM;
+      below are the test dependencies used by DSBulk
+      -->
       <dependency>
         <groupId>com.datastax.oss</groupId>
         <artifactId>dsbulk-tests</artifactId>
@@ -128,49 +104,9 @@
       </dependency>
       <dependency>
         <groupId>com.datastax.oss</groupId>
-        <artifactId>dsbulk-codecs-api</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.datastax.oss</groupId>
-        <artifactId>dsbulk-codecs-text</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.datastax.oss</groupId>
-        <artifactId>dsbulk-format</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.datastax.oss</groupId>
-        <artifactId>dsbulk-sampler</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.datastax.oss</groupId>
-        <artifactId>dsbulk-partitioner</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.datastax.oss</groupId>
-        <artifactId>dsbulk-batcher-api</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.datastax.oss</groupId>
         <artifactId>dsbulk-batcher-api</artifactId>
         <version>${project.version}</version>
         <type>test-jar</type>
-      </dependency>
-      <dependency>
-        <groupId>com.datastax.oss</groupId>
-        <artifactId>dsbulk-batcher-reactor</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.datastax.oss</groupId>
-        <artifactId>dsbulk-executor-api</artifactId>
-        <version>${project.version}</version>
       </dependency>
       <dependency>
         <groupId>com.datastax.oss</groupId>
@@ -179,179 +115,16 @@
         <type>test-jar</type>
       </dependency>
       <dependency>
-        <groupId>com.datastax.oss</groupId>
-        <artifactId>dsbulk-executor-reactor</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.datastax.oss</groupId>
-        <artifactId>dsbulk-connectors-api</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.datastax.oss</groupId>
-        <artifactId>dsbulk-connectors-commons</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.datastax.oss</groupId>
-        <artifactId>dsbulk-connectors-csv</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.datastax.oss</groupId>
-        <artifactId>dsbulk-connectors-json</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.datastax.oss</groupId>
-        <artifactId>dsbulk-workflow-api</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.datastax.oss</groupId>
-        <artifactId>dsbulk-workflow-commons</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.datastax.oss</groupId>
-        <artifactId>dsbulk-workflow-load</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.datastax.oss</groupId>
-        <artifactId>dsbulk-workflow-unload</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.datastax.oss</groupId>
-        <artifactId>dsbulk-workflow-count</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.datastax.oss</groupId>
-        <artifactId>dsbulk-runner</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.datastax.oss</groupId>
-        <artifactId>java-driver-bom</artifactId>
-        <version>${oss.driver.version}</version>
-        <type>pom</type>
+        <groupId>org.junit</groupId>
+        <artifactId>junit-bom</artifactId>
+        <version>${junit.version}</version>
         <scope>import</scope>
-        <exclusions>
-          <exclusion>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-          </exclusion>
-        </exclusions>
-      </dependency>
-      <dependency>
-        <groupId>org.reactivestreams</groupId>
-        <artifactId>reactive-streams</artifactId>
-        <version>${reactive-streams.version}</version>
+        <type>pom</type>
       </dependency>
       <dependency>
         <groupId>org.reactivestreams</groupId>
         <artifactId>reactive-streams-tck</artifactId>
         <version>${reactive-streams.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>io.projectreactor</groupId>
-        <artifactId>reactor-bom</artifactId>
-        <version>${reactor.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-      <dependency>
-        <groupId>com.typesafe</groupId>
-        <artifactId>config</artifactId>
-        <version>${config.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.github.ben-manes.caffeine</groupId>
-        <artifactId>caffeine</artifactId>
-        <version>${caffeine.version}</version>
-        <exclusions>
-          <exclusion>
-            <groupId>org.checkerframework</groupId>
-            <artifactId>checker-qual</artifactId>
-          </exclusion>
-          <exclusion>
-            <groupId>com.google.errorprone</groupId>
-            <artifactId>error_prone_annotations</artifactId>
-          </exclusion>
-        </exclusions>
-      </dependency>
-      <dependency>
-        <groupId>org.jctools</groupId>
-        <artifactId>jctools-core</artifactId>
-        <version>${jctools.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>io.dropwizard.metrics</groupId>
-        <artifactId>metrics-core</artifactId>
-        <version>${metrics.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>io.dropwizard.metrics</groupId>
-        <artifactId>metrics-jmx</artifactId>
-        <version>${metrics.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.lz4</groupId>
-        <artifactId>lz4-java</artifactId>
-        <version>${lz4.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.xerial.snappy</groupId>
-        <artifactId>snappy-java</artifactId>
-        <version>${snappy.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.hdrhistogram</groupId>
-        <artifactId>HdrHistogram</artifactId>
-        <version>${hdr.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.slf4j</groupId>
-        <artifactId>slf4j-api</artifactId>
-        <version>${slf4j.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.slf4j</groupId>
-        <artifactId>jul-to-slf4j</artifactId>
-        <version>${slf4j.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>ch.qos.logback</groupId>
-        <artifactId>logback-classic</artifactId>
-        <version>${logback.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.univocity</groupId>
-        <artifactId>univocity-parsers</artifactId>
-        <version>${univocity.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.fasterxml.jackson.core</groupId>
-        <artifactId>jackson-core</artifactId>
-        <version>${jackson.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.fasterxml.jackson.core</groupId>
-        <artifactId>jackson-databind</artifactId>
-        <version>${jackson-databind.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.junit.jupiter</groupId>
-        <artifactId>junit-jupiter-params</artifactId>
-        <version>${junit.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.junit.jupiter</groupId>
-        <artifactId>junit-jupiter-engine</artifactId>
-        <version>${junit.version}</version>
       </dependency>
       <dependency>
         <groupId>org.assertj</groupId>
@@ -374,52 +147,6 @@
         <version>${commons-exec.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.apache.commons</groupId>
-        <artifactId>commons-text</artifactId>
-        <version>1.8</version>
-      </dependency>
-      <dependency>
-        <groupId>com.github.spotbugs</groupId>
-        <artifactId>spotbugs-annotations</artifactId>
-        <version>3.1.12</version>
-      </dependency>
-      <dependency>
-        <groupId>com.esri.geometry</groupId>
-        <artifactId>esri-geometry-api</artifactId>
-        <version>1.2.1</version>
-      </dependency>
-      <dependency>
-        <groupId>io.netty</groupId>
-        <artifactId>netty-common</artifactId>
-        <version>${netty.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>io.netty</groupId>
-        <artifactId>netty-tcnative-boringssl-static</artifactId>
-        <!-- when upgrading this library, make sure SSL tests pass, see SSLEncryptionEndToEndCCMIT -->
-        <version>2.0.31.Final</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.commons</groupId>
-        <artifactId>commons-compress</artifactId>
-        <version>${commons-compress.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.github.luben</groupId>
-        <artifactId>zstd-jni</artifactId>
-        <version>${compress.zstd.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.tukaani</groupId>
-        <artifactId>xz</artifactId>
-        <version>${compress.xz.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.brotli</groupId>
-        <artifactId>dec</artifactId>
-        <version>${compress.brotli.version}</version>
-      </dependency>
-      <dependency>
         <groupId>com.datastax.oss.simulacron</groupId>
         <artifactId>simulacron-native-server</artifactId>
         <version>${simulacron.version}</version>
@@ -428,11 +155,6 @@
         <groupId>org.awaitility</groupId>
         <artifactId>awaitility</artifactId>
         <version>${awaitility.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.antlr</groupId>
-        <artifactId>antlr4-runtime</artifactId>
-        <version>${antlr4.version}</version>
       </dependency>
       <dependency>
         <groupId>com.github.tomakehurst</groupId>
@@ -444,10 +166,11 @@
         <artifactId>wiremock-junit5</artifactId>
         <version>1.3.1</version>
       </dependency>
+      <!-- Documentation dependencies -->
       <dependency>
-        <groupId>org.fusesource.jansi</groupId>
-        <artifactId>jansi</artifactId>
-        <version>1.18</version>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-text</artifactId>
+        <version>1.8</version>
       </dependency>
     </dependencies>
   </dependencyManagement>

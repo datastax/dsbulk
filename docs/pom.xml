@@ -26,6 +26,17 @@
   <artifactId>dsbulk-docs</artifactId>
   <name>DataStax Bulk Loader - Docs</name>
   <description>Docs generation for the DataStax Bulk Loader.</description>
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>dsbulk-bom</artifactId>
+        <version>${project.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
   <dependencies>
     <!-- dependencies for javadoc generation -->
     <dependency>

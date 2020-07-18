@@ -26,6 +26,17 @@
   <artifactId>dsbulk-workflow-count</artifactId>
   <name>DataStax Bulk Loader - Workflow - Count</name>
   <description>Count workflow for the DataStax Bulk Loader.</description>
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>dsbulk-bom</artifactId>
+        <version>${project.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
   <dependencies>
     <dependency>
       <groupId>com.datastax.oss</groupId>

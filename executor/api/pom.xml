@@ -26,6 +26,17 @@
   <artifactId>dsbulk-executor-api</artifactId>
   <name>DataStax Bulk Loader - Executor - API</name>
   <description>Bulk Executor API for the DataStax Bulk Loader.</description>
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>dsbulk-bom</artifactId>
+        <version>${project.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
   <dependencies>
     <dependency>
       <groupId>com.datastax.oss</groupId>
