@@ -1549,6 +1549,18 @@ The name of the algorithm used to compress protocol frames. The possible values 
 
 Default: **"none"**.
 
+#### --driver.advanced.connection.connect-timeout<br />--datastax-java-driver.advanced.connection.connect-timeout _&lt;string&gt;_
+
+The timeout to use when establishing driver connections. This timeout is for controlling how long the driver will wait for the underlying channel to actually connect to the server. This is not the time limit for completing protocol negotiations, only the time limit for establishing a channel connection.
+
+Default: **"30 seconds"**.
+
+#### --driver.advanced.connection.init-query-timeout<br />--datastax-java-driver.advanced.connection.init-query-timeout _&lt;string&gt;_
+
+The timeout to use for internal queries that run as part of the initialization process, just after we open a connection. If this timeout fires, the initialization of the connection will fail. If this is the first connection ever, the driver will fail to initialize as well, otherwise it will retry the connection later.
+
+Default: **"30 seconds"**.
+
 #### --driver.advanced.connection.pool.local.size<br />--datastax-java-driver.advanced.connection.pool.local.size _&lt;number&gt;_
 
 The number of connections in the pool for nodes considered as local.
