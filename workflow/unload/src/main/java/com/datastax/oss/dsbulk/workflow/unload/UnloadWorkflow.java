@@ -322,8 +322,10 @@ public class UnloadWorkflow implements Workflow {
       Exception e = CloseableUtils.closeQuietly(metricsManager, null);
       e = CloseableUtils.closeQuietly(logManager, e);
       e = CloseableUtils.closeQuietly(connector, e);
-      for (Scheduler scheduler : schedulers) {
-        e = CloseableUtils.closeQuietly(scheduler, e);
+      if (schedulers != null) {
+        for (Scheduler scheduler : schedulers) {
+          e = CloseableUtils.closeQuietly(scheduler, e);
+        }
       }
       e = CloseableUtils.closeQuietly(executor, e);
       e = CloseableUtils.closeQuietly(session, e);
