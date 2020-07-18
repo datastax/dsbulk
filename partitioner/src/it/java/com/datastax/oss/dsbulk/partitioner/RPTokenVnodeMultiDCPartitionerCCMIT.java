@@ -16,6 +16,7 @@
 package com.datastax.oss.dsbulk.partitioner;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.dsbulk.tests.ccm.CCMCluster;
 import com.datastax.oss.dsbulk.tests.ccm.annotations.CCMConfig;
 import com.datastax.oss.dsbulk.tests.driver.annotations.SessionConfig;
 import com.datastax.oss.dsbulk.tests.driver.annotations.SessionConfig.UseKeyspaceMode;
@@ -28,10 +29,11 @@ import org.junit.jupiter.api.Tag;
 class RPTokenVnodeMultiDCPartitionerCCMIT extends PartitionerCCMITBase {
 
   RPTokenVnodeMultiDCPartitionerCCMIT(
+      CCMCluster ccm,
       @SessionConfig(
               useKeyspace = UseKeyspaceMode.NONE,
               settings = "basic.load-balancing-policy.slow-replica-avoidance=false")
           CqlSession session) {
-    super(session, true);
+    super(ccm, session, true);
   }
 }
