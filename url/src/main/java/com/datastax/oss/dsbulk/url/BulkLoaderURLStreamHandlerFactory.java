@@ -17,7 +17,6 @@ package com.datastax.oss.dsbulk.url;
 
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
-import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList.Builder;
 import java.net.URL;
 import java.net.URLStreamHandler;
 import java.net.URLStreamHandlerFactory;
@@ -65,7 +64,7 @@ public class BulkLoaderURLStreamHandlerFactory implements URLStreamHandlerFactor
     // otherwise the discovery may result in infinite recursion.
     ServiceLoader<URLStreamHandlerProvider> loader =
         ServiceLoader.load(URLStreamHandlerProvider.class);
-    Builder<URLStreamHandlerProvider> builder = ImmutableList.builder();
+    ImmutableList.Builder<URLStreamHandlerProvider> builder = ImmutableList.builder();
     for (URLStreamHandlerProvider provider : loader) {
       LOGGER.debug("Found URL stream handler provider: {}", provider);
       builder.add(provider);
