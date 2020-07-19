@@ -22,12 +22,12 @@ import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.nio.file.StandardOpenOption.WRITE;
 
 import com.datastax.oss.driver.shaded.guava.common.base.CharMatcher;
-import com.datastax.oss.dsbulk.commons.ConsoleUtils;
-import com.datastax.oss.dsbulk.commons.StringUtils;
 import com.datastax.oss.dsbulk.config.ConfigUtils;
 import com.datastax.oss.dsbulk.config.model.SettingsGroup;
 import com.datastax.oss.dsbulk.config.model.SettingsGroupFactory;
 import com.datastax.oss.dsbulk.config.shortcuts.ShortcutsFactory;
+import com.datastax.oss.dsbulk.docs.utils.StringUtils;
+import com.datastax.oss.dsbulk.workflow.api.utils.WorkflowUtils;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;
@@ -78,7 +78,7 @@ public class SettingsDocumentor {
             + "line.%n%n"
             + "A template configuration file can be found [here](./application.template.conf).%n%n"
             + "## Sections%n%n",
-        ConsoleUtils.getBulkLoaderNameAndVersion() + " Options");
+        WorkflowUtils.getBulkLoaderNameAndVersion() + " Options");
   }
 
   private static void printLinks(PrintWriter out, Map<String, SettingsGroup> groups) {
@@ -113,7 +113,8 @@ public class SettingsDocumentor {
         // Emit the help for the "-f" option in the Common section.
         out.printf(
             "#### -f _&lt;%s&gt;_%n%n%s%n%n",
-            StringUtils.htmlEscape("string"), CONFIG_FILE_OPTION.getDescription());
+            com.datastax.oss.dsbulk.docs.utils.StringUtils.htmlEscape("string"),
+            CONFIG_FILE_OPTION.getDescription());
       }
       for (String settingName : groupEntry.getValue().getSettings()) {
         ConfigValue settingValue = ConfigUtils.getNullSafeValue(referenceConfig, settingName);
@@ -167,7 +168,7 @@ public class SettingsDocumentor {
         shortOpt,
         settingName.replaceFirst("dsbulk\\.", ""),
         settingName,
-        StringUtils.htmlEscape(
+        com.datastax.oss.dsbulk.docs.utils.StringUtils.htmlEscape(
             ConfigUtils.getTypeString(referenceConfig, settingName).orElse("arg")),
         getSanitizedDescription(settingValue));
   }
@@ -225,7 +226,8 @@ public class SettingsDocumentor {
    * @return format string (markdown headers)
    */
   private static String titleFormat(String groupName) {
-    return StringUtils.nCopies("#", CharMatcher.is('.').countIn(groupName) + 2);
+    return com.datastax.oss.dsbulk.docs.utils.StringUtils.nCopies(
+        "#", CharMatcher.is('.').countIn(groupName) + 2);
   }
 
   /**
@@ -237,7 +239,7 @@ public class SettingsDocumentor {
   private static String prettifyName(String groupName) {
     String title =
         Arrays.stream(groupName.split("\\."))
-                .map(StringUtils::ucfirst)
+                .map(com.datastax.oss.dsbulk.docs.utils.StringUtils::ucfirst)
                 .collect(Collectors.joining(" "))
             + " Settings";
     if (title.contains("Driver")) {

@@ -13,42 +13,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.dsbulk.workflow.commons.utils;
+package com.datastax.oss.dsbulk.workflow.api.utils;
 
-import com.datastax.dse.driver.api.core.metadata.DseNodeProperties;
-import com.datastax.oss.driver.api.core.Version;
-import com.datastax.oss.driver.api.core.metadata.Node;
-import com.datastax.oss.driver.api.core.session.Session;
 import com.datastax.oss.driver.api.core.uuid.Uuids;
-import com.datastax.oss.dsbulk.commons.PlatformUtils;
 import edu.umd.cs.findbugs.annotations.NonNull;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
-import java.util.stream.Collectors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class WorkflowUtils {
 
-  private static final UUID BULK_LOADER_NAMESPACE =
-      UUID.fromString("2505c745-cedf-4714-bcab-0d580270ed95");
+  public static final String BULK_LOADER_APPLICATION_NAME = "DataStax Bulk Loader";
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(WorkflowUtils.class);
+  public static final UUID BULK_LOADER_NAMESPACE =
+      UUID.fromString("2505c745-cedf-4714-bcab-0d580270ed95");
 
   private static final DateTimeFormatter DEFAULT_TIMESTAMP_PATTERN =
       DateTimeFormatter.ofPattern("uuuuMMdd-HHmmss-SSSSSS");
 
-  private static final Version DSE_NATIVE_GRAPH_MIN_VERSION = Version.parse("6.8.0");
-
+  @NonNull
   public static String newDefaultExecutionId(@NonNull String operationTitle) {
     return operationTitle.toUpperCase()
         + "_"
         + DEFAULT_TIMESTAMP_PATTERN.format(PlatformUtils.now());
   }
 
+  @NonNull
   public static String newCustomExecutionId(
       @NonNull String template, @NonNull String operationTitle) {
     try {
@@ -69,32 +62,31 @@ public class WorkflowUtils {
     }
   }
 
+  @NonNull
   public static UUID clientId(String executionId) {
     return Uuids.nameBased(BULK_LOADER_NAMESPACE, executionId);
   }
 
-  public static void checkGraphCompatibility(Session session) {
-    Collection<Node> nodes = session.getMetadata().getNodes().values();
-    List<Node> nonGraphNodes =
-        nodes.stream()
-            .filter(
-                node ->
-                    !node.getExtras().containsKey(DseNodeProperties.DSE_VERSION)
-                        || ((Version) node.getExtras().get(DseNodeProperties.DSE_VERSION))
-                                .compareTo(Objects.requireNonNull(DSE_NATIVE_GRAPH_MIN_VERSION))
-                            < 0)
-            .collect(Collectors.toList());
-    if (!nonGraphNodes.isEmpty()) {
-      LOGGER.error(
-          "Incompatible cluster detected. Graph functionality is only compatible with DSE {} or higher.",
-          DSE_NATIVE_GRAPH_MIN_VERSION);
-      LOGGER.error(
-          "The following nodes do not appear to be running DSE {} or higher:",
-          DSE_NATIVE_GRAPH_MIN_VERSION);
-      for (Node node : nonGraphNodes) {
-        LOGGER.error(node.toString());
+  @NonNull
+  public static String getBulkLoaderVersion() {
+    // Get the version of dsbulk from version.txt.
+    String version = "UNKNOWN";
+    try (InputStream versionStream =
+        ConsoleUtils.class.getResourceAsStream("/com/datastax/oss/dsbulk/version.txt")) {
+      if (versionStream != null) {
+        BufferedReader reader =
+            new BufferedReader(new InputStreamReader(versionStream, StandardCharsets.UTF_8));
+        version = reader.readLine();
       }
-      throw new IllegalStateException("Graph operations not available due to incompatible cluster");
+    } catch (Exception e) {
+      // swallow
     }
+    return version;
+  }
+
+  @NonNull
+  public static String getBulkLoaderNameAndVersion() {
+    String version = getBulkLoaderVersion();
+    return BULK_LOADER_APPLICATION_NAME + " v" + version;
   }
 }

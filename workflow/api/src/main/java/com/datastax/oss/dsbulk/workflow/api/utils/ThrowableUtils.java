@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.dsbulk.commons;
+package com.datastax.oss.dsbulk.workflow.api.utils;
 
 import com.datastax.oss.driver.shaded.guava.common.base.Throwables;
 import edu.umd.cs.findbugs.annotations.NonNull;

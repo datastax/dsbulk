@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.dsbulk.commons;
+package com.datastax.oss.dsbulk.runner.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -69,27 +69,5 @@ class StringUtilsTest {
         Arguments.of("\"\"", "\"\""),
         Arguments.of("foo", "\"foo\""),
         Arguments.of("\"foo\"", "\"foo\""));
-  }
-
-  @ParameterizedTest
-  @MethodSource
-  void should_quote_jmx_if_necessary(String input, String expected) {
-    assertThat(StringUtils.quoteJMXIfNecessary(input)).isEqualTo(expected);
-  }
-
-  @SuppressWarnings("unused")
-  static Stream<Arguments> should_quote_jmx_if_necessary() {
-    return Stream.of(
-        Arguments.of("", "\"\""),
-        Arguments.of("foo", "foo"),
-        Arguments.of("foo-bar", "foo-bar"),
-        Arguments.of("foo_bar", "foo_bar"),
-        Arguments.of("foo?", "\"foo\\?\""),
-        Arguments.of("foo*", "\"foo\\*\""),
-        Arguments.of("foo\\", "\"foo\\\\\""),
-        Arguments.of("foo\n", "\"foo\\n\""),
-        Arguments.of("foo bar", "\"foo bar\""),
-        Arguments.of("foo|bar", "\"foo|bar\""),
-        Arguments.of("foo,bar", "\"foo,bar\""));
   }
 }

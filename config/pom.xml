@@ -52,12 +52,12 @@
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-commons</artifactId>
+      <artifactId>dsbulk-url</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-url</artifactId>
+      <artifactId>java-driver-core</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>

@@ -40,10 +40,6 @@
   <dependencies>
     <dependency>
       <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-commons</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.oss</groupId>
       <artifactId>java-driver-core</artifactId>
       <exclusions>
         <exclusion>

@@ -76,7 +76,7 @@ import com.datastax.oss.dsbulk.workflow.commons.schema.ReadResultCounter;
 import com.datastax.oss.dsbulk.workflow.commons.schema.ReadResultMapper;
 import com.datastax.oss.dsbulk.workflow.commons.schema.RecordMapper;
 import com.datastax.oss.dsbulk.workflow.commons.settings.StatsSettings.StatisticsMode;
-import com.datastax.oss.dsbulk.workflow.commons.utils.WorkflowUtils;
+import com.datastax.oss.dsbulk.workflow.commons.utils.GraphUtils;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import edu.umd.cs.findbugs.annotations.NonNull;
@@ -393,7 +393,7 @@ public class SchemaSettings {
 
       if (hasGraphOptions(config)) {
 
-        WorkflowUtils.checkGraphCompatibility(session);
+        GraphUtils.checkGraphCompatibility(session);
 
         if (!isGraph(keyspace)) {
           throw new IllegalStateException(

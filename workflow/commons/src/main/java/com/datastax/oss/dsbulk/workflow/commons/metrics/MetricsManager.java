@@ -15,7 +15,6 @@
  */
 package com.datastax.oss.dsbulk.workflow.commons.metrics;
 
-import static com.datastax.oss.dsbulk.commons.StringUtils.quoteJMXIfNecessary;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -41,6 +40,7 @@ import com.datastax.oss.dsbulk.executor.api.result.Result;
 import com.datastax.oss.dsbulk.workflow.commons.settings.LogSettings.Verbosity;
 import com.datastax.oss.dsbulk.workflow.commons.settings.RowType;
 import com.datastax.oss.dsbulk.workflow.commons.statement.UnmappableStatement;
+import com.datastax.oss.dsbulk.workflow.commons.utils.JMXUtils;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
@@ -265,7 +265,7 @@ public class MetricsManager implements AutoCloseable {
                     StringBuilder sb =
                         new StringBuilder(jmxDomain)
                             .append(":executionId=")
-                            .append(quoteJMXIfNecessary(executionId))
+                            .append(JMXUtils.quoteJMXIfNecessary(executionId))
                             .append(',');
                     StringTokenizer tokenizer = new StringTokenizer(metricName, "/");
                     int i = 1;
@@ -276,7 +276,7 @@ public class MetricsManager implements AutoCloseable {
                       } else {
                         sb.append("name");
                       }
-                      sb.append('=').append(quoteJMXIfNecessary(token));
+                      sb.append('=').append(JMXUtils.quoteJMXIfNecessary(token));
                       if (tokenizer.hasMoreTokens()) {
                         sb.append(',');
                       }

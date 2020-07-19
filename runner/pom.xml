@@ -44,10 +44,6 @@
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-commons</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.oss</groupId>
       <artifactId>dsbulk-io</artifactId>
     </dependency>
     <dependency>

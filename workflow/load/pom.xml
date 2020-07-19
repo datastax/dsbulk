@@ -48,10 +48,6 @@
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-commons</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.oss</groupId>
       <artifactId>dsbulk-codecs-api</artifactId>
     </dependency>
     <dependency>

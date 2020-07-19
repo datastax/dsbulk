@@ -23,7 +23,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.slf4j.event.Level.ERROR;
 
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
-import com.datastax.oss.dsbulk.commons.ConsoleUtils;
 import com.datastax.oss.dsbulk.runner.cli.CommandLineParser;
 import com.datastax.oss.dsbulk.runner.cli.ParseException;
 import com.datastax.oss.dsbulk.tests.logging.LogCapture;
@@ -37,6 +36,7 @@ import com.datastax.oss.dsbulk.tests.logging.StreamType;
 import com.datastax.oss.dsbulk.tests.utils.FileUtils;
 import com.datastax.oss.dsbulk.tests.utils.StringUtils;
 import com.datastax.oss.dsbulk.workflow.api.WorkflowProvider;
+import com.datastax.oss.dsbulk.workflow.api.utils.WorkflowUtils;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import java.io.IOException;
@@ -734,14 +734,14 @@ class DataStaxBulkLoaderTest {
   void should_show_version_message_when_asked_long_option() {
     new DataStaxBulkLoader("--version").run();
     String out = stdOut.getStreamAsString();
-    assertThat(out).isEqualTo(String.format("%s%n", ConsoleUtils.getBulkLoaderNameAndVersion()));
+    assertThat(out).isEqualTo(String.format("%s%n", WorkflowUtils.getBulkLoaderNameAndVersion()));
   }
 
   @Test
   void should_show_version_message_when_asked_short_option() {
     new DataStaxBulkLoader("-v").run();
     String out = stdOut.getStreamAsString();
-    assertThat(out).isEqualTo(String.format("%s%n", ConsoleUtils.getBulkLoaderNameAndVersion()));
+    assertThat(out).isEqualTo(String.format("%s%n", WorkflowUtils.getBulkLoaderNameAndVersion()));
   }
 
   @Test
@@ -783,7 +783,7 @@ class DataStaxBulkLoaderTest {
     String out =
         new AnsiString(stdOut.getStreamAsString()).getPlain().toString().replaceAll("[\\s]+", " ");
 
-    assertThat(out).contains(ConsoleUtils.getBulkLoaderNameAndVersion());
+    assertThat(out).contains(WorkflowUtils.getBulkLoaderNameAndVersion());
     assertThat(out).contains("-v, --version Show program's version number and exit");
 
     ServiceLoader<WorkflowProvider> loader = ServiceLoader.load(WorkflowProvider.class);
@@ -816,7 +816,7 @@ class DataStaxBulkLoaderTest {
 
   private void assertSectionHelp() {
     CharSequence out = new AnsiString(stdOut.getStreamAsString()).getPlain();
-    assertThat(out).contains(ConsoleUtils.getBulkLoaderNameAndVersion());
+    assertThat(out).contains(WorkflowUtils.getBulkLoaderNameAndVersion());
 
     // The following assures us that we're looking at section help, not global help.
     assertThat(out).doesNotContain("GETTING MORE HELP");

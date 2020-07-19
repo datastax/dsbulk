@@ -16,7 +16,7 @@
 package com.datastax.oss.dsbulk.codecs.text.string;
 
 import com.datastax.oss.dsbulk.codecs.api.ConvertingCodec;
-import com.datastax.oss.dsbulk.commons.StringUtils;
+import com.datastax.oss.dsbulk.codecs.text.utils.StringUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

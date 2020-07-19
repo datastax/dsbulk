@@ -45,10 +45,6 @@
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-commons</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.oss</groupId>
       <artifactId>dsbulk-config</artifactId>
     </dependency>
     <dependency>
@@ -62,6 +58,10 @@
     <dependency>
       <groupId>com.datastax.oss</groupId>
       <artifactId>dsbulk-codecs-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
+      <artifactId>dsbulk-codecs-jdk</artifactId>
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>
@@ -98,6 +98,10 @@
     <dependency>
       <groupId>com.datastax.oss</groupId>
       <artifactId>dsbulk-partitioner</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
+      <artifactId>dsbulk-sampler</artifactId>
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>

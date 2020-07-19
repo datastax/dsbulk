@@ -15,7 +15,7 @@
  */
 package com.datastax.oss.dsbulk.workflow.commons.settings;
 
-import com.datastax.oss.dsbulk.workflow.commons.utils.WorkflowUtils;
+import com.datastax.oss.dsbulk.workflow.api.utils.WorkflowUtils;
 import com.typesafe.config.Config;
 
 public class SettingsManager {

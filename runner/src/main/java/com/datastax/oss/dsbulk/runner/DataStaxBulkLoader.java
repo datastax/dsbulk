@@ -18,7 +18,6 @@ package com.datastax.oss.dsbulk.runner;
 import static com.datastax.oss.dsbulk.runner.ExitStatus.STATUS_CRASHED;
 import static com.datastax.oss.dsbulk.runner.ExitStatus.STATUS_OK;
 
-import com.datastax.oss.dsbulk.commons.ConsoleUtils;
 import com.datastax.oss.dsbulk.runner.cli.AnsiConfigurator;
 import com.datastax.oss.dsbulk.runner.cli.CommandLineParser;
 import com.datastax.oss.dsbulk.runner.cli.GlobalHelpRequestException;
@@ -28,6 +27,7 @@ import com.datastax.oss.dsbulk.runner.cli.VersionRequestException;
 import com.datastax.oss.dsbulk.runner.help.HelpEmitter;
 import com.datastax.oss.dsbulk.url.BulkLoaderURLStreamHandlerFactory;
 import com.datastax.oss.dsbulk.workflow.api.Workflow;
+import com.datastax.oss.dsbulk.workflow.api.utils.WorkflowUtils;
 import com.typesafe.config.Config;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.BufferedWriter;
@@ -94,7 +94,7 @@ public class DataStaxBulkLoader {
       PrintWriter pw =
           new PrintWriter(
               new BufferedWriter(new OutputStreamWriter(System.out, Charset.defaultCharset())));
-      pw.println(ConsoleUtils.getBulkLoaderNameAndVersion());
+      pw.println(WorkflowUtils.getBulkLoaderNameAndVersion());
       pw.flush();
       return STATUS_OK;
 

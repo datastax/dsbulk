@@ -13,18 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.dsbulk.commons;
-
-import edu.umd.cs.findbugs.annotations.NonNull;
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
+package com.datastax.oss.dsbulk.workflow.api.utils;
 
 public class ConsoleUtils {
 
-  public static final String BULK_LOADER_APPLICATION_NAME = "DataStax Bulk Loader";
-
+  /** The console's line length, if could be detected, otherwise this will report 150. */
   public static final int LINE_LENGTH = ConsoleUtils.getLineLength();
 
   private static final String COLUMNS_ENV_NAME = "COLUMNS";
@@ -44,27 +37,5 @@ public class ConsoleUtils {
       }
     }
     return columns;
-  }
-
-  public static String getBulkLoaderVersion() {
-    // Get the version of dsbulk from version.txt.
-    String version = "UNKNOWN";
-    try (InputStream versionStream =
-        ConsoleUtils.class.getResourceAsStream("/com/datastax/oss/dsbulk/version.txt")) {
-      if (versionStream != null) {
-        BufferedReader reader =
-            new BufferedReader(new InputStreamReader(versionStream, StandardCharsets.UTF_8));
-        version = reader.readLine();
-      }
-    } catch (Exception e) {
-      // swallow
-    }
-    return version;
-  }
-
-  @NonNull
-  public static String getBulkLoaderNameAndVersion() {
-    String version = getBulkLoaderVersion();
-    return BULK_LOADER_APPLICATION_NAME + " v" + version;
   }
 }

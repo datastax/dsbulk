@@ -17,8 +17,11 @@ package com.datastax.oss.dsbulk.codecs.api.util;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 
+import com.datastax.oss.driver.internal.core.os.Native;
 import com.datastax.oss.driver.shaded.guava.common.base.Charsets;
-import com.datastax.oss.dsbulk.commons.PlatformUtils;
+import com.datastax.oss.driver.shaded.guava.common.base.Splitter;
+import com.datastax.oss.driver.shaded.guava.common.collect.Iterables;
+import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
@@ -192,7 +195,7 @@ public enum TimeUUIDGenerator {
       update(digest, props.getProperty("os.arch"));
       update(digest, props.getProperty("os.name"));
       update(digest, props.getProperty("os.version"));
-      update(digest, Integer.toString(PlatformUtils.pid()));
+      update(digest, Integer.toString(pid()));
       byte[] hash = digest.digest();
       long node = 0;
       for (int i = 0; i < 6; i++) {
@@ -243,5 +246,31 @@ public enum TimeUUIDGenerator {
       // Ignore, if we've really got nothing so far, we'll throw an exception
     }
     return allIps;
+  }
+
+  /**
+   * Returns this process ID, if available.
+   *
+   * <p>This implementation first tries to obtain the process ID through a {@linkplain
+   * Native#getProcessId() JNI call}; if JNI calls are not available, then it tries to obtain the
+   * process ID from the {@linkplain ManagementFactory#getRuntimeMXBean() runtime JMX bean}.
+   *
+   * <p>If none of this works, this method returns a random integer.
+   *
+   * @return This process ID if available, or a random integer otherwise.
+   */
+  private static int pid() {
+    if (Native.isGetProcessIdAvailable()) {
+      return Native.getProcessId();
+    } else {
+      try {
+        String pidJmx =
+            Iterables.get(
+                Splitter.on('@').split(ManagementFactory.getRuntimeMXBean().getName()), 0);
+        return Integer.parseInt(pidJmx);
+      } catch (Exception ignored) {
+        return new Random(System.currentTimeMillis()).nextInt();
+      }
+    }
   }
 }

@@ -15,16 +15,16 @@
  */
 package com.datastax.oss.dsbulk.runner.help;
 
-import static com.datastax.oss.dsbulk.commons.ConsoleUtils.LINE_LENGTH;
+import static com.datastax.oss.dsbulk.workflow.api.utils.ConsoleUtils.LINE_LENGTH;
 
 import com.datastax.oss.driver.shaded.guava.common.base.CharMatcher;
-import com.datastax.oss.dsbulk.commons.ConsoleUtils;
-import com.datastax.oss.dsbulk.commons.StringUtils;
 import com.datastax.oss.dsbulk.config.ConfigUtils;
 import com.datastax.oss.dsbulk.config.model.SettingsGroup;
 import com.datastax.oss.dsbulk.config.model.SettingsGroupFactory;
 import com.datastax.oss.dsbulk.config.shortcuts.ShortcutsFactory;
+import com.datastax.oss.dsbulk.runner.utils.StringUtils;
 import com.datastax.oss.dsbulk.workflow.api.WorkflowProvider;
+import com.datastax.oss.dsbulk.workflow.api.utils.WorkflowUtils;
 import com.typesafe.config.Config;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
@@ -80,7 +80,7 @@ public class HelpEmitter {
     entries.add(1, HelpEntryFactory.HELP_OPTION);
     entries.add(2, HelpEntryFactory.CONFIG_FILE_OPTION);
 
-    System.out.println(ConsoleUtils.getBulkLoaderNameAndVersion());
+    System.out.println(WorkflowUtils.getBulkLoaderNameAndVersion());
 
     Ansi header =
         Ansi.ansi()
@@ -137,7 +137,7 @@ public class HelpEmitter {
         HelpEntryFactory.createEntries(
             groups.get(sectionName).getSettings(), longToShortOptions, referenceConfig);
 
-    System.out.println(ConsoleUtils.getBulkLoaderNameAndVersion());
+    System.out.println(WorkflowUtils.getBulkLoaderNameAndVersion());
 
     Ansi header =
         Ansi.ansi()

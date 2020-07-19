@@ -31,7 +31,6 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
-import com.datastax.oss.dsbulk.commons.PlatformUtils;
 import com.datastax.oss.dsbulk.url.BulkLoaderURLStreamHandlerFactory;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
@@ -229,7 +228,7 @@ class ConfigUtilsTest {
         .hasMessageContaining("Cannot resolve home directory");
     // absolute and invalid paths must be tested on a per-platform basis
     assumingThat(
-        !PlatformUtils.isWindows(),
+        !isWindows(),
         () -> {
           assertThat(ConfigUtils.resolvePath("/foo/bar")).isEqualTo(Paths.get("/foo/bar"));
           assertThatThrownBy(() -> ConfigUtils.resolvePath("\u0000"))
@@ -237,7 +236,7 @@ class ConfigUtilsTest {
               .hasMessageContaining("Nul character not allowed");
         });
     assumingThat(
-        PlatformUtils.isWindows(),
+        isWindows(),
         () -> {
           assertThat(ConfigUtils.resolvePath("C:\\foo\\bar")).isEqualTo(Paths.get("C:\\foo\\bar"));
           assertThatThrownBy(() -> ConfigUtils.resolvePath("C:\\should:\\fail"))
@@ -251,7 +250,7 @@ class ConfigUtilsTest {
     assertThat(ConfigUtils.resolveURL("-")).isEqualTo(new URL("std:/"));
     assertThat(ConfigUtils.resolveURL("http://acme.com")).isEqualTo(new URL("http://acme.com"));
     assumingThat(
-        !PlatformUtils.isWindows(),
+        !isWindows(),
         () ->
             assertThatThrownBy(
                     () -> ConfigUtils.resolveURL("nonexistentscheme://should/fail/\u0000"))
@@ -260,7 +259,7 @@ class ConfigUtilsTest {
                     t -> assertThat(t.getSuppressed()[0]).isInstanceOf(MalformedURLException.class))
                 .hasMessageContaining("Nul character not allowed"));
     assumingThat(
-        PlatformUtils.isWindows(),
+        isWindows(),
         () ->
             assertThatThrownBy(() -> ConfigUtils.resolveURL("nonexistentscheme://should/fail"))
                 .isInstanceOf(InvalidPathException.class)
@@ -272,12 +271,12 @@ class ConfigUtilsTest {
     assertThat(ConfigUtils.resolveURL("~/foo"))
         .isEqualTo(Paths.get(System.getProperty("user.home"), "foo").toUri().toURL());
     assumingThat(
-        !PlatformUtils.isWindows(),
+        !isWindows(),
         () ->
             assertThat(ConfigUtils.resolveURL("/foo/bar"))
                 .isEqualTo(Paths.get("/foo/bar").toUri().toURL()));
     assumingThat(
-        PlatformUtils.isWindows(),
+        isWindows(),
         () ->
             assertThat(ConfigUtils.resolveURL("C:/foo/bar"))
                 .isEqualTo(Paths.get("C:/foo/bar").toUri().toURL()));
@@ -458,7 +457,7 @@ class ConfigUtilsTest {
   }
 
   static List<Arguments> urlsProvider() throws MalformedURLException {
-    if (PlatformUtils.isWindows()) {
+    if (isWindows()) {
       return Lists.newArrayList(
           arguments(
               Arrays.asList("C:\\a\\first-file", "D:/a/second-file"),
@@ -567,5 +566,10 @@ class ConfigUtilsTest {
   private enum MyENum {
     FOO,
     BAR
+  }
+
+  private static boolean isWindows() {
+    String osName = System.getProperty("os.name");
+    return osName != null && osName.startsWith("Windows");
   }
 }

@@ -31,11 +31,6 @@
       <!-- DSBulk artifacts -->
       <dependency>
         <groupId>com.datastax.oss</groupId>
-        <artifactId>dsbulk-commons</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.datastax.oss</groupId>
         <artifactId>dsbulk-url</artifactId>
         <version>${project.version}</version>
       </dependency>
@@ -67,6 +62,11 @@
       <dependency>
         <groupId>com.datastax.oss</groupId>
         <artifactId>dsbulk-codecs-text</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>dsbulk-codecs-jdk</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>

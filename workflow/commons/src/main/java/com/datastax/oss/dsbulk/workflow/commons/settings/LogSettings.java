@@ -28,7 +28,6 @@ import com.datastax.oss.driver.api.core.session.Session;
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.base.Joiner;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
-import com.datastax.oss.dsbulk.commons.ConsoleUtils;
 import com.datastax.oss.dsbulk.config.ConfigUtils;
 import com.datastax.oss.dsbulk.format.row.RowFormatter;
 import com.datastax.oss.dsbulk.format.statement.StatementFormatVerbosity;
@@ -36,6 +35,7 @@ import com.datastax.oss.dsbulk.format.statement.StatementFormatter;
 import com.datastax.oss.dsbulk.workflow.api.error.ErrorThreshold;
 import com.datastax.oss.dsbulk.workflow.api.log.OperationDirectory;
 import com.datastax.oss.dsbulk.workflow.api.log.OperationDirectoryResolver;
+import com.datastax.oss.dsbulk.workflow.api.utils.WorkflowUtils;
 import com.datastax.oss.dsbulk.workflow.commons.format.statement.BulkBoundStatementPrinter;
 import com.datastax.oss.dsbulk.workflow.commons.log.LogManager;
 import com.typesafe.config.Config;
@@ -197,7 +197,7 @@ public class LogSettings {
   }
 
   public void logEffectiveSettings(Config dsbulkConfig, Config driverConfig) {
-    LOGGER.debug("{} starting.", ConsoleUtils.getBulkLoaderNameAndVersion());
+    LOGGER.debug("{} starting.", WorkflowUtils.getBulkLoaderNameAndVersion());
     // Initialize the following static fields: their initialization will print the driver
     // coordinates to the console at INFO level, which is enough.
     Objects.requireNonNull(Session.OSS_DRIVER_COORDINATES);

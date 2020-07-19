@@ -20,10 +20,10 @@ import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.nio.file.StandardOpenOption.WRITE;
 
-import com.datastax.oss.dsbulk.commons.StringUtils;
 import com.datastax.oss.dsbulk.config.ConfigUtils;
 import com.datastax.oss.dsbulk.config.model.SettingsGroup;
 import com.datastax.oss.dsbulk.config.model.SettingsGroupFactory;
+import com.datastax.oss.dsbulk.docs.utils.StringUtils;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigObject;
 import com.typesafe.config.ConfigRenderOptions;
