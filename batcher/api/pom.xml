@@ -47,6 +47,10 @@
       <artifactId>java-driver-core</artifactId>
       <exclusions>
         <exclusion>
+          <groupId>com.typesafe</groupId>
+          <artifactId>config</artifactId>
+        </exclusion>
+        <exclusion>
           <groupId>io.netty</groupId>
           <artifactId>*</artifactId>
         </exclusion>

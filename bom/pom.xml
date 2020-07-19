@@ -161,12 +161,6 @@
         <version>${driver.version}</version>
         <type>pom</type>
         <scope>import</scope>
-        <exclusions>
-          <exclusion>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-          </exclusion>
-        </exclusions>
       </dependency>
       <!-- Reactor BOM -->
       <dependency>

@@ -45,6 +45,28 @@
     <dependency>
       <groupId>com.datastax.oss</groupId>
       <artifactId>java-driver-core</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>org.javatuples</groupId>
+          <artifactId>javatuples</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.tinkerpop</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.fasterxml.jackson.core</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.esri.geometry</groupId>
+          <artifactId>esri-geometry-api</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.github.stephenc.jcip</groupId>
+          <artifactId>jcip-annotations</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>io.projectreactor</groupId>

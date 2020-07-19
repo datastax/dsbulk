@@ -43,6 +43,14 @@
       <artifactId>java-driver-core</artifactId>
       <exclusions>
         <exclusion>
+          <groupId>com.datastax.oss</groupId>
+          <artifactId>native-protocol</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.typesafe</groupId>
+          <artifactId>config</artifactId>
+        </exclusion>
+        <exclusion>
           <groupId>io.netty</groupId>
           <artifactId>*</artifactId>
         </exclusion>
@@ -73,6 +81,10 @@
         <exclusion>
           <groupId>org.reactivestreams</groupId>
           <artifactId>reactive-streams</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.esri.geometry</groupId>
+          <artifactId>esri-geometry-api</artifactId>
         </exclusion>
         <exclusion>
           <groupId>com.github.stephenc.jcip</groupId>

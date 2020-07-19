@@ -43,6 +43,18 @@
       <artifactId>java-driver-core</artifactId>
       <exclusions>
         <exclusion>
+          <groupId>com.datastax.oss</groupId>
+          <artifactId>java-driver-shaded-guava</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.typesafe</groupId>
+          <artifactId>config</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>io.netty</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+        <exclusion>
           <groupId>com.github.jnr</groupId>
           <artifactId>*</artifactId>
         </exclusion>
@@ -71,18 +83,28 @@
           <artifactId>reactive-streams</artifactId>
         </exclusion>
         <exclusion>
+          <groupId>com.esri.geometry</groupId>
+          <artifactId>esri-geometry-api</artifactId>
+        </exclusion>
+        <exclusion>
           <groupId>com.github.stephenc.jcip</groupId>
           <artifactId>jcip-annotations</artifactId>
         </exclusion>
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>io.netty</groupId>
-      <artifactId>netty-common</artifactId>
-    </dependency>
-    <dependency>
       <groupId>io.dropwizard.metrics</groupId>
       <artifactId>metrics-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-common</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
+      <artifactId>java-driver-shaded-guava</artifactId>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>

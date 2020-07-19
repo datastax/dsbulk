@@ -40,12 +40,16 @@
   <dependencies>
     <dependency>
       <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-commons</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.oss</groupId>
       <artifactId>java-driver-core</artifactId>
       <exclusions>
+        <exclusion>
+          <groupId>com.datastax.oss</groupId>
+          <artifactId>native-protocol</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.typesafe</groupId>
+          <artifactId>config</artifactId>
+        </exclusion>
         <exclusion>
           <groupId>io.netty</groupId>
           <artifactId>*</artifactId>
@@ -77,6 +81,10 @@
         <exclusion>
           <groupId>org.reactivestreams</groupId>
           <artifactId>reactive-streams</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.esri.geometry</groupId>
+          <artifactId>esri-geometry-api</artifactId>
         </exclusion>
         <exclusion>
           <groupId>com.github.stephenc.jcip</groupId>
@@ -112,6 +120,12 @@
       <groupId>com.datastax.oss</groupId>
       <artifactId>java-driver-test-infra</artifactId>
       <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>junit</groupId>
+          <artifactId>junit</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.mockito</groupId>
