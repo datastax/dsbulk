@@ -24,7 +24,7 @@
   <packaging>pom</packaging>
   <name>DataStax Bulk Loader</name>
   <description>A unified tool for loading into and unloading from storage engines compatible with Apache Cassandra: OSS Cassandra, DataStax Astra and DataStax Enterprise (DSE).</description>
-  <url>https://github.com/riptano/dsbulk</url>
+  <url>https://github.com/datastax/dsbulk</url>
   <inceptionYear>2017</inceptionYear>
   <organization>
     <name>DataStax</name>
@@ -255,6 +255,11 @@
         <plugin>
           <artifactId>maven-release-plugin</artifactId>
           <version>2.5.3</version>
+        </plugin>
+        <plugin>
+          <groupId>org.sonatype.plugins</groupId>
+          <artifactId>nexus-staging-maven-plugin</artifactId>
+          <version>1.6.8</version>
         </plugin>
       </plugins>
     </pluginManagement>
@@ -495,6 +500,27 @@ limitations under the License.]]></inlineHeader>
           </execution>
         </executions>
       </plugin>
+      <plugin>
+        <artifactId>maven-release-plugin</artifactId>
+        <configuration>
+          <tagNameFormat>@{project.version}</tagNameFormat>
+          <autoVersionSubmodules>true</autoVersionSubmodules>
+          <useReleaseProfile>false</useReleaseProfile>
+          <releaseProfiles>release</releaseProfiles>
+          <goals>deploy</goals>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.sonatype.plugins</groupId>
+        <artifactId>nexus-staging-maven-plugin</artifactId>
+        <extensions>true</extensions>
+        <configuration>
+          <serverId>ossrh</serverId>
+          <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+          <autoReleaseAfterClose>false</autoReleaseAfterClose>
+          <skipLocalStaging>true</skipLocalStaging>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
   <profiles>
@@ -615,6 +641,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </build>
     </profile>
   </profiles>
+  <distributionManagement>
+    <repository>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+    </repository>
+  </distributionManagement>
   <licenses>
     <license>
       <name>Apache 2</name>
@@ -624,9 +656,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     </license>
   </licenses>
   <scm>
-    <connection>scm:git:git@github.com:riptano/dsbulk.git</connection>
-    <developerConnection>scm:git:git@github.com:riptano/dsbulk.git</developerConnection>
-    <url>https://github.com/riptano/dsbulk</url>
+    <connection>scm:git:git@github.com:datastax/dsbulk.git</connection>
+    <developerConnection>scm:git:git@github.com:datastax/dsbulk.git</developerConnection>
+    <url>https://github.com/datastax/dsbulk</url>
     <tag>HEAD</tag>
   </scm>
   <developers>
