@@ -28,13 +28,13 @@ import com.datastax.oss.driver.api.core.cql.BatchStatement;
 import com.datastax.oss.driver.api.core.cql.BatchableStatement;
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.api.core.data.ByteUtils;
 import com.datastax.oss.driver.api.core.metadata.Metadata;
 import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.driver.api.core.metadata.TokenMap;
 import com.datastax.oss.driver.api.core.metadata.token.Token;
 import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
 import com.datastax.oss.driver.shaded.guava.common.collect.Sets;
-import com.datastax.oss.protocol.internal.util.Bytes;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -61,9 +61,9 @@ public class StatementBatcherTest {
         }
       };
 
-  protected final ByteBuffer key1 = Bytes.fromHexString("0x1234");
-  protected final ByteBuffer key2 = Bytes.fromHexString("0x5678");
-  protected final ByteBuffer key3 = Bytes.fromHexString("0x9abc");
+  protected final ByteBuffer key1 = ByteUtils.fromHexString("0x1234");
+  protected final ByteBuffer key2 = ByteUtils.fromHexString("0x5678");
+  protected final ByteBuffer key3 = ByteUtils.fromHexString("0x9abc");
 
   protected final Token token1 = mock(Token.class);
   protected final Token token2 = mock(Token.class);

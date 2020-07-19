@@ -65,11 +65,11 @@ import com.datastax.dse.driver.api.core.data.time.DateRange;
 import com.datastax.dse.driver.internal.core.data.geometry.DefaultLineString;
 import com.datastax.dse.driver.internal.core.data.geometry.DefaultPoint;
 import com.datastax.dse.driver.internal.core.data.geometry.DefaultPolygon;
+import com.datastax.oss.driver.api.core.data.ByteUtils;
 import com.datastax.oss.driver.api.core.uuid.Uuids;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import com.datastax.oss.dsbulk.codecs.api.ConvertingCodec;
-import com.datastax.oss.protocol.internal.util.Bytes;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -995,7 +995,7 @@ class CodecUtilsTest {
   void should_parse_byte_buffer() {
     byte[] data = {1, 2, 3, 4, 5, 6};
     String data64 = Base64.getEncoder().encodeToString(data);
-    String dataHex = Bytes.toHexString(data);
+    String dataHex = ByteUtils.toHexString(data);
     assertThat(CodecUtils.parseByteBuffer(null)).isNull();
     // DAT-573: consider empty string as empty byte array
     assertThat(CodecUtils.parseByteBuffer("")).isEqualTo(ByteBuffer.wrap(new byte[] {}));
