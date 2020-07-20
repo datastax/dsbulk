@@ -260,28 +260,22 @@
                   <skip>false</skip>
                   <verbose>false</verbose>
                   <quiet>true</quiet>
-                  <excludePackageNames>com.datastax.*.driver.internal*,com.datastax.oss.dsbulk.docs,com.datastax.oss.dsbulk.generated*</excludePackageNames>
+                  <excludePackageNames>com.datastax.oss.dsbulk.docs,com.datastax.oss.dsbulk.generated*</excludePackageNames>
                   <includeDependencySources>true</includeDependencySources>
                   <dependencySourceIncludes>
-                    <dependencySourceInclude>com.datastax.oss:*</dependencySourceInclude>
-                    <dependencySourceInclude>com.datastax.dse:*</dependencySourceInclude>
+                    <dependencySourceInclude>com.datastax.oss:dsbulk*</dependencySourceInclude>
                   </dependencySourceIncludes>
                   <doctitle>DataStax Bulk Loader ${project.version} API</doctitle>
                   <windowtitle>DataStax Bulk Loader ${project.version} API</windowtitle>
-                  <tags>
-                    <!--
-                      For driver's custom `leaks-private-api` tag (apparently dash separators are not handled
-                      correctly)
-                    -->
-                    <tag>
-                      <name>leaks</name>
-                      <placement>X</placement>
-                    </tag>
-                  </tags>
                   <links>
-                    <link>https://www.reactive-streams.org/reactive-streams-1.0.3-javadoc/</link>
-                    <link>https://fasterxml.github.io/jackson-databind/javadoc/2.10/</link>
-                    <link>https://fasterxml.github.io/jackson-core/javadoc/2.10/</link>
+                    <link>https://www.javadoc.io/doc/com.datastax.oss/java-driver-core/${driver.version}</link>
+                    <link>https://www.javadoc.io/doc/io.netty/netty-all/${netty.version}</link>
+                    <link>https://www.javadoc.io/doc/com.typesafe/config/${config.version}</link>
+                    <link>https://www.reactive-streams.org/reactive-streams-${reactive-streams.version}-javadoc/</link>
+                    <link>https://www.javadoc.io/doc/io.projectreactor/reactor-core/${reactor.version}</link>
+                    <link>https://www.javadoc.io/doc/com.fasterxml.jackson.core/jackson-core/${jackson.version}</link>
+                    <link>https://www.javadoc.io/doc/com.fasterxml.jackson.core/jackson-databind/${jackson.version}</link>
+                    <link>https://www.javadoc.io/doc/org.antlr/antlr4/${antlr4.version}</link>
                   </links>
                 </configuration>
               </execution>
