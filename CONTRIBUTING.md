@@ -13,7 +13,6 @@ Make sure you understand how DSBulk works by reading the manual page about
 
 DSBulk code is divided in several modules:
 
-1. [dsbulk-commons](./commons): This module contains common utilities for DSBulk.
 1. [dsbulk-config](./config): This module contains utilities to configure DSBulk.
 1. [dsbulk-url](./url): This module contains utilities to deal with URLs.
 2. [dsbulk-codecs](./codecs): This module groups together submodules related to codec handling in 
