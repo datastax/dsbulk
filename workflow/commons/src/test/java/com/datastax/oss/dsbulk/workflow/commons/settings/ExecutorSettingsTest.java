@@ -18,12 +18,16 @@ package com.datastax.oss.dsbulk.workflow.commons.settings;
 import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat;
 import static com.datastax.oss.dsbulk.tests.utils.ReflectionUtils.getInternalState;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.datastax.dse.driver.api.core.DseProtocolVersion;
+import com.datastax.dse.driver.api.core.metadata.DseNodeProperties;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
 import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
+import com.datastax.oss.driver.api.core.metadata.Node;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.driver.shaded.guava.common.util.concurrent.RateLimiter;
 import com.datastax.oss.dsbulk.executor.api.reader.ReactiveBulkReader;
 import com.datastax.oss.dsbulk.executor.api.writer.ReactiveBulkWriter;
@@ -35,6 +39,8 @@ import com.datastax.oss.dsbulk.tests.logging.LogInterceptingExtension;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptor;
 import com.datastax.oss.dsbulk.tests.utils.TestConfigUtils;
 import com.typesafe.config.Config;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.Semaphore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -68,16 +74,17 @@ class ExecutorSettingsTest {
     ReactiveBulkReader executor = settings.newReadExecutor(session, null, false);
     assertThat(executor).isNotNull().isInstanceOf(DefaultReactorBulkExecutor.class);
     assertThat(logs)
-        .hasMessageContaining(
+        .doesNotHaveMessageContaining(
             "Continuous paging is not available, read performance will not be optimal");
   }
 
   @Test
-  void should_create_non_continuous_executor_when_read_workflow_and_wrong_CL(
+  void should_create_non_continuous_executor_when_read_workflow_and_session_dse_but_wrong_CL(
       @LogCapture LogInterceptor logs) {
     DriverExecutionProfile profile = session.getContext().getConfig().getDefaultProfile();
     when(profile.getString(DefaultDriverOption.REQUEST_CONSISTENCY)).thenReturn("TWO");
     when(session.getContext().getProtocolVersion()).thenReturn(DseProtocolVersion.DSE_V1);
+    mockNode(true);
     Config config = TestConfigUtils.createTestConfig("dsbulk.executor");
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
@@ -94,6 +101,7 @@ class ExecutorSettingsTest {
     DriverExecutionProfile profile = session.getContext().getConfig().getDefaultProfile();
     when(profile.getString(DefaultDriverOption.REQUEST_CONSISTENCY)).thenReturn("LOCAL_ONE");
     when(session.getContext().getProtocolVersion()).thenReturn(DseProtocolVersion.DSE_V1);
+    mockNode(true);
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
     ReactiveBulkReader executor = settings.newReadExecutor(session, null, false);
@@ -106,8 +114,7 @@ class ExecutorSettingsTest {
     when(profile.getString(DefaultDriverOption.REQUEST_CONSISTENCY)).thenReturn("ONE");
     when(session.getContext().getProtocolVersion()).thenReturn(DseProtocolVersion.DSE_V1);
     Config config =
-        TestConfigUtils.createTestConfig(
-            "dsbulk.executor", "continuousPagingOptions.enabled", false);
+        TestConfigUtils.createTestConfig("dsbulk.executor", "continuousPaging.enabled", false);
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
     ReactiveBulkReader executor = settings.newReadExecutor(session, null, false);
@@ -118,9 +125,9 @@ class ExecutorSettingsTest {
   void should_create_non_continuous_executor_when_read_workflow_and_search_query(
       @LogCapture LogInterceptor logs) {
     Config config =
-        TestConfigUtils.createTestConfig(
-            "dsbulk.executor", "continuousPagingOptions.enabled", false);
+        TestConfigUtils.createTestConfig("dsbulk.executor", "continuousPaging.enabled", true);
     when(session.getContext().getProtocolVersion()).thenReturn(DseProtocolVersion.DSE_V1);
+    mockNode(true);
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
     ReactiveBulkReader executor = settings.newReadExecutor(session, null, true);
@@ -211,5 +218,17 @@ class ExecutorSettingsTest {
     assertThat(logs)
         .hasMessageContaining(
             "Setting executor.continuousPaging.maxConcurrentQueries has been removed and is not honored anymore");
+  }
+
+  private void mockNode(boolean dse) {
+    Node node = mock(Node.class);
+    when(node.getHostId()).thenReturn(UUID.randomUUID());
+    if (dse) {
+      when(node.getExtras()).thenReturn(ImmutableMap.of(DseNodeProperties.DSE_VERSION, "6.8.0"));
+    } else {
+      when(node.getExtras()).thenReturn(ImmutableMap.of());
+    }
+    Map<UUID, Node> nodes = ImmutableMap.of(node.getHostId(), node);
+    when(session.getMetadata().getNodes()).thenReturn(nodes);
   }
 }

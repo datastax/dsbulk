@@ -16,10 +16,12 @@
 package com.datastax.oss.dsbulk.workflow.commons.settings;
 
 import com.datastax.dse.driver.api.core.DseProtocolVersion;
+import com.datastax.dse.driver.api.core.metadata.DseNodeProperties;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.DefaultConsistencyLevel;
 import com.datastax.oss.driver.api.core.ProtocolVersion;
 import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
+import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.dsbulk.config.ConfigUtils;
 import com.datastax.oss.dsbulk.executor.api.BulkExecutor;
 import com.datastax.oss.dsbulk.executor.api.BulkExecutorBuilder;
@@ -44,7 +46,6 @@ public class ExecutorSettings {
   private int maxPerSecond;
   private int maxInFlight;
   private boolean continuousPagingEnabled;
-  private boolean useContinuousPagingForReads;
 
   ExecutorSettings(Config config) {
     this.config = config;
@@ -95,7 +96,7 @@ public class ExecutorSettings {
       @NonNull ExecutionListener executionListener,
       boolean read,
       boolean searchQuery) {
-    useContinuousPagingForReads = read && checkContinuousPaging(session, searchQuery);
+    boolean useContinuousPagingForReads = read && checkContinuousPaging(session, searchQuery);
     ServiceLoader<BulkExecutorBuilderFactory> loader =
         ServiceLoader.load(BulkExecutorBuilderFactory.class);
     BulkExecutorBuilderFactory builderFactory = loader.iterator().next();
@@ -110,9 +111,20 @@ public class ExecutorSettings {
 
   protected boolean checkContinuousPaging(@NonNull CqlSession session, boolean searchQuery) {
     if (continuousPagingEnabled) {
+      boolean isContinuousPagingEnabledByUser =
+          ConfigUtils.hasUserOverride(config, "continuousPaging.enabled");
       if (searchQuery) {
-        LOGGER.warn(
-            "Continuous paging is enabled but is not compatible with search queries; disabling.");
+        if (isContinuousPagingEnabledByUser) {
+          LOGGER.warn(
+              "Continuous paging is enabled but is not compatible with search queries; disabling.");
+        }
+        return false;
+      }
+      if (isOssCassandra(session)) {
+        if (isContinuousPagingEnabledByUser) {
+          LOGGER.warn(
+              "Continuous paging is enabled but is not compatible with OSS Cassandra; disabling.");
+        }
         return false;
       }
       if (continuousPagingAvailable(session)) {
@@ -129,6 +141,12 @@ public class ExecutorSettings {
     return false;
   }
 
+  protected boolean isOssCassandra(CqlSession session) {
+    return session.getMetadata().getNodes().values().stream()
+        .map(Node::getExtras)
+        .noneMatch(extras -> extras.containsKey(DseNodeProperties.DSE_VERSION));
+  }
+
   protected boolean continuousPagingAvailable(@NonNull CqlSession session) {
     ProtocolVersion protocolVersion = session.getContext().getProtocolVersion();
     if (protocolVersion.getCode() >= DseProtocolVersion.DSE_V1.getCode()) {
@@ -143,9 +161,5 @@ public class ExecutorSettings {
           || consistencyLevel == DefaultConsistencyLevel.LOCAL_ONE;
     }
     return false;
-  }
-
-  public boolean isContinuousPagingEnabled() {
-    return useContinuousPagingForReads;
   }
 }
