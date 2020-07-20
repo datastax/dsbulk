@@ -358,25 +358,25 @@ public class LoadWorkflow implements Workflow {
     }
     double meanSize = getMeanRowSize();
     int writeConcurrency;
-    if (meanSize <= 128) {
+    if (meanSize <= 512) {
+      if (hasManyReaders) {
+        writeConcurrency = numCores * 64;
+      } else {
+        writeConcurrency = numCores * 16;
+      }
+    } else if (meanSize <= _1_KB) {
       if (hasManyReaders) {
         writeConcurrency = numCores * 32;
       } else {
         writeConcurrency = numCores * 8;
       }
-    } else if (meanSize <= _1_KB) {
-      if (hasManyReaders) {
-        writeConcurrency = numCores * 16;
-      } else {
-        writeConcurrency = numCores * 4;
-      }
     } else if (meanSize <= _10_KB) {
-      writeConcurrency = numCores * 2;
+      writeConcurrency = numCores * 4;
     } else {
       writeConcurrency = numCores;
     }
     if (!batchingEnabled && meanSize <= _1_KB) {
-      writeConcurrency *= 8;
+      writeConcurrency *= 4;
     }
     return writeConcurrency;
   }
@@ -393,18 +393,25 @@ public class LoadWorkflow implements Workflow {
                   .filter(BoundStatement.class::isInstance)
                   .take(1000)
                   .toIterable());
-      if (sample.getCount() < 100) {
+      if (sample.getCount() < 1000) {
         // sample too small, go with a common value
         LOGGER.debug("Data sample is too small: {}, discarding", sample.getCount());
         meanSize = _1_KB;
       } else {
         Snapshot snapshot = sample.getSnapshot();
         meanSize = snapshot.getMean();
-        // TODO discard if std dev too high
+        double standardDeviation = snapshot.getStdDev();
+        double coefficientOfVariation = standardDeviation / meanSize;
         LOGGER.debug(
-            "Average record size in bytes: {}, std dev: {}", meanSize, snapshot.getStdDev());
+            "Average record size in bytes: {}, std dev: {}, coefficientOfVariation: {}",
+            meanSize,
+            standardDeviation,
+            coefficientOfVariation);
+        if (coefficientOfVariation >= 1) {
+          LOGGER.debug("Data sample is too spread out, discarding");
+          meanSize = _1_KB;
+        }
       }
-      return meanSize;
     } catch (Exception e) {
       LOGGER.debug("Sampling failed: {}", ThrowableUtils.getSanitizedErrorMessage(e));
       meanSize = _1_KB;
