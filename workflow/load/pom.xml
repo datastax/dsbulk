@@ -21,7 +21,7 @@
   <parent>
     <artifactId>dsbulk-workflow</artifactId>
     <groupId>com.datastax.oss</groupId>
-    <version>1.6.0-SNAPSHOT</version>
+    <version>1.6.0</version>
   </parent>
   <artifactId>dsbulk-workflow-load</artifactId>
   <name>DataStax Bulk Loader - Workflow - Load</name>
