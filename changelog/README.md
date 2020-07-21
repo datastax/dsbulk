@@ -1,5 +1,10 @@
 ## Changelog
 
+## 1.6.1 (in progress)
+
+- [bug] Correctly display durations lesser than 1 second (#369).
+
+
 ## 1.6.0
 
 - [bug] DAT-558: Count operations should not modify user-provided queries.

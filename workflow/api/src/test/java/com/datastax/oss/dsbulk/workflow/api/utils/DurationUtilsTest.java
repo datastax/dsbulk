@@ -16,6 +16,7 @@
 package com.datastax.oss.dsbulk.workflow.api.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
@@ -85,5 +86,19 @@ class DurationUtilsTest {
     String formatted = DurationUtils.formatDuration(duration);
     // then
     assertThat(formatted).isEqualTo(expected);
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "PT0S , Cannot format zero duration",
+    "PT-1S, Cannot format negative duration",
+  })
+  void should_not_format_invalid_duration(String input, String expected) {
+    // given
+    Duration duration = Duration.parse(input);
+    // when
+    Throwable error = catchThrowable(() -> DurationUtils.formatDuration(duration));
+    // then
+    assertThat(error).isNotNull().isInstanceOf(IllegalArgumentException.class).hasMessage(expected);
   }
 }

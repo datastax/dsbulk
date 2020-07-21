@@ -220,16 +220,15 @@ public class LoadWorkflow implements Workflow {
     timer.stop();
     metricsManager.stop();
     Duration elapsed = DurationUtils.round(timer.elapsed(), TimeUnit.SECONDS);
-    if (logManager.getTotalErrors() == 0) {
-      LOGGER.info("{} completed successfully in {}.", this, DurationUtils.formatDuration(elapsed));
+    String elapsedStr =
+        elapsed.isZero() ? "less than one second" : DurationUtils.formatDuration(elapsed);
+    int totalErrors = logManager.getTotalErrors();
+    if (totalErrors == 0) {
+      LOGGER.info("{} completed successfully in {}.", this, elapsedStr);
     } else {
-      LOGGER.warn(
-          "{} completed with {} errors in {}.",
-          this,
-          logManager.getTotalErrors(),
-          DurationUtils.formatDuration(elapsed));
+      LOGGER.warn("{} completed with {} errors in {}.", this, totalErrors, elapsedStr);
     }
-    return logManager.getTotalErrors() == 0;
+    return totalErrors == 0;
   }
 
   /**

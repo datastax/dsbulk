@@ -43,15 +43,19 @@ public class DurationUtils {
   }
 
   /**
-   * Formats the given duration in plain English text.
+   * Formats the given duration in plain English text. The duration must be strictly positive.
    *
-   * @param duration The duration to format.
+   * @param duration The duration to format, must be non-null and strictly positive.
    * @return The duration expressed in plain English.
+   * @throws IllegalArgumentException if the duration is negative or zero.
    */
   @NonNull
   public static String formatDuration(@NonNull Duration duration) {
     if (duration.isNegative()) {
       throw new IllegalArgumentException("Cannot format negative duration");
+    }
+    if (duration.isZero()) {
+      throw new IllegalArgumentException("Cannot format zero duration");
     }
     long days = duration.toDays();
     duration = duration.minusDays(days);
