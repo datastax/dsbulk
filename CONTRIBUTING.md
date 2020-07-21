@@ -260,8 +260,8 @@ different families of tests into separate child classes.
 
 ## License headers
 
-The build will fail if some license headers are missing. To update all files from the command line,
-run:
+The build will automatically add or update license headers if they are missing or outdated. To 
+update all license headers from the command line at once, run:
 
 ```
 mvn license:format
