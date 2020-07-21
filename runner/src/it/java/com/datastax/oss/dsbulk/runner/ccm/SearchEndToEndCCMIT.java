@@ -98,6 +98,8 @@ class SearchEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("unload");
     args.add("--connector.name");
     args.add("mock");
+    args.add("--executor.continuousPaging.enabled");
+    args.add("true");
     args.add("--schema.keyspace");
     args.add(
         session
