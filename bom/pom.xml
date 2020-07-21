@@ -154,6 +154,11 @@
         <artifactId>dsbulk-runner</artifactId>
         <version>${project.version}</version>
       </dependency>
+      <dependency>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>dsbulk-tests</artifactId>
+        <version>${project.version}</version>
+      </dependency>
       <!-- DataStax Java Driver BOM -->
       <dependency>
         <groupId>com.datastax.oss</groupId>
