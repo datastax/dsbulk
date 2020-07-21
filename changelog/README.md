@@ -1,6 +1,6 @@
 ## Changelog
 
-## 1.6.0 (in progress)
+## 1.6.0
 
 - [bug] DAT-558: Count operations should not modify user-provided queries.
 - [improvement] DAT-402: Create an abstract RecordReader leveraging Flux.generate.
