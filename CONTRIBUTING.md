@@ -40,9 +40,10 @@ DSBulk code is divided in several modules:
 8. [dsbulk-partitioner](./partitioner): This module contains the `TokenRangeSplitter` API, that 
     DSBulk uses to parallelize reads by targeting all the token subranges simultaneously from 
     different replicas.
-8. [dsbulk-smapler](./sampler): This module contains utilities to sample row and statement sizes.
+8. [dsbulk-sampler](./sampler): This module contains utilities to sample row and statement sizes.
 9. [dsbulk-executor](./executor): DSBulk's Bulk Executor API is a pluggable abstraction that allows 
-   DSBulk to execute queries using reactive programming.
+   to execute queries using different paradigms: synchronous, asynchronous and reactive programming. 
+   DSBulk itself only uses the reactive paradigm.
     1. The [dsbulk-executor-api](./executor/api) submodule contains the Executor API.
     2. The [dsbulk-executor-reactor](./executor/reactor) submodule contains an implementation of 
        the Executor API using Reactor.
