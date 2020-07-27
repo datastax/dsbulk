@@ -3,6 +3,7 @@
 ## 1.6.1 (in progress)
 
 - [bug] Correctly display durations lesser than 1 second (#369).
+- [improvement] DAT-605: Write empty strings as quoted empty fields by default in CSV connector.
 
 
 ## 1.6.0

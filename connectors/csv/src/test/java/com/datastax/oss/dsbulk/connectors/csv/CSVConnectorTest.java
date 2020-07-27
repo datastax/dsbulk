@@ -28,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.datastax.oss.driver.shaded.guava.common.base.Charsets;
+import com.datastax.oss.driver.shaded.guava.common.base.Strings;
 import com.datastax.oss.dsbulk.config.ConfigUtils;
 import com.datastax.oss.dsbulk.connectors.api.DefaultIndexedField;
 import com.datastax.oss.dsbulk.connectors.api.DefaultMappedField;
@@ -1015,8 +1016,9 @@ class CSVConnectorTest {
     connector.close();
   }
 
-  @Test
-  void should_honor_nullValue_when_reading() throws Exception {
+  @ParameterizedTest
+  @MethodSource
+  void should_honor_nullValue_when_reading(String nullValue, String expected) throws Exception {
     Path file = Files.createTempFile("test", ".csv");
     Files.write(file, Collections.singleton(","));
     CSVConnector connector = new CSVConnector();
@@ -1026,41 +1028,30 @@ class CSVConnectorTest {
             "url",
             StringUtils.quoteJson(file),
             "nullValue",
-            null,
+            StringUtils.quoteJson(nullValue),
             "header",
             false);
     connector.configure(settings, true);
     connector.init();
     List<Record> records = Flux.merge(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
-    assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isNull();
+    assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo(expected);
     connector.close();
   }
 
-  @Test
-  void should_honor_nullValue_when_reading2() throws Exception {
-    Path file = Files.createTempFile("test", ".csv");
-    Files.write(file, Collections.singleton(","));
-    CSVConnector connector = new CSVConnector();
-    Config settings =
-        TestConfigUtils.createTestConfig(
-            "dsbulk.connector.csv",
-            "url",
-            StringUtils.quoteJson(file),
-            "nullValue",
-            "NULL",
-            "header",
-            false);
-    connector.configure(settings, true);
-    connector.init();
-    List<Record> records = Flux.merge(connector.read()).collectList().block();
-    assertThat(records).hasSize(1);
-    assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo("NULL");
-    connector.close();
+  @SuppressWarnings("unused")
+  static Stream<Arguments> should_honor_nullValue_when_reading() {
+    return Stream.of(
+        Arguments.of(null, null),
+        Arguments.of("AUTO", null),
+        Arguments.of("auto", null),
+        Arguments.of("NULL", "NULL"),
+        Arguments.of("textual replacement for null", "textual replacement for null"));
   }
 
-  @Test
-  void should_honor_nullValue_when_writing() throws Exception {
+  @ParameterizedTest
+  @MethodSource
+  void should_honor_nullValue_when_writing(String nullValue, String expected) throws Exception {
     Path out = Files.createTempDirectory("test");
     CSVConnector connector = new CSVConnector();
     Config settings =
@@ -1069,9 +1060,9 @@ class CSVConnectorTest {
             "url",
             StringUtils.quoteJson(out),
             "nullValue",
-            null,
+            StringUtils.quoteJson(nullValue),
             "header",
-            true);
+            false);
     connector.configure(settings, false);
     connector.init();
     Flux.<Record>just(
@@ -1079,19 +1070,76 @@ class CSVConnectorTest {
                 "source",
                 resource,
                 IRRELEVANT_POSITION,
-                new Field[] {new DefaultMappedField("field1")},
-                new Object[] {null}))
+                new Field[] {new DefaultMappedField("field1"), new DefaultMappedField("field2")},
+                null,
+                "field2"))
         .transform(connector.write())
         .blockLast();
     connector.close();
     List<String> actual = Files.readAllLines(out.resolve("output-000001.csv"));
-    assertThat(actual)
-        .hasSize(1)
-        .containsExactly("field1"); // only the header line should have been printed
+    assertThat(actual).hasSize(1).containsExactly(expected);
   }
 
-  @Test
-  void should_honor_nullValue_when_writing2() throws Exception {
+  @SuppressWarnings("unused")
+  static Stream<Arguments> should_honor_nullValue_when_writing() {
+    return Stream.of(
+        Arguments.of(null, ",field2"),
+        Arguments.of("AUTO", ",field2"),
+        Arguments.of("auto", ",field2"),
+        Arguments.of("NULL", "NULL,field2"),
+        Arguments.of("textual replacement for null", "textual replacement for null,field2"));
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  void should_honor_emptyValue_when_reading(String quote, String emptyValue, String expected)
+      throws Exception {
+    Path file = Files.createTempFile("test", ".csv");
+    Files.write(file, Collections.singleton(Strings.repeat(quote, 2)));
+    CSVConnector connector = new CSVConnector();
+    Config settings =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.connector.csv",
+            "url",
+            StringUtils.quoteJson(file),
+            "quote",
+            StringUtils.quoteJson(quote),
+            "emptyValue",
+            StringUtils.quoteJson(emptyValue),
+            "header",
+            false);
+    connector.configure(settings, true);
+    connector.init();
+    List<Record> records = Flux.merge(connector.read()).collectList().block();
+    assertThat(records).hasSize(1);
+    assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo(expected);
+    connector.close();
+  }
+
+  @SuppressWarnings("unused")
+  static Stream<Arguments> should_honor_emptyValue_when_reading() {
+    return Stream.of(
+        Arguments.of("\"", null, null),
+        Arguments.of("'", null, null),
+        Arguments.of("|", null, null),
+        Arguments.of("\"", "AUTO", ""),
+        Arguments.of("'", "AUTO", ""),
+        Arguments.of("|", "AUTO", ""),
+        Arguments.of("\"", "auto", ""),
+        Arguments.of("'", "auto", ""),
+        Arguments.of("|", "auto", ""),
+        Arguments.of("\"", "EMPTY", "EMPTY"),
+        Arguments.of("'", "EMPTY", "EMPTY"),
+        Arguments.of("|", "EMPTY", "EMPTY"),
+        Arguments.of("\"", "textual replacement for empty", "textual replacement for empty"),
+        Arguments.of("'", "textual replacement for empty", "textual replacement for empty"),
+        Arguments.of("|", "textual replacement for empty", "textual replacement for empty"));
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  void should_honor_emptyValue_when_writing(String quote, String emptyValue, String expected)
+      throws Exception {
     Path out = Files.createTempDirectory("test");
     CSVConnector connector = new CSVConnector();
     Config settings =
@@ -1099,63 +1147,70 @@ class CSVConnectorTest {
             "dsbulk.connector.csv",
             "url",
             StringUtils.quoteJson(out),
-            "nullValue",
-            "NULL",
+            "quote",
+            StringUtils.quoteJson(quote),
+            "emptyValue",
+            StringUtils.quoteJson(emptyValue),
             "header",
             false);
     connector.configure(settings, false);
     connector.init();
     Flux.<Record>just(
-            DefaultRecord.indexed("source", resource, IRRELEVANT_POSITION, new Object[] {null}))
+            DefaultRecord.mapped(
+                "source",
+                resource,
+                IRRELEVANT_POSITION,
+                new Field[] {new DefaultMappedField("field1"), new DefaultMappedField("field2")},
+                "",
+                "field2"))
+        .transform(connector.write())
+        .blockLast();
+    connector.close();
+    List<String> actual = Files.readAllLines(out.resolve("output-000001.csv"));
+    assertThat(actual).hasSize(1).containsExactly(expected);
+  }
+
+  @SuppressWarnings("unused")
+  static Stream<Arguments> should_honor_emptyValue_when_writing() {
+    return Stream.of(
+        Arguments.of("\"", null, ",field2"),
+        Arguments.of("'", null, ",field2"),
+        Arguments.of("|", null, ",field2"),
+        Arguments.of("\"", "AUTO", "\"\",field2"),
+        Arguments.of("'", "AUTO", "'',field2"),
+        Arguments.of("|", "AUTO", "||,field2"),
+        Arguments.of("\"", "auto", "\"\",field2"),
+        Arguments.of("'", "auto", "'',field2"),
+        Arguments.of("|", "auto", "||,field2"),
+        Arguments.of("\"", "EMPTY", "EMPTY,field2"),
+        Arguments.of("'", "EMPTY", "EMPTY,field2"),
+        Arguments.of("|", "EMPTY", "EMPTY,field2"),
+        Arguments.of("\"", "textual replacement for empty", "textual replacement for empty,field2"),
+        Arguments.of("'", "textual replacement for empty", "textual replacement for empty,field2"),
+        Arguments.of("|", "textual replacement for empty", "textual replacement for empty,field2"));
+  }
+
+  @Test
+  void should_honor_emptyValue_when_writing2() throws Exception {
+    Path out = Files.createTempDirectory("test");
+    CSVConnector connector = new CSVConnector();
+    Config settings =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.connector.csv",
+            "url",
+            StringUtils.quoteJson(out),
+            "emptyValue",
+            "NULL",
+            "header",
+            false);
+    connector.configure(settings, false);
+    connector.init();
+    Flux.<Record>just(DefaultRecord.indexed("source", resource, IRRELEVANT_POSITION, ""))
         .transform(connector.write())
         .blockLast();
     connector.close();
     List<String> actual = Files.readAllLines(out.resolve("output-000001.csv"));
     assertThat(actual).hasSize(1).containsExactly("NULL");
-  }
-
-  @Test
-  void should_honor_emptyValue_when_reading() throws Exception {
-    Path file = Files.createTempFile("test", ".csv");
-    Files.write(file, Collections.singleton("\"\""));
-    CSVConnector connector = new CSVConnector();
-    Config settings =
-        TestConfigUtils.createTestConfig(
-            "dsbulk.connector.csv",
-            "url",
-            StringUtils.quoteJson(file),
-            "emptyValue",
-            "\"\"",
-            "header",
-            false);
-    connector.configure(settings, true);
-    connector.init();
-    List<Record> records = Flux.merge(connector.read()).collectList().block();
-    assertThat(records).hasSize(1);
-    assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo("");
-    connector.close();
-  }
-
-  @Test
-  void should_honor_emptyValue_when_reading2() throws Exception {
-    Path file = Files.createTempFile("test", ".csv");
-    Files.write(file, Collections.singleton("\"\""));
-    CSVConnector connector = new CSVConnector();
-    Config settings =
-        TestConfigUtils.createTestConfig(
-            "dsbulk.connector.csv",
-            "url",
-            StringUtils.quoteJson(file),
-            "emptyValue",
-            "EMPTY",
-            "header",
-            false);
-    connector.configure(settings, true);
-    connector.init();
-    List<Record> records = Flux.merge(connector.read()).collectList().block();
-    assertThat(records).hasSize(1);
-    assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo("EMPTY");
-    connector.close();
   }
 
   @Test()

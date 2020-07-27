@@ -162,8 +162,8 @@ public class CSVConnector extends AbstractFileBasedConnector {
     if (read) {
       parserSettings = new CsvParserSettings();
       parserSettings.setFormat(format);
-      parserSettings.setNullValue(nullValue);
-      parserSettings.setEmptyValue(emptyValue);
+      parserSettings.setNullValue("AUTO".equalsIgnoreCase(nullValue) ? null : nullValue);
+      parserSettings.setEmptyValue("AUTO".equalsIgnoreCase(emptyValue) ? "" : emptyValue);
       // do not use this feature as the parser throws an error if the file
       // has fewer lines than skipRecords;
       // we'll use the skip() operator instead.
@@ -184,7 +184,10 @@ public class CSVConnector extends AbstractFileBasedConnector {
     } else {
       writerSettings = new CsvWriterSettings();
       writerSettings.setFormat(format);
-      writerSettings.setNullValue(nullValue);
+      writerSettings.setNullValue("AUTO".equalsIgnoreCase(nullValue) ? null : nullValue);
+      // DAT-605: use empty quoted fields by default to distinguish empty strings from nulls
+      writerSettings.setEmptyValue(
+          "AUTO".equalsIgnoreCase(emptyValue) ? "" + quote + quote : emptyValue);
       writerSettings.setQuoteEscapingEnabled(true);
       writerSettings.setIgnoreLeadingWhitespaces(ignoreLeadingWhitespaces);
       writerSettings.setIgnoreTrailingWhitespaces(ignoreTrailingWhitespaces);

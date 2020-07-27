@@ -231,6 +231,63 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     validateOutputFiles(24, unloadDir);
   }
 
+  /** Test for DAT-605. */
+  @Test
+  void unload_load_empty_strings() throws IOException {
+
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS dat605 (pk int PRIMARY KEY, v1 text, v2 ascii, v3 blob)");
+    session.execute("INSERT INTO dat605 (pk, v1, v2, v3) VALUES (1, '', '', 0x)");
+    session.execute("INSERT INTO dat605 (pk, v1, v2, v3) VALUES (2, null, null, null)");
+
+    List<String> args;
+
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--connector.csv.url");
+    args.add(StringUtils.quoteJson(unloadDir));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--schema.keyspace");
+    args.add(session.getKeyspace().get().asInternal());
+    args.add("--schema.table");
+    args.add("dat605");
+
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+    assertThat(FileUtils.readAllLinesInDirectoryAsStream(unloadDir))
+        .containsExactlyInAnyOrder("1,\"\",\"\",\"\"", "2,,,");
+
+    args = new ArrayList<>();
+    args.add("load");
+    args.add("--connector.csv.url");
+    args.add(StringUtils.quoteJson(unloadDir));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--schema.keyspace");
+    args.add(session.getKeyspace().get().asInternal());
+    args.add("--schema.table");
+    args.add("dat605");
+
+    status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+
+    Row rowWithEmpty = session.execute("SELECT pk, v1, v2, v3 FROM dat605 where pk = 1").one();
+    assertThat(rowWithEmpty).isNotNull();
+    assertThat(rowWithEmpty.isNull("v1")).isFalse();
+    assertThat(rowWithEmpty.isNull("v2")).isFalse();
+    assertThat(rowWithEmpty.isNull("v3")).isFalse();
+    assertThat(rowWithEmpty.getString("v1")).isEmpty();
+    assertThat(rowWithEmpty.getString("v2")).isEmpty();
+    assertThat(rowWithEmpty.getByteBuffer("v3").hasRemaining()).isFalse();
+
+    Row rowWithNull = session.execute("SELECT pk, v1, v2, v3 FROM dat605 where pk = 2").one();
+    assertThat(rowWithNull).isNotNull();
+    assertThat(rowWithNull.isNull("v1")).isTrue();
+    assertThat(rowWithNull.isNull("v2")).isTrue();
+    assertThat(rowWithNull.isNull("v3")).isTrue();
+  }
+
   /** Simple test case which attempts to load and unload data using ccm and compression (LZ4). */
   @Test
   void full_load_unload_lz4() throws Exception {

@@ -66,9 +66,9 @@ public abstract class StringConvertingCodec<T> extends ConvertingCodec<String, T
    * The string to use when formatting internal inputs.
    *
    * <p>According to the documentation of <code>codec.nullStrings</code>, we must use the first
-   * string specified there, or the empty string, if that setting is empty.
+   * string specified there, or simply return null, if that setting is empty.
    */
   protected String nullString() {
-    return nullStrings.isEmpty() ? "" : nullStrings.get(0);
+    return nullStrings.isEmpty() ? null : nullStrings.get(0);
   }
 }
