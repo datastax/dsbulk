@@ -3,6 +3,7 @@
 ## 1.6.1 (in progress)
 
 - [bug] Correctly display durations lesser than 1 second (#369).
+- [bug] Skip invalid lines when parsing the output of java -version (#372, fixes #371).
 
 
 ## 1.6.0
