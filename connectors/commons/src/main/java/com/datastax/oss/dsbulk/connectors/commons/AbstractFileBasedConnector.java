@@ -285,7 +285,6 @@ public abstract class AbstractFileBasedConnector implements Connector {
    */
   @NonNull
   protected Flux<Record> readSingleFile(@NonNull URL url) {
-    System.out.println("read single file from url: " + url);
     return Flux.generate(
         () -> newSingleFileReader(url),
         RecordReader::readNext,
