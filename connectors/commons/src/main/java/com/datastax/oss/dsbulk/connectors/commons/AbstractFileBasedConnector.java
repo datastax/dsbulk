@@ -569,6 +569,6 @@ public abstract class AbstractFileBasedConnector implements Connector {
   }
 
   protected boolean isDataSizeSamplingAvailable() {
-    return urls.size() == 1 && urls.get(0).getProtocol().equals(STDIN_PROTOCOL);
+    return urls != null && urls.size() == 1 && urls.get(0).getProtocol().equals(STDIN_PROTOCOL);
   }
 }
