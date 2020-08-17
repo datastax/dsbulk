@@ -64,7 +64,7 @@ public abstract class AbstractFileBasedConnector implements Connector {
   protected static final String MAX_CONCURRENT_FILES = "maxConcurrentFiles";
   protected static final String RECURSIVE = "recursive";
   protected static final String FILE_NAME_FORMAT = "fileNameFormat";
-  private static final String STDIN_PROTOCOL = "std";
+  private static final String STD_PROTOCOL = "std";
 
   protected boolean read;
   protected List<URL> urls;
@@ -569,6 +569,6 @@ public abstract class AbstractFileBasedConnector implements Connector {
   }
 
   protected boolean isDataSizeSamplingAvailable() {
-    return urls != null && urls.size() == 1 && urls.get(0).getProtocol().equals(STDIN_PROTOCOL);
+    return !(urls != null && urls.size() == 1 && urls.get(0).getProtocol().equals(STD_PROTOCOL));
   }
 }
