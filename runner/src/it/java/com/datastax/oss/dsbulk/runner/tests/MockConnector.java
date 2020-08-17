@@ -66,6 +66,11 @@ public final class MockConnector implements Connector {
           }
 
           @Override
+          public boolean isStdin() {
+            return false;
+          }
+
+          @Override
           public boolean supports(@NonNull ConnectorFeature feature) {
             return true;
           }
@@ -115,6 +120,11 @@ public final class MockConnector implements Connector {
           @Override
           public int writeConcurrency() {
             return 1;
+          }
+
+          @Override
+          public boolean isStdin() {
+            return false;
           }
 
           @Override
@@ -169,6 +179,11 @@ public final class MockConnector implements Connector {
           @Override
           public int writeConcurrency() {
             return 1;
+          }
+
+          @Override
+          public boolean isStdin() {
+            return false;
           }
 
           @Override
@@ -243,5 +258,10 @@ public final class MockConnector implements Connector {
   @Override
   public int writeConcurrency() {
     return delegate.writeConcurrency();
+  }
+
+  @Override
+  public boolean isStdin() {
+    return delegate.isStdin();
   }
 }

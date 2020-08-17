@@ -64,6 +64,7 @@ public abstract class AbstractFileBasedConnector implements Connector {
   protected static final String MAX_CONCURRENT_FILES = "maxConcurrentFiles";
   protected static final String RECURSIVE = "recursive";
   protected static final String FILE_NAME_FORMAT = "fileNameFormat";
+  private static final String STDIN_PROTOCOL = "std";
 
   protected boolean read;
   protected List<URL> urls;
@@ -157,6 +158,7 @@ public abstract class AbstractFileBasedConnector implements Connector {
   @NonNull
   @Override
   public Publisher<Publisher<Record>> read() {
+    System.out.println("Read#160");
     assert read;
     return Flux.concat(
             Flux.fromIterable(roots).flatMap(this::scanRootDirectory), Flux.fromIterable(files))
@@ -255,6 +257,11 @@ public abstract class AbstractFileBasedConnector implements Connector {
     }
   }
 
+  @Override
+  public boolean isStdin() {
+    return urls.size() == 1 && urls.get(0).getProtocol().equals(STDIN_PROTOCOL);
+  }
+
   // Protected members
 
   /**
@@ -279,6 +286,7 @@ public abstract class AbstractFileBasedConnector implements Connector {
    */
   @NonNull
   protected Flux<Record> readSingleFile(@NonNull URL url) {
+    System.out.println("read single file from url: " + url);
     return Flux.generate(
         () -> newSingleFileReader(url),
         RecordReader::readNext,

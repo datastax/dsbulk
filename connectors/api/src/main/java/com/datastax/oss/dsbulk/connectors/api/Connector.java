@@ -217,4 +217,6 @@ public interface Connector extends AutoCloseable {
    * @return the desired write concurrency; must be strictly positive, that is, greater than zero.
    */
   int writeConcurrency();
+
+  boolean isStdin();
 }

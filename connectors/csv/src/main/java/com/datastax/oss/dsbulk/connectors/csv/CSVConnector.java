@@ -48,6 +48,7 @@ import java.net.URL;
 import java.net.URLStreamHandler;
 import java.nio.channels.ClosedChannelException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
@@ -253,6 +254,10 @@ public class CSVConnector extends AbstractFileBasedConnector {
     private MappedField[] getFieldNames(URL url, ParsingContext context) throws IOException {
       List<String> fieldNames = new ArrayList<>();
       String[] parsedHeaders = context.headers();
+      if (parsedHeaders == null) {
+        throw new IOException(
+            String.format("The parsed headers from provided url: %s are null", url));
+      }
       List<String> errors = new ArrayList<>();
       for (int i = 0; i < parsedHeaders.length; i++) {
         String name = parsedHeaders[i];

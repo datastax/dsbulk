@@ -57,6 +57,7 @@ import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -191,8 +192,16 @@ public class LoadWorkflow implements Workflow {
     readConcurrency = connector.readConcurrency();
     hasManyReaders = readConcurrency >= Math.max(4, numCores / 4);
     LOGGER.debug("Using read concurrency: {}", readConcurrency);
-    writeConcurrency =
-        engineSettings.getMaxConcurrentQueries().orElseGet(this::determineWriteConcurrency);
+
+    if (connector.isStdin()) {
+      writeConcurrency =
+          engineSettings
+              .getMaxConcurrentQueries()
+              .orElseGet(this::determineWriteConcurrencyWithoutSampling);
+    } else {
+      writeConcurrency =
+          engineSettings.getMaxConcurrentQueries().orElseGet(this::determineWriteConcurrency);
+    }
     LOGGER.debug(
         "Using write concurrency: {} (user-supplied: {})",
         writeConcurrency,
@@ -351,11 +360,19 @@ public class LoadWorkflow implements Workflow {
     }
   }
 
+  private int determineWriteConcurrencyWithoutSampling() {
+    return determineWriteConcurrency(() -> 0D);
+  }
+
   private int determineWriteConcurrency() {
+    return determineWriteConcurrency(this::getMeanRowSize);
+  }
+
+  private int determineWriteConcurrency(Supplier<Double> meanRowSizeSupplier) {
     if (dryRun) {
       return numCores;
     }
-    double meanSize = getMeanRowSize();
+    double meanSize = meanRowSizeSupplier.get();
     int writeConcurrency;
     if (meanSize <= 512) {
       if (hasManyReaders) {
