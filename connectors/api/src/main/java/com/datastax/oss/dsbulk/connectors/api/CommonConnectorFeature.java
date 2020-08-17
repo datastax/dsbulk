@@ -30,7 +30,7 @@ public enum CommonConnectorFeature implements ConnectorFeature {
   MAPPED_RECORDS,
 
   /**
-   * Indicates that the connector supports data sampling for the performance optimization purpose.
+   * Indicates that the connector supports data sampling for performance optimization purposes.
    * It should return not supported if the data source cannot be read more than once.
    */
   DATA_SIZE_SAMPLING
