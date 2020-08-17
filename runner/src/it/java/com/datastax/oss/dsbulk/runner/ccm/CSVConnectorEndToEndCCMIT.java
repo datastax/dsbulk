@@ -73,6 +73,7 @@ import com.datastax.oss.dsbulk.tests.utils.FileUtils;
 import com.datastax.oss.dsbulk.tests.utils.StringUtils;
 import com.datastax.oss.dsbulk.workflow.api.log.OperationDirectory;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.LineNumberReader;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -190,6 +191,54 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateOutputFiles(24, unloadDir);
+  }
+
+  // DAT-612
+  @Test
+  void load_from_stdin_and_unload() throws Exception {
+    InputStream stdin = System.in;
+    try {
+      System.setIn(CsvUtils.CSV_RECORDS.openStream());
+      List<String> args = new ArrayList<>();
+      args.add("load");
+      args.add("-verbosity");
+      args.add("2");
+      args.add("--connector.csv.url");
+      args.add("-");
+      args.add("--connector.csv.header");
+      args.add("true");
+      args.add("--schema.keyspace");
+      args.add(session.getKeyspace().get().asInternal());
+      args.add("--schema.table");
+      args.add("ip_by_country");
+      args.add("--schema.mapping");
+      args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
+
+      ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+      assertStatus(status, STATUS_OK);
+      validateResultSetSize(24, "SELECT * FROM ip_by_country");
+      validatePositionsFile(CsvUtils.CSV_RECORDS_UNIQUE, 24);
+      FileUtils.deleteDirectory(logDir);
+
+      args = new ArrayList<>();
+      args.add("unload");
+      args.add("--connector.csv.url");
+      args.add(StringUtils.quoteJson(unloadDir));
+      args.add("--connector.csv.header");
+      args.add("false");
+      args.add("--schema.keyspace");
+      args.add(session.getKeyspace().get().asInternal());
+      args.add("--schema.table");
+      args.add("ip_by_country");
+      args.add("--schema.mapping");
+      args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
+
+      status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+      assertStatus(status, STATUS_OK);
+      validateOutputFiles(24, unloadDir);
+    } finally {
+      System.setIn(stdin);
+    }
   }
 
   @Test
