@@ -158,7 +158,6 @@ public abstract class AbstractFileBasedConnector implements Connector {
   @NonNull
   @Override
   public Publisher<Publisher<Record>> read() {
-    System.out.println("Read#160");
     assert read;
     return Flux.concat(
             Flux.fromIterable(roots).flatMap(this::scanRootDirectory), Flux.fromIterable(files))
