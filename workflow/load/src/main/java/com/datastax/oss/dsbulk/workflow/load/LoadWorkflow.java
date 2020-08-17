@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.dsbulk.workflow.load;
 
+import static com.datastax.oss.dsbulk.connectors.api.CommonConnectorFeature.DATA_SIZE_SAMPLING;
+
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Snapshot;
@@ -193,14 +195,14 @@ public class LoadWorkflow implements Workflow {
     hasManyReaders = readConcurrency >= Math.max(4, numCores / 4);
     LOGGER.debug("Using read concurrency: {}", readConcurrency);
 
-    if (connector.isStdin()) {
+    if (connector.supports(DATA_SIZE_SAMPLING)) {
+      writeConcurrency =
+          engineSettings.getMaxConcurrentQueries().orElseGet(this::determineWriteConcurrency);
+    } else {
       writeConcurrency =
           engineSettings
               .getMaxConcurrentQueries()
               .orElseGet(this::determineWriteConcurrencyWithoutSampling);
-    } else {
-      writeConcurrency =
-          engineSettings.getMaxConcurrentQueries().orElseGet(this::determineWriteConcurrency);
     }
     LOGGER.debug(
         "Using write concurrency: {} (user-supplied: {})",

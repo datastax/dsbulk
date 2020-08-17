@@ -256,11 +256,6 @@ public abstract class AbstractFileBasedConnector implements Connector {
     }
   }
 
-  @Override
-  public boolean isStdin() {
-    return urls.size() == 1 && urls.get(0).getProtocol().equals(STDIN_PROTOCOL);
-  }
-
   // Protected members
 
   /**
@@ -571,5 +566,9 @@ public abstract class AbstractFileBasedConnector implements Connector {
     }
     // assume we are writing to a single URL and ignore fileNameFormat
     return urls.get(0);
+  }
+
+  protected boolean isDataSizeSamplingAvailable() {
+    return urls.size() == 1 && urls.get(0).getProtocol().equals(STDIN_PROTOCOL);
   }
 }
