@@ -48,7 +48,6 @@ import java.net.URL;
 import java.net.URLStreamHandler;
 import java.nio.channels.ClosedChannelException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
@@ -216,6 +215,8 @@ public class CSVConnector extends AbstractFileBasedConnector {
         case INDEXED_RECORDS:
           // always support indexed records, regardless of the presence of a header
           return true;
+        case DATA_SIZE_SAMPLING:
+          return isDataSizeSamplingAvailable();
       }
     }
     return false;

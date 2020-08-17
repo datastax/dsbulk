@@ -195,7 +195,7 @@ public class LoadWorkflow implements Workflow {
     hasManyReaders = readConcurrency >= Math.max(4, numCores / 4);
     LOGGER.debug("Using read concurrency: {}", readConcurrency);
 
-    if (connector.supports(DATA_SIZE_SAMPLING)) {
+    if (connector.supports(DATA_SIZE_SAMPLING) && engineSettings.isDataSizeSamplingEnabled()) {
       writeConcurrency =
           engineSettings.getMaxConcurrentQueries().orElseGet(this::determineWriteConcurrency);
     } else {
