@@ -216,8 +216,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
       ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
       assertStatus(status, STATUS_OK);
-      validateResultSetSize(24, "SELECT * FROM ip_by_country");
-      validatePositionsFile(CsvUtils.CSV_RECORDS_UNIQUE, 24);
+      validateResultSetSize(500, "SELECT * FROM ip_by_country");
+      validatePositionsFile(new URL("std:/"), 500);
       FileUtils.deleteDirectory(logDir);
 
       args = new ArrayList<>();
@@ -235,7 +235,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
       status = new DataStaxBulkLoader(addCommonSettings(args)).run();
       assertStatus(status, STATUS_OK);
-      validateOutputFiles(24, unloadDir);
+      validateOutputFiles(500, unloadDir);
     } finally {
       System.setIn(stdin);
     }
