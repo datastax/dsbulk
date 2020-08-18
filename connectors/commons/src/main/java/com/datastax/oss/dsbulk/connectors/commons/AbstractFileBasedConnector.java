@@ -64,7 +64,6 @@ public abstract class AbstractFileBasedConnector implements Connector {
   protected static final String MAX_CONCURRENT_FILES = "maxConcurrentFiles";
   protected static final String RECURSIVE = "recursive";
   protected static final String FILE_NAME_FORMAT = "fileNameFormat";
-  private static final String STD_PROTOCOL = "std";
 
   protected boolean read;
   protected List<URL> urls;
@@ -568,7 +567,16 @@ public abstract class AbstractFileBasedConnector implements Connector {
     return urls.get(0);
   }
 
+  /**
+   * Checks whether it is safe to perform data size sampling on this connector's data source. Data
+   * size sampling is usually not safe if the data can only be streamed once.
+   *
+   * <p>This implementation simply checks that none of the urls to read is reading from standard
+   * input, since standard input is not rewindable. Any other URL protocol is considered safe.
+   *
+   * @return true if it is safe to perform data size sampling, false otherwise.
+   */
   protected boolean isDataSizeSamplingAvailable() {
-    return !(urls != null && urls.size() == 1 && urls.get(0).getProtocol().equals(STD_PROTOCOL));
+    return read && urls.stream().noneMatch(IOUtils::isStandardStream);
   }
 }

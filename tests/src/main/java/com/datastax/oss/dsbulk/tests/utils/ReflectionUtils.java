@@ -63,16 +63,24 @@ public class ReflectionUtils {
   }
 
   public static <T> T invokeMethod(
+      String methodName, Object receiver, Class<T> returnType, Object... parameters) {
+    Method method = locateMethod(methodName, receiver.getClass(), parameters.length);
+    return invokeMethod(method, receiver, returnType, parameters);
+  }
+
+  public static <T> T invokeMethod(
       Method method, Object receiver, Class<T> returnType, Object... parameters) {
     try {
       if (method == null) {
         return null;
       }
       method.setAccessible(true);
-
-      // Void.isAssignableFrom always returns false it seems.
-      assert returnType == Void.class || returnType.isAssignableFrom(method.getReturnType());
-      return returnType.cast(method.invoke(receiver, parameters));
+      assert returnType == Void.class
+          || returnType.isPrimitive()
+          || returnType.isAssignableFrom(method.getReturnType());
+      @SuppressWarnings("unchecked")
+      T ret = (T) method.invoke(receiver, parameters);
+      return ret;
     } catch (Exception e) {
       throw e instanceof RuntimeException ? (RuntimeException) e : new RuntimeException(e);
     }

@@ -15,8 +15,6 @@
  */
 package com.datastax.oss.dsbulk.workflow.load;
 
-import static com.datastax.oss.dsbulk.connectors.api.CommonConnectorFeature.DATA_SIZE_SAMPLING;
-
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Snapshot;
@@ -59,7 +57,6 @@ import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,6 +80,7 @@ public class LoadWorkflow implements Workflow {
   private Connector connector;
   private MetricsManager metricsManager;
   private LogManager logManager;
+  private EngineSettings engineSettings;
   private CqlSession session;
   private BulkWriter executor;
   private boolean batchingEnabled;
@@ -130,7 +128,7 @@ public class LoadWorkflow implements Workflow {
     ExecutorSettings executorSettings = settingsManager.getExecutorSettings();
     CodecSettings codecSettings = settingsManager.getCodecSettings();
     MonitoringSettings monitoringSettings = settingsManager.getMonitoringSettings();
-    EngineSettings engineSettings = settingsManager.getEngineSettings();
+    engineSettings = settingsManager.getEngineSettings();
     driverSettings.init(true);
     logSettings.logEffectiveSettings(
         settingsManager.getEffectiveBulkLoaderConfig(), driverSettings.getDriverConfig());
@@ -194,16 +192,8 @@ public class LoadWorkflow implements Workflow {
     readConcurrency = connector.readConcurrency();
     hasManyReaders = readConcurrency >= Math.max(4, numCores / 4);
     LOGGER.debug("Using read concurrency: {}", readConcurrency);
-
-    if (connector.supports(DATA_SIZE_SAMPLING) && engineSettings.isDataSizeSamplingEnabled()) {
-      writeConcurrency =
-          engineSettings.getMaxConcurrentQueries().orElseGet(this::determineWriteConcurrency);
-    } else {
-      writeConcurrency =
-          engineSettings
-              .getMaxConcurrentQueries()
-              .orElseGet(this::determineWriteConcurrencyWithoutSampling);
-    }
+    writeConcurrency =
+        engineSettings.getMaxConcurrentQueries().orElseGet(this::determineWriteConcurrency);
     LOGGER.debug(
         "Using write concurrency: {} (user-supplied: {})",
         writeConcurrency,
@@ -362,19 +352,18 @@ public class LoadWorkflow implements Workflow {
     }
   }
 
-  private int determineWriteConcurrencyWithoutSampling() {
-    return determineWriteConcurrency(() -> 0D);
-  }
-
   private int determineWriteConcurrency() {
-    return determineWriteConcurrency(this::getMeanRowSize);
-  }
-
-  private int determineWriteConcurrency(Supplier<Double> meanRowSizeSupplier) {
     if (dryRun) {
       return numCores;
     }
-    double meanSize = meanRowSizeSupplier.get();
+    double meanSize;
+    if (engineSettings.isDataSizeSamplingEnabled()
+        && connector.supports(CommonConnectorFeature.DATA_SIZE_SAMPLING)) {
+      meanSize = getMeanRowSize();
+    } else {
+      // Can't sample data, so use a common value
+      meanSize = _1_KB;
+    }
     int writeConcurrency;
     if (meanSize <= 512) {
       if (hasManyReaders) {
