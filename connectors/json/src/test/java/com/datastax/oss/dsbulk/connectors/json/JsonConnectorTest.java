@@ -15,7 +15,6 @@
  */
 package com.datastax.oss.dsbulk.connectors.json;
 
-import static com.datastax.oss.dsbulk.tests.utils.FileUtils.createURLFile;
 import static com.datastax.oss.dsbulk.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.oss.dsbulk.tests.utils.FileUtils.readFile;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
@@ -31,6 +30,7 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.datastax.oss.driver.shaded.guava.common.base.Charsets;
 import com.datastax.oss.dsbulk.config.ConfigUtils;
+import com.datastax.oss.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.oss.dsbulk.connectors.api.DefaultMappedField;
 import com.datastax.oss.dsbulk.connectors.api.DefaultRecord;
 import com.datastax.oss.dsbulk.connectors.api.Field;
@@ -106,19 +106,26 @@ class JsonConnectorTest {
 
   private final URI resource = URI.create("file://file1.csv");
 
-  private static Path MULTIPLE_URLS_FILE;
+  private static Path multipleUrlsFile;
+  private static Path urlsFileWithStdin;
 
   @BeforeAll
-  static void setup() throws IOException {
-    MULTIPLE_URLS_FILE =
-        createURLFile(
-            Arrays.asList(
-                rawURL("/part_1"), rawURL("/part_2"), rawURL("/root-custom/child/part-0003")));
+  static void setupURLFiles() throws IOException {
+    multipleUrlsFile =
+        FileUtils.createURLFile(
+            rawURL("/part_1"), rawURL("/part_2"), rawURL("/root-custom/child/part-0003"));
+    urlsFileWithStdin =
+        FileUtils.createURLFile(
+            rawURL("/part_1"),
+            rawURL("/part_2"),
+            rawURL("/root-custom/child/part-0003"),
+            new URL("std:/"));
   }
 
   @AfterAll
-  static void cleanup() throws IOException {
-    Files.delete(MULTIPLE_URLS_FILE);
+  static void cleanupURLFiles() throws IOException {
+    Files.delete(multipleUrlsFile);
+    Files.delete(urlsFileWithStdin);
   }
 
   @ParameterizedTest(name = "[{index}] read multi doc file {0} with compression {1}")
@@ -258,6 +265,9 @@ class JsonConnectorTest {
       connector.configure(settings, true);
       connector.init();
       assertThat(connector.readConcurrency()).isOne();
+      assertThat(
+              ReflectionUtils.invokeMethod("isDataSizeSamplingAvailable", connector, Boolean.TYPE))
+          .isFalse();
       List<Record> actual = Flux.merge(connector.read()).collectList().block();
       assertThat(actual).hasSize(1);
       assertThat(actual.get(0).getSource()).isEqualTo(objectMapper.readTree(line));
@@ -286,6 +296,9 @@ class JsonConnectorTest {
       connector.configure(settings, false);
       connector.init();
       assertThat(connector.writeConcurrency()).isOne();
+      assertThat(
+              ReflectionUtils.invokeMethod("isDataSizeSamplingAvailable", connector, Boolean.TYPE))
+          .isFalse();
       Flux.<Record>just(
               DefaultRecord.indexed(
                   "source",
@@ -302,6 +315,55 @@ class JsonConnectorTest {
     } finally {
       System.setOut(stdout);
     }
+  }
+
+  @Test
+  void should_allow_data_size_sampling_when_not_reading_from_stdin_single_url() throws Exception {
+    JsonConnector connector = new JsonConnector();
+    Config settings =
+        TestConfigUtils.createTestConfig("dsbulk.connector.json", "url", url("/single_doc.json"));
+    connector.configure(settings, true);
+    connector.init();
+    assertThat(ReflectionUtils.invokeMethod("isDataSizeSamplingAvailable", connector, Boolean.TYPE))
+        .isTrue();
+    assertThat(connector.supports(CommonConnectorFeature.DATA_SIZE_SAMPLING)).isTrue();
+  }
+
+  @Test
+  void should_allow_data_size_sampling_when_urlfile_does_not_contain_stdin() throws Exception {
+    JsonConnector connector = new JsonConnector();
+    Config settings =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.connector.json", "urlfile", StringUtils.quoteJson(multipleUrlsFile));
+    connector.configure(settings, true);
+    connector.init();
+    assertThat(ReflectionUtils.invokeMethod("isDataSizeSamplingAvailable", connector, Boolean.TYPE))
+        .isTrue();
+    assertThat(connector.supports(CommonConnectorFeature.DATA_SIZE_SAMPLING)).isTrue();
+  }
+
+  @Test
+  void should_disallow_data_size_sampling_when_reading_from_stdin_single_url() throws Exception {
+    JsonConnector connector = new JsonConnector();
+    Config settings = TestConfigUtils.createTestConfig("dsbulk.connector.json", "url", "-");
+    connector.configure(settings, true);
+    connector.init();
+    assertThat(ReflectionUtils.invokeMethod("isDataSizeSamplingAvailable", connector, Boolean.TYPE))
+        .isFalse();
+    assertThat(connector.supports(CommonConnectorFeature.DATA_SIZE_SAMPLING)).isFalse();
+  }
+
+  @Test
+  void should_disallow_data_size_sampling_when_reading_from_stdin_urlfile() throws Exception {
+    JsonConnector connector = new JsonConnector();
+    Config settings =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.connector.json", "urlfile", StringUtils.quoteJson(urlsFileWithStdin));
+    connector.configure(settings, true);
+    connector.init();
+    assertThat(ReflectionUtils.invokeMethod("isDataSizeSamplingAvailable", connector, Boolean.TYPE))
+        .isFalse();
+    assertThat(connector.supports(CommonConnectorFeature.DATA_SIZE_SAMPLING)).isFalse();
   }
 
   @Test
@@ -909,7 +971,7 @@ class JsonConnectorTest {
 
     Config settings =
         TestConfigUtils.createTestConfig(
-            "dsbulk.connector.json", "urlfile", StringUtils.quoteJson(MULTIPLE_URLS_FILE));
+            "dsbulk.connector.json", "urlfile", StringUtils.quoteJson(multipleUrlsFile));
 
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(IllegalArgumentException.class)
@@ -925,9 +987,9 @@ class JsonConnectorTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.connector.json",
             "urlfile",
-            StringUtils.quoteJson(MULTIPLE_URLS_FILE),
+            StringUtils.quoteJson(multipleUrlsFile),
             "url",
-            StringUtils.quoteJson(MULTIPLE_URLS_FILE));
+            StringUtils.quoteJson(multipleUrlsFile));
 
     assertDoesNotThrow(() -> connector.configure(settings, true));
 
@@ -942,7 +1004,7 @@ class JsonConnectorTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.connector.json",
             "urlfile",
-            StringUtils.quoteJson(MULTIPLE_URLS_FILE),
+            StringUtils.quoteJson(multipleUrlsFile),
             "recursive",
             false,
             "fileNamePattern",
@@ -1350,11 +1412,11 @@ class JsonConnectorTest {
   }
 
   private static String url(String resource) {
-    return StringUtils.quoteJson(JsonConnectorTest.class.getResource(resource));
+    return StringUtils.quoteJson(rawURL(resource));
   }
 
-  private static String rawURL(String resource) {
-    return JsonConnectorTest.class.getResource(resource).toExternalForm();
+  private static URL rawURL(String resource) {
+    return JsonConnectorTest.class.getResource(resource);
   }
 
   private static Path path(@SuppressWarnings("SameParameterValue") String resource)

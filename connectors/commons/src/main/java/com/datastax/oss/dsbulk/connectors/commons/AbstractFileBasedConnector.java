@@ -566,4 +566,17 @@ public abstract class AbstractFileBasedConnector implements Connector {
     // assume we are writing to a single URL and ignore fileNameFormat
     return urls.get(0);
   }
+
+  /**
+   * Checks whether it is safe to perform data size sampling on this connector's data source. Data
+   * size sampling is usually not safe if the data can only be streamed once.
+   *
+   * <p>This implementation simply checks that none of the urls to read is reading from standard
+   * input, since standard input is not rewindable. Any other URL protocol is considered safe.
+   *
+   * @return true if it is safe to perform data size sampling, false otherwise.
+   */
+  protected boolean isDataSizeSamplingAvailable() {
+    return read && urls.stream().noneMatch(IOUtils::isStandardStream);
+  }
 }

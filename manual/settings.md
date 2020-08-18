@@ -1,4 +1,4 @@
-# DataStax Bulk Loader v1.6.0 Options
+# DataStax Bulk Loader v1.6.1-SNAPSHOT Options
 
 *NOTE:* The long options described here can be persisted in `conf/application.conf` and thus permanently override defaults and avoid specifying options on the command line.
 
@@ -1099,6 +1099,18 @@ The special syntax `NC` can be used to specify a number that is a multiple of th
 The default value is 'AUTO'; with this special value, DSBulk will optimize the number of concurrent queries according to the number of available cores, and the operation being executed. The actual value usually ranges from the number of cores to eight times that number.
 
 Default: **"AUTO"**.
+
+#### --engine.dataSizeSamplingEnabled<br />--dsbulk.engine.dataSizeSamplingEnabled _&lt;boolean&gt;_
+
+Specify whether DSBulk should use data size sampling to optimize its execution engine. Only applicable for loading, ignored otherwise.
+
+Data size sampling is done by reading a few records from the connector; in this case, the connector will be invoked twice: once to sample the data size, then again to read the entire data. This is only possible if the data source can be rewinded and read again from the beginning. If your data source does not support this – for example, because it can only be read once – then you should set this option to false.
+
+Note that when loading from standard input, DSBulk will never perform data size sampling, regardless of the value set here.
+
+The default value is 'true', meaning that data size sampling is enabled.
+
+Default: **true**.
 
 #### --engine.executionId<br />--dsbulk.engine.executionId _&lt;string&gt;_
 

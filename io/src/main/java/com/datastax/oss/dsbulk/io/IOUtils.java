@@ -17,6 +17,7 @@ package com.datastax.oss.dsbulk.io;
 
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
@@ -39,6 +40,16 @@ import java.util.stream.Stream;
 public final class IOUtils {
 
   private static final int BUFFER_SIZE = 8192 * 2;
+
+  /**
+   * The protocol for standard input and standard output URLs. The only supported URL with such
+   * scheme is {@code std:/}.
+   *
+   * <p>This is a copy of {@code
+   * com.datastax.oss.dsbulk.url.StdinStdoutURLStreamHandlerProvider#STANDARD_STREAM_PROTOCOL} since
+   * this module does not have a compile-time dependency on dsbulk-url.
+   */
+  private static final String STANDARD_STREAM_PROTOCOL = "std";
 
   public static BufferedInputStream newBufferedInputStream(URL url) throws IOException {
     InputStream in = url.openStream();
@@ -107,5 +118,17 @@ public final class IOUtils {
       throw new IllegalArgumentException(
           String.format("%s %s is not readable", descriptor, filePath));
     }
+  }
+
+  /**
+   * Returns true if the given URL references the standard input/output streams (that is, if it
+   * reads from {@link System#in} and writes to {@link System#out}). Only one such URL exists:
+   * {@code std:/} (see the dsbulk-url module for information on this special url protocol).
+   *
+   * @param url The url to check; must not be null.
+   * @return true if the given url has protocol {@code std}, false otherwise.
+   */
+  public static boolean isStandardStream(@NonNull URL url) {
+    return url.getProtocol().equalsIgnoreCase(STANDARD_STREAM_PROTOCOL);
   }
 }

@@ -171,6 +171,8 @@ public class JsonConnector extends AbstractFileBasedConnector {
           return true;
         case INDEXED_RECORDS:
           return false;
+        case DATA_SIZE_SAMPLING:
+          return isDataSizeSamplingAvailable();
       }
     }
     return false;

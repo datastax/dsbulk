@@ -29,6 +29,7 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.datastax.oss.driver.shaded.guava.common.base.Charsets;
 import com.datastax.oss.dsbulk.config.ConfigUtils;
+import com.datastax.oss.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.oss.dsbulk.connectors.api.DefaultIndexedField;
 import com.datastax.oss.dsbulk.connectors.api.DefaultMappedField;
 import com.datastax.oss.dsbulk.connectors.api.DefaultRecord;
@@ -99,21 +100,28 @@ class CSVConnectorTest {
     Thread.setDefaultUncaughtExceptionHandler((thread, t) -> {});
   }
 
-  private static Path MULTIPLE_URLS_FILE;
-
   private final URI resource = URI.create("file://file1.csv");
 
+  private static Path multipleUrlsFile;
+  private static Path urlsFileWithStdin;
+
   @BeforeAll
-  static void setup() throws IOException {
-    MULTIPLE_URLS_FILE =
+  static void setupURLFiles() throws IOException {
+    multipleUrlsFile =
         FileUtils.createURLFile(
-            Arrays.asList(
-                rawURL("/part_1"), rawURL("/part_2"), rawURL("/root-custom/child/part-0003")));
+            rawURL("/part_1"), rawURL("/part_2"), rawURL("/root-custom/child/part-0003"));
+    urlsFileWithStdin =
+        FileUtils.createURLFile(
+            rawURL("/part_1"),
+            rawURL("/part_2"),
+            rawURL("/root-custom/child/part-0003"),
+            new URL("std:/"));
   }
 
   @AfterAll
-  static void cleanup() throws IOException {
-    Files.delete(MULTIPLE_URLS_FILE);
+  static void cleanupURLFiles() throws IOException {
+    Files.delete(multipleUrlsFile);
+    Files.delete(urlsFileWithStdin);
   }
 
   @ParameterizedTest(name = "[{index}] read {0} with compression {1}")
@@ -240,6 +248,9 @@ class CSVConnectorTest {
       connector.configure(settings, true);
       connector.init();
       assertThat(connector.readConcurrency()).isOne();
+      assertThat(
+              ReflectionUtils.invokeMethod("isDataSizeSamplingAvailable", connector, Boolean.TYPE))
+          .isFalse();
       List<Record> actual = Flux.merge(connector.read()).collectList().block();
       assertThat(actual).hasSize(1);
       assertThat(actual.get(0).getSource()).isEqualTo(line);
@@ -250,6 +261,55 @@ class CSVConnectorTest {
     } finally {
       System.setIn(stdin);
     }
+  }
+
+  @Test
+  void should_allow_data_size_sampling_when_not_reading_from_stdin_single_url() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    Config settings =
+        TestConfigUtils.createTestConfig("dsbulk.connector.csv", "url", url("/sample.csv"));
+    connector.configure(settings, true);
+    connector.init();
+    assertThat(ReflectionUtils.invokeMethod("isDataSizeSamplingAvailable", connector, Boolean.TYPE))
+        .isTrue();
+    assertThat(connector.supports(CommonConnectorFeature.DATA_SIZE_SAMPLING)).isTrue();
+  }
+
+  @Test
+  void should_allow_data_size_sampling_when_urlfile_does_not_contain_stdin() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    Config settings =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.connector.csv", "urlfile", StringUtils.quoteJson(multipleUrlsFile));
+    connector.configure(settings, true);
+    connector.init();
+    assertThat(ReflectionUtils.invokeMethod("isDataSizeSamplingAvailable", connector, Boolean.TYPE))
+        .isTrue();
+    assertThat(connector.supports(CommonConnectorFeature.DATA_SIZE_SAMPLING)).isTrue();
+  }
+
+  @Test
+  void should_disallow_data_size_sampling_when_reading_from_stdin_single_url() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    Config settings = TestConfigUtils.createTestConfig("dsbulk.connector.csv", "url", "-");
+    connector.configure(settings, true);
+    connector.init();
+    assertThat(ReflectionUtils.invokeMethod("isDataSizeSamplingAvailable", connector, Boolean.TYPE))
+        .isFalse();
+    assertThat(connector.supports(CommonConnectorFeature.DATA_SIZE_SAMPLING)).isFalse();
+  }
+
+  @Test
+  void should_disallow_data_size_sampling_when_reading_from_stdin_urlfile() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    Config settings =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.connector.csv", "urlfile", StringUtils.quoteJson(urlsFileWithStdin));
+    connector.configure(settings, true);
+    connector.init();
+    assertThat(ReflectionUtils.invokeMethod("isDataSizeSamplingAvailable", connector, Boolean.TYPE))
+        .isFalse();
+    assertThat(connector.supports(CommonConnectorFeature.DATA_SIZE_SAMPLING)).isFalse();
   }
 
   @Test
@@ -266,6 +326,9 @@ class CSVConnectorTest {
       connector.configure(settings, false);
       connector.init();
       assertThat(connector.writeConcurrency()).isOne();
+      assertThat(
+              ReflectionUtils.invokeMethod("isDataSizeSamplingAvailable", connector, Boolean.TYPE))
+          .isFalse();
       Flux.<Record>just(
               DefaultRecord.indexed("source", resource, IRRELEVANT_POSITION, "fóô", "bàr", "qïx"))
           .transform(connector.write())
@@ -292,6 +355,9 @@ class CSVConnectorTest {
       connector.configure(settings, true);
       connector.init();
       assertThat(connector.readConcurrency()).isOne();
+      assertThat(
+              ReflectionUtils.invokeMethod("isDataSizeSamplingAvailable", connector, Boolean.TYPE))
+          .isFalse();
       List<Record> actual = Flux.merge(connector.read()).collectList().block();
       assertThat(actual).hasSize(1);
       assertThat(actual.get(0).getSource()).isEqualTo(line);
@@ -316,6 +382,9 @@ class CSVConnectorTest {
       connector.configure(settings, false);
       connector.init();
       assertThat(connector.writeConcurrency()).isOne();
+      assertThat(
+              ReflectionUtils.invokeMethod("isDataSizeSamplingAvailable", connector, Boolean.TYPE))
+          .isFalse();
       Flux.<Record>just(
               DefaultRecord.indexed("source", resource, IRRELEVANT_POSITION, "abc", "de\nf", "ghk"))
           .transform(connector.write())
@@ -1657,7 +1726,7 @@ class CSVConnectorTest {
 
     Config settings =
         TestConfigUtils.createTestConfig(
-            "dsbulk.connector.csv", "urlfile", StringUtils.quoteJson(MULTIPLE_URLS_FILE));
+            "dsbulk.connector.csv", "urlfile", StringUtils.quoteJson(multipleUrlsFile));
 
     assertThatThrownBy(() -> connector.configure(settings, false))
         .isInstanceOf(IllegalArgumentException.class)
@@ -1673,9 +1742,9 @@ class CSVConnectorTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.connector.csv",
             "urlfile",
-            StringUtils.quoteJson(MULTIPLE_URLS_FILE),
+            StringUtils.quoteJson(multipleUrlsFile),
             "url",
-            StringUtils.quoteJson(MULTIPLE_URLS_FILE));
+            StringUtils.quoteJson(multipleUrlsFile));
 
     assertDoesNotThrow(() -> connector.configure(settings, true));
 
@@ -1690,7 +1759,7 @@ class CSVConnectorTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.connector.csv",
             "urlfile",
-            StringUtils.quoteJson(MULTIPLE_URLS_FILE),
+            StringUtils.quoteJson(multipleUrlsFile),
             "recursive",
             false,
             "fileNamePattern",
@@ -1764,7 +1833,7 @@ class CSVConnectorTest {
   }
 
   private static String url(String resource) {
-    return StringUtils.quoteJson(CSVConnectorTest.class.getResource(resource));
+    return StringUtils.quoteJson(rawURL(resource));
   }
 
   private static Path path(@SuppressWarnings("SameParameterValue") String resource)
@@ -1772,7 +1841,7 @@ class CSVConnectorTest {
     return Paths.get(CSVConnectorTest.class.getResource(resource).toURI());
   }
 
-  private static String rawURL(String resource) {
-    return CSVConnectorTest.class.getResource(resource).toExternalForm();
+  private static URL rawURL(String resource) {
+    return CSVConnectorTest.class.getResource(resource);
   }
 }
