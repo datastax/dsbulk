@@ -139,8 +139,8 @@ public class ConfigUtils {
   }
 
   /**
-   * Invalidates caches and creates an unresolved application config for DSBulk, optionally pulling
-   * application settings from the given alternate location.
+   * Creates an unresolved application config for DSBulk, optionally pulling application settings
+   * from the given alternate location.
    *
    * <p>The application config is obtained from the following stack:
    *
