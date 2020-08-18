@@ -145,8 +145,8 @@ public class LogSettings {
 
   public void init() throws IOException {
     try {
-      // Note: log.ansiMode is handled upstream by
-      // com.datastax.oss.dsbulk.runner.cli.CommandLineParser
+      // Note: log.ansiMode is handled upstream by the runner
+      // com.datastax.oss.dsbulk.runner.cli.AnsiConfigurator
       operationDirectory =
           new OperationDirectoryResolver(ConfigUtils.getPath(config, "directory"), executionId)
               .resolve();
