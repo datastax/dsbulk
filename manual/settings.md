@@ -1322,6 +1322,12 @@ The report interval. DSBulk will print useful metrics about the ongoing operatio
 
 Default: **"5 seconds"**.
 
+#### --monitoring.console<br />--dsbulk.monitoring.console _&lt;boolean&gt;_
+
+Enable or disable console reporting. If enabled, DSBulk will print useful metrics about the ongoing operation to standard error; the metrics will be refreshed at `reportRate`. Displayed information includes: total records, failed records, throughput, latency, and if available, average batch size. Note that when `log.verbosity` is set to quiet (0), DSBulk will disable the console reporter regardless of the value specified here. The default is true (print ongoing metrics to the console).
+
+Default: **true**.
+
 #### --monitoring.csv<br />--dsbulk.monitoring.csv _&lt;boolean&gt;_
 
 Enable or disable CSV reporting. If enabled, CSV files containing metrics will be generated in the designated log directory.
