@@ -85,7 +85,7 @@ public class BulkLoaderURLStreamHandlerFactory implements URLStreamHandlerFactor
         }
       }
     }
-    LOGGER.debug("Returning URL stream handler for protocol: {}", handler);
+    LOGGER.debug("Returning URL stream handler for protocol {}: {}", protocol, handler);
     return handler;
   }
 }
