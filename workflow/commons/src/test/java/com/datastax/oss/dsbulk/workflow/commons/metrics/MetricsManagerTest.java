@@ -111,6 +111,7 @@ class MetricsManagerTest {
             true,
             false,
             false,
+            true,
             null,
             LogSettings.Verbosity.normal,
             Duration.ofSeconds(5),
@@ -153,6 +154,7 @@ class MetricsManagerTest {
             true,
             false,
             false,
+            true,
             null,
             LogSettings.Verbosity.normal,
             Duration.ofSeconds(5),
@@ -197,6 +199,7 @@ class MetricsManagerTest {
             true,
             false,
             false,
+            true,
             executionDirectory,
             LogSettings.Verbosity.normal,
             Duration.ofSeconds(5),
@@ -252,6 +255,7 @@ class MetricsManagerTest {
             true,
             false,
             false,
+            false,
             executionDirectory,
             LogSettings.Verbosity.quiet,
             Duration.ofSeconds(5),
@@ -277,6 +281,48 @@ class MetricsManagerTest {
   }
 
   @Test
+  void should_disable_console_reporter(@StreamCapture(STDERR) StreamInterceptor stderr)
+      throws Exception {
+    Path executionDirectory = Files.createTempDirectory("test");
+    Path mainLogFile = executionDirectory.resolve("operation.log");
+    LogSettings.createMainLogFileAppender(mainLogFile);
+    LogSettings.setVerbose();
+    MetricsManager manager =
+        new MetricsManager(
+            new MetricRegistry(),
+            true,
+            "test",
+            Executors.newSingleThreadScheduledExecutor(),
+            SECONDS,
+            MILLISECONDS,
+            -1,
+            -1,
+            true,
+            false,
+            false,
+            false,
+            executionDirectory,
+            LogSettings.Verbosity.verbose,
+            Duration.ofSeconds(5),
+            true,
+            protocolVersion,
+            codecRegistry,
+            RowType.REGULAR);
+    try {
+      manager.init();
+      manager.start();
+      ConsoleReporter consoleReporter =
+          (ConsoleReporter) ReflectionUtils.getInternalState(manager, "consoleReporter");
+      assertThat(consoleReporter).isNull();
+    } finally {
+      manager.stop();
+      manager.close();
+    }
+    manager.reportFinalMetrics();
+    assertThat(stderr.getStreamAsString()).isEmpty();
+  }
+
+  @Test
   void should_log_periodic_stats_to_main_log_file_in_verbose_mode(
       @LogCapture(value = MetricsManager.class, level = DEBUG) LogInterceptor logs,
       @StreamCapture(STDERR) StreamInterceptor stderr)
@@ -298,6 +344,7 @@ class MetricsManagerTest {
             true,
             false,
             false,
+            true,
             executionDirectory,
             LogSettings.Verbosity.verbose,
             Duration.ofSeconds(5),
