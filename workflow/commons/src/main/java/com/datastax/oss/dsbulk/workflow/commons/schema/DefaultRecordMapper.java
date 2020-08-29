@@ -86,7 +86,7 @@ public class DefaultRecordMapper implements RecordMapper {
         nullToUnset,
         allowExtraFields,
         allowMissingFields,
-        ps -> ps.boundStatementBuilder());
+        PreparedStatement::boundStatementBuilder);
   }
 
   @VisibleForTesting
