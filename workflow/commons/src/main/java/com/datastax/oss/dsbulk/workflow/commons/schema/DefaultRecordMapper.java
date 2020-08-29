@@ -144,7 +144,7 @@ public class DefaultRecordMapper implements RecordMapper {
       }
       record.clear();
       BoundStatement bs = builder.build();
-      return new BulkBoundStatement<>(record, bs);
+      return new BulkBoundStatement(record, bs);
     } catch (Exception e) {
       return new UnmappableStatement(record, e);
     }

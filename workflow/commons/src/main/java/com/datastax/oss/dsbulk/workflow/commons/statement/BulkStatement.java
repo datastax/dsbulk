@@ -15,16 +15,18 @@
  */
 package com.datastax.oss.dsbulk.workflow.commons.statement;
 
+import com.datastax.oss.dsbulk.connectors.api.Record;
+
 /**
  * A statement that has been produced in a bulk operation, and that keeps track of its original data
  * source.
  */
-public interface BulkStatement<T> {
+public interface BulkStatement {
 
   /**
    * Returns the source of this statement.
    *
    * @return the source of this statement.
    */
-  T getSource();
+  Record getSource();
 }

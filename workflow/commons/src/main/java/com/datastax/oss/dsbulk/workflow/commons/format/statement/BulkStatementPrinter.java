@@ -22,7 +22,7 @@ import com.datastax.oss.dsbulk.workflow.commons.statement.BulkStatement;
 
 public interface BulkStatementPrinter {
 
-  default void appendRecord(BulkStatement<Record> statement, StatementWriter out) {
+  default void appendRecord(BulkStatement statement, StatementWriter out) {
     Record record = statement.getSource();
     out.newLine()
         .indent()

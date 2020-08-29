@@ -87,9 +87,9 @@ class MetricsManagerTest {
     record3 =
         new DefaultErrorRecord(source3, () -> resource3, -1, new RuntimeException("irrelevant"));
     BatchableStatement<?> stmt1 =
-        new BulkSimpleStatement<>(record1, SimpleStatement.newInstance("irrelevant"));
+        new BulkSimpleStatement(record1, SimpleStatement.newInstance("irrelevant"));
     BatchableStatement<?> stmt2 =
-        new BulkSimpleStatement<>(record2, SimpleStatement.newInstance("irrelevant"));
+        new BulkSimpleStatement(record2, SimpleStatement.newInstance("irrelevant"));
     stmt3 = new UnmappableStatement(record3, new RuntimeException("irrelevant"));
     batch = BatchStatement.newInstance(DefaultBatchType.UNLOGGED).add(stmt1).add(stmt2);
   }

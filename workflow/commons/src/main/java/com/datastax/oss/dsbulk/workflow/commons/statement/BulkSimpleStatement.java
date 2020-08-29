@@ -21,24 +21,25 @@ import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.driver.api.core.metadata.token.Token;
+import com.datastax.oss.dsbulk.connectors.api.Record;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
-public class BulkSimpleStatement<T> implements SimpleStatement, BulkStatement<T> {
+public class BulkSimpleStatement implements SimpleStatement, BulkStatement {
 
-  private final T source;
+  private final Record source;
   private SimpleStatement delegate;
 
-  public BulkSimpleStatement(T source, SimpleStatement delegate) {
+  public BulkSimpleStatement(Record source, SimpleStatement delegate) {
     this.source = source;
     this.delegate = delegate;
   }
 
   @Override
-  public T getSource() {
+  public Record getSource() {
     return source;
   }
 

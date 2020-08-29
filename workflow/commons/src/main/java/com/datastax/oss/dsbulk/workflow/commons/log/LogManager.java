@@ -485,7 +485,7 @@ public class LogManager implements AutoCloseable {
    * <p>If the statement is a batch, then each of its children is mapped individually, otherwise the
    * statement is mapped to a record in a one-to-one fashion.
    *
-   * <p>Note that all non-batch statements are required to be of type {@code BulkStatement<Record>}.
+   * <p>Note that all non-batch statements are required to be of type {@link BulkStatement}.
    *
    * @return a mapper from statements to records.
    */
@@ -502,8 +502,7 @@ public class LogManager implements AutoCloseable {
                   }
                 })
             .cast(BulkStatement.class)
-            .map(BulkStatement::getSource)
-            .cast(Record.class);
+            .map(BulkStatement::getSource);
   }
 
   /**

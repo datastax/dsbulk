@@ -19,7 +19,7 @@ import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.datastax.oss.driver.shaded.guava.common.base.MoreObjects;
 import com.datastax.oss.dsbulk.connectors.api.Record;
 
-public class UnmappableStatement extends BulkSimpleStatement<Record> {
+public class UnmappableStatement extends BulkSimpleStatement {
 
   private final Throwable error;
 
