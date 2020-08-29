@@ -36,7 +36,7 @@ import com.datastax.oss.dsbulk.workflow.api.error.ErrorThreshold;
 import com.datastax.oss.dsbulk.workflow.api.log.OperationDirectory;
 import com.datastax.oss.dsbulk.workflow.api.log.OperationDirectoryResolver;
 import com.datastax.oss.dsbulk.workflow.api.utils.WorkflowUtils;
-import com.datastax.oss.dsbulk.workflow.commons.format.statement.BulkBoundStatementPrinter;
+import com.datastax.oss.dsbulk.workflow.commons.format.statement.MappedBoundStatementPrinter;
 import com.datastax.oss.dsbulk.workflow.commons.log.LogManager;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
@@ -233,7 +233,7 @@ public class LogSettings {
             .withMaxBoundValueLength(maxBoundValueLength)
             .withMaxBoundValues(maxBoundValues)
             .withMaxInnerStatements(maxInnerStatements)
-            .addStatementPrinters(new BulkBoundStatementPrinter())
+            .addStatementPrinters(new MappedBoundStatementPrinter())
             .build();
     RowFormatter rowFormatter = new RowFormatter(maxResultSetValueLength, maxResultSetValues);
     return new LogManager(

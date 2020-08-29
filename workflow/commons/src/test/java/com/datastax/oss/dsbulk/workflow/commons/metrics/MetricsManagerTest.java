@@ -46,7 +46,7 @@ import com.datastax.oss.dsbulk.tests.logging.StreamInterceptor;
 import com.datastax.oss.dsbulk.tests.utils.ReflectionUtils;
 import com.datastax.oss.dsbulk.workflow.commons.settings.LogSettings;
 import com.datastax.oss.dsbulk.workflow.commons.settings.RowType;
-import com.datastax.oss.dsbulk.workflow.commons.statement.BulkSimpleStatement;
+import com.datastax.oss.dsbulk.workflow.commons.statement.MappedSimpleStatement;
 import com.datastax.oss.dsbulk.workflow.commons.statement.UnmappableStatement;
 import java.net.URI;
 import java.nio.file.Files;
@@ -87,9 +87,9 @@ class MetricsManagerTest {
     record3 =
         new DefaultErrorRecord(source3, () -> resource3, -1, new RuntimeException("irrelevant"));
     BatchableStatement<?> stmt1 =
-        new BulkSimpleStatement(record1, SimpleStatement.newInstance("irrelevant"));
+        new MappedSimpleStatement(record1, SimpleStatement.newInstance("irrelevant"));
     BatchableStatement<?> stmt2 =
-        new BulkSimpleStatement(record2, SimpleStatement.newInstance("irrelevant"));
+        new MappedSimpleStatement(record2, SimpleStatement.newInstance("irrelevant"));
     stmt3 = new UnmappableStatement(record3, new RuntimeException("irrelevant"));
     batch = BatchStatement.newInstance(DefaultBatchType.UNLOGGED).add(stmt1).add(stmt2);
   }

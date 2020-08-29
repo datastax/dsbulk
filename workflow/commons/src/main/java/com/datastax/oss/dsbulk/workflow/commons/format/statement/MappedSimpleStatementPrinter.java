@@ -19,15 +19,15 @@ import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.datastax.oss.dsbulk.format.statement.SimpleStatementPrinter;
 import com.datastax.oss.dsbulk.format.statement.StatementFormatVerbosity;
 import com.datastax.oss.dsbulk.format.statement.StatementWriter;
-import com.datastax.oss.dsbulk.workflow.commons.statement.BulkSimpleStatement;
-import com.datastax.oss.dsbulk.workflow.commons.statement.BulkStatement;
+import com.datastax.oss.dsbulk.workflow.commons.statement.MappedSimpleStatement;
+import com.datastax.oss.dsbulk.workflow.commons.statement.MappedStatement;
 
-public class BulkSimpleStatementPrinter extends SimpleStatementPrinter
-    implements BulkStatementPrinter {
+public class MappedSimpleStatementPrinter extends SimpleStatementPrinter
+    implements MappedStatementPrinter {
 
   @Override
-  public Class<BulkSimpleStatement> getSupportedStatementClass() {
-    return BulkSimpleStatement.class;
+  public Class<MappedSimpleStatement> getSupportedStatementClass() {
+    return MappedSimpleStatement.class;
   }
 
   @Override
@@ -35,8 +35,8 @@ public class BulkSimpleStatementPrinter extends SimpleStatementPrinter
       SimpleStatement statement, StatementWriter out, StatementFormatVerbosity verbosity) {
     super.printHeader(statement, out, verbosity);
     if (verbosity.compareTo(StatementFormatVerbosity.EXTENDED) >= 0) {
-      BulkStatement bulkStatement = (BulkStatement) statement;
-      appendRecord(bulkStatement, out);
+      MappedStatement mappedStatement = (MappedStatement) statement;
+      appendRecord(mappedStatement, out);
     }
   }
 }

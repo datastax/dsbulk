@@ -18,12 +18,12 @@ package com.datastax.oss.dsbulk.workflow.commons.format.statement;
 import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.datastax.oss.dsbulk.format.statement.StatementWriter;
 import com.datastax.oss.dsbulk.workflow.commons.log.LogManagerUtils;
-import com.datastax.oss.dsbulk.workflow.commons.statement.BulkStatement;
+import com.datastax.oss.dsbulk.workflow.commons.statement.MappedStatement;
 
-public interface BulkStatementPrinter {
+public interface MappedStatementPrinter {
 
-  default void appendRecord(BulkStatement statement, StatementWriter out) {
-    Record record = statement.getSource();
+  default void appendRecord(MappedStatement statement, StatementWriter out) {
+    Record record = statement.getRecord();
     out.newLine()
         .indent()
         .append("Resource: ")

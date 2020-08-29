@@ -34,18 +34,18 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
-public class BulkBoundStatement implements BoundStatement, BulkStatement {
+public class MappedBoundStatement implements BoundStatement, MappedStatement {
 
   private final Record source;
   private BoundStatement delegate;
 
-  public BulkBoundStatement(Record source, BoundStatement delegate) {
+  public MappedBoundStatement(Record source, BoundStatement delegate) {
     this.source = source;
     this.delegate = delegate;
   }
 
   @Override
-  public Record getSource() {
+  public @NonNull Record getRecord() {
     return source;
   }
 

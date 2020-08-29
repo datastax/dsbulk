@@ -28,18 +28,18 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
-public class BulkSimpleStatement implements SimpleStatement, BulkStatement {
+public class MappedSimpleStatement implements SimpleStatement, MappedStatement {
 
   private final Record source;
   private SimpleStatement delegate;
 
-  public BulkSimpleStatement(Record source, SimpleStatement delegate) {
+  public MappedSimpleStatement(Record source, SimpleStatement delegate) {
     this.source = source;
     this.delegate = delegate;
   }
 
   @Override
-  public Record getSource() {
+  public @NonNull Record getRecord() {
     return source;
   }
 

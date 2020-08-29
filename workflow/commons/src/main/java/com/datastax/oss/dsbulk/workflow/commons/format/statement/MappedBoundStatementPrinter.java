@@ -19,15 +19,15 @@ import com.datastax.oss.driver.api.core.cql.BoundStatement;
 import com.datastax.oss.dsbulk.format.statement.BoundStatementPrinter;
 import com.datastax.oss.dsbulk.format.statement.StatementFormatVerbosity;
 import com.datastax.oss.dsbulk.format.statement.StatementWriter;
-import com.datastax.oss.dsbulk.workflow.commons.statement.BulkBoundStatement;
-import com.datastax.oss.dsbulk.workflow.commons.statement.BulkStatement;
+import com.datastax.oss.dsbulk.workflow.commons.statement.MappedBoundStatement;
+import com.datastax.oss.dsbulk.workflow.commons.statement.MappedStatement;
 
-public class BulkBoundStatementPrinter extends BoundStatementPrinter
-    implements BulkStatementPrinter {
+public class MappedBoundStatementPrinter extends BoundStatementPrinter
+    implements MappedStatementPrinter {
 
   @Override
-  public Class<BulkBoundStatement> getSupportedStatementClass() {
-    return BulkBoundStatement.class;
+  public Class<MappedBoundStatement> getSupportedStatementClass() {
+    return MappedBoundStatement.class;
   }
 
   @Override
@@ -35,8 +35,8 @@ public class BulkBoundStatementPrinter extends BoundStatementPrinter
       BoundStatement statement, StatementWriter out, StatementFormatVerbosity verbosity) {
     super.printHeader(statement, out, verbosity);
     if (verbosity.compareTo(StatementFormatVerbosity.EXTENDED) >= 0) {
-      BulkStatement bulkStatement = (BulkStatement) statement;
-      appendRecord(bulkStatement, out);
+      MappedStatement mappedStatement = (MappedStatement) statement;
+      appendRecord(mappedStatement, out);
     }
   }
 }

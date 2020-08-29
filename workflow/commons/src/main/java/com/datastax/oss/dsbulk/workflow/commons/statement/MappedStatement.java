@@ -16,17 +16,21 @@
 package com.datastax.oss.dsbulk.workflow.commons.statement;
 
 import com.datastax.oss.dsbulk.connectors.api.Record;
+import edu.umd.cs.findbugs.annotations.NonNull;
 
 /**
- * A statement that has been produced in a bulk operation, and that keeps track of its original data
- * source.
+ * A statement that has been produced by mapping fields of a {@link Record} to variables in the
+ * query.
+ *
+ * @see com.datastax.oss.dsbulk.workflow.commons.schema.DefaultRecordMapper
  */
-public interface BulkStatement {
+public interface MappedStatement {
 
   /**
-   * Returns the source of this statement.
+   * Returns the record that this statement was mapped from.
    *
-   * @return the source of this statement.
+   * @return the record of this statement.
    */
-  Record getSource();
+  @NonNull
+  Record getRecord();
 }
