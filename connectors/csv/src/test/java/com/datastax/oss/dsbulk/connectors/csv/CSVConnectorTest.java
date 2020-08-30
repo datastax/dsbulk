@@ -82,6 +82,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.reactivestreams.Publisher;
 import org.slf4j.event.Level;
 import reactor.core.publisher.Flux;
@@ -125,10 +126,11 @@ class CSVConnectorTest {
     Files.delete(urlsFileWithStdin);
   }
 
-  @ParameterizedTest(name = "[{index}] read {0} with compression {1}")
+  @ParameterizedTest(name = "[{index}] read {0} with compression {1} (sources: {2})")
   @MethodSource
   @DisplayName("Should read single file with given compression")
-  void should_read_single_file(String fileName, String compMethod) throws Exception {
+  void should_read_single_file(String fileName, String compression, boolean retainRecordSources)
+      throws Exception {
     CSVConnector connector = new CSVConnector();
     Config settings =
         TestConfigUtils.createTestConfig(
@@ -142,31 +144,41 @@ class CSVConnectorTest {
             "comment",
             "\"#\"",
             "compression",
-            StringUtils.quoteJson(compMethod));
-    connector.configure(settings, true);
+            StringUtils.quoteJson(compression));
+    connector.configure(settings, true, retainRecordSources);
     connector.init();
     assertThat(connector.readConcurrency()).isOne();
     List<Record> actual = Flux.merge(connector.read()).collectList().block();
-    assertRecords(actual);
+    assertRecords(actual, retainRecordSources);
     connector.close();
   }
 
   @SuppressWarnings("unused")
   private static Stream<Arguments> should_read_single_file() {
     return Stream.of(
-        arguments("sample.csv", CompressedIOUtils.NONE_COMPRESSION),
-        arguments("sample.csv.gz", CompressedIOUtils.GZIP_COMPRESSION),
-        arguments("sample.csv.bz2", CompressedIOUtils.BZIP2_COMPRESSION),
-        arguments("sample.csv.lz4", CompressedIOUtils.LZ4_COMPRESSION),
-        arguments("sample.csv.snappy", CompressedIOUtils.SNAPPY_COMPRESSION),
-        arguments("sample.csv.z", CompressedIOUtils.Z_COMPRESSION),
-        arguments("sample.csv.br", CompressedIOUtils.BROTLI_COMPRESSION),
-        arguments("sample.csv.lzma", CompressedIOUtils.LZMA_COMPRESSION),
-        arguments("sample.csv.xz", CompressedIOUtils.XZ_COMPRESSION),
-        arguments("sample.csv.zstd", CompressedIOUtils.ZSTD_COMPRESSION));
+        arguments("sample.csv", CompressedIOUtils.NONE_COMPRESSION, true),
+        arguments("sample.csv.gz", CompressedIOUtils.GZIP_COMPRESSION, true),
+        arguments("sample.csv.bz2", CompressedIOUtils.BZIP2_COMPRESSION, true),
+        arguments("sample.csv.lz4", CompressedIOUtils.LZ4_COMPRESSION, true),
+        arguments("sample.csv.snappy", CompressedIOUtils.SNAPPY_COMPRESSION, true),
+        arguments("sample.csv.z", CompressedIOUtils.Z_COMPRESSION, true),
+        arguments("sample.csv.br", CompressedIOUtils.BROTLI_COMPRESSION, true),
+        arguments("sample.csv.lzma", CompressedIOUtils.LZMA_COMPRESSION, true),
+        arguments("sample.csv.xz", CompressedIOUtils.XZ_COMPRESSION, true),
+        arguments("sample.csv.zstd", CompressedIOUtils.ZSTD_COMPRESSION, true),
+        arguments("sample.csv", CompressedIOUtils.NONE_COMPRESSION, false),
+        arguments("sample.csv.gz", CompressedIOUtils.GZIP_COMPRESSION, false),
+        arguments("sample.csv.bz2", CompressedIOUtils.BZIP2_COMPRESSION, false),
+        arguments("sample.csv.lz4", CompressedIOUtils.LZ4_COMPRESSION, false),
+        arguments("sample.csv.snappy", CompressedIOUtils.SNAPPY_COMPRESSION, false),
+        arguments("sample.csv.z", CompressedIOUtils.Z_COMPRESSION, false),
+        arguments("sample.csv.br", CompressedIOUtils.BROTLI_COMPRESSION, false),
+        arguments("sample.csv.lzma", CompressedIOUtils.LZMA_COMPRESSION, false),
+        arguments("sample.csv.xz", CompressedIOUtils.XZ_COMPRESSION, false),
+        arguments("sample.csv.zstd", CompressedIOUtils.ZSTD_COMPRESSION, false));
   }
 
-  private static void assertRecords(List<Record> actual) {
+  private static void assertRecords(List<Record> actual, boolean retainRecordSources) {
     assertThat(actual).hasSize(5);
     assertThat(actual.get(0).values())
         .containsExactly(
@@ -233,6 +245,24 @@ class CSVConnectorTest {
     assertThat(actual.get(2).getPosition()).isEqualTo(3L);
     assertThat(actual.get(3).getPosition()).isEqualTo(4L);
     assertThat(actual.get(4).getPosition()).isEqualTo(5L);
+    if (retainRecordSources) {
+      assertThat(actual.get(0).getSource())
+          .isEqualTo("1997,Ford,E350,\"  ac, abs, moon  \",3000.00\n");
+      assertThat(actual.get(1).getSource())
+          .isEqualTo("1999,Chevy,\"Venture \"\"Extended Edition\"\"\",\"\",4900.00\n");
+      assertThat(actual.get(2).getSource())
+          .isEqualTo("1996,Jeep,Grand Cherokee,\"MUST SELL!\nair, moon roof, loaded\",4799.00\n");
+      assertThat(actual.get(3).getSource())
+          .isEqualTo("1999,Chevy,\"Venture \"\"Extended Edition, Very Large\"\"\",,5000.00\n");
+      assertThat(actual.get(4).getSource())
+          .isEqualTo(",,\"Venture \"\"Extended Edition\"\"\",\"\",4900.00\n");
+    } else {
+      assertThat(actual.get(0).getSource()).isNull();
+      assertThat(actual.get(1).getSource()).isNull();
+      assertThat(actual.get(2).getSource()).isNull();
+      assertThat(actual.get(3).getSource()).isNull();
+      assertThat(actual.get(4).getSource()).isNull();
+    }
   }
 
   @Test
@@ -246,7 +276,7 @@ class CSVConnectorTest {
       Config settings =
           TestConfigUtils.createTestConfig(
               "dsbulk.connector.csv", "header", false, "url", "-", "encoding", "ISO-8859-1");
-      connector.configure(settings, true);
+      connector.configure(settings, true, true);
       connector.init();
       assertThat(connector.readConcurrency()).isOne();
       assertThat(
@@ -269,7 +299,7 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Config settings =
         TestConfigUtils.createTestConfig("dsbulk.connector.csv", "url", url("/sample.csv"));
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     assertThat(ReflectionUtils.invokeMethod("isDataSizeSamplingAvailable", connector, Boolean.TYPE))
         .isTrue();
@@ -282,7 +312,7 @@ class CSVConnectorTest {
     Config settings =
         TestConfigUtils.createTestConfig(
             "dsbulk.connector.csv", "urlfile", StringUtils.quoteJson(multipleUrlsFile));
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     assertThat(ReflectionUtils.invokeMethod("isDataSizeSamplingAvailable", connector, Boolean.TYPE))
         .isTrue();
@@ -293,7 +323,7 @@ class CSVConnectorTest {
   void should_disallow_data_size_sampling_when_reading_from_stdin_single_url() throws Exception {
     CSVConnector connector = new CSVConnector();
     Config settings = TestConfigUtils.createTestConfig("dsbulk.connector.csv", "url", "-");
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     assertThat(ReflectionUtils.invokeMethod("isDataSizeSamplingAvailable", connector, Boolean.TYPE))
         .isFalse();
@@ -306,7 +336,7 @@ class CSVConnectorTest {
     Config settings =
         TestConfigUtils.createTestConfig(
             "dsbulk.connector.csv", "urlfile", StringUtils.quoteJson(urlsFileWithStdin));
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     assertThat(ReflectionUtils.invokeMethod("isDataSizeSamplingAvailable", connector, Boolean.TYPE))
         .isFalse();
@@ -324,7 +354,7 @@ class CSVConnectorTest {
       Config settings =
           TestConfigUtils.createTestConfig(
               "dsbulk.connector.csv", "header", false, "encoding", "ISO-8859-1");
-      connector.configure(settings, false);
+      connector.configure(settings, false, true);
       connector.init();
       assertThat(connector.writeConcurrency()).isOne();
       assertThat(
@@ -353,7 +383,7 @@ class CSVConnectorTest {
       Config settings =
           TestConfigUtils.createTestConfig(
               "dsbulk.connector.csv", "header", false, "url", "-", "newline", "\"\\r\\n\"");
-      connector.configure(settings, true);
+      connector.configure(settings, true, true);
       connector.init();
       assertThat(connector.readConcurrency()).isOne();
       assertThat(
@@ -380,7 +410,7 @@ class CSVConnectorTest {
       Config settings =
           TestConfigUtils.createTestConfig(
               "dsbulk.connector.csv", "header", false, "newline", "\"\\r\\n\"");
-      connector.configure(settings, false);
+      connector.configure(settings, false, true);
       connector.init();
       assertThat(connector.writeConcurrency()).isOne();
       assertThat(
@@ -409,7 +439,7 @@ class CSVConnectorTest {
             false,
             "maxConcurrentFiles",
             4);
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     // there are only 3 resources to read
     assertThat(connector.readConcurrency()).isEqualTo(3);
@@ -430,7 +460,7 @@ class CSVConnectorTest {
             false,
             "maxConcurrentFiles",
             4);
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     // there are only 3 resources to read
     assertThat(connector.readConcurrency()).isEqualTo(3);
@@ -450,7 +480,7 @@ class CSVConnectorTest {
             true,
             "maxConcurrentFiles",
             4);
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     // 5 resources to read, but maxConcurrentFiles is 4
     assertThat(connector.readConcurrency()).isEqualTo(4);
@@ -470,7 +500,7 @@ class CSVConnectorTest {
             true,
             "fileNamePattern",
             "\"**/part-*\"");
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(500);
     connector.close();
@@ -490,7 +520,7 @@ class CSVConnectorTest {
               true,
               "fileNamePattern",
               "\"**/part-*\"");
-      connector.configure(settings, true);
+      connector.configure(settings, true, true);
       connector.init();
       assertThat(logs.getLoggedMessages())
           .contains(String.format("Directory %s has no readable files.", rootPath));
@@ -515,7 +545,7 @@ class CSVConnectorTest {
               true,
               "fileNamePattern",
               "\"**/part-*\"");
-      connector.configure(settings, true);
+      connector.configure(settings, true, true);
       connector.init();
       assertThat(logs.getLoggedMessages())
           .contains(
@@ -547,7 +577,7 @@ class CSVConnectorTest {
               true,
               "compression",
               StringUtils.quoteJson(compression));
-      connector.configure(settings, true);
+      connector.configure(settings, true, true);
       connector.init();
       assertThat(logs.getLoggedMessages())
           .contains(
@@ -589,7 +619,7 @@ class CSVConnectorTest {
               "\"\\\"\"",
               "maxConcurrentFiles",
               1);
-      connector.configure(settings, false);
+      connector.configure(settings, false, true);
       connector.init();
       assertThat(connector.writeConcurrency()).isOne();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
@@ -628,7 +658,7 @@ class CSVConnectorTest {
               1,
               "compression",
               "\"gzip\"");
-      connector.configure(settings, false);
+      connector.configure(settings, false, true);
       connector.init();
       assertThat(connector.writeConcurrency()).isOne();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
@@ -675,7 +705,7 @@ class CSVConnectorTest {
               "\"gzip\"",
               "fileNameFormat",
               "file%d");
-      connector.configure(settings, false);
+      connector.configure(settings, false, true);
       connector.init();
       assertThat(connector.writeConcurrency()).isOne();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
@@ -717,7 +747,7 @@ class CSVConnectorTest {
               "\"\\\"\"",
               "maxConcurrentFiles",
               maxConcurrentFiles);
-      connector.configure(settings, false);
+      connector.configure(settings, false, true);
       connector.init();
       assertThat(connector.writeConcurrency()).isEqualTo(maxConcurrentFiles);
       // repeat the records 1000 times to fully exercise multiple file writing
@@ -756,7 +786,7 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Config settings =
         TestConfigUtils.createTestConfig("dsbulk.connector.csv", "url", StringUtils.quoteJson(out));
-    connector.configure(settings, false);
+    connector.configure(settings, false, true);
     connector.init();
     AtomicInteger counter =
         (AtomicInteger) ReflectionUtils.getInternalState(connector, "fileCounter");
@@ -786,7 +816,7 @@ class CSVConnectorTest {
               1,
               "maxRecords",
               4);
-      connector.configure(settings, false);
+      connector.configure(settings, false, true);
       connector.init();
       assertThat(connector.writeConcurrency()).isOne();
       Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
@@ -822,7 +852,7 @@ class CSVConnectorTest {
       System.setIn(is);
       CSVConnector connector = new CSVConnector();
       Config settings = TestConfigUtils.createTestConfig("dsbulk.connector.csv", "header", true);
-      connector.configure(settings, true);
+      connector.configure(settings, true, true);
       connector.init();
       List<Record> actual = Flux.merge(connector.read()).collectList().block();
       assertThat(actual).hasSize(1);
@@ -843,7 +873,7 @@ class CSVConnectorTest {
     Config settings =
         TestConfigUtils.createTestConfig(
             "dsbulk.connector.csv", "url", url("/root"), "recursive", true, "skipRecords", 10);
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(450);
     assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(450);
@@ -856,7 +886,7 @@ class CSVConnectorTest {
     Config settings =
         TestConfigUtils.createTestConfig(
             "dsbulk.connector.csv", "url", url("/root"), "recursive", true, "skipRecords", 150);
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(0);
     assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(0);
@@ -869,7 +899,7 @@ class CSVConnectorTest {
     Config settings =
         TestConfigUtils.createTestConfig(
             "dsbulk.connector.csv", "url", url("/root"), "recursive", true, "maxRecords", 10);
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(50);
     assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(50);
@@ -882,7 +912,7 @@ class CSVConnectorTest {
     Config settings =
         TestConfigUtils.createTestConfig(
             "dsbulk.connector.csv", "url", url("/root"), "recursive", true, "maxRecords", 1);
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(5);
     assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(5);
@@ -903,7 +933,7 @@ class CSVConnectorTest {
             95,
             "maxRecords",
             10);
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(25);
     connector.close();
@@ -921,7 +951,7 @@ class CSVConnectorTest {
             10,
             "maxRecords",
             1);
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     List<Record> records = Flux.merge(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
@@ -948,7 +978,7 @@ class CSVConnectorTest {
             false,
             "header",
             false);
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     List<Record> records = Flux.merge(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
@@ -973,7 +1003,7 @@ class CSVConnectorTest {
             true,
             "header",
             false);
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     List<Record> records = Flux.merge(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
@@ -999,7 +1029,7 @@ class CSVConnectorTest {
             1,
             "header",
             false);
-    connector.configure(settings, false);
+    connector.configure(settings, false, true);
     connector.init();
     Flux.<Record>just(DefaultRecord.indexed("source", resource, IRRELEVANT_POSITION, " foo "))
         .transform(connector.write())
@@ -1025,7 +1055,7 @@ class CSVConnectorTest {
             true,
             "header",
             false);
-    connector.configure(settings, false);
+    connector.configure(settings, false, true);
     connector.init();
     Flux.<Record>just(DefaultRecord.indexed("source", resource, IRRELEVANT_POSITION, " foo "))
         .transform(connector.write())
@@ -1052,7 +1082,7 @@ class CSVConnectorTest {
             false,
             "header",
             false);
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     List<Record> records = Flux.merge(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
@@ -1077,7 +1107,7 @@ class CSVConnectorTest {
             true,
             "header",
             false);
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     List<Record> records = Flux.merge(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
@@ -1100,7 +1130,7 @@ class CSVConnectorTest {
             StringUtils.quoteJson(nullValue),
             "header",
             false);
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     List<Record> records = Flux.merge(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
@@ -1132,7 +1162,7 @@ class CSVConnectorTest {
             StringUtils.quoteJson(nullValue),
             "header",
             false);
-    connector.configure(settings, false);
+    connector.configure(settings, false, false);
     connector.init();
     Flux.<Record>just(
             DefaultRecord.mapped(
@@ -1177,7 +1207,7 @@ class CSVConnectorTest {
             StringUtils.quoteJson(emptyValue),
             "header",
             false);
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     List<Record> records = Flux.merge(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
@@ -1222,7 +1252,7 @@ class CSVConnectorTest {
             StringUtils.quoteJson(emptyValue),
             "header",
             false);
-    connector.configure(settings, false);
+    connector.configure(settings, false, true);
     connector.init();
     Flux.<Record>just(
             DefaultRecord.mapped(
@@ -1272,7 +1302,7 @@ class CSVConnectorTest {
             "NULL",
             "header",
             false);
-    connector.configure(settings, false);
+    connector.configure(settings, false, true);
     connector.init();
     Flux.<Record>just(DefaultRecord.indexed("source", resource, IRRELEVANT_POSITION, ""))
         .transform(connector.write())
@@ -1282,7 +1312,7 @@ class CSVConnectorTest {
     assertThat(actual).hasSize(1).containsExactly("NULL");
   }
 
-  @Test()
+  @Test
   void should_error_when_directory_is_not_empty() throws Exception {
     CSVConnector connector = new CSVConnector();
     Path out = Files.createTempDirectory("test");
@@ -1293,23 +1323,23 @@ class CSVConnectorTest {
       Config settings =
           TestConfigUtils.createTestConfig(
               "dsbulk.connector.csv", "url", StringUtils.quoteJson(out), "maxConcurrentFiles", 1);
-      connector.configure(settings, false);
+      connector.configure(settings, false, true);
       assertThrows(IllegalArgumentException.class, connector::init);
     } finally {
       FileUtils.deleteDirectory(out);
     }
   }
 
-  @Test()
+  @Test
   void should_error_when_newline_is_wrong() {
     CSVConnector connector = new CSVConnector();
     // empty string test
     Config settings1 = TestConfigUtils.createTestConfig("dsbulk.connector.csv", "newline", "\"\"");
-    assertThrows(IllegalArgumentException.class, () -> connector.configure(settings1, false));
+    assertThrows(IllegalArgumentException.class, () -> connector.configure(settings1, false, true));
     // long string test
     Config settings2 =
         TestConfigUtils.createTestConfig("dsbulk.connector.csv", "newline", "\"abc\"");
-    assertThrows(IllegalArgumentException.class, () -> connector.configure(settings2, false));
+    assertThrows(IllegalArgumentException.class, () -> connector.configure(settings2, false, true));
   }
 
   @Test
@@ -1320,7 +1350,7 @@ class CSVConnectorTest {
       Config settings =
           TestConfigUtils.createTestConfig(
               "dsbulk.connector.csv", "url", StringUtils.quoteJson(out), "maxConcurrentFiles", 1);
-      connector.configure(settings, false);
+      connector.configure(settings, false, true);
       connector.init();
       Path file = out.resolve("output-000001.csv");
       // will cause the write to fail because the file already exists
@@ -1342,7 +1372,7 @@ class CSVConnectorTest {
       Config settings =
           TestConfigUtils.createTestConfig(
               "dsbulk.connector.csv", "url", StringUtils.quoteJson(out), "maxConcurrentFiles", 2);
-      connector.configure(settings, false);
+      connector.configure(settings, false, true);
       connector.init();
       Path file1 = out.resolve("output-000001.csv");
       Path file2 = out.resolve("output-000002.csv");
@@ -1382,8 +1412,10 @@ class CSVConnectorTest {
     }
   }
 
-  @Test
-  void should_read_from_http_url(@Wiremock WireMockServer server) throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void should_read_from_http_url(boolean retainRecordSources, @Wiremock WireMockServer server)
+      throws Exception {
     server.givenThat(
         any(urlPathEqualTo("/file.csv"))
             .willReturn(
@@ -1403,11 +1435,11 @@ class CSVConnectorTest {
             "\"\\\"\"",
             "comment",
             "\"#\"");
-    connector.configure(settings, true);
+    connector.configure(settings, true, retainRecordSources);
     connector.init();
     assertThat(connector.readConcurrency()).isOne();
     List<Record> actual = Flux.merge(connector.read()).collectList().block();
-    assertRecords(actual);
+    assertRecords(actual, retainRecordSources);
     connector.close();
   }
 
@@ -1417,7 +1449,7 @@ class CSVConnectorTest {
     Config settings =
         TestConfigUtils.createTestConfig(
             "dsbulk.connector.csv", "url", "\"http://localhost:1234/file.csv\"");
-    connector.configure(settings, false);
+    connector.configure(settings, false, true);
     connector.init();
     assertThatThrownBy(
             () -> Flux.fromIterable(createRecords()).transform(connector.write()).blockLast())
@@ -1445,7 +1477,7 @@ class CSVConnectorTest {
             "\"#\"",
             "maxCharsPerColumn",
             15);
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     assertThatThrownBy(() -> Flux.merge(connector.read()).collectList().block())
         .satisfies(
@@ -1475,7 +1507,7 @@ class CSVConnectorTest {
             "\"#\"",
             "maxColumns",
             1);
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     assertThatThrownBy(() -> Flux.merge(connector.read()).collectList().block())
         .satisfies(
@@ -1493,7 +1525,7 @@ class CSVConnectorTest {
   void should_error_on_empty_url() {
     CSVConnector connector = new CSVConnector();
     Config settings = TestConfigUtils.createTestConfig("dsbulk.connector.csv", "url", null);
-    assertThatThrownBy(() -> connector.configure(settings, true))
+    assertThatThrownBy(() -> connector.configure(settings, true, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "A URL or URL file is mandatory when using the csv connector for LOAD. Please set connector.csv.url or connector.csv.urlfile and "
@@ -1505,7 +1537,7 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Config settings =
         TestConfigUtils.createTestConfig("dsbulk.connector.csv", "recursive", "NotABoolean");
-    assertThatThrownBy(() -> connector.configure(settings, false))
+    assertThatThrownBy(() -> connector.configure(settings, false, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.csv.recursive, expecting BOOLEAN, got STRING");
@@ -1517,7 +1549,7 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Config settings =
         TestConfigUtils.createTestConfig("dsbulk.connector.csv", "header", "NotABoolean");
-    assertThatThrownBy(() -> connector.configure(settings, false))
+    assertThatThrownBy(() -> connector.configure(settings, false, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.csv.header, expecting BOOLEAN, got STRING");
@@ -1529,7 +1561,7 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Config settings =
         TestConfigUtils.createTestConfig("dsbulk.connector.csv", "skipRecords", "NotANumber");
-    assertThatThrownBy(() -> connector.configure(settings, false))
+    assertThatThrownBy(() -> connector.configure(settings, false, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.csv.skipRecords, expecting NUMBER, got STRING");
@@ -1541,7 +1573,7 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Config settings =
         TestConfigUtils.createTestConfig("dsbulk.connector.csv", "maxRecords", "NotANumber");
-    assertThatThrownBy(() -> connector.configure(settings, false))
+    assertThatThrownBy(() -> connector.configure(settings, false, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.csv.maxRecords, expecting NUMBER, got STRING");
@@ -1554,7 +1586,7 @@ class CSVConnectorTest {
     Config settings =
         TestConfigUtils.createTestConfig(
             "dsbulk.connector.csv", "maxConcurrentFiles", "NotANumber");
-    assertThatThrownBy(() -> connector.configure(settings, false))
+    assertThatThrownBy(() -> connector.configure(settings, false, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.csv.maxConcurrentFiles, expecting positive integer or string in 'nC' syntax, got 'NotANumber'");
@@ -1566,10 +1598,10 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Config settings =
         TestConfigUtils.createTestConfig("dsbulk.connector.csv", "maxConcurrentFiles", "AUTO");
-    connector.configure(settings, false);
+    connector.configure(settings, false, true);
     assertThat(ReflectionUtils.getInternalState(connector, "maxConcurrentFiles"))
         .isEqualTo(ConfigUtils.resolveThreads("0.5C"));
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     assertThat(ReflectionUtils.getInternalState(connector, "maxConcurrentFiles"))
         .isEqualTo(ConfigUtils.resolveThreads("1C"));
     connector.close();
@@ -1580,7 +1612,7 @@ class CSVConnectorTest {
     CSVConnector connector = new CSVConnector();
     Config settings =
         TestConfigUtils.createTestConfig("dsbulk.connector.csv", "encoding", "NotAnEncoding");
-    assertThatThrownBy(() -> connector.configure(settings, false))
+    assertThatThrownBy(() -> connector.configure(settings, false, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.csv.encoding, expecting valid charset name, got 'NotAnEncoding'");
@@ -1591,7 +1623,7 @@ class CSVConnectorTest {
   void should_throw_exception_when_delimiter_not_valid() {
     CSVConnector connector = new CSVConnector();
     Config settings = TestConfigUtils.createTestConfig("dsbulk.connector.csv", "delimiter", "\"\"");
-    assertThatThrownBy(() -> connector.configure(settings, false))
+    assertThatThrownBy(() -> connector.configure(settings, false, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.csv.delimiter: Expecting non-empty string");
@@ -1602,7 +1634,7 @@ class CSVConnectorTest {
   void should_throw_exception_when_quote_not_valid() {
     CSVConnector connector = new CSVConnector();
     Config settings = TestConfigUtils.createTestConfig("dsbulk.connector.csv", "quote", "\"\"");
-    assertThatThrownBy(() -> connector.configure(settings, false))
+    assertThatThrownBy(() -> connector.configure(settings, false, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.csv.quote, expecting single char, got ''");
@@ -1613,7 +1645,7 @@ class CSVConnectorTest {
   void should_throw_exception_when_escape_not_valid() {
     CSVConnector connector = new CSVConnector();
     Config settings = TestConfigUtils.createTestConfig("dsbulk.connector.csv", "escape", "\"\"");
-    assertThatThrownBy(() -> connector.configure(settings, false))
+    assertThatThrownBy(() -> connector.configure(settings, false, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.csv.escape, expecting single char, got ''");
@@ -1624,20 +1656,20 @@ class CSVConnectorTest {
   void should_throw_exception_when_comment_not_valid() {
     CSVConnector connector = new CSVConnector();
     Config settings = TestConfigUtils.createTestConfig("dsbulk.connector.csv", "comment", "\"\"");
-    assertThatThrownBy(() -> connector.configure(settings, false))
+    assertThatThrownBy(() -> connector.configure(settings, false, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.csv.comment, expecting single char, got ''");
     connector.close();
   }
 
-  @Test()
+  @Test
   void should_error_when_compression_is_wrong() {
     CSVConnector connector = new CSVConnector();
     // empty string test
     Config settings1 =
         TestConfigUtils.createTestConfig("dsbulk.connector.csv", "compression", "\"abc\"");
-    assertThrows(IllegalArgumentException.class, () -> connector.configure(settings1, false));
+    assertThrows(IllegalArgumentException.class, () -> connector.configure(settings1, false, true));
   }
 
   @Test
@@ -1654,7 +1686,7 @@ class CSVConnectorTest {
             "\"#\"",
             "compression",
             "\"bzip2\"");
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     assertThatThrownBy(() -> Flux.merge(connector.read()).collectList().block())
         .hasRootCauseExactlyInstanceOf(IOException.class)
@@ -1672,7 +1704,7 @@ class CSVConnectorTest {
     Config settings =
         TestConfigUtils.createTestConfig(
             "dsbulk.connector.csv", "url", url("/bad_header_empty.csv"));
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     assertThatThrownBy(() -> Flux.merge(connector.read()).collectList().block())
         .satisfies(
@@ -1695,7 +1727,7 @@ class CSVConnectorTest {
     Config settings =
         TestConfigUtils.createTestConfig(
             "dsbulk.connector.csv", "url", url("/bad_header_duplicate.csv"));
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     assertThatThrownBy(() -> Flux.merge(connector.read()).collectList().block())
         .satisfies(
@@ -1783,7 +1815,7 @@ class CSVConnectorTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.connector.csv", "urlfile", StringUtils.quoteJson(multipleUrlsFile));
 
-    assertThatThrownBy(() -> connector.configure(settings, false))
+    assertThatThrownBy(() -> connector.configure(settings, false, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("The urlfile parameter is not supported for UNLOAD");
   }
@@ -1801,7 +1833,7 @@ class CSVConnectorTest {
             "url",
             StringUtils.quoteJson(multipleUrlsFile));
 
-    assertDoesNotThrow(() -> connector.configure(settings, true));
+    assertDoesNotThrow(() -> connector.configure(settings, true, true));
 
     assertThat(logs.getLoggedMessages())
         .contains("You specified both URL and URL file. The URL file will take precedence.");
@@ -1821,7 +1853,7 @@ class CSVConnectorTest {
             "\"**/part-*\"",
             "maxConcurrentFiles",
             8);
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     // maxConcurrentFiles 8 but only 4 files to read
     assertThat(connector.readConcurrency()).isEqualTo(4);
@@ -1845,7 +1877,7 @@ class CSVConnectorTest {
             1,
             "comment",
             "\"#\"");
-    connector.configure(settings, false);
+    connector.configure(settings, false, true);
     connector.init();
     Flux.<Record>just(
             DefaultRecord.indexed("source", resource, IRRELEVANT_POSITION, "#shouldbequoted"))
@@ -1872,7 +1904,7 @@ class CSVConnectorTest {
             true,
             "header",
             true);
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     List<Record> records = Flux.merge(connector.read()).collectList().block();
     assertThat(records).hasSize(1);

@@ -1269,6 +1269,16 @@ Setting this value to `-1` makes the maximum number of result set values unlimit
 
 Default: **50**.
 
+#### --log.sources<br />--dsbulk.log.sources _&lt;boolean&gt;_
+
+Whether to print record sources in debug files. When set to true (the default), debug files will contain, for each record that failed to be processed, its original source, such as the text line that the record was parsed from.
+Furthermore, when loading, enabling this option also enables the creation of so-called "bad files", that is, files containing the original lines that could not be inserted; these files could then be used as the data source of a subsequent load operation that would load only the failed records.
+This feature is useful to locate failed records more easily and diagnose processing failures – especially if the original data source is a remote one, such as an FTP or HTTP URL.
+But for this feature to be possible, record sources must be kept in memory until the record is fully processed. For large record sizes (over 1 megabyte per record), retaining record sources in memory could put a high pressure on the JVM heap, thus exposing the operation to out-of-memory errors. This phenomenon is exacerbated when batching is enabled. If you are experiencing such errors, consider disabling this option.
+Note that, regardless of the value of this option, DSBulk will always print the record's *resource* – that is, the file name or the database table where it came from – and the record's *position* – that is, the ordinal position of the record inside the resource, when available (for example, this could be the line number in a CSV file).
+
+Default: **true**.
+
 #### --log.stmt.level<br />--dsbulk.log.stmt.level _&lt;string&gt;_
 
 The desired log level. Valid values are:

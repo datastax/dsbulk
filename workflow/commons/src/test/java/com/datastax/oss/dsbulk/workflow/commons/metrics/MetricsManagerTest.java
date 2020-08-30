@@ -84,8 +84,7 @@ class MetricsManagerTest {
     String source3 = "line3\n";
     record1 = DefaultRecord.indexed(source1, resource1, -1, "irrelevant");
     record2 = DefaultRecord.indexed(source2, resource2, -1, "irrelevant");
-    record3 =
-        new DefaultErrorRecord(source3, () -> resource3, -1, new RuntimeException("irrelevant"));
+    record3 = new DefaultErrorRecord(source3, resource3, -1, new RuntimeException("irrelevant"));
     BatchableStatement<?> stmt1 =
         new MappedSimpleStatement(record1, SimpleStatement.newInstance("irrelevant"));
     BatchableStatement<?> stmt2 =

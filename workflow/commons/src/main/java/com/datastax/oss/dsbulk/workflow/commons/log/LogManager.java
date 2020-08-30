@@ -656,12 +656,14 @@ public class LogManager implements AutoCloseable {
   // Bad file management
 
   private void appendToBadFile(Record record, String file) {
-    Path logFile = operationDirectory.resolve(file);
-    PrintWriter writer = openFiles.get(logFile);
-    assert writer != null;
     Object source = record.getSource();
-    LogManagerUtils.printAndMaybeAddNewLine(source.toString(), writer);
-    writer.flush();
+    if (source != null) {
+      Path logFile = operationDirectory.resolve(file);
+      PrintWriter writer = openFiles.get(logFile);
+      assert writer != null;
+      LogManagerUtils.printAndMaybeAddNewLine(source.toString(), writer);
+      writer.flush();
+    }
   }
 
   // Executor errors (read/write failures)
@@ -692,8 +694,9 @@ public class LogManager implements AutoCloseable {
     LogManagerUtils.printAndMaybeAddNewLine(format, writer);
     if (result instanceof WriteResult) {
       WriteResult writeResult = (WriteResult) result;
-      if (!writeResult.wasApplied()) {
-        writer.println("Failed writes: ");
+      // If a conditional update could not be applied, print the failed mutations
+      if (writeResult.isSuccess() && !writeResult.wasApplied()) {
+        writer.println("Failed conditional updates: ");
         writeResult
             .getFailedWrites()
             .forEach(
@@ -721,7 +724,9 @@ public class LogManager implements AutoCloseable {
     Record record = statement.getRecord();
     writer.println("Resource: " + record.getResource());
     writer.println("Position: " + record.getPosition());
-    writer.println("Source: " + LogManagerUtils.formatSource(record));
+    if (record.getSource() != null) {
+      writer.println("Source: " + LogManagerUtils.formatSource(record));
+    }
     stackTracePrinter.printStackTrace(statement.getError(), writer);
     writer.println();
   }
@@ -731,7 +736,7 @@ public class LogManager implements AutoCloseable {
     Path logFile = operationDirectory.resolve(MAPPING_ERRORS_FILE);
     PrintWriter writer = openFiles.get(logFile);
     assert writer != null;
-    writer.println("Resource: " + record.getResource());
+    // Don't print the resource since it will be just cql://keyspace/table
     if (record.getSource() instanceof ReadResult) {
       ReadResult source = (ReadResult) record.getSource();
       appendStatement(source, MAPPING_ERRORS_FILE, false);
@@ -756,7 +761,9 @@ public class LogManager implements AutoCloseable {
     assert writer != null;
     writer.println("Resource: " + record.getResource());
     writer.println("Position: " + record.getPosition());
-    writer.println("Source: " + LogManagerUtils.formatSource(record));
+    if (record.getSource() != null) {
+      writer.println("Source: " + LogManagerUtils.formatSource(record));
+    }
     stackTracePrinter.printStackTrace(record.getError(), writer);
     writer.println();
   }

@@ -75,6 +75,8 @@ import reactor.core.publisher.Flux;
 @ExtendWith(LogInterceptingExtension.class)
 class LogManagerTest {
 
+  private final URI tableResource = URI.create("cql://ks1/table1");
+
   private final String source1 = "line1\n";
   private final String source2 = "line2\n";
   private final String source3 = "line3\n";
@@ -127,12 +129,9 @@ class LogManagerTest {
     resource1 = new URI("file:///file1.csv");
     resource2 = new URI("file:///file2.csv");
     resource3 = new URI("file:///file3.csv");
-    csvRecord1 =
-        new DefaultErrorRecord(source1, () -> resource1, 1, new RuntimeException("error 1"));
-    csvRecord2 =
-        new DefaultErrorRecord(source2, () -> resource2, 2, new RuntimeException("error 2"));
-    csvRecord3 =
-        new DefaultErrorRecord(source3, () -> resource3, 3, new RuntimeException("error 3"));
+    csvRecord1 = new DefaultErrorRecord(source1, resource1, 1, new RuntimeException("error 1"));
+    csvRecord2 = new DefaultErrorRecord(source2, resource2, 2, new RuntimeException("error 2"));
+    csvRecord3 = new DefaultErrorRecord(source3, resource3, 3, new RuntimeException("error 3"));
     unmappableStmt1 = new UnmappableStatement(csvRecord1, new RuntimeException("error 1"));
     unmappableStmt2 = new UnmappableStatement(csvRecord2, new RuntimeException("error 2"));
     unmappableStmt3 = new UnmappableStatement(csvRecord3, new RuntimeException("error 3"));
@@ -154,18 +153,15 @@ class LogManagerTest {
     failedReadResult1 =
         new DefaultReadResult(
             new BulkExecutionException(
-                new DriverTimeoutException("error 1"),
-                new MappedBoundStatement(csvRecord1, mockBoundStatement("SELECT 1"))));
+                new DriverTimeoutException("error 1"), mockBoundStatement("SELECT 1")));
     failedReadResult2 =
         new DefaultReadResult(
             new BulkExecutionException(
-                new DriverTimeoutException("error 2"),
-                new MappedBoundStatement(csvRecord2, mockBoundStatement("SELECT 2"))));
+                new DriverTimeoutException("error 2"), mockBoundStatement("SELECT 2")));
     failedReadResult3 =
         new DefaultReadResult(
             new BulkExecutionException(
-                new DriverTimeoutException("error 3"),
-                new MappedBoundStatement(csvRecord3, mockBoundStatement("SELECT 3"))));
+                new DriverTimeoutException("error 3"), mockBoundStatement("SELECT 3")));
     BatchStatement batch =
         BatchStatement.newInstance(
             DefaultBatchType.UNLOGGED,
@@ -187,13 +183,13 @@ class LogManagerTest {
     ReadResult successfulReadResult3 = new DefaultReadResult(stmt3, info, row3);
     rowRecord1 =
         new DefaultErrorRecord(
-            successfulReadResult1, () -> resource1, 1, new RuntimeException("error 1"));
+            successfulReadResult1, tableResource, 1, new RuntimeException("error 1"));
     rowRecord2 =
         new DefaultErrorRecord(
-            successfulReadResult2, () -> resource2, 2, new RuntimeException("error 2"));
+            successfulReadResult2, tableResource, 2, new RuntimeException("error 2"));
     rowRecord3 =
         new DefaultErrorRecord(
-            successfulReadResult3, () -> resource3, 3, new RuntimeException("error 3"));
+            successfulReadResult3, tableResource, 3, new RuntimeException("error 3"));
   }
 
   @Test
@@ -246,6 +242,11 @@ class LogManagerTest {
         .containsOnlyOnce("Resource: " + resource3)
         .containsOnlyOnce("Source: " + LogManagerUtils.formatSingleLine(source3))
         .containsOnlyOnce("java.lang.RuntimeException: error 3");
+    List<String> positionLines = Files.readAllLines(positions, UTF_8);
+    assertThat(positionLines)
+        .contains("file:///file1.csv:1")
+        .contains("file:///file2.csv:2")
+        .contains("file:///file3.csv:3");
   }
 
   @Test
@@ -286,6 +287,7 @@ class LogManagerTest {
     String content = String.join("\n", lines);
     assertThat(content)
         .containsOnlyOnce("Resource: " + resource1)
+        .containsOnlyOnce("Position: 1")
         .containsOnlyOnce("Source: " + LogManagerUtils.formatSingleLine(source1))
         .containsOnlyOnce("java.lang.RuntimeException: error 1");
   }
@@ -371,11 +373,17 @@ class LogManagerTest {
     String content = String.join("\n", lines);
     assertThat(content)
         .containsOnlyOnce("Resource: " + resource1)
+        .containsOnlyOnce("Position: 1")
         .containsOnlyOnce("Source: " + LogManagerUtils.formatSingleLine(source1))
         .containsOnlyOnce("java.lang.RuntimeException: error 1")
         .containsOnlyOnce("Resource: " + resource2)
+        .containsOnlyOnce("Position: 2")
         .containsOnlyOnce("Source: " + LogManagerUtils.formatSingleLine(source2))
-        .containsOnlyOnce("java.lang.RuntimeException: error 2");
+        .containsOnlyOnce("java.lang.RuntimeException: error 2")
+        .containsOnlyOnce("Resource: " + resource3)
+        .containsOnlyOnce("Position: 3")
+        .containsOnlyOnce("Source: " + LogManagerUtils.formatSingleLine(source3))
+        .containsOnlyOnce("java.lang.RuntimeException: error 3");
   }
 
   @Test
@@ -418,16 +426,19 @@ class LogManagerTest {
     String content = String.join("\n", lines);
     assertThat(content)
         .containsOnlyOnce("Resource: " + resource1)
+        .containsOnlyOnce("Position: 1")
         .containsOnlyOnce("Source: " + LogManagerUtils.formatSingleLine(source1))
         .contains("INSERT 1")
         .containsOnlyOnce(
             "com.datastax.oss.dsbulk.executor.api.exception.BulkExecutionException: Statement execution failed: INSERT 1 (error 1)")
         .containsOnlyOnce("Resource: " + resource2)
+        .containsOnlyOnce("Position: 2")
         .containsOnlyOnce("Source: " + LogManagerUtils.formatSingleLine(source2))
         .contains("INSERT 2")
         .containsOnlyOnce(
             "com.datastax.oss.dsbulk.executor.api.exception.BulkExecutionException: Statement execution failed: INSERT 2 (error 2)")
         .containsOnlyOnce("Resource: " + resource3)
+        .containsOnlyOnce("Position: 3")
         .containsOnlyOnce("Source: " + LogManagerUtils.formatSingleLine(source3))
         .contains("INSERT 3")
         .containsOnlyOnce(
@@ -536,6 +547,9 @@ class LogManagerTest {
         .containsOnlyOnce("Resource: " + resource1.toString())
         .containsOnlyOnce("Resource: " + resource2.toString())
         .containsOnlyOnce("Resource: " + resource3.toString())
+        .containsOnlyOnce("Position: 1")
+        .containsOnlyOnce("Position: 2")
+        .containsOnlyOnce("Position: 3")
         .containsOnlyOnce("Source: " + LogManagerUtils.formatSingleLine(source1))
         .containsOnlyOnce("Source: " + LogManagerUtils.formatSingleLine(source2))
         .containsOnlyOnce("Source: " + LogManagerUtils.formatSingleLine(source3))
@@ -582,6 +596,9 @@ class LogManagerTest {
     List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
+        .doesNotContain("Resource: ")
+        .doesNotContain("Position: ")
+        .doesNotContain("Source: ")
         .contains("SELECT 1")
         .containsOnlyOnce(
             "com.datastax.oss.dsbulk.executor.api.exception.BulkExecutionException: Statement execution failed: SELECT 1 (error 1)")
@@ -620,6 +637,9 @@ class LogManagerTest {
     List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
+        .doesNotContain("Source: ")
+        .doesNotContain("Resource: ")
+        .doesNotContain("Position: ")
         .contains("SELECT 1")
         .containsOnlyOnce("c1: 1")
         .containsOnlyOnce("java.lang.RuntimeException: error 1")
@@ -650,7 +670,7 @@ class LogManagerTest {
             "Could not deserialize column c1 of type int as java.lang.Integer", cause);
     when(row1.getObject(0)).thenThrow(cause);
     when(row1.getBytesUnsafe(0)).thenReturn(ByteBuffer.wrap(new byte[] {1, 2, 3, 4, 5}));
-    rowRecord1 = new DefaultErrorRecord(successfulReadResult1, () -> resource1, 1, iae);
+    rowRecord1 = new DefaultErrorRecord(successfulReadResult1, tableResource, 1, iae);
     logManager.init();
     Flux<Record> stmts = Flux.just(rowRecord1);
     stmts.transform(logManager.newUnmappableRecordsHandler()).blockLast();
@@ -662,6 +682,8 @@ class LogManagerTest {
     List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
+        .doesNotContain("Resource: ")
+        .doesNotContain("Position: ")
         .contains("SELECT 1")
         .contains("c1: 0x0102030405 (malformed buffer for type INT)")
         .contains(iae.getMessage())
@@ -695,6 +717,8 @@ class LogManagerTest {
     List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
+        .doesNotContain("Resource: ")
+        .doesNotContain("Source: ")
         .contains("SELECT 1")
         .containsOnlyOnce(
             "com.datastax.oss.dsbulk.executor.api.exception.BulkExecutionException: Statement execution failed: SELECT 1 (error 1)")
@@ -783,6 +807,7 @@ class LogManagerTest {
     assertThat(content)
         .containsOnlyOnce("Resource: " + resource1)
         .containsOnlyOnce("Source: " + LogManagerUtils.formatSingleLine(source1))
+        .contains("Position: 1")
         .contains("INSERT 1")
         .contains("error 1")
         .containsOnlyOnce(
@@ -809,7 +834,7 @@ class LogManagerTest {
         new DefaultReadResult(
             new BulkExecutionException(
                 new DriverExecutionException(new IllegalArgumentException("error 1")),
-                new MappedBoundStatement(csvRecord1, mockBoundStatement("SELECT 1"))));
+                mockBoundStatement("SELECT 1")));
     Flux<ReadResult> stmts = Flux.just(result);
     try {
       stmts.transform(logManager.newFailedReadsHandler()).blockLast();
@@ -825,6 +850,9 @@ class LogManagerTest {
     List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
+        .doesNotContain("Resource: ")
+        .doesNotContain("Source: ")
+        .doesNotContain("Position: ")
         .contains("SELECT 1")
         .contains("error 1")
         .containsOnlyOnce(
@@ -885,6 +913,7 @@ class LogManagerTest {
     List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
+        .containsOnlyOnce("Failed conditional updates: ")
         .containsOnlyOnce("INSERT INTO 1")
         .contains("c1: 1")
         .containsOnlyOnce("INSERT INTO 2")
@@ -963,6 +992,105 @@ class LogManagerTest {
         .hasMessageContaining(
             "The maximum number of logged query warnings has been exceeded (1); "
                 + "subsequent warnings will not be logged.");
+  }
+
+  @Test
+  void should_handle_failed_records_without_source() throws Exception {
+    Path outputDir = Files.createTempDirectory("test");
+    LogManager logManager =
+        new LogManager(
+            session,
+            outputDir,
+            ErrorThreshold.forAbsoluteValue(1),
+            ErrorThreshold.forAbsoluteValue(0),
+            true,
+            statementFormatter,
+            EXTENDED,
+            rowFormatter);
+    logManager.init();
+    Record record = new DefaultErrorRecord(null, resource1, 1, new RuntimeException("error 1"));
+    Flux<Record> stmts = Flux.just(record);
+    stmts.transform(logManager.newFailedRecordsHandler()).blockLast();
+    logManager.close();
+    Path errors = logManager.getOperationDirectory().resolve("connector-errors.log");
+    Path positions = logManager.getOperationDirectory().resolve("positions.txt");
+    assertThat(errors.toFile()).exists();
+    assertThat(positions.toFile()).exists();
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
+        .containsOnly(errors, positions);
+    List<String> lines = Files.readAllLines(errors, UTF_8);
+    String content = String.join("\n", lines);
+    assertThat(content)
+        .doesNotContain("Source: ")
+        .contains("Resource: " + resource1)
+        .contains("java.lang.RuntimeException: error 1");
+    List<String> positionLines = Files.readAllLines(positions, UTF_8);
+    assertThat(positionLines).containsOnly("file:///file1.csv:1");
+  }
+
+  @Test
+  void should_handle_unmappable_statements_without_source() throws Exception {
+    Path outputDir = Files.createTempDirectory("test");
+    LogManager logManager =
+        new LogManager(
+            session,
+            outputDir,
+            ErrorThreshold.forAbsoluteValue(1),
+            ErrorThreshold.forAbsoluteValue(0),
+            true,
+            statementFormatter,
+            EXTENDED,
+            rowFormatter);
+    logManager.init();
+    Record record = DefaultRecord.indexed(null, resource1, 1, "foo", " bar");
+    UnmappableStatement stmt = new UnmappableStatement(record, new RuntimeException("error 1"));
+    Flux<BatchableStatement<?>> stmts = Flux.just(stmt);
+    stmts.transform(logManager.newUnmappableStatementsHandler()).blockLast();
+    logManager.close();
+    Path errors = logManager.getOperationDirectory().resolve("mapping-errors.log");
+    Path positions = logManager.getOperationDirectory().resolve("positions.txt");
+    assertThat(errors.toFile()).exists();
+    assertThat(positions.toFile()).exists();
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
+        .containsOnly(errors, positions);
+    List<String> lines = Files.readAllLines(errors, UTF_8);
+    String content = String.join("\n", lines);
+    assertThat(content)
+        .doesNotContain("Source: ")
+        .contains("Resource: " + resource1)
+        .contains("Position: 1")
+        .contains("java.lang.RuntimeException: error 1");
+  }
+
+  @Test
+  void should_handle_unmappable_records_without_source() throws Exception {
+    Path outputDir = Files.createTempDirectory("test");
+    LogManager logManager =
+        new LogManager(
+            session,
+            outputDir,
+            ErrorThreshold.forAbsoluteValue(1),
+            ErrorThreshold.forAbsoluteValue(0),
+            true,
+            statementFormatter,
+            EXTENDED,
+            rowFormatter);
+    logManager.init();
+    Record record = new DefaultErrorRecord(null, tableResource, 1, new RuntimeException("error 1"));
+    Flux<Record> stmts = Flux.just(record);
+    stmts.transform(logManager.newUnmappableRecordsHandler()).blockLast();
+    logManager.close();
+    Path errors = logManager.getOperationDirectory().resolve("mapping-errors.log");
+    assertThat(errors.toFile()).exists();
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
+        .containsOnly(errors);
+    List<String> lines = Files.readAllLines(errors, UTF_8);
+    String content = String.join("\n", lines);
+    assertThat(content)
+        .doesNotContain("Source: ")
+        .doesNotContain("Resource: ")
+        .doesNotContain("Position: ")
+        .contains("java.lang.RuntimeException: error 1");
   }
 
   private static MappedBoundStatement mockBulkBoundStatement(

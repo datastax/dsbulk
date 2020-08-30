@@ -22,8 +22,8 @@ import java.util.Collection;
 import java.util.Set;
 
 /**
- * An item emitted by a {@link Connector}. A record is composed of one or more {@linkplain Field
- * fields}.
+ * An item read by a {@link Connector}, or passed to a connector for writing. A record is composed
+ * of one or more {@linkplain Field fields}.
  *
  * <p>Records typically originate from a line in a file, or a row in a database table.
  */
@@ -32,9 +32,10 @@ public interface Record {
   /**
    * Returns the record source, typically a line in a file or a row in a database table.
    *
-   * @return The record source.
+   * @return The record source; may be null if the source cannot be determined or should not be
+   *     retained.
    */
-  @NonNull
+  @Nullable
   Object getSource();
 
   /**

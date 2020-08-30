@@ -3915,7 +3915,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
                 record3NotApplied.getResource(),
                 record3NotApplied.getPosition(),
                 record3NotApplied.getSource()),
-            "Failed writes:",
+            "Failed conditional updates:",
             "\"[applied]\": false\npk: 1\ncc: 1\nv: 1",
             "\"[applied]\": false\npk: 1\ncc: 2\nv: 2");
 

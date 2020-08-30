@@ -37,7 +37,7 @@ class ConnectorSettingsTest {
         ConfigFactory.parseString("name: csv, csv{url:\"file:///a/b.csv\"}")
             .withFallback(CONNECTOR_DEFAULT_SETTINGS);
     ConnectorSettings connectorSettings = new ConnectorSettings(config, true);
-    connectorSettings.init();
+    connectorSettings.init(true);
     Connector connector = connectorSettings.getConnector();
     assertThat(connector).isNotNull().isInstanceOf(CSVConnector.class);
     assertThat(config.getConfig("csv"))
@@ -63,7 +63,7 @@ class ConnectorSettingsTest {
         ConfigFactory.parseString("name: json, json{ url:\"file:///a/b.json\"}")
             .withFallback(CONNECTOR_DEFAULT_SETTINGS);
     ConnectorSettings connectorSettings = new ConnectorSettings(config, true);
-    connectorSettings.init();
+    connectorSettings.init(true);
     Connector connector = connectorSettings.getConnector();
     assertThat(connector).isNotNull().isInstanceOf(JsonConnector.class);
     assertThat(config.getConfig("json"))
@@ -88,7 +88,7 @@ class ConnectorSettingsTest {
         () -> {
           Config config = ConfigFactory.parseString("name: foo, foo {url:\"file:///a/b.txt\"}");
           ConnectorSettings connectorSettings = new ConnectorSettings(config, true);
-          connectorSettings.init();
+          connectorSettings.init(true);
           //noinspection ResultOfMethodCallIgnored
           connectorSettings.getConnector();
         },

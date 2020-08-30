@@ -17,6 +17,7 @@ package com.datastax.oss.dsbulk.connectors.json;
 
 import static com.datastax.oss.dsbulk.tests.utils.FileUtils.deleteDirectory;
 import static com.datastax.oss.dsbulk.tests.utils.FileUtils.readFile;
+import static com.datastax.oss.dsbulk.tests.utils.StringUtils.quoteJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.any;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
@@ -41,10 +42,11 @@ import com.datastax.oss.dsbulk.tests.logging.LogInterceptingExtension;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptor;
 import com.datastax.oss.dsbulk.tests.utils.FileUtils;
 import com.datastax.oss.dsbulk.tests.utils.ReflectionUtils;
-import com.datastax.oss.dsbulk.tests.utils.StringUtils;
 import com.datastax.oss.dsbulk.tests.utils.TestConfigUtils;
 import com.datastax.oss.dsbulk.url.BulkLoaderURLStreamHandlerFactory;
 import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.github.tomakehurst.wiremock.WireMockServer;
@@ -56,6 +58,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
+import java.io.UncheckedIOException;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -81,6 +84,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.reactivestreams.Publisher;
 import org.slf4j.event.Level;
 import reactor.core.publisher.Flux;
@@ -92,8 +96,6 @@ import ru.lanwen.wiremock.ext.WiremockResolver.Wiremock;
 @ExtendWith(LogInterceptingExtension.class)
 @ExtendWith(WiremockResolver.class)
 class JsonConnectorTest {
-
-  private static final int IRRELEVANT_POSITION = -1;
 
   static {
     BulkLoaderURLStreamHandlerFactory.install();
@@ -128,11 +130,11 @@ class JsonConnectorTest {
     Files.delete(urlsFileWithStdin);
   }
 
-  @ParameterizedTest(name = "[{index}] read multi doc file {0} with compression {1}")
+  @ParameterizedTest(name = "[{index}] read multi doc file {0} with compression {1} (sources: {2})")
   @MethodSource
   @DisplayName("Should read multidoc file with given compression")
-  void should_read_single_file_multi_doc(final String fileName, final String compression)
-      throws Exception {
+  void should_read_single_file_multi_doc(
+      String fileName, String compression, boolean retainRecordSources) throws Exception {
     JsonConnector connector = new JsonConnector();
     Config settings =
         TestConfigUtils.createTestConfig(
@@ -144,32 +146,43 @@ class JsonConnectorTest {
             "deserializationFeatures",
             "{USE_BIG_DECIMAL_FOR_FLOATS : false}",
             "compression",
-            StringUtils.quoteJson(compression));
-    connector.configure(settings, true);
+            quoteJson(compression));
+    connector.configure(settings, true, retainRecordSources);
     connector.init();
     assertThat(connector.readConcurrency()).isOne();
     List<Record> actual = Flux.merge(connector.read()).collectList().block();
-    verifyRecords(actual);
+    verifyRecords(actual, retainRecordSources, rawURL("/" + fileName).toURI());
     connector.close();
   }
 
   @SuppressWarnings("unused")
   private static Stream<Arguments> should_read_single_file_multi_doc() {
     return Stream.of(
-        arguments("multi_doc.json", CompressedIOUtils.NONE_COMPRESSION),
-        arguments("multi_doc.json.gz", CompressedIOUtils.GZIP_COMPRESSION),
-        arguments("multi_doc.json.bz2", CompressedIOUtils.BZIP2_COMPRESSION),
-        arguments("multi_doc.json.lz4", CompressedIOUtils.LZ4_COMPRESSION),
-        arguments("multi_doc.json.snappy", CompressedIOUtils.SNAPPY_COMPRESSION),
-        arguments("multi_doc.json.z", CompressedIOUtils.Z_COMPRESSION),
-        arguments("multi_doc.json.br", CompressedIOUtils.BROTLI_COMPRESSION),
-        arguments("multi_doc.json.lzma", CompressedIOUtils.LZMA_COMPRESSION),
-        arguments("multi_doc.json.xz", CompressedIOUtils.XZ_COMPRESSION),
-        arguments("multi_doc.json.zstd", CompressedIOUtils.ZSTD_COMPRESSION));
+        arguments("multi_doc.json", CompressedIOUtils.NONE_COMPRESSION, true),
+        arguments("multi_doc.json.gz", CompressedIOUtils.GZIP_COMPRESSION, true),
+        arguments("multi_doc.json.bz2", CompressedIOUtils.BZIP2_COMPRESSION, true),
+        arguments("multi_doc.json.lz4", CompressedIOUtils.LZ4_COMPRESSION, true),
+        arguments("multi_doc.json.snappy", CompressedIOUtils.SNAPPY_COMPRESSION, true),
+        arguments("multi_doc.json.z", CompressedIOUtils.Z_COMPRESSION, true),
+        arguments("multi_doc.json.br", CompressedIOUtils.BROTLI_COMPRESSION, true),
+        arguments("multi_doc.json.lzma", CompressedIOUtils.LZMA_COMPRESSION, true),
+        arguments("multi_doc.json.xz", CompressedIOUtils.XZ_COMPRESSION, true),
+        arguments("multi_doc.json.zstd", CompressedIOUtils.ZSTD_COMPRESSION, true),
+        arguments("multi_doc.json", CompressedIOUtils.NONE_COMPRESSION, false),
+        arguments("multi_doc.json.gz", CompressedIOUtils.GZIP_COMPRESSION, false),
+        arguments("multi_doc.json.bz2", CompressedIOUtils.BZIP2_COMPRESSION, false),
+        arguments("multi_doc.json.lz4", CompressedIOUtils.LZ4_COMPRESSION, false),
+        arguments("multi_doc.json.snappy", CompressedIOUtils.SNAPPY_COMPRESSION, false),
+        arguments("multi_doc.json.z", CompressedIOUtils.Z_COMPRESSION, false),
+        arguments("multi_doc.json.br", CompressedIOUtils.BROTLI_COMPRESSION, false),
+        arguments("multi_doc.json.lzma", CompressedIOUtils.LZMA_COMPRESSION, false),
+        arguments("multi_doc.json.xz", CompressedIOUtils.XZ_COMPRESSION, false),
+        arguments("multi_doc.json.zstd", CompressedIOUtils.ZSTD_COMPRESSION, false));
   }
 
-  @Test
-  void should_read_single_file_single_doc() throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void should_read_single_file_single_doc(boolean retainRecordSources) throws Exception {
     JsonConnector connector = new JsonConnector();
     Config settings =
         TestConfigUtils.createTestConfig(
@@ -182,11 +195,11 @@ class JsonConnectorTest {
             "{USE_BIG_DECIMAL_FOR_FLOATS : false}",
             "mode",
             "SINGLE_DOCUMENT");
-    connector.configure(settings, true);
+    connector.configure(settings, true, retainRecordSources);
     connector.init();
     assertThat(connector.readConcurrency()).isOne();
     List<Record> actual = Flux.merge(connector.read()).collectList().block();
-    verifyRecords(actual);
+    verifyRecords(actual, retainRecordSources, rawURL("/single_doc.json").toURI());
     connector.close();
   }
 
@@ -202,7 +215,7 @@ class JsonConnectorTest {
             "{ALLOW_COMMENTS:true}",
             "mode",
             "SINGLE_DOCUMENT");
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     assertThat(connector.readConcurrency()).isOne();
     // should complete with 0 records.
@@ -223,7 +236,7 @@ class JsonConnectorTest {
             "{ALLOW_COMMENTS:true}",
             "mode",
             "MULTI_DOCUMENT");
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     assertThat(connector.readConcurrency()).isOne();
     // should complete with 0 records.
@@ -232,8 +245,9 @@ class JsonConnectorTest {
     connector.close();
   }
 
-  @Test
-  void should_read_single_file_by_resource() throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void should_read_single_file_multi_doc(boolean retainRecordSources) throws Exception {
     JsonConnector connector = new JsonConnector();
     Config settings =
         TestConfigUtils.createTestConfig(
@@ -244,11 +258,11 @@ class JsonConnectorTest {
             "{ALLOW_COMMENTS:true}",
             "deserializationFeatures",
             "{USE_BIG_DECIMAL_FOR_FLOATS : false}");
-    connector.configure(settings, true);
+    connector.configure(settings, true, retainRecordSources);
     connector.init();
     assertThat(connector.readConcurrency()).isOne();
     List<Record> actual = Flux.merge(connector.read()).collectList().block();
-    verifyRecords(actual);
+    verifyRecords(actual, retainRecordSources, rawURL("/multi_doc.json").toURI());
     connector.close();
   }
 
@@ -262,7 +276,7 @@ class JsonConnectorTest {
       JsonConnector connector = new JsonConnector();
       Config settings =
           TestConfigUtils.createTestConfig("dsbulk.connector.json", "encoding", "ISO-8859-1");
-      connector.configure(settings, true);
+      connector.configure(settings, true, true);
       connector.init();
       assertThat(connector.readConcurrency()).isOne();
       assertThat(
@@ -293,7 +307,7 @@ class JsonConnectorTest {
       JsonConnector connector = new JsonConnector();
       Config settings =
           TestConfigUtils.createTestConfig("dsbulk.connector.json", "encoding", "ISO-8859-1");
-      connector.configure(settings, false);
+      connector.configure(settings, false, true);
       connector.init();
       assertThat(connector.writeConcurrency()).isOne();
       assertThat(
@@ -303,7 +317,7 @@ class JsonConnectorTest {
               DefaultRecord.indexed(
                   "source",
                   resource,
-                  IRRELEVANT_POSITION,
+                  1,
                   factory.textNode("fóô"),
                   factory.textNode("bàr"),
                   factory.textNode("qïx")))
@@ -322,7 +336,7 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     Config settings =
         TestConfigUtils.createTestConfig("dsbulk.connector.json", "url", url("/single_doc.json"));
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     assertThat(ReflectionUtils.invokeMethod("isDataSizeSamplingAvailable", connector, Boolean.TYPE))
         .isTrue();
@@ -334,8 +348,8 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     Config settings =
         TestConfigUtils.createTestConfig(
-            "dsbulk.connector.json", "urlfile", StringUtils.quoteJson(multipleUrlsFile));
-    connector.configure(settings, true);
+            "dsbulk.connector.json", "urlfile", quoteJson(multipleUrlsFile));
+    connector.configure(settings, true, true);
     connector.init();
     assertThat(ReflectionUtils.invokeMethod("isDataSizeSamplingAvailable", connector, Boolean.TYPE))
         .isTrue();
@@ -346,7 +360,7 @@ class JsonConnectorTest {
   void should_disallow_data_size_sampling_when_reading_from_stdin_single_url() throws Exception {
     JsonConnector connector = new JsonConnector();
     Config settings = TestConfigUtils.createTestConfig("dsbulk.connector.json", "url", "-");
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     assertThat(ReflectionUtils.invokeMethod("isDataSizeSamplingAvailable", connector, Boolean.TYPE))
         .isFalse();
@@ -358,8 +372,8 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     Config settings =
         TestConfigUtils.createTestConfig(
-            "dsbulk.connector.json", "urlfile", StringUtils.quoteJson(urlsFileWithStdin));
-    connector.configure(settings, true);
+            "dsbulk.connector.json", "urlfile", quoteJson(urlsFileWithStdin));
+    connector.configure(settings, true, true);
     connector.init();
     assertThat(ReflectionUtils.invokeMethod("isDataSizeSamplingAvailable", connector, Boolean.TYPE))
         .isFalse();
@@ -378,7 +392,7 @@ class JsonConnectorTest {
             false,
             "maxConcurrentFiles",
             4);
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     // there are only 3 resources to read
     assertThat(connector.readConcurrency()).isEqualTo(3);
@@ -394,12 +408,12 @@ class JsonConnectorTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.connector.json",
             "url",
-            StringUtils.quoteJson(rootPath),
+            quoteJson(rootPath),
             "recursive",
             false,
             "maxConcurrentFiles",
             4);
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     // there are only 3 resources to read
     assertThat(connector.readConcurrency()).isEqualTo(3);
@@ -419,7 +433,7 @@ class JsonConnectorTest {
             true,
             "maxConcurrentFiles",
             4);
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     // 5 resources to read, but maxConcurrentFiles is 4
     assertThat(connector.readConcurrency()).isEqualTo(4);
@@ -439,7 +453,7 @@ class JsonConnectorTest {
             true,
             "fileNamePattern",
             "\"**/part-*\"");
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(500);
     connector.close();
@@ -454,12 +468,12 @@ class JsonConnectorTest {
           TestConfigUtils.createTestConfig(
               "dsbulk.connector.json",
               "url",
-              StringUtils.quoteJson(rootPath),
+              quoteJson(rootPath),
               "recursive",
               true,
               "fileNamePattern",
               "\"**/part-*\"");
-      connector.configure(settings, true);
+      connector.configure(settings, true, true);
       connector.init();
       assertThat(logs.getLoggedMessages())
           .contains(String.format("Directory %s has no readable files.", rootPath));
@@ -479,12 +493,12 @@ class JsonConnectorTest {
           TestConfigUtils.createTestConfig(
               "dsbulk.connector.json",
               "url",
-              StringUtils.quoteJson(rootPath),
+              quoteJson(rootPath),
               "recursive",
               true,
               "fileNamePattern",
               "\"**/part-*\"");
-      connector.configure(settings, true);
+      connector.configure(settings, true, true);
       connector.init();
       assertThat(logs.getLoggedMessages())
           .contains(
@@ -511,13 +525,13 @@ class JsonConnectorTest {
           TestConfigUtils.createTestConfig(
               "dsbulk.connector.json",
               "url",
-              StringUtils.quoteJson(rootPath),
+              quoteJson(rootPath),
               "recursive",
               true,
               "compression",
-              StringUtils.quoteJson(compression));
+              quoteJson(compression));
 
-      connector.configure(settings, true);
+      connector.configure(settings, true, true);
       connector.init();
       assertThat(logs.getLoggedMessages())
           .contains(
@@ -554,15 +568,15 @@ class JsonConnectorTest {
           TestConfigUtils.createTestConfig(
               "dsbulk.connector.json",
               "url",
-              StringUtils.quoteJson(out),
+              quoteJson(out),
               "escape",
               "\"\\\"\"",
               "maxConcurrentFiles",
               1);
-      connector.configure(settings, false);
+      connector.configure(settings, false, true);
       connector.init();
       assertThat(connector.writeConcurrency()).isOne();
-      Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
+      Flux.fromIterable(createRecords(false, resource)).transform(connector.write()).blockLast();
       connector.close();
       List<String> actual = Files.readAllLines(out.resolve("output-000001.json"));
       assertThat(actual).hasSize(5);
@@ -589,17 +603,17 @@ class JsonConnectorTest {
           TestConfigUtils.createTestConfig(
               "dsbulk.connector.json",
               "url",
-              StringUtils.quoteJson(out),
+              quoteJson(out),
               "escape",
               "\"\\\"\"",
               "maxConcurrentFiles",
               1,
               "mode",
               "SINGLE_DOCUMENT");
-      connector.configure(settings, false);
+      connector.configure(settings, false, true);
       connector.init();
       assertThat(connector.writeConcurrency()).isOne();
-      Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
+      Flux.fromIterable(createRecords(false, resource)).transform(connector.write()).blockLast();
       connector.close();
       List<String> actual = Files.readAllLines(out.resolve("output-000001.json"));
       assertThat(actual).hasSize(7);
@@ -628,7 +642,7 @@ class JsonConnectorTest {
           TestConfigUtils.createTestConfig(
               "dsbulk.connector.json",
               "url",
-              StringUtils.quoteJson(out),
+              quoteJson(out),
               "escape",
               "\"\\\"\"",
               "compression",
@@ -637,10 +651,10 @@ class JsonConnectorTest {
               1,
               "mode",
               "SINGLE_DOCUMENT");
-      connector.configure(settings, false);
+      connector.configure(settings, false, true);
       connector.init();
       assertThat(connector.writeConcurrency()).isOne();
-      Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
+      Flux.fromIterable(createRecords(false, resource)).transform(connector.write()).blockLast();
       connector.close();
       Path outPath = out.resolve("output-000001.json.gz");
       BufferedReader reader =
@@ -675,7 +689,7 @@ class JsonConnectorTest {
           TestConfigUtils.createTestConfig(
               "dsbulk.connector.json",
               "url",
-              StringUtils.quoteJson(out),
+              quoteJson(out),
               "escape",
               "\"\\\"\"",
               "compression",
@@ -686,10 +700,10 @@ class JsonConnectorTest {
               1,
               "mode",
               "SINGLE_DOCUMENT");
-      connector.configure(settings, false);
+      connector.configure(settings, false, true);
       connector.init();
       assertThat(connector.writeConcurrency()).isOne();
-      Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
+      Flux.fromIterable(createRecords(false, resource)).transform(connector.write()).blockLast();
       connector.close();
       Path outPath = out.resolve("file1");
       BufferedReader reader =
@@ -724,7 +738,7 @@ class JsonConnectorTest {
           TestConfigUtils.createTestConfig(
               "dsbulk.connector.json",
               "url",
-              StringUtils.quoteJson(out),
+              quoteJson(out),
               "escape",
               "\"\\\"\"",
               "maxConcurrentFiles",
@@ -733,10 +747,10 @@ class JsonConnectorTest {
               "SINGLE_DOCUMENT",
               "serializationStrategy",
               "NON_NULL");
-      connector.configure(settings, false);
+      connector.configure(settings, false, true);
       connector.init();
       assertThat(connector.writeConcurrency()).isOne();
-      Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
+      Flux.fromIterable(createRecords(false, resource)).transform(connector.write()).blockLast();
       connector.close();
       List<String> actual = Files.readAllLines(out.resolve("output-000001.json"));
       assertThat(actual).hasSize(7);
@@ -744,10 +758,10 @@ class JsonConnectorTest {
           .containsExactly(
               "[",
               "{\"Year\":1997,\"Make\":\"Ford\",\"Model\":\"E350\",\"Description\":\"ac, abs, moon\",\"Price\":3000.0},",
-              "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Price\":4900.0},",
+              "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0},",
               "{\"Year\":1996,\"Make\":\"Jeep\",\"Model\":\"Grand Cherokee\",\"Description\":\"MUST SELL!\\nair, moon roof, loaded\",\"Price\":4799.0},",
-              "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition, Very Large\\\"\",\"Price\":5000.0},",
-              "{\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Price\":4900.0}",
+              "{\"Year\":1999,\"Make\":\"Chevy\",\"Model\":\"Venture \\\"Extended Edition, Very Large\\\"\",\"Description\":null,\"Price\":5000.0},",
+              "{\"Year\":null,\"Make\":null,\"Model\":\"Venture \\\"Extended Edition\\\"\",\"Description\":null,\"Price\":4900.0}",
               "]");
     } finally {
       deleteDirectory(dir);
@@ -764,12 +778,12 @@ class JsonConnectorTest {
           TestConfigUtils.createTestConfig(
               "dsbulk.connector.json",
               "url",
-              StringUtils.quoteJson(out),
+              quoteJson(out),
               "escape",
               "\"\\\"\"",
               "maxConcurrentFiles",
               maxConcurrentFiles);
-      connector.configure(settings, false);
+      connector.configure(settings, false, true);
       connector.init();
       assertThat(connector.writeConcurrency()).isEqualTo(maxConcurrentFiles);
       // repeat the records 1000 times to fully exercise multiple file writing
@@ -777,7 +791,10 @@ class JsonConnectorTest {
       Function<Publisher<Record>, Publisher<Record>> write = connector.write();
       Flux.range(0, 1000)
           .flatMap(
-              i -> Flux.fromIterable(createRecords()).transform(write).subscribeOn(scheduler),
+              i ->
+                  Flux.fromIterable(createRecords(false, resource))
+                      .transform(write)
+                      .subscribeOn(scheduler),
               maxConcurrentFiles)
           .blockLast();
       connector.close();
@@ -804,9 +821,8 @@ class JsonConnectorTest {
     Path out = Files.createTempDirectory("test");
     JsonConnector connector = new JsonConnector();
     Config settings =
-        TestConfigUtils.createTestConfig(
-            "dsbulk.connector.json", "url", StringUtils.quoteJson(out));
-    connector.configure(settings, false);
+        TestConfigUtils.createTestConfig("dsbulk.connector.json", "url", quoteJson(out));
+    connector.configure(settings, false, true);
     connector.init();
     AtomicInteger counter =
         (AtomicInteger) ReflectionUtils.getInternalState(connector, "fileCounter");
@@ -825,7 +841,7 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     Path out = Files.createTempDirectory("test");
     try {
-      String escapedPath = StringUtils.quoteJson(out);
+      String escapedPath = quoteJson(out);
       Config settings =
           TestConfigUtils.createTestConfig(
               "dsbulk.connector.json",
@@ -837,10 +853,10 @@ class JsonConnectorTest {
               1,
               "maxRecords",
               3);
-      connector.configure(settings, false);
+      connector.configure(settings, false, true);
       connector.init();
       assertThat(connector.writeConcurrency()).isOne();
-      Flux.fromIterable(createRecords()).transform(connector.write()).blockLast();
+      Flux.fromIterable(createRecords(false, resource)).transform(connector.write()).blockLast();
       connector.close();
       List<String> json1 = Files.readAllLines(out.resolve("output-000001.json"));
       List<String> json2 = Files.readAllLines(out.resolve("output-000002.json"));
@@ -866,7 +882,7 @@ class JsonConnectorTest {
     Config settings =
         TestConfigUtils.createTestConfig(
             "dsbulk.connector.json", "url", url("/root"), "recursive", true, "skipRecords", 10);
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(450);
     assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(450);
@@ -879,7 +895,7 @@ class JsonConnectorTest {
     Config settings =
         TestConfigUtils.createTestConfig(
             "dsbulk.connector.json", "url", url("/root"), "recursive", true, "skipRecords", 150);
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(0);
     assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(0);
@@ -892,7 +908,7 @@ class JsonConnectorTest {
     Config settings =
         TestConfigUtils.createTestConfig(
             "dsbulk.connector.json", "url", url("/root"), "recursive", true, "maxRecords", 10);
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(50);
     assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(50);
@@ -905,7 +921,7 @@ class JsonConnectorTest {
     Config settings =
         TestConfigUtils.createTestConfig(
             "dsbulk.connector.json", "url", url("/root"), "recursive", true, "maxRecords", 1);
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(5);
     assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(5);
@@ -926,7 +942,7 @@ class JsonConnectorTest {
             95,
             "maxRecords",
             10);
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     assertThat(Flux.merge(connector.read()).count().block()).isEqualTo(25);
     connector.close();
@@ -944,7 +960,7 @@ class JsonConnectorTest {
             10,
             "maxRecords",
             1);
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     List<Record> records = Flux.merge(connector.read()).collectList().block();
     assertThat(records).hasSize(1);
@@ -958,7 +974,7 @@ class JsonConnectorTest {
   void should_error_on_empty_url() {
     JsonConnector connector = new JsonConnector();
     Config settings = TestConfigUtils.createTestConfig("dsbulk.connector.json", "url", "\"\"");
-    assertThatThrownBy(() -> connector.configure(settings, true))
+    assertThatThrownBy(() -> connector.configure(settings, true, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "A URL or URL file is mandatory when using the json connector for LOAD. Please set connector.json.url or connector.json.urlfile and "
@@ -971,9 +987,9 @@ class JsonConnectorTest {
 
     Config settings =
         TestConfigUtils.createTestConfig(
-            "dsbulk.connector.json", "urlfile", StringUtils.quoteJson(multipleUrlsFile));
+            "dsbulk.connector.json", "urlfile", quoteJson(multipleUrlsFile));
 
-    assertThatThrownBy(() -> connector.configure(settings, false))
+    assertThatThrownBy(() -> connector.configure(settings, false, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("The urlfile parameter is not supported for UNLOAD");
   }
@@ -987,11 +1003,11 @@ class JsonConnectorTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.connector.json",
             "urlfile",
-            StringUtils.quoteJson(multipleUrlsFile),
+            quoteJson(multipleUrlsFile),
             "url",
-            StringUtils.quoteJson(multipleUrlsFile));
+            quoteJson(multipleUrlsFile));
 
-    assertDoesNotThrow(() -> connector.configure(settings, true));
+    assertDoesNotThrow(() -> connector.configure(settings, true, true));
 
     assertThat(logs.getLoggedMessages())
         .contains("You specified both URL and URL file. The URL file will take precedence.");
@@ -1004,14 +1020,14 @@ class JsonConnectorTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.connector.json",
             "urlfile",
-            StringUtils.quoteJson(multipleUrlsFile),
+            quoteJson(multipleUrlsFile),
             "recursive",
             false,
             "fileNamePattern",
             "\"**/part-*\"",
             "maxConcurrentFiles",
             8);
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     // maxConcurrentFiles 8 but only 4 files to read
     assertThat(connector.readConcurrency()).isEqualTo(4);
@@ -1029,8 +1045,8 @@ class JsonConnectorTest {
       Files.createFile(file);
       Config settings =
           TestConfigUtils.createTestConfig(
-              "dsbulk.connector.json", "url", StringUtils.quoteJson(out), "maxConcurrentFiles", 1);
-      connector.configure(settings, false);
+              "dsbulk.connector.json", "url", quoteJson(out), "maxConcurrentFiles", 1);
+      connector.configure(settings, false, true);
       assertThrows(IllegalArgumentException.class, connector::init);
     } finally {
       deleteDirectory(out);
@@ -1044,14 +1060,17 @@ class JsonConnectorTest {
     try {
       Config settings =
           TestConfigUtils.createTestConfig(
-              "dsbulk.connector.json", "url", StringUtils.quoteJson(out), "maxConcurrentFiles", 1);
-      connector.configure(settings, false);
+              "dsbulk.connector.json", "url", quoteJson(out), "maxConcurrentFiles", 1);
+      connector.configure(settings, false, true);
       connector.init();
       Path file = out.resolve("output-000001.json");
       // will cause the write to fail because the file already exists
       Files.createFile(file);
       assertThatThrownBy(
-              () -> Flux.fromIterable(createRecords()).transform(connector.write()).blockLast())
+              () ->
+                  Flux.fromIterable(createRecords(false, resource))
+                      .transform(connector.write())
+                      .blockLast())
           .hasRootCauseExactlyInstanceOf(FileAlreadyExistsException.class);
       connector.close();
     } finally {
@@ -1066,8 +1085,8 @@ class JsonConnectorTest {
     try {
       Config settings =
           TestConfigUtils.createTestConfig(
-              "dsbulk.connector.json", "url", StringUtils.quoteJson(out), "maxConcurrentFiles", 2);
-      connector.configure(settings, false);
+              "dsbulk.connector.json", "url", quoteJson(out), "maxConcurrentFiles", 2);
+      connector.configure(settings, false, true);
       connector.init();
       Path file1 = out.resolve("output-000001.json");
       Path file2 = out.resolve("output-000002.json");
@@ -1089,7 +1108,7 @@ class JsonConnectorTest {
       */
       assertThatThrownBy(
               () ->
-                  Flux.fromIterable(createRecords())
+                  Flux.fromIterable(createRecords(false, resource))
                       .repeat(100)
                       .transform(connector.write())
                       .blockLast())
@@ -1119,7 +1138,7 @@ class JsonConnectorTest {
             "{ALLOW_COMMENTS:true}",
             "mode",
             "MULTI_DOCUMENT");
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     assertThatThrownBy(() -> Flux.merge(connector.read()).collectList().block())
         .hasRootCauseExactlyInstanceOf(JsonParseException.class)
@@ -1131,8 +1150,10 @@ class JsonConnectorTest {
     connector.close();
   }
 
-  @Test
-  void should_read_from_http_url(@Wiremock WireMockServer server) throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void should_read_from_http_url(boolean retainRecordSources, @Wiremock WireMockServer server)
+      throws Exception {
     server.givenThat(
         any(urlPathEqualTo("/file.json"))
             .willReturn(
@@ -1141,22 +1162,23 @@ class JsonConnectorTest {
                     .withHeader("Content-Type", "text/json")
                     .withBody(readFile(path("/single_doc.json")))));
     JsonConnector connector = new JsonConnector();
+    String url = String.format("%s/file.json", server.baseUrl());
     Config settings =
         TestConfigUtils.createTestConfig(
             "dsbulk.connector.json",
             "url",
-            String.format("\"%s/file.json\"", server.baseUrl()),
+            quoteJson(url),
             "mode",
             "SINGLE_DOCUMENT",
             "parserFeatures",
             "{ALLOW_COMMENTS:true}",
             "deserializationFeatures",
             "{USE_BIG_DECIMAL_FOR_FLOATS : false}");
-    connector.configure(settings, true);
+    connector.configure(settings, true, retainRecordSources);
     connector.init();
     assertThat(connector.readConcurrency()).isOne();
     List<Record> actual = Flux.merge(connector.read()).collectList().block();
-    verifyRecords(actual);
+    verifyRecords(actual, retainRecordSources, new URI(url));
     connector.close();
   }
 
@@ -1166,10 +1188,13 @@ class JsonConnectorTest {
     Config settings =
         TestConfigUtils.createTestConfig(
             "dsbulk.connector.json", "url", "\"http://localhost:1234/file.json\"");
-    connector.configure(settings, false);
+    connector.configure(settings, false, true);
     connector.init();
     assertThatThrownBy(
-            () -> Flux.fromIterable(createRecords()).transform(connector.write()).blockLast())
+            () ->
+                Flux.fromIterable(createRecords(false, resource))
+                    .transform(connector.write())
+                    .blockLast())
         .hasCauseInstanceOf(IOException.class)
         .hasRootCauseInstanceOf(IllegalArgumentException.class)
         .satisfies(
@@ -1185,7 +1210,7 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     Config settings =
         TestConfigUtils.createTestConfig("dsbulk.connector.json", "recursive", "NotABoolean");
-    assertThatThrownBy(() -> connector.configure(settings, false))
+    assertThatThrownBy(() -> connector.configure(settings, false, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.json.recursive, expecting BOOLEAN, got STRING");
@@ -1197,7 +1222,7 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     Config settings =
         TestConfigUtils.createTestConfig("dsbulk.connector.json", "prettyPrint", "NotABoolean");
-    assertThatThrownBy(() -> connector.configure(settings, false))
+    assertThatThrownBy(() -> connector.configure(settings, false, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.json.prettyPrint, expecting BOOLEAN, got STRING");
@@ -1209,7 +1234,7 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     Config settings =
         TestConfigUtils.createTestConfig("dsbulk.connector.json", "skipRecords", "NotANumber");
-    assertThatThrownBy(() -> connector.configure(settings, false))
+    assertThatThrownBy(() -> connector.configure(settings, false, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.json.skipRecords, expecting NUMBER, got STRING");
@@ -1221,7 +1246,7 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     Config settings =
         TestConfigUtils.createTestConfig("dsbulk.connector.json", "maxRecords", "NotANumber");
-    assertThatThrownBy(() -> connector.configure(settings, false))
+    assertThatThrownBy(() -> connector.configure(settings, false, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.json.maxRecords, expecting NUMBER, got STRING");
@@ -1234,7 +1259,7 @@ class JsonConnectorTest {
     Config settings =
         TestConfigUtils.createTestConfig(
             "dsbulk.connector.json", "maxConcurrentFiles", "NotANumber");
-    assertThatThrownBy(() -> connector.configure(settings, false))
+    assertThatThrownBy(() -> connector.configure(settings, false, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.json.maxConcurrentFiles, expecting positive integer or string in 'nC' syntax, got 'NotANumber'");
@@ -1246,10 +1271,10 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     Config settings =
         TestConfigUtils.createTestConfig("dsbulk.connector.json", "maxConcurrentFiles", "AUTO");
-    connector.configure(settings, false);
+    connector.configure(settings, false, true);
     assertThat(ReflectionUtils.getInternalState(connector, "maxConcurrentFiles"))
         .isEqualTo(ConfigUtils.resolveThreads("0.5C"));
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     assertThat(ReflectionUtils.getInternalState(connector, "maxConcurrentFiles"))
         .isEqualTo(ConfigUtils.resolveThreads("1C"));
     connector.close();
@@ -1260,7 +1285,7 @@ class JsonConnectorTest {
     JsonConnector connector = new JsonConnector();
     Config settings =
         TestConfigUtils.createTestConfig("dsbulk.connector.json", "encoding", "NotAnEncoding");
-    assertThatThrownBy(() -> connector.configure(settings, false))
+    assertThatThrownBy(() -> connector.configure(settings, false, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.connector.json.encoding, expecting valid charset name, got 'NotAnEncoding'");
@@ -1273,7 +1298,7 @@ class JsonConnectorTest {
     // empty string test
     Config settings1 =
         TestConfigUtils.createTestConfig("dsbulk.connector.json", "compression", "abc");
-    assertThrows(IllegalArgumentException.class, () -> connector.configure(settings1, false));
+    assertThrows(IllegalArgumentException.class, () -> connector.configure(settings1, false, true));
   }
 
   @Test
@@ -1292,7 +1317,7 @@ class JsonConnectorTest {
             "{USE_BIG_DECIMAL_FOR_FLOATS : false}",
             "compression",
             "bzip2");
-    connector.configure(settings, true);
+    connector.configure(settings, true, true);
     connector.init();
     assertThatThrownBy(() -> Flux.merge(connector.read()).collectList().block())
         .hasRootCauseExactlyInstanceOf(IOException.class)
@@ -1303,116 +1328,133 @@ class JsonConnectorTest {
     connector.close();
   }
 
-  private void verifyRecords(List<Record> actual) {
-    assertThat(actual).hasSize(5);
-    assertThat(actual.get(0).values())
-        .containsOnly(
-            factory.numberNode(1997),
-            factory.textNode("Ford"),
-            factory.textNode("E350"),
-            factory.textNode("ac, abs, moon"),
-            factory.numberNode(3000.00d));
-    assertThat(actual.get(1).values())
-        .containsOnly(
-            factory.numberNode(1999),
-            factory.textNode("Chevy"),
-            factory.textNode("Venture \"Extended Edition\""),
-            factory.nullNode(),
-            factory.numberNode(4900.00d));
-    assertThat(actual.get(2).values())
-        .containsOnly(
-            factory.numberNode(1996),
-            factory.textNode("Jeep"),
-            factory.textNode("Grand Cherokee"),
-            factory.textNode("MUST SELL!\nair, moon roof, loaded"),
-            factory.numberNode(4799.00d));
-    assertThat(actual.get(3).values())
-        .containsOnly(
-            factory.numberNode(1999),
-            factory.textNode("Chevy"),
-            factory.textNode("Venture \"Extended Edition, Very Large\""),
-            factory.nullNode(),
-            factory.numberNode(5000.00d));
-    assertThat(actual.get(4).values())
-        .containsOnly(
-            factory.nullNode(),
-            factory.nullNode(),
-            factory.textNode("Venture \"Extended Edition\""),
-            factory.nullNode(),
-            factory.numberNode(4900.00d));
-    assertThat(actual.get(0).getPosition()).isEqualTo(1L);
-    assertThat(actual.get(1).getPosition()).isEqualTo(2L);
-    assertThat(actual.get(2).getPosition()).isEqualTo(3L);
-    assertThat(actual.get(3).getPosition()).isEqualTo(4L);
-    assertThat(actual.get(4).getPosition()).isEqualTo(5L);
+  private void verifyRecords(List<Record> actual, boolean retainRecordSources, URI resource) {
+    List<Record> expected = createRecords(retainRecordSources, resource);
+    assertThat(actual).isEqualTo(expected);
   }
 
-  private List<Record> createRecords() {
+  private List<Record> createRecords(boolean retainRecordSources, URI resource) {
     ArrayList<Record> records = new ArrayList<>();
-    Field[] fields =
-        Arrays.stream(new String[] {"Year", "Make", "Model", "Description", "Price"})
-            .map(DefaultMappedField::new)
-            .toArray(Field[]::new);
+    Field[] fields = new Field[5];
+    fields[0] = new DefaultMappedField("Year");
+    fields[1] = new DefaultMappedField("Make");
+    fields[2] = new DefaultMappedField("Model");
+    fields[3] = new DefaultMappedField("Description");
+    fields[4] = new DefaultMappedField("Price");
+    JsonNode source1;
+    JsonNode source2;
+    JsonNode source3;
+    JsonNode source4;
+    JsonNode source5;
+    try {
+      source1 =
+          objectMapper.readTree(
+              "{"
+                  + "\"Year\": 1997,\n"
+                  + "\"Make\": \"Ford\",\n"
+                  + "\"Model\": \"E350\",\n"
+                  + "\"Description\": \"ac, abs, moon\",\n"
+                  + "\"Price\": 3000.0\n"
+                  + "}");
+      source2 =
+          objectMapper.readTree(
+              "{\n"
+                  + "\"Year\": 1999,\n"
+                  + "\"Make\": \"Chevy\",\n"
+                  + "\"Model\": \"Venture \\\"Extended Edition\\\"\",\n"
+                  + "\"Description\": null,\n"
+                  + "\"Price\": 4900.0\n"
+                  + "}");
+      source3 =
+          objectMapper.readTree(
+              "{\n"
+                  + "\"Year\": 1996,\n"
+                  + "\"Make\": \"Jeep\",\n"
+                  + "\"Model\": \"Grand Cherokee\",\n"
+                  + "\"Description\": \"MUST SELL!\\nair, moon roof, loaded\",\n"
+                  + "\"Price\": 4799.0\n"
+                  + "}");
+      source4 =
+          objectMapper.readTree(
+              "{\n"
+                  + "\"Year\": 1999,\n"
+                  + "\"Make\": \"Chevy\",\n"
+                  + "\"Model\": \"Venture \\\"Extended Edition, Very Large\\\"\",\n"
+                  + "\"Description\": null,\n"
+                  + "\"Price\": 5000.0\n"
+                  + "}");
+      source5 =
+          objectMapper.readTree(
+              "{\n"
+                  + "\"Year\": null,\n"
+                  + "\"Make\": null,\n"
+                  + "\"Model\": \"Venture \\\"Extended Edition\\\"\",\n"
+                  + "\"Description\": null,\n"
+                  + "\"Price\": 4900.0\n"
+                  + "}");
+    } catch (JsonProcessingException e) {
+      throw new UncheckedIOException(e);
+    }
     records.add(
         DefaultRecord.mapped(
-            "source",
+            retainRecordSources ? source1 : null,
             resource,
-            IRRELEVANT_POSITION,
+            1,
             fields,
-            factory.numberNode(1997),
-            factory.textNode("Ford"),
-            factory.textNode("E350"),
-            factory.textNode("ac, abs, moon"),
-            factory.numberNode(3000.00d)));
+            source1.get("Year"),
+            source1.get("Make"),
+            source1.get("Model"),
+            source1.get("Description"),
+            source1.get("Price")));
     records.add(
         DefaultRecord.mapped(
-            "source",
+            retainRecordSources ? source2 : null,
             resource,
-            IRRELEVANT_POSITION,
+            2,
             fields,
-            factory.numberNode(1999),
-            factory.textNode("Chevy"),
-            factory.textNode("Venture \"Extended Edition\""),
-            null,
-            factory.numberNode(4900.00d)));
+            source2.get("Year"),
+            source2.get("Make"),
+            source2.get("Model"),
+            source2.get("Description"),
+            source2.get("Price")));
     records.add(
         DefaultRecord.mapped(
-            "source",
+            retainRecordSources ? source3 : null,
             resource,
-            IRRELEVANT_POSITION,
+            3,
             fields,
-            factory.numberNode(1996),
-            factory.textNode("Jeep"),
-            factory.textNode("Grand Cherokee"),
-            factory.textNode("MUST SELL!\nair, moon roof, loaded"),
-            factory.numberNode(4799.00d)));
+            source3.get("Year"),
+            source3.get("Make"),
+            source3.get("Model"),
+            source3.get("Description"),
+            source3.get("Price")));
     records.add(
         DefaultRecord.mapped(
-            "source",
+            retainRecordSources ? source4 : null,
             resource,
-            IRRELEVANT_POSITION,
+            4,
             fields,
-            factory.numberNode(1999),
-            factory.textNode("Chevy"),
-            factory.textNode("Venture \"Extended Edition, Very Large\""),
-            null,
-            factory.numberNode(5000.00d)));
+            source4.get("Year"),
+            source4.get("Make"),
+            source4.get("Model"),
+            source4.get("Description"),
+            source4.get("Price")));
     records.add(
         DefaultRecord.mapped(
-            "source",
+            retainRecordSources ? source5 : null,
             resource,
-            IRRELEVANT_POSITION,
+            5,
             fields,
-            null,
-            null,
-            factory.textNode("Venture \"Extended Edition\""),
-            null,
-            factory.numberNode(4900.00d)));
+            source5.get("Year"),
+            source5.get("Make"),
+            source5.get("Model"),
+            source5.get("Description"),
+            source5.get("Price")));
     return records;
   }
 
   private static String url(String resource) {
-    return StringUtils.quoteJson(rawURL(resource));
+    return quoteJson(rawURL(resource));
   }
 
   private static URL rawURL(String resource) {

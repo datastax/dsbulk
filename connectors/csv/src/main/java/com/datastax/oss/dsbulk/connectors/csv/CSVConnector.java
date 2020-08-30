@@ -115,9 +115,9 @@ public class CSVConnector extends AbstractFileBasedConnector {
   }
 
   @Override
-  public void configure(@NonNull Config settings, boolean read) {
+  public void configure(@NonNull Config settings, boolean read, boolean retainRecordSources) {
     try {
-      super.configure(settings, read);
+      super.configure(settings, read, retainRecordSources);
       delimiter = settings.getString(DELIMITER);
       if (delimiter.isEmpty()) {
         throw new IllegalArgumentException(
@@ -306,7 +306,7 @@ public class CSVConnector extends AbstractFileBasedConnector {
 
     @NonNull
     private Record parseNext(com.univocity.parsers.common.record.Record row) {
-      String source = context.currentParsedContent();
+      String source = retainRecordSources ? context.currentParsedContent() : null;
       Record record;
       try {
         Object[] values = row.getValues();
