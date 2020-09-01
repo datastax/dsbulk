@@ -40,13 +40,13 @@ class ListToUDTCodecTest {
 
   private final UdtValue udt1Value = udt1.newValue().setInt("f1a", 42).setDouble("f1b", 0.12d);
 
-  private ListToUDTCodec<String> udtCodec1 =
+  private final ListToUDTCodec<String> udtCodec1 =
       (ListToUDTCodec<String>)
           new ConvertingCodecFactory()
               .<List<String>, UdtValue>createConvertingCodec(
                   udt1, GenericType.listOf(GenericType.STRING), true);
 
-  private List<String> stringList = Arrays.asList("42", "0.12");
+  private final List<String> stringList = Arrays.asList("42", "0.12");
 
   @Test
   void should_convert_from_valid_external() {
@@ -65,7 +65,7 @@ class ListToUDTCodecTest {
         .convertsFromInternal(udt1Value)
         .toExternal(stringList)
         .convertsFromInternal(udt1.newValue())
-        .toExternal(Arrays.asList("", ""))
+        .toExternal(Arrays.asList(null, null))
         .convertsFromInternal(null)
         .toExternal(null);
   }

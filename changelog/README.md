@@ -1,11 +1,12 @@
 ## Changelog
 
-## 1.6.1 (in progress)
+## 1.7.0 (in progress)
 
 - [bug] Correctly display durations lesser than 1 second (#369).
 - [bug] Skip invalid lines when parsing the output of java -version (#372, fixes #371).
 - [bug] DAT-612: Fix null pointer exception when reading from Stdin.
 - [improvement] DAT-591: Ability to disable the console reporter.
+- [improvement] DAT-605: Write empty strings as quoted empty fields by default in CSV connector.
 
 
 ## 1.6.0
