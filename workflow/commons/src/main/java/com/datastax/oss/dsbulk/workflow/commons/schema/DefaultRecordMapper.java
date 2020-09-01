@@ -39,7 +39,7 @@ import com.datastax.oss.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.oss.dsbulk.mapping.CQLWord;
 import com.datastax.oss.dsbulk.mapping.InvalidMappingException;
 import com.datastax.oss.dsbulk.mapping.Mapping;
-import com.datastax.oss.dsbulk.workflow.commons.statement.BulkBoundStatement;
+import com.datastax.oss.dsbulk.workflow.commons.statement.MappedBoundStatement;
 import com.datastax.oss.dsbulk.workflow.commons.statement.UnmappableStatement;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
@@ -86,7 +86,7 @@ public class DefaultRecordMapper implements RecordMapper {
         nullToUnset,
         allowExtraFields,
         allowMissingFields,
-        ps -> ps.boundStatementBuilder());
+        PreparedStatement::boundStatementBuilder);
   }
 
   @VisibleForTesting
@@ -144,7 +144,7 @@ public class DefaultRecordMapper implements RecordMapper {
       }
       record.clear();
       BoundStatement bs = builder.build();
-      return new BulkBoundStatement<>(record, bs);
+      return new MappedBoundStatement(record, bs);
     } catch (Exception e) {
       return new UnmappableStatement(record, e);
     }

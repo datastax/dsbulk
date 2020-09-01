@@ -64,7 +64,7 @@ import com.datastax.oss.dsbulk.mapping.CQLWord;
 import com.datastax.oss.dsbulk.mapping.InvalidMappingException;
 import com.datastax.oss.dsbulk.mapping.Mapping;
 import com.datastax.oss.dsbulk.tests.utils.ReflectionUtils;
-import com.datastax.oss.dsbulk.workflow.commons.statement.BulkBoundStatement;
+import com.datastax.oss.dsbulk.workflow.commons.statement.MappedBoundStatement;
 import com.datastax.oss.dsbulk.workflow.commons.statement.UnmappableStatement;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.nio.ByteBuffer;
@@ -228,7 +228,7 @@ class DefaultRecordMapperTest {
             false,
             statement -> boundStatementBuilder);
     Statement<?> result = mapper.map(record);
-    assertThat(result).isInstanceOf(BulkBoundStatement.class);
+    assertThat(result).isInstanceOf(MappedBoundStatement.class);
     assertThat(ReflectionUtils.getInternalState(result, "delegate")).isSameAs(boundStatement);
     verify(boundStatementBuilder, times(3))
         .setBytesUnsafe(variableCaptor.capture(), valueCaptor.capture());
@@ -271,7 +271,7 @@ class DefaultRecordMapperTest {
             true,
             statement -> boundStatementBuilder);
     Statement<?> result = mapper.map(record);
-    assertThat(result).isInstanceOf(BulkBoundStatement.class);
+    assertThat(result).isInstanceOf(MappedBoundStatement.class);
     assertThat(ReflectionUtils.getInternalState(result, "delegate")).isSameAs(boundStatement);
     verify(boundStatementBuilder).setBytesUnsafe(0, TypeCodecs.BIGINT.encode(-123456L, V4));
   }
@@ -311,7 +311,7 @@ class DefaultRecordMapperTest {
             true,
             statement -> boundStatementBuilder);
     Statement<?> result = mapper.map(record);
-    assertThat(result).isInstanceOf(BulkBoundStatement.class);
+    assertThat(result).isInstanceOf(MappedBoundStatement.class);
     assertThat(ReflectionUtils.getInternalState(result, "delegate")).isSameAs(boundStatement);
     verify(boundStatementBuilder).setBytesUnsafe(0, TypeCodecs.BIGINT.encode(-1L, V4));
   }
@@ -349,7 +349,7 @@ class DefaultRecordMapperTest {
             true,
             statement -> boundStatementBuilder);
     Statement<?> result = mapper.map(record);
-    assertThat(result).isInstanceOf(BulkBoundStatement.class);
+    assertThat(result).isInstanceOf(MappedBoundStatement.class);
     assertThat(ReflectionUtils.getInternalState(result, "delegate")).isSameAs(boundStatement);
     verify(boundStatementBuilder)
         .setBytesUnsafe(
@@ -391,7 +391,7 @@ class DefaultRecordMapperTest {
             true,
             statement -> boundStatementBuilder);
     Statement<?> result = mapper.map(record);
-    assertThat(result).isInstanceOf(BulkBoundStatement.class);
+    assertThat(result).isInstanceOf(MappedBoundStatement.class);
     assertThat(ReflectionUtils.getInternalState(result, "delegate")).isSameAs(boundStatement);
     verify(boundStatementBuilder)
         .setBytesUnsafe(
@@ -416,7 +416,7 @@ class DefaultRecordMapperTest {
             false,
             statement -> boundStatementBuilder);
     Statement<?> result = mapper.map(record);
-    assertThat(result).isInstanceOf(BulkBoundStatement.class);
+    assertThat(result).isInstanceOf(MappedBoundStatement.class);
     assertThat(ReflectionUtils.getInternalState(result, "delegate")).isSameAs(boundStatement);
     verify(boundStatementBuilder, times(2))
         .setBytesUnsafe(variableCaptor.capture(), valueCaptor.capture());
@@ -442,7 +442,7 @@ class DefaultRecordMapperTest {
             true,
             statement -> boundStatementBuilder);
     Statement<?> result = mapper.map(record);
-    assertThat(result).isInstanceOf(BulkBoundStatement.class);
+    assertThat(result).isInstanceOf(MappedBoundStatement.class);
     assertThat(ReflectionUtils.getInternalState(result, "delegate")).isSameAs(boundStatement);
     verify(boundStatementBuilder).setBytesUnsafe(variableCaptor.capture(), valueCaptor.capture());
     assertParameter(0, 0, null);
@@ -467,7 +467,7 @@ class DefaultRecordMapperTest {
             statement -> boundStatementBuilder);
     Statement<?> result = mapper.map(record);
     assertThat(result).isNotSameAs(boundStatement).isInstanceOf(UnmappableStatement.class);
-    assertThat(((UnmappableStatement) result).getSource()).isEqualTo(record);
+    assertThat(((UnmappableStatement) result).getRecord()).isEqualTo(record);
     verify(boundStatementBuilder, times(2))
         .setBytesUnsafe(variableCaptor.capture(), valueCaptor.capture());
     assertParameter(0, 0, TypeCodecs.INT.encode(42, V4));
@@ -603,7 +603,7 @@ class DefaultRecordMapperTest {
             false,
             statement -> boundStatementBuilder);
     Statement<?> result = mapper.map(record);
-    assertThat(result).isInstanceOf(BulkBoundStatement.class);
+    assertThat(result).isInstanceOf(MappedBoundStatement.class);
     assertThat(ReflectionUtils.getInternalState(result, "delegate")).isSameAs(boundStatement);
     verify(boundStatementBuilder, times(3))
         .setBytesUnsafe(variableCaptor.capture(), valueCaptor.capture());
@@ -684,7 +684,7 @@ class DefaultRecordMapperTest {
             false,
             statement -> boundStatementBuilder);
     Statement<?> result = mapper.map(record);
-    assertThat(result).isInstanceOf(BulkBoundStatement.class);
+    assertThat(result).isInstanceOf(MappedBoundStatement.class);
     assertThat(ReflectionUtils.getInternalState(result, "delegate")).isSameAs(boundStatement);
     verify(boundStatementBuilder, times(3))
         .setBytesUnsafe(variableCaptor.capture(), valueCaptor.capture());
@@ -713,7 +713,7 @@ class DefaultRecordMapperTest {
             false,
             statement -> boundStatementBuilder);
     Statement<?> result = mapper.map(record);
-    assertThat(result).isInstanceOf(BulkBoundStatement.class);
+    assertThat(result).isInstanceOf(MappedBoundStatement.class);
     assertThat(ReflectionUtils.getInternalState(result, "delegate")).isSameAs(boundStatement);
     verify(boundStatementBuilder, times(3))
         .setBytesUnsafe(variableCaptor.capture(), valueCaptor.capture());

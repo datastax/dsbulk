@@ -53,7 +53,7 @@ import com.datastax.oss.dsbulk.workflow.api.error.TooManyErrorsException;
 import com.datastax.oss.dsbulk.workflow.commons.schema.ReadResultMapper;
 import com.datastax.oss.dsbulk.workflow.commons.schema.RecordMapper;
 import com.datastax.oss.dsbulk.workflow.commons.settings.LogSettings;
-import com.datastax.oss.dsbulk.workflow.commons.statement.BulkStatement;
+import com.datastax.oss.dsbulk.workflow.commons.statement.MappedStatement;
 import com.datastax.oss.dsbulk.workflow.commons.statement.UnmappableStatement;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
@@ -485,7 +485,7 @@ public class LogManager implements AutoCloseable {
    * <p>If the statement is a batch, then each of its children is mapped individually, otherwise the
    * statement is mapped to a record in a one-to-one fashion.
    *
-   * <p>Note that all non-batch statements are required to be of type {@code BulkStatement<Record>}.
+   * <p>Note that all non-batch statements are required to be of type {@link MappedStatement}.
    *
    * @return a mapper from statements to records.
    */
@@ -501,9 +501,8 @@ public class LogManager implements AutoCloseable {
                     return Flux.just(statement);
                   }
                 })
-            .cast(BulkStatement.class)
-            .map(BulkStatement::getSource)
-            .cast(Record.class);
+            .cast(MappedStatement.class)
+            .map(MappedStatement::getRecord);
   }
 
   /**
@@ -719,7 +718,7 @@ public class LogManager implements AutoCloseable {
     Path logFile = operationDirectory.resolve(MAPPING_ERRORS_FILE);
     PrintWriter writer = openFiles.get(logFile);
     assert writer != null;
-    Record record = statement.getSource();
+    Record record = statement.getRecord();
     writer.println("Resource: " + record.getResource());
     writer.println("Position: " + record.getPosition());
     writer.println("Source: " + LogManagerUtils.formatSource(record));

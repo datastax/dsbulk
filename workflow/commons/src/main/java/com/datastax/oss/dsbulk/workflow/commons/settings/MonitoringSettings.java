@@ -44,6 +44,7 @@ public class MonitoringSettings {
   private static final String TRACK_BYTES = "trackBytes";
   private static final String JMX = "jmx";
   private static final String CSV = "csv";
+  private static final String CONSOLE = "console";
 
   private final Config config;
   private final String executionId;
@@ -56,6 +57,7 @@ public class MonitoringSettings {
   private boolean trackBytes;
   private boolean jmx;
   private boolean csv;
+  private boolean console;
 
   public MonitoringSettings(Config config, String executionId) {
     this.config = config;
@@ -79,6 +81,7 @@ public class MonitoringSettings {
       trackBytes = config.getBoolean(TRACK_BYTES);
       jmx = config.getBoolean(JMX);
       csv = config.getBoolean(CSV);
+      console = config.getBoolean(CONSOLE);
     } catch (ConfigException e) {
       throw ConfigUtils.convertConfigException(e, "dsbulk.monitoring");
     }
@@ -112,6 +115,7 @@ public class MonitoringSettings {
         trackBytes,
         jmx,
         csv,
+        console,
         operationDirectory,
         verbosity,
         reportRate,

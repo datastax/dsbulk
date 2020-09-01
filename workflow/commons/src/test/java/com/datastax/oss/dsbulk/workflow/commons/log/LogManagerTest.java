@@ -57,8 +57,8 @@ import com.datastax.oss.dsbulk.workflow.api.error.AbsoluteErrorThreshold;
 import com.datastax.oss.dsbulk.workflow.api.error.ErrorThreshold;
 import com.datastax.oss.dsbulk.workflow.api.error.RatioErrorThreshold;
 import com.datastax.oss.dsbulk.workflow.api.error.TooManyErrorsException;
-import com.datastax.oss.dsbulk.workflow.commons.format.statement.BulkBoundStatementPrinter;
-import com.datastax.oss.dsbulk.workflow.commons.statement.BulkBoundStatement;
+import com.datastax.oss.dsbulk.workflow.commons.format.statement.MappedBoundStatementPrinter;
+import com.datastax.oss.dsbulk.workflow.commons.statement.MappedBoundStatement;
 import com.datastax.oss.dsbulk.workflow.commons.statement.UnmappableStatement;
 import java.net.URI;
 import java.nio.ByteBuffer;
@@ -116,7 +116,7 @@ class LogManagerTest {
           .withMaxBoundValueLength(50)
           .withMaxBoundValues(10)
           .withMaxInnerStatements(10)
-          .addStatementPrinters(new BulkBoundStatementPrinter())
+          .addStatementPrinters(new MappedBoundStatementPrinter())
           .build();
 
   private final RowFormatter rowFormatter = new RowFormatter();
@@ -140,38 +140,38 @@ class LogManagerTest {
         new DefaultWriteResult(
             new BulkExecutionException(
                 new DriverTimeoutException("error 1"),
-                new BulkBoundStatement<>(csvRecord1, mockBoundStatement("INSERT 1"))));
+                new MappedBoundStatement(csvRecord1, mockBoundStatement("INSERT 1"))));
     failedWriteResult2 =
         new DefaultWriteResult(
             new BulkExecutionException(
                 new DriverTimeoutException("error 2"),
-                new BulkBoundStatement<>(csvRecord2, mockBoundStatement("INSERT 2"))));
+                new MappedBoundStatement(csvRecord2, mockBoundStatement("INSERT 2"))));
     failedWriteResult3 =
         new DefaultWriteResult(
             new BulkExecutionException(
                 new DriverTimeoutException("error 3"),
-                new BulkBoundStatement<>(csvRecord3, mockBoundStatement("INSERT 3"))));
+                new MappedBoundStatement(csvRecord3, mockBoundStatement("INSERT 3"))));
     failedReadResult1 =
         new DefaultReadResult(
             new BulkExecutionException(
                 new DriverTimeoutException("error 1"),
-                new BulkBoundStatement<>(csvRecord1, mockBoundStatement("SELECT 1"))));
+                new MappedBoundStatement(csvRecord1, mockBoundStatement("SELECT 1"))));
     failedReadResult2 =
         new DefaultReadResult(
             new BulkExecutionException(
                 new DriverTimeoutException("error 2"),
-                new BulkBoundStatement<>(csvRecord2, mockBoundStatement("SELECT 2"))));
+                new MappedBoundStatement(csvRecord2, mockBoundStatement("SELECT 2"))));
     failedReadResult3 =
         new DefaultReadResult(
             new BulkExecutionException(
                 new DriverTimeoutException("error 3"),
-                new BulkBoundStatement<>(csvRecord3, mockBoundStatement("SELECT 3"))));
+                new MappedBoundStatement(csvRecord3, mockBoundStatement("SELECT 3"))));
     BatchStatement batch =
         BatchStatement.newInstance(
             DefaultBatchType.UNLOGGED,
-            new BulkBoundStatement<>(csvRecord1, mockBoundStatement("INSERT 1", "foo", 42)),
-            new BulkBoundStatement<>(csvRecord2, mockBoundStatement("INSERT 2", "bar", 43)),
-            new BulkBoundStatement<>(csvRecord3, mockBoundStatement("INSERT 3", "qix", 44)));
+            new MappedBoundStatement(csvRecord1, mockBoundStatement("INSERT 1", "foo", 42)),
+            new MappedBoundStatement(csvRecord2, mockBoundStatement("INSERT 2", "bar", 43)),
+            new MappedBoundStatement(csvRecord3, mockBoundStatement("INSERT 3", "qix", 44)));
     batchWriteResult =
         new DefaultWriteResult(
             new BulkExecutionException(new DriverTimeoutException("error batch"), batch));
@@ -758,7 +758,7 @@ class LogManagerTest {
         new DefaultWriteResult(
             new BulkExecutionException(
                 new DriverExecutionException(new IllegalArgumentException("error 1")),
-                new BulkBoundStatement<>(csvRecord1, mockBoundStatement("INSERT 1"))));
+                new MappedBoundStatement(csvRecord1, mockBoundStatement("INSERT 1"))));
     Flux<WriteResult> stmts = Flux.just(result);
     try {
       stmts.transform(logManager.newFailedWritesHandler()).blockLast();
@@ -809,7 +809,7 @@ class LogManagerTest {
         new DefaultReadResult(
             new BulkExecutionException(
                 new DriverExecutionException(new IllegalArgumentException("error 1")),
-                new BulkBoundStatement<>(csvRecord1, mockBoundStatement("SELECT 1"))));
+                new MappedBoundStatement(csvRecord1, mockBoundStatement("SELECT 1"))));
     Flux<ReadResult> stmts = Flux.just(result);
     try {
       stmts.transform(logManager.newFailedReadsHandler()).blockLast();
@@ -965,9 +965,9 @@ class LogManagerTest {
                 + "subsequent warnings will not be logged.");
   }
 
-  private static BulkBoundStatement<?> mockBulkBoundStatement(
+  private static MappedBoundStatement mockBulkBoundStatement(
       int value, Object source, URI resource) {
     BoundStatement bs = mockBoundStatement("INSERT INTO " + value, value);
-    return new BulkBoundStatement<>(DefaultRecord.indexed(source, resource, 1, 1), bs);
+    return new MappedBoundStatement(DefaultRecord.indexed(source, resource, 1, 1), bs);
   }
 }

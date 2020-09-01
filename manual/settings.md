@@ -396,9 +396,9 @@ Default: **"none"**.
 
 #### --connector.csv.emptyValue<br />--dsbulk.connector.csv.emptyValue _&lt;string&gt;_
 
-Sets the String representation of an empty value. When reading, if the parser does not read any character from the input, and the input is within quotes, this value will be used instead. This setting is ignored when writing. The default is `""` (empty string).
+Sets the String representation of an empty value. When reading, if the parser does not read any character from the input, and the input is within quotes, this value will be used instead. When writing, if the writer has an empty string to write to the output, this value will be used instead. The default value is `AUTO`, which means that, when reading, the parser will emit an empty string, and when writing, the writer will write a quoted empty field to the output.
 
-Default: **&lt;unspecified&gt;**.
+Default: **"AUTO"**.
 
 #### -encoding,<br />--connector.csv.encoding<br />--dsbulk.connector.csv.encoding _&lt;string&gt;_
 
@@ -486,9 +486,9 @@ Default: **false**.
 
 #### --connector.csv.nullValue<br />--dsbulk.connector.csv.nullValue _&lt;string&gt;_
 
-Sets the String representation of a null value. When reading, if the parser does not read any character from the input, this value will be used instead. When writing, if the writer has a null object to write to the output, this value will be used instead. The default value is `null`, which means that, when reading, the parser will emit a `null`, and when writing, the writer won't write any character at all to the output.
+Sets the String representation of a null value. When reading, if the parser does not read any character from the input, this value will be used instead. When writing, if the writer has a null object to write to the output, this value will be used instead. The default value is `AUTO`, which means that, when reading, the parser will emit a `null`, and when writing, the writer won't write any character at all to the output.
 
-Default: **null**.
+Default: **"AUTO"**.
 
 #### --connector.csv.recursive<br />--dsbulk.connector.csv.recursive _&lt;boolean&gt;_
 
@@ -969,9 +969,9 @@ For example, setting this to `["NULL"]` will cause a field containing the word `
 
 The default value is `[]` (no strings are mapped to `null`). In the default mode, DSBulk behaves as follows:
 * When loading, if the target CQL type is textual (i.e. text, varchar or ascii), the original field value is left untouched; for other types, if the value is an empty string, it is converted to `null`.
-* When unloading, all `null` values are converted to an empty string.
+* When unloading, `null` values are left untouched.
 
-Note that, regardless of this setting, DSBulk will always convert empty strings to `null` if the target CQL type is not textual (i.e. not text, varchar or ascii).
+Note that, regardless of this setting, DSBulk will always convert empty strings to `null` if the target CQL type is not textual when loading (i.e. not text, varchar or ascii).
 
 This setting is applied before `schema.nullToUnset`, hence any `null` produced by a null-string can still be left unset if required.
 
@@ -1321,6 +1321,12 @@ Monitoring-specific settings.
 The report interval. DSBulk will print useful metrics about the ongoing operation at this rate; for example, if this value is set to 10 seconds, then DSBulk will print metrics every ten seconds. Valid values: any value specified in [HOCON duration syntax](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format), but durations lesser than one second will be rounded up to 1 second.
 
 Default: **"5 seconds"**.
+
+#### --monitoring.console<br />--dsbulk.monitoring.console _&lt;boolean&gt;_
+
+Enable or disable console reporting. If enabled, DSBulk will print useful metrics about the ongoing operation to standard error; the metrics will be refreshed at `reportRate`. Displayed information includes: total records, failed records, throughput, latency, and if available, average batch size. Note that when `log.verbosity` is set to quiet (0), DSBulk will disable the console reporter regardless of the value specified here. The default is true (print ongoing metrics to the console).
+
+Default: **true**.
 
 #### --monitoring.csv<br />--dsbulk.monitoring.csv _&lt;boolean&gt;_
 

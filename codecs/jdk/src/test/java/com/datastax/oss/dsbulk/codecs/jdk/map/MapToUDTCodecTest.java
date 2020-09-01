@@ -67,7 +67,7 @@ class MapToUDTCodecTest {
         .convertsFromInternal(udt1Value)
         .toExternal(stringMap)
         .convertsFromInternal(udt1.newValue())
-        .toExternal(NullAllowingImmutableMap.of("f1a", "", "f1b", ""))
+        .toExternal(NullAllowingImmutableMap.of("f1a", null, "f1b", null))
         .convertsFromInternal(null)
         .toExternal(null);
   }

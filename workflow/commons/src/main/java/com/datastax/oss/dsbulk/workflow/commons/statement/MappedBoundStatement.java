@@ -26,6 +26,7 @@ import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.driver.api.core.metadata.token.Token;
 import com.datastax.oss.driver.api.core.type.DataType;
 import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
+import com.datastax.oss.dsbulk.connectors.api.Record;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import java.nio.ByteBuffer;
@@ -33,18 +34,18 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
-public class BulkBoundStatement<T> implements BoundStatement, BulkStatement<T> {
+public class MappedBoundStatement implements BoundStatement, MappedStatement {
 
-  private final T source;
+  private final Record source;
   private BoundStatement delegate;
 
-  public BulkBoundStatement(T source, BoundStatement delegate) {
+  public MappedBoundStatement(Record source, BoundStatement delegate) {
     this.source = source;
     this.delegate = delegate;
   }
 
   @Override
-  public T getSource() {
+  public @NonNull Record getRecord() {
     return source;
   }
 

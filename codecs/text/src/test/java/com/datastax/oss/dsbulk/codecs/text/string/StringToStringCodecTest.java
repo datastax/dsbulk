@@ -19,16 +19,27 @@ import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat
 
 import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
-import java.util.List;
+import java.util.Collections;
 import org.junit.jupiter.api.Test;
 
 class StringToStringCodecTest {
 
-  private List<String> nullStrings = Lists.newArrayList("NULL");
-
   @Test
   void should_convert_from_valid_external() {
-    StringToStringCodec codec = new StringToStringCodec(TypeCodecs.TEXT, nullStrings);
+    StringToStringCodec codec = new StringToStringCodec(TypeCodecs.TEXT, Collections.emptyList());
+    assertThat(codec)
+        .convertsFromExternal("foo")
+        .toInternal("foo")
+        .convertsFromExternal("")
+        .toInternal("")
+        .convertsFromExternal(null)
+        .toInternal(null);
+  }
+
+  @Test
+  void should_convert_from_valid_external_with_custom_null_string() {
+    StringToStringCodec codec =
+        new StringToStringCodec(TypeCodecs.TEXT, Lists.newArrayList("NULL", "NADA"));
     assertThat(codec)
         .convertsFromExternal("foo")
         .toInternal("foo")
@@ -37,18 +48,35 @@ class StringToStringCodecTest {
         .convertsFromExternal(null)
         .toInternal(null)
         .convertsFromExternal("NULL")
+        .toInternal(null)
+        .convertsFromExternal("NADA")
         .toInternal(null);
   }
 
   @Test
   void should_convert_from_valid_internal() {
-    StringToStringCodec codec = new StringToStringCodec(TypeCodecs.TEXT, nullStrings);
+    StringToStringCodec codec = new StringToStringCodec(TypeCodecs.TEXT, Collections.emptyList());
     assertThat(codec)
         .convertsFromInternal("foo")
         .toExternal("foo")
-        .convertsFromInternal(null)
-        .toExternal("NULL")
         .convertsFromInternal("")
-        .toExternal("");
+        .toExternal("")
+        .convertsFromInternal(null)
+        .toExternal(null);
+  }
+
+  @Test
+  void should_convert_from_valid_internal_with_custom_null_string() {
+    StringToStringCodec codec =
+        new StringToStringCodec(TypeCodecs.TEXT, Lists.newArrayList("NULL"));
+    assertThat(codec)
+        .convertsFromInternal("foo")
+        .toExternal("foo")
+        .convertsFromInternal("")
+        .toExternal("")
+        .convertsFromInternal("NULL")
+        .toExternal("NULL")
+        .convertsFromInternal(null)
+        .toExternal("NULL");
   }
 }
