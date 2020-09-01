@@ -1100,6 +1100,18 @@ The default value is 'AUTO'; with this special value, DSBulk will optimize the n
 
 Default: **"AUTO"**.
 
+#### --engine.dataSizeSamplingEnabled<br />--dsbulk.engine.dataSizeSamplingEnabled _&lt;boolean&gt;_
+
+Specify whether DSBulk should use data size sampling to optimize its execution engine. Only applicable for loading, ignored otherwise.
+
+Data size sampling is done by reading a few records from the connector; in this case, the connector will be invoked twice: once to sample the data size, then again to read the entire data. This is only possible if the data source can be rewinded and read again from the beginning. If your data source does not support this – for example, because it can only be read once – then you should set this option to false.
+
+Note that when loading from standard input, DSBulk will never perform data size sampling, regardless of the value set here.
+
+The default value is 'true', meaning that data size sampling is enabled.
+
+Default: **true**.
+
 #### --engine.executionId<br />--dsbulk.engine.executionId _&lt;string&gt;_
 
 A unique identifier to attribute to each execution. When unspecified or empty, the engine will automatically generate identifiers of the following form: *workflow*_*timestamp*, where :
@@ -1309,6 +1321,12 @@ Monitoring-specific settings.
 The report interval. DSBulk will print useful metrics about the ongoing operation at this rate; for example, if this value is set to 10 seconds, then DSBulk will print metrics every ten seconds. Valid values: any value specified in [HOCON duration syntax](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format), but durations lesser than one second will be rounded up to 1 second.
 
 Default: **"5 seconds"**.
+
+#### --monitoring.console<br />--dsbulk.monitoring.console _&lt;boolean&gt;_
+
+Enable or disable console reporting. If enabled, DSBulk will print useful metrics about the ongoing operation to standard error; the metrics will be refreshed at `reportRate`. Displayed information includes: total records, failed records, throughput, latency, and if available, average batch size. Note that when `log.verbosity` is set to quiet (0), DSBulk will disable the console reporter regardless of the value specified here. The default is true (print ongoing metrics to the console).
+
+Default: **true**.
 
 #### --monitoring.csv<br />--dsbulk.monitoring.csv _&lt;boolean&gt;_
 

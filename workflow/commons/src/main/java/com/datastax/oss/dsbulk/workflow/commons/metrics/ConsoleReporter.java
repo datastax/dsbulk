@@ -42,11 +42,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import org.fusesource.jansi.Ansi;
+import org.fusesource.jansi.AnsiConsole;
 
 /**
  * An {@link ScheduledReporter} that reports useful metrics about ongoing operations to the standard
  * error channel, using ANSI escape codes. It relies on a delegate {@link
  * MetricsCollectingExecutionListener} as its source of metrics.
+ *
+ * <p>Note: This reporter expects System.err to be an ANSI-ready stream, see {@code
+ * com.datastax.oss.dsbulk.runner.cli.AnsiConfigurator}.
  */
 public class ConsoleReporter extends ScheduledReporter {
 
@@ -91,7 +95,8 @@ public class ConsoleReporter extends ScheduledReporter {
     this.rateUnit = getAbbreviatedUnit(rateUnit);
     this.durationUnit = getAbbreviatedUnit(durationUnit);
     this.rowType = rowType;
-    // This reporter expects System.err to be an ANSI-ready stream, see LogSettings.
+    // Ensure we have ANSI installed; this will be a no-op if already called
+    AnsiConsole.systemInstall();
     stderr = new InterceptingPrintStream(System.err);
     System.setErr(stderr);
   }

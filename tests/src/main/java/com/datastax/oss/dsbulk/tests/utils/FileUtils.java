@@ -123,10 +123,4 @@ public class FileUtils {
         StandardCharsets.UTF_8);
     return file;
   }
-
-  public static Path createURLFile(List<String> urls) throws IOException {
-    Path file = Files.createTempFile("urlfile", null);
-    Files.write(file, urls, StandardCharsets.UTF_8);
-    return file;
-  }
 }

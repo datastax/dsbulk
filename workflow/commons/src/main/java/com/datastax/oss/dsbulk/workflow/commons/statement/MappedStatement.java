@@ -15,28 +15,22 @@
  */
 package com.datastax.oss.dsbulk.workflow.commons.statement;
 
-import com.datastax.oss.driver.api.core.cql.SimpleStatement;
-import com.datastax.oss.driver.shaded.guava.common.base.MoreObjects;
 import com.datastax.oss.dsbulk.connectors.api.Record;
+import edu.umd.cs.findbugs.annotations.NonNull;
 
-public class UnmappableStatement extends MappedSimpleStatement {
+/**
+ * A statement that has been produced by mapping fields of a {@link Record} to variables in the
+ * query.
+ *
+ * @see com.datastax.oss.dsbulk.workflow.commons.schema.DefaultRecordMapper
+ */
+public interface MappedStatement {
 
-  private final Throwable error;
-
-  public UnmappableStatement(Record record, Throwable error) {
-    super(record, SimpleStatement.newInstance(error.getMessage()));
-    this.error = error;
-  }
-
-  public Throwable getError() {
-    return error;
-  }
-
-  @Override
-  public String toString() {
-    return MoreObjects.toStringHelper(this)
-        .add("record", getRecord())
-        .add("error", error)
-        .toString();
-  }
+  /**
+   * Returns the record that this statement was mapped from.
+   *
+   * @return the record of this statement.
+   */
+  @NonNull
+  Record getRecord();
 }

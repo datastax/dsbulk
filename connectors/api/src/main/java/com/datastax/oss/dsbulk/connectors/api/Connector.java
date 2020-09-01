@@ -47,12 +47,16 @@ import org.reactivestreams.Publisher;
  *
  * <p><strong>Read operations</strong>
  *
- * <p>A {@link #read()} operation returns a {@link Publisher} of {@link Record}s.
+ * <p>A {@link #read()} operation returns a {@link Publisher} of {@link Publisher} of {@link
+ * Record}s.
  *
  * <p>All publishers returned by read methods are guaranteed to be subscribed only once;
  * implementors are allowed to optimize for single-subscriber use cases. Note however that the
  * workflow runner may invoke a read method twice during an operation, in case a data size sampling
- * is done before the operation is started.
+ * is done before the operation is started. In this case, the connector is expected to "rewind" so
+ * that each invocation of the read method behaves as if the data source was being read from the
+ * beginning. If this is not supported, consider implementing {@link #supports(ConnectorFeature)}
+ * and disallowing {@link CommonConnectorFeature#DATA_SIZE_SAMPLING}.
  *
  * <p>Reading in parallel: connectors that are able to distinguish natural boundaries when reading
  * (e.g. when reading from more than one file, or reading from more than one database table) should

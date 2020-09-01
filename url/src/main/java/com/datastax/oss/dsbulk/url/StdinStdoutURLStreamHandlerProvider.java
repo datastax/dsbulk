@@ -22,15 +22,15 @@ import java.util.Optional;
 public class StdinStdoutURLStreamHandlerProvider implements URLStreamHandlerProvider {
 
   /**
-   * The scheme for standard input and standard output URLs. The only supported URL with such scheme
-   * is {@code std:/}.
+   * The protocol for standard input and standard output URLs. The only supported URL with such
+   * scheme is {@code std:/}.
    */
-  public static final String STD = "std";
+  public static final String STANDARD_STREAM_PROTOCOL = "std";
 
   @Override
   @NonNull
   public Optional<URLStreamHandler> maybeCreateURLStreamHandler(@NonNull String protocol) {
-    if (STD.equalsIgnoreCase(protocol)) {
+    if (STANDARD_STREAM_PROTOCOL.equalsIgnoreCase(protocol)) {
       return Optional.of(new StdinStdoutURLStreamHandler());
     }
     return Optional.empty();

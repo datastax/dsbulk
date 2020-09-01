@@ -28,4 +28,13 @@ public enum CommonConnectorFeature implements ConnectorFeature {
    * strings).
    */
   MAPPED_RECORDS,
+
+  /**
+   * Indicates that the connector supports data sampling for performance optimization purposes. Data
+   * size sampling is typically done when using the connector for reading, in which case a sample of
+   * the data is read before the actual read operation begins. If the data source cannot be read
+   * more than once, then data size sampling should be disallowed. This is notably the case when
+   * reading live data streams such as {@linkplain System#in standard input}.
+   */
+  DATA_SIZE_SAMPLING
 }

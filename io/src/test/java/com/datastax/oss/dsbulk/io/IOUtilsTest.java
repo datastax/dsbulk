@@ -13,18 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.dsbulk.workflow.commons.statement;
+package com.datastax.oss.dsbulk.io;
 
-/**
- * A statement that has been produced in a bulk operation, and that keeps track of its original data
- * source.
- */
-public interface BulkStatement<T> {
+import static org.assertj.core.api.Assertions.assertThat;
 
-  /**
-   * Returns the source of this statement.
-   *
-   * @return the source of this statement.
-   */
-  T getSource();
+import com.datastax.oss.dsbulk.url.BulkLoaderURLStreamHandlerFactory;
+import java.net.MalformedURLException;
+import java.net.URL;
+import org.junit.jupiter.api.Test;
+
+class IOUtilsTest {
+
+  static {
+    BulkLoaderURLStreamHandlerFactory.install();
+  }
+
+  @Test
+  void should_detect_standard_stream_url() throws MalformedURLException {
+    assertThat(IOUtils.isStandardStream(new URL("http://acme.com"))).isFalse();
+    assertThat(IOUtils.isStandardStream(new URL("std:/"))).isTrue();
+  }
 }

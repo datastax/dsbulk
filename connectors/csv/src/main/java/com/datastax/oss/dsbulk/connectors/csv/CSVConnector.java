@@ -219,6 +219,8 @@ public class CSVConnector extends AbstractFileBasedConnector {
         case INDEXED_RECORDS:
           // always support indexed records, regardless of the presence of a header
           return true;
+        case DATA_SIZE_SAMPLING:
+          return isDataSizeSamplingAvailable();
       }
     }
     return false;
@@ -257,6 +259,10 @@ public class CSVConnector extends AbstractFileBasedConnector {
     private MappedField[] getFieldNames(URL url, ParsingContext context) throws IOException {
       List<String> fieldNames = new ArrayList<>();
       String[] parsedHeaders = context.headers();
+      if (parsedHeaders == null) {
+        throw new IOException(
+            String.format("The parsed headers from provided url: %s are null", url));
+      }
       List<String> errors = new ArrayList<>();
       for (int i = 0; i < parsedHeaders.length; i++) {
         String name = parsedHeaders[i];

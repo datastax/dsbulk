@@ -36,7 +36,7 @@ import com.datastax.oss.dsbulk.workflow.api.error.ErrorThreshold;
 import com.datastax.oss.dsbulk.workflow.api.log.OperationDirectory;
 import com.datastax.oss.dsbulk.workflow.api.log.OperationDirectoryResolver;
 import com.datastax.oss.dsbulk.workflow.api.utils.WorkflowUtils;
-import com.datastax.oss.dsbulk.workflow.commons.format.statement.BulkBoundStatementPrinter;
+import com.datastax.oss.dsbulk.workflow.commons.format.statement.MappedBoundStatementPrinter;
 import com.datastax.oss.dsbulk.workflow.commons.log.LogManager;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
@@ -145,8 +145,8 @@ public class LogSettings {
 
   public void init() throws IOException {
     try {
-      // Note: log.ansiMode is handled upstream by
-      // com.datastax.oss.dsbulk.runner.cli.CommandLineParser
+      // Note: log.ansiMode is handled upstream by the runner
+      // com.datastax.oss.dsbulk.runner.cli.AnsiConfigurator
       operationDirectory =
           new OperationDirectoryResolver(ConfigUtils.getPath(config, "directory"), executionId)
               .resolve();
@@ -233,7 +233,7 @@ public class LogSettings {
             .withMaxBoundValueLength(maxBoundValueLength)
             .withMaxBoundValues(maxBoundValues)
             .withMaxInnerStatements(maxInnerStatements)
-            .addStatementPrinters(new BulkBoundStatementPrinter())
+            .addStatementPrinters(new MappedBoundStatementPrinter())
             .build();
     RowFormatter rowFormatter = new RowFormatter(maxResultSetValueLength, maxResultSetValues);
     return new LogManager(

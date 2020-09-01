@@ -26,12 +26,14 @@ public class EngineSettings {
   private static final String DRY_RUN = "dryRun";
   private static final String EXECUTION_ID = "executionId";
   private static final String MAX_CONCURRENT_QUERIES = "maxConcurrentQueries";
+  private static final String DATA_SIZE_SAMPLING_ENABLED = "dataSizeSamplingEnabled";
 
   private final Config config;
 
   private boolean dryRun;
   private String executionId;
   private int maxConcurrentQueries;
+  private boolean dataSizeSamplingEnabled;
 
   EngineSettings(Config config) {
     this.config = config;
@@ -45,6 +47,7 @@ public class EngineSettings {
           config.getString(MAX_CONCURRENT_QUERIES).equalsIgnoreCase("AUTO")
               ? -1
               : ConfigUtils.getThreads(config, MAX_CONCURRENT_QUERIES);
+      dataSizeSamplingEnabled = config.getBoolean(DATA_SIZE_SAMPLING_ENABLED);
     } catch (ConfigException e) {
       throw ConfigUtils.convertConfigException(e, "dsbulk.engine");
     }
@@ -60,5 +63,9 @@ public class EngineSettings {
 
   public OptionalInt getMaxConcurrentQueries() {
     return maxConcurrentQueries == -1 ? OptionalInt.empty() : OptionalInt.of(maxConcurrentQueries);
+  }
+
+  public boolean isDataSizeSamplingEnabled() {
+    return dataSizeSamplingEnabled;
   }
 }

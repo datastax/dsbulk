@@ -75,4 +75,13 @@ class EngineSettingsTest {
     settings.init();
     assertThat(settings.getMaxConcurrentQueries()).isEmpty();
   }
+
+  @Test
+  void should_create_data_size_sampling_enabled() {
+    Config config =
+        TestConfigUtils.createTestConfig("dsbulk.engine", "dataSizeSamplingEnabled", false);
+    EngineSettings settings = new EngineSettings(config);
+    settings.init();
+    assertThat(settings.isDataSizeSamplingEnabled()).isFalse();
+  }
 }

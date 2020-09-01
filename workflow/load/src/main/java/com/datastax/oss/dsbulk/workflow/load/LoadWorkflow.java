@@ -80,6 +80,7 @@ public class LoadWorkflow implements Workflow {
   private Connector connector;
   private MetricsManager metricsManager;
   private LogManager logManager;
+  private EngineSettings engineSettings;
   private CqlSession session;
   private BulkWriter executor;
   private boolean batchingEnabled;
@@ -127,7 +128,7 @@ public class LoadWorkflow implements Workflow {
     ExecutorSettings executorSettings = settingsManager.getExecutorSettings();
     CodecSettings codecSettings = settingsManager.getCodecSettings();
     MonitoringSettings monitoringSettings = settingsManager.getMonitoringSettings();
-    EngineSettings engineSettings = settingsManager.getEngineSettings();
+    engineSettings = settingsManager.getEngineSettings();
     driverSettings.init(true);
     logSettings.logEffectiveSettings(
         settingsManager.getEffectiveBulkLoaderConfig(), driverSettings.getDriverConfig());
@@ -355,7 +356,14 @@ public class LoadWorkflow implements Workflow {
     if (dryRun) {
       return numCores;
     }
-    double meanSize = getMeanRowSize();
+    double meanSize;
+    if (engineSettings.isDataSizeSamplingEnabled()
+        && connector.supports(CommonConnectorFeature.DATA_SIZE_SAMPLING)) {
+      meanSize = getMeanRowSize();
+    } else {
+      // Can't sample data, so use a common value
+      meanSize = _1_KB;
+    }
     int writeConcurrency;
     if (meanSize <= 512) {
       if (hasManyReaders) {

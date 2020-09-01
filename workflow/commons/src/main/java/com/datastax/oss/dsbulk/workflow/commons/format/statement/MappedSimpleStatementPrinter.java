@@ -15,30 +15,28 @@
  */
 package com.datastax.oss.dsbulk.workflow.commons.format.statement;
 
-import com.datastax.oss.driver.api.core.cql.BoundStatement;
-import com.datastax.oss.dsbulk.connectors.api.Record;
-import com.datastax.oss.dsbulk.format.statement.BoundStatementPrinter;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
+import com.datastax.oss.dsbulk.format.statement.SimpleStatementPrinter;
 import com.datastax.oss.dsbulk.format.statement.StatementFormatVerbosity;
 import com.datastax.oss.dsbulk.format.statement.StatementWriter;
-import com.datastax.oss.dsbulk.workflow.commons.statement.BulkBoundStatement;
-import com.datastax.oss.dsbulk.workflow.commons.statement.BulkStatement;
+import com.datastax.oss.dsbulk.workflow.commons.statement.MappedSimpleStatement;
+import com.datastax.oss.dsbulk.workflow.commons.statement.MappedStatement;
 
-public class BulkBoundStatementPrinter extends BoundStatementPrinter
-    implements BulkStatementPrinter {
+public class MappedSimpleStatementPrinter extends SimpleStatementPrinter
+    implements MappedStatementPrinter {
 
   @Override
-  public Class<BulkBoundStatement> getSupportedStatementClass() {
-    return BulkBoundStatement.class;
+  public Class<MappedSimpleStatement> getSupportedStatementClass() {
+    return MappedSimpleStatement.class;
   }
 
   @Override
   protected void printHeader(
-      BoundStatement statement, StatementWriter out, StatementFormatVerbosity verbosity) {
+      SimpleStatement statement, StatementWriter out, StatementFormatVerbosity verbosity) {
     super.printHeader(statement, out, verbosity);
     if (verbosity.compareTo(StatementFormatVerbosity.EXTENDED) >= 0) {
-      @SuppressWarnings("unchecked")
-      BulkStatement<Record> bulkStatement = (BulkStatement<Record>) statement;
-      appendRecord(bulkStatement, out);
+      MappedStatement mappedStatement = (MappedStatement) statement;
+      appendRecord(mappedStatement, out);
     }
   }
 }

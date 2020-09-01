@@ -33,6 +33,7 @@ import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.validatePositio
 import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat;
 import static com.datastax.oss.dsbulk.tests.ccm.CCMCluster.Type.OSS;
 import static com.datastax.oss.dsbulk.tests.logging.StreamType.STDERR;
+import static com.datastax.oss.dsbulk.tests.logging.StreamType.STDOUT;
 import static java.math.RoundingMode.FLOOR;
 import static java.math.RoundingMode.UNNECESSARY;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -73,6 +74,7 @@ import com.datastax.oss.dsbulk.tests.utils.FileUtils;
 import com.datastax.oss.dsbulk.tests.utils.StringUtils;
 import com.datastax.oss.dsbulk.workflow.api.log.OperationDirectory;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.LineNumberReader;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -93,6 +95,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -111,6 +114,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   private static final Version V5_1 = Version.parse("5.1");
 
   private final LogInterceptor logs;
+  private final StreamInterceptor stdout;
   private final StreamInterceptor stderr;
 
   private Path urlFile;
@@ -119,9 +123,11 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
       CCMCluster ccm,
       CqlSession session,
       @LogCapture(loggerName = "com.datastax.oss.dsbulk") LogInterceptor logs,
+      @StreamCapture(STDOUT) StreamInterceptor stdout,
       @StreamCapture(STDERR) StreamInterceptor stderr) {
     super(ccm, session);
     this.logs = logs;
+    this.stdout = stdout;
     this.stderr = stderr;
   }
 
@@ -142,6 +148,13 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     urlFile =
         FileUtils.createURLFile(
             CsvUtils.CSV_RECORDS_UNIQUE_PART_1, CsvUtils.CSV_RECORDS_UNIQUE_PART_2);
+  }
+
+  @AfterEach
+  void cleanupLogs() {
+    logs.clear();
+    stdout.clear();
+    stderr.clear();
   }
 
   @AfterAll
@@ -190,6 +203,52 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateOutputFiles(24, unloadDir);
+  }
+
+  /** Test for DAT-612 */
+  @Test
+  void load_from_stdin_and_unload() throws Exception {
+    InputStream stdin = System.in;
+    try {
+      System.setIn(CsvUtils.CSV_RECORDS.openStream());
+      List<String> args = new ArrayList<>();
+      args.add("load");
+      args.add("--connector.csv.url");
+      args.add("-");
+      args.add("--connector.csv.header");
+      args.add("true");
+      args.add("--schema.keyspace");
+      args.add(session.getKeyspace().get().asInternal());
+      args.add("--schema.table");
+      args.add("ip_by_country");
+      args.add("--schema.mapping");
+      args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
+
+      ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+      assertStatus(status, STATUS_OK);
+      validateResultSetSize(500, "SELECT * FROM ip_by_country");
+      validatePositionsFile(new URL("std:/"), 500);
+      FileUtils.deleteDirectory(logDir);
+
+      args = new ArrayList<>();
+      args.add("unload");
+      args.add("--connector.csv.url");
+      args.add("-");
+      args.add("--connector.csv.header");
+      args.add("false");
+      args.add("--schema.keyspace");
+      args.add(session.getKeyspace().get().asInternal());
+      args.add("--schema.table");
+      args.add("ip_by_country");
+      args.add("--schema.mapping");
+      args.add(IP_BY_COUNTRY_MAPPING_INDEXED);
+
+      status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+      assertStatus(status, STATUS_OK);
+      assertThat(stdout.getStreamLines()).hasSize(500);
+    } finally {
+      System.setIn(stdin);
+    }
   }
 
   @Test

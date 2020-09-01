@@ -41,7 +41,7 @@ SAVEIFS=$IFS
 IFS=$(echo -en "\n\b")
 for J in "$JAVA" "$JAVA_HOME"/bin/java "$(/usr/libexec/java_home 2> /dev/null)/bin/java" $(command -v java) ; do
   if [ ! -z "$J" -a -x "$J" ]; then
-    VER=$($J -version 2>&1 | head -1 | sed -e 's/[^"]*"//' -e 's/".*//' -e 's/\.[^\.]*$//')
+    VER=$($J -version 2>&1 | grep -i version | head -1 | sed -e 's/[^"]*"//' -e 's/".*//' -e 's/\.[^\.]*$//')
     MAJOR=$(echo $VER | sed -e 's/\..*$//')
     MINOR=$(echo $VER | sed -e 's/^.*\.//')
     # matches 1.8, 1.9, 1.10 etc. as well as 8, 9, 10...
