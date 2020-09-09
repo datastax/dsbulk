@@ -16,16 +16,16 @@
 package com.datastax.oss.dsbulk.connectors.api;
 
 import com.datastax.oss.driver.shaded.guava.common.base.MoreObjects;
-import com.datastax.oss.driver.shaded.guava.common.base.Suppliers;
 import com.datastax.oss.driver.shaded.guava.common.collect.Streams;
 import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
-import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
 public class DefaultRecord extends LinkedHashMap<Field, Object> implements Record {
@@ -33,21 +33,23 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
   /**
    * Creates an indexed record with the given values.
    *
-   * @param source the record source (its original form).
+   * @param source the record source (its original form); may be null if the source cannot be
+   *     determined or should not be retained.
    * @param resource the record resource (where it comes from: file, database, etc).
    * @param position the record position inside the resource (line number, etc.).
    * @param values the record values.
    * @return an indexed record.
    */
   public static DefaultRecord indexed(
-      @NonNull Object source, @NonNull URI resource, long position, Object... values) {
+      @Nullable Object source, @NonNull URI resource, long position, Object... values) {
     return new DefaultRecord(source, resource, position, values);
   }
 
   /**
    * Creates a mapped record with the given keys and values.
    *
-   * @param source the record source (its original form).
+   * @param source the record source (its original form); may be null if the source cannot be
+   *     determined or should not be retained.
    * @param resource the record resource (where it comes from: file, database, etc).
    * @param position the record position inside the resource (line number, etc.).
    * @param keys the record keys.
@@ -55,7 +57,7 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
    * @return a mapped record.
    */
   public static DefaultRecord mapped(
-      @NonNull Object source,
+      @Nullable Object source,
       @NonNull URI resource,
       long position,
       Field[] keys,
@@ -66,14 +68,15 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
   /**
    * Creates a mapped record with the given map of keys and values.
    *
-   * @param source the record source (its original form).
+   * @param source the record source (its original form); may be null if the source cannot be
+   *     determined or should not be retained.
    * @param resource the record resource (where it comes from: file, database, etc).
    * @param position the record position inside the resource (line number, etc.).
    * @param values the record keys and values.
    * @return a mapped record.
    */
   public static DefaultRecord mapped(
-      @NonNull Object source,
+      @Nullable Object source,
       @NonNull URI resource,
       long position,
       Map<? extends Field, ?> values) {
@@ -81,39 +84,26 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
   }
 
   private final Object source;
-  private final Supplier<URI> resource;
+  private final URI resource;
   private final long position;
 
   /**
    * Creates an empty record.
    *
-   * @param source the record source (its original form).
+   * @param source the record source (its original form); may be null if the source cannot be
+   *     determined or should not be retained.
    * @param resource the record resource (where it comes from: file, database, etc).
    * @param position the record position inside the resource (line number, etc.).
    */
-  public DefaultRecord(Object source, URI resource, long position) {
+  public DefaultRecord(@Nullable Object source, @NonNull URI resource, long position) {
     this.source = source;
-    this.resource = () -> resource;
-    this.position = position;
-  }
-
-  /**
-   * Creates an empty record.
-   *
-   * @param source the record source (its original form).
-   * @param resource the record resource (where it comes from: file, database, etc); the supplier
-   *     will be memoized.
-   * @param position the record position inside the resource (line number, etc.).
-   */
-  public DefaultRecord(Object source, Supplier<URI> resource, long position) {
-    this.source = source;
-    this.resource = Suppliers.memoize(resource::get);
+    this.resource = resource;
     this.position = position;
   }
 
   private DefaultRecord(Object source, URI resource, long position, Object... values) {
     this.source = source;
-    this.resource = () -> resource;
+    this.resource = resource;
     this.position = position;
     Streams.forEachPair(
         IntStream.range(0, values.length).boxed().map(DefaultIndexedField::new),
@@ -123,7 +113,7 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
 
   private DefaultRecord(
       Object source, URI resource, long position, Field[] keys, Object... values) {
-    this.resource = () -> resource;
+    this.resource = resource;
     this.position = position;
     if (keys.length != values.length) {
       throw new IllegalArgumentException(
@@ -136,7 +126,7 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
 
   private DefaultRecord(
       Object source, URI resource, long position, Map<? extends Field, ?> values) {
-    this.resource = () -> resource;
+    this.resource = resource;
     this.position = position;
     this.source = source;
     putAll(values);
@@ -151,7 +141,7 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
   @NonNull
   @Override
   public URI getResource() {
-    return resource.get();
+    return resource;
   }
 
   @Override
@@ -190,7 +180,31 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
   public String toString() {
     return MoreObjects.toStringHelper(this)
         .add("source", source)
+        .add("resource", resource)
+        .add("position", position)
         .add("entries", entrySet())
         .toString();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    DefaultRecord that = (DefaultRecord) o;
+    return position == that.position
+        && Objects.equals(source, that.source)
+        && resource.equals(that.resource);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), source, resource, position);
   }
 }

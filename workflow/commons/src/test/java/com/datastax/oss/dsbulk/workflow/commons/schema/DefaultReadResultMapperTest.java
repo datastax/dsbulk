@@ -27,15 +27,12 @@ import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.cql.BoundStatement;
 import com.datastax.oss.driver.api.core.cql.ColumnDefinition;
 import com.datastax.oss.driver.api.core.cql.ColumnDefinitions;
-import com.datastax.oss.driver.api.core.cql.ExecutionInfo;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.cql.Row;
-import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
-import com.datastax.oss.driver.internal.core.metadata.DefaultEndPoint;
 import com.datastax.oss.driver.internal.core.type.codec.registry.DefaultCodecRegistry;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.dsbulk.connectors.api.DefaultMappedField;
@@ -45,12 +42,13 @@ import com.datastax.oss.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.oss.dsbulk.executor.api.result.ReadResult;
 import com.datastax.oss.dsbulk.mapping.CQLWord;
 import com.datastax.oss.dsbulk.mapping.Mapping;
-import java.net.InetSocketAddress;
+import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.Optional;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class DefaultReadResultMapperTest {
 
@@ -61,6 +59,8 @@ class DefaultReadResultMapperTest {
   private static final DefaultMappedField F0 = new DefaultMappedField("f0");
   private static final DefaultMappedField F1 = new DefaultMappedField("f1");
   private static final DefaultMappedField F2 = new DefaultMappedField("f2");
+
+  private static final URI RESOURCE = URI.create("cql://ks1/table1");
 
   private Mapping mapping;
   private RecordMetadata recordMetadata;
@@ -107,14 +107,8 @@ class DefaultReadResultMapperTest {
 
     // to generate locations
     BoundStatement boundStatement = mock(BoundStatement.class);
-    ExecutionInfo executionInfo = mock(ExecutionInfo.class);
-    Node host = mock(Node.class);
     PreparedStatement ps = mock(PreparedStatement.class);
     when(result.getStatement()).then(args -> boundStatement);
-    when(result.getExecutionInfo()).thenReturn(Optional.of(executionInfo));
-    when(executionInfo.getCoordinator()).thenReturn(host);
-    when(host.getEndPoint())
-        .thenReturn(new DefaultEndPoint(new InetSocketAddress("127.0.0.1", 9042)));
     when(boundStatement.getPreparedStatement()).thenReturn(ps);
     when(ps.getQuery()).thenReturn("irrelevant");
     ColumnDefinition start = mockColumnDefinition("start", DataTypes.BIGINT);
@@ -128,23 +122,33 @@ class DefaultReadResultMapperTest {
     when(boundStatement.getObject(CqlIdentifier.fromInternal("end"))).thenReturn(5678L);
   }
 
-  @Test
-  void should_map_result_to_mapped_record_when_mapping_succeeds() {
-    DefaultReadResultMapper mapper = new DefaultReadResultMapper(mapping, recordMetadata);
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void should_map_result_to_mapped_record_when_mapping_succeeds(boolean retainRecordSources) {
+    DefaultReadResultMapper mapper =
+        new DefaultReadResultMapper(mapping, recordMetadata, RESOURCE, retainRecordSources);
     Record record = mapper.map(result);
     Assertions.assertThat(record.fields()).containsOnly(F0, F1, F2);
     assertThat(record.getFieldValue(F0)).isEqualTo(42);
     assertThat(record.getFieldValue(F1)).isEqualTo("foo");
     assertThat(record.getFieldValue(F2)).isEqualTo("bar");
+    if (retainRecordSources) {
+      assertThat(record.getSource()).isSameAs(result);
+    } else {
+      assertThat(record.getSource()).isNull();
+    }
+    assertThat(record.getResource()).isEqualTo(URI.create("cql://ks1/table1"));
   }
 
-  @Test
-  void should_map_result_to_error_record_when_mapping_fails() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void should_map_result_to_error_record_when_mapping_fails(boolean retainRecordSources) {
     // emulate a bad mapping (bad writetime variable) - see DefaultMapping
     String msg = "Cannot create a WriteTimeCodec for int";
     IllegalArgumentException error = new IllegalArgumentException(msg);
     when(mapping.codec(C1, DataTypes.INT, GenericType.INTEGER)).thenThrow(error);
-    DefaultReadResultMapper mapper = new DefaultReadResultMapper(mapping, recordMetadata);
+    DefaultReadResultMapper mapper =
+        new DefaultReadResultMapper(mapping, recordMetadata, RESOURCE, retainRecordSources);
     ErrorRecord record = (ErrorRecord) mapper.map(result);
     assertThat(record.getError())
         .isInstanceOf(IllegalArgumentException.class)
@@ -152,24 +156,25 @@ class DefaultReadResultMapperTest {
         .hasCauseInstanceOf(IllegalArgumentException.class);
     Throwable cause = record.getError().getCause();
     assertThat(cause).hasMessage(msg);
-    assertThat(record.getSource()).isSameAs(result);
-    assertThat(record.getResource())
-        .hasScheme("cql")
-        .hasHost("127.0.0.1")
-        .hasPort(9042)
-        .hasPath("/ks/t")
-        .hasNoParameters();
+    if (retainRecordSources) {
+      assertThat(record.getSource()).isSameAs(result);
+    } else {
+      assertThat(record.getSource()).isNull();
+    }
+    assertThat(record.getResource()).isEqualTo(URI.create("cql://ks1/table1"));
   }
 
-  @Test
-  void should_map_result_to_error_record_when_deser_fails() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void should_map_result_to_error_record_when_deser_fails(boolean retainRecordSources) {
     // emulate bad byte buffer contents when deserializing a 4-byte integer
     String msg = "Invalid 32-bits integer value, expecting 4 bytes but got 5";
     IllegalArgumentException error = new IllegalArgumentException(msg);
     when(row.get(C1.asIdentifier(), codec1)).thenThrow(error);
     byte[] array = {1, 2, 3, 4, 5};
     when(row.getBytesUnsafe(C1.asIdentifier())).thenReturn(ByteBuffer.wrap(array));
-    DefaultReadResultMapper mapper = new DefaultReadResultMapper(mapping, recordMetadata);
+    DefaultReadResultMapper mapper =
+        new DefaultReadResultMapper(mapping, recordMetadata, RESOURCE, retainRecordSources);
     ErrorRecord record = (ErrorRecord) mapper.map(result);
     assertThat(record.getError())
         .isInstanceOf(IllegalArgumentException.class)
@@ -177,12 +182,11 @@ class DefaultReadResultMapperTest {
         .hasCauseInstanceOf(IllegalArgumentException.class);
     Throwable cause = record.getError().getCause();
     assertThat(cause).hasMessage(msg);
-    assertThat(record.getSource()).isSameAs(result);
-    assertThat(record.getResource())
-        .hasScheme("cql")
-        .hasHost("127.0.0.1")
-        .hasPort(9042)
-        .hasPath("/ks/t")
-        .hasNoParameters();
+    if (retainRecordSources) {
+      assertThat(record.getSource()).isSameAs(result);
+    } else {
+      assertThat(record.getSource()).isNull();
+    }
+    assertThat(record.getResource()).isEqualTo(URI.create("cql://ks1/table1"));
   }
 }

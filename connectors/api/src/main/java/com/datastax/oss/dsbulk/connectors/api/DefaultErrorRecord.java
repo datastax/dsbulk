@@ -15,56 +15,40 @@
  */
 package com.datastax.oss.dsbulk.connectors.api;
 
-import com.datastax.oss.driver.shaded.guava.common.base.Suppliers;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSet;
 import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import java.net.URI;
 import java.util.Collection;
 import java.util.Set;
-import java.util.function.Supplier;
 
 /** A record that could not be fully parsed from its source. */
 public class DefaultErrorRecord implements ErrorRecord {
 
-  private final @NonNull Object source;
-  private final @NonNull Supplier<URI> resource;
+  private final @Nullable Object source;
+  private final @NonNull URI resource;
   private final long position;
   private final @NonNull Throwable error;
 
   /**
    * Creates a new error record.
    *
-   * @param source the record's source.
+   * @param source the record's source; may be null if the source cannot be determined or should not
+   *     be retained.
    * @param resource the record's resource.
    * @param position the record's position.
    * @param error the error.
    */
   public DefaultErrorRecord(
-      @NonNull Object source, @NonNull URI resource, long position, @NonNull Throwable error) {
-    this(source, () -> resource, position, error);
-  }
-
-  /**
-   * Creates a new error record.
-   *
-   * @param source the record's source.
-   * @param resource the record's resource; will be memoized.
-   * @param position the record's position.
-   * @param error the error.
-   */
-  public DefaultErrorRecord(
-      @NonNull Object source,
-      @NonNull Supplier<URI> resource,
-      long position,
-      @NonNull Throwable error) {
+      @Nullable Object source, @NonNull URI resource, long position, @NonNull Throwable error) {
     this.source = source;
-    this.resource = Suppliers.memoize(resource::get);
+    this.resource = resource;
     this.position = position;
     this.error = error;
   }
 
-  @NonNull
+  @Nullable
   @Override
   public Object getSource() {
     return source;
@@ -73,7 +57,7 @@ public class DefaultErrorRecord implements ErrorRecord {
   @NonNull
   @Override
   public URI getResource() {
-    return resource.get();
+    return resource;
   }
 
   @Override

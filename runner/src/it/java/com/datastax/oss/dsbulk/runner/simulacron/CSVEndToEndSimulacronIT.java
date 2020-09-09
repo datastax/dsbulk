@@ -617,7 +617,8 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
         new CSVConnector() {
 
           @Override
-          public void configure(@NonNull Config settings, boolean read) {}
+          public void configure(
+              @NonNull Config settings, boolean read, boolean retainRecordSources) {}
 
           @Override
           public void init() {}
@@ -852,7 +853,8 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
         new CSVConnector() {
 
           @Override
-          public void configure(@NonNull Config settings, boolean read) {
+          public void configure(
+              @NonNull Config settings, boolean read, boolean retainRecordSources) {
             settings =
                 ConfigFactory.parseString(
                         "url = "
@@ -860,7 +862,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
                             + ", header = false, maxConcurrentFiles = 4")
                     .withFallback(
                         ConfigUtils.createReferenceConfig().getConfig("dsbulk.connector.csv"));
-            super.configure(settings, read);
+            super.configure(settings, read, retainRecordSources);
           }
 
           @NonNull

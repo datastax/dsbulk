@@ -53,7 +53,8 @@ public final class MockConnector implements Connector {
           public void init() {}
 
           @Override
-          public void configure(@NonNull Config settings, boolean read) {}
+          public void configure(
+              @NonNull Config settings, boolean read, boolean retainRecordSources) {}
 
           @Override
           public int readConcurrency() {
@@ -105,7 +106,8 @@ public final class MockConnector implements Connector {
           public void init() {}
 
           @Override
-          public void configure(@NonNull Config settings, boolean read) {}
+          public void configure(
+              @NonNull Config settings, boolean read, boolean retainRecordSources) {}
 
           @Override
           public int readConcurrency() {
@@ -159,7 +161,8 @@ public final class MockConnector implements Connector {
           public void init() {}
 
           @Override
-          public void configure(@NonNull Config settings, boolean read) {}
+          public void configure(
+              @NonNull Config settings, boolean read, boolean retainRecordSources) {}
 
           @Override
           public int readConcurrency() {
@@ -210,8 +213,9 @@ public final class MockConnector implements Connector {
   }
 
   @Override
-  public void configure(@NonNull Config settings, boolean read) throws IllegalArgumentException {
-    delegate.configure(settings, read);
+  public void configure(@NonNull Config settings, boolean read, boolean retainRecordSources)
+      throws IllegalArgumentException {
+    delegate.configure(settings, read, retainRecordSources);
   }
 
   @Override

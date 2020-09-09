@@ -33,10 +33,8 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.io.SerializedString;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -53,9 +51,9 @@ import java.net.URL;
 import java.net.URLStreamHandler;
 import java.nio.channels.ClosedChannelException;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.SynchronousSink;
@@ -89,12 +87,8 @@ public class JsonConnector extends AbstractFileBasedConnector {
   private static final String SERIALIZATION_STRATEGY = "serializationStrategy";
   private static final String PRETTY_PRINT = "prettyPrint";
 
-  private static final TypeReference<Map<String, JsonNode>> JSON_NODE_MAP_TYPE_REFERENCE =
-      new TypeReference<Map<String, JsonNode>>() {};
-
   private DocumentMode mode;
   private ObjectMapper objectMapper;
-  private JavaType jsonNodeMapType;
   private Map<JsonParser.Feature, Boolean> parserFeatures;
   private Map<JsonGenerator.Feature, Boolean> generatorFeatures;
   private Map<SerializationFeature, Boolean> serializationFeatures;
@@ -109,9 +103,9 @@ public class JsonConnector extends AbstractFileBasedConnector {
   }
 
   @Override
-  public void configure(@NonNull Config settings, boolean read) {
+  public void configure(@NonNull Config settings, boolean read, boolean retainRecordSources) {
     try {
-      super.configure(settings, read);
+      super.configure(settings, read, retainRecordSources);
       mode = settings.getEnum(DocumentMode.class, MODE);
       parserFeatures = getFeatureMap(settings.getConfig(PARSER_FEATURES), JsonParser.Feature.class);
       generatorFeatures =
@@ -132,7 +126,6 @@ public class JsonConnector extends AbstractFileBasedConnector {
     super.init();
     objectMapper = new ObjectMapper();
     objectMapper.setNodeFactory(JsonNodeFactory.withExactBigDecimals(true));
-    jsonNodeMapType = objectMapper.constructType(JSON_NODE_MAP_TYPE_REFERENCE.getType());
     if (read) {
       for (JsonParser.Feature parserFeature : parserFeatures.keySet()) {
         objectMapper.configure(parserFeature, parserFeatures.get(parserFeature));
@@ -224,13 +217,16 @@ public class JsonConnector extends AbstractFileBasedConnector {
                     "Expecting START_OBJECT, got %s. Did you forget to set connector.json.mode to SINGLE_DOCUMENT?",
                     parser.currentToken()));
           }
-          JsonNode node = nodesIterator.next();
-          Map<String, JsonNode> values = objectMapper.convertValue(node, jsonNodeMapType);
-          Map<MappedField, JsonNode> fields =
-              values.entrySet().stream()
-                  .collect(
-                      Collectors.toMap(e -> new DefaultMappedField(e.getKey()), Entry::getValue));
-          Record record = DefaultRecord.mapped(node, resource, recordNumber++, fields);
+          JsonNode source = nodesIterator.next();
+          Map<MappedField, JsonNode> fields = new HashMap<>();
+          Iterator<Entry<String, JsonNode>> children = source.fields();
+          while (children.hasNext()) {
+            Entry<String, JsonNode> child = children.next();
+            fields.put(new DefaultMappedField(child.getKey()), child.getValue());
+          }
+          Record record =
+              DefaultRecord.mapped(
+                  retainRecordSources ? source : null, resource, recordNumber++, fields);
           LOGGER.trace("Emitting record {}", record);
           sink.next(record);
         } else {

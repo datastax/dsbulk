@@ -30,7 +30,7 @@ import org.reactivestreams.Publisher;
  * <p>The lifecycle of a connector is as follows:
  *
  * <ol>
- *   <li>{@link #configure(Config, boolean)}
+ *   <li>{@link #configure(Config, boolean, boolean)}
  *   <li>{@link #init()}
  *   <li>{@link #read()} or {@link #write()}
  *   <li>{@link #close()}
@@ -119,7 +119,7 @@ public interface Connector extends AutoCloseable {
    * manner, then this method should return a publisher of one single inner publisher.
    *
    * <p>This method should only be called after the connector is properly {@link #configure(Config,
-   * boolean) configured} and {@link #init() initialized}.
+   * boolean, boolean) configured} and {@link #init() initialized}.
    *
    * @return a {@link Publisher} of records read from the datasource, grouped by resources.
    */
@@ -130,7 +130,7 @@ public interface Connector extends AutoCloseable {
    * Returns a function that handles writing records to the datasource.
    *
    * <p>This method should only be called after the connector is properly {@link #configure(Config,
-   * boolean) configured} and {@link #init() initialized}.
+   * boolean, boolean) configured} and {@link #init() initialized}.
    *
    * @return A transforming {@link Function} that writes records from the upstream flow to the
    *     datasource, then emits the records written to downstream subscribers.
@@ -143,15 +143,19 @@ public interface Connector extends AutoCloseable {
    *
    * @param settings the connector settings.
    * @param read whether the connector should be configured for reading or writing.
+   * @param retainRecordSources whether the connector should retain {@linkplain Record#getSource()
+   *     sources} when emitting records; only applicable when the connector is being configured for
+   *     reads.
    * @throws IllegalArgumentException if the connector fails to configure properly.
    */
-  default void configure(@NonNull Config settings, boolean read) throws IllegalArgumentException {}
+  default void configure(@NonNull Config settings, boolean read, boolean retainRecordSources)
+      throws IllegalArgumentException {}
 
   /**
    * Initializes the connector.
    *
    * <p>This method should only be called after the connector is properly {@link #configure(Config,
-   * boolean) configured}.
+   * boolean, boolean) configured}.
    *
    * @throws Exception if the connector fails to initialize properly.
    */
@@ -179,7 +183,7 @@ public interface Connector extends AutoCloseable {
    * Returns metadata about the records that this connector can read or write.
    *
    * <p>This method should only be called after the connector is properly {@link #configure(Config,
-   * boolean) configured} and {@link #init() initialized}.
+   * boolean, boolean) configured} and {@link #init() initialized}.
    *
    * @return the metadata about the records that this connector can read or write.
    */
@@ -198,7 +202,7 @@ public interface Connector extends AutoCloseable {
    * switch, from the resource to read until the final statements to execute.
    *
    * <p>This method should only be called after the connector is properly {@link #configure(Config,
-   * boolean) configured} and {@link #init() initialized}.
+   * boolean, boolean) configured} and {@link #init() initialized}.
    *
    * @return the desired read concurrency; must be strictly positive, that is, greater than zero.
    */
@@ -216,7 +220,7 @@ public interface Connector extends AutoCloseable {
    * switch, from the decoded rows until the final resource being written.
    *
    * <p>This method should only be called after the connector is properly {@link #configure(Config,
-   * boolean) configured} and {@link #init() initialized}.
+   * boolean, boolean) configured} and {@link #init() initialized}.
    *
    * @return the desired write concurrency; must be strictly positive, that is, greater than zero.
    */

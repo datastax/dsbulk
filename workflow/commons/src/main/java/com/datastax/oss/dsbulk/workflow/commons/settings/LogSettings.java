@@ -29,6 +29,7 @@ import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting
 import com.datastax.oss.driver.shaded.guava.common.base.Joiner;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
 import com.datastax.oss.dsbulk.config.ConfigUtils;
+import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.datastax.oss.dsbulk.format.row.RowFormatter;
 import com.datastax.oss.dsbulk.format.statement.StatementFormatVerbosity;
 import com.datastax.oss.dsbulk.format.statement.StatementFormatter;
@@ -122,6 +123,7 @@ public class LogSettings {
   private static final String MAX_ERRORS = "maxErrors";
   private static final String MAX_QUERY_WARNINGS = "maxQueryWarnings";
   private static final String VERBOSITY = "verbosity";
+  private static final String SOURCES = "sources";
 
   private final Config config;
   private final String executionId;
@@ -137,6 +139,7 @@ public class LogSettings {
   @VisibleForTesting ErrorThreshold errorThreshold;
   @VisibleForTesting ErrorThreshold queryWarningsThreshold;
   private Verbosity verbosity;
+  private boolean sources;
 
   public LogSettings(Config config, String executionId) {
     this.config = config;
@@ -191,6 +194,7 @@ public class LogSettings {
         setNormal();
       }
       this.verbosity = Verbosity.values()[verbosity];
+      sources = config.getBoolean(SOURCES);
     } catch (ConfigException e) {
       throw ConfigUtils.convertConfigException(e, "dsbulk.log");
     }
@@ -249,6 +253,16 @@ public class LogSettings {
 
   public Verbosity getVerbosity() {
     return verbosity;
+  }
+
+  /**
+   * Whether {@linkplain Record#getSource() record sources} should be retained in memory. When
+   * sources are retained, DSBulk is able to print record sources in debug files, for easier error
+   * diagnostic. When loading, it also enables DSBulk to create bad files for records that failed to
+   * be processed.
+   */
+  public boolean isSources() {
+    return sources;
   }
 
   @VisibleForTesting

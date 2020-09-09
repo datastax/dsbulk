@@ -34,6 +34,10 @@ public interface Result {
   /**
    * Returns {@code true} if the statement execution succeeded, {@code false} otherwise.
    *
+   * <p>In case of conditional updates, this method returns {@code true} as long as the statement
+   * was executed, even if the conditional update itself {@linkplain WriteResult#wasApplied() could
+   * not be applied}.
+   *
    * @return {@code true} if the statement execution succeeded, {@code false} otherwise.
    */
   default boolean isSuccess() {

@@ -8,6 +8,7 @@
 - [improvement] DAT-591: Ability to disable the console reporter.
 - [improvement] DAT-605: Write empty strings as quoted empty fields by default in CSV connector.
 - [bug] DAT-596: Do not display stty errors.
+- [improvement] DAT-614: Ability to discard record sources.
 
 
 ## 1.6.0

@@ -48,6 +48,7 @@ import com.datastax.oss.driver.api.core.metadata.schema.RelationMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.ViewMetadata;
 import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.base.Preconditions;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMultimap;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSet;
@@ -56,6 +57,7 @@ import com.datastax.oss.driver.shaded.guava.common.collect.Multimap;
 import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
 import com.datastax.oss.dsbulk.config.ConfigUtils;
 import com.datastax.oss.dsbulk.connectors.api.Field;
+import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.datastax.oss.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.oss.dsbulk.mapping.CQLFragment;
 import com.datastax.oss.dsbulk.mapping.CQLRenderMode;
@@ -64,6 +66,7 @@ import com.datastax.oss.dsbulk.mapping.DefaultMapping;
 import com.datastax.oss.dsbulk.mapping.FunctionCall;
 import com.datastax.oss.dsbulk.mapping.IndexedMappingField;
 import com.datastax.oss.dsbulk.mapping.MappedMappingField;
+import com.datastax.oss.dsbulk.mapping.Mapping;
 import com.datastax.oss.dsbulk.mapping.MappingField;
 import com.datastax.oss.dsbulk.mapping.MappingInspector;
 import com.datastax.oss.dsbulk.mapping.MappingPreference;
@@ -80,6 +83,7 @@ import com.datastax.oss.dsbulk.workflow.commons.utils.GraphUtils;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import edu.umd.cs.findbugs.annotations.NonNull;
+import java.net.URI;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.Collection;
@@ -435,7 +439,7 @@ public class SchemaSettings {
   public RecordMapper createRecordMapper(
       CqlSession session, RecordMetadata recordMetadata, ConvertingCodecFactory codecFactory)
       throws IllegalArgumentException {
-    DefaultMapping mapping =
+    Mapping mapping =
         prepareStatementAndCreateMapping(
             session,
             codecFactory,
@@ -461,18 +465,32 @@ public class SchemaSettings {
         allowMissingFields);
   }
 
+  /**
+   * Creates a new {@link ReadResultMapper}.
+   *
+   * @param session The session to use when preparing the SELECT statement.
+   * @param recordMetadata The {@link RecordMetadata} to use for column mappings.
+   * @param codecFactory The {@link ConvertingCodecFactory} to use to locate codecs for the mapping
+   *     operation.
+   * @param retainRecordSources Whether the mapper should retain record sources; if {@code true},
+   *     all emitted records will contain the original row as {@linkplain Record#getSource() their
+   *     sources}.
+   */
   public ReadResultMapper createReadResultMapper(
-      CqlSession session, RecordMetadata recordMetadata, ConvertingCodecFactory codecFactory)
-      throws IllegalArgumentException {
+      CqlSession session,
+      RecordMetadata recordMetadata,
+      ConvertingCodecFactory codecFactory,
+      boolean retainRecordSources) {
     // we don't check that mapping records are supported when unloading, the only thing that matters
     // is the order in which fields appear in the record.
-    DefaultMapping mapping =
+    Mapping mapping =
         prepareStatementAndCreateMapping(
             session,
             codecFactory,
             SchemaGenerationType.READ_AND_MAP,
             EnumSet.noneOf(StatisticsMode.class));
-    return new DefaultReadResultMapper(mapping, recordMetadata);
+    return new DefaultReadResultMapper(
+        mapping, recordMetadata, getTargetTableURI(), retainRecordSources);
   }
 
   public ReadResultCounter createReadResultCounter(
@@ -559,6 +577,19 @@ public class SchemaSettings {
     return Objects.requireNonNull(table, "Cannot call this method before init()");
   }
 
+  /**
+   * Returns a "resource URI" identifying the operation's target table. Suitable to be used as the
+   * resource URI of records created by a {@link ReadResultMapper} targeting that same table.
+   */
+  @NonNull
+  @VisibleForTesting
+  URI getTargetTableURI() {
+    // Contrary to other identifiers, keyspace and table names MUST contain only alpha-numeric
+    // characters and underscores. So there is no need to escape path segments in the resulting URI.
+    return URI.create(
+        "cql://" + keyspace.getName().asInternal() + '/' + table.getName().asInternal());
+  }
+
   public boolean isAllowExtraFields() {
     return allowExtraFields;
   }
@@ -572,7 +603,7 @@ public class SchemaSettings {
   }
 
   @NonNull
-  private DefaultMapping prepareStatementAndCreateMapping(
+  private Mapping prepareStatementAndCreateMapping(
       CqlSession session,
       ConvertingCodecFactory codecFactory,
       SchemaGenerationType schemaGenerationType,

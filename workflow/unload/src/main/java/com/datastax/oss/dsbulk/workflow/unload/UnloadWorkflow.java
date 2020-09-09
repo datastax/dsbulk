@@ -114,7 +114,7 @@ public class UnloadWorkflow implements Workflow {
     }
     // No logs should be produced until the following statement returns
     logSettings.init();
-    connectorSettings.init();
+    connectorSettings.init(false);
     connector = connectorSettings.getConnector();
     connector.init();
     driverSettings.init(false);
@@ -147,7 +147,9 @@ public class UnloadWorkflow implements Workflow {
     ConvertingCodecFactory codecFactory =
         codecSettings.createCodecFactory(
             schemaSettings.isAllowExtraFields(), schemaSettings.isAllowMissingFields());
-    readResultMapper = schemaSettings.createReadResultMapper(session, recordMetadata, codecFactory);
+    readResultMapper =
+        schemaSettings.createReadResultMapper(
+            session, recordMetadata, codecFactory, logSettings.isSources());
     readStatements = schemaSettings.createReadStatements(session);
     executor =
         executorSettings.newReadExecutor(

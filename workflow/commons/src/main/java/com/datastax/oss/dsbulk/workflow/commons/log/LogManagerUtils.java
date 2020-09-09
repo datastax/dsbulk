@@ -16,6 +16,7 @@
 package com.datastax.oss.dsbulk.workflow.commons.log;
 
 import com.datastax.oss.dsbulk.connectors.api.Record;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.PrintWriter;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -26,8 +27,8 @@ public class LogManagerUtils {
 
   private static final int MAX_SOURCE_LENGTH = 500;
 
-  public static String formatSource(Record record) {
-    if (record == null) {
+  public static String formatSource(@NonNull Record record) {
+    if (record.getSource() == null) {
       return "<NULL>";
     }
     String source = record.getSource().toString();

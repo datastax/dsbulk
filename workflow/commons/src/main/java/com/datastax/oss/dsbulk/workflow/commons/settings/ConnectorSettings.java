@@ -16,6 +16,7 @@
 package com.datastax.oss.dsbulk.workflow.commons.settings;
 
 import com.datastax.oss.dsbulk.connectors.api.Connector;
+import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.typesafe.config.Config;
 import java.util.ServiceLoader;
 import java.util.stream.Collectors;
@@ -35,7 +36,12 @@ public class ConnectorSettings {
     this.read = read;
   }
 
-  public void init() {
+  /**
+   * @param retainRecordSources Whether the connector should retain sources in records; if {@code
+   *     true}, the connector will emit records containing the original line that they were parsed
+   *     from as {@linkplain Record#getSource() their sources}.
+   */
+  public void init(boolean retainRecordSources) {
     // Attempting to fetch the connector will run through all the validation logic we have for
     // parsing the configuration
     connectorName = config.getString("name");
@@ -43,7 +49,7 @@ public class ConnectorSettings {
     if (config.hasPath(connectorName)) {
       // the connector should be configured for reads when the workflow is LOAD
       connectorConfig = config.getConfig(connectorName).withoutPath("metaSettings");
-      connector.configure(connectorConfig, read);
+      connector.configure(connectorConfig, read, retainRecordSources);
     } else {
       throw new IllegalArgumentException(
           String.format("Cannot find configuration entry for connector '%s'", connectorName));

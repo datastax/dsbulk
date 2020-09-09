@@ -66,6 +66,7 @@ public abstract class AbstractFileBasedConnector implements Connector {
   protected static final String FILE_NAME_FORMAT = "fileNameFormat";
 
   protected boolean read;
+  protected boolean retainRecordSources;
   protected List<URL> urls;
   protected List<Path> roots = new ArrayList<>();
   protected List<URL> files = new ArrayList<>();
@@ -102,8 +103,9 @@ public abstract class AbstractFileBasedConnector implements Connector {
   }
 
   @Override
-  public void configure(@NonNull Config settings, boolean read) {
+  public void configure(@NonNull Config settings, boolean read, boolean retainRecordSources) {
     this.read = read;
+    this.retainRecordSources = retainRecordSources;
     urls = loadURLs(settings);
     encoding = ConfigUtils.getCharset(settings, ENCODING);
     compression = settings.getString(COMPRESSION);
@@ -374,8 +376,8 @@ public abstract class AbstractFileBasedConnector implements Connector {
    * Validates and computes the list of URLs to be read or written. This method honors both the
    * {@link #URLFILE} and {@link #URL} configuration options.
    *
-   * <p>Expected to be called during the {@linkplain #configure(Config, boolean) configuration
-   * phase}.
+   * <p>Expected to be called during the {@linkplain #configure(Config, boolean, boolean)
+   * configuration phase}.
    */
   @NonNull
   protected List<URL> loadURLs(@NonNull Config settings) {

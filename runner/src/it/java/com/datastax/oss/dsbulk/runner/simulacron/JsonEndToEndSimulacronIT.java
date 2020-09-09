@@ -673,13 +673,14 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
         new JsonConnector() {
 
           @Override
-          public void configure(@NonNull Config settings, boolean read) {
+          public void configure(
+              @NonNull Config settings, boolean read, boolean retainRecordSources) {
             settings =
                 ConfigFactory.parseString(
                         "url = " + StringUtils.quoteJson(unloadDir) + ", maxConcurrentFiles = 4")
                     .withFallback(
                         ConfigUtils.createReferenceConfig().getConfig("dsbulk.connector.json"));
-            super.configure(settings, read);
+            super.configure(settings, read, retainRecordSources);
           }
 
           @NonNull

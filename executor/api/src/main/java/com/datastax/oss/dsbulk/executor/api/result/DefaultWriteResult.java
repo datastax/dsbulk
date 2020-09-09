@@ -27,7 +27,7 @@ import java.util.stream.StreamSupport;
 public final class DefaultWriteResult extends DefaultResult implements WriteResult {
 
   @Nullable private final AsyncResultSet rs;
-  private boolean wasApplied;
+  private final boolean wasApplied;
 
   public DefaultWriteResult(@NonNull Statement<?> statement, @NonNull AsyncResultSet rs) {
     super(statement, rs.getExecutionInfo());

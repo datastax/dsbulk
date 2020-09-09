@@ -31,10 +31,9 @@ public interface MappedStatementPrinter {
         .newLine()
         .indent()
         .append("Position: ")
-        .append(String.valueOf(record.getPosition()))
-        .newLine()
-        .indent()
-        .append("Source: ")
-        .append(LogManagerUtils.formatSource(record));
+        .append(String.valueOf(record.getPosition()));
+    if (record.getSource() != null) {
+      out.newLine().indent().append("Source: ").append(LogManagerUtils.formatSource(record));
+    }
   }
 }

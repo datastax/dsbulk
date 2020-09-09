@@ -256,7 +256,7 @@ class NodeFilterEndToEndSimulacronIT extends EndToEndSimulacronITBase {
   private static class MockCSVConnector extends CSVConnector {
 
     @Override
-    public void configure(@NonNull Config settings, boolean read) {}
+    public void configure(@NonNull Config settings, boolean read, boolean retainRecordSources) {}
 
     @Override
     public void init() {}
