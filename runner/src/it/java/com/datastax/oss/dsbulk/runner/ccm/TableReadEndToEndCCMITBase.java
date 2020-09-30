@@ -420,35 +420,40 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
 
   @BeforeAll
   void createKeyspacesAndTables() {
-    session.execute(CQLUtils.createKeyspaceSimpleStrategy("RF_1", 1));
-    session.execute(CQLUtils.createKeyspaceSimpleStrategy("rf_2", 2));
-    session.execute(CQLUtils.createKeyspaceSimpleStrategy("rf_3", 3));
+    try {
+      session.execute(CQLUtils.createKeyspaceSimpleStrategy("RF_1", 1));
+      session.execute(CQLUtils.createKeyspaceSimpleStrategy("rf_2", 2));
+      session.execute(CQLUtils.createKeyspaceSimpleStrategy("rf_3", 3));
 
-    session.execute(
-        "CREATE TABLE \"RF_1\".\"SINGLE_PK\" (pk int, cc int, v int, PRIMARY KEY (pk, cc))");
-    session.execute(
-        "CREATE TABLE rf_2.\"SINGLE_PK\" (pk int, cc int, v int, PRIMARY KEY (pk, cc))");
-    session.execute(
-        "CREATE TABLE rf_3.\"SINGLE_PK\" (pk int, cc int, v int, PRIMARY KEY (pk, cc))");
+      session.execute(
+          "CREATE TABLE \"RF_1\".\"SINGLE_PK\" (pk int, cc int, v int, PRIMARY KEY (pk, cc))");
+      session.execute(
+          "CREATE TABLE rf_2.\"SINGLE_PK\" (pk int, cc int, v int, PRIMARY KEY (pk, cc))");
+      session.execute(
+          "CREATE TABLE rf_3.\"SINGLE_PK\" (pk int, cc int, v int, PRIMARY KEY (pk, cc))");
 
-    session.execute(
-        "CREATE TABLE \"RF_1\".composite_pk (\"PK1\" int, \"PK2\" int, cc int, v int, PRIMARY KEY ((\"PK1\", \"PK2\"), cc))");
-    session.execute(
-        "CREATE TABLE rf_2.composite_pk (\"PK1\" int, \"PK2\" int, cc int, v int, PRIMARY KEY ((\"PK1\", \"PK2\"), cc))");
-    session.execute(
-        "CREATE TABLE rf_3.composite_pk (\"PK1\" int, \"PK2\" int, cc int, v int, PRIMARY KEY ((\"PK1\", \"PK2\"), cc))");
+      session.execute(
+          "CREATE TABLE \"RF_1\".composite_pk (\"PK1\" int, \"PK2\" int, cc int, v int, PRIMARY KEY ((\"PK1\", \"PK2\"), cc))");
+      session.execute(
+          "CREATE TABLE rf_2.composite_pk (\"PK1\" int, \"PK2\" int, cc int, v int, PRIMARY KEY ((\"PK1\", \"PK2\"), cc))");
+      session.execute(
+          "CREATE TABLE rf_3.composite_pk (\"PK1\" int, \"PK2\" int, cc int, v int, PRIMARY KEY ((\"PK1\", \"PK2\"), cc))");
 
-    allRanges = new HashMap<>();
-    allNodes = new HashMap<>();
-    allBiggestPartitions = new HashMap<>();
+      allRanges = new HashMap<>();
+      allNodes = new HashMap<>();
+      allBiggestPartitions = new HashMap<>();
 
-    populateSinglePkTable("RF_1");
-    populateSinglePkTable("rf_2");
-    populateSinglePkTable("rf_3");
+      populateSinglePkTable("RF_1");
+      populateSinglePkTable("rf_2");
+      populateSinglePkTable("rf_3");
 
-    populateCompositePkTable("RF_1");
-    populateCompositePkTable("rf_2");
-    populateCompositePkTable("rf_3");
+      populateCompositePkTable("RF_1");
+      populateCompositePkTable("rf_2");
+      populateCompositePkTable("rf_3");
+    } catch (Throwable e) {
+      e.printStackTrace();
+      throw e;
+    }
   }
 
   @AfterAll
