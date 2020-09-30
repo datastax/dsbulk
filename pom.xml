@@ -81,8 +81,8 @@
     <antlr4.version>4.8-1</antlr4.version>
     <!-- Test dependencies -->
     <junit.version>5.6.2</junit.version>
-    <assertj.version>3.16.1</assertj.version>
-    <mockito.version>3.4.2</mockito.version>
+    <assertj.version>3.17.1</assertj.version>
+    <mockito.version>3.5.9</mockito.version>
     <simulacron.version>0.10.0</simulacron.version>
     <tinkerpop.version>3.4.7</tinkerpop.version>
     <awaitility.version>4.0.3</awaitility.version>

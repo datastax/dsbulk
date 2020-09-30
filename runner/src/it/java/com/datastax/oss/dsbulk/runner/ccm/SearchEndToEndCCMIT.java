@@ -122,8 +122,8 @@ class SearchEndToEndCCMIT extends EndToEndCCMITBase {
             "Continuous paging is enabled but is not compatible with search queries; disabling");
 
     assertThat(records)
-        .hasSize(1)
-        .hasOnlyOneElementSatisfying(
+        .singleElement()
+        .satisfies(
             record -> {
               assertThat(record.fields()).hasSize(1);
               assertThat(record.getFieldValue(new DefaultMappedField("v"))).isEqualTo("foo");

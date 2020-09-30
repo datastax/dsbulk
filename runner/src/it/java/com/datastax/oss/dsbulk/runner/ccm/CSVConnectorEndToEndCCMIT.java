@@ -94,6 +94,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -1641,13 +1642,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertStatus(status, STATUS_OK);
     Stream<String> line = FileUtils.readAllLinesInDirectoryAsStreamExcludingHeaders(unloadDir);
     assertThat(line)
-        .hasSize(1)
-        .hasOnlyOneElementSatisfying(
-            l ->
-                assertThat(l)
-                    .contains("1,foo,")
-                    .contains(CodecUtils.numberToInstant(123456789, MICROSECONDS, EPOCH).toString())
-                    .containsPattern(",\\d+"));
+        .singleElement(InstanceOfAssertFactories.STRING)
+        .contains("1,foo,")
+        .contains(CodecUtils.numberToInstant(123456789, MICROSECONDS, EPOCH).toString())
+        .containsPattern(",\\d+");
     FileUtils.deleteDirectory(logDir);
     session.execute("TRUNCATE unload_and_load_timestamp_ttl");
 
@@ -1710,13 +1708,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertStatus(status, STATUS_OK);
     Stream<String> line = FileUtils.readAllLinesInDirectoryAsStreamExcludingHeaders(unloadDir);
     assertThat(line)
-        .hasSize(1)
-        .hasOnlyOneElementSatisfying(
-            l ->
-                assertThat(l)
-                    .contains("1,foo,")
-                    .contains(CodecUtils.numberToInstant(123456789, MICROSECONDS, EPOCH).toString())
-                    .containsPattern(",\\d+"));
+        .singleElement(InstanceOfAssertFactories.STRING)
+        .contains("1,foo,")
+        .contains(CodecUtils.numberToInstant(123456789, MICROSECONDS, EPOCH).toString())
+        .containsPattern(",\\d+");
     FileUtils.deleteDirectory(logDir);
     session.execute("TRUNCATE \"UNLOAD_AND_LOAD_TIMESTAMP_TTL\"");
 
@@ -1783,13 +1778,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertStatus(status, STATUS_OK);
     Stream<String> line = FileUtils.readAllLinesInDirectoryAsStreamExcludingHeaders(unloadDir);
     assertThat(line)
-        .hasSize(1)
-        .hasOnlyOneElementSatisfying(
-            l ->
-                assertThat(l)
-                    .contains("1,foo,")
-                    .contains(CodecUtils.numberToInstant(123456789, MICROSECONDS, EPOCH).toString())
-                    .containsPattern(",\\d+"));
+        .singleElement(InstanceOfAssertFactories.STRING)
+        .contains("1,foo,")
+        .contains(CodecUtils.numberToInstant(123456789, MICROSECONDS, EPOCH).toString())
+        .containsPattern(",\\d+");
     FileUtils.deleteDirectory(logDir);
     session.execute("TRUNCATE \"UNLOAD_AND_LOAD_TIMESTAMP_TTL\"");
 
@@ -1854,13 +1846,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertStatus(status, STATUS_OK);
     Stream<String> line = FileUtils.readAllLinesInDirectoryAsStreamExcludingHeaders(unloadDir);
     assertThat(line)
-        .hasSize(1)
-        .hasOnlyOneElementSatisfying(
-            l ->
-                assertThat(l)
-                    .contains("1,foo,")
-                    .contains(CodecUtils.numberToInstant(123456789, MICROSECONDS, EPOCH).toString())
-                    .containsPattern(",\\d+"));
+        .singleElement(InstanceOfAssertFactories.STRING)
+        .contains("1,foo,")
+        .contains(CodecUtils.numberToInstant(123456789, MICROSECONDS, EPOCH).toString())
+        .containsPattern(",\\d+");
     FileUtils.deleteDirectory(logDir);
     session.execute("TRUNCATE \"UNLOAD_AND_LOAD_TIMESTAMP_TTL\"");
 
