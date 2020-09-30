@@ -108,11 +108,6 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.tinkerpop</groupId>
-      <artifactId>gremlin-driver</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
       <groupId>com.datastax.oss</groupId>
       <artifactId>dsbulk-tests</artifactId>
       <scope>test</scope>

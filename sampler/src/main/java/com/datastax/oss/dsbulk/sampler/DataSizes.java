@@ -68,14 +68,14 @@ public class DataSizes {
       SimpleStatement rs = (SimpleStatement) stmt;
       if (!rs.getNamedValues().isEmpty()) {
         Map<CqlIdentifier, Object> values = rs.getNamedValues();
-        for (Object v : values.values()) {
-          ByteBuffer bb = Conversions.encode(v, registry, version);
+        Map<String, ByteBuffer> bbs = Conversions.encode(values, registry, version);
+        for (ByteBuffer bb : bbs.values()) {
           dataSize += bb == null ? 0 : bb.remaining();
         }
       } else if (!rs.getPositionalValues().isEmpty()) {
         List<Object> values = rs.getPositionalValues();
-        for (Object v : values) {
-          ByteBuffer bb = Conversions.encode(v, registry, version);
+        List<ByteBuffer> bbs = Conversions.encode(values, registry, version);
+        for (ByteBuffer bb : bbs) {
           dataSize += bb == null ? 0 : bb.remaining();
         }
       }
