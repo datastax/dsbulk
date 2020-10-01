@@ -99,41 +99,46 @@ abstract class PartitionerCCMITBase {
             && VersionUtils.isWithinRange(ccm.getVersion(), DSE_6_0, DSE_6_8),
         "This test fails frequently for DSE 6.0 and 6.7, see https://datastax.jira.com/browse/DB-4412");
 
-    CqlIdentifier ks = createSchema(rf);
-    populateTable(ks);
-    TableMetadata table = getTable(ks).orElseThrow(IllegalStateException::new);
-    TokenRangeReadStatementGenerator generator =
-        new TokenRangeReadStatementGenerator(table, session.getMetadata());
-    List<Statement<?>> statements = generator.generate(splitCount);
-    int total = 0;
-    TokenMap tokenMap = session.getMetadata().getTokenMap().get();
-    for (Statement<?> stmt : statements) {
-      stmt = stmt.setConsistencyLevel(ALL).setExecutionProfile(SessionUtils.slowProfile(session));
-      ResultSet rs = null;
-      try {
-        rs = session.execute(stmt);
-      } catch (Exception e) {
-        String failureMessage =
-            "Could not execute statement: " + ((SimpleStatement) stmt).getQuery();
-        LOGGER.error(failureMessage);
-        LOGGER.error("table definition: ");
-        LOGGER.error(table.describe(true));
-        LOGGER.error("keyspace definition: ");
-        session
-            .getMetadata()
-            .getKeyspace(ks)
-            .ifPresent(keyspace -> LOGGER.error(keyspace.describe(true)));
-        fail(failureMessage, e);
+    try {
+      CqlIdentifier ks = createSchema(rf);
+      populateTable(ks);
+      TableMetadata table = getTable(ks).orElseThrow(IllegalStateException::new);
+      TokenRangeReadStatementGenerator generator =
+          new TokenRangeReadStatementGenerator(table, session.getMetadata());
+      List<Statement<?>> statements = generator.generate(splitCount);
+      int total = 0;
+      TokenMap tokenMap = session.getMetadata().getTokenMap().get();
+      for (Statement<?> stmt : statements) {
+        stmt = stmt.setConsistencyLevel(ALL).setExecutionProfile(SessionUtils.slowProfile(session));
+        ResultSet rs = null;
+        try {
+          rs = session.execute(stmt);
+        } catch (Exception e) {
+          String failureMessage =
+              "Could not execute statement: " + ((SimpleStatement) stmt).getQuery();
+          LOGGER.error(failureMessage);
+          LOGGER.error("table definition: ");
+          LOGGER.error(table.describe(true));
+          LOGGER.error("keyspace definition: ");
+          session
+              .getMetadata()
+              .getKeyspace(ks)
+              .ifPresent(keyspace -> LOGGER.error(keyspace.describe(true)));
+          fail(failureMessage, e);
+        }
+        for (@SuppressWarnings("unused") Row ignored : rs) {
+          total++;
+        }
+        Token routingToken = stmt.getRoutingToken();
+        assertThat(routingToken).isNotNull();
+        Set<Node> replicas = tokenMap.getReplicas(ks, routingToken);
+        assertThat(rs.getExecutionInfo().getCoordinator()).isIn(replicas);
       }
-      for (@SuppressWarnings("unused") Row ignored : rs) {
-        total++;
-      }
-      Token routingToken = stmt.getRoutingToken();
-      assertThat(routingToken).isNotNull();
-      Set<Node> replicas = tokenMap.getReplicas(ks, routingToken);
-      assertThat(rs.getExecutionInfo().getCoordinator()).isIn(replicas);
+      assertThat(total).isEqualTo(EXPECTED_TOTAL);
+    } catch (Throwable e) {
+      e.printStackTrace();
+      throw e;
     }
-    assertThat(total).isEqualTo(EXPECTED_TOTAL);
   }
 
   @SuppressWarnings("unused")
