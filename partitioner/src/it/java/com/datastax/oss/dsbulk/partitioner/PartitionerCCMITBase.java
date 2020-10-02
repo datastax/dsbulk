@@ -136,6 +136,7 @@ abstract class PartitionerCCMITBase {
       }
       assertThat(total).isEqualTo(EXPECTED_TOTAL);
     } catch (Throwable e) {
+      System.err.println("-------------------- ERROR --------------------");
       e.printStackTrace();
       throw e;
     }

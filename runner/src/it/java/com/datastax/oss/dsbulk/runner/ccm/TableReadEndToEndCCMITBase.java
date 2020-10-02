@@ -451,6 +451,7 @@ abstract class TableReadEndToEndCCMITBase extends EndToEndCCMITBase {
       populateCompositePkTable("rf_2");
       populateCompositePkTable("rf_3");
     } catch (Throwable e) {
+      System.err.println("-------------------- ERROR --------------------");
       e.printStackTrace();
       throw e;
     }
