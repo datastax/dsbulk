@@ -346,3 +346,11 @@ available on the command-line via the `help` subcommand.
 [DataStax Bulk Loader Pt. 5 — Counting]: https://www.datastax.com/blog/2019/07/datastax-bulk-loader-counting
 [DataStax Bulk Loader: Examples for Loading From Other Locations]: https://www.datastax.com/blog/2019/12/datastax-bulk-loader-examples-loading-other-locations
  
+## License
+Copyright DataStax, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
