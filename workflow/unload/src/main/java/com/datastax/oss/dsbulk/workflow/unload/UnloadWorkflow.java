@@ -167,7 +167,8 @@ public class UnloadWorkflow implements Workflow {
     terminationHandler = logManager.newTerminationHandler();
     numCores = Runtime.getRuntime().availableProcessors();
     if (connector.writeConcurrency() < 1) {
-      throw new IllegalArgumentException("Invalid write concurrency: " + 1);
+      throw new IllegalArgumentException(
+          "Invalid write concurrency: " + connector.writeConcurrency());
     }
     writeConcurrency = connector.writeConcurrency();
     LOGGER.debug("Using write concurrency: {}", writeConcurrency);

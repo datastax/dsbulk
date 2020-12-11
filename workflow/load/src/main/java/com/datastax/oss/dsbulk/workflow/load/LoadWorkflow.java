@@ -187,7 +187,8 @@ public class LoadWorkflow implements Workflow {
     terminationHandler = logManager.newTerminationHandler();
     numCores = Runtime.getRuntime().availableProcessors();
     if (connector.readConcurrency() < 1) {
-      throw new IllegalArgumentException("Invalid read concurrency: " + 1);
+      throw new IllegalArgumentException(
+          "Invalid read concurrency: " + connector.readConcurrency());
     }
     readConcurrency = connector.readConcurrency();
     hasManyReaders = readConcurrency >= Math.max(4, numCores / 4);
