@@ -89,7 +89,7 @@ public abstract class AbstractFileBasedConnector implements Connector {
   @Override
   public int readConcurrency() {
     assert read;
-    return Math.min(resourceCount, maxConcurrentFiles);
+    return Math.max(1, Math.min(resourceCount, maxConcurrentFiles));
   }
 
   @Override
