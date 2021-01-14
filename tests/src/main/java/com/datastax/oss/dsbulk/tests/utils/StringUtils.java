@@ -15,7 +15,6 @@
  */
 package com.datastax.oss.dsbulk.tests.utils;
 
-import com.datastax.oss.driver.shaded.guava.common.base.CharMatcher;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.concurrent.ConcurrentHashMap;
@@ -34,10 +33,6 @@ public class StringUtils {
    */
   public static String uniqueIdentifier(String prefix) {
     return prefix + SEQS.computeIfAbsent(prefix, s -> new AtomicInteger(0)).incrementAndGet();
-  }
-
-  public static int countOccurrences(char c, String s) {
-    return CharMatcher.is(c).countIn(s);
   }
 
   /**

@@ -51,6 +51,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.datastax.oss.driver.api.core.data.ByteUtils;
+import com.datastax.oss.driver.shaded.guava.common.base.CharMatcher;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import com.datastax.oss.dsbulk.config.ConfigUtils;
@@ -976,6 +977,6 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
 
   private void verifyDelimiterCount(char delimiter, int expected) throws Exception {
     String contents = readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.joining("\n"));
-    assertThat(StringUtils.countOccurrences(delimiter, contents)).isEqualTo(expected);
+    assertThat(CharMatcher.is(delimiter).countIn(contents)).isEqualTo(expected);
   }
 }
