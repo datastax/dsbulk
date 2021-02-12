@@ -17,7 +17,6 @@ package com.datastax.oss.dsbulk.tests.simulacron;
 
 import static com.datastax.oss.driver.api.core.type.DataTypes.TEXT;
 import static java.util.Collections.emptyList;
-import static java.util.Collections.emptyMap;
 
 import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.DefaultProtocolVersion;
@@ -39,6 +38,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -191,8 +191,8 @@ public class SimulacronUtils {
 
   public static class Keyspace {
 
-    private String name;
-    private List<Table> tables;
+    private final String name;
+    private final List<Table> tables;
 
     public Keyspace(String name, Table... tables) {
       this.name = name;
@@ -202,11 +202,11 @@ public class SimulacronUtils {
 
   public static class Table {
 
-    private String name;
-    private List<Column> partitionKey;
-    private List<Column> clusteringColumns;
-    private List<Column> otherColumns;
-    private List<Map<String, Object>> rows;
+    private final String name;
+    private final List<Column> partitionKey;
+    private final List<Column> clusteringColumns;
+    private final List<Column> otherColumns;
+    private final List<LinkedHashMap<String, Object>> rows;
 
     public Table(
         String name, Column partitionKey, Column clusteringColumn, Column... otherColumns) {
@@ -230,7 +230,7 @@ public class SimulacronUtils {
         List<Column> partitionKey,
         List<Column> clusteringColumns,
         List<Column> otherColumns,
-        List<Map<String, Object>> rows) {
+        List<LinkedHashMap<String, Object>> rows) {
       this.name = name;
       this.partitionKey = partitionKey;
       this.clusteringColumns = clusteringColumns;
@@ -246,17 +246,24 @@ public class SimulacronUtils {
       return all;
     }
 
-    private Map<String, String> allColumnTypes() {
+    private LinkedHashMap<String, String> allColumnTypes() {
       return allColumns().stream()
           .map(col -> new SimpleEntry<>(col.name, col.getTypeAsString()))
-          .collect(Collectors.toMap(SimpleEntry::getKey, SimpleEntry::getValue));
+          .collect(
+              Collectors.toMap(
+                  SimpleEntry::getKey,
+                  SimpleEntry::getValue,
+                  (v1, v2) -> {
+                    throw new IllegalStateException("Duplicate key");
+                  },
+                  LinkedHashMap::new));
     }
   }
 
   public static class Column {
 
-    private String name;
-    private DataType type;
+    private final String name;
+    private final DataType type;
 
     public Column(String name, DataType type) {
       this.name = name;
@@ -270,13 +277,13 @@ public class SimulacronUtils {
 
   public static void primeTables(BoundCluster simulacron, Keyspace... keyspaces) {
 
-    List<Map<String, Object>> allKeyspacesRows = new ArrayList<>();
-    List<Map<String, Object>> allTablesRows = new ArrayList<>();
-    List<Map<String, Object>> allColumnsRows = new ArrayList<>();
+    List<LinkedHashMap<String, Object>> allKeyspacesRows = new ArrayList<>();
+    List<LinkedHashMap<String, Object>> allTablesRows = new ArrayList<>();
+    List<LinkedHashMap<String, Object>> allColumnsRows = new ArrayList<>();
 
     for (Keyspace keyspace : keyspaces) {
 
-      Map<String, Object> keyspaceRow = new HashMap<>();
+      LinkedHashMap<String, Object> keyspaceRow = new LinkedHashMap<>();
       keyspaceRow.put("keyspace_name", keyspace.name);
       keyspaceRow.put("durable_writes", true);
       keyspaceRow.put(
@@ -288,13 +295,14 @@ public class SimulacronUtils {
       Query whenSelectKeyspace =
           new Query(SELECT_KEYSPACES + " WHERE keyspace_name = '" + keyspace.name + '\'');
       SuccessResult thenReturnKeyspace =
-          new SuccessResult(Collections.singletonList(keyspaceRow), KEYSPACE_COLUMNS);
+          new SuccessResult(
+              Collections.singletonList(keyspaceRow), new LinkedHashMap<>(KEYSPACE_COLUMNS));
       RequestPrime primeKeyspace = new RequestPrime(whenSelectKeyspace, thenReturnKeyspace);
       simulacron.prime(new Prime(primeKeyspace));
 
       for (Table table : keyspace.tables) {
 
-        Map<String, Object> tableRow = new HashMap<>();
+        LinkedHashMap<String, Object> tableRow = new LinkedHashMap<>();
         tableRow.put("keyspace_name", keyspace.name);
         tableRow.put("table_name", table.name);
         tableRow.put("bloom_filter_fp_chance", 0.01d);
@@ -340,15 +348,16 @@ public class SimulacronUtils {
                     + table.name
                     + '\'');
         SuccessResult thenReturnTable =
-            new SuccessResult(Collections.singletonList(tableRow), TABLE_COLUMNS);
+            new SuccessResult(
+                Collections.singletonList(tableRow), new LinkedHashMap<>(TABLE_COLUMNS));
         RequestPrime primeTable = new RequestPrime(whenSelectTable, thenReturnTable);
         simulacron.prime(new Prime(primeTable));
 
-        List<Map<String, Object>> tableColumnsRows = new ArrayList<>();
+        List<LinkedHashMap<String, Object>> tableColumnsRows = new ArrayList<>();
 
         int position = 0;
         for (Column column : table.partitionKey) {
-          Map<String, Object> columnRow = new HashMap<>();
+          LinkedHashMap<String, Object> columnRow = new LinkedHashMap<>();
           columnRow.put("keyspace_name", keyspace.name);
           columnRow.put("table_name", table.name);
           columnRow.put("column_name", column.name);
@@ -362,7 +371,7 @@ public class SimulacronUtils {
 
         position = 0;
         for (Column column : table.clusteringColumns) {
-          Map<String, Object> columnRow = new HashMap<>();
+          LinkedHashMap<String, Object> columnRow = new LinkedHashMap<>();
           columnRow.put("keyspace_name", keyspace.name);
           columnRow.put("table_name", table.name);
           columnRow.put("column_name", column.name);
@@ -375,7 +384,7 @@ public class SimulacronUtils {
         }
 
         for (Column column : table.otherColumns) {
-          Map<String, Object> columnRow = new HashMap<>();
+          LinkedHashMap<String, Object> columnRow = new LinkedHashMap<>();
           columnRow.put("keyspace_name", keyspace.name);
           columnRow.put("table_name", table.name);
           columnRow.put("column_name", column.name);
@@ -395,7 +404,8 @@ public class SimulacronUtils {
                     + "'  AND table_name = '"
                     + table.name
                     + '\'');
-        SuccessResult thenReturnTableColumns = new SuccessResult(tableColumnsRows, TABLE_COLUMNS);
+        SuccessResult thenReturnTableColumns =
+            new SuccessResult(tableColumnsRows, new LinkedHashMap<>(TABLE_COLUMNS));
         RequestPrime primeAllTableColumns =
             new RequestPrime(whenSelectTableColumns, thenReturnTableColumns);
         simulacron.prime(new Prime(primeAllTableColumns));
@@ -412,11 +422,13 @@ public class SimulacronUtils {
                     table.allColumns().stream().map(col -> asCql(col.name)).collect(COMMA),
                     table.allColumns().stream().map(col -> ":" + asCql(col.name)).collect(COMMA)),
                 emptyList(),
-                emptyMap(),
+                new LinkedHashMap<String, Object>(),
                 table.allColumnTypes());
         simulacron.prime(
             new Prime(
-                new RequestPrime(whenInsertIntoTable, new SuccessResult(emptyList(), emptyMap()))));
+                new RequestPrime(
+                    whenInsertIntoTable,
+                    new SuccessResult(emptyList(), new LinkedHashMap<String, String>()))));
 
         // UPDATE table
         Query whenUpdateIntoTable =
@@ -429,11 +441,13 @@ public class SimulacronUtils {
                         .map(col -> asCql(col.name) + "=:" + asCql(col.name))
                         .collect(COMMA)),
                 emptyList(),
-                emptyMap(),
+                new LinkedHashMap<String, Object>(),
                 table.allColumnTypes());
         simulacron.prime(
             new Prime(
-                new RequestPrime(whenUpdateIntoTable, new SuccessResult(emptyList(), emptyMap()))));
+                new RequestPrime(
+                    whenUpdateIntoTable,
+                    new SuccessResult(emptyList(), new LinkedHashMap<String, String>()))));
 
         // SELECT cols from table
         Query whenSelectFromTable =
@@ -482,18 +496,21 @@ public class SimulacronUtils {
     }
 
     Query whenSelectAllKeyspaces = new Query(SELECT_KEYSPACES);
-    SuccessResult thenReturnAllKeyspaces = new SuccessResult(allKeyspacesRows, KEYSPACE_COLUMNS);
+    SuccessResult thenReturnAllKeyspaces =
+        new SuccessResult(allKeyspacesRows, new LinkedHashMap<>(KEYSPACE_COLUMNS));
     RequestPrime primeAllKeyspaces =
         new RequestPrime(whenSelectAllKeyspaces, thenReturnAllKeyspaces);
     simulacron.prime(new Prime(primeAllKeyspaces));
 
     Query whenSelectAllTables = new Query(SELECT_TABLES);
-    SuccessResult thenReturnAllTables = new SuccessResult(allTablesRows, TABLE_COLUMNS);
+    SuccessResult thenReturnAllTables =
+        new SuccessResult(allTablesRows, new LinkedHashMap<>(TABLE_COLUMNS));
     RequestPrime primeAllTables = new RequestPrime(whenSelectAllTables, thenReturnAllTables);
     simulacron.prime(new Prime(primeAllTables));
 
     Query whenSelectAllColumns = new Query(SELECT_COLUMNS);
-    SuccessResult thenReturnAllColumns = new SuccessResult(allColumnsRows, COLUMN_COLUMNS);
+    SuccessResult thenReturnAllColumns =
+        new SuccessResult(allColumnsRows, new LinkedHashMap<>(COLUMN_COLUMNS));
     RequestPrime primeAllColumns = new RequestPrime(whenSelectAllColumns, thenReturnAllColumns);
     simulacron.prime(new Prime(primeAllColumns));
   }
@@ -501,8 +518,8 @@ public class SimulacronUtils {
   public static void primeSystemLocal(BoundCluster simulacron, Map<String, Object> overrides) {
     {
       Query whenSelectSystemLocal = new Query(SELECT_SYSTEM_LOCAL);
-      List<Map<String, Object>> systemLocalResultSet = new ArrayList<>();
-      Map<String, Object> row = new HashMap<>(SYSTEM_LOCAL_ROW);
+      List<LinkedHashMap<String, Object>> systemLocalResultSet = new ArrayList<>();
+      LinkedHashMap<String, Object> row = new LinkedHashMap<>(SYSTEM_LOCAL_ROW);
       row.putAll(overrides);
       // The following columns cannot be overridden and must have values that match the simulacron
       // cluster
@@ -515,17 +532,17 @@ public class SimulacronUtils {
       row.put("native_transport_port", node.getPort());
       systemLocalResultSet.add(row);
       SuccessResult thenReturnLocalRow =
-          new SuccessResult(systemLocalResultSet, SYSTEM_LOCAL_COLUMNS);
+          new SuccessResult(systemLocalResultSet, new LinkedHashMap<>(SYSTEM_LOCAL_COLUMNS));
       RequestPrime primeSystemLocal = new RequestPrime(whenSelectSystemLocal, thenReturnLocalRow);
       simulacron.prime(new Prime(primeSystemLocal));
     }
     {
       Query whenSelectSystemLocal = new Query(SELECT_SYSTEM_LOCAL_SCHEMA_VERSION);
-      List<Map<String, Object>> systemLocalResultSet = new ArrayList<>();
-      Map<String, Object> row = new HashMap<>(SYSTEM_LOCAL_ROW);
+      List<LinkedHashMap<String, Object>> systemLocalResultSet = new ArrayList<>();
+      LinkedHashMap<String, Object> row = new LinkedHashMap<>(SYSTEM_LOCAL_ROW);
       systemLocalResultSet.add(row);
       SuccessResult thenReturnLocalRow =
-          new SuccessResult(systemLocalResultSet, SYSTEM_LOCAL_COLUMNS);
+          new SuccessResult(systemLocalResultSet, new LinkedHashMap<>(SYSTEM_LOCAL_COLUMNS));
       RequestPrime primeSystemLocal = new RequestPrime(whenSelectSystemLocal, thenReturnLocalRow);
       simulacron.prime(new Prime(primeSystemLocal));
     }
@@ -534,13 +551,13 @@ public class SimulacronUtils {
   public static void primeSystemPeers(BoundCluster simulacron) {
     {
       Query whenSelectSystemPeers = new Query(SELECT_SYSTEM_PEERS);
-      List<Map<String, Object>> systemPeersResultSet = new ArrayList<>();
+      List<LinkedHashMap<String, Object>> systemPeersResultSet = new ArrayList<>();
       boolean local = true;
       for (BoundNode node : simulacron.getNodes()) {
         if (local) {
           local = false;
         } else {
-          Map<String, Object> row = new HashMap<>(SYSTEM_PEERS_ROW);
+          LinkedHashMap<String, Object> row = new LinkedHashMap<>(SYSTEM_PEERS_ROW);
           // The following columns cannot be overridden and must have values that match the
           // simulacron cluster
           InetSocketAddress addr = node.inetSocketAddress();
@@ -552,19 +569,19 @@ public class SimulacronUtils {
         }
       }
       SuccessResult thenReturnLocalRow =
-          new SuccessResult(systemPeersResultSet, SYSTEM_PEERS_COLUMNS);
+          new SuccessResult(systemPeersResultSet, new LinkedHashMap<>(SYSTEM_PEERS_COLUMNS));
       RequestPrime primeSystemLocal = new RequestPrime(whenSelectSystemPeers, thenReturnLocalRow);
       simulacron.prime(new Prime(primeSystemLocal));
     }
     {
       Query whenSelectSystemPeers = new Query(SELECT_SYSTEM_PEERS_SCHEMA_VERSION);
-      List<Map<String, Object>> systemPeersResultSet = new ArrayList<>();
+      List<LinkedHashMap<String, Object>> systemPeersResultSet = new ArrayList<>();
       boolean local = true;
       for (BoundNode node : simulacron.getNodes()) {
         if (local) {
           local = false;
         } else {
-          Map<String, Object> row = new HashMap<>(SYSTEM_PEERS_ROW);
+          LinkedHashMap<String, Object> row = new LinkedHashMap<>(SYSTEM_PEERS_ROW);
           // The following columns cannot be overridden and must have values that match the
           // simulacron cluster
           InetSocketAddress addr = node.inetSocketAddress();
@@ -575,7 +592,7 @@ public class SimulacronUtils {
         }
       }
       SuccessResult thenReturnLocalRow =
-          new SuccessResult(systemPeersResultSet, SYSTEM_PEERS_COLUMNS);
+          new SuccessResult(systemPeersResultSet, new LinkedHashMap<>(SYSTEM_PEERS_COLUMNS));
       RequestPrime primeSystemLocal = new RequestPrime(whenSelectSystemPeers, thenReturnLocalRow);
       simulacron.prime(new Prime(primeSystemLocal));
     }

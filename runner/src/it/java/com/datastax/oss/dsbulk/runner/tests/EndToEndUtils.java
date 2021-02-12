@@ -47,7 +47,6 @@ import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -88,30 +87,30 @@ public class EndToEndUtils {
           + "4=\"COUNTRY CODE\",5=\"COUNTRY NAME\"";
 
   public static RequestPrime createSimpleParameterizedQuery(String query) {
-    Map<String, String> paramTypes = new LinkedHashMap<>();
+    LinkedHashMap<String, String> paramTypes = new LinkedHashMap<>();
     paramTypes.put("country_code", "varchar");
     paramTypes.put("country_name", "varchar");
     paramTypes.put("beginning_ip_address", "inet");
     paramTypes.put("ending_ip_address", "inet");
     paramTypes.put("beginning_ip_number", "bigint");
     paramTypes.put("ending_ip_number", "bigint");
-    Query when = new Query(query, Collections.emptyList(), new HashMap<>(), paramTypes);
-    SuccessResult then = new SuccessResult(new ArrayList<>(), new HashMap<>());
+    Query when = new Query(query, Collections.emptyList(), new LinkedHashMap<>(), paramTypes);
+    SuccessResult then = new SuccessResult(new ArrayList<>(), new LinkedHashMap<>());
     return new RequestPrime(when, then);
   }
 
   public static RequestPrime createQueryWithResultSet(String query, int numOfResults) {
     Query when = new Query(query);
-    Map<String, String> columnTypes = new LinkedHashMap<>();
+    LinkedHashMap<String, String> columnTypes = new LinkedHashMap<>();
     columnTypes.put("country_code", "varchar");
     columnTypes.put("country_name", "varchar");
     columnTypes.put("beginning_ip_address", "inet");
     columnTypes.put("ending_ip_address", "inet");
     columnTypes.put("beginning_ip_number", "bigint");
     columnTypes.put("ending_ip_number", "bigint");
-    List<Map<String, Object>> rows = new ArrayList<>();
+    List<LinkedHashMap<String, Object>> rows = new ArrayList<>();
     for (int i = 0; i < numOfResults; i++) {
-      HashMap<String, Object> row = new HashMap<>();
+      LinkedHashMap<String, Object> row = new LinkedHashMap<>();
       row.put("country_code", "country" + i);
       row.put("country_name", "country" + i);
       row.put("beginning_ip_address", "127.0.0.1");
@@ -126,16 +125,16 @@ public class EndToEndUtils {
 
   public static RequestPrime createQueryWithResultSetWithQuotes(String query, int numOfResults) {
     Query when = new Query(query);
-    Map<String, String> columnTypes = new LinkedHashMap<>();
+    LinkedHashMap<String, String> columnTypes = new LinkedHashMap<>();
     columnTypes.put("country_code", "varchar");
     columnTypes.put("country_name", "varchar");
     columnTypes.put("beginning_ip_address", "inet");
     columnTypes.put("ending_ip_address", "inet");
     columnTypes.put("beginning_ip_number", "bigint");
     columnTypes.put("ending_ip_number", "bigint");
-    List<Map<String, Object>> rows = new ArrayList<>();
+    List<LinkedHashMap<String, Object>> rows = new ArrayList<>();
     for (int i = 0; i < numOfResults; i++) {
-      HashMap<String, Object> row = new HashMap<>();
+      LinkedHashMap<String, Object> row = new LinkedHashMap<>();
       row.put("country_code", "country" + ";" + i);
       row.put("country_name", "country" + ";" + i);
       row.put("beginning_ip_address", "127.0.0." + i);
@@ -155,7 +154,7 @@ public class EndToEndUtils {
 
   public static RequestPrime createParameterizedQuery(
       String query, Map<String, Object> params, Result then) {
-    Map<String, String> paramTypes = new LinkedHashMap<>();
+    LinkedHashMap<String, String> paramTypes = new LinkedHashMap<>();
     paramTypes.put("country_code", "varchar");
     paramTypes.put("country_name", "varchar");
     paramTypes.put("beginning_ip_address", "inet");
@@ -163,7 +162,7 @@ public class EndToEndUtils {
     paramTypes.put("beginning_ip_number", "bigint");
     paramTypes.put("ending_ip_number", "bigint");
 
-    Map<String, Object> defaultParams = new LinkedHashMap<>();
+    LinkedHashMap<String, Object> defaultParams = new LinkedHashMap<>();
     defaultParams.put("country_code", "*");
     defaultParams.put("country_name", "*");
     defaultParams.put("beginning_ip_address", "*");

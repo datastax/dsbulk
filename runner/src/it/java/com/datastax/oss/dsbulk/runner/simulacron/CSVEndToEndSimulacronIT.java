@@ -93,6 +93,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -333,7 +334,9 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     params.put("country_name", "Sweden");
     RequestPrime prime1 =
         createParameterizedQuery(
-            INSERT_INTO_IP_BY_COUNTRY, params, new SuccessResult(emptyList(), emptyMap()));
+            INSERT_INTO_IP_BY_COUNTRY,
+            params,
+            new SuccessResult(emptyList(), new LinkedHashMap<>()));
     simulacron.prime(new Prime(prime1));
 
     // recoverable errors only
@@ -950,7 +953,8 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
                 Collections.emptyList(),
                 Collections.singletonList(new Column("v", BLOB)),
                 Lists.newArrayList(
-                    ImmutableMap.of("pk", 1, "v", ByteUtils.fromHexString("0xcafebabe"))))));
+                    new LinkedHashMap<>(
+                        ImmutableMap.of("pk", 1, "v", ByteUtils.fromHexString("0xcafebabe")))))));
 
     String[] args = {
       "unload",

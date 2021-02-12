@@ -84,6 +84,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -318,7 +319,9 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     params.put("country_name", "Sweden");
     RequestPrime prime1 =
         createParameterizedQuery(
-            INSERT_INTO_IP_BY_COUNTRY, params, new SuccessResult(emptyList(), emptyMap()));
+            INSERT_INTO_IP_BY_COUNTRY,
+            params,
+            new SuccessResult(emptyList(), new LinkedHashMap<>()));
     simulacron.prime(new Prime(prime1));
 
     // recoverable errors only
@@ -554,8 +557,8 @@ class JsonEndToEndSimulacronIT extends EndToEndSimulacronITBase {
   @Test
   void full_unload_custom_features() throws Exception {
 
-    List<Map<String, Object>> rows = new ArrayList<>();
-    HashMap<String, Object> row = new HashMap<>();
+    List<LinkedHashMap<String, Object>> rows = new ArrayList<>();
+    LinkedHashMap<String, Object> row = new LinkedHashMap<>();
     row.put("pk", 1);
     row.put("c1", null);
     rows.add(row);

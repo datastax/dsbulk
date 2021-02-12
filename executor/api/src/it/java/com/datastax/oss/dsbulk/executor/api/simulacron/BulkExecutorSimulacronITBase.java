@@ -26,10 +26,8 @@ import com.datastax.oss.simulacron.common.stubbing.PrimeDsl;
 import com.datastax.oss.simulacron.server.BoundCluster;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -57,14 +55,14 @@ public abstract class BulkExecutorSimulacronITBase extends BulkExecutorITBase {
   }
 
   private static SuccessResult createReadResult() {
-    List<Map<String, Object>> rows = new ArrayList<>();
+    List<LinkedHashMap<String, Object>> rows = new ArrayList<>();
     for (int i = 0; i < 100; i++) {
-      Map<String, Object> row = new HashMap<>();
+      LinkedHashMap<String, Object> row = new LinkedHashMap<>();
       row.put("pk", i);
       row.put("v", i);
       rows.add(row);
     }
-    Map<String, String> column_types = new HashMap<>();
+    LinkedHashMap<String, String> column_types = new LinkedHashMap<>();
     column_types.put("pk", "int");
     column_types.put("v", "int");
     return new SuccessResult(rows, column_types);
