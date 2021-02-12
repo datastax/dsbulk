@@ -63,7 +63,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
     super(session);
   }
 
-  DefaultReactorBulkExecutor(AbstractBulkExecutorBuilder builder) {
+  DefaultReactorBulkExecutor(AbstractBulkExecutorBuilder<?> builder) {
     super(builder);
   }
 
@@ -84,10 +84,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
   @Override
   public CompletableFuture<WriteResult> writeAsync(Statement<?> statement) {
     CompletableFuture<WriteResult> future = new CompletableFuture<>();
-    Mono.from(writeReactive(statement))
-        .doOnSuccess(future::complete)
-        .doOnError(future::completeExceptionally)
-        .subscribe();
+    Mono.from(writeReactive(statement)).subscribe(future::complete, future::completeExceptionally);
     return future;
   }
 
@@ -111,10 +108,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
     CompletableFuture<Void> future = new CompletableFuture<>();
     Flux.from(statements)
         .flatMap(this::writeReactive)
-        .doOnNext(consumer)
-        .doOnComplete(() -> future.complete(null))
-        .doOnError(future::completeExceptionally)
-        .subscribe();
+        .subscribe(consumer, future::completeExceptionally, () -> future.complete(null));
     return future;
   }
 
@@ -184,10 +178,7 @@ public class DefaultReactorBulkExecutor extends AbstractBulkExecutor
     CompletableFuture<Void> future = new CompletableFuture<>();
     Flux.from(statements)
         .flatMap(this::readReactive)
-        .doOnNext(consumer)
-        .doOnComplete(() -> future.complete(null))
-        .doOnError(future::completeExceptionally)
-        .subscribe();
+        .subscribe(consumer, future::completeExceptionally, () -> future.complete(null));
     return future;
   }
 
