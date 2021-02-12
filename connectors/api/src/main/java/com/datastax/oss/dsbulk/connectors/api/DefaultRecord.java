@@ -191,16 +191,16 @@ public class DefaultRecord extends LinkedHashMap<Field, Object> implements Recor
     if (this == o) {
       return true;
     }
-    if (o == null || getClass() != o.getClass()) {
+    if (!(o instanceof Record)) {
       return false;
     }
     if (!super.equals(o)) {
       return false;
     }
-    DefaultRecord that = (DefaultRecord) o;
-    return position == that.position
-        && Objects.equals(source, that.source)
-        && resource.equals(that.resource);
+    Record that = (Record) o;
+    return this.getPosition() == that.getPosition()
+        && Objects.equals(this.getSource(), that.getSource())
+        && Objects.equals(that.getResource(), this.getResource());
   }
 
   @Override
