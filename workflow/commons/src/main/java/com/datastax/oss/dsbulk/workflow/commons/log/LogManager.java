@@ -78,9 +78,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
+import reactor.core.publisher.FluxSink.OverflowStrategy;
 import reactor.core.publisher.Hooks;
+import reactor.core.publisher.Mono;
 import reactor.core.publisher.UnicastProcessor;
 
+// FIXME UnicastProcessor and FluxSink were deprecated, but the Sinks.Many API does not offer
+// support for multi-threaded access to the sink, see:
+// https://stackoverflow.com/questions/65029619/how-to-call-sinks-manyt-tryemitnext-from-multiple-threads
 public class LogManager implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LogManager.class);
@@ -470,7 +475,7 @@ public class LogManager implements AutoCloseable {
         upstream
             .map(Result::getStatement)
             .transform(newStatementToRecordMapper())
-            .doOnNext(record -> positionsSink.next(record))
+            .flatMap(this::sendToPositionsSink)
             .then()
             .flux();
   }
@@ -506,8 +511,8 @@ public class LogManager implements AutoCloseable {
   }
 
   /**
-   * A processor for failed records. A failed record is a record that the connector could not read
-   * or write.
+   * A sink for failed records. A failed record is a record that the connector could not read or
+   * write.
    *
    * <p>Used in both load and unload workflows.
    *
@@ -519,19 +524,18 @@ public class LogManager implements AutoCloseable {
   @NonNull
   private FluxSink<ErrorRecord> newFailedRecordSink() {
     UnicastProcessor<ErrorRecord> processor = UnicastProcessor.create();
-    Flux<ErrorRecord> flux = processor.doOnNext(this::appendFailedRecordToDebugFile);
+    Flux<Record> flux = processor.flatMap(this::appendFailedRecordToDebugFile);
     if (trackPositions) {
-      flux.doOnNext(record -> appendToBadFile(record, CONNECTOR_BAD_FILE))
-          .doOnNext(record -> positionsSink.next(record))
-          .subscribe();
-    } else {
-      flux.subscribe();
+      flux =
+          flux.flatMap(record -> appendToBadFile(record, CONNECTOR_BAD_FILE))
+              .flatMap(this::sendToPositionsSink);
     }
-    return processor.sink();
+    flux.subscribe(v -> {}, this::onSinkError);
+    return processor.sink(OverflowStrategy.BUFFER);
   }
 
   /**
-   * A processor for unmappable records produced by the {@linkplain ReadResultMapper result mapper}.
+   * A sink for unmappable records produced by the {@linkplain ReadResultMapper result mapper}.
    *
    * <p>Used only in unload workflows.
    *
@@ -542,12 +546,14 @@ public class LogManager implements AutoCloseable {
   @NonNull
   private FluxSink<ErrorRecord> newUnmappableRecordSink() {
     UnicastProcessor<ErrorRecord> processor = UnicastProcessor.create();
-    processor.doOnNext(this::appendUnmappableReadResultToDebugFile).subscribe();
-    return processor.sink();
+    processor
+        .flatMap(this::appendUnmappableReadResultToDebugFile)
+        .subscribe(v -> {}, this::onSinkError);
+    return processor.sink(OverflowStrategy.BUFFER);
   }
 
   /**
-   * A processor for unmappable statements produced by the {@linkplain RecordMapper record mapper}.
+   * A sink for unmappable statements produced by the {@linkplain RecordMapper record mapper}.
    *
    * <p>Used only in the load workflow.
    *
@@ -561,16 +567,16 @@ public class LogManager implements AutoCloseable {
     UnicastProcessor<UnmappableStatement> processor = UnicastProcessor.create();
     processor
         .doOnNext(this::maybeWarnInvalidMapping)
-        .doOnNext(this::appendUnmappableStatementToDebugFile)
+        .flatMap(this::appendUnmappableStatementToDebugFile)
         .transform(newStatementToRecordMapper())
-        .doOnNext(record -> appendToBadFile(record, MAPPING_BAD_FILE))
-        .doOnNext(record -> positionsSink.next(record))
-        .subscribe();
-    return processor.sink();
+        .flatMap(record -> appendToBadFile(record, MAPPING_BAD_FILE))
+        .flatMap(this::sendToPositionsSink)
+        .subscribe(v -> {}, this::onSinkError);
+    return processor.sink(OverflowStrategy.BUFFER);
   }
 
   /**
-   * A processor for failed write results.
+   * A sink for failed write results.
    *
    * <p>Used only in the load workflow.
    *
@@ -584,17 +590,17 @@ public class LogManager implements AutoCloseable {
   private FluxSink<WriteResult> newFailedWriteResultSink() {
     UnicastProcessor<WriteResult> processor = UnicastProcessor.create();
     processor
-        .doOnNext(this::appendFailedWriteResultToDebugFile)
+        .flatMap(this::appendFailedWriteResultToDebugFile)
         .map(Result::getStatement)
         .transform(newStatementToRecordMapper())
-        .doOnNext(record -> appendToBadFile(record, LOAD_BAD_FILE))
-        .doOnNext(record -> positionsSink.next(record))
-        .subscribe();
-    return processor.sink();
+        .flatMap(record -> appendToBadFile(record, LOAD_BAD_FILE))
+        .flatMap(this::sendToPositionsSink)
+        .subscribe(v -> {}, this::onSinkError);
+    return processor.sink(OverflowStrategy.BUFFER);
   }
 
   /**
-   * A processor for failed CAS write results.
+   * A sink for failed CAS write results.
    *
    * <p>Used only in the load workflow.
    *
@@ -608,17 +614,17 @@ public class LogManager implements AutoCloseable {
   private FluxSink<WriteResult> newFailedCASWriteSink() {
     UnicastProcessor<WriteResult> processor = UnicastProcessor.create();
     processor
-        .doOnNext(this::appendFailedCASWriteResultToDebugFile)
+        .flatMap(this::appendFailedCASWriteResultToDebugFile)
         .map(Result::getStatement)
         .transform(newStatementToRecordMapper())
-        .doOnNext(record -> appendToBadFile(record, CAS_BAD_FILE))
-        .doOnNext(record -> positionsSink.next(record))
-        .subscribe();
-    return processor.sink();
+        .flatMap(record -> appendToBadFile(record, CAS_BAD_FILE))
+        .flatMap(this::sendToPositionsSink)
+        .subscribe(v -> {}, this::onSinkError);
+    return processor.sink(OverflowStrategy.BUFFER);
   }
 
   /**
-   * A processor for failed read results.
+   * A sink for failed read results.
    *
    * <p>Used only in the unload workflow.
    *
@@ -629,12 +635,14 @@ public class LogManager implements AutoCloseable {
   @NonNull
   private FluxSink<ReadResult> newFailedReadResultSink() {
     UnicastProcessor<ReadResult> processor = UnicastProcessor.create();
-    processor.doOnNext(this::appendFailedReadResultToDebugFile).subscribe();
-    return processor.sink();
+    processor
+        .flatMap(this::appendFailedReadResultToDebugFile)
+        .subscribe(v -> {}, this::onSinkError);
+    return processor.sink(OverflowStrategy.BUFFER);
   }
 
   /**
-   * A processor for record positions.
+   * A sink for record positions.
    *
    * <p>Used only in the load workflow.
    *
@@ -649,123 +657,167 @@ public class LogManager implements AutoCloseable {
         // do not need to be published on the dedicated log scheduler, the computation is fairly
         // cheap
         .doOnNext(record -> positionsTracker.update(record.getResource(), record.getPosition()))
-        .subscribe();
-    return processor.sink();
+        .subscribe(v -> {}, this::onSinkError);
+    return processor.sink(OverflowStrategy.BUFFER);
   }
 
   // Bad file management
-
-  private void appendToBadFile(Record record, String file) {
-    Object source = record.getSource();
-    if (source != null) {
-      Path logFile = operationDirectory.resolve(file);
-      PrintWriter writer = openFiles.get(logFile);
-      assert writer != null;
-      LogManagerUtils.printAndMaybeAddNewLine(source.toString(), writer);
-      writer.flush();
+  @SuppressWarnings("BlockingMethodInNonBlockingContext")
+  private Mono<Record> appendToBadFile(Record record, String file) {
+    try {
+      Object source = record.getSource();
+      if (source != null) {
+        Path logFile = operationDirectory.resolve(file);
+        PrintWriter writer = openFiles.get(logFile);
+        assert writer != null;
+        LogManagerUtils.printAndMaybeAddNewLine(source.toString(), writer);
+        writer.flush();
+      }
+      return Mono.just(record);
+    } catch (Exception e) {
+      return Mono.error(e);
     }
   }
 
   // Executor errors (read/write failures)
 
   // write query failed
-  private void appendFailedWriteResultToDebugFile(WriteResult result) {
-    appendStatement(result, LOAD_ERRORS_FILE, true);
+  private Mono<WriteResult> appendFailedWriteResultToDebugFile(WriteResult result) {
+    return appendStatement(result, LOAD_ERRORS_FILE, true);
   }
 
   // CAS write query failed
-  private void appendFailedCASWriteResultToDebugFile(WriteResult result) {
-    appendStatement(result, CAS_ERRORS_FILE, true);
+  private Mono<WriteResult> appendFailedCASWriteResultToDebugFile(WriteResult result) {
+    return appendStatement(result, CAS_ERRORS_FILE, true);
   }
 
   // read query failed
-  private void appendFailedReadResultToDebugFile(ReadResult result) {
-    appendStatement(result, UNLOAD_ERRORS_FILE, true);
+  private Mono<ReadResult> appendFailedReadResultToDebugFile(ReadResult result) {
+    return appendStatement(result, UNLOAD_ERRORS_FILE, true);
   }
 
-  private void appendStatement(Result result, String logFileName, boolean appendNewLine) {
-    Path logFile = operationDirectory.resolve(logFileName);
-    PrintWriter writer = openFiles.get(logFile);
-    assert writer != null;
-    writer.print("Statement: ");
-    String format =
-        statementFormatter.format(
-            result.getStatement(), statementFormatVerbosity, protocolVersion, codecRegistry);
-    LogManagerUtils.printAndMaybeAddNewLine(format, writer);
-    if (result instanceof WriteResult) {
-      WriteResult writeResult = (WriteResult) result;
-      // If a conditional update could not be applied, print the failed mutations
-      if (writeResult.isSuccess() && !writeResult.wasApplied()) {
-        writer.println("Failed conditional updates: ");
-        writeResult
-            .getFailedWrites()
-            .forEach(
-                row -> {
-                  String failed = rowFormatter.format(row, protocolVersion, codecRegistry);
-                  LogManagerUtils.printAndMaybeAddNewLine(failed, writer);
-                });
+  @SuppressWarnings("BlockingMethodInNonBlockingContext")
+  private <R extends Result> Mono<R> appendStatement(
+      R result, String logFileName, boolean appendNewLine) {
+    try {
+      Path logFile = operationDirectory.resolve(logFileName);
+      PrintWriter writer = openFiles.get(logFile);
+      assert writer != null;
+      writer.print("Statement: ");
+      String format =
+          statementFormatter.format(
+              result.getStatement(), statementFormatVerbosity, protocolVersion, codecRegistry);
+      LogManagerUtils.printAndMaybeAddNewLine(format, writer);
+      if (result instanceof WriteResult) {
+        WriteResult writeResult = (WriteResult) result;
+        // If a conditional update could not be applied, print the failed mutations
+        if (writeResult.isSuccess() && !writeResult.wasApplied()) {
+          writer.println("Failed conditional updates: ");
+          writeResult
+              .getFailedWrites()
+              .forEach(
+                  row -> {
+                    String failed = rowFormatter.format(row, protocolVersion, codecRegistry);
+                    LogManagerUtils.printAndMaybeAddNewLine(failed, writer);
+                  });
+        }
       }
-    }
-    if (result.getError().isPresent()) {
-      stackTracePrinter.printStackTrace(result.getError().get(), writer);
-    }
-    if (appendNewLine) {
-      writer.println();
+      if (result.getError().isPresent()) {
+        stackTracePrinter.printStackTrace(result.getError().get(), writer);
+      }
+      if (appendNewLine) {
+        writer.println();
+      }
+      writer.flush();
+      return Mono.just(result);
+    } catch (Exception e) {
+      return Mono.error(e);
     }
   }
 
   // Mapping errors (failed record -> statement or row -> record mappings)
 
   // record -> statement failed (load workflow)
-  private void appendUnmappableStatementToDebugFile(UnmappableStatement statement) {
-    Path logFile = operationDirectory.resolve(MAPPING_ERRORS_FILE);
-    PrintWriter writer = openFiles.get(logFile);
-    assert writer != null;
-    Record record = statement.getRecord();
-    writer.println("Resource: " + record.getResource());
-    writer.println("Position: " + record.getPosition());
-    if (record.getSource() != null) {
-      writer.println("Source: " + LogManagerUtils.formatSource(record));
+  @SuppressWarnings("BlockingMethodInNonBlockingContext")
+  private Mono<UnmappableStatement> appendUnmappableStatementToDebugFile(
+      UnmappableStatement statement) {
+    try {
+      Path logFile = operationDirectory.resolve(MAPPING_ERRORS_FILE);
+      PrintWriter writer = openFiles.get(logFile);
+      assert writer != null;
+      Record record = statement.getRecord();
+      writer.println("Resource: " + record.getResource());
+      writer.println("Position: " + record.getPosition());
+      if (record.getSource() != null) {
+        writer.println("Source: " + LogManagerUtils.formatSource(record));
+      }
+      stackTracePrinter.printStackTrace(statement.getError(), writer);
+      writer.println();
+      writer.flush();
+      return Mono.just(statement);
+    } catch (Exception e) {
+      return Mono.error(e);
     }
-    stackTracePrinter.printStackTrace(statement.getError(), writer);
-    writer.println();
   }
 
   // row -> record failed (unload workflow)
-  private void appendUnmappableReadResultToDebugFile(ErrorRecord record) {
-    Path logFile = operationDirectory.resolve(MAPPING_ERRORS_FILE);
-    PrintWriter writer = openFiles.get(logFile);
-    assert writer != null;
-    // Don't print the resource since it will be just cql://keyspace/table
-    if (record.getSource() instanceof ReadResult) {
-      ReadResult source = (ReadResult) record.getSource();
-      appendStatement(source, MAPPING_ERRORS_FILE, false);
-      source
-          .getRow()
-          .ifPresent(
-              row -> {
-                writer.print("Row: ");
-                String format = rowFormatter.format(row, protocolVersion, codecRegistry);
-                LogManagerUtils.printAndMaybeAddNewLine(format, writer);
-              });
+  @SuppressWarnings("BlockingMethodInNonBlockingContext")
+  private Mono<ErrorRecord> appendUnmappableReadResultToDebugFile(ErrorRecord record) {
+    try {
+      Path logFile = operationDirectory.resolve(MAPPING_ERRORS_FILE);
+      PrintWriter writer = openFiles.get(logFile);
+      assert writer != null;
+      // Don't print the resource since it will be just cql://keyspace/table
+      if (record.getSource() instanceof ReadResult) {
+        ReadResult source = (ReadResult) record.getSource();
+        appendStatement(source, MAPPING_ERRORS_FILE, false);
+        source
+            .getRow()
+            .ifPresent(
+                row -> {
+                  writer.print("Row: ");
+                  String format = rowFormatter.format(row, protocolVersion, codecRegistry);
+                  LogManagerUtils.printAndMaybeAddNewLine(format, writer);
+                });
+      }
+      stackTracePrinter.printStackTrace(record.getError(), writer);
+      writer.println();
+      writer.flush();
+      return Mono.just(record);
+    } catch (Exception e) {
+      return Mono.error(e);
     }
-    stackTracePrinter.printStackTrace(record.getError(), writer);
-    writer.println();
   }
 
   // Connector errors
-
-  private void appendFailedRecordToDebugFile(ErrorRecord record) {
-    Path logFile = operationDirectory.resolve(CONNECTOR_ERRORS_FILE);
-    PrintWriter writer = openFiles.get(logFile);
-    assert writer != null;
-    writer.println("Resource: " + record.getResource());
-    writer.println("Position: " + record.getPosition());
-    if (record.getSource() != null) {
-      writer.println("Source: " + LogManagerUtils.formatSource(record));
+  @SuppressWarnings("BlockingMethodInNonBlockingContext")
+  private Mono<ErrorRecord> appendFailedRecordToDebugFile(ErrorRecord record) {
+    try {
+      Path logFile = operationDirectory.resolve(CONNECTOR_ERRORS_FILE);
+      PrintWriter writer = openFiles.get(logFile);
+      assert writer != null;
+      writer.println("Resource: " + record.getResource());
+      writer.println("Position: " + record.getPosition());
+      if (record.getSource() != null) {
+        writer.println("Source: " + LogManagerUtils.formatSource(record));
+      }
+      stackTracePrinter.printStackTrace(record.getError(), writer);
+      writer.println();
+      writer.flush();
+      return Mono.just(record);
+    } catch (Exception e) {
+      return Mono.error(e);
     }
-    stackTracePrinter.printStackTrace(record.getError(), writer);
-    writer.println();
+  }
+
+  @NonNull
+  private Mono<Record> sendToPositionsSink(Record record) {
+    try {
+      positionsSink.next(record);
+      return Mono.just(record);
+    } catch (Exception e) {
+      return Mono.error(e);
+    }
   }
 
   // Utility methods
@@ -813,6 +865,11 @@ public class LogManager implements AutoCloseable {
         LOGGER.warn("Query generated server-side warning: " + warning);
       }
     }
+  }
+
+  private void onSinkError(Throwable error) {
+    LOGGER.error("Error while writing to log files, aborting", error);
+    uncaughtExceptionSink.error(error);
   }
 
   private static boolean isUnrecoverable(Throwable error) {
