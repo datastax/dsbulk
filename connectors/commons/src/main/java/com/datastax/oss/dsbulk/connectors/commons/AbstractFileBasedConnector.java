@@ -175,32 +175,30 @@ public abstract class AbstractFileBasedConnector implements Connector {
           Flux.from(records)
               .concatMap(
                   record ->
-                      Mono.subscriberContext()
-                          .flatMap(
-                              ctx -> {
-                                try {
-                                  RecordWriter writer = ctx.get("WRITER");
-                                  writer.write(record);
-                                  return Mono.just(record);
-                                } catch (Exception e) {
-                                  return Mono.error(e);
-                                }
-                              }),
-                  500)
-              .concatWith(
-                  Mono.subscriberContext()
-                      .flatMap(
+                      Mono.deferContextual(
                           ctx -> {
                             try {
                               RecordWriter writer = ctx.get("WRITER");
-                              writer.flush();
-                              writers.offer(writer);
-                              return Mono.empty();
+                              writer.write(record);
+                              return Mono.just(record);
                             } catch (Exception e) {
                               return Mono.error(e);
                             }
-                          }))
-              .subscriberContext(ctx -> ctx.put("WRITER", writers.remove()));
+                          }),
+                  500)
+              .concatWith(
+                  Mono.deferContextual(
+                      ctx -> {
+                        try {
+                          RecordWriter writer = ctx.get("WRITER");
+                          writer.flush();
+                          writers.offer(writer);
+                          return Mono.empty();
+                        } catch (Exception e) {
+                          return Mono.error(e);
+                        }
+                      }))
+              .contextWrite(ctx -> ctx.put("WRITER", writers.remove()));
     } else {
       return records ->
           Flux.from(records)
