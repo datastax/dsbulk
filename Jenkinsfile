@@ -309,7 +309,8 @@ pipeline {
         axes {
           axis {
             name 'CASSANDRA_VERSION'
-            values '2.1', '2.2', '3.0', '3.11', '4.0',
+            values '2.1', '2.2', '3.0', '3.11',
+                    // '4.0', removed until GA
                    'dse-4.7', 'dse-4.8', 'dse-5.1', 'dse-6.0', 'dse-6.7', 'dse-6.8'
           }
         }
