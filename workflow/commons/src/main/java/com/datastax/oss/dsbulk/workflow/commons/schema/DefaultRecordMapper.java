@@ -37,7 +37,6 @@ import com.datastax.oss.dsbulk.connectors.api.Field;
 import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.datastax.oss.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.oss.dsbulk.mapping.CQLWord;
-import com.datastax.oss.dsbulk.mapping.InvalidMappingException;
 import com.datastax.oss.dsbulk.mapping.Mapping;
 import com.datastax.oss.dsbulk.workflow.commons.statement.MappedBoundStatement;
 import com.datastax.oss.dsbulk.workflow.commons.statement.UnmappableStatement;
