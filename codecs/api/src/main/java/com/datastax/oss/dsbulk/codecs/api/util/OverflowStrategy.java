@@ -39,7 +39,7 @@ public enum OverflowStrategy {
   /** Overflows are considered errors and the data is rejected. */
   REJECT {
     @Override
-    Number apply(
+    public Number apply(
         Number value,
         ArithmeticException e,
         Class<? extends Number> targetClass,
@@ -65,7 +65,7 @@ public enum OverflowStrategy {
    */
   TRUNCATE {
     @Override
-    Number apply(
+    public Number apply(
         Number value,
         ArithmeticException e,
         Class<? extends Number> targetClass,
@@ -147,7 +147,7 @@ public enum OverflowStrategy {
   private static final BigDecimal DOUBLE_MIN_VALUE = BigDecimal.valueOf(Double.MIN_VALUE);
   private static final BigDecimal DOUBLE_MAX_VALUE = BigDecimal.valueOf(Double.MAX_VALUE);
 
-  abstract Number apply(
+  public abstract Number apply(
       Number value,
       ArithmeticException e,
       Class<? extends Number> targetClass,
