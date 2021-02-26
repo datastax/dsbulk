@@ -57,10 +57,11 @@ public abstract class CQLUtils {
   }
 
   public static SimpleStatement truncateTable(String keyspace, String table) {
+    return truncateTable(CqlIdentifier.fromInternal(keyspace), CqlIdentifier.fromInternal(table));
+  }
+
+  public static SimpleStatement truncateTable(CqlIdentifier keyspace, CqlIdentifier table) {
     return SimpleStatement.newInstance(
-        "TRUNCATE "
-            + CqlIdentifier.fromInternal(keyspace).asCql(true)
-            + "."
-            + CqlIdentifier.fromInternal(table).asCql(true));
+        "TRUNCATE " + keyspace.asCql(true) + "." + table.asCql(true));
   }
 }
