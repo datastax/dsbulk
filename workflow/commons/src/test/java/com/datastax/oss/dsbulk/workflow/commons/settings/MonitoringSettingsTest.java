@@ -39,8 +39,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(LogInterceptingExtension.class)
 class MonitoringSettingsTest {
 
-  private ProtocolVersion protocolVersion = ProtocolVersion.DEFAULT;
-  private CodecRegistry codecRegistry = CodecRegistry.DEFAULT;
+  private final ProtocolVersion protocolVersion = ProtocolVersion.DEFAULT;
+  private final CodecRegistry codecRegistry = CodecRegistry.DEFAULT;
 
   @Test
   void should_create_metrics_manager_with_default_settings() {
@@ -71,7 +71,7 @@ class MonitoringSettingsTest {
 
   @Test
   void should_create_metrics_manager_with_user_supplied_settings() {
-    Path tmpPath = Files.temporaryFolder().toPath();
+    Path tmpPath = Files.newTemporaryFolder().toPath();
     Config config =
         TestConfigUtils.createTestConfig(
             "dsbulk.monitoring",
