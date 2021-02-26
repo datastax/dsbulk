@@ -70,6 +70,7 @@ import com.datastax.oss.driver.api.core.uuid.Uuids;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import com.datastax.oss.dsbulk.codecs.api.ConvertingCodec;
+import com.datastax.oss.dsbulk.codecs.api.format.temporal.TemporalFormat;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -1014,6 +1015,10 @@ class CodecUtilsTest {
         .isEqualTo(new DefaultPoint(-1.1d, -2.2d));
     assertThat(CodecUtils.parsePoint("{\"type\":\"Point\",\"coordinates\":[-1.1,-2.2]}"))
         .isEqualTo(new DefaultPoint(-1.1d, -2.2d));
+    assertThat(CodecUtils.parsePoint("AQEAAACamZmZmZnxv5qZmZmZmQHA"))
+        .isEqualTo(new DefaultPoint(-1.1d, -2.2d));
+    assertThat(CodecUtils.parsePoint("0x01010000009a9999999999f1bf9a999999999901c0"))
+        .isEqualTo(new DefaultPoint(-1.1d, -2.2d));
     assertThatThrownBy(() -> CodecUtils.parsePoint("not a valid point"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Invalid point literal");
@@ -1033,6 +1038,14 @@ class CodecUtilsTest {
     assertThat(
             CodecUtils.parseLineString(
                 "{\"type\":\"LineString\",\"coordinates\":[[30.0,10.0],[10.0,30.0],[40.0,40.0]]}"))
+        .isEqualTo(lineString);
+    assertThat(
+            CodecUtils.parseLineString(
+                "AQIAAAADAAAAAAAAAAAAPkAAAAAAAAAkQAAAAAAAACRAAAAAAAAAPkAAAAAAAABEQAAAAAAAAERA"))
+        .isEqualTo(lineString);
+    assertThat(
+            CodecUtils.parseLineString(
+                "0x0102000000030000000000000000003e40000000000000244000000000000024400000000000003e4000000000000044400000000000004440"))
         .isEqualTo(lineString);
     assertThatThrownBy(() -> CodecUtils.parseLineString("not a valid line string"))
         .isInstanceOf(IllegalArgumentException.class)
@@ -1056,6 +1069,15 @@ class CodecUtilsTest {
     assertThat(
             CodecUtils.parsePolygon(
                 "{\"type\":\"Polygon\",\"coordinates\":[[[30.0,10.0],[10.0,20.0],[20.0,40.0],[40.0,40.0],[30.0,10.0]]]}"))
+        .isEqualTo(polygon);
+    assertThat(
+            CodecUtils.parsePolygon(
+                "AQMAAAABAAAABQAAAAAAAAAAAD5AAAAAAAAAJEAAAAAAAABEQAAAAAAAAERAAAAAAAAANEAAAAAAAABEQAAAAAAAACRAAAAAAAAANEAAAAAAAAA+QAAAAAAAACRA"))
+        .isEqualTo(polygon);
+    assertThat(
+            CodecUtils.parsePolygon(
+                "0x010300000001000000050000000000000000003e4000000000000024400000000000004440000000000000444"
+                    + "000000000000034400000000000004440000000000000244000000000000034400000000000003e400000000000002440"))
         .isEqualTo(polygon);
     assertThatThrownBy(() -> CodecUtils.parsePolygon("not a valid polygon"))
         .isInstanceOf(IllegalArgumentException.class)

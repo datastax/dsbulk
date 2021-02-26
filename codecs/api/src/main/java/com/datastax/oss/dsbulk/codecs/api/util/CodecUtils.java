@@ -24,8 +24,16 @@ import com.datastax.dse.driver.api.core.data.geometry.Point;
 import com.datastax.dse.driver.api.core.data.geometry.Polygon;
 import com.datastax.dse.driver.api.core.data.time.DateRange;
 import com.datastax.oss.driver.internal.core.util.Strings;
-import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.dsbulk.codecs.api.ConvertingCodec;
+import com.datastax.oss.dsbulk.codecs.api.format.binary.Base64BinaryFormat;
+import com.datastax.oss.dsbulk.codecs.api.format.binary.HexBinaryFormat;
+import com.datastax.oss.dsbulk.codecs.api.format.number.ExactNumberFormat;
+import com.datastax.oss.dsbulk.codecs.api.format.number.ToStringNumberFormat;
+import com.datastax.oss.dsbulk.codecs.api.format.temporal.CqlTemporalFormat;
+import com.datastax.oss.dsbulk.codecs.api.format.temporal.NumericTemporalFormat;
+import com.datastax.oss.dsbulk.codecs.api.format.temporal.SimpleTemporalFormat;
+import com.datastax.oss.dsbulk.codecs.api.format.temporal.TemporalFormat;
+import com.datastax.oss.dsbulk.codecs.api.format.temporal.ZonedTemporalFormat;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import io.netty.util.concurrent.FastThreadLocal;
@@ -851,6 +859,8 @@ public class CodecUtils {
    */
   @Nullable
   public static ByteBuffer parseByteBuffer(@Nullable String s) {
+    // Implementation note: we need to test hex format first since some hex literals
+    // are parsable as Base64.
     try {
       return HexBinaryFormat.INSTANCE.parse(s);
     } catch (Exception e) {
@@ -863,6 +873,22 @@ public class CodecUtils {
     }
   }
 
+  /**
+   * Parses the given string as a {@link Point}.
+   *
+   * <p>This method tries the following string formats, and returns the first one that is able to
+   * parse the string:
+   *
+   * <ol>
+   *   <li>Well-known text;
+   *   <li>Geo JSON;
+   *   <li>Well-known binary with Base64 encoding;
+   *   <li>Well-known binary with hexadecimal encoding.
+   * </ol>
+   *
+   * @param s the string to parse; may be {@code null}.
+   * @return the parsed {@link Point}, or {@code null} if the string was {@code null} or empty.
+   */
   public static Point parsePoint(String s) {
     if (s == null || s.isEmpty()) {
       return null;
@@ -876,11 +902,33 @@ public class CodecUtils {
         return Point.fromGeoJson(s);
       } catch (Exception e1) {
         e1.addSuppressed(e);
-        throw new IllegalArgumentException("Invalid point literal: " + s, e1);
+        try {
+          ByteBuffer wkb = Objects.requireNonNull(parseByteBuffer(s));
+          return Point.fromWellKnownBinary(wkb);
+        } catch (Exception e2) {
+          e2.addSuppressed(e1);
+          throw new IllegalArgumentException("Invalid point literal: " + s, e2);
+        }
       }
     }
   }
 
+  /**
+   * Parses the given string as a {@link LineString}.
+   *
+   * <p>This method tries the following string formats, and returns the first one that is able to
+   * parse the string:
+   *
+   * <ol>
+   *   <li>Well-known text;
+   *   <li>Geo JSON;
+   *   <li>Well-known binary with Base64 encoding;
+   *   <li>Well-known binary with hexadecimal encoding.
+   * </ol>
+   *
+   * @param s the string to parse; may be {@code null}.
+   * @return the parsed {@link LineString}, or {@code null} if the string was {@code null} or empty.
+   */
   public static LineString parseLineString(String s) {
     if (s == null || s.isEmpty()) {
       return null;
@@ -894,11 +942,33 @@ public class CodecUtils {
         return LineString.fromGeoJson(s);
       } catch (Exception e1) {
         e1.addSuppressed(e);
-        throw new IllegalArgumentException("Invalid line string literal: " + s, e1);
+        try {
+          ByteBuffer wkb = Objects.requireNonNull(parseByteBuffer(s));
+          return LineString.fromWellKnownBinary(wkb);
+        } catch (Exception e2) {
+          e2.addSuppressed(e1);
+          throw new IllegalArgumentException("Invalid line string literal: " + s, e2);
+        }
       }
     }
   }
 
+  /**
+   * Parses the given string as a {@link Polygon}.
+   *
+   * <p>This method tries the following string formats, and returns the first one that is able to
+   * parse the string:
+   *
+   * <ol>
+   *   <li>Well-known text;
+   *   <li>Geo JSON;
+   *   <li>Well-known binary with Base64 encoding;
+   *   <li>Well-known binary with hexadecimal encoding.
+   * </ol>
+   *
+   * @param s the string to parse; may be {@code null}.
+   * @return the parsed {@link Polygon}, or {@code null} if the string was {@code null} or empty.
+   */
   public static Polygon parsePolygon(String s) {
     if (s == null || s.isEmpty()) {
       return null;
@@ -912,11 +982,26 @@ public class CodecUtils {
         return Polygon.fromGeoJson(s);
       } catch (Exception e1) {
         e1.addSuppressed(e);
-        throw new IllegalArgumentException("Invalid polygon literal: " + s, e1);
+        try {
+          ByteBuffer wkb = Objects.requireNonNull(parseByteBuffer(s));
+          return Polygon.fromWellKnownBinary(wkb);
+        } catch (Exception e2) {
+          e2.addSuppressed(e1);
+          throw new IllegalArgumentException("Invalid polygon literal: " + s, e2);
+        }
       }
     }
   }
 
+  /**
+   * Parses the given string as a {@link DateRange}.
+   *
+   * <p>This method simply delegates to {@link DateRange#parse(String)}, except when the string is
+   * {@code null} or empty, in which case it returns {@code null}.
+   *
+   * @param s the string to parse; may be {@code null}.
+   * @return the parsed {@link DateRange}, or {@code null} if the string was {@code null} or empty.
+   */
   public static DateRange parseDateRange(String s) {
     if (s == null || s.isEmpty()) {
       return null;
@@ -961,7 +1046,6 @@ public class CodecUtils {
     }
   }
 
-  @VisibleForTesting
   public static TemporalFormat getTemporalFormat(
       @NonNull String pattern,
       @NonNull ZoneId timeZone,
