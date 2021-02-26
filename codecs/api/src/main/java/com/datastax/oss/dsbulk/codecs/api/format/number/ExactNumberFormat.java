@@ -13,8 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.dsbulk.codecs.api.util;
+package com.datastax.oss.dsbulk.codecs.api.format.number;
 
+import com.datastax.oss.dsbulk.codecs.api.util.CodecUtils;
 import java.text.FieldPosition;
 import java.text.NumberFormat;
 import java.text.ParsePosition;

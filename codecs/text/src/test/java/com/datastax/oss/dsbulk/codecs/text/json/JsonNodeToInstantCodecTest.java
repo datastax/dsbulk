@@ -23,7 +23,7 @@ import static java.util.concurrent.TimeUnit.MINUTES;
 import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.dsbulk.codecs.api.ConversionContext;
 import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
-import com.datastax.oss.dsbulk.codecs.api.util.CqlTemporalFormat;
+import com.datastax.oss.dsbulk.codecs.api.format.temporal.CqlTemporalFormat;
 import com.datastax.oss.dsbulk.codecs.text.TextConversionContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;

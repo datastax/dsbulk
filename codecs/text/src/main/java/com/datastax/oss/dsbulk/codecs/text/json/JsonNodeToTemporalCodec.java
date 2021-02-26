@@ -16,8 +16,8 @@
 package com.datastax.oss.dsbulk.codecs.text.json;
 
 import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
-import com.datastax.oss.dsbulk.codecs.api.util.NumericTemporalFormat;
-import com.datastax.oss.dsbulk.codecs.api.util.TemporalFormat;
+import com.datastax.oss.dsbulk.codecs.api.format.temporal.NumericTemporalFormat;
+import com.datastax.oss.dsbulk.codecs.api.format.temporal.TemporalFormat;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.NumericNode;
 import java.math.BigDecimal;

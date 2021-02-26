@@ -13,8 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.dsbulk.codecs.api.util;
+package com.datastax.oss.dsbulk.codecs.api.format.temporal;
 
+import com.datastax.oss.dsbulk.codecs.api.util.CodecUtils;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.text.NumberFormat;
 import java.text.ParsePosition;

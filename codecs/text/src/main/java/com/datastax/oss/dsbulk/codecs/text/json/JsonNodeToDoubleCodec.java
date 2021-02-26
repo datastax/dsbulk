@@ -18,8 +18,8 @@ package com.datastax.oss.dsbulk.codecs.text.json;
 import static java.util.stream.Collectors.toList;
 
 import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
+import com.datastax.oss.dsbulk.codecs.api.format.temporal.TemporalFormat;
 import com.datastax.oss.dsbulk.codecs.api.util.OverflowStrategy;
-import com.datastax.oss.dsbulk.codecs.api.util.TemporalFormat;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.math.BigDecimal;

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.dsbulk.codecs.api.util;
+package com.datastax.oss.dsbulk.codecs.api.format.binary;
 
 import com.datastax.oss.driver.api.core.data.ByteUtils;
 import java.nio.ByteBuffer;

@@ -22,7 +22,7 @@ import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import com.datastax.oss.dsbulk.codecs.api.ConversionContext;
 import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
-import com.datastax.oss.dsbulk.codecs.api.util.CqlTemporalFormat;
+import com.datastax.oss.dsbulk.codecs.api.format.temporal.CqlTemporalFormat;
 import com.datastax.oss.dsbulk.codecs.text.TextConversionContext;
 import java.time.Duration;
 import java.time.Instant;

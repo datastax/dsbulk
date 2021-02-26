@@ -16,7 +16,7 @@
 package com.datastax.oss.dsbulk.codecs.text.string;
 
 import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
-import com.datastax.oss.dsbulk.codecs.api.util.BinaryFormat;
+import com.datastax.oss.dsbulk.codecs.api.format.binary.BinaryFormat;
 import com.datastax.oss.dsbulk.codecs.api.util.CodecUtils;
 import java.nio.ByteBuffer;
 import java.util.List;

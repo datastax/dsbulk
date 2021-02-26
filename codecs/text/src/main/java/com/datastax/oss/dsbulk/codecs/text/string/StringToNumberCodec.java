@@ -16,9 +16,9 @@
 package com.datastax.oss.dsbulk.codecs.text.string;
 
 import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
+import com.datastax.oss.dsbulk.codecs.api.format.temporal.TemporalFormat;
 import com.datastax.oss.dsbulk.codecs.api.util.CodecUtils;
 import com.datastax.oss.dsbulk.codecs.api.util.OverflowStrategy;
-import com.datastax.oss.dsbulk.codecs.api.util.TemporalFormat;
 import io.netty.util.concurrent.FastThreadLocal;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
