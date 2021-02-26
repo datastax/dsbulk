@@ -130,7 +130,7 @@ public class DefaultRecordMapper implements RecordMapper {
             DataType cqlType = variableDefinitions.get(name).getType();
             GenericType<?> fieldType = recordMetadata.getFieldType(field, cqlType);
             Object raw = record.getFieldValue(field);
-            builder = bindColumn(builder, variable, raw, cqlType, fieldType);
+            builder = bindColumn(builder, field, variable, raw, cqlType, fieldType);
           }
         } else if (!allowExtraFields) {
           // the field wasn't mapped to any known variable
@@ -151,12 +151,18 @@ public class DefaultRecordMapper implements RecordMapper {
 
   private <T> BoundStatementBuilder bindColumn(
       BoundStatementBuilder builder,
+      Field field,
       CQLWord variable,
       @Nullable T raw,
       DataType cqlType,
       GenericType<? extends T> javaType) {
     TypeCodec<T> codec = mapping.codec(variable, cqlType, javaType);
-    ByteBuffer bb = codec.encode(raw, builder.protocolVersion());
+    ByteBuffer bb;
+    try {
+      bb = codec.encode(raw, builder.protocolVersion());
+    } catch (Exception e) {
+      throw InvalidMappingException.encodeFailed(field, variable, javaType, cqlType, raw, e);
+    }
     boolean isNull = isNull(bb, cqlType);
     if (isNull || isEmpty(bb)) {
       if (partitionKeyVariables.contains(variable)) {
