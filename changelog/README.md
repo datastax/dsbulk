@@ -1,5 +1,10 @@
 ## Changelog
 
+## 1.7.1 (in progress)
+
+- [bug] DAT-627: Share CodecRegistry instance between DSBulk and driver.
+
+
 ## 1.7.0
 
 - [bug] Correctly display durations lesser than 1 second (#369).

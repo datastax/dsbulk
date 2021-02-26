@@ -137,7 +137,10 @@ public class LoadWorkflow implements Workflow {
     batchSettings.init();
     executorSettings.init();
     engineSettings.init();
-    session = driverSettings.newSession(executionId);
+    ConvertingCodecFactory codecFactory =
+        codecSettings.createCodecFactory(
+            schemaSettings.isAllowExtraFields(), schemaSettings.isAllowMissingFields());
+    session = driverSettings.newSession(executionId, codecFactory.getCodecRegistry());
     ClusterInformationUtils.printDebugInfoAboutCluster(session);
     schemaSettings.init(
         SchemaGenerationType.MAP_AND_WRITE,
@@ -160,9 +163,6 @@ public class LoadWorkflow implements Workflow {
             schemaSettings.getRowType());
     metricsManager.init();
     executor = executorSettings.newWriteExecutor(session, metricsManager.getExecutionListener());
-    ConvertingCodecFactory codecFactory =
-        codecSettings.createCodecFactory(
-            schemaSettings.isAllowExtraFields(), schemaSettings.isAllowMissingFields());
     RecordMapper recordMapper =
         schemaSettings.createRecordMapper(session, connector.getRecordMetadata(), codecFactory);
     mapper = recordMapper::map;

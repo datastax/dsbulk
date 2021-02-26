@@ -16,7 +16,7 @@
 package com.datastax.oss.dsbulk.codecs.api;
 
 import com.datastax.oss.driver.api.core.type.DataType;
-import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
+import com.datastax.oss.driver.api.core.type.codec.registry.MutableCodecRegistry;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import com.datastax.oss.driver.internal.core.type.codec.registry.DefaultCodecRegistry;
 import edu.umd.cs.findbugs.annotations.NonNull;
@@ -29,19 +29,19 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class ConvertingCodecFactory {
 
   private final List<ConvertingCodecProvider> providers = new CopyOnWriteArrayList<>();
-  @NonNull private final CodecRegistry codecRegistry;
+  @NonNull private final MutableCodecRegistry codecRegistry;
   private final ConversionContext context;
 
   public ConvertingCodecFactory() {
-    this(DefaultCodecRegistry.DEFAULT, new CommonConversionContext());
+    this(new DefaultCodecRegistry("default"), new CommonConversionContext());
   }
 
   public ConvertingCodecFactory(@NonNull ConversionContext context) {
-    this(DefaultCodecRegistry.DEFAULT, context);
+    this(new DefaultCodecRegistry("default"), context);
   }
 
   public ConvertingCodecFactory(
-      @NonNull CodecRegistry codecRegistry, @NonNull ConversionContext context) {
+      @NonNull MutableCodecRegistry codecRegistry, @NonNull ConversionContext context) {
     this.codecRegistry = codecRegistry;
     this.context = context;
     ServiceLoader<ConvertingCodecProvider> loader =
@@ -52,7 +52,7 @@ public class ConvertingCodecFactory {
   }
 
   @NonNull
-  public CodecRegistry getCodecRegistry() {
+  public MutableCodecRegistry getCodecRegistry() {
     return codecRegistry;
   }
 
@@ -76,7 +76,7 @@ public class ConvertingCodecFactory {
         return codec;
       }
     }
-    // If external and internal types are the same, the codec registry, may be able
+    // If external and internal types are the same, the codec registry may be able
     // to create a matching TypeCodec; if that succeeds, wrap the returned code in
     // an IdempotentConvertingCodec
     @SuppressWarnings("unchecked")

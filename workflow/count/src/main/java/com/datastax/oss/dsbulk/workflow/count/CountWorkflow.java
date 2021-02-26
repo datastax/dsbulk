@@ -108,7 +108,10 @@ public class CountWorkflow implements Workflow {
     monitoringSettings.init();
     executorSettings.init();
     statsSettings.init();
-    session = driverSettings.newSession(executionId);
+    ConvertingCodecFactory codecFactory =
+        codecSettings.createCodecFactory(
+            schemaSettings.isAllowExtraFields(), schemaSettings.isAllowMissingFields());
+    session = driverSettings.newSession(executionId, codecFactory.getCodecRegistry());
     ClusterInformationUtils.printDebugInfoAboutCluster(session);
     schemaSettings.init(SchemaGenerationType.READ_AND_COUNT, session, false, false);
     logManager = logSettings.newLogManager(session, false);
@@ -126,9 +129,6 @@ public class CountWorkflow implements Workflow {
     metricsManager.init();
     executor =
         executorSettings.newReadExecutor(session, metricsManager.getExecutionListener(), false);
-    ConvertingCodecFactory codecFactory =
-        codecSettings.createCodecFactory(
-            schemaSettings.isAllowExtraFields(), schemaSettings.isAllowMissingFields());
     EnumSet<StatsSettings.StatisticsMode> modes = statsSettings.getStatisticsModes();
     int numPartitions = statsSettings.getNumPartitions();
     readResultCounter =

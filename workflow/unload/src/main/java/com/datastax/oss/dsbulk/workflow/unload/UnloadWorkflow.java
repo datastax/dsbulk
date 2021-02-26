@@ -123,7 +123,10 @@ public class UnloadWorkflow implements Workflow {
     codecSettings.init();
     monitoringSettings.init();
     executorSettings.init();
-    session = driverSettings.newSession(executionId);
+    ConvertingCodecFactory codecFactory =
+        codecSettings.createCodecFactory(
+            schemaSettings.isAllowExtraFields(), schemaSettings.isAllowMissingFields());
+    session = driverSettings.newSession(executionId, codecFactory.getCodecRegistry());
     ClusterInformationUtils.printDebugInfoAboutCluster(session);
     schemaSettings.init(
         SchemaGenerationType.READ_AND_MAP,
@@ -144,9 +147,6 @@ public class UnloadWorkflow implements Workflow {
             schemaSettings.getRowType());
     metricsManager.init();
     RecordMetadata recordMetadata = connector.getRecordMetadata();
-    ConvertingCodecFactory codecFactory =
-        codecSettings.createCodecFactory(
-            schemaSettings.isAllowExtraFields(), schemaSettings.isAllowMissingFields());
     readResultMapper =
         schemaSettings.createReadResultMapper(
             session, recordMetadata, codecFactory, logSettings.isSources());

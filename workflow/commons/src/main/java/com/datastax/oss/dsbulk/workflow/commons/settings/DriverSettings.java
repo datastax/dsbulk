@@ -58,6 +58,7 @@ import com.datastax.oss.driver.api.core.config.DriverOption;
 import com.datastax.oss.driver.api.core.context.DriverContext;
 import com.datastax.oss.driver.api.core.session.ProgrammaticArguments;
 import com.datastax.oss.driver.api.core.time.TimestampGenerator;
+import com.datastax.oss.driver.api.core.type.codec.registry.MutableCodecRegistry;
 import com.datastax.oss.driver.internal.core.auth.PlainTextAuthProvider;
 import com.datastax.oss.driver.internal.core.config.typesafe.DefaultDriverConfigLoader;
 import com.datastax.oss.driver.internal.core.context.DefaultDriverContext;
@@ -531,14 +532,15 @@ public class DriverSettings {
     return mergedDriverConfig;
   }
 
-  public CqlSession newSession(String executionId) {
+  public CqlSession newSession(String executionId, MutableCodecRegistry codecRegistry) {
     CqlSessionBuilder sessionBuilder =
         new BulkLoaderSessionBuilder()
             .withApplicationVersion(getBulkLoaderVersion())
             .withApplicationName(BULK_LOADER_APPLICATION_NAME + " " + executionId)
             .withClientId(WorkflowUtils.clientId(executionId))
             .withAuthProvider(authProvider)
-            .withConfigLoader(new DefaultDriverConfigLoader(this::getDriverConfig, false));
+            .withConfigLoader(new DefaultDriverConfigLoader(this::getDriverConfig, false))
+            .withCodecRegistry(codecRegistry);
     return sessionBuilder.build();
   }
 
