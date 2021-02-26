@@ -64,6 +64,7 @@
     <reactor.version>2020.0.3</reactor.version>
     <config.version>1.4.1</config.version>
     <netty.version>4.1.51.Final</netty.version>
+    <!-- Note: Caffeine 3 requires java 11 or higher -->
     <caffeine.version>2.8.8</caffeine.version>
     <jctools.version>3.2.0</jctools.version>
     <slf4j.version>1.7.26</slf4j.version>
