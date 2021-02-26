@@ -16,8 +16,8 @@
 package com.datastax.oss.dsbulk.codecs.text.json;
 
 import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
+import com.datastax.oss.dsbulk.codecs.api.format.binary.BinaryFormat;
 import com.datastax.oss.dsbulk.codecs.api.util.CodecUtils;
-import com.datastax.oss.protocol.internal.util.Bytes;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -25,8 +25,11 @@ import java.util.List;
 
 public class JsonNodeToBlobCodec extends JsonNodeConvertingCodec<ByteBuffer> {
 
-  public JsonNodeToBlobCodec(List<String> nullStrings) {
+  private final BinaryFormat binaryFormat;
+
+  public JsonNodeToBlobCodec(BinaryFormat binaryFormat, List<String> nullStrings) {
     super(TypeCodecs.BLOB, nullStrings);
+    this.binaryFormat = binaryFormat;
   }
 
   @Override
@@ -48,10 +51,6 @@ public class JsonNodeToBlobCodec extends JsonNodeConvertingCodec<ByteBuffer> {
 
   @Override
   public JsonNode internalToExternal(ByteBuffer value) {
-    if (value == null) {
-      return null;
-    }
-    byte[] array = Bytes.getArray(value);
-    return JsonCodecUtils.JSON_NODE_FACTORY.binaryNode(array);
+    return JsonCodecUtils.JSON_NODE_FACTORY.textNode(binaryFormat.format(value));
   }
 }
