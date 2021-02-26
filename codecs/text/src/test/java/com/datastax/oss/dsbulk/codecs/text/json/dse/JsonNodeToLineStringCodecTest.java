@@ -22,6 +22,9 @@ import com.datastax.dse.driver.api.core.data.geometry.LineString;
 import com.datastax.dse.driver.internal.core.data.geometry.DefaultLineString;
 import com.datastax.dse.driver.internal.core.data.geometry.DefaultPoint;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
+import com.datastax.oss.dsbulk.codecs.api.format.geo.JsonGeoFormat;
+import com.datastax.oss.dsbulk.codecs.api.format.geo.WellKnownBinaryGeoFormat;
+import com.datastax.oss.dsbulk.codecs.api.format.geo.WellKnownTextGeoFormat;
 import com.datastax.oss.dsbulk.codecs.text.json.JsonCodecUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -31,20 +34,32 @@ import org.junit.jupiter.api.Test;
 
 class JsonNodeToLineStringCodecTest {
 
-  private List<String> nullStrings = Lists.newArrayList("NULL");
-  private LineString lineString =
+  private final List<String> nullStrings = Lists.newArrayList("NULL");
+  private final LineString lineString =
       new DefaultLineString(
           new DefaultPoint(30, 10), new DefaultPoint(10, 30), new DefaultPoint(40, 40));
-  private ObjectMapper objectMapper = JsonCodecUtils.getObjectMapper();
-  private JsonNode geoJsonNode =
+  private final ObjectMapper objectMapper = JsonCodecUtils.getObjectMapper();
+  private final JsonNode geoJsonNode =
       objectMapper.readTree(
           "{\"type\":\"LineString\",\"coordinates\":[[30.0,10.0],[10.0,30.0],[40.0,40.0]]}");
+  private final JsonNode wktJsonNode =
+      objectMapper.getNodeFactory().textNode("LINESTRING (30 10, 10 30, 40 40)");
+  private final JsonNode wkbBase64JsonNode =
+      objectMapper
+          .getNodeFactory()
+          .textNode("AQIAAAADAAAAAAAAAAAAPkAAAAAAAAAkQAAAAAAAACRAAAAAAAAAPkAAAAAAAABEQAAAAAAAAERA");
+  private final JsonNode wkbHexJsonNode =
+      objectMapper
+          .getNodeFactory()
+          .textNode(
+              "0x0102000000030000000000000000003e40000000000000244000000000000024400000000000003e4000000000000044400000000000004440");
 
   JsonNodeToLineStringCodecTest() throws IOException {}
 
   @Test
   void should_convert_from_valid_external() throws IOException {
-    JsonNodeToLineStringCodec codec = new JsonNodeToLineStringCodec(objectMapper, nullStrings);
+    JsonNodeToLineStringCodec codec =
+        new JsonNodeToLineStringCodec(objectMapper, WellKnownTextGeoFormat.INSTANCE, nullStrings);
     assertThat(codec)
         .convertsFromExternal(JSON_NODE_FACTORY.textNode("'LINESTRING (30 10, 10 30, 40 40)'"))
         .toInternal(lineString)
@@ -67,13 +82,25 @@ class JsonNodeToLineStringCodecTest {
 
   @Test
   void should_convert_from_valid_internal() {
-    JsonNodeToLineStringCodec codec = new JsonNodeToLineStringCodec(objectMapper, nullStrings);
+    JsonNodeToLineStringCodec codec =
+        new JsonNodeToLineStringCodec(objectMapper, WellKnownTextGeoFormat.INSTANCE, nullStrings);
+    assertThat(codec).convertsFromInternal(lineString).toExternal(wktJsonNode);
+    codec = new JsonNodeToLineStringCodec(objectMapper, JsonGeoFormat.INSTANCE, nullStrings);
     assertThat(codec).convertsFromInternal(lineString).toExternal(geoJsonNode);
+    codec =
+        new JsonNodeToLineStringCodec(
+            objectMapper, WellKnownBinaryGeoFormat.BASE64_INSTANCE, nullStrings);
+    assertThat(codec).convertsFromInternal(lineString).toExternal(wkbBase64JsonNode);
+    codec =
+        new JsonNodeToLineStringCodec(
+            objectMapper, WellKnownBinaryGeoFormat.HEX_INSTANCE, nullStrings);
+    assertThat(codec).convertsFromInternal(lineString).toExternal(wkbHexJsonNode);
   }
 
   @Test
   void should_not_convert_from_invalid_external() {
-    JsonNodeToLineStringCodec codec = new JsonNodeToLineStringCodec(objectMapper, nullStrings);
+    JsonNodeToLineStringCodec codec =
+        new JsonNodeToLineStringCodec(objectMapper, WellKnownTextGeoFormat.INSTANCE, nullStrings);
     assertThat(codec)
         .cannotConvertFromExternal(JSON_NODE_FACTORY.textNode("not a valid linestring literal"));
   }

@@ -16,6 +16,7 @@
 package com.datastax.oss.dsbulk.codecs.text.string;
 
 import static com.datastax.oss.dsbulk.codecs.api.CommonConversionContext.BINARY_FORMAT;
+import static com.datastax.oss.dsbulk.codecs.api.CommonConversionContext.GEO_FORMAT;
 import static com.datastax.oss.dsbulk.codecs.text.TextConversionContext.BOOLEAN_INPUT_WORDS;
 import static com.datastax.oss.dsbulk.codecs.text.TextConversionContext.BOOLEAN_NUMBERS;
 import static com.datastax.oss.dsbulk.codecs.text.TextConversionContext.BOOLEAN_OUTPUT_WORDS;
@@ -322,11 +323,11 @@ public class StringConvertingCodecProvider implements ConvertingCodecProvider {
           CustomType customType = (CustomType) cqlType;
           switch (customType.getClassName()) {
             case POINT_CLASS_NAME:
-              return new StringToPointCodec(nullStrings);
+              return new StringToPointCodec(context.getAttribute(GEO_FORMAT), nullStrings);
             case LINE_STRING_CLASS_NAME:
-              return new StringToLineStringCodec(nullStrings);
+              return new StringToLineStringCodec(context.getAttribute(GEO_FORMAT), nullStrings);
             case POLYGON_CLASS_NAME:
-              return new StringToPolygonCodec(nullStrings);
+              return new StringToPolygonCodec(context.getAttribute(GEO_FORMAT), nullStrings);
             case DATE_RANGE_CLASS_NAME:
               return new StringToDateRangeCodec(nullStrings);
           }

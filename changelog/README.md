@@ -2,6 +2,7 @@
 
 ## 1.7.1 (in progress)
 
+- [improvement] Add codec.geo setting to make Geometry formats configurable.
 - [bug] DAT-627: Share CodecRegistry instance between DSBulk and driver.
 
 

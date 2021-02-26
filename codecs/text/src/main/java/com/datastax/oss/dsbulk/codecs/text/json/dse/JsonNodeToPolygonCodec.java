@@ -17,57 +17,27 @@ package com.datastax.oss.dsbulk.codecs.text.json.dse;
 
 import com.datastax.dse.driver.api.core.data.geometry.Polygon;
 import com.datastax.dse.driver.api.core.type.codec.DseTypeCodecs;
+import com.datastax.oss.dsbulk.codecs.api.format.geo.GeoFormat;
 import com.datastax.oss.dsbulk.codecs.api.util.CodecUtils;
-import com.datastax.oss.dsbulk.codecs.text.json.JsonNodeConvertingCodec;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
+import edu.umd.cs.findbugs.annotations.NonNull;
+import java.nio.ByteBuffer;
 import java.util.List;
 
-public class JsonNodeToPolygonCodec extends JsonNodeConvertingCodec<Polygon> {
+public class JsonNodeToPolygonCodec extends JsonNodeToGeometryCodec<Polygon> {
 
-  private final ObjectMapper objectMapper;
-
-  public JsonNodeToPolygonCodec(ObjectMapper objectMapper, List<String> nullStrings) {
-    super(DseTypeCodecs.POLYGON, nullStrings);
-    this.objectMapper = objectMapper;
+  public JsonNodeToPolygonCodec(
+      ObjectMapper objectMapper, GeoFormat geoFormat, List<String> nullStrings) {
+    super(DseTypeCodecs.POLYGON, objectMapper, geoFormat, nullStrings);
   }
 
   @Override
-  public Polygon externalToInternal(JsonNode node) {
-    if (isNullOrEmpty(node)) {
-      return null;
-    }
-    try {
-      // We accept:
-      // 1) String nodes containing WKT literals
-      // 2) String nodes containing Geo JSON documents
-      // 3) Json object nodes compliant with Geo JSON syntax
-      // We need to serialize the node to support #3 above
-      String s;
-      if (node.isObject()) {
-        s = objectMapper.writeValueAsString(node);
-      } else {
-        s = node.asText();
-      }
-      return CodecUtils.parsePolygon(s);
-    } catch (JsonProcessingException e) {
-      throw new IllegalArgumentException("Cannot deserialize node " + node, e);
-    }
+  protected Polygon parseGeometry(@NonNull String s) {
+    return CodecUtils.parsePolygon(s);
   }
 
   @Override
-  public JsonNode internalToExternal(Polygon value) {
-    if (value == null) {
-      return null;
-    }
-    try {
-      // Since geo types have a standardized Json format,
-      // use that rather than WKT.
-      return objectMapper.readTree(value.asGeoJson());
-    } catch (IOException e) {
-      throw new IllegalArgumentException("Cannot serialize value " + value, e);
-    }
+  protected Polygon parseGeometry(@NonNull byte[] b) {
+    return Polygon.fromWellKnownBinary(ByteBuffer.wrap(b));
   }
 }

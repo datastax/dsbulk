@@ -17,14 +17,18 @@ package com.datastax.oss.dsbulk.codecs.text.string.dse;
 
 import com.datastax.dse.driver.api.core.data.geometry.Polygon;
 import com.datastax.dse.driver.api.core.type.codec.DseTypeCodecs;
+import com.datastax.oss.dsbulk.codecs.api.format.geo.GeoFormat;
 import com.datastax.oss.dsbulk.codecs.api.util.CodecUtils;
 import com.datastax.oss.dsbulk.codecs.text.string.StringConvertingCodec;
 import java.util.List;
 
 public class StringToPolygonCodec extends StringConvertingCodec<Polygon> {
 
-  public StringToPolygonCodec(List<String> nullStrings) {
+  private final GeoFormat geoFormat;
+
+  public StringToPolygonCodec(GeoFormat geoFormat, List<String> nullStrings) {
     super(DseTypeCodecs.POLYGON, nullStrings);
+    this.geoFormat = geoFormat;
   }
 
   @Override
@@ -37,9 +41,6 @@ public class StringToPolygonCodec extends StringConvertingCodec<Polygon> {
 
   @Override
   public String internalToExternal(Polygon value) {
-    if (value == null) {
-      return nullString();
-    }
-    return value.asWellKnownText();
+    return geoFormat.format(value);
   }
 }

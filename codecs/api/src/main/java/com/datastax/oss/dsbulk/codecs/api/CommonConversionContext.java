@@ -20,11 +20,12 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
-import com.datastax.oss.dsbulk.codecs.api.util.Base64BinaryFormat;
-import com.datastax.oss.dsbulk.codecs.api.util.BinaryFormat;
+import com.datastax.oss.dsbulk.codecs.api.format.binary.Base64BinaryFormat;
+import com.datastax.oss.dsbulk.codecs.api.format.binary.BinaryFormat;
+import com.datastax.oss.dsbulk.codecs.api.format.geo.GeoFormat;
+import com.datastax.oss.dsbulk.codecs.api.format.temporal.TemporalFormat;
 import com.datastax.oss.dsbulk.codecs.api.util.CodecUtils;
 import com.datastax.oss.dsbulk.codecs.api.util.OverflowStrategy;
-import com.datastax.oss.dsbulk.codecs.api.util.TemporalFormat;
 import com.datastax.oss.dsbulk.codecs.api.util.TimeUUIDGenerator;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import io.netty.util.concurrent.FastThreadLocal;
@@ -87,6 +88,7 @@ public class CommonConversionContext extends ConversionContext {
   public static final String BOOLEAN_NUMBERS = "BOOLEAN_NUMBERS";
   public static final String TIME_UUID_GENERATOR = "TIME_UUID_GENERATOR";
   public static final String BINARY_FORMAT = "BINARY_FORMAT";
+  public static final String GEO_FORMAT = "GEO_FORMAT";
   public static final String ALLOW_EXTRA_FIELDS = "ALLOW_EXTRA_FIELDS";
   public static final String ALLOW_MISSING_FIELDS = "ALLOW_MISSING_FIELDS";
 
@@ -417,12 +419,22 @@ public class CommonConversionContext extends ConversionContext {
   }
 
   /**
-   * The binary format to use for conversions between {@code String} and CQL blob.
+   * The {@link BinaryFormat} to use for conversions between {@code String} and CQL blob.
    *
    * @return this builder (for method chaining).
    */
   public CommonConversionContext setBinaryFormat(@NonNull BinaryFormat binaryFormat) {
     addAttribute(BINARY_FORMAT, binaryFormat);
+    return this;
+  }
+
+  /**
+   * The {@link GeoFormat} to use for conversions between {@code String} and CQL blob.
+   *
+   * @return this builder (for method chaining).
+   */
+  public CommonConversionContext setGeoFormat(@NonNull GeoFormat binaryFormat) {
+    addAttribute(GEO_FORMAT, binaryFormat);
     return this;
   }
 

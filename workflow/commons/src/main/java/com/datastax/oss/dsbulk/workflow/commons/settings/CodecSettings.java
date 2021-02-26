@@ -19,10 +19,14 @@ import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.dsbulk.codecs.api.ConversionContext;
 import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
-import com.datastax.oss.dsbulk.codecs.api.util.Base64BinaryFormat;
-import com.datastax.oss.dsbulk.codecs.api.util.BinaryFormat;
+import com.datastax.oss.dsbulk.codecs.api.format.binary.Base64BinaryFormat;
+import com.datastax.oss.dsbulk.codecs.api.format.binary.BinaryFormat;
+import com.datastax.oss.dsbulk.codecs.api.format.binary.HexBinaryFormat;
+import com.datastax.oss.dsbulk.codecs.api.format.geo.GeoFormat;
+import com.datastax.oss.dsbulk.codecs.api.format.geo.JsonGeoFormat;
+import com.datastax.oss.dsbulk.codecs.api.format.geo.WellKnownBinaryGeoFormat;
+import com.datastax.oss.dsbulk.codecs.api.format.geo.WellKnownTextGeoFormat;
 import com.datastax.oss.dsbulk.codecs.api.util.CodecUtils;
-import com.datastax.oss.dsbulk.codecs.api.util.HexBinaryFormat;
 import com.datastax.oss.dsbulk.codecs.api.util.OverflowStrategy;
 import com.datastax.oss.dsbulk.codecs.api.util.TimeUUIDGenerator;
 import com.datastax.oss.dsbulk.codecs.text.TextConversionContext;
@@ -60,6 +64,7 @@ public class CodecSettings {
   private static final String NUMERIC_TIMESTAMP_EPOCH = "epoch";
   private static final String TIME_UUID_GENERATOR = "uuidStrategy";
   private static final String BINARY = "binary";
+  private static final String GEO = "geo";
 
   private final Config config;
 
@@ -81,6 +86,7 @@ public class CodecSettings {
   private Map<String, Boolean> booleanInputWords;
   private Map<Boolean, String> booleanOutputWords;
   private BinaryFormat binaryFormat;
+  private GeoFormat geoFormat;
 
   public CodecSettings(Config config) {
     this.config = config;
@@ -132,6 +138,9 @@ public class CodecSettings {
       // Binary
       binaryFormat = getBinaryFormat();
 
+      // Geo
+      geoFormat = getGeoFormat();
+
     } catch (ConfigException e) {
       throw ConfigUtils.convertConfigException(e, "dsbulk.codec");
     }
@@ -168,6 +177,26 @@ public class CodecSettings {
     }
   }
 
+  private GeoFormat getGeoFormat() {
+    String geoFormatStr = config.getString(GEO);
+    switch (geoFormatStr.toLowerCase()) {
+      case "wkt":
+        return WellKnownTextGeoFormat.INSTANCE;
+      case "wkb":
+        String binaryFormatStr = config.getString(BINARY);
+        switch (binaryFormatStr.toLowerCase()) {
+          case "hex":
+            return WellKnownBinaryGeoFormat.HEX_INSTANCE;
+          case "base64":
+            return WellKnownBinaryGeoFormat.BASE64_INSTANCE;
+        }
+      case "json":
+        return JsonGeoFormat.INSTANCE;
+    }
+    throw new IllegalArgumentException(
+        "Invalid value for dsbulk.codec.geo, expecting WKT, WKB or JSON, got " + geoFormatStr);
+  }
+
   public ConvertingCodecFactory createCodecFactory(
       boolean allowExtraFields, boolean allowMissingFields) {
     ConversionContext context =
@@ -190,6 +219,7 @@ public class CodecSettings {
             .setEpoch(epoch)
             .setTimeUUIDGenerator(generator)
             .setBinaryFormat(binaryFormat)
+            .setGeoFormat(geoFormat)
             .setAllowExtraFields(allowExtraFields)
             .setAllowMissingFields(allowMissingFields);
     return new ConvertingCodecFactory(context);

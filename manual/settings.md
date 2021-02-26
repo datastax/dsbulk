@@ -955,6 +955,16 @@ Whether or not to use the `codec.number` pattern to format numeric output. When 
 
 Default: **false**.
 
+#### --codec.geo<br />--dsbulk.codec.geo _&lt;string&gt;_
+
+Strategy to use when converting geometry types to strings. Geometry types are only available in DataStax Enterprise (DSE) 5.0 or higher. Only applicable when unloading columns of CQL type `Point`, `LineString` or `Polygon`, and only if the connector in use requires stringification. Valid values are:
+
+- WKT: Encode the data in Well-known text format. This is the default strategy.
+- WKB: Encode the data in Well-known binary format. The actual encoding will depend on the value chosen for the `codec.binary` setting (HEX or BASE64).
+- JSON: Encode the data in GeoJson format.
+
+Default: **"WKT"**.
+
 #### -locale,<br />--codec.locale<br />--dsbulk.codec.locale _&lt;string&gt;_
 
 The locale to use for locale-sensitive conversions.

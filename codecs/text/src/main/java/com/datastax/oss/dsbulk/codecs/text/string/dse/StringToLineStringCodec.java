@@ -17,14 +17,18 @@ package com.datastax.oss.dsbulk.codecs.text.string.dse;
 
 import com.datastax.dse.driver.api.core.data.geometry.LineString;
 import com.datastax.dse.driver.api.core.type.codec.DseTypeCodecs;
+import com.datastax.oss.dsbulk.codecs.api.format.geo.GeoFormat;
 import com.datastax.oss.dsbulk.codecs.api.util.CodecUtils;
 import com.datastax.oss.dsbulk.codecs.text.string.StringConvertingCodec;
 import java.util.List;
 
 public class StringToLineStringCodec extends StringConvertingCodec<LineString> {
 
-  public StringToLineStringCodec(List<String> nullStrings) {
+  private final GeoFormat geoFormat;
+
+  public StringToLineStringCodec(GeoFormat geoFormat, List<String> nullStrings) {
     super(DseTypeCodecs.LINE_STRING, nullStrings);
+    this.geoFormat = geoFormat;
   }
 
   @Override
@@ -37,9 +41,6 @@ public class StringToLineStringCodec extends StringConvertingCodec<LineString> {
 
   @Override
   public String internalToExternal(LineString value) {
-    if (value == null) {
-      return nullString();
-    }
-    return value.asWellKnownText();
+    return geoFormat.format(value);
   }
 }

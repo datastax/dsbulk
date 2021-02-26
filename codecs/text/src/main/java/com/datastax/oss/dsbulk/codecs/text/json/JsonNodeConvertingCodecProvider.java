@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.dsbulk.codecs.text.json;
 
+import static com.datastax.oss.dsbulk.codecs.api.CommonConversionContext.BINARY_FORMAT;
+import static com.datastax.oss.dsbulk.codecs.api.CommonConversionContext.GEO_FORMAT;
 import static com.datastax.oss.dsbulk.codecs.text.TextConversionContext.ALLOW_EXTRA_FIELDS;
 import static com.datastax.oss.dsbulk.codecs.text.TextConversionContext.ALLOW_MISSING_FIELDS;
 import static com.datastax.oss.dsbulk.codecs.text.TextConversionContext.BOOLEAN_INPUT_WORDS;
@@ -289,7 +291,7 @@ public class JsonNodeConvertingCodecProvider implements ConvertingCodecProvider 
               nullStrings);
         }
       case BLOB:
-        return new JsonNodeToBlobCodec(nullStrings);
+        return new JsonNodeToBlobCodec(context.getAttribute(BINARY_FORMAT), nullStrings);
       case DURATION:
         return new JsonNodeToDurationCodec(nullStrings);
       case LIST:
@@ -373,12 +375,20 @@ public class JsonNodeConvertingCodecProvider implements ConvertingCodecProvider 
           CustomType customType = (CustomType) cqlType;
           switch (customType.getClassName()) {
             case POINT_CLASS_NAME:
-              return new JsonNodeToPointCodec(context.getAttribute(OBJECT_MAPPER), nullStrings);
+              return new JsonNodeToPointCodec(
+                  context.getAttribute(OBJECT_MAPPER),
+                  context.getAttribute(GEO_FORMAT),
+                  nullStrings);
             case LINE_STRING_CLASS_NAME:
               return new JsonNodeToLineStringCodec(
-                  context.getAttribute(OBJECT_MAPPER), nullStrings);
+                  context.getAttribute(OBJECT_MAPPER),
+                  context.getAttribute(GEO_FORMAT),
+                  nullStrings);
             case POLYGON_CLASS_NAME:
-              return new JsonNodeToPolygonCodec(context.getAttribute(OBJECT_MAPPER), nullStrings);
+              return new JsonNodeToPolygonCodec(
+                  context.getAttribute(OBJECT_MAPPER),
+                  context.getAttribute(GEO_FORMAT),
+                  nullStrings);
             case DATE_RANGE_CLASS_NAME:
               return new JsonNodeToDateRangeCodec(nullStrings);
           }
