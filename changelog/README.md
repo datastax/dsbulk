@@ -2,9 +2,13 @@
 
 ## 1.7.1 (in progress)
 
-- [improvement] Add codec.geo setting to make Geometry formats configurable.
+- [improvement] Upgrade driver to 4.10.0.
+- [bug] Fix incorrect error message when read concurrency is < 1.
+- [bug] Prevent connectors from reporting read concurrency zero when no file is available for reading.
 - [bug] DAT-627: Share CodecRegistry instance between DSBulk and driver.
-
+- [improvement] Accept Well-known Binary (WKB) input formats for Geometry types.
+- [improvement] Make Json connector sensitive to the configured binary format.
+- [improvement] Make Geometry formats configurable.
 
 ## 1.7.0
 
