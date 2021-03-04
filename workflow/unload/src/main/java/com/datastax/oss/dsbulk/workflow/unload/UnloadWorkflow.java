@@ -39,7 +39,7 @@ import com.datastax.oss.dsbulk.workflow.commons.settings.EngineSettings;
 import com.datastax.oss.dsbulk.workflow.commons.settings.ExecutorSettings;
 import com.datastax.oss.dsbulk.workflow.commons.settings.LogSettings;
 import com.datastax.oss.dsbulk.workflow.commons.settings.MonitoringSettings;
-import com.datastax.oss.dsbulk.workflow.commons.settings.SchemaGenerationType;
+import com.datastax.oss.dsbulk.workflow.commons.settings.SchemaGenerationStrategy;
 import com.datastax.oss.dsbulk.workflow.commons.settings.SchemaSettings;
 import com.datastax.oss.dsbulk.workflow.commons.settings.SettingsManager;
 import com.datastax.oss.dsbulk.workflow.commons.utils.CloseableUtils;
@@ -97,7 +97,7 @@ public class UnloadWorkflow implements Workflow {
 
   @Override
   public void init() throws Exception {
-    settingsManager.init("UNLOAD", false);
+    settingsManager.init("UNLOAD", false, SchemaGenerationStrategy.READ_AND_MAP);
     executionId = settingsManager.getExecutionId();
     LogSettings logSettings = settingsManager.getLogSettings();
     DriverSettings driverSettings = settingsManager.getDriverSettings();
@@ -129,7 +129,6 @@ public class UnloadWorkflow implements Workflow {
     session = driverSettings.newSession(executionId, codecFactory.getCodecRegistry());
     ClusterInformationUtils.printDebugInfoAboutCluster(session);
     schemaSettings.init(
-        SchemaGenerationType.READ_AND_MAP,
         session,
         connector.supports(CommonConnectorFeature.INDEXED_RECORDS),
         connector.supports(CommonConnectorFeature.MAPPED_RECORDS));

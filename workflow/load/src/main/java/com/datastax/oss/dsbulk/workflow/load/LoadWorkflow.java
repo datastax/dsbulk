@@ -46,7 +46,7 @@ import com.datastax.oss.dsbulk.workflow.commons.settings.EngineSettings;
 import com.datastax.oss.dsbulk.workflow.commons.settings.ExecutorSettings;
 import com.datastax.oss.dsbulk.workflow.commons.settings.LogSettings;
 import com.datastax.oss.dsbulk.workflow.commons.settings.MonitoringSettings;
-import com.datastax.oss.dsbulk.workflow.commons.settings.SchemaGenerationType;
+import com.datastax.oss.dsbulk.workflow.commons.settings.SchemaGenerationStrategy;
 import com.datastax.oss.dsbulk.workflow.commons.settings.SchemaSettings;
 import com.datastax.oss.dsbulk.workflow.commons.settings.SettingsManager;
 import com.datastax.oss.dsbulk.workflow.commons.utils.CloseableUtils;
@@ -114,7 +114,7 @@ public class LoadWorkflow implements Workflow {
 
   @Override
   public void init() throws Exception {
-    settingsManager.init("LOAD", true);
+    settingsManager.init("LOAD", true, SchemaGenerationStrategy.MAP_AND_WRITE);
     executionId = settingsManager.getExecutionId();
     LogSettings logSettings = settingsManager.getLogSettings();
     logSettings.init();
@@ -134,7 +134,6 @@ public class LoadWorkflow implements Workflow {
         settingsManager.getEffectiveBulkLoaderConfig(), driverSettings.getDriverConfig());
     monitoringSettings.init();
     codecSettings.init();
-    batchSettings.init();
     executorSettings.init();
     engineSettings.init();
     ConvertingCodecFactory codecFactory =
@@ -143,14 +142,20 @@ public class LoadWorkflow implements Workflow {
     session = driverSettings.newSession(executionId, codecFactory.getCodecRegistry());
     ClusterInformationUtils.printDebugInfoAboutCluster(session);
     schemaSettings.init(
-        SchemaGenerationType.MAP_AND_WRITE,
         session,
         connector.supports(CommonConnectorFeature.INDEXED_RECORDS),
         connector.supports(CommonConnectorFeature.MAPPED_RECORDS));
-    batchingEnabled = batchSettings.isBatchingEnabled();
-    batchBufferSize = batchSettings.getBufferSize();
     logManager = logSettings.newLogManager(session, true);
     logManager.init();
+    RecordMapper recordMapper =
+        schemaSettings.createRecordMapper(session, connector.getRecordMetadata(), codecFactory);
+    mapper = recordMapper::map;
+    batchSettings.init(schemaSettings.isBatchQuery());
+    batchingEnabled = batchSettings.isBatchingEnabled();
+    batchBufferSize = batchSettings.getBufferSize();
+    if (batchingEnabled) {
+      batcher = batchSettings.newStatementBatcher(session)::batchByGroupingKey;
+    }
     metricsManager =
         monitoringSettings.newMetricsManager(
             true,
@@ -163,12 +168,6 @@ public class LoadWorkflow implements Workflow {
             schemaSettings.getRowType());
     metricsManager.init();
     executor = executorSettings.newWriteExecutor(session, metricsManager.getExecutionListener());
-    RecordMapper recordMapper =
-        schemaSettings.createRecordMapper(session, connector.getRecordMetadata(), codecFactory);
-    mapper = recordMapper::map;
-    if (batchingEnabled) {
-      batcher = batchSettings.newStatementBatcher(session)::batchByGroupingKey;
-    }
     dryRun = engineSettings.isDryRun();
     if (dryRun) {
       LOGGER.info("Dry-run mode enabled.");

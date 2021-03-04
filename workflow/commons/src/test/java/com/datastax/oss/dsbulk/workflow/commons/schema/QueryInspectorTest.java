@@ -746,4 +746,27 @@ class QueryInspectorTest {
         arguments("SELECT * FROM table1 PER PARTITION LIMIT 10 ALLOW FILTERING", true),
         arguments("SELECT * FROM table1 PER PARTITION LIMIT 10 LIMIT 100", false));
   }
+
+  @ParameterizedTest
+  @MethodSource
+  void should_detect_batch(String query, boolean expected) {
+    QueryInspector inspector = new QueryInspector(query);
+    assertThat(inspector.isBatch()).isEqualTo(expected);
+  }
+
+  @SuppressWarnings("unused")
+  static List<Arguments> should_detect_batch() {
+    return Lists.newArrayList(
+        arguments("SELECT a,b,c FROM ks.t1 WHERE token(pk) > ? AND token(pk) <= ?", false),
+        arguments("INSERT INTO t1 (pk,cc,v) VALUES (?,?,?)", false),
+        arguments("UPDATE t1 SET v=? WHERE pk=? AND cc=?", false),
+        arguments("DELETE FROM t1 WHERE pk=? AND cc=?", false),
+        arguments(
+            "BEGIN BATCH "
+                + "INSERT INTO t1 (pk,cc,v) VALUES (?,?,?); "
+                + "UPDATE t1 SET v=? WHERE pk=? AND cc=?; "
+                + "DELETE FROM t1 WHERE pk=? AND cc=?; "
+                + "APPLY BATCH",
+            true));
+  }
 }
