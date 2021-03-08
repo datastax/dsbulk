@@ -1424,7 +1424,7 @@ Default: **["global"]**.
 
 #### -partitions,<br />--stats.numPartitions<br />--dsbulk.stats.numPartitions _&lt;number&gt;_
 
-The number of distinct partitions to count rows for. Only applicaple for the count workflow when `stats.mode` is `partitions`, ignored otherwise.
+The number of distinct partitions to count rows for. Only applicaple for the count workflow when `stats.modes` contains `partitions`, ignored otherwise.
 
 Default: **10**.
 
