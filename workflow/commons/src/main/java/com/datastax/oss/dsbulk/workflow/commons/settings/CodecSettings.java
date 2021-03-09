@@ -190,6 +190,7 @@ public class CodecSettings {
           case "base64":
             return WellKnownBinaryGeoFormat.BASE64_INSTANCE;
         }
+        break;
       case "json":
         return JsonGeoFormat.INSTANCE;
     }
