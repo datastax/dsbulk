@@ -926,7 +926,7 @@ When counting, these settings are ignored.
 
 #### --codec.binary<br />--dsbulk.codec.binary _&lt;string&gt;_
 
-Strategy to use when converting binary data to strings. Only applicable when unloading columns of CQL type `blob`, and only if the connector in use requires stringification. Valid values are:
+Strategy to use when converting binary data to strings. Only applicable when unloading columns of CQL type `blob`, or columns of geometry types, if the value of `codec.geo` is `WKB`; and only if the connector in use requires stringification. Valid values are:
 
 - BASE64: Encode the binary data into a Base-64 string. This is the default strategy.
 - HEX: Encode the binary data as CQL blob literals. CQL blob literals follow the general syntax: `0[xX][0-9a-fA-F]+`, that is, `0x` followed by hexadecimal characters, for example: `0xcafebabe`. This format produces lengthier strings than BASE64, but is also the only format compatible with CQLSH.
