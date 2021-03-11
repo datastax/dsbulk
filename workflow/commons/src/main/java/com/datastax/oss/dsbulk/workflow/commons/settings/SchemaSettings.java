@@ -20,11 +20,12 @@ import static com.datastax.oss.dsbulk.mapping.CQLRenderMode.ALIASED_SELECTOR;
 import static com.datastax.oss.dsbulk.mapping.CQLRenderMode.INTERNAL;
 import static com.datastax.oss.dsbulk.mapping.CQLRenderMode.NAMED_ASSIGNMENT;
 import static com.datastax.oss.dsbulk.mapping.CQLRenderMode.VARIABLE;
+import static com.datastax.oss.dsbulk.mapping.MappingInspector.STAR;
+import static com.datastax.oss.dsbulk.mapping.MappingInspector.TTL;
+import static com.datastax.oss.dsbulk.mapping.MappingInspector.WRITETIME;
 import static com.datastax.oss.dsbulk.mapping.MappingPreference.INDEXED_ONLY;
 import static com.datastax.oss.dsbulk.mapping.MappingPreference.MAPPED_ONLY;
 import static com.datastax.oss.dsbulk.mapping.MappingPreference.MAPPED_OR_INDEXED;
-import static com.datastax.oss.dsbulk.workflow.commons.schema.QueryInspector.INTERNAL_TIMESTAMP_VARNAME;
-import static com.datastax.oss.dsbulk.workflow.commons.schema.QueryInspector.INTERNAL_TTL_VARNAME;
 import static java.time.Instant.EPOCH;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 
@@ -50,9 +51,11 @@ import com.datastax.oss.driver.api.core.metadata.schema.ViewMetadata;
 import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.base.Preconditions;
+import com.datastax.oss.driver.shaded.guava.common.base.Predicates;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMultimap;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSet;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSetMultimap;
+import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import com.datastax.oss.driver.shaded.guava.common.collect.Multimap;
 import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
 import com.datastax.oss.dsbulk.config.ConfigUtils;
@@ -83,14 +86,17 @@ import com.datastax.oss.dsbulk.workflow.commons.utils.GraphUtils;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import java.net.URI;
 import java.time.Instant;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -98,6 +104,8 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -122,10 +130,16 @@ public class SchemaSettings {
   private static final String QUERY = "query";
   private static final String QUERY_TTL = "queryTtl";
   private static final String QUERY_TIMESTAMP = "queryTimestamp";
+  private static final String PRESERVE_TIMESTAMP = "preserveTimestamp";
+  private static final String PRESERVE_TTL = "preserveTtl";
   private static final String CORE = "Core";
   private static final String SPLITS = "splits";
 
+  private static final Predicate<FunctionCall> WRITETIME_OR_TTL =
+      fc -> fc.getFunctionName().equals(WRITETIME) || fc.getFunctionName().equals(TTL);
+
   private final Config config;
+  private final SchemaGenerationStrategy schemaGenerationStrategy;
 
   private boolean nullToUnset;
   private boolean allowExtraFields;
@@ -134,6 +148,8 @@ public class SchemaSettings {
   private MappingInspector mapping;
   private int ttlSeconds;
   private long timestampMicros;
+  private boolean preserveTimestamp;
+  private boolean preserveTtl;
   private RelationMetadata table;
   private KeyspaceMetadata keyspace;
   private CQLWord keyspaceName;
@@ -141,19 +157,16 @@ public class SchemaSettings {
   private String query;
   private QueryInspector queryInspector;
   private PreparedStatement preparedStatement;
-  private ImmutableSet<CQLFragment> writeTimeVariables;
   private MappingPreference mappingPreference;
-  private ProtocolVersion protocolVersion;
 
-  public SchemaSettings(Config config) {
+  public SchemaSettings(Config config, SchemaGenerationStrategy schemaGenerationStrategy) {
     this.config = config;
+    this.schemaGenerationStrategy = schemaGenerationStrategy;
   }
 
   public void init(
-      SchemaGenerationType schemaGenerationType,
-      CqlSession session,
-      boolean indexedMappingSupported,
-      boolean mappedMappingSupported) {
+      CqlSession session, boolean indexedMappingSupported, boolean mappedMappingSupported) {
+
     try {
 
       // Sanity Checks
@@ -195,8 +208,6 @@ public class SchemaSettings {
             "Settings schema.keyspace or schema.graph must be defined if schema.table, schema.vertex or schema.edge are defined");
       }
 
-      protocolVersion = session.getContext().getProtocolVersion();
-
       // Keyspace
 
       if (config.hasPath(KEYSPACE)) {
@@ -209,7 +220,7 @@ public class SchemaSettings {
 
       if (keyspace != null) {
         if (config.hasPath(TABLE)) {
-          table = locateTable(keyspace, config.getString(TABLE), schemaGenerationType);
+          table = locateTable(keyspace, config.getString(TABLE));
         } else if (config.hasPath(VERTEX)) {
           table = locateVertexTable(keyspace, config.getString(VERTEX));
         } else if (config.hasPath(EDGE)) {
@@ -237,10 +248,10 @@ public class SchemaSettings {
         this.timestampMicros = -1L;
       }
 
-      // Custom Query
+      preserveTimestamp = config.getBoolean(PRESERVE_TIMESTAMP);
+      preserveTtl = config.getBoolean(PRESERVE_TTL);
 
-      CQLWord usingTimestampVariable;
-      CQLWord usingTTLVariable;
+      // Custom Query
 
       if (config.hasPath(QUERY)) {
 
@@ -283,17 +294,7 @@ public class SchemaSettings {
               "Setting schema.query must not be defined if schema.queryTtl or schema.queryTimestamp is defined");
         }
 
-        // If a query is provided, check now if it contains a USING TIMESTAMP variable,
-        // or selectors containing a writetime() function call, and get their names.
-        writeTimeVariables = queryInspector.getWriteTimeVariables();
-        usingTimestampVariable = queryInspector.getUsingTimestampVariable().orElse(null);
-        usingTTLVariable = queryInspector.getUsingTTLVariable().orElse(null);
-
       } else {
-
-        writeTimeVariables = ImmutableSet.of();
-        usingTimestampVariable = INTERNAL_TIMESTAMP_VARNAME;
-        usingTTLVariable = INTERNAL_TTL_VARNAME;
 
         if (keyspace == null || table == null) {
 
@@ -319,71 +320,80 @@ public class SchemaSettings {
         mappingPreference = INDEXED_ONLY;
       } else if (mappedMappingSupported) {
         mappingPreference = MAPPED_ONLY;
-      } else if (schemaGenerationType != SchemaGenerationType.READ_AND_COUNT) {
+      } else if (schemaGenerationStrategy.isMapping()) {
         throw new IllegalArgumentException(
             "Connector must support at least one of indexed or mapped mappings");
       }
 
       if (config.hasPath(MAPPING)) {
 
-        if (schemaGenerationType == SchemaGenerationType.READ_AND_COUNT) {
+        if (!schemaGenerationStrategy.isMapping()) {
           throw new IllegalArgumentException(
               "Setting schema.mapping must not be defined when counting rows in a table");
         }
 
-        mapping =
+        Supplier<CQLWord> usingTimestampVariable = null;
+        Supplier<CQLWord> usingTTLVariable = null;
+        if (queryInspector != null) {
+          usingTimestampVariable = queryInspector.getUsingTimestampVariable()::get;
+          usingTTLVariable = queryInspector.getUsingTTLVariable()::get;
+        }
+
+        // TODO remove support for providing external variable names for the deprecated
+        // __ttl and __timestamp mapping tokens.
+        @SuppressWarnings("deprecation")
+        MappingInspector mapping =
             new MappingInspector(
                 config.getString(MAPPING),
-                schemaGenerationType == SchemaGenerationType.MAP_AND_WRITE,
+                schemaGenerationStrategy.isWriting(),
                 mappingPreference,
                 usingTimestampVariable,
                 usingTTLVariable);
+        this.mapping = mapping;
 
-        Set<MappingField> fields = mapping.getExplicitVariables().keySet();
-        Collection<CQLFragment> variables = mapping.getExplicitVariables().values();
+        Set<MappingField> fields = mapping.getExplicitMappings().keySet();
+        Collection<CQLFragment> variables = mapping.getExplicitMappings().values();
 
-        if (schemaGenerationType == SchemaGenerationType.MAP_AND_WRITE
-            && containsFunctionCalls(variables)) {
+        if (schemaGenerationStrategy.isWriting()) {
           // f1 = now() never allowed when loading
-          throw new IllegalArgumentException(
-              "Misplaced function call detected on the right side of a mapping entry; "
-                  + "please review your schema.mapping setting");
-        }
-        if (schemaGenerationType == SchemaGenerationType.READ_AND_MAP
-            && containsFunctionCalls(fields)) {
-          // now() = c1 never allowed when unloading
-          throw new IllegalArgumentException(
-              "Misplaced function call detected on the left side of a mapping entry; "
-                  + "please review your schema.mapping setting");
-        }
-
-        if (query != null) {
-          if (schemaGenerationType == SchemaGenerationType.MAP_AND_WRITE
-              && containsFunctionCalls(fields)) {
-            // now() = c1 only allowed if schema.query not present
+          // f1 = writetime(*) only allowed if schema.query not present
+          // now() = c1 only allowed if schema.query not present
+          if (containsFunctionCalls(variables, WRITETIME_OR_TTL.negate())) {
+            throw new IllegalArgumentException(
+                "Misplaced function call detected on the right side of a mapping entry; "
+                    + "please review your schema.mapping setting");
+          }
+          if (query != null && containsFunctionCalls(variables, WRITETIME_OR_TTL)) {
+            throw new IllegalArgumentException(
+                "Setting schema.query must not be defined when loading if schema.mapping "
+                    + "contains a writetime or ttl function on the right side of a mapping entry");
+          }
+          if (query != null && containsFunctionCalls(fields)) {
             throw new IllegalArgumentException(
                 "Setting schema.query must not be defined when loading if schema.mapping "
                     + "contains a function on the left side of a mapping entry");
           }
-          if (schemaGenerationType == SchemaGenerationType.READ_AND_MAP
-              && containsFunctionCalls(variables)) {
-            // f1 = now() only allowed if schema.query not present
+        }
+
+        if (schemaGenerationStrategy.isReading()) {
+          // now() = c1 never allowed when unloading
+          // f1 = now() only allowed if schema.query not present
+          if (containsFunctionCalls(fields)) {
+            throw new IllegalArgumentException(
+                "Misplaced function call detected on the left side of a mapping entry; "
+                    + "please review your schema.mapping setting");
+          }
+          if (query != null && containsFunctionCalls(variables)) {
             throw new IllegalArgumentException(
                 "Setting schema.query must not be defined when unloading if schema.mapping "
                     + "contains a function on the right side of a mapping entry");
           }
-        } else {
-          writeTimeVariables = mapping.getWriteTimeVariables();
         }
+
       } else {
 
         mapping =
-            new MappingInspector(
-                "*=*",
-                schemaGenerationType == SchemaGenerationType.MAP_AND_WRITE,
-                mappingPreference,
-                usingTimestampVariable,
-                usingTTLVariable);
+            new MappingInspector("*=*", schemaGenerationStrategy.isWriting(), mappingPreference);
       }
 
       // Misc
@@ -421,7 +431,7 @@ public class SchemaSettings {
                     + "such as schema.graph, schema.vertex, schema.edge, schema.from and schema.to.");
           }
         } else {
-          if (schemaGenerationType == SchemaGenerationType.MAP_AND_WRITE) {
+          if (schemaGenerationStrategy == SchemaGenerationStrategy.MAP_AND_WRITE) {
             LOGGER.warn(
                 "Provided keyspace is a graph created with a legacy graph engine: "
                     + ((DseGraphKeyspaceMetadata) keyspace).getGraphEngine().get()
@@ -439,12 +449,15 @@ public class SchemaSettings {
   public RecordMapper createRecordMapper(
       CqlSession session, RecordMetadata recordMetadata, ConvertingCodecFactory codecFactory)
       throws IllegalArgumentException {
+    if (!schemaGenerationStrategy.isWriting() || !schemaGenerationStrategy.isMapping()) {
+      throw new IllegalStateException(
+          "Cannot create record mapper when schema generation strategy is "
+              + schemaGenerationStrategy);
+    }
     Mapping mapping =
         prepareStatementAndCreateMapping(
-            session,
-            codecFactory,
-            SchemaGenerationType.MAP_AND_WRITE,
-            EnumSet.noneOf(StatisticsMode.class));
+            session, codecFactory, EnumSet.noneOf(StatisticsMode.class));
+    ProtocolVersion protocolVersion = session.getContext().getProtocolVersion();
     if (protocolVersion.getCode() < DefaultProtocolVersion.V4.getCode() && nullToUnset) {
       LOGGER.warn(
           String.format(
@@ -481,14 +494,16 @@ public class SchemaSettings {
       RecordMetadata recordMetadata,
       ConvertingCodecFactory codecFactory,
       boolean retainRecordSources) {
+    if (!schemaGenerationStrategy.isReading() || !schemaGenerationStrategy.isMapping()) {
+      throw new IllegalStateException(
+          "Cannot create read result mapper when schema generation strategy is "
+              + schemaGenerationStrategy);
+    }
     // we don't check that mapping records are supported when unloading, the only thing that matters
     // is the order in which fields appear in the record.
     Mapping mapping =
         prepareStatementAndCreateMapping(
-            session,
-            codecFactory,
-            SchemaGenerationType.READ_AND_MAP,
-            EnumSet.noneOf(StatisticsMode.class));
+            session, codecFactory, EnumSet.noneOf(StatisticsMode.class));
     return new DefaultReadResultMapper(
         mapping, recordMetadata, getTargetTableURI(), retainRecordSources);
   }
@@ -498,9 +513,12 @@ public class SchemaSettings {
       ConvertingCodecFactory codecFactory,
       EnumSet<StatsSettings.StatisticsMode> modes,
       int numPartitions) {
-    prepareStatementAndCreateMapping(session, null, SchemaGenerationType.READ_AND_COUNT, modes);
-    ProtocolVersion protocolVersion = session.getContext().getProtocolVersion();
-    Metadata metadata = session.getMetadata();
+    if (!schemaGenerationStrategy.isReading() || !schemaGenerationStrategy.isCounting()) {
+      throw new IllegalStateException(
+          "Cannot create read result counter when schema generation strategy is "
+              + schemaGenerationStrategy);
+    }
+    prepareStatementAndCreateMapping(session, null, modes);
     if (modes.contains(StatisticsMode.partitions) && table.getClusteringColumns().isEmpty()) {
       throw new IllegalArgumentException(
           String.format(
@@ -508,7 +526,12 @@ public class SchemaSettings {
               tableName.render(VARIABLE)));
     }
     return new DefaultReadResultCounter(
-        keyspace.getName(), metadata, modes, numPartitions, protocolVersion, codecFactory);
+        keyspace.getName(),
+        session.getMetadata(),
+        modes,
+        numPartitions,
+        session.getContext().getProtocolVersion(),
+        codecFactory);
   }
 
   public List<Statement<?>> createReadStatements(CqlSession session) {
@@ -602,42 +625,61 @@ public class SchemaSettings {
     return queryInspector.hasSearchClause();
   }
 
+  public boolean isBatchQuery() {
+    return queryInspector.isBatch();
+  }
+
   @NonNull
   private Mapping prepareStatementAndCreateMapping(
-      CqlSession session,
-      ConvertingCodecFactory codecFactory,
-      SchemaGenerationType schemaGenerationType,
-      EnumSet<StatsSettings.StatisticsMode> modes) {
+      CqlSession session, ConvertingCodecFactory codecFactory, EnumSet<StatisticsMode> modes) {
     ImmutableMultimap<MappingField, CQLFragment> fieldsToVariables = null;
     if (!config.hasPath(QUERY)) {
       // in the absence of user-provided queries, create the mapping *before* query generation and
       // preparation
-      fieldsToVariables =
-          createFieldsToVariablesMap(
-              table.getColumns().values().stream()
-                  .filter(col -> !isDSESearchPseudoColumn(col))
-                  .map(columnMetadata -> columnMetadata.getName().asInternal())
-                  .map(CQLWord::fromInternal)
-                  .collect(Collectors.toList()));
+      List<CQLFragment> columns =
+          table.getColumns().values().stream()
+              .filter(col -> !isDSESearchPseudoColumn(col))
+              .flatMap(
+                  column -> {
+                    CQLWord colName = CQLWord.fromCqlIdentifier(column.getName());
+                    List<CQLFragment> cols = Lists.newArrayList(colName);
+                    if (!isCounterTable()
+                        && schemaGenerationStrategy.isMapping()
+                        && !table.getPrimaryKey().contains(column)) {
+                      if (preserveTimestamp) {
+                        cols.add(new FunctionCall(null, WRITETIME, colName));
+                      }
+                      if (preserveTtl) {
+                        cols.add(new FunctionCall(null, TTL, colName));
+                      }
+                    }
+                    return cols.stream();
+                  })
+              .collect(Collectors.toList());
+      fieldsToVariables = createFieldsToVariablesMap(columns);
       // query generation
-      if (schemaGenerationType == SchemaGenerationType.MAP_AND_WRITE) {
+      if (schemaGenerationStrategy.isWriting()) {
         if (isCounterTable()) {
           query = inferUpdateCounterQuery(fieldsToVariables);
+        } else if (requiresBatchInsertQuery(fieldsToVariables)) {
+          query = inferBatchInsertQuery(fieldsToVariables);
         } else {
           query = inferInsertQuery(fieldsToVariables);
         }
-      } else if (schemaGenerationType == SchemaGenerationType.READ_AND_MAP) {
+      } else if (schemaGenerationStrategy.isReading() && schemaGenerationStrategy.isMapping()) {
         query = inferReadQuery(fieldsToVariables);
-      } else if (schemaGenerationType == SchemaGenerationType.READ_AND_COUNT) {
+      } else if (schemaGenerationStrategy.isReading() && schemaGenerationStrategy.isCounting()) {
         query = inferCountQuery(modes);
+      } else {
+        throw new IllegalStateException(
+            "Unsupported schema generation strategy: " + schemaGenerationStrategy);
       }
       LOGGER.debug("Inferred query: {}", query);
       queryInspector = new QueryInspector(query);
       // validate generated query
-      if (schemaGenerationType == SchemaGenerationType.MAP_AND_WRITE) {
+      if (schemaGenerationStrategy.isWriting()) {
         validatePrimaryKeyPresent(fieldsToVariables);
       }
-      fieldsToVariables = processMappingFunctions(fieldsToVariables);
     }
     assert query != null;
     assert queryInspector != null;
@@ -646,15 +688,13 @@ public class SchemaSettings {
     }
     // Transform user-provided queries before preparation
     if (config.hasPath(QUERY)) {
-      if ((schemaGenerationType == SchemaGenerationType.READ_AND_MAP
-              || schemaGenerationType == SchemaGenerationType.READ_AND_COUNT)
-          && queryInspector.isParallelizable()) {
+      if (schemaGenerationStrategy.isReading() && queryInspector.isParallelizable()) {
         int whereClauseIndex = queryInspector.getFromClauseEndIndex() + 1;
         StringBuilder sb = new StringBuilder(query.substring(0, whereClauseIndex));
         appendTokenRangeRestriction(sb);
         query = sb.append(query.substring(whereClauseIndex)).toString();
       }
-      if (schemaGenerationType == SchemaGenerationType.READ_AND_COUNT) {
+      if (schemaGenerationStrategy.isCounting()) {
         if (modes.contains(StatisticsMode.partitions)
             || modes.contains(StatisticsMode.ranges)
             || modes.contains(StatisticsMode.hosts)) {
@@ -677,7 +717,7 @@ public class SchemaSettings {
     preparedStatement = session.prepare(query);
     if (config.hasPath(QUERY)) {
       // in the presence of user-provided queries, create the mapping *after* query preparation
-      ColumnDefinitions variables = getVariables(schemaGenerationType);
+      ColumnDefinitions variables = getVariables();
       fieldsToVariables =
           createFieldsToVariablesMap(
               StreamSupport.stream(variables.spliterator(), false)
@@ -685,7 +725,7 @@ public class SchemaSettings {
                   .map(CQLWord::fromInternal)
                   .collect(Collectors.toList()));
       // validate user-provided query
-      if (schemaGenerationType == SchemaGenerationType.MAP_AND_WRITE) {
+      if (schemaGenerationStrategy.isWriting()) {
         if (mutatesOnlyStaticColumns()) {
           // DAT-414: mutations that only affect static columns are allowed
           // to skip the clustering columns, only the partition key should be present.
@@ -697,9 +737,9 @@ public class SchemaSettings {
     }
     assert fieldsToVariables != null;
     return new DefaultMapping(
-        processFieldsToVariables(fieldsToVariables),
+        transformFieldsToVariables(fieldsToVariables),
         codecFactory,
-        processWriteTimeVariables(writeTimeVariables));
+        transformWriteTimeVariables(queryInspector.getWriteTimeVariables()));
   }
 
   private boolean isDSESearchPseudoColumn(ColumnMetadata col) {
@@ -725,36 +765,36 @@ public class SchemaSettings {
         .anyMatch(c -> c.getType().equals(DataTypes.COUNTER));
   }
 
-  private ColumnDefinitions getVariables(SchemaGenerationType schemaGenerationType) {
-    switch (schemaGenerationType) {
-      case MAP_AND_WRITE:
-        return preparedStatement.getVariableDefinitions();
-      case READ_AND_MAP:
-      case READ_AND_COUNT:
-        return preparedStatement.getResultSetDefinitions();
-      default:
-        throw new AssertionError();
+  private ColumnDefinitions getVariables() {
+    if (schemaGenerationStrategy.isWriting()) {
+      return preparedStatement.getVariableDefinitions();
+    } else {
+      assert schemaGenerationStrategy.isReading();
+      return preparedStatement.getResultSetDefinitions();
     }
   }
 
   private ImmutableMultimap<MappingField, CQLFragment> createFieldsToVariablesMap(
-      Collection<CQLFragment> columns) throws IllegalArgumentException {
+      Collection<CQLFragment> columnsOrVariables) throws IllegalArgumentException {
     ImmutableMultimap<MappingField, CQLFragment> fieldsToVariables;
     if (mapping.isInferring()) {
-      fieldsToVariables = inferFieldsToVariablesMap(columns);
+      fieldsToVariables = inferFieldsToVariablesMap(columnsOrVariables);
     } else {
       fieldsToVariables = ImmutableMultimap.of();
     }
 
-    ImmutableMultimap<MappingField, CQLFragment> explicitVariables = mapping.getExplicitVariables();
-    if (!explicitVariables.isEmpty()) {
+    ImmutableMultimap<MappingField, CQLFragment> explicitMappings = mapping.getExplicitMappings();
+    if (!explicitMappings.isEmpty()) {
+      // Take into account all explicit mappings
       ImmutableMultimap.Builder<MappingField, CQLFragment> builder = ImmutableMultimap.builder();
-      for (Map.Entry<MappingField, CQLFragment> entry : explicitVariables.entries()) {
+      for (Map.Entry<MappingField, CQLFragment> entry : explicitMappings.entries()) {
         builder.put(entry.getKey(), entry.getValue());
       }
+      // Take into account only inferred mappings that contain fields and variables not referenced
+      // by any explicit mapping
       for (Map.Entry<MappingField, CQLFragment> entry : fieldsToVariables.entries()) {
-        if (!explicitVariables.containsKey(entry.getKey())
-            && !explicitVariables.containsValue(entry.getValue())) {
+        if (!explicitMappings.containsKey(entry.getKey())
+            && !explicitMappings.containsValue(entry.getValue())) {
           builder.put(entry.getKey(), entry.getValue());
         }
       }
@@ -765,8 +805,7 @@ public class SchemaSettings {
         !fieldsToVariables.isEmpty(),
         "Mapping was absent and could not be inferred, please provide an explicit mapping");
 
-    validateAllFieldsPresent(fieldsToVariables, columns);
-
+    validateAllFieldsPresent(fieldsToVariables, columnsOrVariables);
     return fieldsToVariables;
   }
 
@@ -793,15 +832,11 @@ public class SchemaSettings {
   }
 
   @NonNull
-  private RelationMetadata locateTable(
-      KeyspaceMetadata keyspace,
-      String tableNameInternal,
-      SchemaGenerationType schemaGenerationType) {
+  private RelationMetadata locateTable(KeyspaceMetadata keyspace, String tableNameInternal) {
     CqlIdentifier tableName = CqlIdentifier.fromInternal(tableNameInternal);
     RelationMetadata table = keyspace.getTable(tableName).orElse(null);
     if (table == null) {
-      if (schemaGenerationType == SchemaGenerationType.READ_AND_COUNT
-          || schemaGenerationType == SchemaGenerationType.READ_AND_MAP) {
+      if (schemaGenerationStrategy.isReading()) {
         table = keyspace.getView(tableName).orElse(null);
         if (table == null) {
           Optional<ViewMetadata> match =
@@ -949,7 +984,7 @@ public class SchemaSettings {
       Collection<CQLFragment> columns) {
     fieldsToVariables.forEach(
         (key, value) -> {
-          if (value instanceof CQLWord && !isPseudoColumn(value) && !columns.contains(value)) {
+          if (value instanceof CQLWord && !columns.contains(value)) {
             if (!config.hasPath(QUERY)) {
               throw new IllegalArgumentException(
                   String.format(
@@ -1001,7 +1036,7 @@ public class SchemaSettings {
     Collection<CQLFragment> mappingVariables = fieldsToVariables.values();
     Map<CQLWord, CQLFragment> queryVariables = queryInspector.getAssignments();
     for (ColumnMetadata pk : columns) {
-      CQLWord pkVariable = CQLWord.fromInternal(pk.getName().asInternal());
+      CQLWord pkVariable = CQLWord.fromCqlIdentifier(pk.getName());
       CQLFragment queryVariable = queryVariables.get(pkVariable);
       // the provided query did not contain such column
       if (queryVariable == null) {
@@ -1031,9 +1066,22 @@ public class SchemaSettings {
     ImmutableMultimap.Builder<MappingField, CQLFragment> fieldsToVariables =
         ImmutableMultimap.builder();
 
+    List<CQLFragment> excludedVariables = new ArrayList<>(mapping.getExcludedVariables());
+
+    if (!isCounterTable() && schemaGenerationStrategy.isMapping()) {
+      for (CQLWord variable : mapping.getExcludedVariables()) {
+        if (preserveTimestamp) {
+          excludedVariables.add(new FunctionCall(null, WRITETIME, variable));
+        }
+        if (preserveTtl) {
+          excludedVariables.add(new FunctionCall(null, TTL, variable));
+        }
+      }
+    }
+
     int i = 0;
     for (CQLFragment colName : columns) {
-      if (!mapping.getExcludedVariables().contains(colName)) {
+      if (!excludedVariables.contains(colName)) {
         if (mappingPreference == INDEXED_ONLY) {
           fieldsToVariables.put(new IndexedMappingField(i), colName);
         } else {
@@ -1046,38 +1094,220 @@ public class SchemaSettings {
   }
 
   private String inferInsertQuery(ImmutableMultimap<MappingField, CQLFragment> fieldsToVariables) {
+    ImmutableMultimap.Builder<MappingField, CQLFragment> regularFieldsToVariablesBuilder =
+        ImmutableMultimap.builder();
+    FunctionCall writetime = null;
+    FunctionCall ttl = null;
+    for (Entry<MappingField, CQLFragment> entry : fieldsToVariables.entries()) {
+      if (entry.getValue() instanceof FunctionCall) {
+        FunctionCall functionCall = (FunctionCall) entry.getValue();
+        if (functionCall.getFunctionName().equals(WRITETIME)) {
+          assert writetime == null;
+          writetime = functionCall;
+        } else if (functionCall.getFunctionName().equals(TTL)) {
+          assert ttl == null;
+          ttl = functionCall;
+        }
+      } else {
+        regularFieldsToVariablesBuilder.put(entry);
+      }
+    }
+    ImmutableMultimap<MappingField, CQLFragment> regularFieldsToVariables =
+        regularFieldsToVariablesBuilder.build();
     StringBuilder sb = new StringBuilder("INSERT INTO ");
     sb.append(keyspaceName.render(VARIABLE))
         .append('.')
         .append(tableName.render(VARIABLE))
         .append(" (");
-    appendColumnNames(fieldsToVariables, sb, VARIABLE);
+    appendColumnNames(regularFieldsToVariables, sb, VARIABLE);
     sb.append(") VALUES (");
-    Set<CQLFragment> cols = maybeSortCols(fieldsToVariables);
+    Set<CQLFragment> cols = maybeSortCols(regularFieldsToVariables);
     Iterator<CQLFragment> it = cols.iterator();
-    boolean isFirst = true;
     while (it.hasNext()) {
       CQLFragment col = it.next();
-      if (isPseudoColumn(col)) {
-        // This isn't a real column name.
-        continue;
-      }
-      if (!isFirst) {
-        sb.append(", ");
-      }
-      isFirst = false;
       // for insert queries there can be only one field mapped to a given column
       MappingField field = fieldsToVariables.inverse().get(col).iterator().next();
       if (field instanceof FunctionCall) {
-        // append the function call as is
+        // append the function call as is, e.g.
+        // now() -> now()
+        // avg(a,1) -> avg(:a,1) - a being another variable in the mapping
         sb.append(((FunctionCall) field).render(NAMED_ASSIGNMENT));
       } else {
         sb.append(col.render(NAMED_ASSIGNMENT));
       }
+      if (it.hasNext()) {
+        sb.append(", ");
+      }
     }
     sb.append(')');
-    addTimestampAndTTL(sb);
+    appendWriteTimeAndTTL(sb, writetime, ttl);
     return sb.toString();
+  }
+
+  private static class WriteTimeAndTTL {
+    private FunctionCall writetime;
+    private FunctionCall ttl;
+  }
+
+  private String inferBatchInsertQuery(
+      ImmutableMultimap<MappingField, CQLFragment> fieldsToVariables) {
+    List<CQLWord> pks = primaryKeyColumns();
+    Set<CQLFragment> allSpecificVariables = new LinkedHashSet<>();
+    Map<CQLWord, WriteTimeAndTTL> specificWriteTimesAndTTLs = new LinkedHashMap<>();
+    boolean hasGlobalWritetime = false;
+    boolean hasGlobalTTL = false;
+    for (CQLFragment variable : fieldsToVariables.values()) {
+      if (variable instanceof FunctionCall) {
+        FunctionCall functionCall = (FunctionCall) variable;
+        if (functionCall.getFunctionName().equals(WRITETIME)) {
+          for (CQLFragment arg : functionCall.getArgs()) {
+            if (arg.equals(STAR)) {
+              if (preserveTimestamp) {
+                throw new IllegalStateException(
+                    "Invalid mapping: writetime(*) is not allowed when schema.preserveTimestamp is true.");
+              }
+              hasGlobalWritetime = true;
+            } else {
+              CQLWord col = (CQLWord) arg;
+              if (pks.contains(col)) {
+                throw new IllegalStateException(
+                    "Invalid mapping: writetime() function arg must be either '*' or a non-primary key column name.");
+              }
+              if (fieldsToVariables.containsValue(col)) {
+                allSpecificVariables.add(col);
+                allSpecificVariables.add(functionCall);
+                specificWriteTimesAndTTLs.compute(
+                    (CQLWord) arg,
+                    (k, v) -> {
+                      if (v == null) {
+                        v = new WriteTimeAndTTL();
+                      }
+                      v.writetime = functionCall;
+                      return v;
+                    });
+              } else {
+                throw new IllegalStateException(
+                    String.format(
+                        "Invalid mapping: target column %s must be present if %s is also present.",
+                        col.render(VARIABLE), functionCall.render(INTERNAL)));
+              }
+            }
+          }
+        } else if (functionCall.getFunctionName().equals(TTL)) {
+          for (CQLFragment arg : functionCall.getArgs()) {
+            if (arg.equals(STAR)) {
+              if (preserveTtl) {
+                throw new IllegalStateException(
+                    "Invalid mapping: ttl(*) is not allowed when schema.preserveTtl is true.");
+              }
+              hasGlobalTTL = true;
+            } else {
+              CQLWord col = (CQLWord) arg;
+              if (pks.contains(col)) {
+                throw new IllegalStateException(
+                    "Invalid mapping: ttl() function arg must be either '*' or a non-primary key column name.");
+              }
+              if (fieldsToVariables.containsValue(col)) {
+                allSpecificVariables.add(col);
+                allSpecificVariables.add(functionCall);
+                specificWriteTimesAndTTLs.compute(
+                    (CQLWord) arg,
+                    (k, v) -> {
+                      if (v == null) {
+                        v = new WriteTimeAndTTL();
+                      }
+                      v.ttl = functionCall;
+                      return v;
+                    });
+              } else {
+                throw new IllegalStateException(
+                    String.format(
+                        "Invalid mapping: target column %s must be present if %s is also present.",
+                        col.render(VARIABLE), functionCall.render(INTERNAL)));
+              }
+            }
+          }
+        }
+      }
+    }
+
+    ImmutableMultimap.Builder<MappingField, CQLFragment> defaultFieldsToVariablesBuilder =
+        ImmutableMultimap.builder();
+    for (Entry<MappingField, CQLFragment> entry : fieldsToVariables.entries()) {
+      CQLFragment variable = entry.getValue();
+      if (!allSpecificVariables.contains(variable)) {
+        defaultFieldsToVariablesBuilder.put(entry);
+      }
+    }
+    ImmutableMultimap<MappingField, CQLFragment> defaultFieldsToVariables =
+        defaultFieldsToVariablesBuilder.build();
+
+    boolean hasRegularColumnsWithoutSpecificWritetimeAndTTL =
+        defaultFieldsToVariables.values().stream()
+            .filter(CQLWord.class::isInstance)
+            .map(CQLWord.class::cast)
+            .anyMatch(variable -> !pks.contains(variable));
+
+    if (!hasRegularColumnsWithoutSpecificWritetimeAndTTL) {
+      if (hasGlobalWritetime) {
+        throw new IllegalStateException(
+            "Invalid mapping: writetime(*) function has no target column.");
+      }
+      if (hasGlobalTTL) {
+        throw new IllegalStateException("Invalid mapping: ttl(*) function has no target column.");
+      }
+    }
+
+    StringBuilder sb = new StringBuilder();
+    if (!hasRegularColumnsWithoutSpecificWritetimeAndTTL && specificWriteTimesAndTTLs.size() == 1) {
+      // edge case: there is only one regular column in the table,
+      // and it has specific writetime or tll: no need for a BATCH as there is only one child
+      // statement.
+      Entry<CQLWord, WriteTimeAndTTL> entry =
+          specificWriteTimesAndTTLs.entrySet().iterator().next();
+      appendBatchChildQuery(
+          sb, entry.getKey(), entry.getValue().writetime, entry.getValue().ttl, pks);
+    } else {
+      sb.append("BEGIN UNLOGGED BATCH ");
+      // if there are any variables not assigned to specific TTL or writetime function calls,
+      // generate a first INSERT INTO child query similar to the ones generated for simple INSERTs.
+      if (hasRegularColumnsWithoutSpecificWritetimeAndTTL) {
+        sb.append(inferInsertQuery(defaultFieldsToVariables)).append("; ");
+      }
+      // for all variables having specific TTLs and/or writetimes,
+      // generate a specific INSERT INTO query for that variable only + its TTL and/or writetime.
+      for (Entry<CQLWord, WriteTimeAndTTL> entry : specificWriteTimesAndTTLs.entrySet()) {
+        appendBatchChildQuery(
+            sb, entry.getKey(), entry.getValue().writetime, entry.getValue().ttl, pks);
+        sb.append("; ");
+      }
+      sb.append("APPLY BATCH");
+    }
+    return sb.toString();
+  }
+
+  private void appendBatchChildQuery(
+      StringBuilder sb,
+      CQLWord variable,
+      @Nullable FunctionCall writetime,
+      @Nullable FunctionCall ttl,
+      List<CQLWord> pks) {
+    sb.append("INSERT INTO ")
+        .append(keyspaceName.render(VARIABLE))
+        .append('.')
+        .append(tableName.render(VARIABLE))
+        .append(" (");
+    for (CQLWord pk : pks) {
+      sb.append(pk.render(VARIABLE));
+      sb.append(", ");
+    }
+    sb.append(variable.render(VARIABLE)).append(") VALUES (");
+    for (CQLWord pk : pks) {
+      sb.append(pk.render(NAMED_ASSIGNMENT));
+      sb.append(", ");
+    }
+    sb.append(variable.render(NAMED_ASSIGNMENT)).append(")");
+    appendWriteTimeAndTTL(sb, writetime, ttl);
   }
 
   private String inferUpdateCounterQuery(
@@ -1086,26 +1316,26 @@ public class SchemaSettings {
     sb.append(keyspaceName.render(VARIABLE)).append('.').append(tableName.render(VARIABLE));
     // Note: TTL and timestamp are not allowed in counter queries;
     // a test is made inside the following method
-    addTimestampAndTTL(sb);
+    appendWriteTimeAndTTL(sb, null, null);
     sb.append(" SET ");
     Set<CQLFragment> cols = maybeSortCols(fieldsToVariables);
-    Iterator<CQLFragment> it = cols.iterator();
+    Iterator<CQLFragment> colsIterator = cols.iterator();
     boolean isFirst = true;
-    List<CQLFragment> pks =
-        table.getPrimaryKey().stream()
-            .map(columnMetadata -> columnMetadata.getName().asInternal())
-            .map(CQLWord::fromInternal)
-            .collect(Collectors.toList());
-    while (it.hasNext()) {
-      CQLFragment col = it.next();
-      if (pks.contains(col)) {
+    List<CQLWord> pks = primaryKeyColumns();
+    while (colsIterator.hasNext()) {
+      CQLFragment col = colsIterator.next();
+      if (col instanceof CQLWord && pks.contains(col)) {
         continue;
+      }
+      if (col instanceof FunctionCall) {
+        throw new IllegalArgumentException(
+            "Invalid mapping: function calls are not allowed when updating a counter table.");
       }
       // for update queries there can be only one field mapped to a given column
       MappingField field = fieldsToVariables.inverse().get(col).iterator().next();
       if (field instanceof FunctionCall) {
         throw new IllegalArgumentException(
-            "Function calls are not allowed when updating a counter table.");
+            "Invalid mapping: function calls are not allowed when updating a counter table.");
       }
       if (!isFirst) {
         sb.append(", ");
@@ -1118,23 +1348,21 @@ public class SchemaSettings {
           .append(col.render(NAMED_ASSIGNMENT));
     }
     sb.append(" WHERE ");
-    it = pks.iterator();
-    isFirst = true;
-    while (it.hasNext()) {
-      CQLFragment col = it.next();
-      if (!isFirst) {
+    Iterator<CQLWord> pksIterator = pks.iterator();
+    while (pksIterator.hasNext()) {
+      CQLFragment col = pksIterator.next();
+      sb.append(col.render(VARIABLE)).append(" = ").append(col.render(NAMED_ASSIGNMENT));
+      if (pksIterator.hasNext()) {
         sb.append(" AND ");
       }
-      isFirst = false;
-      sb.append(col.render(VARIABLE)).append(" = ").append(col.render(NAMED_ASSIGNMENT));
     }
     return sb.toString();
   }
 
-  private void addTimestampAndTTL(StringBuilder sb) {
-    boolean hasTtl = ttlSeconds != -1 || (mapping != null && mapping.hasUsingTTL());
-    boolean hasTimestamp =
-        timestampMicros != -1 || (mapping != null && mapping.hasUsingTimestamp());
+  private void appendWriteTimeAndTTL(
+      StringBuilder sb, @Nullable FunctionCall writetime, @Nullable FunctionCall ttl) {
+    boolean hasTtl = ttlSeconds != -1 || ttl != null;
+    boolean hasTimestamp = timestampMicros != -1 || writetime != null;
     if (hasTtl || hasTimestamp) {
       if (isCounterTable()) {
         throw new IllegalArgumentException(
@@ -1146,7 +1374,8 @@ public class SchemaSettings {
         if (ttlSeconds != -1) {
           sb.append(ttlSeconds);
         } else {
-          sb.append(INTERNAL_TTL_VARNAME.render(NAMED_ASSIGNMENT));
+          assert ttl != null;
+          sb.append(':').append(ttl.render(VARIABLE));
         }
         if (hasTimestamp) {
           sb.append(" AND ");
@@ -1157,7 +1386,8 @@ public class SchemaSettings {
         if (timestampMicros != -1) {
           sb.append(timestampMicros);
         } else {
-          sb.append(INTERNAL_TIMESTAMP_VARNAME.render(NAMED_ASSIGNMENT));
+          assert writetime != null;
+          sb.append(':').append(writetime.render(VARIABLE));
         }
       }
     }
@@ -1223,20 +1453,30 @@ public class SchemaSettings {
     return table.getPartitionKey().get(0).getName().asCql(true);
   }
 
+  @NonNull
+  private List<CQLWord> primaryKeyColumns() {
+    return table.getPrimaryKey().stream()
+        .map(ColumnMetadata::getName)
+        .map(CQLWord::fromCqlIdentifier)
+        .collect(Collectors.toList());
+  }
+
+  @NonNull
   private Set<CQLWord> partitionKeyVariables() {
     return columnsToVariables(table.getPartitionKey());
   }
 
+  @NonNull
   private Set<CQLWord> clusteringColumnVariables() {
     return columnsToVariables(table.getClusteringColumns().keySet());
   }
 
+  @NonNull
   private Set<CQLWord> columnsToVariables(Collection<ColumnMetadata> columns) {
     Map<CQLWord, CQLFragment> boundVariables = queryInspector.getAssignments();
     Set<CQLWord> variables = new HashSet<>(columns.size());
     for (ColumnMetadata column : columns) {
-      CQLFragment variable =
-          boundVariables.get(CQLWord.fromInternal(column.getName().asInternal()));
+      CQLFragment variable = boundVariables.get(CQLWord.fromCqlIdentifier(column.getName()));
       if (variable instanceof CQLWord) {
         variables.add((CQLWord) variable);
       }
@@ -1252,20 +1492,14 @@ public class SchemaSettings {
     // for the same bound variable
     Set<CQLFragment> cols = maybeSortCols(fieldsToVariables);
     Iterator<CQLFragment> it = cols.iterator();
-    boolean isFirst = true;
     while (it.hasNext()) {
       // this assumes that the variable name found in the mapping
       // corresponds to a CQL column having the exact same name.
       CQLFragment col = it.next();
-      if (isPseudoColumn(col)) {
-        // This is not a real column. Skip it.
-        continue;
-      }
-      if (!isFirst) {
+      sb.append(col.render(mode));
+      if (it.hasNext()) {
         sb.append(", ");
       }
-      isFirst = false;
-      sb.append(col.render(mode));
     }
   }
 
@@ -1300,64 +1534,81 @@ public class SchemaSettings {
     return cols;
   }
 
-  private static boolean isPseudoColumn(CQLFragment col) {
-    return col == INTERNAL_TTL_VARNAME || col == INTERNAL_TIMESTAMP_VARNAME;
-  }
-
-  @NonNull
-  private static ImmutableMultimap<MappingField, CQLFragment> processMappingFunctions(
+  private static boolean requiresBatchInsertQuery(
       ImmutableMultimap<MappingField, CQLFragment> fieldsToVariables) {
-    ImmutableMultimap.Builder<MappingField, CQLFragment> builder = ImmutableMultimap.builder();
-    for (Map.Entry<MappingField, CQLFragment> entry : fieldsToVariables.entries()) {
-      if (entry.getKey() instanceof FunctionCall) {
-        // functions as fields should be included in the final mapping arg by arg, for every arg
-        // that is a field identifier, e.g. plus(fieldA,fieldB) will generate two bound variables:
-        // INSERT INTO ... VALUES ( plus(:fieldA,:fieldB) )
-        for (CQLFragment arg : ((FunctionCall) entry.getKey()).getArgs()) {
-          if (arg instanceof CQLWord) {
-            // for each arg, create an arg -> arg mapping
-            builder.put(new MappedMappingField(arg.render(INTERNAL)), arg);
-          }
-        }
-      } else {
-        // functions as variables must be included in the final mapping as a whole, e.g.
-        // plus(col1,col2) will generate one result set variable:
-        // SELECT plus(col1,col2) AS "plus(col1,col2)" ...
-        builder.put(entry);
-      }
+    // a BATCH query is considered required if the mapping contains at least one non-global
+    // writetime or ttl function call; edge cases will be handled in inferBatchInsertQuery.
+    Optional<FunctionCall> nonGlobalWriteTimes =
+        fieldsToVariables.values().stream()
+            .filter(FunctionCall.class::isInstance)
+            .map(FunctionCall.class::cast)
+            .filter(fc -> fc.getFunctionName().equals(WRITETIME))
+            .filter(fc -> !fc.getArgs().contains(STAR))
+            .findAny();
+    if (nonGlobalWriteTimes.isPresent()) {
+      return true;
+    } else {
+      Optional<FunctionCall> nonGlobalTTLs =
+          fieldsToVariables.values().stream()
+              .filter(FunctionCall.class::isInstance)
+              .map(FunctionCall.class::cast)
+              .filter(fc -> fc.getFunctionName().equals(TTL))
+              .filter(fc -> !fc.getArgs().contains(STAR))
+              .findAny();
+      return nonGlobalTTLs.isPresent();
     }
-    return builder.build();
   }
 
   @NonNull
-  private static ImmutableSetMultimap<Field, CQLWord> processFieldsToVariables(
+  private static ImmutableSetMultimap<Field, CQLWord> transformFieldsToVariables(
       ImmutableMultimap<MappingField, CQLFragment> fieldsToVariables) {
     ImmutableSetMultimap.Builder<Field, CQLWord> builder = ImmutableSetMultimap.builder();
     for (Entry<MappingField, CQLFragment> entry : fieldsToVariables.entries()) {
-      // transform all CQL fragments into CQL identifiers since that's the way they will be searched
-      // for in DefaultMapping
-      CQLFragment value = entry.getValue();
-      String internal = value.render(INTERNAL);
-      builder.put(entry.getKey(), CQLWord.fromInternal(internal));
+      if (entry.getKey() instanceof FunctionCall) {
+        // functions in fields should not be included in the final mapping since
+        // the generated query includes the function call as is.
+        continue;
+      }
+      // all variables must be included in the final mapping;
+      // function calls must be transformed here into a CQL word, e.g.
+      // plus(col1,col2) will generate a variable named "plus(col1, col2)".
+      // This relies on creating names using the same logic that Cassandra uses
+      // server-side to create variable names from function calls.
+      builder.put(entry.getKey(), toCQLWord(entry.getValue()));
     }
     return builder.build();
   }
 
   @NonNull
-  private static ImmutableSet<CQLWord> processWriteTimeVariables(
+  private static ImmutableSet<CQLWord> transformWriteTimeVariables(
       ImmutableSet<CQLFragment> writeTimeVariables) {
     ImmutableSet.Builder<CQLWord> builder = ImmutableSet.builder();
-    for (CQLFragment variable : writeTimeVariables) {
-      // transform all CQL fragments into CQL identifiers since that's the way they will be searched
-      // for in DefaultMapping
-      String internal = variable.render(INTERNAL);
-      builder.add(CQLWord.fromInternal(internal));
+    for (CQLFragment fragment : writeTimeVariables) {
+      builder.add(toCQLWord(fragment));
     }
     return builder.build();
   }
 
+  private static CQLWord toCQLWord(CQLFragment fragment) {
+    // transform all CQL fragments into CQL identifiers since that's the way they will be searched
+    // for in DefaultMapping
+    if (fragment instanceof CQLWord) {
+      return ((CQLWord) fragment);
+    }
+    String internal = fragment.render(INTERNAL);
+    return CQLWord.fromInternal(internal);
+  }
+
   private static boolean containsFunctionCalls(Collection<?> coll) {
-    return coll.stream().anyMatch(FunctionCall.class::isInstance);
+    return containsFunctionCalls(coll, Predicates.alwaysTrue());
+  }
+
+  private static boolean containsFunctionCalls(
+      Collection<?> coll, Predicate<? super FunctionCall> predicate) {
+    return coll.stream()
+        .filter(FunctionCall.class::isInstance)
+        .map(FunctionCall.class::cast)
+        .anyMatch(predicate);
   }
 
   private static boolean hasGraphOptions(Config config) {

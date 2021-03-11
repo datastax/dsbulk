@@ -39,7 +39,10 @@ public class SettingsManager {
     this.config = config;
   }
 
-  public void init(String operationTitle, boolean configureConnectorForReads) {
+  public void init(
+      String operationTitle,
+      boolean configureConnectorForReads,
+      SchemaGenerationStrategy schemaGenerationStrategy) {
     engineSettings = new EngineSettings(config.getConfig("dsbulk.engine"));
     engineSettings.init();
     this.executionId =
@@ -58,7 +61,8 @@ public class SettingsManager {
     batchSettings = new BatchSettings(config.getConfig("dsbulk.batch"));
     executorSettings = new ExecutorSettings(config.getConfig("dsbulk.executor"));
     codecSettings = new CodecSettings(config.getConfig("dsbulk.codec"));
-    schemaSettings = new SchemaSettings(config.getConfig("dsbulk.schema"));
+    schemaSettings =
+        new SchemaSettings(config.getConfig("dsbulk.schema"), schemaGenerationStrategy);
     monitoringSettings =
         new MonitoringSettings(config.getConfig("dsbulk.monitoring"), this.executionId);
     statsSettings = new StatsSettings(config.getConfig("dsbulk.stats"));

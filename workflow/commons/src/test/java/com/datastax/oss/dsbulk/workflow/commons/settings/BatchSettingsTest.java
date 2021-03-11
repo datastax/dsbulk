@@ -17,19 +17,23 @@ package com.datastax.oss.dsbulk.workflow.commons.settings;
 
 import static com.datastax.oss.dsbulk.batcher.api.BatchMode.PARTITION_KEY;
 import static com.datastax.oss.dsbulk.batcher.api.BatchMode.REPLICA_SET;
-import static org.assertj.core.api.Assertions.assertThat;
+import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.dsbulk.batcher.api.ReactiveStatementBatcher;
 import com.datastax.oss.dsbulk.batcher.reactor.ReactorStatementBatcher;
 import com.datastax.oss.dsbulk.tests.driver.DriverUtils;
+import com.datastax.oss.dsbulk.tests.logging.LogInterceptingExtension;
+import com.datastax.oss.dsbulk.tests.logging.LogInterceptor;
 import com.datastax.oss.dsbulk.tests.utils.ReflectionUtils;
 import com.datastax.oss.dsbulk.tests.utils.TestConfigUtils;
 import com.typesafe.config.Config;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(LogInterceptingExtension.class)
 class BatchSettingsTest {
 
   private CqlSession session;
@@ -43,7 +47,7 @@ class BatchSettingsTest {
   void should_create_batcher_when_mode_is_default() {
     Config config = TestConfigUtils.createTestConfig("dsbulk.batch");
     BatchSettings settings = new BatchSettings(config);
-    settings.init();
+    settings.init(false);
     assertThat(settings.getBufferSize()).isEqualTo(128);
     ReactiveStatementBatcher batcher = settings.newStatementBatcher(session);
     assertThat(batcher).isInstanceOf(ReactorStatementBatcher.class);
@@ -65,7 +69,7 @@ class BatchSettingsTest {
             "maxBatchStatements",
             null);
     BatchSettings settings = new BatchSettings(config);
-    settings.init();
+    settings.init(false);
     assertThat(settings.getBufferSize()).isEqualTo(32);
     ReactiveStatementBatcher batcher = settings.newStatementBatcher(session);
     assertThat(batcher).isInstanceOf(ReactorStatementBatcher.class);
@@ -79,7 +83,7 @@ class BatchSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.batch", "maxBatchStatements", 32, "bufferSize", 32, "mode", "PARTITION_KEY");
     BatchSettings settings = new BatchSettings(config);
-    settings.init();
+    settings.init(false);
     assertThat(settings.getBufferSize()).isEqualTo(32);
     ReactiveStatementBatcher batcher = settings.newStatementBatcher(session);
     assertThat(batcher).isInstanceOf(ReactorStatementBatcher.class);
@@ -101,7 +105,7 @@ class BatchSettingsTest {
             "mode",
             "PARTITION_KEY");
     BatchSettings settings = new BatchSettings(config);
-    assertThatThrownBy(settings::init)
+    assertThatThrownBy(() -> settings.init(false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Settings batch.maxBatchStatements and batch.maxBatchSize cannot be both defined; "
@@ -113,7 +117,7 @@ class BatchSettingsTest {
   void should_create_batcher_when_batch_mode_provided() {
     Config config = TestConfigUtils.createTestConfig("dsbulk.batch", "mode", "REPLICA_SET");
     BatchSettings settings = new BatchSettings(config);
-    settings.init();
+    settings.init(false);
     assertThat(settings.getBufferSize()).isEqualTo(128);
     ReactiveStatementBatcher batcher = settings.newStatementBatcher(session);
     assertThat(batcher).isInstanceOf(ReactorStatementBatcher.class);
@@ -125,7 +129,7 @@ class BatchSettingsTest {
   void should_create_batcher_when_buffer_size_provided() {
     Config config = TestConfigUtils.createTestConfig("dsbulk.batch", "bufferSize", 5000);
     BatchSettings settings = new BatchSettings(config);
-    settings.init();
+    settings.init(false);
     assertThat(settings.getBufferSize()).isEqualTo(5000);
     ReactiveStatementBatcher batcher = settings.newStatementBatcher(session);
     assertThat(batcher).isInstanceOf(ReactorStatementBatcher.class);
@@ -139,7 +143,7 @@ class BatchSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.batch", "maxBatchStatements", 10, "mode", "PARTITION_KEY", "bufferSize", -1);
     BatchSettings settings = new BatchSettings(config);
-    settings.init();
+    settings.init(false);
     // buffer size should implicitly be updated when max batch size is changed and it isn't
     // specified.
     assertThat(settings.getBufferSize()).isEqualTo(40);
@@ -163,7 +167,7 @@ class BatchSettingsTest {
             "maxBatchStatements",
             null);
     BatchSettings settings = new BatchSettings(config);
-    assertThatThrownBy(settings::init)
+    assertThatThrownBy(() -> settings.init(false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Value for batch.bufferSize (5) must be greater than or equal to "
@@ -176,7 +180,7 @@ class BatchSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.batch", "maxBatchStatements", 10, "bufferSize", 5, "mode", "PARTITION_KEY");
     BatchSettings settings = new BatchSettings(config);
-    assertThatThrownBy(settings::init)
+    assertThatThrownBy(() -> settings.init(false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Value for batch.bufferSize (5) must be greater than or equal to "
@@ -189,7 +193,7 @@ class BatchSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.batch", "maxBatchSize", "NotANumber", "maxBatchStatements", "null");
     BatchSettings settings = new BatchSettings(config);
-    assertThatThrownBy(settings::init)
+    assertThatThrownBy(() -> settings.init(false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.batch.maxBatchSize, expecting NUMBER, got STRING");
@@ -200,7 +204,7 @@ class BatchSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.batch", "maxBatchStatements", "NotANumber");
     BatchSettings settings = new BatchSettings(config);
-    assertThatThrownBy(settings::init)
+    assertThatThrownBy(() -> settings.init(false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.batch.maxBatchStatements, expecting NUMBER, got STRING");
@@ -211,7 +215,7 @@ class BatchSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.batch", "maxSizeInBytes", "NotANumber");
     BatchSettings settings = new BatchSettings(config);
-    assertThatThrownBy(settings::init)
+    assertThatThrownBy(() -> settings.init(false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.batch.maxSizeInBytes, expecting NUMBER, got STRING");
@@ -221,7 +225,7 @@ class BatchSettingsTest {
   void should_throw_exception_when_buffer_size_not_a_number() {
     Config config = TestConfigUtils.createTestConfig("dsbulk.batch", "bufferSize", "NotANumber");
     BatchSettings settings = new BatchSettings(config);
-    assertThatThrownBy(settings::init)
+    assertThatThrownBy(() -> settings.init(false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.batch.bufferSize, expecting NUMBER, got STRING");
@@ -231,7 +235,7 @@ class BatchSettingsTest {
   void should_throw_exception_when_batch_mode_invalid() {
     Config config = TestConfigUtils.createTestConfig("dsbulk.batch", "mode", "NotAMode");
     BatchSettings settings = new BatchSettings(config);
-    assertThatThrownBy(settings::init)
+    assertThatThrownBy(() -> settings.init(false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.batch.mode, expecting one of DISABLED, PARTITION_KEY, REPLICA_SET, got: 'NotAMode'");
@@ -243,7 +247,7 @@ class BatchSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.batch", "mode", "PARTITION_KEY", "maxBatchStatements", -1, "maxSizeInBytes", 0);
     BatchSettings settings = new BatchSettings(config);
-    assertThatThrownBy(settings::init)
+    assertThatThrownBy(() -> settings.init(false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "At least one of batch.maxSizeInBytes or batch.maxBatchStatements must be positive. See settings.md for more information.");
@@ -263,7 +267,7 @@ class BatchSettingsTest {
             "maxBatchStatements",
             0);
     BatchSettings settings = new BatchSettings(config);
-    assertThatThrownBy(settings::init)
+    assertThatThrownBy(() -> settings.init(false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Value for batch.bufferSize (0) must be positive if batch.maxBatchStatements is "
@@ -284,7 +288,7 @@ class BatchSettingsTest {
             "maxBatchStatements",
             -1);
     BatchSettings settings = new BatchSettings(config);
-    settings.init();
+    settings.init(false);
     assertThat(ReflectionUtils.getInternalState(settings, "maxSizeInBytes")).isEqualTo(1L);
     ReactiveStatementBatcher batcher = settings.newStatementBatcher(session);
     assertThat(batcher).isInstanceOf(ReactorStatementBatcher.class);
@@ -308,7 +312,7 @@ class BatchSettingsTest {
             "maxBatchStatements",
             null);
     BatchSettings settings = new BatchSettings(config);
-    settings.init();
+    settings.init(false);
     assertThat(ReflectionUtils.getInternalState(settings, "maxSizeInBytes")).isEqualTo(1L);
     assertThat(ReflectionUtils.getInternalState(settings, "maxBatchStatements")).isEqualTo(10);
     ReactiveStatementBatcher batcher = settings.newStatementBatcher(session);
@@ -332,7 +336,7 @@ class BatchSettingsTest {
             "maxBatchStatements",
             10);
     BatchSettings settings = new BatchSettings(config);
-    settings.init();
+    settings.init(false);
     assertThat(ReflectionUtils.getInternalState(settings, "maxSizeInBytes")).isEqualTo(1L);
     assertThat(ReflectionUtils.getInternalState(settings, "maxBatchStatements")).isEqualTo(10);
     ReactiveStatementBatcher batcher = settings.newStatementBatcher(session);
@@ -340,5 +344,23 @@ class BatchSettingsTest {
     assertThat(ReflectionUtils.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
     assertThat(ReflectionUtils.getInternalState(batcher, "maxSizeInBytes")).isEqualTo(1L);
     assertThat(ReflectionUtils.getInternalState(batcher, "maxBatchStatements")).isEqualTo(10);
+  }
+
+  @Test
+  void should_disable_batching_when_operation_has_batch_query(LogInterceptor logs) {
+    Config config = TestConfigUtils.createTestConfig("dsbulk.batch", "mode", "DISABLED");
+    BatchSettings settings = new BatchSettings(config);
+    settings.init(true);
+    assertThat(settings.isBatchingEnabled()).isFalse();
+    assertThat(logs)
+        .doesNotHaveMessageContaining(
+            "The prepared query for this operation is a BATCH statement: forcibly disabling batching");
+    config = TestConfigUtils.createTestConfig("dsbulk.batch", "mode", "PARTITION_KEY");
+    settings = new BatchSettings(config);
+    settings.init(true);
+    assertThat(settings.isBatchingEnabled()).isFalse();
+    assertThat(logs)
+        .hasMessageContaining(
+            "The prepared query for this operation is a BATCH statement: forcibly disabling batching");
   }
 }

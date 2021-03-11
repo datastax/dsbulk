@@ -34,7 +34,7 @@ import com.datastax.oss.dsbulk.workflow.commons.settings.EngineSettings;
 import com.datastax.oss.dsbulk.workflow.commons.settings.ExecutorSettings;
 import com.datastax.oss.dsbulk.workflow.commons.settings.LogSettings;
 import com.datastax.oss.dsbulk.workflow.commons.settings.MonitoringSettings;
-import com.datastax.oss.dsbulk.workflow.commons.settings.SchemaGenerationType;
+import com.datastax.oss.dsbulk.workflow.commons.settings.SchemaGenerationStrategy;
 import com.datastax.oss.dsbulk.workflow.commons.settings.SchemaSettings;
 import com.datastax.oss.dsbulk.workflow.commons.settings.SettingsManager;
 import com.datastax.oss.dsbulk.workflow.commons.settings.StatsSettings;
@@ -85,7 +85,7 @@ public class CountWorkflow implements Workflow {
 
   @Override
   public void init() throws Exception {
-    settingsManager.init("COUNT", false);
+    settingsManager.init("COUNT", false, SchemaGenerationStrategy.READ_AND_COUNT);
     executionId = settingsManager.getExecutionId();
     LogSettings logSettings = settingsManager.getLogSettings();
     DriverSettings driverSettings = settingsManager.getDriverSettings();
@@ -113,7 +113,7 @@ public class CountWorkflow implements Workflow {
             schemaSettings.isAllowExtraFields(), schemaSettings.isAllowMissingFields());
     session = driverSettings.newSession(executionId, codecFactory.getCodecRegistry());
     ClusterInformationUtils.printDebugInfoAboutCluster(session);
-    schemaSettings.init(SchemaGenerationType.READ_AND_COUNT, session, false, false);
+    schemaSettings.init(session, false, false);
     logManager = logSettings.newLogManager(session, false);
     logManager.init();
     metricsManager =

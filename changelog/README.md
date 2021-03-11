@@ -1,6 +1,6 @@
 ## Changelog
 
-## 1.7.1 (in progress)
+## 1.8.0 (in progress)
 
 - [improvement] Upgrade driver to 4.10.0.
 - [bug] Fix incorrect error message when read concurrency is < 1.
@@ -9,6 +9,7 @@
 - [improvement] Accept Well-known Binary (WKB) input formats for Geometry types.
 - [improvement] Make Json connector sensitive to the configured binary format.
 - [improvement] Make Geometry formats configurable.
+- [new feature] DAT-331: Add option to automatically preserve TTL and timestamp.
 
 ## 1.7.0
 

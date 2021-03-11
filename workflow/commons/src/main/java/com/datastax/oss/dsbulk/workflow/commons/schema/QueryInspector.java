@@ -21,6 +21,7 @@ import com.datastax.oss.dsbulk.generated.cql3.CqlBaseVisitor;
 import com.datastax.oss.dsbulk.generated.cql3.CqlLexer;
 import com.datastax.oss.dsbulk.generated.cql3.CqlParser;
 import com.datastax.oss.dsbulk.generated.cql3.CqlParser.AllowedFunctionNameContext;
+import com.datastax.oss.dsbulk.generated.cql3.CqlParser.BatchStatementContext;
 import com.datastax.oss.dsbulk.generated.cql3.CqlParser.CfNameContext;
 import com.datastax.oss.dsbulk.generated.cql3.CqlParser.CidentContext;
 import com.datastax.oss.dsbulk.generated.cql3.CqlParser.ColumnFamilyNameContext;
@@ -105,6 +106,7 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   private CQLWord usingTTLVariable;
   private boolean hasSearchClause = false;
   private boolean parallelizable = true;
+  private boolean batch = false;
 
   public QueryInspector(String query) {
     this.query = query;
@@ -198,16 +200,22 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   }
 
   /**
-   * @return the variable name used in a USING TIMESTAMP clause; or none if no such clause or no
-   *     such variable.
+   * Returns the variable name used in a USING TIMESTAMP clause; or empty if no such clause or no
+   * such variable.
+   *
+   * <p>In case of a BATCH statement, this will return the variable found in the last USING
+   * TIMESTAMP clause.
    */
   public Optional<CQLWord> getUsingTimestampVariable() {
     return Optional.ofNullable(usingTimestampVariable);
   }
 
   /**
-   * @return the variable name used in a USING TTL clause; or none if no such clause or no such
-   *     variable.
+   * Returns the variable name used in a USING TTL clause; or empty if no such clause or no such
+   * variable.
+   *
+   * <p>In case of a BATCH statement, this will return the variable found in the last USING TTL
+   * clause.
    */
   public Optional<CQLWord> getUsingTTLVariable() {
     return Optional.ofNullable(usingTTLVariable);
@@ -277,6 +285,11 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
    */
   public boolean isParallelizable() {
     return parallelizable;
+  }
+
+  /** @return true if the query is a BATCH query, false otherwise. */
+  public boolean isBatch() {
+    return batch;
   }
 
   // INSERT
@@ -366,6 +379,12 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
       parallelizable = false;
     }
     return visitSelectClause(ctx.selectClause());
+  }
+
+  @Override
+  public CQLFragment visitBatchStatement(BatchStatementContext ctx) {
+    batch = true;
+    return super.visitBatchStatement(ctx);
   }
 
   @Override

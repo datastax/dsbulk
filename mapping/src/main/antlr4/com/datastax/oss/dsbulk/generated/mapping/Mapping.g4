@@ -40,9 +40,9 @@ regularMappedEntry
     ;
 
 inferredMappedEntry
-    : '*' ( ':' | '=' ) '*'
-    | '*' ( ':' | '=' ) '-' variable
-    | '*' ( ':' | '=' ) '[' '-' variable ( ',' '-' variable )* ']'
+    : STAR ( ':' | '=' ) STAR
+    | STAR ( ':' | '=' ) '-' variable
+    | STAR ( ':' | '=' ) '[' '-' variable ( ',' '-' variable )* ']'
     ;
 
 indexedEntry
@@ -63,39 +63,57 @@ fieldOrFunction
     | function
     ;
 
-field
-    : UNQUOTED_IDENTIFIER
-    | QUOTED_IDENTIFIER
-    ;
-
 variableOrFunction
     : variable
     | function
     ;
 
+field
+    : identifier
+    ;
+
 variable
+    : identifier
+    ;
+
+keyspaceName
+    : identifier
+    ;
+
+functionName
+    : identifier
+    ;
+
+columnName
+    : identifier
+    ;
+
+identifier
     : UNQUOTED_IDENTIFIER
     | QUOTED_IDENTIFIER
+    // also valid as identifiers:
+    | WRITETIME
+    | TTL
     ;
 
 function
-    : WRITETIME '(' functionArg ')'
-    | qualifiedFunctionName '(' ')'
-    | qualifiedFunctionName '(' functionArgs ')'
+    : writetime
+    | ttl
+    | qualifiedFunctionName '(' functionArgs? ')'
+    ;
+
+writetime
+    : WRITETIME '(' STAR ')'
+    | WRITETIME '(' columnName ( ',' columnName )* ')'
+    ;
+
+ttl
+    : TTL '(' STAR ')'
+    | TTL '(' columnName ( ',' columnName )* ')'
     ;
 
 qualifiedFunctionName
     : ( keyspaceName '.' )? functionName
-    ;
-
-keyspaceName
-    : UNQUOTED_IDENTIFIER
-    | QUOTED_IDENTIFIER
-    ;
-
-functionName
-    : UNQUOTED_IDENTIFIER
-    | QUOTED_IDENTIFIER
     ;
 
 functionArgs
@@ -103,6 +121,11 @@ functionArgs
     ;
 
 functionArg
+    : columnName
+    | literal
+    ;
+
+literal
     : INTEGER
     | FLOAT
     | BOOLEAN
@@ -111,8 +134,6 @@ functionArg
     | HEXNUMBER
     | STRING_LITERAL
     | ( '-' )? ( K_NAN | K_INFINITY )
-    | QUOTED_IDENTIFIER
-    | UNQUOTED_IDENTIFIER
     ;
 
 // Case-insensitive alpha characters
@@ -180,6 +201,14 @@ fragment DURATION_UNIT
 WRITETIME
     : W R I T E T I M E
     ;
+
+TTL
+    : T T L
+    ;
+
+STAR
+  : '*'
+  ;
 
 BOOLEAN
     : T R U E | F A L S E
