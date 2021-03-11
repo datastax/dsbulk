@@ -1,6 +1,6 @@
 ## Changelog
 
-## 1.8.0 (in progress)
+## 1.8.0
 
 - [improvement] Upgrade driver to 4.10.0.
 - [bug] Fix incorrect error message when read concurrency is < 1.
