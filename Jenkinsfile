@@ -205,7 +205,7 @@ pipeline {
       description: 'Flag to determine if the distribution tarball should be generated')
     booleanParam(
       name: 'SLACK_ENABLED',
-      defaultValue: true,
+      defaultValue: false,
       description: 'Flag to determine if Slack notifications should be sent')
   }
 
