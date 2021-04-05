@@ -60,6 +60,7 @@ class PositionsTrackerTest {
         arguments(new long[] {1, 2, 3, 5}, ranges(new Range(1L, 3L), new Range(5L))),
         arguments(new long[] {5, 3, 2, 1}, ranges(new Range(1L, 3L), new Range(5L))),
         arguments(new long[] {1, 3, 5, 4, 2}, ranges(new Range(1L, 5L))),
+        arguments(new long[] {1, 2, 4, 5, 3}, ranges(new Range(1L, 5L))),
         arguments(new long[] {2, 4, 5, 3, 1}, ranges(new Range(1L, 5L))),
         arguments(new long[] {4, 3, 2, 1}, ranges(new Range(1L, 4L))),
         arguments(new long[] {4, 3, 2, 1}, ranges(new Range(1L, 4L))),
