@@ -21,7 +21,7 @@
   <parent>
     <artifactId>dsbulk-parent</artifactId>
     <groupId>com.datastax.oss</groupId>
-    <version>1.8.1-SNAPSHOT</version>
+    <version>1.8.0</version>
   </parent>
   <artifactId>dsbulk-sampler</artifactId>
   <name>DataStax Bulk Loader - Sampler</name>
