@@ -20,7 +20,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.datastax.oss</groupId>
   <artifactId>dsbulk-parent</artifactId>
-  <version>1.8.0</version>
+  <version>1.8.1-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>DataStax Bulk Loader</name>
   <description>A unified tool for loading into and unloading from storage engines compatible with Apache Cassandra: OSS Cassandra, DataStax Astra and DataStax Enterprise (DSE).</description>
