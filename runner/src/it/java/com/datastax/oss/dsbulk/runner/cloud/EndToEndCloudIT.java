@@ -59,6 +59,7 @@ import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -73,6 +74,7 @@ import ru.lanwen.wiremock.ext.WiremockResolver.Wiremock;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Tag("long")
 @LogConfigurationResource("logback.xml")
+@Disabled(value = "SNI Proxy image not available anymore in CI")
 class EndToEndCloudIT {
 
   private final SNIProxyServer proxy;
