@@ -212,6 +212,11 @@ public class CountWorkflow implements Workflow {
       // It has no sense to query billions rows for a few hours and show nothing if some failure
       // happens
       readResultCounter.reportTotals();
+      if (!success) {
+        LOGGER.warn(
+                "Please note: the totals reported above are probably inaccurate, "
+                        + "since the operation completed with errors.");
+      }
 
       LOGGER.debug("{} closed.", this);
       if (e != null) {
