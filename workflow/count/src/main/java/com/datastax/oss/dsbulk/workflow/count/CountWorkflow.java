@@ -214,8 +214,8 @@ public class CountWorkflow implements Workflow {
       readResultCounter.reportTotals();
       if (!success) {
         LOGGER.warn(
-                "Please note: the totals reported above are probably inaccurate, "
-                        + "since the operation completed with errors.");
+            "Please note: the totals reported above are probably inaccurate, "
+                + "since the operation completed with errors.");
       }
 
       LOGGER.debug("{} closed.", this);
