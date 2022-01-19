@@ -207,10 +207,17 @@ public class CountWorkflow implements Workflow {
       if (metricsManager != null) {
         metricsManager.reportFinalMetrics();
       }
-      // only print totals if the operation was successful
-      if (success) {
-        readResultCounter.reportTotals();
+
+      // Print results even if any failures.
+      // It has no sense to query billions rows for a few hours and show nothing if some failure
+      // happens
+      readResultCounter.reportTotals();
+      if (!success) {
+        LOGGER.warn(
+            "Please note: the totals reported above are probably inaccurate, "
+                + "since the operation completed with errors.");
       }
+
       LOGGER.debug("{} closed.", this);
       if (e != null) {
         throw e;
