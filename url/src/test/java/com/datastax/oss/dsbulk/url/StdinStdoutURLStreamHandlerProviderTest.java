@@ -24,10 +24,10 @@ class StdinStdoutURLStreamHandlerProviderTest {
   @Test
   void should_handle_std_protocol() {
     StdinStdoutURLStreamHandlerProvider provider = new StdinStdoutURLStreamHandlerProvider();
-    assertThat(provider.maybeCreateURLStreamHandler("std"))
+    assertThat(provider.maybeCreateURLStreamHandler("std", null))
         .isNotNull()
         .containsInstanceOf(StdinStdoutURLStreamHandler.class);
-    assertThat(provider.maybeCreateURLStreamHandler("STD"))
+    assertThat(provider.maybeCreateURLStreamHandler("STD", null))
         .isNotNull()
         .containsInstanceOf(StdinStdoutURLStreamHandler.class);
   }

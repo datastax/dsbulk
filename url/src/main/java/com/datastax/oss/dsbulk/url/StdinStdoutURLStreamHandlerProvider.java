@@ -15,6 +15,7 @@
  */
 package com.datastax.oss.dsbulk.url;
 
+import com.typesafe.config.Config;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.net.URLStreamHandler;
 import java.util.Optional;
@@ -29,7 +30,8 @@ public class StdinStdoutURLStreamHandlerProvider implements URLStreamHandlerProv
 
   @Override
   @NonNull
-  public Optional<URLStreamHandler> maybeCreateURLStreamHandler(@NonNull String protocol) {
+  public Optional<URLStreamHandler> maybeCreateURLStreamHandler(
+      @NonNull String protocol, Config config) {
     if (STANDARD_STREAM_PROTOCOL.equalsIgnoreCase(protocol)) {
       return Optional.of(new StdinStdoutURLStreamHandler());
     }

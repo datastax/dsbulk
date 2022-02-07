@@ -65,6 +65,7 @@ public class DataStaxBulkLoader {
       CommandLineParser parser = new CommandLineParser(args);
       ParsedCommandLine result = parser.parse();
       Config config = result.getConfig();
+      BulkLoaderURLStreamHandlerFactory.setConfig(config);
       workflow = result.getWorkflowProvider().newWorkflow(config);
 
       WorkflowThread workflowThread = new WorkflowThread(workflow);

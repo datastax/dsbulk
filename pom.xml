@@ -80,6 +80,7 @@
     <compress.xz.version>1.8</compress.xz.version>
     <compress.brotli.version>0.1.2</compress.brotli.version>
     <antlr4.version>4.9.1</antlr4.version>
+    <aws.sdk.version>2.17.121</aws.sdk.version>
     <!-- Test dependencies -->
     <junit.version>5.7.1</junit.version>
     <assertj.version>3.19.0</assertj.version>

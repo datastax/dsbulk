@@ -1,1 +1,2 @@
 com.datastax.oss.dsbulk.url.StdinStdoutURLStreamHandlerProvider
+com.datastax.oss.dsbulk.url.S3URLStreamHandlerProvider

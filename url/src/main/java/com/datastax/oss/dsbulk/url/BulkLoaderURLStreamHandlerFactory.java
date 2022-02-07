@@ -17,6 +17,7 @@ package com.datastax.oss.dsbulk.url;
 
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
+import com.typesafe.config.Config;
 import java.net.URL;
 import java.net.URLStreamHandler;
 import java.net.URLStreamHandlerFactory;
@@ -57,7 +58,17 @@ public class BulkLoaderURLStreamHandlerFactory implements URLStreamHandlerFactor
     }
   }
 
+  public static void setConfig(Config config) {
+    if (!INSTALLED.get()) {
+      throw new IllegalStateException(
+          "You must install the URL stream handler factories before setting the config.");
+    }
+    INSTANCE.config = config;
+  }
+
   private final ImmutableList<URLStreamHandlerProvider> providers;
+
+  private Config config;
 
   private BulkLoaderURLStreamHandlerFactory() {
     // IMPORTANT: the discovery must be done *before* this factory is installed,
@@ -78,7 +89,8 @@ public class BulkLoaderURLStreamHandlerFactory implements URLStreamHandlerFactor
     URLStreamHandler handler = null;
     if (protocol != null) {
       for (URLStreamHandlerProvider provider : providers) {
-        Optional<URLStreamHandler> maybeHandler = provider.maybeCreateURLStreamHandler(protocol);
+        Optional<URLStreamHandler> maybeHandler =
+            provider.maybeCreateURLStreamHandler(protocol, config);
         if (maybeHandler.isPresent()) {
           handler = maybeHandler.get();
           break;
