@@ -18,6 +18,7 @@ A template configuration file can be found [here](./application.template.conf).
 <a href="#log">Log Settings</a><br>
 <a href="#monitoring">Monitoring Settings</a><br>
 <a href="#runner">Runner Settings</a><br>
+<a href="#s3">S3 Settings</a><br>
 <a href="#stats">Stats Settings</a><br>
 <a href="#datastax-java-driver">Driver Settings</a><br>
 <a name="Common"></a>
@@ -1428,6 +1429,39 @@ Whether to prompt for passwords when they are missing from configuration files. 
 Prompting from passwords require interactive shells; if the standard input is not connected to a terminal, no passwords will be prompted, even if this option is true. You should only disable this feature if DSBulk mistankenly assumes that it is running in an interactive shell.
 
 Default: **true**.
+
+<a name="s3"></a>
+## S3 Settings
+
+Settings applicable for reading from AWS S3 URLs.
+
+#### --s3.accessKeyId<br />--dsbulk.s3.accessKeyId _&lt;string&gt;_
+
+Which access key ID to use for AWS S3 credentials. Requires that you provide a
+`secretAccessKey` as well. Ignored if a `profile` is provided.
+
+Default: **&lt;unspecified&gt;**.
+
+#### --s3.profile<br />--dsbulk.s3.profile _&lt;string&gt;_
+
+Which profile to use for AWS S3 credentials. See the [AWS SDK documentation](https://docs.aws.
+amazon.com/sdkref/latest/guide/file-format.html) for details on setting up profiles. This
+setting overrides the `accessKeyId`/`secretAccessKey` settings.
+
+Default: **&lt;unspecified&gt;**.
+
+#### --s3.region<br />--dsbulk.s3.region _&lt;string&gt;_
+
+Which AWS region to use.
+
+Default: **"us-east-1"**.
+
+#### --s3.secretAccessKey<br />--dsbulk.s3.secretAccessKey _&lt;string&gt;_
+
+Which secret access keyID to use for AWS S3 credentials. Requires that you provide a
+`accessKeyId` as well. Ignored if a `profile` is provided.
+
+Default: **&lt;unspecified&gt;**.
 
 <a name="stats"></a>
 ## Stats Settings

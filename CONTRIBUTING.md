@@ -324,6 +324,8 @@ e.g. "DAT-42".
 Before you send your pull request, make sure that you have a unit test that failed before 
 the fix and succeeds after.
 
+You will also need to sign the [DataStax Contribution License Agreement](https://cla.datastax.com/).
+
 If your pull requests addresses a Jira issue, add the corresponding entry to the 
 [changelog](./changelog/README.md), in the following format:
 
@@ -364,3 +366,23 @@ where the changes should be squashed:
 We require at least one approval by a peer reviewer.
 When the pull request is finally approved, squash all commits together to have a cleaner history
 before merging. It is OK to delete the branch after merging.
+
+# Building from Source
+
+If you would like to build `dsbulk` from source, you will need the following:
+
+* Java 8. Later versions of Java may be able to run `dsbulk`, but 8 is required for building.
+* Maven 3.x.
+
+From the root directory, run `mvn install`. This is the basic build and pretty much just makes sure
+that everything compiles and all the tests pass. To build the _.tar.gz_ or _.zip_ file that can be
+distributed to end users for execution, run `mvn install -Prelease`. The tarred/zipped files will
+appear in _distribution/target_, from which you can extract and run your updated code on your test
+cases.
+
+## Building Documentation
+
+Note that the build process automatically updates certain documentation files. For example, the
+documents in the [manual](./manual) are generated from the config templates for
+[dsbulk options](./workflow/commons/src/main/resources/dsbulk-reference.conf) and
+[driver options](./workflow/commons/src/main/resources/driver-reference.conf).
