@@ -21,10 +21,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
+import com.datastax.oss.driver.api.core.cql.BatchType;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import com.datastax.oss.dsbulk.mapping.CQLLiteral;
 import com.datastax.oss.dsbulk.mapping.CQLWord;
 import com.datastax.oss.dsbulk.mapping.FunctionCall;
+import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -768,5 +771,68 @@ class QueryInspectorTest {
                 + "DELETE FROM t1 WHERE pk=? AND cc=?; "
                 + "APPLY BATCH",
             true));
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  void should_detect_batch_child_statements(String query, List<String> expected) {
+    QueryInspector inspector = new QueryInspector(query);
+    assertThat(inspector.getBatchChildStatements()).isEqualTo(expected);
+  }
+
+  @SuppressWarnings("unused")
+  static List<Arguments> should_detect_batch_child_statements() {
+    return Lists.newArrayList(
+        arguments("INSERT INTO t1 (pk,cc,v) VALUES (?,?,?)", Collections.emptyList()),
+        arguments(
+            "BEGIN BATCH "
+                + "INSERT INTO t1 (pk,cc,v) VALUES (?,?,?)  ; "
+                + "UPDATE t1 SET v=? WHERE pk=? AND cc=?;"
+                + "DELETE FROM t1 WHERE pk=? AND cc=? "
+                + "APPLY BATCH",
+            ImmutableList.of(
+                "INSERT INTO t1 (pk,cc,v) VALUES (?,?,?)",
+                "UPDATE t1 SET v=? WHERE pk=? AND cc=?",
+                "DELETE FROM t1 WHERE pk=? AND cc=?")));
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  void should_detect_batch_type(String query, BatchType expected) {
+    QueryInspector inspector = new QueryInspector(query);
+    assertThat(inspector.getBatchType().orElse(null)).isEqualTo(expected);
+  }
+
+  @SuppressWarnings("unused")
+  static List<Arguments> should_detect_batch_type() {
+    return Lists.newArrayList(
+        arguments("INSERT INTO t1 (pk,cc,v) VALUES (?,?,?)", null),
+        arguments(
+            "BEGIN BATCH INSERT INTO t1 (pk,cc,v) VALUES (?,?,?) APPLY BATCH", BatchType.LOGGED),
+        arguments(
+            "BEGIN  UnLoGgEd BATCH INSERT INTO t1 (pk,cc,v) VALUES (?,?,?) APPLY BATCH",
+            BatchType.UNLOGGED),
+        arguments(
+            "BEGIN  CoUnTeR  BATCH INSERT INTO t1 (pk,cc,v) VALUES (?,?,?) APPLY BATCH",
+            BatchType.COUNTER));
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  void should_detect_batch_level_using_clause(String query, boolean expected) {
+    QueryInspector inspector = new QueryInspector(query);
+    assertThat(inspector.hasBatchLevelUsingClause()).isEqualTo(expected);
+  }
+
+  @SuppressWarnings("unused")
+  static List<Arguments> should_detect_batch_level_using_clause() {
+    return Lists.newArrayList(
+        arguments("INSERT INTO t1 (pk,cc,v) VALUES (?,?,?)", false),
+        arguments("BEGIN BATCH INSERT INTO t1 (pk,cc,v) VALUES (?,?,?) APPLY BATCH", false),
+        arguments(
+            "BEGIN BATCH USING TTL 123 INSERT INTO t1 (pk,cc,v) VALUES (?,?,?) APPLY BATCH", true),
+        arguments(
+            "BEGIN BATCH INSERT INTO t1 (pk,cc,v) VALUES (?,?,?) USING TTL 123 APPLY BATCH",
+            false));
   }
 }

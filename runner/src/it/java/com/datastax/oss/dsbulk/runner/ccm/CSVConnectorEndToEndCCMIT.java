@@ -52,6 +52,7 @@ import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.core.data.TupleValue;
 import com.datastax.oss.driver.api.core.data.UdtValue;
 import com.datastax.oss.driver.shaded.guava.common.base.Splitter;
+import com.datastax.oss.driver.shaded.guava.common.base.Strings;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import com.datastax.oss.dsbulk.codecs.api.util.CodecUtils;
@@ -2129,6 +2130,76 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(row.getLong("v2w")).isEqualTo(2222L);
     assertThat(row.getInt("v1t")).isLessThanOrEqualTo(111111).isGreaterThan(111000);
     assertThat(row.getInt("v2t")).isLessThanOrEqualTo(222222).isGreaterThan(222000);
+  }
+
+  @Test
+  void load_rebatch() {
+
+    session.execute("DROP TABLE IF EXISTS rebatch");
+    session.execute(
+        "CREATE TABLE rebatch (pk int, cc int, v1 text, v2 text, PRIMARY KEY (pk, cc))");
+
+    List<String> args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            quoteJson(logDir),
+            "--connector.csv.url",
+            quoteJson(ClassLoader.getSystemResource("rebatch.csv").toExternalForm()),
+            "--connector.csv.header",
+            "true",
+            "--connector.csv.ignoreLeadingWhitespaces",
+            "true",
+            "--connector.csv.ignoreTrailingWhitespaces",
+            "true",
+            "--schema.keyspace",
+            session.getKeyspace().get().asInternal(),
+            "--schema.table",
+            "rebatch",
+            "--schema.mapping",
+            "fk = pk, fc = cc, f1 = v1, f2 = v2, "
+                + "timestamp1 = writetime(v1), timestamp2 = writetime(v2),"
+                + "ttl1       = ttl(v1)      , ttl2       = ttl(v2)");
+
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+
+    ResultSet rs =
+        session.execute(
+            "SELECT pk, cc, "
+                + "v1, writetime(v1) AS v1w, ttl(v1) as v1t, "
+                + "v2, writetime(v2) AS v2w, ttl(v2) as v2t "
+                + "FROM rebatch "
+                + "WHERE pk = 1");
+
+    List<Row> rows = rs.all();
+    assertThat(rows).hasSize(20);
+    long v1w = ZonedDateTime.parse("2022-02-10T00:00:01-03:00").toInstant().toEpochMilli() * 1000;
+    long v2w = ZonedDateTime.parse("2022-03-10T00:00:01-03:00").toInstant().toEpochMilli() * 1000;
+    for (int i = 0; i < rows.size(); i++) {
+      Row row = rows.get(i);
+      String v1 = String.valueOf((char) ('a' + i));
+      String v2 = Strings.repeat(v1, 2);
+      assertThat(row).isNotNull();
+      assertThat(row.getInt("pk")).isEqualTo(1);
+      assertThat(row.getInt("cc")).isEqualTo(1 + i);
+      assertThat(row.getString("v1")).isEqualTo(v1);
+      assertThat(row.getString("v2")).isEqualTo(v2);
+      assertThat(row.getLong("v1w")).isEqualTo(v1w);
+      assertThat(row.getLong("v2w")).isEqualTo(v2w);
+      assertThat(row.getInt("v1t")).isLessThanOrEqualTo(1000);
+      assertThat(row.getInt("v2t")).isLessThanOrEqualTo(2000);
+      v1w += 1_000_000;
+      v2w += 1_000_000;
+    }
+
+    // We have 20 records and an original generated BATCH query containing 2 child statements.
+    // Since batches were unwrapped, we expect 40 INSERT statements total being executed.
+    // Since all records have the same partition key, we expect these to be all rebatched together.
+    // The default max batch size being 32, we expect one first batch with 32 statements,
+    // and a second one with the remaining 8.
+    assertThat(logs.getAllMessagesAsString())
+        .contains("Batches: total: 2, size: 20.00 mean, 8 min, 32 max");
   }
 
   @Test
