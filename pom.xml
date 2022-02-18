@@ -82,7 +82,7 @@
     <antlr4.version>4.9.3</antlr4.version>
     <spotbugs.version>4.5.3</spotbugs.version>
     <esri.version>1.2.1</esri.version>
-    <jansi.version>1.8</jansi.version>
+    <jansi.version>1.18</jansi.version>
     <!-- Test dependencies -->
     <junit.version>5.8.2</junit.version>
     <assertj.version>3.22.0</assertj.version>
