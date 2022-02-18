@@ -1,5 +1,9 @@
 ## Changelog
 
+## 1.9.0 (in progress)
+
+- [improvement] Upgrade driver to 4.14.0.
+
 ## 1.8.0
 
 - [improvement] Upgrade driver to 4.10.0.
