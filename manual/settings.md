@@ -1567,35 +1567,35 @@ The datacenter that is considered "local": the default load balancing policy wil
 
 Default: **null**.
 
-#### --driver.basic.load-balancing-policy.filter.class<br />--datastax-java-driver.basic.load-balancing-policy.filter.class _&lt;string&gt;_
+#### --driver.basic.load-balancing-policy.evaluator.class<br />--datastax-java-driver.basic.load-balancing-policy.evaluator.class _&lt;string&gt;_
 
 An optional custom filter to include/exclude nodes. If present, it must be the fully-qualified name of a class that implements `java.util.function.Predicate<Node>`, and has a public constructor taking two arguments: a `DriverContext` instance and a String representing the current execution profile name.
 
 The predicate's `test(Node)` method will be invoked each time the policy processes a topology or state change: if it returns false, the node will be set at distance `IGNORED` (meaning the driver won't ever connect to it), and never included in any query plan.
 
 By default, DSBulk ships with a node filter implementation that honors the following settings:
-- `datastax-java-driver.basic.load-balancing-policy.filter.allow`: a list of host names or host addresses that should be allowed.
-- `datastax-java-driver.basic.load-balancing-policy.filter.deny`: a list of host names or host addresses that should be denied.
+- `datastax-java-driver.basic.load-balancing-policy.evaluator.allow`: a list of host names or host addresses that should be allowed.
+- `datastax-java-driver.basic.load-balancing-policy.evaluator.deny`: a list of host names or host addresses that should be denied.
 
 See the description of the above settings for more details.
 
 Default: **"com.datastax.oss.dsbulk.workflow.commons.policies.lbp.SimpleNodeDistanceEvaluator"**.
 
-#### -allow,<br />--driver.basic.load-balancing-policy.filter.allow<br />--datastax-java-driver.basic.load-balancing-policy.filter.allow _&lt;list&lt;string&gt;&gt;_
+#### -allow,<br />--driver.basic.load-balancing-policy.evaluator.allow<br />--datastax-java-driver.basic.load-balancing-policy.evaluator.allow _&lt;list&lt;string&gt;&gt;_
 
 An optional list of host names or host addresses that should be allowed to connect. See `datastax-java-driver.basic.contact-points` for a full description of accepted formats.
 
-This option only has effect when the setting `datastax-java-driver.basic.load-balancing-policy.filter.class` refers to DSBulk's default node filter implementation: `com.datastax.oss.dsbulk.workflow.commons.policies.lbp.SimpleNodeDistanceEvaluator`.
+This option only has effect when the setting `datastax-java-driver.basic.load-balancing-policy.evaluator.class` refers to DSBulk's default node filter implementation: `com.datastax.oss.dsbulk.workflow.commons.policies.lbp.SimpleNodeDistanceEvaluator`.
 
 Note: this option is not compatible with DataStax Astra databases.
 
 Default: **[]**.
 
-#### -deny,<br />--driver.basic.load-balancing-policy.filter.deny<br />--datastax-java-driver.basic.load-balancing-policy.filter.deny _&lt;list&lt;string&gt;&gt;_
+#### -deny,<br />--driver.basic.load-balancing-policy.evaluator.deny<br />--datastax-java-driver.basic.load-balancing-policy.evaluator.deny _&lt;list&lt;string&gt;&gt;_
 
 An optional list of host names or host addresses that should be denied to connect. See `datastax-java-driver.basic.contact-points` for a full description of accepted formats.
 
-This option only has effect when the setting `datastax-java-driver.basic.load-balancing-policy.filter.class` refers to DSBulk's default node filter implementation: `com.datastax.oss.dsbulk.workflow.commons.policies.lbp.SimpleNodeDistanceEvaluator`.
+This option only has effect when the setting `datastax-java-driver.basic.load-balancing-policy.evaluator.class` refers to DSBulk's default node filter implementation: `com.datastax.oss.dsbulk.workflow.commons.policies.lbp.SimpleNodeDistanceEvaluator`.
 
 Note: this option is not compatible with DataStax Astra databases.
 
@@ -1831,3 +1831,4 @@ Default: **"1 minute"**.
 How long the driver waits for the response to a heartbeat. If this timeout fires, the heartbeat is considered failed.
 
 Default: **"1 minute"**.
+
