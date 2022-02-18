@@ -101,6 +101,8 @@ class EndToEndSimulacronITBase {
           "dc1",
           "-cl",
           "LOCAL_ONE",
+          "--driver.advanced.protocol.version",
+          "V4",
           "--driver.advanced.connection.pool.local.size",
           "1",
         };

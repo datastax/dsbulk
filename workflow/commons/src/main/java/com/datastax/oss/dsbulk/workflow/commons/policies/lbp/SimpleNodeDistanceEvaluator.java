@@ -17,20 +17,23 @@ package com.datastax.oss.dsbulk.workflow.commons.policies.lbp;
 
 import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
 import com.datastax.oss.driver.api.core.context.DriverContext;
+import com.datastax.oss.driver.api.core.loadbalancing.NodeDistance;
+import com.datastax.oss.driver.api.core.loadbalancing.NodeDistanceEvaluator;
 import com.datastax.oss.driver.api.core.metadata.EndPoint;
 import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.driver.internal.core.ContactPoints;
 import com.datastax.oss.dsbulk.workflow.commons.settings.BulkDriverOption;
 import com.datastax.oss.dsbulk.workflow.commons.utils.AddressUtils;
+import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
- * DSSBulk's default node filter. It operates on two distinct lists: one for nodes to explicitly
- * allow, and one for nodes to explicitly deny.
+ * DSSBulk's default node distance evaluator. It operates on two distinct lists: one for nodes to
+ * explicitly allow, and one for nodes to explicitly deny.
  *
  * <p>If both lists are empty, all nodes are accepted. If the allow list is not empty, only nodes in
  * that list will be allowed. If the deny list is not empty, only nodes not in that list will be
@@ -42,12 +45,12 @@ import java.util.stream.Collectors;
  *
  * <p>Nodes are resolved eagerly during startup and are not re-resolved after.
  *
- * <p>This filter is not compatible with DataStax Astra cloud deployments.
+ * <p>This evaluator is not compatible with DataStax Astra cloud deployments.
  *
  * @see BulkDriverOption#LOAD_BALANCING_POLICY_FILTER_ALLOW
  * @see BulkDriverOption#LOAD_BALANCING_POLICY_FILTER_DENY
  */
-public class SimpleNodeFilter implements Predicate<Node> {
+public class SimpleNodeDistanceEvaluator implements NodeDistanceEvaluator {
 
   private final Set<EndPoint> includedHosts;
   private final Set<EndPoint> excludedHosts;
@@ -60,13 +63,13 @@ public class SimpleNodeFilter implements Predicate<Node> {
    *     profile name.
    */
   @SuppressWarnings("unused")
-  public SimpleNodeFilter(DriverContext context, String profileName) {
+  public SimpleNodeDistanceEvaluator(DriverContext context, String profileName) {
     this(
         resolveHosts(context, profileName, BulkDriverOption.LOAD_BALANCING_POLICY_FILTER_ALLOW),
         resolveHosts(context, profileName, BulkDriverOption.LOAD_BALANCING_POLICY_FILTER_DENY));
   }
 
-  public SimpleNodeFilter(Set<EndPoint> includedHosts, Set<EndPoint> excludedHosts) {
+  public SimpleNodeDistanceEvaluator(Set<EndPoint> includedHosts, Set<EndPoint> excludedHosts) {
     this.includedHosts = includedHosts;
     this.excludedHosts = excludedHosts;
   }
@@ -82,9 +85,13 @@ public class SimpleNodeFilter implements Predicate<Node> {
     return ContactPoints.merge(Collections.emptySet(), hosts, true);
   }
 
+  @Nullable
   @Override
-  public boolean test(Node node) {
-    return isIncluded(node) && isNotExcluded(node);
+  public NodeDistance evaluateDistance(@NonNull Node node, @Nullable String localDc) {
+    if (isIncluded(node) && isNotExcluded(node)) {
+      return null;
+    }
+    return NodeDistance.IGNORED;
   }
 
   private boolean isIncluded(Node node) {

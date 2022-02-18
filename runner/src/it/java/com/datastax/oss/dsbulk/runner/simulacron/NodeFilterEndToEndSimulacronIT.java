@@ -250,12 +250,16 @@ class NodeFilterEndToEndSimulacronIT extends EndToEndSimulacronITBase {
   }
 
   private void checkAllowed(BoundNode node, String hostName, int port) {
-    assertThat(driverLogs).doesNotHaveMessageMatching("Ignoring .+" + hostName + ":" + port);
+    assertThat(driverLogs)
+        .hasMessageMatching(
+            "Evaluator did not assign a distance to node Node.+" + hostName + ":" + port);
     assertThat(getWritesCount(node)).isNotZero();
   }
 
   private void checkExcluded(BoundNode node, String hostName, int port) {
-    assertThat(driverLogs).hasMessageMatching("Ignoring .+" + hostName + ":" + port);
+    assertThat(driverLogs)
+        .hasMessageMatching(
+            "Evaluator assigned distance IGNORED to node Node.+" + hostName + ":" + port);
     assertThat(getWritesCount(node)).isZero();
   }
 

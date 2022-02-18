@@ -1,4 +1,4 @@
-# DataStax Bulk Loader v1.8.0-SNAPSHOT Options
+# DataStax Bulk Loader v1.8.1-SNAPSHOT Options
 
 *NOTE:* The long options described here can be persisted in `conf/application.conf` and thus permanently override defaults and avoid specifying options on the command line.
 
@@ -1579,13 +1579,13 @@ By default, DSBulk ships with a node filter implementation that honors the follo
 
 See the description of the above settings for more details.
 
-Default: **"com.datastax.oss.dsbulk.workflow.commons.policies.lbp.SimpleNodeFilter"**.
+Default: **"com.datastax.oss.dsbulk.workflow.commons.policies.lbp.SimpleNodeDistanceEvaluator"**.
 
 #### -allow,<br />--driver.basic.load-balancing-policy.filter.allow<br />--datastax-java-driver.basic.load-balancing-policy.filter.allow _&lt;list&lt;string&gt;&gt;_
 
 An optional list of host names or host addresses that should be allowed to connect. See `datastax-java-driver.basic.contact-points` for a full description of accepted formats.
 
-This option only has effect when the setting `datastax-java-driver.basic.load-balancing-policy.filter.class` refers to DSBulk's default node filter implementation: `com.datastax.oss.dsbulk.workflow.commons.policies.lbp.SimpleNodeFilter`.
+This option only has effect when the setting `datastax-java-driver.basic.load-balancing-policy.filter.class` refers to DSBulk's default node filter implementation: `com.datastax.oss.dsbulk.workflow.commons.policies.lbp.SimpleNodeDistanceEvaluator`.
 
 Note: this option is not compatible with DataStax Astra databases.
 
@@ -1595,7 +1595,7 @@ Default: **[]**.
 
 An optional list of host names or host addresses that should be denied to connect. See `datastax-java-driver.basic.contact-points` for a full description of accepted formats.
 
-This option only has effect when the setting `datastax-java-driver.basic.load-balancing-policy.filter.class` refers to DSBulk's default node filter implementation: `com.datastax.oss.dsbulk.workflow.commons.policies.lbp.SimpleNodeFilter`.
+This option only has effect when the setting `datastax-java-driver.basic.load-balancing-policy.filter.class` refers to DSBulk's default node filter implementation: `com.datastax.oss.dsbulk.workflow.commons.policies.lbp.SimpleNodeDistanceEvaluator`.
 
 Note: this option is not compatible with DataStax Astra databases.
 
@@ -1831,4 +1831,3 @@ Default: **"1 minute"**.
 How long the driver waits for the response to a heartbeat. If this timeout fires, the heartbeat is considered failed.
 
 Default: **"1 minute"**.
-

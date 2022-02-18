@@ -18,6 +18,7 @@ package com.datastax.oss.dsbulk.workflow.commons.policies.lbp;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
+import com.datastax.oss.driver.api.core.loadbalancing.NodeDistance;
 import com.datastax.oss.driver.api.core.metadata.EndPoint;
 import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSet;
@@ -35,7 +36,7 @@ import org.mockito.Mockito;
 import org.mockito.MockitoSession;
 
 @TestInstance(Lifecycle.PER_CLASS)
-class SimpleNodeFilterTest {
+class SimpleNodeDistanceEvaluatorTest {
 
   @Mock Node n1;
   @Mock Node n2;
@@ -62,25 +63,35 @@ class SimpleNodeFilterTest {
   void should_include_or_exclude_nodes(
       Set<EndPoint> includedHosts,
       Set<EndPoint> excludedHosts,
-      boolean expected1,
-      boolean expected2) {
+      NodeDistance expected1,
+      NodeDistance expected2) {
     // when
-    SimpleNodeFilter filter = new SimpleNodeFilter(includedHosts, excludedHosts);
+    SimpleNodeDistanceEvaluator filter =
+        new SimpleNodeDistanceEvaluator(includedHosts, excludedHosts);
     // then
-    assertThat(filter.test(n1)).isEqualTo(expected1);
-    assertThat(filter.test(n2)).isEqualTo(expected2);
+    assertThat(filter.evaluateDistance(n1, "dc1")).isEqualTo(expected1);
+    assertThat(filter.evaluateDistance(n2, "dc1")).isEqualTo(expected2);
   }
 
   @SuppressWarnings("unused")
   Stream<Arguments> should_include_or_exclude_nodes() {
     return Stream.of(
-        Arguments.of(ImmutableSet.of(), ImmutableSet.of(), true, true),
-        Arguments.of(ImmutableSet.of(e1), ImmutableSet.of(), true, false),
-        Arguments.of(ImmutableSet.of(e1, e2), ImmutableSet.of(), true, true),
-        Arguments.of(ImmutableSet.of(), ImmutableSet.of(e1), false, true),
-        Arguments.of(ImmutableSet.of(), ImmutableSet.of(e1, e2), false, false),
-        Arguments.of(ImmutableSet.of(e1), ImmutableSet.of(e1, e2), false, false),
-        Arguments.of(ImmutableSet.of(e1, e2), ImmutableSet.of(e1), false, true),
-        Arguments.of(ImmutableSet.of(e1, e2), ImmutableSet.of(e1, e2), false, false));
+        Arguments.of(ImmutableSet.of(), ImmutableSet.of(), null, null),
+        Arguments.of(ImmutableSet.of(e1), ImmutableSet.of(), null, NodeDistance.IGNORED),
+        Arguments.of(ImmutableSet.of(e1, e2), ImmutableSet.of(), null, null),
+        Arguments.of(ImmutableSet.of(), ImmutableSet.of(e1), NodeDistance.IGNORED, null),
+        Arguments.of(
+            ImmutableSet.of(), ImmutableSet.of(e1, e2), NodeDistance.IGNORED, NodeDistance.IGNORED),
+        Arguments.of(
+            ImmutableSet.of(e1),
+            ImmutableSet.of(e1, e2),
+            NodeDistance.IGNORED,
+            NodeDistance.IGNORED),
+        Arguments.of(ImmutableSet.of(e1, e2), ImmutableSet.of(e1), NodeDistance.IGNORED, null),
+        Arguments.of(
+            ImmutableSet.of(e1, e2),
+            ImmutableSet.of(e1, e2),
+            NodeDistance.IGNORED,
+            NodeDistance.IGNORED));
   }
 }
