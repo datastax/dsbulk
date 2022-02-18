@@ -30,6 +30,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import com.datastax.oss.dsbulk.url.BulkLoaderURLStreamHandlerFactory;
 import com.typesafe.config.Config;
@@ -545,6 +546,19 @@ class ConfigUtilsTest {
     assertThat(config.getValue(path).origin().description()).isEqualTo("stdin");
     verify(console).readPassword("Please input value for setting %s: ", path);
     verifyNoMoreInteractions(console);
+  }
+
+  @Test
+  void should_read_string_map() {
+    assertThat(
+            ConfigUtils.getStringMap(
+                ConfigFactory.parseString("map = { f1 : foo, f2 : bar }"), "map"))
+        .isEqualTo(ImmutableMap.of("f1", "foo", "f2", "bar"));
+    assertThatThrownBy(
+            () ->
+                ConfigUtils.getStringMap(
+                    ConfigFactory.parseString("not_a_map = true"), "not_a_map"))
+        .hasMessageContaining("not_a_map has type BOOLEAN rather than OBJECT");
   }
 
   private static Path createURLFile(URL... urls) throws IOException {

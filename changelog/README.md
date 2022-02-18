@@ -3,6 +3,7 @@
 ## 1.9.0 (in progress)
 
 - [improvement] Upgrade driver to 4.14.0.
+- [new feature] [#405](https://github.com/datastax/dsbulk/issues/405) Add support for Prometheus.
 
 ## 1.8.0
 

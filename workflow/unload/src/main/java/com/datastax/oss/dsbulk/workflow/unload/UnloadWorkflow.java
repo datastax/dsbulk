@@ -15,10 +15,8 @@
  */
 package com.datastax.oss.dsbulk.workflow.unload;
 
-import com.codahale.metrics.MetricRegistry;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.Statement;
-import com.datastax.oss.driver.api.core.metrics.Metrics;
 import com.datastax.oss.driver.shaded.guava.common.base.Stopwatch;
 import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
 import com.datastax.oss.dsbulk.connectors.api.CommonConnectorFeature;
@@ -126,7 +124,9 @@ public class UnloadWorkflow implements Workflow {
     ConvertingCodecFactory codecFactory =
         codecSettings.createCodecFactory(
             schemaSettings.isAllowExtraFields(), schemaSettings.isAllowMissingFields());
-    session = driverSettings.newSession(executionId, codecFactory.getCodecRegistry());
+    session =
+        driverSettings.newSession(
+            executionId, codecFactory.getCodecRegistry(), monitoringSettings.getRegistry());
     ClusterInformationUtils.printDebugInfoAboutCluster(session);
     schemaSettings.init(
         session,
@@ -140,7 +140,6 @@ public class UnloadWorkflow implements Workflow {
             false,
             logManager.getOperationDirectory(),
             logSettings.getVerbosity(),
-            session.getMetrics().map(Metrics::getRegistry).orElse(new MetricRegistry()),
             session.getContext().getProtocolVersion(),
             session.getContext().getCodecRegistry(),
             schemaSettings.getRowType());
@@ -199,11 +198,11 @@ public class UnloadWorkflow implements Workflow {
     Stopwatch timer = Stopwatch.createStarted();
     flux.then().flux().transform(terminationHandler).blockLast();
     timer.stop();
-    metricsManager.stop();
+    int totalErrors = logManager.getTotalErrors();
+    metricsManager.stop(timer.elapsed(), totalErrors == 0);
     Duration elapsed = DurationUtils.round(timer.elapsed(), TimeUnit.SECONDS);
     String elapsedStr =
         elapsed.isZero() ? "less than one second" : DurationUtils.formatDuration(elapsed);
-    int totalErrors = logManager.getTotalErrors();
     if (totalErrors == 0) {
       LOGGER.info("{} completed successfully in {}.", this, elapsedStr);
     } else {

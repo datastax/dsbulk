@@ -40,7 +40,7 @@ class BatchReporterTest {
   @Test
   void should_report_batches(
       @LogCapture(value = BatchReporter.class, level = DEBUG) LogInterceptor interceptor) {
-    Histogram size = registry.histogram("batches/size");
+    Histogram size = registry.histogram("batches");
     LogSink sink = LogSink.buildFrom(LOGGER::isDebugEnabled, LOGGER::debug);
     BatchReporter reporter =
         new BatchReporter(registry, sink, Executors.newSingleThreadScheduledExecutor());

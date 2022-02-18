@@ -37,21 +37,19 @@ import com.datastax.oss.dsbulk.executor.api.listener.MetricsCollectingExecutionL
 import com.datastax.oss.dsbulk.executor.api.listener.ReadsReportingExecutionListener;
 import com.datastax.oss.dsbulk.executor.api.listener.WritesReportingExecutionListener;
 import com.datastax.oss.dsbulk.executor.api.result.Result;
+import com.datastax.oss.dsbulk.workflow.commons.metrics.jmx.BulkLoaderObjectNameFactory;
+import com.datastax.oss.dsbulk.workflow.commons.metrics.prometheus.PrometheusManager;
 import com.datastax.oss.dsbulk.workflow.commons.settings.LogSettings.Verbosity;
 import com.datastax.oss.dsbulk.workflow.commons.settings.RowType;
 import com.datastax.oss.dsbulk.workflow.commons.statement.UnmappableStatement;
-import com.datastax.oss.dsbulk.workflow.commons.utils.JMXUtils;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.StringTokenizer;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
-import javax.management.MalformedObjectNameException;
-import javax.management.ObjectName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Marker;
@@ -77,6 +75,7 @@ public class MetricsManager implements AutoCloseable {
   private final boolean jmx;
   private final boolean csv;
   private final boolean console;
+  private final PrometheusManager prometheus;
   private final Path operationDirectory;
   private final Duration reportInterval;
   private final boolean batchingEnabled;
@@ -95,11 +94,13 @@ public class MetricsManager implements AutoCloseable {
   private CsvReporter csvReporter;
   private ConsoleReporter consoleReporter;
   private LogSink logSink;
+  private Duration elapsed;
+  private boolean success;
 
   private final AtomicBoolean running = new AtomicBoolean(false);
 
   public MetricsManager(
-      MetricRegistry driverRegistry,
+      MetricRegistry registry,
       boolean monitorWrites,
       String executionId,
       ScheduledExecutorService scheduler,
@@ -111,6 +112,7 @@ public class MetricsManager implements AutoCloseable {
       boolean jmx,
       boolean csv,
       boolean console,
+      PrometheusManager prometheus,
       Path operationDirectory,
       Verbosity verbosity,
       Duration reportInterval,
@@ -118,10 +120,7 @@ public class MetricsManager implements AutoCloseable {
       ProtocolVersion protocolVersion,
       CodecRegistry codecRegistry,
       RowType rowType) {
-    this.registry = new MetricRegistry();
-    driverRegistry
-        .getMetrics()
-        .forEach((name, metric) -> this.registry.register("driver/" + name, metric));
+    this.registry = registry;
     this.monitorWrites = monitorWrites;
     this.listener =
         new MetricsCollectingExecutionListener(
@@ -134,6 +133,7 @@ public class MetricsManager implements AutoCloseable {
     this.expectedReads = expectedReads;
     this.jmx = jmx;
     this.csv = csv;
+    this.prometheus = prometheus;
     this.console = console;
     this.operationDirectory = operationDirectory;
     this.verbosity = verbosity;
@@ -145,7 +145,7 @@ public class MetricsManager implements AutoCloseable {
   public void init() {
     totalItems = registry.counter("records/total");
     failedItems = registry.counter("records/failed");
-    batchSize = registry.histogram("batches/size", () -> new Histogram(new UniformReservoir()));
+    batchSize = registry.histogram("batches", () -> new Histogram(new UniformReservoir()));
     createMemoryGauges();
     logSink =
         new LogSink() {
@@ -164,6 +164,9 @@ public class MetricsManager implements AutoCloseable {
             }
           }
         };
+    if (prometheus != null) {
+      prometheus.init();
+    }
   }
 
   public void start() {
@@ -173,6 +176,9 @@ public class MetricsManager implements AutoCloseable {
     }
     if (csv) {
       startCSVReporter();
+    }
+    if (prometheus != null) {
+      prometheus.start();
     }
     if (verbosity.compareTo(Verbosity.quiet) > 0) {
       if (console) {
@@ -264,33 +270,7 @@ public class MetricsManager implements AutoCloseable {
             .convertDurationsTo(durationUnit)
             .convertRatesTo(rateUnit)
             .inDomain(DSBULK_JMX_DOMAIN)
-            .createsObjectNamesWith(
-                (metricsType, jmxDomain, metricName) -> {
-                  try {
-                    StringBuilder sb =
-                        new StringBuilder(jmxDomain)
-                            .append(":executionId=")
-                            .append(JMXUtils.quoteJMXIfNecessary(executionId))
-                            .append(',');
-                    StringTokenizer tokenizer = new StringTokenizer(metricName, "/");
-                    int i = 1;
-                    while (tokenizer.hasMoreTokens()) {
-                      String token = tokenizer.nextToken();
-                      if (tokenizer.hasMoreTokens()) {
-                        sb.append("level").append(i++);
-                      } else {
-                        sb.append("name");
-                      }
-                      sb.append('=').append(JMXUtils.quoteJMXIfNecessary(token));
-                      if (tokenizer.hasMoreTokens()) {
-                        sb.append(',');
-                      }
-                    }
-                    return ObjectName.getInstance(sb.toString());
-                  } catch (MalformedObjectNameException e) {
-                    throw new RuntimeException(e);
-                  }
-                })
+            .createsObjectNamesWith(new BulkLoaderObjectNameFactory(executionId))
             .build();
     jmxReporter.start();
   }
@@ -375,7 +355,7 @@ public class MetricsManager implements AutoCloseable {
               () -> failedItems.getCount(),
               listener.getTotalWritesTimer(),
               listener.getBytesSentMeter().orElse(null),
-              batchingEnabled ? registry.histogram("batches/size") : null,
+              batchingEnabled ? registry.histogram("batches") : null,
               SECONDS,
               MILLISECONDS,
               expectedWrites,
@@ -400,9 +380,11 @@ public class MetricsManager implements AutoCloseable {
     consoleReporter.start(reportInterval.getSeconds(), SECONDS);
   }
 
-  public void stop() {
+  public void stop(Duration elapsed, boolean success) {
+    this.elapsed = elapsed;
+    this.success = success;
     if (consoleReporter != null) {
-      // print one last report to get final numbers on the console,
+      // print one last report, to get final numbers on the console,
       // if the workflow hasn't been interrupted,
       // and before any closing message is printed.
       consoleReporter.report();
@@ -413,7 +395,6 @@ public class MetricsManager implements AutoCloseable {
 
   @Override
   public void close() {
-    stop();
     if (consoleReporter != null) {
       consoleReporter.close();
     }
@@ -439,6 +420,9 @@ public class MetricsManager implements AutoCloseable {
       readsReporter.close();
     }
     MoreExecutors.shutdownAndAwaitTermination(scheduler, 1, MINUTES);
+    if (prometheus != null) {
+      prometheus.close();
+    }
   }
 
   public void reportFinalMetrics() {
@@ -463,6 +447,9 @@ public class MetricsManager implements AutoCloseable {
       if (readsReporter != null) {
         readsReporter.report();
       }
+    }
+    if (prometheus != null) {
+      prometheus.pushMetrics(elapsed, success);
     }
   }
 
