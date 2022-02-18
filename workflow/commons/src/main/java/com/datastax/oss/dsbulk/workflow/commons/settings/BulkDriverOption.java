@@ -44,14 +44,14 @@ public enum BulkDriverOption implements DriverOption {
    *
    * <p>Expected type: String List.
    */
-  LOAD_BALANCING_POLICY_FILTER_ALLOW("basic.load-balancing-policy.filter.allow"),
+  LOAD_BALANCING_POLICY_FILTER_ALLOW("basic.load-balancing-policy.evaluator.allow"),
 
   /**
    * The list of denied nodes, for use when {@link SimpleNodeDistanceEvaluator} is used.
    *
    * <p>Expected type: String List.
    */
-  LOAD_BALANCING_POLICY_FILTER_DENY("basic.load-balancing-policy.filter.deny"),
+  LOAD_BALANCING_POLICY_FILTER_DENY("basic.load-balancing-policy.evaluator.deny"),
   ;
 
   private final String path;
