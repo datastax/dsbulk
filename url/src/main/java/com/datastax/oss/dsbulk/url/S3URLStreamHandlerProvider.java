@@ -22,7 +22,6 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 import software.amazon.awssdk.http.SdkHttpClient;
 import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
@@ -35,8 +34,6 @@ public class S3URLStreamHandlerProvider implements URLStreamHandlerProvider {
 
   private static final String REGION_PATH = "dsbulk.s3.region";
   private static final String PROFILE_PATH = "dsbulk.s3.profile";
-  private static final String ACCESS_KEY_ID_PATH = "dsbulk.s3.accessKeyId";
-  private static final String SECRET_ACCESS_KEY_PATH = "dsbulk.s3.secretAccessKey";
 
   private static final Logger LOGGER = LoggerFactory.getLogger(S3URLStreamHandlerProvider.class);
 
@@ -60,10 +57,6 @@ public class S3URLStreamHandlerProvider implements URLStreamHandlerProvider {
       throw new IllegalArgumentException("You must supply an AWS region to use S3 URls.");
     }
     String profile = config.hasPath(PROFILE_PATH) ? config.getString(PROFILE_PATH) : null;
-    String accessKeyId =
-        config.hasPath(ACCESS_KEY_ID_PATH) ? config.getString(ACCESS_KEY_ID_PATH) : null;
-    String secretAccessKey =
-        config.hasPath(SECRET_ACCESS_KEY_PATH) ? config.getString(SECRET_ACCESS_KEY_PATH) : null;
 
     SdkHttpClient httpClient = UrlConnectionHttpClient.builder().build();
     S3ClientBuilder builder = S3Client.builder().httpClient(httpClient).region(Region.of(region));
@@ -71,9 +64,6 @@ public class S3URLStreamHandlerProvider implements URLStreamHandlerProvider {
     if (!StringUtils.isBlank(profile)) {
       LOGGER.info("Using AWS profile {} to connect to S3.", profile);
       builder.credentialsProvider(ProfileCredentialsProvider.create(profile));
-    } else if (!StringUtils.isBlank(accessKeyId) && !StringUtils.isBlank(secretAccessKey)) {
-      LOGGER.info("Using AWS access key ID and secret access key to connect to S3.");
-      builder.credentialsProvider(() -> AwsBasicCredentials.create(accessKeyId, secretAccessKey));
     } else {
       LOGGER.info("Using default credentials provider to connect to S3.");
     }

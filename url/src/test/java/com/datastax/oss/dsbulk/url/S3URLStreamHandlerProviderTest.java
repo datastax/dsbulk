@@ -32,10 +32,6 @@ class S3URLStreamHandlerProviderTest {
     when(config.getString("dsbulk.s3.region")).thenReturn("us-west-1");
     when(config.hasPath("dsbulk.s3.profile")).thenReturn(true);
     when(config.getString("dsbulk.s3.profile")).thenReturn("profile");
-    when(config.hasPath("dsbulk.s3.accessKeyId")).thenReturn(true);
-    when(config.getString("dsbulk.s3.accessKeyId")).thenReturn("accessKeyId");
-    when(config.hasPath("dsbulk.s3.secretAccessKey")).thenReturn(true);
-    when(config.getString("dsbulk.s3.secretAccessKey")).thenReturn("secretAccessKey");
 
     S3URLStreamHandlerProvider provider = new S3URLStreamHandlerProvider();
 
