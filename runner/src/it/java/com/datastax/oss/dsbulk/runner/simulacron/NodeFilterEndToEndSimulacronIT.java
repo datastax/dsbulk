@@ -158,7 +158,7 @@ class NodeFilterEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     assertThat(logs)
         .hasMessageContaining("Setting dsbulk.driver.policy.lbp.whiteList.hosts is deprecated")
         .hasMessageContaining(
-            "configure the driver directly using --datastax-java-driver.basic.load-balancing-policy.filter.allow (or -allow) instead.")
+            "configure the driver directly using --datastax-java-driver.basic.load-balancing-policy.evaluator.allow (or -allow) instead.")
         .hasMessageContaining("completed successfully")
         .hasMessageContaining("Records: total: 1,000, successful: 1,000, failed: 0");
     for (int i = 0; i < 3; i++) {
@@ -250,12 +250,16 @@ class NodeFilterEndToEndSimulacronIT extends EndToEndSimulacronITBase {
   }
 
   private void checkAllowed(BoundNode node, String hostName, int port) {
-    assertThat(driverLogs).doesNotHaveMessageMatching("Ignoring .+" + hostName + ":" + port);
+    assertThat(driverLogs)
+        .hasMessageMatching(
+            "Evaluator did not assign a distance to node Node.+" + hostName + ":" + port);
     assertThat(getWritesCount(node)).isNotZero();
   }
 
   private void checkExcluded(BoundNode node, String hostName, int port) {
-    assertThat(driverLogs).hasMessageMatching("Ignoring .+" + hostName + ":" + port);
+    assertThat(driverLogs)
+        .hasMessageMatching(
+            "Evaluator assigned distance IGNORED to node Node.+" + hostName + ":" + port);
     assertThat(getWritesCount(node)).isZero();
   }
 

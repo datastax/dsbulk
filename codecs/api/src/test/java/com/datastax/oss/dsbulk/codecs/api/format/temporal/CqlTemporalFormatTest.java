@@ -118,6 +118,7 @@ class CqlTemporalFormatTest {
           "yyyy-MM-ddXX",
           "yyyy-MM-ddXXX");
 
+  @SuppressWarnings("ZoneIdOfZ")
   private static final List<ZoneId> ZONES =
       Lists.newArrayList(
           ZoneId.of("UTC"),

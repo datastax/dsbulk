@@ -211,12 +211,6 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
-      <!-- When upgrading Netty, make sure netty-tcnative-boringssl-static is compatible by running SSL tests, see SSLEncryptionEndToEndCCMIT -->
-      <dependency>
-        <groupId>io.netty</groupId>
-        <artifactId>netty-tcnative-boringssl-static</artifactId>
-        <version>2.0.31.Final</version>
-      </dependency>
       <!-- Jackson BOM -->
       <dependency>
         <groupId>com.fasterxml.jackson</groupId>
@@ -304,12 +298,12 @@
       <dependency>
         <groupId>com.github.spotbugs</groupId>
         <artifactId>spotbugs-annotations</artifactId>
-        <version>3.1.12</version>
+        <version>${spotbugs.version}</version>
       </dependency>
       <dependency>
         <groupId>com.esri.geometry</groupId>
         <artifactId>esri-geometry-api</artifactId>
-        <version>1.2.1</version>
+        <version>${esri.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.commons</groupId>
@@ -339,7 +333,7 @@
       <dependency>
         <groupId>org.fusesource.jansi</groupId>
         <artifactId>jansi</artifactId>
-        <version>1.18</version>
+        <version>${jansi.version}</version>
       </dependency>
       <dependency>
         <groupId>software.amazon.awssdk</groupId>
