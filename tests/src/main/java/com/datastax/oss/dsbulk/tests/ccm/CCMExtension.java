@@ -92,7 +92,7 @@ public class CCMExtension extends RemoteClusterExtension
       ParameterContext parameterContext, ExtensionContext extensionContext)
       throws ParameterResolutionException {
     Class<?> type = parameterContext.getParameter().getType();
-    return type.isAssignableFrom(DefaultCCMCluster.class)
+    return type.equals(CCMCluster.class)
         || super.supportsParameter(parameterContext, extensionContext);
   }
 
@@ -102,7 +102,7 @@ public class CCMExtension extends RemoteClusterExtension
       throws ParameterResolutionException {
     Parameter parameter = parameterContext.getParameter();
     Class<?> type = parameter.getType();
-    if (type.isAssignableFrom(DefaultCCMCluster.class)) {
+    if (type.equals(CCMCluster.class)) {
       CCMCluster ccm = getOrCreateCCM(extensionContext);
       LOGGER.debug(String.format("Returning %s for parameter %s", ccm, parameter));
       return ccm;

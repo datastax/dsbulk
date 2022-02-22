@@ -17,6 +17,7 @@ package com.datastax.oss.dsbulk.tests;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.metadata.EndPoint;
+import com.datastax.oss.driver.api.core.session.Session;
 import com.datastax.oss.dsbulk.tests.driver.factory.SessionFactory;
 import java.lang.reflect.Parameter;
 import java.util.HashSet;
@@ -44,7 +45,8 @@ public abstract class RemoteClusterExtension implements AfterAllCallback, Parame
       ParameterContext parameterContext, ExtensionContext extensionContext)
       throws ParameterResolutionException {
     Class<?> type = parameterContext.getParameter().getType();
-    return type.isAssignableFrom(CqlSession.class);
+    // type must implement Session and be a supertype of CqlSession
+    return Session.class.isAssignableFrom(type) && type.isAssignableFrom(CqlSession.class);
   }
 
   @Override
