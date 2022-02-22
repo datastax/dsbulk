@@ -2555,8 +2555,44 @@ class SchemaSettingsTest {
         .hasMessageContaining("ttl(*) is not allowed when schema.preserveTtl is true");
   }
 
-  // Function calls are not allowed when updating a counter table.
-  // Cannot set TTL or timestamp when updating a counter table.
+  // TODO Function calls are not allowed when updating a counter table.
+  // TODO Cannot set TTL or timestamp when updating a counter table.
+
+  @Test
+  void should_not_preserve_timestamp_when_unsupported_type() {
+    when(col3.getType()).thenReturn(DataTypes.listOf(DataTypes.TEXT));
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema", "keyspace", "ks", "table", "t1", "preserveTimestamp", true);
+    SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
+    settings.init(session, true, true);
+    settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
+    assertThat(getInternalState(settings, "query"))
+        .isEqualTo(
+            "SELECT c1, \"COL 2\", writetime(\"COL 2\") AS \"writetime(COL 2)\", c3 "
+                + "FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end");
+    assertThat(logs)
+        .hasMessageContaining(
+            "Skipping timestamp preservation for column c3: this feature is not supported for CQL type list<text>");
+  }
+
+  @Test
+  void should_not_preserve_ttl_when_unsupported_type() {
+    when(col3.getType()).thenReturn(DataTypes.listOf(DataTypes.TEXT));
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema", "keyspace", "ks", "table", "t1", "preserveTtl", true);
+    SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
+    settings.init(session, true, true);
+    settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
+    assertThat(getInternalState(settings, "query"))
+        .isEqualTo(
+            "SELECT c1, \"COL 2\", ttl(\"COL 2\") AS \"ttl(COL 2)\", c3 "
+                + "FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end");
+    assertThat(logs)
+        .hasMessageContaining(
+            "Skipping TTL preservation for column c3: this feature is not supported for CQL type list<text>");
+  }
 
   @ParameterizedTest
   @MethodSource

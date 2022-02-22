@@ -5,6 +5,7 @@
 - [improvement] Upgrade driver to 4.14.0.
 - [new feature] [#400](https://github.com/datastax/dsbulk/issues/400): Add ability to unwrap BATCH queries.
 - [new feature] [#405](https://github.com/datastax/dsbulk/issues/405): Add support for Prometheus.
+- [improvement] [#403](https://github.com/datastax/dsbulk/issues/403): Exclude unsupported types from automatic timestamp and TTL preservation.
 
 ## 1.8.0
 

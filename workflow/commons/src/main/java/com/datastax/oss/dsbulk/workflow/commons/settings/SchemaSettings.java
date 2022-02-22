@@ -50,6 +50,10 @@ import com.datastax.oss.driver.api.core.metadata.schema.RelationMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.ViewMetadata;
 import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.api.core.type.ListType;
+import com.datastax.oss.driver.api.core.type.MapType;
+import com.datastax.oss.driver.api.core.type.SetType;
+import com.datastax.oss.driver.api.core.type.UserDefinedType;
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.base.Preconditions;
 import com.datastax.oss.driver.shaded.guava.common.base.Predicates;
@@ -643,13 +647,11 @@ public class SchemaSettings {
                   column -> {
                     CQLWord colName = CQLWord.fromCqlIdentifier(column.getName());
                     List<CQLFragment> cols = Lists.newArrayList(colName);
-                    if (!isCounterTable()
-                        && schemaGenerationStrategy.isMapping()
-                        && !table.getPrimaryKey().contains(column)) {
-                      if (preserveTimestamp) {
+                    if (schemaGenerationStrategy.isMapping()) {
+                      if (preserveTimestamp && checkWritetimeTtlSupported(column, WRITETIME)) {
                         cols.add(new FunctionCall(null, WRITETIME, colName));
                       }
-                      if (preserveTtl) {
+                      if (preserveTtl && checkWritetimeTtlSupported(column, TTL)) {
                         cols.add(new FunctionCall(null, TTL, colName));
                       }
                     }
@@ -773,6 +775,37 @@ public class SchemaSettings {
       builder.add(session.prepare(childStatement));
     }
     return builder.build();
+  }
+
+  private boolean checkWritetimeTtlSupported(ColumnMetadata col, CQLWord functionName) {
+    if (isCounterTable() || table.getPrimaryKey().contains(col)) {
+      // Counter tables and primary key columns don't have timestamps and TTLs.
+      return false;
+    }
+    boolean supported;
+    if (col.getType() instanceof ListType
+        || col.getType() instanceof SetType
+        || col.getType() instanceof MapType) {
+      // Collection support for WRITETIME and TTL varies depending on the Cassandra and DSE versions
+      // in use, but in all cases, even if the export is possible, it wouldn't be possible to import
+      // the data back to Cassandra. This is valid for frozen collections as well.
+      supported = false;
+    } else if (col.getType() instanceof UserDefinedType) {
+      // While most C* versions (all?) accept WRITETIME and TTL functions on UDTs, the functions
+      // (always?) return NULL for non-frozen ones. Therefore, we only consider frozen UDTs as
+      // supported. Also note that all tuples are accepted, since they are frozen by nature.
+      supported = ((UserDefinedType) col.getType()).isFrozen();
+    } else {
+      supported = true;
+    }
+    if (!supported) {
+      LOGGER.warn(
+          "Skipping {} preservation for column {}: this feature is not supported for CQL type {}.",
+          functionName == WRITETIME ? "timestamp" : "TTL",
+          col.getName().asCql(true),
+          col.getType().asCql(true, true));
+    }
+    return supported;
   }
 
   private boolean isDSESearchPseudoColumn(ColumnMetadata col) {
