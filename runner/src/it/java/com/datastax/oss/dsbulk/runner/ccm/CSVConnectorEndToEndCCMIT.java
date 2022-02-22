@@ -49,11 +49,20 @@ import com.datastax.oss.driver.api.core.DefaultProtocolVersion;
 import com.datastax.oss.driver.api.core.Version;
 import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.data.CqlDuration;
 import com.datastax.oss.driver.api.core.data.TupleValue;
 import com.datastax.oss.driver.api.core.data.UdtValue;
+import com.datastax.oss.driver.api.core.type.DataType;
+import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.api.core.type.TupleType;
+import com.datastax.oss.driver.api.core.type.UserDefinedType;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
+import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
+import com.datastax.oss.driver.api.core.uuid.Uuids;
 import com.datastax.oss.driver.shaded.guava.common.base.Splitter;
 import com.datastax.oss.driver.shaded.guava.common.base.Strings;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSet;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import com.datastax.oss.dsbulk.codecs.api.util.CodecUtils;
 import com.datastax.oss.dsbulk.codecs.api.util.OverflowStrategy;
@@ -74,13 +83,18 @@ import com.datastax.oss.dsbulk.tests.logging.StreamInterceptor;
 import com.datastax.oss.dsbulk.tests.utils.CQLUtils;
 import com.datastax.oss.dsbulk.tests.utils.FileUtils;
 import com.datastax.oss.dsbulk.workflow.api.log.OperationDirectory;
+import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.LineNumberReader;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.math.RoundingMode;
+import java.net.InetAddress;
 import java.net.URI;
 import java.net.URL;
+import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -98,12 +112,15 @@ import java.util.stream.Stream;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
 @CCMConfig(numberOfNodes = 1, config = "enable_user_defined_functions:true")
 @Tag("medium")
@@ -1953,21 +1970,30 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(row.getInt("ttl")).isLessThanOrEqualTo(123456789);
   }
 
-  @Test
-  void unload_load_preserving_ttl_and_timestamp() throws IOException {
+  @ParameterizedTest
+  @MethodSource
+  void unload_load_preserving_ttl_and_timestamp(
+      DataType cqlType, Object value1, Object value2, String csv1, String csv2) throws IOException {
+
+    checkCqlTypeSupported(cqlType);
 
     session.execute("DROP TABLE IF EXISTS preserve_ttl_timestamp");
     session.execute(
-        "CREATE TABLE preserve_ttl_timestamp (pk1 int, pk2 int, cc1 int, cc2 int, v1 text, v2 text, PRIMARY KEY ((pk1, pk2), cc1, cc2))");
+        String.format(
+            "CREATE TABLE preserve_ttl_timestamp (pk1 int, pk2 int, cc1 int, cc2 int, v1 %s, v2 %s, PRIMARY KEY ((pk1, pk2), cc1, cc2))",
+            cqlType.asCql(true, true), cqlType.asCql(true, true)));
+    TypeCodec<Object> codec = CodecRegistry.DEFAULT.codecFor(cqlType);
     session.execute(
-        "BEGIN BATCH "
-            + "INSERT INTO preserve_ttl_timestamp (pk1, pk2, cc1, cc2, v1) "
-            + "VALUES (1, 2, 3, 4, 'foo') "
-            + "USING TIMESTAMP 1111 AND TTL 111111; "
-            + "INSERT INTO preserve_ttl_timestamp (pk1, pk2, cc1, cc2, v2) "
-            + "VALUES (1, 2, 3, 4, 'bar') "
-            + "USING TIMESTAMP 2222 AND TTL 222222; "
-            + "APPLY BATCH");
+        String.format(
+            "BEGIN BATCH "
+                + "INSERT INTO preserve_ttl_timestamp (pk1, pk2, cc1, cc2, v1) "
+                + "VALUES (1, 2, 3, 4, %s) "
+                + "USING TIMESTAMP 1111 AND TTL 111111; "
+                + "INSERT INTO preserve_ttl_timestamp (pk1, pk2, cc1, cc2, v2) "
+                + "VALUES (1, 2, 3, 4, %s) "
+                + "USING TIMESTAMP 2222 AND TTL 222222; "
+                + "APPLY BATCH",
+            codec.format(value1), codec.format(value2)));
 
     List<String> args =
         Lists.newArrayList(
@@ -1993,9 +2019,16 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     Stream<String> line = FileUtils.readAllLinesInDirectoryAsStreamExcludingHeaders(unloadDir);
     assertThat(line)
         .singleElement(InstanceOfAssertFactories.STRING)
-        .containsPattern(
-            "1,2,3,4,foo,1970-01-01T00:00:00\\.001111Z,111\\d\\d\\d,bar,1970-01-01T00:00:00\\.002222Z,222\\d\\d\\d");
+        .contains("1,2,3,4,", csv1, csv2)
+        .containsPattern(",1970-01-01T00:00:00\\.001111Z,111\\d\\d\\d,")
+        .containsPattern(",1970-01-01T00:00:00\\.002222Z,222\\d\\d\\d");
+
+    assertThat(logs)
+        .doesNotHaveMessageContaining("Skipping timestamp preservation")
+        .doesNotHaveMessageContaining("Skipping TTL preservation");
+
     FileUtils.deleteDirectory(logDir);
+    logs.clear();
     session.execute("TRUNCATE preserve_ttl_timestamp");
 
     args =
@@ -2032,12 +2065,237 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(row.getInt("pk2")).isEqualTo(2);
     assertThat(row.getInt("cc1")).isEqualTo(3);
     assertThat(row.getInt("cc2")).isEqualTo(4);
-    assertThat(row.getString("v1")).isEqualTo("foo");
-    assertThat(row.getString("v2")).isEqualTo("bar");
+    assertThat(row.getObject("v1")).isEqualTo(value1);
+    assertThat(row.getObject("v2")).isEqualTo(value2);
     assertThat(row.getLong("v1w")).isEqualTo(1111L);
     assertThat(row.getLong("v2w")).isEqualTo(2222L);
     assertThat(row.getInt("v1t")).isLessThanOrEqualTo(111111).isGreaterThan(111000);
     assertThat(row.getInt("v2t")).isLessThanOrEqualTo(222222).isGreaterThan(222000);
+
+    assertThat(logs)
+        .doesNotHaveMessageContaining("Skipping timestamp preservation")
+        .doesNotHaveMessageContaining("Skipping TTL preservation");
+  }
+
+  @SuppressWarnings("unused")
+  Stream<Arguments> unload_load_preserving_ttl_and_timestamp() throws UnknownHostException {
+    session.execute("CREATE TYPE IF NOT EXISTS preserve_ttl_timestamp_udt (f1 int, f2 text)");
+    TupleType tupleType = DataTypes.tupleOf(DataTypes.INT, DataTypes.TEXT);
+    UserDefinedType udt =
+        session
+            .getKeyspace()
+            .flatMap(ks -> session.getMetadata().getKeyspace(ks))
+            .flatMap(ks -> ks.getUserDefinedType("preserve_ttl_timestamp_udt"))
+            .orElseThrow(IllegalStateException::new);
+    return Stream.of(
+        Arguments.of(DataTypes.ASCII, "abc", "def", "abc", "def"),
+        Arguments.of(DataTypes.BIGINT, 123L, 456L, "123", "456"),
+        Arguments.of(
+            DataTypes.BLOB,
+            ByteBuffer.wrap(new byte[] {1, 2}),
+            ByteBuffer.wrap(new byte[] {3, 4}),
+            "AQI=",
+            "AwQ="),
+        Arguments.of(DataTypes.BOOLEAN, true, false, "1", "0"),
+        //    Arguments.of(DataTypes.COUNTER, v1, v2, csv1, csv2),
+        Arguments.of(
+            DataTypes.DECIMAL, new BigDecimal("12.34"), new BigDecimal("56.78"), "12.34", "56.78"),
+        Arguments.of(DataTypes.DOUBLE, 12.34, 56.78, "12.34", "56.78"),
+        Arguments.of(DataTypes.FLOAT, 12.34f, 56.78f, "12.34", "56.78"),
+        Arguments.of(DataTypes.INT, 12, 34, "12", "34"),
+        Arguments.of(
+            DataTypes.TIMESTAMP,
+            Instant.parse("2021-01-11T11:01:01Z"),
+            Instant.parse("2022-02-22T22:02:02Z"),
+            "2021-01-11T11:01:01Z",
+            "2022-02-22T22:02:02Z"),
+        Arguments.of(
+            DataTypes.UUID,
+            Uuids.startOf(123456789),
+            Uuids.endOf(123456789),
+            Uuids.startOf(123456789).toString(),
+            Uuids.endOf(123456789).toString()),
+        Arguments.of(
+            DataTypes.VARINT, new BigInteger("1234"), new BigInteger("5678"), "1234", "5678"),
+        Arguments.of(
+            DataTypes.TIMEUUID,
+            Uuids.startOf(123456789),
+            Uuids.endOf(123456789),
+            Uuids.startOf(123456789).toString(),
+            Uuids.endOf(123456789).toString()),
+        Arguments.of(
+            DataTypes.INET,
+            InetAddress.getByAddress(new byte[] {1, 2, 3, 4}),
+            InetAddress.getByAddress(new byte[] {5, 6, 7, 8}),
+            "1.2.3.4",
+            "5.6.7.8"),
+        Arguments.of(
+            DataTypes.DATE,
+            LocalDate.of(2021, 1, 11),
+            LocalDate.of(2022, 2, 22),
+            "2021-01-11",
+            "2022-02-22"),
+        Arguments.of(DataTypes.TEXT, "abc", "def", "abc", "def"),
+        Arguments.of(
+            DataTypes.TIME, LocalTime.of(1, 2, 3), LocalTime.of(4, 5, 6), "01:02:03", "04:05:06"),
+        Arguments.of(DataTypes.SMALLINT, (short) 12, (short) 34, "12", "34"),
+        Arguments.of(DataTypes.TINYINT, (byte) 12, (byte) 34, "12", "34"),
+        Arguments.of(
+            DataTypes.DURATION,
+            CqlDuration.newInstance(1, 2, 34),
+            CqlDuration.newInstance(5, 6, 78),
+            "1mo2d34ns",
+            "5mo6d78ns"),
+        Arguments.of(
+            tupleType,
+            tupleType.newValue(12, "ab"),
+            tupleType.newValue(34, "cd"),
+            "[12,\\\"ab\\\"]",
+            "[34,\\\"cd\\\"]"),
+        Arguments.of(
+            udt.copy(true), // only frozen UDTs work
+            udt.newValue(12, "ab"),
+            udt.newValue(34, "cd"),
+            "{\\\"f1\\\":12,\\\"f2\\\":\\\"ab\\\"}",
+            "{\\\"f1\\\":34,\\\"f2\\\":\\\"cd\\\"}"));
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  void unload_load_preserving_ttl_and_timestamp_unsupported_types(DataType cqlType, Object value)
+      throws IOException {
+
+    checkCqlTypeSupported(cqlType);
+
+    session.execute("DROP TABLE IF EXISTS preserve_ttl_timestamp");
+    String typeAsCql = cqlType.asCql(true, true);
+    session.execute(
+        String.format(
+            "CREATE TABLE preserve_ttl_timestamp (pk1 int, pk2 int, cc1 int, cc2 int, v1 %s, PRIMARY KEY ((pk1, pk2), cc1, cc2))",
+            typeAsCql));
+    TypeCodec<Object> codec = CodecRegistry.DEFAULT.codecFor(cqlType);
+    session.execute(
+        String.format(
+            "INSERT INTO preserve_ttl_timestamp (pk1, pk2, cc1, cc2, v1) "
+                + "VALUES (1, 2, 3, 4, %s) "
+                + "USING TIMESTAMP 1111 AND TTL 111111",
+            codec.format(value)));
+
+    List<String> args =
+        Lists.newArrayList(
+            "unload",
+            "--log.directory",
+            quoteJson(logDir),
+            "--connector.csv.url",
+            quoteJson(unloadDir),
+            "--connector.csv.header",
+            "true",
+            "--schema.keyspace",
+            session.getKeyspace().get().asInternal(),
+            "--schema.table",
+            "preserve_ttl_timestamp",
+            "-timestamp",
+            "true",
+            "-ttl",
+            "true");
+
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+
+    Stream<String> line = FileUtils.readAllLinesInDirectoryAsStreamExcludingHeaders(unloadDir);
+    assertThat(line).singleElement(InstanceOfAssertFactories.STRING).doesNotContain("1111", "2222");
+
+    assertThat(logs)
+        .hasMessageContaining(
+            String.format(
+                "Skipping timestamp preservation for column v1: this feature is not supported for CQL type %s",
+                typeAsCql))
+        .hasMessageContaining(
+            String.format(
+                "Skipping TTL preservation for column v1: this feature is not supported for CQL type %s",
+                typeAsCql));
+
+    FileUtils.deleteDirectory(logDir);
+    logs.clear();
+    session.execute("TRUNCATE preserve_ttl_timestamp");
+
+    args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            quoteJson(logDir),
+            "--connector.csv.url",
+            quoteJson(unloadDir),
+            "--connector.csv.header",
+            "true",
+            "--schema.keyspace",
+            session.getKeyspace().get().asInternal(),
+            "--schema.table",
+            "preserve_ttl_timestamp",
+            "-timestamp",
+            "true",
+            "-ttl",
+            "true");
+
+    status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+
+    ResultSet rs =
+        session.execute(
+            "SELECT pk1, pk2, cc1, cc2, v1 "
+                + "FROM preserve_ttl_timestamp "
+                + "WHERE pk1 = 1 AND pk2 = 2 AND cc1 = 3 AND cc2 = 4");
+    Row row = rs.one();
+    assertThat(row).isNotNull();
+    assertThat(row.getInt("pk1")).isEqualTo(1);
+    assertThat(row.getInt("pk2")).isEqualTo(2);
+    assertThat(row.getInt("cc1")).isEqualTo(3);
+    assertThat(row.getInt("cc2")).isEqualTo(4);
+    assertThat(row.getObject("v1")).isEqualTo(value);
+
+    assertThat(logs)
+        .hasMessageContaining(
+            String.format(
+                "Skipping timestamp preservation for column v1: this feature is not supported for CQL type %s",
+                typeAsCql))
+        .hasMessageContaining(
+            String.format(
+                "Skipping TTL preservation for column v1: this feature is not supported for CQL type %s",
+                typeAsCql));
+  }
+
+  @SuppressWarnings("unused")
+  Stream<Arguments> unload_load_preserving_ttl_and_timestamp_unsupported_types() {
+    session.execute("CREATE TYPE IF NOT EXISTS preserve_ttl_timestamp_udt (f1 int, f2 text)");
+    UserDefinedType udt =
+        session
+            .getKeyspace()
+            .flatMap(ks -> session.getMetadata().getKeyspace(ks))
+            .flatMap(ks -> ks.getUserDefinedType("preserve_ttl_timestamp_udt"))
+            .orElseThrow(IllegalStateException::new);
+    return Stream.of(
+        Arguments.of(DataTypes.listOf(DataTypes.INT), ImmutableList.of(12, 34)),
+        Arguments.of(DataTypes.setOf(DataTypes.INT), ImmutableSet.of(12, 34)),
+        Arguments.of(
+            DataTypes.mapOf(DataTypes.INT, DataTypes.TEXT), ImmutableMap.of(12, "ab", 34, "cd")),
+        Arguments.of(DataTypes.frozenListOf(DataTypes.INT), ImmutableList.of(12, 34)),
+        Arguments.of(DataTypes.frozenSetOf(DataTypes.INT), ImmutableSet.of(12, 34)),
+        Arguments.of(
+            DataTypes.frozenMapOf(DataTypes.INT, DataTypes.TEXT),
+            ImmutableMap.of(12, "ab", 34, "cd")),
+        Arguments.of(udt, udt.newValue(12, "ab")) // non-frozen UDT
+        );
+  }
+
+  private void checkCqlTypeSupported(DataType cqlType) {
+    Assumptions.assumeTrue(
+        CQLUtils.isCqlTypeSupported(
+            cqlType, session.getContext().getProtocolVersion(), ccm.getCassandraVersion()),
+        String.format(
+            "CQL type %s not compatible with C* %s and protocol version %s",
+            cqlType.asCql(true, true),
+            ccm.getCassandraVersion(),
+            session.getContext().getProtocolVersion()));
   }
 
   @Test
