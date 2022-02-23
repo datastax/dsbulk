@@ -3,6 +3,7 @@
 ## 1.9.0 (in progress)
 
 - [improvement] Upgrade driver to 4.14.0.
+- [improvement] [#402](https://github.com/datastax/dsbulk/issues/402): Upload DSBulk binary distributions to Maven Central.
 
 ## 1.8.0
 

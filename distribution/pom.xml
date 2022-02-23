@@ -42,16 +42,6 @@
     <dependency>
       <groupId>com.datastax.oss</groupId>
       <artifactId>java-driver-core</artifactId>
-      <exclusions>
-        <exclusion>
-          <groupId>com.github.spotbugs</groupId>
-          <artifactId>spotbugs-annotations</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>com.github.stephenc.jcip</groupId>
-          <artifactId>jcip-annotations</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <!-- supported connectors -->
     <dependency>
@@ -94,12 +84,14 @@
     <finalName>dsbulk-${project.version}</finalName>
     <plugins>
       <plugin>
-        <artifactId>maven-jar-plugin</artifactId>
-        <!-- http://stackoverflow.com/questions/13218313/unable-to-disable-generation-of-empty-jar-maven-jar-plugin -->
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
         <executions>
           <execution>
-            <id>default-jar</id>
-            <phase>none</phase>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>report-aggregate</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>
@@ -113,26 +105,6 @@
         <artifactId>maven-javadoc-plugin</artifactId>
         <configuration>
           <skip>true</skip>
-        </configuration>
-      </plugin>
-      <plugin>
-        <artifactId>maven-install-plugin</artifactId>
-        <configuration>
-          <skip>true</skip>
-        </configuration>
-      </plugin>
-      <!-- Do not deploy binaries as they are too big for Maven repos -->
-      <plugin>
-        <artifactId>maven-deploy-plugin</artifactId>
-        <configuration>
-          <skip>true</skip>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.sonatype.plugins</groupId>
-        <artifactId>nexus-staging-maven-plugin</artifactId>
-        <configuration>
-          <skipNexusStagingDeployMojo>true</skipNexusStagingDeployMojo>
         </configuration>
       </plugin>
     </plugins>
@@ -156,6 +128,7 @@
                 <licenseMerge>Eclipse Public License, Version 1.0|Eclipse Public License - v 1.0|Common Public License - v 1.0</licenseMerge>
               </licenseMerges>
               <failOnMissing>true</failOnMissing>
+              <outputDirectory>${project.build.directory}/generated-sources/license/META-INF</outputDirectory>
             </configuration>
             <executions>
               <execution>
@@ -168,6 +141,125 @@
             </executions>
           </plugin>
           <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-dependency-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>src-dependencies</id>
+                <goals>
+                  <goal>unpack-dependencies</goal>
+                </goals>
+                <phase>prepare-package</phase>
+                <configuration>
+                  <classifier>sources</classifier>
+                  <outputDirectory>${project.build.directory}/sources</outputDirectory>
+                  <includeGroupIds>com.datastax.oss</includeGroupIds>
+                  <includes>com/datastax/oss/dsbulk/**/*.java</includes>
+                  <excludes>com/datastax/oss/dsbulk/generated/**</excludes>
+                  <includeScope>runtime</includeScope>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-shade-plugin</artifactId>
+            <version>3.2.4</version>
+            <executions>
+              <execution>
+                <id>uber-jar</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>shade</goal>
+                </goals>
+                <configuration>
+                  <shadedArtifactAttached>false</shadedArtifactAttached>
+                  <filters>
+                    <filter>
+                      <artifact>*</artifact>
+                      <excludes>
+                        <exclude>META-INF/MANIFEST.MF</exclude>
+                        <exclude>META-INF/maven/**</exclude>
+                        <exclude>META-INF/jandex.idx</exclude>
+                        <exclude>META-INF/native-image/**</exclude>
+                        <exclude>**/module-info.class</exclude>
+                        <exclude>**/*.kotlin_module</exclude>
+                        <exclude>native_protocol*.spec</exclude>
+                        <exclude>dse_protocol*.spec</exclude>
+                      </excludes>
+                    </filter>
+                  </filters>
+                  <transformers>
+                    <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                      <mainClass>com.datastax.oss.dsbulk.runner.DataStaxBulkLoader</mainClass>
+                    </transformer>
+                    <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                      <resource>dsbulk-reference.conf</resource>
+                    </transformer>
+                    <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                      <resource>driver-reference.conf</resource>
+                    </transformer>
+                    <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                      <resource>reference.conf</resource>
+                    </transformer>
+                    <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                      <resource>META-INF/NOTICE</resource>
+                    </transformer>
+                    <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                      <resource>META-INF/LICENSE</resource>
+                    </transformer>
+                    <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                      <resource>META-INF/NOTICE.txt</resource>
+                    </transformer>
+                    <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                      <resource>META-INF/LICENSE.txt</resource>
+                    </transformer>
+                    <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                      <resource>META-INF/io.netty.versions.properties</resource>
+                    </transformer>
+                    <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                  </transformers>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>aggregate-javadocs</id>
+                <inherited>false</inherited>
+                <phase>package</phase>
+                <goals>
+                  <goal>aggregate-jar</goal>
+                </goals>
+                <configuration>
+                  <skip>false</skip>
+                  <verbose>false</verbose>
+                  <quiet>true</quiet>
+                  <excludePackageNames>com.datastax.oss.dsbulk.generated*</excludePackageNames>
+                  <includeDependencySources>true</includeDependencySources>
+                  <dependencySourceIncludes>
+                    <dependencySourceInclude>com.datastax.oss:dsbulk*</dependencySourceInclude>
+                  </dependencySourceIncludes>
+                  <includeTransitiveDependencySources>true</includeTransitiveDependencySources>
+                  <doctitle>DataStax Bulk Loader ${project.version} API</doctitle>
+                  <windowtitle>DataStax Bulk Loader ${project.version} API</windowtitle>
+                  <links>
+                    <link>https://www.javadoc.io/doc/com.datastax.oss/java-driver-core/${driver.version}</link>
+                    <link>https://www.javadoc.io/doc/io.netty/netty-all/${netty.version}</link>
+                    <link>https://www.javadoc.io/doc/com.typesafe/config/${config.version}</link>
+                    <link>https://www.reactive-streams.org/reactive-streams-${reactive-streams.version}-javadoc/</link>
+                    <link>https://www.javadoc.io/doc/io.projectreactor/reactor-core/${reactor.version}</link>
+                    <link>https://www.javadoc.io/doc/com.fasterxml.jackson.core/jackson-core/${jackson.version}</link>
+                    <link>https://www.javadoc.io/doc/com.fasterxml.jackson.core/jackson-databind/${jackson.version}</link>
+                    <link>https://www.javadoc.io/doc/org.antlr/antlr4/${antlr4.version}</link>
+                  </links>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
             <artifactId>maven-assembly-plugin</artifactId>
             <executions>
               <execution>
@@ -176,15 +268,29 @@
                 <goals>
                   <goal>single</goal>
                 </goals>
+                <configuration>
+                  <appendAssemblyId>false</appendAssemblyId>
+                  <descriptors>
+                    <descriptor>src/assembly/distribution.xml</descriptor>
+                  </descriptors>
+                  <tarLongFileMode>posix</tarLongFileMode>
+                </configuration>
+              </execution>
+              <execution>
+                <id>generate-sources-jar</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>single</goal>
+                </goals>
+                <configuration>
+                  <appendAssemblyId>true</appendAssemblyId>
+                  <finalName>dsbulk-${project.version}</finalName>
+                  <descriptors>
+                    <descriptor>src/assembly/sources.xml</descriptor>
+                  </descriptors>
+                </configuration>
               </execution>
             </executions>
-            <configuration>
-              <appendAssemblyId>false</appendAssemblyId>
-              <descriptors>
-                <descriptor>src/assembly/distribution.xml</descriptor>
-              </descriptors>
-              <tarLongFileMode>posix</tarLongFileMode>
-            </configuration>
           </plugin>
         </plugins>
       </build>

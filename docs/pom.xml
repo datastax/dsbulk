@@ -38,86 +38,9 @@
     </dependencies>
   </dependencyManagement>
   <dependencies>
-    <!-- dependencies for javadoc generation -->
-    <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>java-driver-core</artifactId>
-    </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>
       <artifactId>dsbulk-config</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-url</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-io</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-codecs-api</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-codecs-jdk</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-codecs-text</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-connectors-api</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-connectors-commons</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-connectors-csv</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-connectors-json</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-cql</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-mapping</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-format</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-partitioner</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-sampler</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-batcher-api</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-batcher-reactor</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-executor-api</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-executor-reactor</artifactId>
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>
@@ -129,21 +52,16 @@
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-workflow-load</artifactId>
+      <artifactId>dsbulk-connectors-csv</artifactId>
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-workflow-unload</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>dsbulk-workflow-count</artifactId>
+      <artifactId>dsbulk-connectors-json</artifactId>
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>
       <artifactId>dsbulk-runner</artifactId>
     </dependency>
-    <!-- Used for generating custom documentation only -->
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-text</artifactId>
@@ -248,48 +166,4 @@
       </plugin>
     </plugins>
   </build>
-  <profiles>
-    <profile>
-      <id>release</id>
-      <build>
-        <plugins>
-          <plugin>
-            <artifactId>maven-javadoc-plugin</artifactId>
-            <executions>
-              <execution>
-                <id>aggregate-javadocs</id>
-                <inherited>false</inherited>
-                <phase>package</phase>
-                <goals>
-                  <goal>aggregate</goal>
-                </goals>
-                <configuration>
-                  <skip>false</skip>
-                  <verbose>false</verbose>
-                  <quiet>true</quiet>
-                  <excludePackageNames>com.datastax.oss.dsbulk.docs,com.datastax.oss.dsbulk.generated*</excludePackageNames>
-                  <includeDependencySources>true</includeDependencySources>
-                  <dependencySourceIncludes>
-                    <dependencySourceInclude>com.datastax.oss:dsbulk*</dependencySourceInclude>
-                  </dependencySourceIncludes>
-                  <doctitle>DataStax Bulk Loader ${project.version} API</doctitle>
-                  <windowtitle>DataStax Bulk Loader ${project.version} API</windowtitle>
-                  <links>
-                    <link>https://www.javadoc.io/doc/com.datastax.oss/java-driver-core/${driver.version}</link>
-                    <link>https://www.javadoc.io/doc/io.netty/netty-all/${netty.version}</link>
-                    <link>https://www.javadoc.io/doc/com.typesafe/config/${config.version}</link>
-                    <link>https://www.reactive-streams.org/reactive-streams-${reactive-streams.version}-javadoc/</link>
-                    <link>https://www.javadoc.io/doc/io.projectreactor/reactor-core/${reactor.version}</link>
-                    <link>https://www.javadoc.io/doc/com.fasterxml.jackson.core/jackson-core/${jackson.version}</link>
-                    <link>https://www.javadoc.io/doc/com.fasterxml.jackson.core/jackson-databind/${jackson.version}</link>
-                    <link>https://www.javadoc.io/doc/org.antlr/antlr4/${antlr4.version}</link>
-                  </links>
-                </configuration>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-  </profiles>
 </project>

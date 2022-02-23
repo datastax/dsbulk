@@ -8,4 +8,3 @@ The generated documentation includes:
 2. Sample configuration files: 
     1. [main application configuration file](../manual/application.template.conf)
     2. [driver configuration file](../manual/driver.template.conf)
-3. Javadocs for DSBulk modules.
