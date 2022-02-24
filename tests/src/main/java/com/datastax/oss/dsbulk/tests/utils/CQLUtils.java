@@ -16,7 +16,12 @@
 package com.datastax.oss.dsbulk.tests.utils;
 
 import com.datastax.oss.driver.api.core.CqlIdentifier;
+import com.datastax.oss.driver.api.core.ProtocolVersion;
+import com.datastax.oss.driver.api.core.Version;
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
+import com.datastax.oss.driver.api.core.type.DataType;
+import com.datastax.oss.driver.api.core.type.UserDefinedType;
+import com.datastax.oss.protocol.internal.ProtocolConstants;
 
 public abstract class CQLUtils {
 
@@ -63,5 +68,23 @@ public abstract class CQLUtils {
   public static SimpleStatement truncateTable(CqlIdentifier keyspace, CqlIdentifier table) {
     return SimpleStatement.newInstance(
         "TRUNCATE " + keyspace.asCql(true) + "." + table.asCql(true));
+  }
+
+  public static boolean isCqlTypeSupported(
+      DataType cqlType, ProtocolVersion version, Version cassandraVersion) {
+    switch (cqlType.getProtocolCode()) {
+      case ProtocolConstants.DataType.DATE:
+      case ProtocolConstants.DataType.TIME:
+      case ProtocolConstants.DataType.SMALLINT:
+      case ProtocolConstants.DataType.TINYINT:
+        return version.getCode() >= 4;
+      case ProtocolConstants.DataType.DURATION:
+        return version.getCode() >= 5;
+      case ProtocolConstants.DataType.UDT:
+        // https://issues.apache.org/jira/browse/CASSANDRA-7423
+        return ((UserDefinedType) cqlType).isFrozen()
+            || cassandraVersion.compareTo(Version.parse("3.6")) >= 0;
+    }
+    return true;
   }
 }
