@@ -19,7 +19,7 @@ import static com.datastax.oss.dsbulk.io.IOUtils.assertAccessibleFile;
 
 import com.datastax.dse.driver.api.core.auth.DseGssApiAuthProviderBase.GssApiOptions;
 import com.datastax.oss.driver.api.core.auth.AuthProvider;
-import com.datastax.oss.driver.internal.core.auth.ProgrammaticPlainTextAuthProvider;
+import com.datastax.oss.driver.api.core.auth.ProgrammaticPlainTextAuthProvider;
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.dsbulk.config.ConfigUtils;

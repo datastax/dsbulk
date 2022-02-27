@@ -79,7 +79,7 @@ class AuthProviderFactoryTest {
             "provider",
             "DsePlainTextAuthProvider",
             "password",
-            "\"\"",
+            "s3cr3t",
             "username",
             "u");
 

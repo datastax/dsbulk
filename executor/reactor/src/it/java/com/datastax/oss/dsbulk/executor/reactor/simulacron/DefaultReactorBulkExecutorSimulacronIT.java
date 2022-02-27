@@ -16,14 +16,17 @@
 package com.datastax.oss.dsbulk.executor.reactor.simulacron;
 
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.datastax.oss.dsbulk.tests.driver.SerializedSession;
 import com.datastax.oss.dsbulk.executor.api.simulacron.BulkExecutorSimulacronITBase;
 import com.datastax.oss.dsbulk.executor.reactor.DefaultReactorBulkExecutor;
+import com.datastax.oss.dsbulk.tests.driver.SerializedSession;
+import com.datastax.oss.dsbulk.tests.driver.annotations.SessionConfig;
 import com.datastax.oss.simulacron.server.BoundCluster;
 
 class DefaultReactorBulkExecutorSimulacronIT extends BulkExecutorSimulacronITBase {
 
-  DefaultReactorBulkExecutorSimulacronIT(BoundCluster simulacron, CqlSession session) {
+  DefaultReactorBulkExecutorSimulacronIT(
+      BoundCluster simulacron,
+      @SessionConfig(settings = "advanced.protocol.version=V4") CqlSession session) {
     super(
         simulacron,
         DefaultReactorBulkExecutor.builder(new SerializedSession(session)).build(),
