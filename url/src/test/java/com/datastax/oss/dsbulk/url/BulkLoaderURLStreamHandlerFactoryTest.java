@@ -20,17 +20,18 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.typesafe.config.Config;
+import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 
+@TestMethodOrder(OrderAnnotation.class)
 class BulkLoaderURLStreamHandlerFactoryTest {
 
   @Test
   void should_handle_installed_handlers() {
     Config config = mock(Config.class);
-    when(config.hasPath("dsbulk.s3.region")).thenReturn(true);
-    when(config.getString("dsbulk.s3.region")).thenReturn("us-west-1");
-    when(config.hasPath("dsbulk.s3.profile")).thenReturn(true);
-    when(config.getString("dsbulk.s3.profile")).thenReturn("profile");
+    when(config.hasPath("dsbulk.s3.clientCacheSize")).thenReturn(true);
+    when(config.getInt("dsbulk.s3.clientCacheSize")).thenReturn(25);
 
     BulkLoaderURLStreamHandlerFactory.install();
     BulkLoaderURLStreamHandlerFactory.setConfig(config);

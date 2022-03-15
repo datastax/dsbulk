@@ -16,7 +16,6 @@
 package com.datastax.oss.dsbulk.url;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -28,30 +27,13 @@ class S3URLStreamHandlerProviderTest {
   @Test
   void should_handle_s3_protocol() {
     Config config = mock(Config.class);
-    when(config.hasPath("dsbulk.s3.region")).thenReturn(true);
-    when(config.getString("dsbulk.s3.region")).thenReturn("us-west-1");
-    when(config.hasPath("dsbulk.s3.profile")).thenReturn(true);
-    when(config.getString("dsbulk.s3.profile")).thenReturn("profile");
+    when(config.hasPath("dsbulk.s3.clientCacheSize")).thenReturn(true);
+    when(config.getInt("dsbulk.s3.clientCacheSize")).thenReturn(25);
 
     S3URLStreamHandlerProvider provider = new S3URLStreamHandlerProvider();
 
     assertThat(provider.maybeCreateURLStreamHandler("s3", config))
         .isNotNull()
         .containsInstanceOf(S3URLStreamHandler.class);
-  }
-
-  @Test
-  void should_require_region_parameter() {
-    Config config = mock(Config.class);
-    when(config.hasPath("dsbulk.s3.region")).thenReturn(false);
-
-    S3URLStreamHandlerProvider provider = new S3URLStreamHandlerProvider();
-
-    Throwable t = catchThrowable(() -> provider.maybeCreateURLStreamHandler("s3", config));
-
-    assertThat(t)
-        .isNotNull()
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("You must supply an AWS region to use S3 URls.");
   }
 }

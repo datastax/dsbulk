@@ -1,11 +1,9 @@
 ## Changelog
 
-## 1.9.0
-
-- [improvement] BULK-22: Add ability to read from `s3://` URLs (#398).
 ## 1.9.0 (in progress)
 
 - [improvement] Upgrade driver to 4.14.0.
+- [improvement] BULK-22: Add ability to read from `s3://` URLs (#398).
 
 ## 1.8.0
 

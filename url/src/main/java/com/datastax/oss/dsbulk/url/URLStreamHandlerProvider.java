@@ -36,7 +36,7 @@ public interface URLStreamHandlerProvider {
    * empty.
    *
    * @param protocol The protocol to create a handler for.
-   * @param config
+   * @param config The DSBulk config.
    * @return The created handler, or empty if the protocol is not supported.
    */
   @NonNull

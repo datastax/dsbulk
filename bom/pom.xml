@@ -311,6 +311,11 @@
         <version>${commons-compress.version}</version>
       </dependency>
       <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-collections4</artifactId>
+        <version>${commons-collections4.version}</version>
+      </dependency>
+      <dependency>
         <groupId>com.github.luben</groupId>
         <artifactId>zstd-jni</artifactId>
         <version>${compress.zstd.version}</version>

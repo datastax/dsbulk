@@ -76,6 +76,7 @@
     <jackson.version>2.13.1</jackson.version>
     <univocity.version>2.9.1</univocity.version>
     <commons-compress.version>1.21</commons-compress.version>
+    <commons-collections4.version>4.4</commons-collections4.version>
     <compress.zstd.version>1.5.2-1</compress.zstd.version>
     <compress.xz.version>1.9</compress.xz.version>
     <compress.brotli.version>0.1.2</compress.brotli.version>

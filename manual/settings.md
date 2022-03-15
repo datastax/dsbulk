@@ -1435,18 +1435,13 @@ Default: **true**.
 
 Settings applicable for reading from AWS S3 URLs.
 
-#### --s3.profile<br />--dsbulk.s3.profile _&lt;string&gt;_
+#### --s3.clientCacheSize<br />--dsbulk.s3.clientCacheSize _&lt;number&gt;_
 
-Which profile to use for AWS S3 credentials. See the [AWS SDK documentation](https://docs.aws.
-amazon.com/sdkref/latest/guide/file-format.html) for details on setting up profiles.
+The size (count) of the S3Client cache. Since each S3 URL
+must contain the credentials for the target bucket, we cache
+the clients to prevent rebuilding the same client over and over.
 
-Default: **&lt;unspecified&gt;**.
-
-#### --s3.region<br />--dsbulk.s3.region _&lt;string&gt;_
-
-Which AWS region to use.
-
-Default: **"us-east-1"**.
+Default: **20**.
 
 <a name="stats"></a>
 ## Stats Settings

@@ -277,6 +277,11 @@ dsbulk load -h '"host1.com:9042","host2.com:9042"'
 
   `dsbulk load -url ~/export.csv -k ks1 -t table1 -escape '\"'`
 
+* Load table `table1` in keyspace `ks1` from an AWS S3 URL, passing the `region` and `profile` as
+  [query parameters in the URL](./url/README.md):
+
+  `dsbulk load -k ks1 -t table1 -url s3://bucket-name/key?region=us-west-1&profile=bucket-profile`
+
 ## Unload Examples
 
 Unloading is simply the inverse of loading and due to the symmetry, many settings are

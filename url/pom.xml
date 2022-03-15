@@ -55,6 +55,10 @@
       <artifactId>url-connection-client</artifactId>
     </dependency>
     <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-collections4</artifactId>
+    </dependency>
+    <dependency>
       <groupId>com.typesafe</groupId>
       <artifactId>config</artifactId>
     </dependency>
@@ -76,6 +80,11 @@
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-params</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
