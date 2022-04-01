@@ -21,7 +21,6 @@ import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.codahale.metrics.MetricRegistry;
 import com.datastax.oss.driver.api.core.ProtocolVersion;
 import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptingExtension;
@@ -53,7 +52,6 @@ class MonitoringSettingsTest {
             true,
             null,
             LogSettings.Verbosity.normal,
-            new MetricRegistry(),
             protocolVersion,
             codecRegistry,
             RowType.REGULAR);
@@ -99,7 +97,6 @@ class MonitoringSettingsTest {
             true,
             tmpPath,
             LogSettings.Verbosity.normal,
-            new MetricRegistry(),
             protocolVersion,
             codecRegistry,
             RowType.REGULAR);

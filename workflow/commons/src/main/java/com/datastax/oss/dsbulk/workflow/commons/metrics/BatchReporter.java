@@ -43,7 +43,7 @@ public class BatchReporter extends ScheduledReporter {
   }
 
   private static MetricFilter createFilter() {
-    return (name, metric) -> name.equals("batches/size");
+    return (name, metric) -> name.equals("batches");
   }
 
   @Override
@@ -56,10 +56,10 @@ public class BatchReporter extends ScheduledReporter {
     if (!sink.isEnabled()) {
       return;
     }
-    Histogram size = histograms.get("batches/size");
-    Snapshot snapshot = size.getSnapshot();
+    Histogram batches = histograms.get("batches");
+    Snapshot snapshot = batches.getSnapshot();
     sink.accept(
         String.format(
-            MSG, size.getCount(), snapshot.getMean(), snapshot.getMin(), snapshot.getMax()));
+            MSG, batches.getCount(), snapshot.getMean(), snapshot.getMin(), snapshot.getMax()));
   }
 }

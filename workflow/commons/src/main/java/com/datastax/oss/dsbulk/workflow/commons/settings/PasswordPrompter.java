@@ -55,6 +55,10 @@ public class PasswordPrompter implements ConfigPostProcessor {
           .put(
               "datastax-java-driver.advanced.ssl-engine-factory.keystore-path",
               "datastax-java-driver.advanced.ssl-engine-factory.keystore-password")
+          // DSBulk paths
+          .put(
+              "dsbulk.monitoring.prometheus.push.username",
+              "dsbulk.monitoring.prometheus.push.password")
           .build();
 
   private final Map<String, String> pathsToCheck;
