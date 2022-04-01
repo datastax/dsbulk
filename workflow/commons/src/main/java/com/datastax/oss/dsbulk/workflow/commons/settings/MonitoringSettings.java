@@ -21,6 +21,9 @@ import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
 import com.datastax.oss.driver.shaded.guava.common.util.concurrent.ThreadFactoryBuilder;
 import com.datastax.oss.dsbulk.config.ConfigUtils;
 import com.datastax.oss.dsbulk.workflow.commons.metrics.MetricsManager;
+import com.datastax.oss.dsbulk.workflow.commons.metrics.prometheus.PrometheusManager;
+import com.datastax.oss.dsbulk.workflow.commons.metrics.prometheus.PrometheusManager.PullConfig;
+import com.datastax.oss.dsbulk.workflow.commons.metrics.prometheus.PrometheusManager.PushConfig;
 import com.datastax.oss.dsbulk.workflow.commons.settings.LogSettings.Verbosity;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
@@ -48,6 +51,7 @@ public class MonitoringSettings {
 
   private final Config config;
   private final String executionId;
+  private final MetricRegistry registry = new MetricRegistry();
 
   private TimeUnit rateUnit;
   private TimeUnit durationUnit;
@@ -58,10 +62,15 @@ public class MonitoringSettings {
   private boolean jmx;
   private boolean csv;
   private boolean console;
+  private PrometheusManager prometheus;
 
   public MonitoringSettings(Config config, String executionId) {
     this.config = config;
     this.executionId = executionId;
+  }
+
+  public MetricRegistry getRegistry() {
+    return registry;
   }
 
   public void init() {
@@ -82,9 +91,40 @@ public class MonitoringSettings {
       jmx = config.getBoolean(JMX);
       csv = config.getBoolean(CSV);
       console = config.getBoolean(CONSOLE);
+      prometheus = configurePrometheus(config.getConfig("prometheus"));
     } catch (ConfigException e) {
       throw ConfigUtils.convertConfigException(e, "dsbulk.monitoring");
     }
+  }
+
+  private PrometheusManager configurePrometheus(Config config) {
+    boolean pullEnabled = config.getBoolean("pull.enabled");
+    boolean pushEnabled = config.getBoolean("push.enabled");
+    if (!pullEnabled && !pushEnabled) {
+      return null;
+    }
+    PullConfig pullConfig = null;
+    if (pullEnabled) {
+      pullConfig = new PullConfig(config.getString("pull.hostname"), config.getInt("pull.port"));
+    }
+    PushConfig pushConfig = null;
+    if (pushEnabled) {
+      pushConfig =
+          new PushConfig(
+              ConfigUtils.getURL(config, "push.url"),
+              config.getString("push.username"),
+              config.getString("push.password"),
+              config.getBoolean("push.groupBy.instance"),
+              config.getBoolean("push.groupBy.operation"),
+              ConfigUtils.getStringMap(config, "push.groupBy.keys"));
+    }
+    return new PrometheusManager(
+        registry,
+        executionId,
+        config.getString("job"),
+        ConfigUtils.getStringMap(config, "labels"),
+        pullConfig,
+        pushConfig);
   }
 
   public MetricsManager newMetricsManager(
@@ -92,7 +132,6 @@ public class MonitoringSettings {
       boolean batchingEnabled,
       Path operationDirectory,
       Verbosity verbosity,
-      MetricRegistry registry,
       ProtocolVersion protocolVersion,
       CodecRegistry codecRegistry,
       RowType rowType) {
@@ -116,6 +155,7 @@ public class MonitoringSettings {
         jmx,
         csv,
         console,
+        prometheus,
         operationDirectory,
         verbosity,
         reportRate,

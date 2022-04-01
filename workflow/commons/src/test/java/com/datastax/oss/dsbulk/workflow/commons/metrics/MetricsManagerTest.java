@@ -20,6 +20,8 @@ import static com.datastax.oss.dsbulk.tests.logging.StreamType.STDERR;
 import static com.datastax.oss.dsbulk.tests.utils.FileUtils.readFile;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.slf4j.event.Level.DEBUG;
 import static org.slf4j.event.Level.INFO;
 import static org.slf4j.event.Level.WARN;
@@ -44,6 +46,7 @@ import com.datastax.oss.dsbulk.tests.logging.StreamCapture;
 import com.datastax.oss.dsbulk.tests.logging.StreamInterceptingExtension;
 import com.datastax.oss.dsbulk.tests.logging.StreamInterceptor;
 import com.datastax.oss.dsbulk.tests.utils.ReflectionUtils;
+import com.datastax.oss.dsbulk.workflow.commons.metrics.prometheus.PrometheusManager;
 import com.datastax.oss.dsbulk.workflow.commons.settings.LogSettings;
 import com.datastax.oss.dsbulk.workflow.commons.settings.RowType;
 import com.datastax.oss.dsbulk.workflow.commons.statement.MappedSimpleStatement;
@@ -112,6 +115,7 @@ class MetricsManagerTest {
             false,
             true,
             null,
+            null,
             LogSettings.Verbosity.normal,
             Duration.ofSeconds(5),
             false,
@@ -125,7 +129,7 @@ class MetricsManagerTest {
           .transform(manager.newTotalItemsMonitor())
           .transform(manager.newFailedItemsMonitor())
           .blockLast();
-      manager.stop();
+      manager.stop(Duration.ofSeconds(123), true);
       MetricRegistry registry =
           (MetricRegistry) ReflectionUtils.getInternalState(manager, "registry");
       assertThat(registry.counter("records/total").getCount()).isEqualTo(3);
@@ -155,6 +159,7 @@ class MetricsManagerTest {
             false,
             true,
             null,
+            null,
             LogSettings.Verbosity.normal,
             Duration.ofSeconds(5),
             true,
@@ -165,12 +170,11 @@ class MetricsManagerTest {
       manager.start();
       Flux<Statement<?>> statements = Flux.just(batch, stmt3);
       statements.transform(manager.newBatcherMonitor()).blockLast();
-      manager.stop();
+      manager.stop(Duration.ofSeconds(123), true);
       MetricRegistry registry =
           (MetricRegistry) ReflectionUtils.getInternalState(manager, "registry");
-      assertThat(registry.histogram("batches/size").getCount()).isEqualTo(2);
-      assertThat(registry.histogram("batches/size").getSnapshot().getMean())
-          .isEqualTo((2f + 1f) / 2f);
+      assertThat(registry.histogram("batches").getCount()).isEqualTo(2);
+      assertThat(registry.histogram("batches").getSnapshot().getMean()).isEqualTo((2f + 1f) / 2f);
       assertThat(logs.getLoggedEvents()).isEmpty();
       assertThat(stderr.getStreamLinesPlain())
           .anySatisfy(line -> assertThat(line).startsWith("    0 |      0 |"));
@@ -199,6 +203,7 @@ class MetricsManagerTest {
             false,
             false,
             true,
+            null,
             executionDirectory,
             LogSettings.Verbosity.normal,
             Duration.ofSeconds(5),
@@ -215,7 +220,7 @@ class MetricsManagerTest {
       writesReporter.report();
       assertThat(logs.getLoggedMessages()).isEmpty();
     } finally {
-      manager.stop();
+      manager.stop(Duration.ofSeconds(123), true);
       manager.close();
     }
     manager.reportFinalMetrics();
@@ -255,6 +260,7 @@ class MetricsManagerTest {
             false,
             false,
             false,
+            null,
             executionDirectory,
             LogSettings.Verbosity.quiet,
             Duration.ofSeconds(5),
@@ -270,7 +276,7 @@ class MetricsManagerTest {
               ReflectionUtils.getInternalState(manager, "writesReporter");
       assertThat(writesReporter).isNull();
     } finally {
-      manager.stop();
+      manager.stop(Duration.ofSeconds(123), true);
       manager.close();
     }
     manager.reportFinalMetrics();
@@ -300,6 +306,7 @@ class MetricsManagerTest {
             false,
             false,
             false,
+            null,
             executionDirectory,
             LogSettings.Verbosity.verbose,
             Duration.ofSeconds(5),
@@ -314,7 +321,7 @@ class MetricsManagerTest {
           (ConsoleReporter) ReflectionUtils.getInternalState(manager, "consoleReporter");
       assertThat(consoleReporter).isNull();
     } finally {
-      manager.stop();
+      manager.stop(Duration.ofSeconds(123), true);
       manager.close();
     }
     manager.reportFinalMetrics();
@@ -344,6 +351,7 @@ class MetricsManagerTest {
             false,
             false,
             true,
+            null,
             executionDirectory,
             LogSettings.Verbosity.verbose,
             Duration.ofSeconds(5),
@@ -363,7 +371,7 @@ class MetricsManagerTest {
           .hasMessageContaining("Throughput:")
           .hasMessageContaining("Latencies:");
     } finally {
-      manager.stop();
+      manager.stop(Duration.ofSeconds(123), true);
       manager.close();
     }
     manager.reportFinalMetrics();
@@ -378,5 +386,42 @@ class MetricsManagerTest {
         .contains("Latencies:");
     assertThat(stderr.getStreamAsString())
         .contains("total | failed | rows/s | mb/s | kb/row | p50ms | p99ms | p999ms | batches");
+  }
+
+  @Test
+  void should_exchange_metrics_with_prometheus() throws Exception {
+    Path executionDirectory = Files.createTempDirectory("test");
+    PrometheusManager prometheus = mock(PrometheusManager.class);
+    MetricsManager manager =
+        new MetricsManager(
+            new MetricRegistry(),
+            true,
+            "test",
+            Executors.newSingleThreadScheduledExecutor(),
+            SECONDS,
+            MILLISECONDS,
+            -1,
+            -1,
+            true,
+            false,
+            false,
+            false,
+            prometheus,
+            executionDirectory,
+            LogSettings.Verbosity.verbose,
+            Duration.ofSeconds(5),
+            true,
+            protocolVersion,
+            codecRegistry,
+            RowType.REGULAR);
+    manager.init();
+    manager.start();
+    manager.stop(Duration.ofSeconds(123), true);
+    manager.close();
+    manager.reportFinalMetrics();
+    verify(prometheus).init();
+    verify(prometheus).start();
+    verify(prometheus).close();
+    verify(prometheus).pushMetrics(Duration.ofSeconds(123), true);
   }
 }

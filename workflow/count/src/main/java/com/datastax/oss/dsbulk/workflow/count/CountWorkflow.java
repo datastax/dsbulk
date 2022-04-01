@@ -15,10 +15,8 @@
  */
 package com.datastax.oss.dsbulk.workflow.count;
 
-import com.codahale.metrics.MetricRegistry;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.Statement;
-import com.datastax.oss.driver.api.core.metrics.Metrics;
 import com.datastax.oss.driver.shaded.guava.common.base.Stopwatch;
 import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
 import com.datastax.oss.dsbulk.executor.api.reader.BulkReader;
@@ -111,7 +109,9 @@ public class CountWorkflow implements Workflow {
     ConvertingCodecFactory codecFactory =
         codecSettings.createCodecFactory(
             schemaSettings.isAllowExtraFields(), schemaSettings.isAllowMissingFields());
-    session = driverSettings.newSession(executionId, codecFactory.getCodecRegistry());
+    session =
+        driverSettings.newSession(
+            executionId, codecFactory.getCodecRegistry(), monitoringSettings.getRegistry());
     ClusterInformationUtils.printDebugInfoAboutCluster(session);
     schemaSettings.init(session, false, false);
     logManager = logSettings.newLogManager(session, false);
@@ -122,7 +122,6 @@ public class CountWorkflow implements Workflow {
             false,
             logManager.getOperationDirectory(),
             logSettings.getVerbosity(),
-            session.getMetrics().map(Metrics::getRegistry).orElse(new MetricRegistry()),
             session.getContext().getProtocolVersion(),
             session.getContext().getCodecRegistry(),
             schemaSettings.getRowType());
@@ -180,11 +179,11 @@ public class CountWorkflow implements Workflow {
         .transform(terminationHandler)
         .blockLast();
     timer.stop();
-    metricsManager.stop();
+    int totalErrors = logManager.getTotalErrors();
+    metricsManager.stop(timer.elapsed(), totalErrors == 0);
     Duration elapsed = DurationUtils.round(timer.elapsed(), TimeUnit.SECONDS);
     String elapsedStr =
         elapsed.isZero() ? "less than one second" : DurationUtils.formatDuration(elapsed);
-    int totalErrors = logManager.getTotalErrors();
     if (totalErrors == 0) {
       success = true;
       LOGGER.info("{} completed successfully in {}.", this, elapsedStr);

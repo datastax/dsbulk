@@ -17,11 +17,15 @@ package com.datastax.oss.dsbulk.workflow.commons.settings;
 
 import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.entry;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.slf4j.event.Level.INFO;
 import static org.slf4j.event.Level.WARN;
 
 import com.datastax.oss.driver.api.core.DefaultConsistencyLevel;
+import com.datastax.oss.driver.api.core.session.Session;
+import com.datastax.oss.driver.internal.core.context.StartupOptionsBuilder;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.dsbulk.tests.logging.LogCapture;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptingExtension;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptor;
@@ -29,11 +33,13 @@ import com.datastax.oss.dsbulk.tests.utils.StringUtils;
 import com.datastax.oss.dsbulk.tests.utils.TestConfigUtils;
 import com.datastax.oss.dsbulk.url.BulkLoaderURLStreamHandlerFactory;
 import com.datastax.oss.dsbulk.workflow.api.utils.PlatformUtils;
+import com.datastax.oss.dsbulk.workflow.api.utils.WorkflowUtils;
 import com.typesafe.config.Config;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
+import java.util.Locale;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -713,5 +719,24 @@ class DriverSettingsTest {
                 + "SSL settings will be ignored.");
     assertThat(settings.getDriverConfig().hasPath("advanced.ssl-engine-factory")).isFalse();
     assertThat(settings.sslHandlerFactory).isNull();
+  }
+
+  @Test
+  void should_generate_prometheus_labels() {
+    ImmutableMap<String, String> actual = DriverSettings.driverPrometheusLabels("ID");
+    assertThat(actual)
+        .containsOnly(
+            entry(
+                StartupOptionsBuilder.APPLICATION_VERSION_KEY.toLowerCase(Locale.ROOT),
+                WorkflowUtils.getBulkLoaderVersion()),
+            entry(
+                StartupOptionsBuilder.APPLICATION_NAME_KEY.toLowerCase(Locale.ROOT),
+                WorkflowUtils.BULK_LOADER_APPLICATION_NAME + " ID"),
+            entry(
+                StartupOptionsBuilder.CLIENT_ID_KEY.toLowerCase(Locale.ROOT),
+                WorkflowUtils.clientId("ID").toString()),
+            entry(
+                StartupOptionsBuilder.DRIVER_VERSION_KEY.toLowerCase(Locale.ROOT),
+                Session.OSS_DRIVER_COORDINATES.getVersion().toString()));
   }
 }

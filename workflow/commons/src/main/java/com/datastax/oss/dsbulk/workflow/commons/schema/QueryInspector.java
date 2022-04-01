@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.dsbulk.workflow.commons.schema;
 
+import com.datastax.oss.driver.api.core.cql.BatchType;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSet;
 import com.datastax.oss.dsbulk.generated.cql3.CqlBaseVisitor;
@@ -22,6 +24,7 @@ import com.datastax.oss.dsbulk.generated.cql3.CqlLexer;
 import com.datastax.oss.dsbulk.generated.cql3.CqlParser;
 import com.datastax.oss.dsbulk.generated.cql3.CqlParser.AllowedFunctionNameContext;
 import com.datastax.oss.dsbulk.generated.cql3.CqlParser.BatchStatementContext;
+import com.datastax.oss.dsbulk.generated.cql3.CqlParser.BatchStatementObjectiveContext;
 import com.datastax.oss.dsbulk.generated.cql3.CqlParser.CfNameContext;
 import com.datastax.oss.dsbulk.generated.cql3.CqlParser.CidentContext;
 import com.datastax.oss.dsbulk.generated.cql3.CqlParser.ColumnFamilyNameContext;
@@ -55,6 +58,7 @@ import com.datastax.oss.dsbulk.mapping.FunctionCall;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -107,6 +111,9 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   private boolean hasSearchClause = false;
   private boolean parallelizable = true;
   private boolean batch = false;
+  private List<String> batchChildStatements;
+  private BatchType batchType;
+  private boolean hasBatchLevelUsingClause;
 
   public QueryInspector(String query) {
     this.query = query;
@@ -292,6 +299,20 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
     return batch;
   }
 
+  public List<String> getBatchChildStatements() {
+    return batchChildStatements == null
+        ? Collections.emptyList()
+        : ImmutableList.copyOf(batchChildStatements);
+  }
+
+  public Optional<BatchType> getBatchType() {
+    return Optional.ofNullable(batchType);
+  }
+
+  public boolean hasBatchLevelUsingClause() {
+    return hasBatchLevelUsingClause;
+  }
+
   // INSERT
 
   @Override
@@ -384,7 +405,27 @@ public class QueryInspector extends CqlBaseVisitor<CQLFragment> {
   @Override
   public CQLFragment visitBatchStatement(BatchStatementContext ctx) {
     batch = true;
+    if (ctx.K_UNLOGGED() != null) {
+      batchType = BatchType.UNLOGGED;
+    } else if (ctx.K_COUNTER() != null) {
+      batchType = BatchType.COUNTER;
+    } else {
+      batchType = BatchType.LOGGED;
+    }
+    hasBatchLevelUsingClause = ctx.usingClause() != null;
     return super.visitBatchStatement(ctx);
+  }
+
+  @Override
+  public CQLFragment visitBatchStatementObjective(BatchStatementObjectiveContext ctx) {
+    if (batchChildStatements == null) {
+      batchChildStatements = new ArrayList<>();
+    }
+    int start = ctx.getStart().getStartIndex();
+    int end = ctx.getStop().getStopIndex() + 1;
+    String childStatement = this.query.substring(start, end);
+    batchChildStatements.add(childStatement);
+    return super.visitBatchStatementObjective(ctx);
   }
 
   @Override

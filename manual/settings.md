@@ -1376,7 +1376,7 @@ Default: **true**.
 
 #### --monitoring.csv<br />--dsbulk.monitoring.csv _&lt;boolean&gt;_
 
-Enable or disable CSV reporting. If enabled, CSV files containing metrics will be generated in the designated log directory.
+Enable or disable CSV reporting. If enabled, CSV files containing metrics will be generated in the designated log directory. Driver metrics can also be exported, but they are disabled by default; see `monitoring.jmx` for details for details about how to enable them.
 
 Default: **false**.
 
@@ -1402,7 +1402,87 @@ Default: **-1**.
 
 Enable or disable JMX reporting. Note that to enable remote JMX reporting, several properties must also be set in the JVM during launch. This is accomplished via the `DSBULK_JAVA_OPTS` environment variable.
 
+Driver metrics can also be exposed; note however that by default, all driver metrics are disabled. You can enable them with the following driver settings:
+- `datastax-java-driver.advanced.metrics.session.enabled` should contain a list of session-level metric names to enable;
+- `datastax-java-driver.advanced.metrics.node.enabled` should contain a list of node-level metric names to enable.
+Driver metrics appear under a folder named after the session name (by default in DSBulk, the session name is simply "driver").
+
 Default: **true**.
+
+#### --monitoring.prometheus.job<br />--dsbulk.monitoring.prometheus.job _&lt;string&gt;_
+
+The job name to use. DSBulk will add a label "job" with this value to each exported metric. This is also the job name used when pushing metrics to a PushGateway. The default is "DSBulk". See https://github.com/prometheus/pushgateway#about-the-job-and-instance-labels for more information.
+
+Default: **"DSBulk"**.
+
+#### --monitoring.prometheus.labels<br />--dsbulk.monitoring.prometheus.labels _&lt;map&lt;string,string&gt;&gt;_
+
+A set of static labels to add to each exported metric, in both pull and push modes. Note that DSBulk automatically adds the following labels:
+- `operation_id` is set to the current operation ID (a.k.a. execution ID, see `engine.executionId`);
+- `job` is set to the job name (as defined by `monitoring.prometheus.job`, by default "DSBulk");
+- `application_name` is set to "DataStax Bulk Loader" followed by the operation ID;
+- `application_version` is set to the DSBulk's version;
+- `driver_version` is set to the DataStax Java driver version;
+- `client_id` is set to DSBulk's client UUID.
+The last four labels correspond to values that DSBulk also passes to the driver, which in turn uses the same info to connect to Cassandra. This makes it possible to correlate data sent by the driver to Cassandra with data sent by DSBulk to Prometheus.
+
+#### -prometheus,<br />--monitoring.prometheus.pull.enabled<br />--dsbulk.monitoring.prometheus.pull.enabled _&lt;boolean&gt;_
+
+Enable or disable exposing metrics to Prometheus in the traditional pull model (scraping). If enabled, all DSBulk and metrics will be accessible at an (unsecured) HTTP endpoint. Driver metrics can also be exported, but they are disabled by default; see `monitoring.jmx` for details about how to enable them.
+
+Default: **false**.
+
+#### --monitoring.prometheus.pull.hostname<br />--dsbulk.monitoring.prometheus.pull.hostname _&lt;string&gt;_
+
+The hostname that the metrics HTTP server should bind to. Leave empty to have the server bind to the wildcard address (0.0.0.0).
+
+Default: **&lt;unspecified&gt;**.
+
+#### --monitoring.prometheus.pull.port<br />--dsbulk.monitoring.prometheus.pull.port _&lt;number&gt;_
+
+The port that the metrics HTTP server should bind to.
+
+Default: **8080**.
+
+#### --monitoring.prometheus.push.enabled<br />--dsbulk.monitoring.prometheus.push.enabled _&lt;boolean&gt;_
+
+Enabled or disable pushing metrics to a PushGateway. If enabled, DSBulk will push metrics to this URL at the end of the operation. Note that not all metrics are exported when pushing to a PushGateway; only some high-level ones are, including the total time elapsed, the number of records processed and the number of rows written or read. In particular, driver metrics are currently not pushed.
+
+Default: **false**.
+
+#### --monitoring.prometheus.push.groupBy.instance<br />--dsbulk.monitoring.prometheus.push.groupBy.instance _&lt;boolean&gt;_
+
+Whether to add an instance grouping key to exported metrics. If enabled, DSBulk adds an "instance" grouping key with its value set to the machine's IP address to the exported metrics. This will effectively group metrics by instance, rather than by job. See https://github.com/prometheus/pushgateway#about-the-job-and-instance-labels for more information.
+
+Default: **false**.
+
+#### --monitoring.prometheus.push.groupBy.keys<br />--dsbulk.monitoring.prometheus.push.groupBy.keys _&lt;map&lt;string,string&gt;&gt;_
+
+A set of static extra keys to add to the grouping keys. Note that grouping keys are also added as labels to each exported metric in push mode.
+
+#### --monitoring.prometheus.push.groupBy.operation<br />--dsbulk.monitoring.prometheus.push.groupBy.operation _&lt;boolean&gt;_
+
+Whether to add the operation ID as a grouping key to exported metrics. If enabled, DSBulk adds an "operation_id" grouping key with its value set to the current operation ID (see `engine.executionId`) to the exported metrics. This will effectively group metrics by operation, rather than by job.
+
+Default: **false**.
+
+#### --monitoring.prometheus.push.password<br />--dsbulk.monitoring.prometheus.push.password _&lt;string&gt;_
+
+The password to authenticate against the push gateway, using basic HTTP auth. Leave empty to use unautheticated HTTP requests.
+
+Default: **&lt;unspecified&gt;**.
+
+#### --monitoring.prometheus.push.url<br />--dsbulk.monitoring.prometheus.push.url _&lt;string&gt;_
+
+The base URL of a Prometheus PushGateway server, e.g. http://pushgateway.example.org:9091 (don't include the "/metrics" path).
+
+Default: **"http://localhost:9091"**.
+
+#### --monitoring.prometheus.push.username<br />--dsbulk.monitoring.prometheus.push.username _&lt;string&gt;_
+
+The username to authenticate against the push gateway, using basic HTTP auth. Leave empty to use unautheticated HTTP requests.
+
+Default: **&lt;unspecified&gt;**.
 
 #### --monitoring.rateUnit<br />--dsbulk.monitoring.rateUnit _&lt;string&gt;_
 
@@ -1831,4 +1911,48 @@ Default: **"1 minute"**.
 How long the driver waits for the response to a heartbeat. If this timeout fires, the heartbeat is considered failed.
 
 Default: **"1 minute"**.
+
+#### --driver.advanced.metrics.session.enabled<br />--datastax-java-driver.advanced.metrics.session.enabled _&lt;list&gt;_
+
+The session-level metrics to enable. Available metrics are:
+
+- bytes-sent
+- bytes-received
+- connected-nodes
+- cql-requests
+- cql-client-timeouts
+
+Default: **[]**.
+
+#### --driver.advanced.metrics.node.enabled<br />--datastax-java-driver.advanced.metrics.node.enabled _&lt;list&gt;_
+
+The node-level metrics to enable. Available metrics are:
+
+- pool.open-connections
+- pool.in-flight
+- bytes-sent
+- bytes-received
+- cql-messages
+- errors.request.unsent
+- errors.request.aborted
+- errors.request.write-timeouts
+- errors.request.read-timeouts
+- errors.request.unavailables
+- errors.request.others
+- retries.total
+- retries.aborted
+- retries.read-timeout
+- retries.write-timeout
+- retries.unavailable
+- retries.other
+- ignores.total
+- ignores.aborted
+- ignores.read-timeout
+- ignores.write-timeout
+- ignores.unavailable
+- ignores.other
+- errors.connection.init
+* errors.connection.auth
+
+Default: **[]**.
 

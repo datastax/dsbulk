@@ -38,6 +38,7 @@ import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.DefaultProtocolVersion;
 import com.datastax.oss.driver.api.core.ProtocolVersion;
+import com.datastax.oss.driver.api.core.cql.BatchType;
 import com.datastax.oss.driver.api.core.cql.ColumnDefinitions;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.cql.Statement;
@@ -49,9 +50,14 @@ import com.datastax.oss.driver.api.core.metadata.schema.RelationMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.ViewMetadata;
 import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.api.core.type.ListType;
+import com.datastax.oss.driver.api.core.type.MapType;
+import com.datastax.oss.driver.api.core.type.SetType;
+import com.datastax.oss.driver.api.core.type.UserDefinedType;
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.base.Preconditions;
 import com.datastax.oss.driver.shaded.guava.common.base.Predicates;
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMultimap;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSet;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSetMultimap;
@@ -77,6 +83,7 @@ import com.datastax.oss.dsbulk.partitioner.TokenRangeReadStatementGenerator;
 import com.datastax.oss.dsbulk.workflow.commons.schema.DefaultReadResultCounter;
 import com.datastax.oss.dsbulk.workflow.commons.schema.DefaultReadResultMapper;
 import com.datastax.oss.dsbulk.workflow.commons.schema.DefaultRecordMapper;
+import com.datastax.oss.dsbulk.workflow.commons.schema.NestedBatchException;
 import com.datastax.oss.dsbulk.workflow.commons.schema.QueryInspector;
 import com.datastax.oss.dsbulk.workflow.commons.schema.ReadResultCounter;
 import com.datastax.oss.dsbulk.workflow.commons.schema.ReadResultMapper;
@@ -101,7 +108,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -156,7 +162,7 @@ public class SchemaSettings {
   private CQLWord tableName;
   private String query;
   private QueryInspector queryInspector;
-  private PreparedStatement preparedStatement;
+  private List<PreparedStatement> preparedStatements;
   private MappingPreference mappingPreference;
 
   public SchemaSettings(Config config, SchemaGenerationStrategy schemaGenerationStrategy) {
@@ -447,7 +453,10 @@ public class SchemaSettings {
   }
 
   public RecordMapper createRecordMapper(
-      CqlSession session, RecordMetadata recordMetadata, ConvertingCodecFactory codecFactory)
+      CqlSession session,
+      RecordMetadata recordMetadata,
+      ConvertingCodecFactory codecFactory,
+      boolean batchingEnabled)
       throws IllegalArgumentException {
     if (!schemaGenerationStrategy.isWriting() || !schemaGenerationStrategy.isMapping()) {
       throw new IllegalStateException(
@@ -456,7 +465,7 @@ public class SchemaSettings {
     }
     Mapping mapping =
         prepareStatementAndCreateMapping(
-            session, codecFactory, EnumSet.noneOf(StatisticsMode.class));
+            session, codecFactory, batchingEnabled, EnumSet.noneOf(StatisticsMode.class));
     ProtocolVersion protocolVersion = session.getContext().getProtocolVersion();
     if (protocolVersion.getCode() < DefaultProtocolVersion.V4.getCode() && nullToUnset) {
       LOGGER.warn(
@@ -467,7 +476,7 @@ public class SchemaSettings {
       nullToUnset = false;
     }
     return new DefaultRecordMapper(
-        preparedStatement,
+        preparedStatements,
         partitionKeyVariables(),
         mutatesOnlyStaticColumns() ? Collections.emptySet() : clusteringColumnVariables(),
         protocolVersion,
@@ -503,7 +512,7 @@ public class SchemaSettings {
     // is the order in which fields appear in the record.
     Mapping mapping =
         prepareStatementAndCreateMapping(
-            session, codecFactory, EnumSet.noneOf(StatisticsMode.class));
+            session, codecFactory, false, EnumSet.noneOf(StatisticsMode.class));
     return new DefaultReadResultMapper(
         mapping, recordMetadata, getTargetTableURI(), retainRecordSources);
   }
@@ -518,7 +527,7 @@ public class SchemaSettings {
           "Cannot create read result counter when schema generation strategy is "
               + schemaGenerationStrategy);
     }
-    prepareStatementAndCreateMapping(session, null, modes);
+    prepareStatementAndCreateMapping(session, null, false, modes);
     if (modes.contains(StatisticsMode.partitions) && table.getClusteringColumns().isEmpty()) {
       throw new IllegalArgumentException(
           String.format(
@@ -535,6 +544,7 @@ public class SchemaSettings {
   }
 
   public List<Statement<?>> createReadStatements(CqlSession session) {
+    PreparedStatement preparedStatement = preparedStatements.get(0);
     ColumnDefinitions variables = preparedStatement.getVariableDefinitions();
     if (variables.size() == 0) {
       return Collections.singletonList(preparedStatement.bind());
@@ -595,11 +605,6 @@ public class SchemaSettings {
     }
   }
 
-  @NonNull
-  public RelationMetadata getTargetTable() {
-    return Objects.requireNonNull(table, "Cannot call this method before init()");
-  }
-
   /**
    * Returns a "resource URI" identifying the operation's target table. Suitable to be used as the
    * resource URI of records created by a {@link ReadResultMapper} targeting that same table.
@@ -625,13 +630,12 @@ public class SchemaSettings {
     return queryInspector.hasSearchClause();
   }
 
-  public boolean isBatchQuery() {
-    return queryInspector.isBatch();
-  }
-
   @NonNull
   private Mapping prepareStatementAndCreateMapping(
-      CqlSession session, ConvertingCodecFactory codecFactory, EnumSet<StatisticsMode> modes) {
+      CqlSession session,
+      ConvertingCodecFactory codecFactory,
+      boolean batchingEnabled,
+      EnumSet<StatisticsMode> modes) {
     ImmutableMultimap<MappingField, CQLFragment> fieldsToVariables = null;
     if (!config.hasPath(QUERY)) {
       // in the absence of user-provided queries, create the mapping *before* query generation and
@@ -643,13 +647,11 @@ public class SchemaSettings {
                   column -> {
                     CQLWord colName = CQLWord.fromCqlIdentifier(column.getName());
                     List<CQLFragment> cols = Lists.newArrayList(colName);
-                    if (!isCounterTable()
-                        && schemaGenerationStrategy.isMapping()
-                        && !table.getPrimaryKey().contains(column)) {
-                      if (preserveTimestamp) {
+                    if (schemaGenerationStrategy.isMapping()) {
+                      if (preserveTimestamp && checkWritetimeTtlSupported(column, WRITETIME)) {
                         cols.add(new FunctionCall(null, WRITETIME, colName));
                       }
-                      if (preserveTtl) {
+                      if (preserveTtl && checkWritetimeTtlSupported(column, TTL)) {
                         cols.add(new FunctionCall(null, TTL, colName));
                       }
                     }
@@ -714,14 +716,19 @@ public class SchemaSettings {
       }
       queryInspector = new QueryInspector(query);
     }
-    preparedStatement = session.prepare(query);
+    if (batchingEnabled && queryInspector.isBatch()) {
+      preparedStatements = unwrapAndPrepareBatchChildStatements(session);
+    } else {
+      preparedStatements = Collections.singletonList(session.prepare(query));
+    }
     if (config.hasPath(QUERY)) {
       // in the presence of user-provided queries, create the mapping *after* query preparation
-      ColumnDefinitions variables = getVariables();
+      Stream<ColumnDefinitions> variables = getVariables();
       fieldsToVariables =
           createFieldsToVariablesMap(
-              StreamSupport.stream(variables.spliterator(), false)
-                  .map(columnDefinition -> columnDefinition.getName().asInternal())
+              variables
+                  .flatMap(defs -> StreamSupport.stream(defs.spliterator(), false))
+                  .map(def -> def.getName().asInternal())
                   .map(CQLWord::fromInternal)
                   .collect(Collectors.toList()));
       // validate user-provided query
@@ -740,6 +747,65 @@ public class SchemaSettings {
         transformFieldsToVariables(fieldsToVariables),
         codecFactory,
         transformWriteTimeVariables(queryInspector.getWriteTimeVariables()));
+  }
+
+  private ImmutableList<PreparedStatement> unwrapAndPrepareBatchChildStatements(
+      CqlSession session) {
+    if (queryInspector.getBatchType().filter(t -> t != BatchType.UNLOGGED).isPresent()) {
+      throw new NestedBatchException(
+          String.format(
+              "Batching cannot be enabled when the prepared query is a BATCH of type %s; "
+                  + "forcibly disabling batching. "
+                  + "To improve performance, consider using UNLOGGED batches if possible. "
+                  + "To suppress this warning, set batch.mode to DISABLED.",
+              queryInspector.getBatchType().get()));
+    } else if (queryInspector.hasBatchLevelUsingClause()) {
+      throw new NestedBatchException(
+          "Batching cannot be enabled when the prepared query is a BATCH with a batch-level USING clause; "
+              + "forcibly disabling batching. "
+              + "To improve performance, consider defining child-level USING clauses instead. "
+              + "To suppress this warning, set batch.mode to DISABLED.");
+    } else if (config.hasPath(QUERY)) {
+      LOGGER.info(
+          "Batching is enabled: to improve performance, the original BATCH query will be unwrapped "
+              + "and each child statement will be prepared independently.");
+    }
+    ImmutableList.Builder<PreparedStatement> builder = ImmutableList.builder();
+    for (String childStatement : queryInspector.getBatchChildStatements()) {
+      builder.add(session.prepare(childStatement));
+    }
+    return builder.build();
+  }
+
+  private boolean checkWritetimeTtlSupported(ColumnMetadata col, CQLWord functionName) {
+    if (isCounterTable() || table.getPrimaryKey().contains(col)) {
+      // Counter tables and primary key columns don't have timestamps and TTLs.
+      return false;
+    }
+    boolean supported;
+    if (col.getType() instanceof ListType
+        || col.getType() instanceof SetType
+        || col.getType() instanceof MapType) {
+      // Collection support for WRITETIME and TTL varies depending on the Cassandra and DSE versions
+      // in use, but in all cases, even if the export is possible, it wouldn't be possible to import
+      // the data back to Cassandra. This is valid for frozen collections as well.
+      supported = false;
+    } else if (col.getType() instanceof UserDefinedType) {
+      // While most C* versions (all?) accept WRITETIME and TTL functions on UDTs, the functions
+      // (always?) return NULL for non-frozen ones. Therefore, we only consider frozen UDTs as
+      // supported. Also note that all tuples are accepted, since they are frozen by nature.
+      supported = ((UserDefinedType) col.getType()).isFrozen();
+    } else {
+      supported = true;
+    }
+    if (!supported) {
+      LOGGER.warn(
+          "Skipping {} preservation for column {}: this feature is not supported for CQL type {}.",
+          functionName == WRITETIME ? "timestamp" : "TTL",
+          col.getName().asCql(true),
+          col.getType().asCql(true, true));
+    }
+    return supported;
   }
 
   private boolean isDSESearchPseudoColumn(ColumnMetadata col) {
@@ -765,12 +831,12 @@ public class SchemaSettings {
         .anyMatch(c -> c.getType().equals(DataTypes.COUNTER));
   }
 
-  private ColumnDefinitions getVariables() {
+  private Stream<ColumnDefinitions> getVariables() {
     if (schemaGenerationStrategy.isWriting()) {
-      return preparedStatement.getVariableDefinitions();
+      return preparedStatements.stream().map(PreparedStatement::getVariableDefinitions);
     } else {
       assert schemaGenerationStrategy.isReading();
-      return preparedStatement.getResultSetDefinitions();
+      return preparedStatements.stream().map(PreparedStatement::getResultSetDefinitions);
     }
   }
 
