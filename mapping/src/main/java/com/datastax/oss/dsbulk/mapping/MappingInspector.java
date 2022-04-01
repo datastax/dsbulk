@@ -476,9 +476,11 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   public CQLFragment visitFunctionArg(FunctionArgContext ctx) {
     if (ctx.columnName() != null) {
       return visitColumnName(ctx.columnName());
-    } else {
-      assert ctx.literal() != null;
+    } else if (ctx.literal() != null) {
       return visitLiteral(ctx.literal());
+    } else {
+      assert ctx.function() != null;
+      return visitFunction(ctx.function());
     }
   }
 

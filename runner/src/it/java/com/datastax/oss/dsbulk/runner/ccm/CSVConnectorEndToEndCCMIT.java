@@ -101,6 +101,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -4670,5 +4671,58 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     for (String s : msg) {
       assertThat(console).contains(s);
     }
+  }
+
+  @Test
+  void load_unload_nested_function() throws IOException {
+
+    session.execute("DROP TABLE IF EXISTS test_nested_function");
+    session.execute("CREATE TABLE test_nested_function (pk int PRIMARY KEY, v int, t timestamp)");
+
+    MockConnector.mockReads(RecordUtils.mappedCSV("pk", "1", "v", "1"));
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--connector.name");
+    args.add("mock");
+    args.add("--schema.keyspace");
+    args.add(session.getKeyspace().get().asInternal());
+    args.add("--schema.table");
+    args.add("test_nested_function");
+    args.add("--schema.mapping");
+    args.add("*=*,totimestamp(now())=t");
+    args.add("-verbosity");
+    args.add("2");
+
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+
+    List<Row> rows = session.execute("SELECT t FROM test_nested_function WHERE pk = 1").all();
+    assertThat(rows).hasSize(1);
+    Instant yesterday = Instant.now().minus(1, ChronoUnit.DAYS);
+    assertThat(rows.get(0).getInstant(0)).isNotNull().isAfterOrEqualTo(yesterday);
+
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--connector.csv.url");
+    args.add(quoteJson(unloadDir));
+    args.add("--schema.keyspace");
+    args.add(session.getKeyspace().get().asInternal());
+    args.add("--schema.table");
+    args.add("test_nested_function");
+    args.add("--schema.mapping");
+    args.add("pk,totimestamp(now())");
+    args.add("-verbosity");
+    args.add("2");
+
+    status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+
+    assertThat(
+            FileUtils.readAllLinesInDirectoryAsStreamExcludingHeaders(unloadDir)
+                .collect(Collectors.toList()))
+        .singleElement()
+        .asString()
+        .matches("1,\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{3})?Z");
   }
 }
