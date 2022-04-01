@@ -1756,9 +1756,9 @@ class SchemaSettingsTest {
     settings.init(session, false, true);
     RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, codecFactory, false);
     @SuppressWarnings("unchecked")
-    Set<CQLWord> clusteringColumnVariables =
-        (Set<CQLWord>) getInternalState(mapper, "clusteringColumnVariables");
-    assertThat(clusteringColumnVariables).isEmpty();
+    Set<CQLWord> primaryKeyVariables =
+        (Set<CQLWord>) getInternalState(mapper, "primaryKeyVariables");
+    assertThat(primaryKeyVariables).doesNotContain(CQLWord.fromCqlIdentifier(C2));
   }
 
   @Test
