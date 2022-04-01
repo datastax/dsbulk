@@ -15,13 +15,12 @@
  */
 package com.datastax.oss.dsbulk.workflow.commons.schema;
 
-import com.datastax.oss.driver.api.core.cql.BatchableStatement;
-import com.datastax.oss.dsbulk.connectors.api.Record;
-import edu.umd.cs.findbugs.annotations.NonNull;
-import reactor.core.publisher.Flux;
+/**
+ * Thrown when an attempt is made to include a BATCH child statement in a BATCH protocol message.
+ */
+public class NestedBatchException extends IllegalStateException {
 
-public interface RecordMapper {
-
-  @NonNull
-  Flux<BatchableStatement<?>> map(@NonNull Record record);
+  public NestedBatchException(String message) {
+    super(message);
+  }
 }

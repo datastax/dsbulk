@@ -35,6 +35,7 @@ import com.datastax.oss.dsbulk.workflow.api.utils.DurationUtils;
 import com.datastax.oss.dsbulk.workflow.api.utils.ThrowableUtils;
 import com.datastax.oss.dsbulk.workflow.commons.log.LogManager;
 import com.datastax.oss.dsbulk.workflow.commons.metrics.MetricsManager;
+import com.datastax.oss.dsbulk.workflow.commons.schema.NestedBatchException;
 import com.datastax.oss.dsbulk.workflow.commons.schema.RecordMapper;
 import com.datastax.oss.dsbulk.workflow.commons.settings.BatchSettings;
 import com.datastax.oss.dsbulk.workflow.commons.settings.CodecSettings;
@@ -90,7 +91,7 @@ public class LoadWorkflow implements Workflow {
   private int writeConcurrency;
   private boolean hasManyReaders;
 
-  private Function<Record, BatchableStatement<?>> mapper;
+  private Function<Record, Flux<BatchableStatement<?>>> mapper;
   private Function<Publisher<BatchableStatement<?>>, Publisher<Statement<?>>> batcher;
   private Function<Flux<Record>, Flux<Record>> totalItemsMonitor;
   private Function<Flux<Record>, Flux<Record>> totalItemsCounter;
@@ -147,12 +148,22 @@ public class LoadWorkflow implements Workflow {
         connector.supports(CommonConnectorFeature.MAPPED_RECORDS));
     logManager = logSettings.newLogManager(session, true);
     logManager.init();
-    RecordMapper recordMapper =
-        schemaSettings.createRecordMapper(session, connector.getRecordMetadata(), codecFactory);
-    mapper = recordMapper::map;
-    batchSettings.init(schemaSettings.isBatchQuery());
+    batchSettings.init();
     batchingEnabled = batchSettings.isBatchingEnabled();
     batchBufferSize = batchSettings.getBufferSize();
+    RecordMapper recordMapper;
+    try {
+      recordMapper =
+          schemaSettings.createRecordMapper(
+              session, connector.getRecordMetadata(), codecFactory, batchingEnabled);
+    } catch (NestedBatchException e) {
+      LOGGER.warn(e.getMessage());
+      batchingEnabled = false;
+      recordMapper =
+          schemaSettings.createRecordMapper(
+              session, connector.getRecordMetadata(), codecFactory, false);
+    }
+    mapper = recordMapper::map;
     if (batchingEnabled) {
       batcher = batchSettings.newStatementBatcher(session)::batchByGroupingKey;
     }
@@ -248,7 +259,7 @@ public class LoadWorkflow implements Workflow {
                     .transform(totalItemsCounter)
                     .transform(failedRecordsMonitor)
                     .transform(failedRecordsHandler)
-                    .map(mapper)
+                    .flatMap(mapper)
                     .transform(failedStatementsMonitor)
                     .transform(unmappableStatementsHandler)
                     .transform(this::bufferAndBatch)
@@ -279,7 +290,7 @@ public class LoadWorkflow implements Workflow {
                     .transform(totalItemsCounter)
                     .transform(failedRecordsMonitor)
                     .transform(failedRecordsHandler)
-                    .map(mapper)
+                    .flatMap(mapper)
                     .transform(failedStatementsMonitor)
                     .transform(unmappableStatementsHandler)
                     .transform(this::batchBuffered)
@@ -395,7 +406,7 @@ public class LoadWorkflow implements Workflow {
           DataSizeSampler.sampleWrites(
               session.getContext(),
               Flux.merge(connector.read())
-                  .<Statement<?>>map(mapper)
+                  .<Statement<?>>flatMap(mapper)
                   .filter(BoundStatement.class::isInstance)
                   .take(1000)
                   .toIterable());
