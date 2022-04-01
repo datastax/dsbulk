@@ -71,16 +71,10 @@ public class BatchSettings {
     this.config = config;
   }
 
-  public void init(boolean forceDisabled) {
+  public void init() {
     try {
 
       mode = config.getEnum(WorkloadBatchMode.class, MODE);
-
-      if (mode != WorkloadBatchMode.DISABLED && forceDisabled) {
-        LOGGER.info(
-            "The prepared query for this operation is a BATCH statement: forcibly disabling batching");
-        mode = WorkloadBatchMode.DISABLED;
-      }
 
       maxSizeInBytes = config.getLong(MAX_SIZE_IN_BYTES);
 
