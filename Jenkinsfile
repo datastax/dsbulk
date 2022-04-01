@@ -88,6 +88,8 @@ def recordCodeCoverage() {
 def recordArtifacts() {
   if (params.GENERATE_DISTRO && env.CASSANDRA_VERSION.startsWith("3.11")) {
     archiveArtifacts artifacts: 'distribution/target/dsbulk-*.tar.gz', fingerprint: true
+    archiveArtifacts artifacts: 'distribution/target/dsbulk-*.zip', fingerprint: true
+    archiveArtifacts artifacts: 'distribution/target/dsbulk-*.jar', fingerprint: true
   }
 }
 

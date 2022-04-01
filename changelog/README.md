@@ -6,6 +6,7 @@
 - [new feature] [#400](https://github.com/datastax/dsbulk/issues/400): Add ability to unwrap BATCH queries.
 - [new feature] [#405](https://github.com/datastax/dsbulk/issues/405): Add support for Prometheus.
 - [improvement] [#403](https://github.com/datastax/dsbulk/issues/403): Exclude unsupported types from automatic timestamp and TTL preservation.
+- [improvement] [#402](https://github.com/datastax/dsbulk/issues/402): Upload DSBulk binary distributions to Maven Central.
 
 ## 1.8.0
 
