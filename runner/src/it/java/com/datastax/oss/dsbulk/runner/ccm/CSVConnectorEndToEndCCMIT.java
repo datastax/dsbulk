@@ -2305,21 +2305,30 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             session.getContext().getProtocolVersion()));
   }
 
-  @Test
-  void unload_load_preserving_ttl_and_timestamp_custom_mapping() throws IOException {
+  @ParameterizedTest
+  @MethodSource("unload_load_preserving_ttl_and_timestamp")
+  void unload_load_preserving_ttl_and_timestamp_custom_mapping(
+      DataType cqlType, Object value1, Object value2, String csv1, String csv2) throws IOException {
 
-    session.execute("DROP TABLE IF EXISTS preserve_ttl_timestamp_mapping");
+    checkCqlTypeSupported(cqlType);
+
+    session.execute("DROP TABLE IF EXISTS preserve_ttl_timestamp");
     session.execute(
-        "CREATE TABLE preserve_ttl_timestamp_mapping (pk1 int, pk2 int, cc1 int, cc2 int, v1 text, v2 text, PRIMARY KEY ((pk1, pk2), cc1, cc2))");
+        String.format(
+            "CREATE TABLE preserve_ttl_timestamp (pk1 int, pk2 int, cc1 int, cc2 int, v1 %s, v2 %s, PRIMARY KEY ((pk1, pk2), cc1, cc2))",
+            cqlType.asCql(true, true), cqlType.asCql(true, true)));
+    TypeCodec<Object> codec = CodecRegistry.DEFAULT.codecFor(cqlType);
     session.execute(
-        "BEGIN BATCH "
-            + "INSERT INTO preserve_ttl_timestamp_mapping (pk1, pk2, cc1, cc2, v1) "
-            + "VALUES (1, 2, 3, 4, 'foo') "
-            + "USING TIMESTAMP 1111 AND TTL 111111; "
-            + "INSERT INTO preserve_ttl_timestamp_mapping (pk1, pk2, cc1, cc2, v2) "
-            + "VALUES (1, 2, 3, 4, 'bar') "
-            + "USING TIMESTAMP 2222 AND TTL 222222; "
-            + "APPLY BATCH");
+        String.format(
+            "BEGIN BATCH "
+                + "INSERT INTO preserve_ttl_timestamp (pk1, pk2, cc1, cc2, v1) "
+                + "VALUES (1, 2, 3, 4, %s) "
+                + "USING TIMESTAMP 1111 AND TTL 111111; "
+                + "INSERT INTO preserve_ttl_timestamp (pk1, pk2, cc1, cc2, v2) "
+                + "VALUES (1, 2, 3, 4, %s) "
+                + "USING TIMESTAMP 2222 AND TTL 222222; "
+                + "APPLY BATCH",
+            codec.format(value1), codec.format(value2)));
 
     List<String> args =
         Lists.newArrayList(
@@ -2333,9 +2342,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             "--schema.keyspace",
             session.getKeyspace().get().asInternal(),
             "--schema.table",
-            "preserve_ttl_timestamp_mapping",
+            "preserve_ttl_timestamp",
             "--schema.mapping",
-            "*=*,v1_writetime=writetime(v1),v1_ttl=ttl(v1),v2_writetime=writetime(v2),v2_ttl=ttl(v2)",
+            "fpk1=pk1, fpk2=pk2, fcc1=cc1, fcc2=cc2, fv1=v1, fv2=v2, "
+                + "wv1=writetime(v1), tv1=ttl(v1), wv2=writetime(v2), tv2=ttl(v2)",
             "-timestamp",
             "true",
             "-ttl",
@@ -2347,11 +2357,17 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     Stream<String> line = FileUtils.readAllLinesInDirectoryAsStreamExcludingHeaders(unloadDir);
     assertThat(line)
         .singleElement(InstanceOfAssertFactories.STRING)
-        .contains("1,2,3,4,foo,bar")
-        .containsPattern(
-            "1970-01-01T00:00:00\\.001111Z,111\\d\\d\\d,1970-01-01T00:00:00\\.002222Z,222\\d\\d\\d");
+        .contains("1,2,3,4,", csv1, csv2)
+        .containsPattern(",1970-01-01T00:00:00\\.001111Z,111\\d\\d\\d,")
+        .containsPattern(",1970-01-01T00:00:00\\.002222Z,222\\d\\d\\d");
+
+    assertThat(logs)
+        .doesNotHaveMessageContaining("Skipping timestamp preservation")
+        .doesNotHaveMessageContaining("Skipping TTL preservation");
+
     FileUtils.deleteDirectory(logDir);
-    session.execute("TRUNCATE preserve_ttl_timestamp_mapping");
+    logs.clear();
+    session.execute("TRUNCATE preserve_ttl_timestamp");
 
     args =
         Lists.newArrayList(
@@ -2365,9 +2381,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             "--schema.keyspace",
             session.getKeyspace().get().asInternal(),
             "--schema.table",
-            "preserve_ttl_timestamp_mapping",
+            "preserve_ttl_timestamp",
             "--schema.mapping",
-            "*=*,v1_writetime=writetime(v1),v1_ttl=ttl(v1),v2_writetime=writetime(v2),v2_ttl=ttl(v2)",
+            "fpk1=pk1, fpk2=pk2, fcc1=cc1, fcc2=cc2, fv1=v1, fv2=v2, "
+                + "wv1=writetime(v1), tv1=ttl(v1), wv2=writetime(v2), tv2=ttl(v2)",
             "-timestamp",
             "true",
             "-ttl",
@@ -2381,7 +2398,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             "SELECT pk1, pk2, cc1, cc2, "
                 + "v1, writetime(v1) AS v1w, ttl(v1) as v1t, "
                 + "v2, writetime(v2) AS v2w, ttl(v2) as v2t "
-                + "FROM preserve_ttl_timestamp_mapping "
+                + "FROM preserve_ttl_timestamp "
                 + "WHERE pk1 = 1 AND pk2 = 2 AND cc1 = 3 AND cc2 = 4");
     Row row = rs.one();
     assertThat(row).isNotNull();
@@ -2389,12 +2406,16 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(row.getInt("pk2")).isEqualTo(2);
     assertThat(row.getInt("cc1")).isEqualTo(3);
     assertThat(row.getInt("cc2")).isEqualTo(4);
-    assertThat(row.getString("v1")).isEqualTo("foo");
-    assertThat(row.getString("v2")).isEqualTo("bar");
+    assertThat(row.getObject("v1")).isEqualTo(value1);
+    assertThat(row.getObject("v2")).isEqualTo(value2);
     assertThat(row.getLong("v1w")).isEqualTo(1111L);
     assertThat(row.getLong("v2w")).isEqualTo(2222L);
     assertThat(row.getInt("v1t")).isLessThanOrEqualTo(111111).isGreaterThan(111000);
     assertThat(row.getInt("v2t")).isLessThanOrEqualTo(222222).isGreaterThan(222000);
+
+    assertThat(logs)
+        .doesNotHaveMessageContaining("Skipping timestamp preservation")
+        .doesNotHaveMessageContaining("Skipping TTL preservation");
   }
 
   @Test
