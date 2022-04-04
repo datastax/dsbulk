@@ -70,15 +70,6 @@ public class InvalidMappingException extends RuntimeException {
   }
 
   @NonNull
-  public static InvalidMappingException emptyPrimaryKey(@NonNull CQLWord variable) {
-    return new InvalidMappingException(
-        "Primary key column "
-            + variable.render(VARIABLE)
-            + " cannot be set to empty. "
-            + "Check that your settings (schema.mapping or schema.query) match your dataset contents.");
-  }
-
-  @NonNull
   public static InvalidMappingException unsetPrimaryKey(@NonNull CQLWord variable) {
     return new InvalidMappingException(
         "Primary key column "

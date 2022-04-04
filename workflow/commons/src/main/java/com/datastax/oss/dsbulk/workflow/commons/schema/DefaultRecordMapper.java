@@ -51,8 +51,6 @@ import reactor.core.publisher.Flux;
 public class DefaultRecordMapper implements RecordMapper {
 
   private final List<PreparedStatement> insertStatements;
-  private final ImmutableSet<CQLWord> partitionKeyVariables;
-  private final ImmutableSet<CQLWord> clusteringColumnVariables;
   private final ImmutableSet<CQLWord> primaryKeyVariables;
   private final ProtocolVersion protocolVersion;
   private final Mapping mapping;
@@ -99,8 +97,6 @@ public class DefaultRecordMapper implements RecordMapper {
       boolean allowMissingFields,
       Function<PreparedStatement, BoundStatementBuilder> boundStatementBuilderFactory) {
     this.insertStatements = ImmutableList.copyOf(insertStatements);
-    this.partitionKeyVariables = ImmutableSet.copyOf(partitionKeyVariables);
-    this.clusteringColumnVariables = ImmutableSet.copyOf(clusteringColumnVariables);
     this.protocolVersion = protocolVersion;
     this.mapping = mapping;
     this.recordMetadata = recordMetadata;
@@ -185,16 +181,8 @@ public class DefaultRecordMapper implements RecordMapper {
     } catch (Exception e) {
       throw InvalidMappingException.encodeFailed(field, variable, javaType, cqlType, raw, e);
     }
-    boolean isNull = isNull(bb, cqlType);
-    if (isNull || isEmpty(bb)) {
-      if (partitionKeyVariables.contains(variable)) {
-        throw isNull
-            ? InvalidMappingException.nullPrimaryKey(variable)
-            : InvalidMappingException.emptyPrimaryKey(variable);
-      }
-    }
-    if (isNull) {
-      if (clusteringColumnVariables.contains(variable)) {
+    if (isNull(bb, cqlType)) {
+      if (primaryKeyVariables.contains(variable)) {
         throw InvalidMappingException.nullPrimaryKey(variable);
       }
       if (nullToUnset) {
@@ -218,10 +206,6 @@ public class DefaultRecordMapper implements RecordMapper {
       default:
         return !bb.hasRemaining();
     }
-  }
-
-  private boolean isEmpty(ByteBuffer bb) {
-    return bb == null || !bb.hasRemaining();
   }
 
   private void ensureAllFieldsPresent(Set<Field> recordFields) {
