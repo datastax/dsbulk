@@ -409,6 +409,10 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   @Test
   void full_load_unload_snappy() throws Exception {
 
+    assumeTrue(
+        session.getContext().getProtocolVersion().getCode() != 5,
+        "Snappy compression is not supported in protocol v5");
+
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--connector.name");

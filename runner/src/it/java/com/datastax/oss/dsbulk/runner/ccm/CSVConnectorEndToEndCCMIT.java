@@ -418,6 +418,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   @Test
   void full_load_unload_snappy() throws Exception {
 
+    assumeTrue(
+        session.getContext().getProtocolVersion().getCode() != 5,
+        "Snappy compression is not supported in protocol v5");
+
     List<String> args = new ArrayList<>();
     args.add("load");
     args.add("--driver.protocol.compression");
@@ -4721,7 +4725,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
                 .collect(Collectors.toList()))
         .singleElement()
         .asString()
-        .matches("1,\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{3})?Z");
+        .matches("1,\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z");
   }
 
   @ParameterizedTest
