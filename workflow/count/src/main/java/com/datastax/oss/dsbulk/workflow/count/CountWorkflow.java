@@ -113,7 +113,7 @@ public class CountWorkflow implements Workflow {
         driverSettings.newSession(
             executionId, codecFactory.getCodecRegistry(), monitoringSettings.getRegistry());
     ClusterInformationUtils.printDebugInfoAboutCluster(session);
-    schemaSettings.init(session, false, false);
+    schemaSettings.init(session, codecFactory, false, false);
     logManager = logSettings.newLogManager(session, false);
     logManager.init();
     metricsManager =

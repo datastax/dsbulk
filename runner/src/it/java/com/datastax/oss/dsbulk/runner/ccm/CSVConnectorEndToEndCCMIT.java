@@ -4847,4 +4847,46 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         Arguments.of(
             DataTypes.DURATION, "1mo2d34ns", CqlDuration.newInstance(1, 2, 34), "1mo2d34ns"));
   }
+
+  @Test
+  void load_constant_preserve_timestamp() throws IOException {
+
+    session.execute("DROP TABLE IF EXISTS load_constant_preserve_timestamp");
+    session.execute(
+        "CREATE TABLE load_constant_preserve_timestamp (pk int PRIMARY KEY, v1 int, v2 int)");
+
+    MockConnector.mockReads(RecordUtils.mappedCSV("pk", "1"));
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--connector.name");
+    args.add("mock");
+    args.add("--schema.keyspace");
+    args.add(session.getKeyspace().get().asInternal());
+    args.add("--schema.table");
+    args.add("load_constant_preserve_timestamp");
+    args.add("--schema.mapping");
+    args.add(
+        "pk=pk,(int)123=v1,(int)456=v2,(int)1000=ttl(*),(text)'2022-02-02T22:22:22Z'=writetime(*)");
+
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+
+    List<Row> rows =
+        session
+            .execute(
+                "SELECT v1, v2, "
+                    + "ttl(v1) as ttlv1, ttl(v2) as ttlv2, "
+                    + "writetime(v1) as wtv1, writetime(v2) as wtv2 "
+                    + "FROM load_constant_preserve_timestamp WHERE pk = 1")
+            .all();
+    assertThat(rows).hasSize(1);
+    assertThat(rows.get(0).getInt("v1")).isEqualTo(123);
+    assertThat(rows.get(0).getInt("v2")).isEqualTo(456);
+    assertThat(rows.get(0).getInt("ttlv1")).isNotZero();
+    assertThat(rows.get(0).getInt("ttlv2")).isNotZero();
+    Instant i = Instant.parse("2022-02-02T22:22:22Z");
+    assertThat(rows.get(0).getLong("wtv1")).isEqualTo(i.toEpochMilli() * 1000);
+    assertThat(rows.get(0).getLong("wtv2")).isEqualTo(i.toEpochMilli() * 1000);
+  }
 }

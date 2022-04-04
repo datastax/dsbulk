@@ -144,6 +144,7 @@ public class LoadWorkflow implements Workflow {
     ClusterInformationUtils.printDebugInfoAboutCluster(session);
     schemaSettings.init(
         session,
+        codecFactory,
         connector.supports(CommonConnectorFeature.INDEXED_RECORDS),
         connector.supports(CommonConnectorFeature.MAPPED_RECORDS));
     logManager = logSettings.newLogManager(session, true);
