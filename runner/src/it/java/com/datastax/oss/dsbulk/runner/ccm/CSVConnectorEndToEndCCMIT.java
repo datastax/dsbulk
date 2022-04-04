@@ -108,6 +108,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.assertj.core.api.InstanceOfAssertFactories;
@@ -129,6 +130,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   private static final Version V3 = Version.parse("3.0");
   private static final Version V3_10 = Version.parse("3.10");
+  private static final Version V3_11_5 = Version.parse("3.11.5");
   private static final Version V2_2 = Version.parse("2.2");
   private static final Version V2_1 = Version.parse("2.1");
   private static final Version V5_1 = Version.parse("5.1");
@@ -4690,9 +4692,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("test_nested_function");
     args.add("--schema.mapping");
-    args.add("*=*,totimestamp(now())=t");
-    args.add("-verbosity");
-    args.add("2");
+    args.add("*=*,dateof(now())=t");
 
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
@@ -4711,9 +4711,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("test_nested_function");
     args.add("--schema.mapping");
-    args.add("pk,totimestamp(now())");
-    args.add("-verbosity");
-    args.add("2");
+    args.add("pk,dateof(now())");
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
@@ -4724,5 +4722,104 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         .singleElement()
         .asString()
         .matches("1,\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{3})?Z");
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  void load_unload_constant(DataType cqlType, String literal, Object expectedIn, String expectedOut)
+      throws IOException {
+
+    assumeTrue(
+        ccm.getCassandraVersion().compareTo(V3_11_5) >= 0,
+        "Literal selectors are supported starting with C* 3.11.5, see CASSANDRA-9243");
+
+    session.execute("DROP TABLE IF EXISTS test_constant");
+    String cqlTypeAsString = cqlType.asCql(true, true);
+    session.execute(
+        String.format("CREATE TABLE test_constant (pk int PRIMARY KEY, v %s)", cqlTypeAsString));
+
+    MockConnector.mockReads(RecordUtils.mappedCSV("pk", "1"));
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--connector.name");
+    args.add("mock");
+    args.add("--schema.keyspace");
+    args.add(session.getKeyspace().get().asInternal());
+    args.add("--schema.table");
+    args.add("test_constant");
+    args.add("--schema.mapping");
+    args.add(String.format("pk=pk,(%s)%s=v", cqlTypeAsString, literal));
+
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+
+    List<Row> rows = session.execute("SELECT v FROM test_constant WHERE pk = 1").all();
+    assertThat(rows).hasSize(1);
+    assertThat(rows.get(0).getObject(0)).isNotNull().isEqualTo(expectedIn);
+
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--connector.csv.url");
+    args.add(quoteJson(unloadDir));
+    args.add("--codec.binary");
+    args.add("HEX");
+    args.add("--schema.keyspace");
+    args.add(session.getKeyspace().get().asInternal());
+    args.add("--schema.table");
+    args.add("test_constant");
+    args.add("--schema.mapping");
+    args.add(String.format("pk=pk,constant=(%s)%s", cqlTypeAsString, literal));
+
+    status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+
+    assertThat(
+            FileUtils.readAllLinesInDirectoryAsStreamExcludingHeaders(unloadDir)
+                .collect(Collectors.toList()))
+        .singleElement()
+        .asString()
+        .isEqualTo("1," + expectedOut);
+  }
+
+  @SuppressWarnings("unused")
+  static Stream<Arguments> load_unload_constant() throws UnknownHostException {
+    return Stream.of(
+        Arguments.of(DataTypes.ASCII, "'abc'", "abc", "abc"),
+        Arguments.of(DataTypes.BIGINT, "123", 123L, "123"),
+        Arguments.of(DataTypes.BLOB, "0x12", ByteBuffer.wrap(new byte[] {0x12}), "0x12"),
+        Arguments.of(DataTypes.BOOLEAN, "true", true, "1"),
+        Arguments.of(DataTypes.DECIMAL, "12.34", new BigDecimal("12.34"), "12.34"),
+        Arguments.of(DataTypes.DOUBLE, "12.34", 12.34, "12.34"),
+        Arguments.of(DataTypes.FLOAT, "12.34", 12.34f, "12.34"),
+        Arguments.of(DataTypes.INT, "123", 123, "123"),
+        Arguments.of(
+            DataTypes.TIMESTAMP,
+            "'2022-02-22T22:02:02Z'",
+            Instant.parse("2022-02-22T22:02:02Z"),
+            "2022-02-22T22:02:02Z"),
+        Arguments.of(
+            DataTypes.UUID,
+            "f0dea7f2-b3fd-11ec-b909-0242ac120002",
+            UUID.fromString("f0dea7f2-b3fd-11ec-b909-0242ac120002"),
+            "f0dea7f2-b3fd-11ec-b909-0242ac120002"),
+        Arguments.of(DataTypes.VARINT, "1234", new BigInteger("1234"), "1234"),
+        Arguments.of(
+            DataTypes.TIMEUUID,
+            "f0dea7f2-b3fd-11ec-b909-0242ac120002",
+            UUID.fromString("f0dea7f2-b3fd-11ec-b909-0242ac120002"),
+            "f0dea7f2-b3fd-11ec-b909-0242ac120002"),
+        Arguments.of(
+            DataTypes.INET,
+            "'1.2.3.4'",
+            InetAddress.getByAddress(new byte[] {1, 2, 3, 4}),
+            "1.2.3.4"),
+        Arguments.of(DataTypes.DATE, "'2021-01-11'", LocalDate.of(2021, 1, 11), "2021-01-11"),
+        Arguments.of(DataTypes.TEXT, "'abc'", "abc", "abc"),
+        Arguments.of(DataTypes.TIME, "'01:02:03'", LocalTime.of(1, 2, 3), "01:02:03"),
+        Arguments.of(DataTypes.SMALLINT, "12", (short) 12, "12"),
+        Arguments.of(DataTypes.TINYINT, "12", (byte) 12, "12"),
+        Arguments.of(
+            DataTypes.DURATION, "1mo2d34ns", CqlDuration.newInstance(1, 2, 34), "1mo2d34ns"));
   }
 }

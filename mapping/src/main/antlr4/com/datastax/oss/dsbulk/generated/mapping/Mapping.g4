@@ -52,6 +52,7 @@ indexedEntry
 indexOrFunction
     : index
     | function
+    | typedLiteral
     ;
 
 index
@@ -61,11 +62,13 @@ index
 fieldOrFunction
     : field
     | function
+    | typedLiteral
     ;
 
 variableOrFunction
     : variable
     | function
+    | typedLiteral
     ;
 
 field
@@ -74,6 +77,12 @@ field
 
 variable
     : identifier
+    | legacyTokens
+    ;
+
+legacyTokens
+    : LEGACY_WRITETIME
+    | LEGACY_TTL
     ;
 
 keyspaceName
@@ -92,8 +101,9 @@ identifier
     : UNQUOTED_IDENTIFIER
     | QUOTED_IDENTIFIER
     // also valid as identifiers:
-    | WRITETIME
-    | TTL
+    | K_WRITETIME
+    | K_TTL
+    | nativeType
     ;
 
 function
@@ -103,13 +113,13 @@ function
     ;
 
 writetime
-    : WRITETIME '(' STAR ')'
-    | WRITETIME '(' columnName ( ',' columnName )* ')'
+    : K_WRITETIME '(' STAR ')'
+    | K_WRITETIME '(' columnName ( ',' columnName )* ')'
     ;
 
 ttl
-    : TTL '(' STAR ')'
-    | TTL '(' columnName ( ',' columnName )* ')'
+    : K_TTL '(' STAR ')'
+    | K_TTL '(' columnName ( ',' columnName )* ')'
     ;
 
 qualifiedFunctionName
@@ -124,6 +134,34 @@ functionArg
     : columnName
     | literal
     | function
+    ;
+
+typedLiteral
+    : '(' nativeType ')' literal
+    ;
+
+nativeType
+    : K_ASCII
+    | K_BIGINT
+    | K_BLOB
+    | K_BOOLEAN
+    | K_COUNTER
+    | K_DECIMAL
+    | K_DOUBLE
+    | K_FLOAT
+    | K_INET
+    | K_INT
+    | K_TEXT
+    | K_VARCHAR
+    | K_TIMESTAMP
+    | K_DATE
+    | K_TIME
+    | K_UUID
+    | K_VARINT
+    | K_TIMEUUID
+    | K_TINYINT
+    | K_SMALLINT
+    | K_DURATION
     ;
 
 literal
@@ -199,12 +237,42 @@ fragment DURATION_UNIT
     | N S
     ;
 
-WRITETIME
+K_ASCII : A S C I I;
+K_BIGINT : B I G I N T;
+K_BLOB : B L O B;
+K_BOOLEAN : B O O L E A N;
+K_COUNTER : C O U N T E R;
+K_DECIMAL : D E C I M A L;
+K_DOUBLE : D O U B L E;
+K_FLOAT : F L O A T;
+K_INET : I N E T;
+K_INT : I N T;
+K_TEXT : T E X T;
+K_VARCHAR : V A R C H A R;
+K_TIMESTAMP : T I M E S T A M P;
+K_DATE : D A T E;
+K_TIME : T I M E;
+K_UUID : U U I D;
+K_VARINT : V A R I N T;
+K_TIMEUUID : T I M E U U I D;
+K_TINYINT : T I N Y I N T;
+K_SMALLINT : S M A L L I N T;
+K_DURATION : D U R A T I O N;
+
+K_WRITETIME
     : W R I T E T I M E
     ;
 
-TTL
+K_TTL
     : T T L
+    ;
+
+LEGACY_WRITETIME
+    : '__timestamp'
+    ;
+
+LEGACY_TTL
+    : '__ttl'
     ;
 
 STAR
@@ -221,6 +289,10 @@ K_NAN
 
 K_INFINITY
     : I N F I N I T Y
+    ;
+
+K_CONST
+    : C O N S T ':'
     ;
 
 INTEGER
@@ -256,7 +328,7 @@ STRING_LITERAL
     ;
 
 UNQUOTED_IDENTIFIER
-    : ALPHANUMERIC ( ALPHANUMERIC )*
+    : LETTER ( ALPHANUMERIC )*
     ;
 
 QUOTED_IDENTIFIER

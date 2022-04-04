@@ -75,6 +75,7 @@ import com.datastax.oss.driver.api.core.metadata.schema.IndexMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.ViewMetadata;
 import com.datastax.oss.driver.api.core.metadata.token.Token;
 import com.datastax.oss.driver.api.core.metadata.token.TokenRange;
+import com.datastax.oss.driver.api.core.servererrors.SyntaxError;
 import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import com.datastax.oss.driver.internal.core.metadata.token.DefaultTokenMap;
@@ -104,6 +105,7 @@ import com.datastax.oss.dsbulk.workflow.commons.schema.ReadResultCounter;
 import com.datastax.oss.dsbulk.workflow.commons.schema.ReadResultMapper;
 import com.datastax.oss.dsbulk.workflow.commons.schema.RecordMapper;
 import com.typesafe.config.Config;
+import com.typesafe.config.ConfigValueFactory;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.time.Instant;
@@ -2555,8 +2557,67 @@ class SchemaSettingsTest {
         .hasMessageContaining("ttl(*) is not allowed when schema.preserveTtl is true");
   }
 
-  // TODO Function calls are not allowed when updating a counter table.
-  // TODO Cannot set TTL or timestamp when updating a counter table.
+  @Test
+  void should_not_allow_function_on_left_side_when_loading_counter_table() {
+    when(col2.getType()).thenReturn(COUNTER);
+    when(col3.getType()).thenReturn(COUNTER);
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "keyspace",
+            "ks",
+            "table",
+            "t1",
+            "mapping",
+            quoteJson("fieldA=c1,fieldB=\"COL 2\",now()=c3"));
+    SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
+    settings.init(session, true, true);
+    assertThatThrownBy(
+            () -> settings.createRecordMapper(session, recordMetadata, codecFactory, false))
+        .hasMessageContaining("function calls are not allowed when updating a counter table");
+  }
+
+  @Test
+  void should_not_allow_ttl_when_loading_counter_table() {
+    when(col2.getType()).thenReturn(COUNTER);
+    when(col3.getType()).thenReturn(COUNTER);
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "keyspace",
+            "ks",
+            "table",
+            "t1",
+            "mapping",
+            quoteJson("fieldA=c1,fieldB=\"COL 2\",fieldC=ttl(*)"));
+    SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
+    settings.init(session, true, true);
+    assertThatThrownBy(
+            () -> settings.createRecordMapper(session, recordMetadata, codecFactory, false))
+        .hasMessageContaining("function calls are not allowed when updating a counter table");
+  }
+
+  @Test
+  void should_not_allow_fixed_ttl_on_right_side_when_loading_counter_table() {
+    when(col2.getType()).thenReturn(COUNTER);
+    when(col3.getType()).thenReturn(COUNTER);
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "keyspace",
+            "ks",
+            "table",
+            "t1",
+            "queryTtl",
+            "123",
+            "mapping",
+            quoteJson("fieldA=c1,fieldB=\"COL 2\",fieldC=c3"));
+    SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
+    settings.init(session, true, true);
+    assertThatThrownBy(
+            () -> settings.createRecordMapper(session, recordMetadata, codecFactory, false))
+        .hasMessageContaining("Cannot set TTL or timestamp when updating a counter table");
+  }
 
   @Test
   void should_not_preserve_timestamp_when_unsupported_type() {
@@ -2728,6 +2789,258 @@ class SchemaSettingsTest {
         .isInstanceOf(NestedBatchException.class)
         .hasMessageContaining(
             "Batching cannot be enabled when the prepared query is a BATCH with a batch-level USING clause");
+  }
+
+  @Test
+  void should_infer_insert_query_with_constant_in_mapping() {
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "keyspace",
+            "ks",
+            "table",
+            "t1",
+            "mapping",
+            quoteJson("fieldA=c1,now()=\"COL 2\",(text)'abc'=c3"));
+    SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
+    settings.init(session, true, true);
+    settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    assertThat(getInternalState(settings, "query"))
+        .isEqualTo("INSERT INTO ks.t1 (c1, \"COL 2\", c3) VALUES (:c1, now(), 'abc')");
+  }
+
+  @Test
+  void should_infer_select_query_with_constant_in_mapping() {
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "keyspace",
+            "ks",
+            "table",
+            "t1",
+            "mapping",
+            quoteJson("fieldA=c1,fieldB=now(),fieldC=(text)'abc'"));
+    SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
+    settings.init(session, true, true);
+    settings.createReadResultMapper(session, recordMetadata, codecFactory, false);
+    assertThat(getInternalState(settings, "query"))
+        .isEqualTo(
+            "SELECT c1, now() AS \"now()\", (text)'abc' AS \"(text)'abc'\" FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end");
+  }
+
+  @Test
+  void should_infer_batch_query_with_constant_in_mapping() {
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "keyspace",
+            "ks",
+            "table",
+            "t1",
+            "mapping",
+            quoteJson(
+                "fieldA=c1,fieldB=\"COL 2\",(text)'abc'=c3,"
+                    + "fieldD=writetime(\"COL 2\"),fieldE=writetime(c3),"
+                    + "fieldF=ttl(\"COL 2\"),fieldG=ttl(c3)"));
+    SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
+    settings.init(session, true, true);
+    settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    assertThat(getInternalState(settings, "query"))
+        .isEqualTo(
+            "BEGIN UNLOGGED BATCH "
+                + "INSERT INTO ks.t1 (c1, \"COL 2\") VALUES (:c1, :\"COL 2\") USING TTL :\"ttl(COL 2)\" AND TIMESTAMP :\"writetime(COL 2)\"; "
+                + "INSERT INTO ks.t1 (c1, c3) VALUES (:c1, 'abc') USING TTL :\"ttl(c3)\" AND TIMESTAMP :\"writetime(c3)\"; "
+                + "APPLY BATCH");
+  }
+
+  @Test
+  void should_infer_batch_query_with_constant_in_mapping_2() {
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "keyspace",
+            "ks",
+            "table",
+            "t1",
+            "mapping",
+            quoteJson(
+                "fieldA=c1,fieldB=\"COL 2\",(text)'abc'=c3,"
+                    + "fieldD=writetime(\"COL 2\"),fieldF=ttl(\"COL 2\")"));
+    SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
+    settings.init(session, true, true);
+    settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    assertThat(getInternalState(settings, "query"))
+        .isEqualTo(
+            "BEGIN UNLOGGED BATCH "
+                + "INSERT INTO ks.t1 (c1, c3) VALUES (:c1, 'abc'); "
+                + "INSERT INTO ks.t1 (c1, \"COL 2\") VALUES (:c1, :\"COL 2\") USING TTL :\"ttl(COL 2)\" AND TIMESTAMP :\"writetime(COL 2)\"; "
+                + "APPLY BATCH");
+  }
+
+  @Test
+  void should_infer_batch_query_with_constant_in_mapping_3() {
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "keyspace",
+            "ks",
+            "table",
+            "t1",
+            "mapping",
+            quoteJson(
+                "fieldA=c1,fieldB=\"COL 2\",(text)'abc'=c3,"
+                    + "fieldD=writetime(\"COL 2\"),fieldF=ttl(\"COL 2\"),"
+                    + "fieldG=writetime(*)"));
+    SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
+    settings.init(session, true, true);
+    settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    assertThat(getInternalState(settings, "query"))
+        .isEqualTo(
+            "BEGIN UNLOGGED BATCH "
+                + "INSERT INTO ks.t1 (c1, c3) VALUES (:c1, 'abc') USING TIMESTAMP :\"writetime(*)\"; "
+                + "INSERT INTO ks.t1 (c1, \"COL 2\") VALUES (:c1, :\"COL 2\") USING TTL :\"ttl(COL 2)\" AND TIMESTAMP :\"writetime(COL 2)\"; "
+                + "APPLY BATCH");
+  }
+
+  @Test
+  void should_infer_batch_query_with_function_in_mapping() {
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "keyspace",
+            "ks",
+            "table",
+            "t1",
+            "mapping",
+            quoteJson(
+                "fieldA=c1,fieldB=\"COL 2\",now()=c3,"
+                    + "fieldD=writetime(\"COL 2\"),fieldE=writetime(c3),"
+                    + "fieldF=ttl(\"COL 2\"),fieldG=ttl(c3)"));
+    SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
+    settings.init(session, true, true);
+    settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    assertThat(getInternalState(settings, "query"))
+        .isEqualTo(
+            "BEGIN UNLOGGED BATCH "
+                + "INSERT INTO ks.t1 (c1, \"COL 2\") VALUES (:c1, :\"COL 2\") USING TTL :\"ttl(COL 2)\" AND TIMESTAMP :\"writetime(COL 2)\"; "
+                + "INSERT INTO ks.t1 (c1, c3) VALUES (:c1, now()) USING TTL :\"ttl(c3)\" AND TIMESTAMP :\"writetime(c3)\"; "
+                + "APPLY BATCH");
+  }
+
+  @Test
+  void should_infer_batch_query_with_function_in_mapping_2() {
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "keyspace",
+            "ks",
+            "table",
+            "t1",
+            "mapping",
+            quoteJson(
+                "fieldA=c1,fieldB=\"COL 2\",now()=c3,"
+                    + "fieldD=writetime(\"COL 2\"),fieldF=ttl(\"COL 2\")"));
+    SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
+    settings.init(session, true, true);
+    settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    assertThat(getInternalState(settings, "query"))
+        .isEqualTo(
+            "BEGIN UNLOGGED BATCH "
+                + "INSERT INTO ks.t1 (c1, c3) VALUES (:c1, now()); "
+                + "INSERT INTO ks.t1 (c1, \"COL 2\") VALUES (:c1, :\"COL 2\") USING TTL :\"ttl(COL 2)\" AND TIMESTAMP :\"writetime(COL 2)\"; "
+                + "APPLY BATCH");
+  }
+
+  @Test
+  void should_infer_batch_query_with_function_in_mapping_3() {
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "keyspace",
+            "ks",
+            "table",
+            "t1",
+            "mapping",
+            quoteJson(
+                "fieldA=c1,fieldB=\"COL 2\",now()=c3,"
+                    + "fieldD=writetime(\"COL 2\"),fieldF=ttl(\"COL 2\"),"
+                    + "fieldG=writetime(*)"));
+    SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
+    settings.init(session, true, true);
+    settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    assertThat(getInternalState(settings, "query"))
+        .isEqualTo(
+            "BEGIN UNLOGGED BATCH "
+                + "INSERT INTO ks.t1 (c1, c3) VALUES (:c1, now()) USING TIMESTAMP :\"writetime(*)\"; "
+                + "INSERT INTO ks.t1 (c1, \"COL 2\") VALUES (:c1, :\"COL 2\") USING TTL :\"ttl(COL 2)\" AND TIMESTAMP :\"writetime(COL 2)\"; "
+                + "APPLY BATCH");
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  void should_reject_invalid_constant_in_mapping(
+      String mapping, String query, SchemaGenerationStrategy mode, String expectedError) {
+    Config config = TestConfigUtils.createTestConfig("dsbulk.schema", "mapping", mapping);
+    if (query != null) {
+      config = config.withValue("query", ConfigValueFactory.fromAnyRef(query));
+    } else {
+      config =
+          config
+              .withValue("keyspace", ConfigValueFactory.fromAnyRef("ks"))
+              .withValue("table", ConfigValueFactory.fromAnyRef("t1"));
+    }
+    SchemaSettings settings = new SchemaSettings(config, mode);
+    assertThatThrownBy(() -> settings.init(session, true, true))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining(expectedError);
+  }
+
+  @SuppressWarnings("unused")
+  private static Stream<Arguments> should_reject_invalid_constant_in_mapping() {
+    return Stream.of(
+        Arguments.of(
+            "\"f1=c1,f2=(text)'abc'\"",
+            null,
+            MAP_AND_WRITE,
+            "Misplaced constant expression detected on the right side of a mapping entry"),
+        Arguments.of(
+            "\"f1=c1,(text)'abc'=c2\"",
+            null,
+            READ_AND_MAP,
+            "Misplaced constant expression detected on the left side of a mapping entry"),
+        Arguments.of(
+            "\"f1=c1,(text)'abc'=c2\"",
+            "INSERT INTO ks.t1 (c1, c2) VALUES (:c1,:c2)",
+            MAP_AND_WRITE,
+            "Setting schema.query must not be defined when loading if schema.mapping contains a constant expression on the left side of a mapping entry"),
+        Arguments.of(
+            "\"f1=c1,f2=(text)'abc'\"",
+            "SELECT * FROM ks.t1",
+            READ_AND_MAP,
+            "Setting schema.query must not be defined when unloading if schema.mapping contains a constant expression on the right side of a mapping entry"));
+  }
+
+  @Test
+  void should_reject_constant_in_mapping_when_literal_selector_unsupported() {
+    when(session.execute("SELECT (int)1 FROM system.local"))
+        .thenThrow(
+            new SyntaxError(
+                mock(Node.class), "Line 1:9 no viable alternative at input '(' (SELECT [(]...)"));
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "mapping",
+            "\"f1=c1,f2=(text)'abc'\"",
+            "keyspace",
+            "ks",
+            "table",
+            "t1");
+    SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
+    assertThatThrownBy(() -> settings.init(session, true, true))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining(
+            "At least one constant expression appears on the right side of a mapping entry, "
+                + "but the cluster does not support CQL literals in the SELECT clause");
   }
 
   private static void assertMapping(Object mapper, Object... fieldsAndVars) {

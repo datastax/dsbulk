@@ -69,6 +69,7 @@ import com.datastax.oss.dsbulk.connectors.api.Field;
 import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.datastax.oss.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.oss.dsbulk.mapping.CQLFragment;
+import com.datastax.oss.dsbulk.mapping.CQLLiteral;
 import com.datastax.oss.dsbulk.mapping.CQLRenderMode;
 import com.datastax.oss.dsbulk.mapping.CQLWord;
 import com.datastax.oss.dsbulk.mapping.DefaultMapping;
@@ -79,6 +80,7 @@ import com.datastax.oss.dsbulk.mapping.Mapping;
 import com.datastax.oss.dsbulk.mapping.MappingField;
 import com.datastax.oss.dsbulk.mapping.MappingInspector;
 import com.datastax.oss.dsbulk.mapping.MappingPreference;
+import com.datastax.oss.dsbulk.mapping.TypedCQLLiteral;
 import com.datastax.oss.dsbulk.partitioner.TokenRangeReadStatementGenerator;
 import com.datastax.oss.dsbulk.workflow.commons.schema.DefaultReadResultCounter;
 import com.datastax.oss.dsbulk.workflow.commons.schema.DefaultReadResultMapper;
@@ -108,6 +110,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -379,6 +382,18 @@ public class SchemaSettings {
                 "Setting schema.query must not be defined when loading if schema.mapping "
                     + "contains a function on the left side of a mapping entry");
           }
+          // f1 = (text)'abc' never allowed when loading
+          // (text)'abc' = c1 only allowed if schema.query not present
+          if (containsConstantExpressions(variables)) {
+            throw new IllegalArgumentException(
+                "Misplaced constant expression detected on the right side of a mapping entry; "
+                    + "please review your schema.mapping setting");
+          }
+          if (query != null && containsConstantExpressions(fields)) {
+            throw new IllegalArgumentException(
+                "Setting schema.query must not be defined when loading if schema.mapping "
+                    + "contains a constant expression on the left side of a mapping entry");
+          }
         }
 
         if (schemaGenerationStrategy.isReading()) {
@@ -393,6 +408,27 @@ public class SchemaSettings {
             throw new IllegalArgumentException(
                 "Setting schema.query must not be defined when unloading if schema.mapping "
                     + "contains a function on the right side of a mapping entry");
+          }
+          // (text)'abc' = c1 never allowed when unloading
+          // f1 = (text)'abc' only allowed if schema.query not present and literal selectors
+          // supported
+          if (containsConstantExpressions(fields)) {
+            throw new IllegalArgumentException(
+                "Misplaced constant expression detected on the left side of a mapping entry; "
+                    + "please review your schema.mapping setting");
+          }
+          if (containsConstantExpressions(variables)) {
+            if (query != null) {
+              throw new IllegalArgumentException(
+                  "Setting schema.query must not be defined when unloading if schema.mapping "
+                      + "contains a constant expression on the right side of a mapping entry");
+            }
+            if (!checkLiteralSelectorsSupported(session)) {
+              throw new IllegalStateException(
+                  "At least one constant expression appears on the right side of a mapping entry, "
+                      + "but the cluster does not support CQL literals in the SELECT clause; "
+                      + " please review your schema.mapping setting");
+            }
           }
         }
 
@@ -801,7 +837,7 @@ public class SchemaSettings {
     if (!supported) {
       LOGGER.warn(
           "Skipping {} preservation for column {}: this feature is not supported for CQL type {}.",
-          functionName == WRITETIME ? "timestamp" : "TTL",
+          Objects.equals(functionName, WRITETIME) ? "timestamp" : "TTL",
           col.getName().asCql(true),
           col.getType().asCql(true, true));
     }
@@ -1198,6 +1234,9 @@ public class SchemaSettings {
         // now() -> now()
         // avg(a,1) -> avg(:a,1) - a being another variable in the mapping
         sb.append(((FunctionCall) field).render(NAMED_ASSIGNMENT));
+      } else if (field instanceof CQLLiteral) {
+        // append the literal as is
+        sb.append(((CQLLiteral) field).render(NAMED_ASSIGNMENT));
       } else {
         sb.append(col.render(NAMED_ASSIGNMENT));
       }
@@ -1211,6 +1250,7 @@ public class SchemaSettings {
   }
 
   private static class WriteTimeAndTTL {
+    private CQLFragment value;
     private FunctionCall writetime;
     private FunctionCall ttl;
   }
@@ -1243,10 +1283,12 @@ public class SchemaSettings {
                 allSpecificVariables.add(col);
                 allSpecificVariables.add(functionCall);
                 specificWriteTimesAndTTLs.compute(
-                    (CQLWord) arg,
+                    col,
                     (k, v) -> {
                       if (v == null) {
                         v = new WriteTimeAndTTL();
+                        MappingField field = fieldsToVariables.inverse().get(col).iterator().next();
+                        v.value = field instanceof CQLFragment ? (CQLFragment) field : col;
                       }
                       v.writetime = functionCall;
                       return v;
@@ -1281,6 +1323,8 @@ public class SchemaSettings {
                     (k, v) -> {
                       if (v == null) {
                         v = new WriteTimeAndTTL();
+                        MappingField field = fieldsToVariables.inverse().get(col).iterator().next();
+                        v.value = field instanceof CQLFragment ? (CQLFragment) field : col;
                       }
                       v.ttl = functionCall;
                       return v;
@@ -1332,7 +1376,12 @@ public class SchemaSettings {
       Entry<CQLWord, WriteTimeAndTTL> entry =
           specificWriteTimesAndTTLs.entrySet().iterator().next();
       appendBatchChildQuery(
-          sb, entry.getKey(), entry.getValue().writetime, entry.getValue().ttl, pks);
+          sb,
+          entry.getKey(),
+          entry.getValue().value,
+          entry.getValue().writetime,
+          entry.getValue().ttl,
+          pks);
     } else {
       sb.append("BEGIN UNLOGGED BATCH ");
       // if there are any variables not assigned to specific TTL or writetime function calls,
@@ -1344,7 +1393,12 @@ public class SchemaSettings {
       // generate a specific INSERT INTO query for that variable only + its TTL and/or writetime.
       for (Entry<CQLWord, WriteTimeAndTTL> entry : specificWriteTimesAndTTLs.entrySet()) {
         appendBatchChildQuery(
-            sb, entry.getKey(), entry.getValue().writetime, entry.getValue().ttl, pks);
+            sb,
+            entry.getKey(),
+            entry.getValue().value,
+            entry.getValue().writetime,
+            entry.getValue().ttl,
+            pks);
         sb.append("; ");
       }
       sb.append("APPLY BATCH");
@@ -1355,6 +1409,7 @@ public class SchemaSettings {
   private void appendBatchChildQuery(
       StringBuilder sb,
       CQLWord variable,
+      CQLFragment value,
       @Nullable FunctionCall writetime,
       @Nullable FunctionCall ttl,
       List<CQLWord> pks) {
@@ -1372,7 +1427,7 @@ public class SchemaSettings {
       sb.append(pk.render(NAMED_ASSIGNMENT));
       sb.append(", ");
     }
-    sb.append(variable.render(NAMED_ASSIGNMENT)).append(")");
+    sb.append(value.render(NAMED_ASSIGNMENT)).append(")");
     appendWriteTimeAndTTL(sb, writetime, ttl);
   }
 
@@ -1381,7 +1436,8 @@ public class SchemaSettings {
     StringBuilder sb = new StringBuilder("UPDATE ");
     sb.append(keyspaceName.render(VARIABLE)).append('.').append(tableName.render(VARIABLE));
     // Note: TTL and timestamp are not allowed in counter queries;
-    // a test is made inside the following method
+    // a test is made inside the following method for fixed TTL and timestamps;
+    // function-style TTL and timestamps will be tested below and forbidden as well
     appendWriteTimeAndTTL(sb, null, null);
     sb.append(" SET ");
     Set<CQLFragment> cols = maybeSortCols(fieldsToVariables);
@@ -1393,13 +1449,13 @@ public class SchemaSettings {
       if (col instanceof CQLWord && pks.contains(col)) {
         continue;
       }
-      if (col instanceof FunctionCall) {
+      if (col instanceof FunctionCall || col instanceof CQLLiteral) {
         throw new IllegalArgumentException(
             "Invalid mapping: function calls are not allowed when updating a counter table.");
       }
       // for update queries there can be only one field mapped to a given column
       MappingField field = fieldsToVariables.inverse().get(col).iterator().next();
-      if (field instanceof FunctionCall) {
+      if (field instanceof FunctionCall || field instanceof CQLLiteral) {
         throw new IllegalArgumentException(
             "Invalid mapping: function calls are not allowed when updating a counter table.");
       }
@@ -1630,7 +1686,7 @@ public class SchemaSettings {
       ImmutableMultimap<MappingField, CQLFragment> fieldsToVariables) {
     ImmutableSetMultimap.Builder<Field, CQLWord> builder = ImmutableSetMultimap.builder();
     for (Entry<MappingField, CQLFragment> entry : fieldsToVariables.entries()) {
-      if (entry.getKey() instanceof FunctionCall) {
+      if (entry.getKey() instanceof FunctionCall || entry.getKey() instanceof CQLLiteral) {
         // functions in fields should not be included in the final mapping since
         // the generated query includes the function call as is.
         continue;
@@ -1665,6 +1721,10 @@ public class SchemaSettings {
     return CQLWord.fromInternal(internal);
   }
 
+  private static boolean containsConstantExpressions(Collection<?> coll) {
+    return coll.stream().anyMatch(TypedCQLLiteral.class::isInstance);
+  }
+
   private static boolean containsFunctionCalls(Collection<?> coll) {
     return containsFunctionCalls(coll, Predicates.alwaysTrue());
   }
@@ -1696,5 +1756,16 @@ public class SchemaSettings {
             .getGraphEngine()
             .filter(e -> e.equals(CORE))
             .isPresent();
+  }
+
+  private boolean checkLiteralSelectorsSupported(CqlSession session) {
+    // Literal selectors are supported starting with C* 3.11.5
+    // https://issues.apache.org/jira/browse/CASSANDRA-9243
+    try {
+      session.execute("SELECT (int)1 FROM system.local");
+    } catch (Exception e) {
+      return false;
+    }
+    return true;
   }
 }
