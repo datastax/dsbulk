@@ -609,4 +609,19 @@ class MappingInspectorTest {
         .containsEntry(new MappedMappingField("ttl"), CQLWord.fromInternal("ttl"))
         .containsEntry(new MappedMappingField("writetime"), CQLWord.fromInternal("writetime"));
   }
+
+  @Test
+  void should_accept_nested_function() {
+    assertThat(
+            new MappingInspector("ks.foo(ks.\"BAR\"(1),'abc')=col1", true, MAPPED_ONLY)
+                .getExplicitMappings())
+        .containsEntry(
+            new FunctionCall(
+                CQLWord.fromInternal("ks"),
+                CQLWord.fromInternal("foo"),
+                new FunctionCall(
+                    CQLWord.fromInternal("ks"), CQLWord.fromInternal("BAR"), new CQLLiteral("1")),
+                new CQLLiteral("'abc'")),
+            CQLWord.fromCql("col1"));
+  }
 }

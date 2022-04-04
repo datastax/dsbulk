@@ -123,6 +123,7 @@ functionArgs
 functionArg
     : columnName
     | literal
+    | function
     ;
 
 literal
@@ -265,4 +266,3 @@ QUOTED_IDENTIFIER
 WS
     : ( ' ' | '\t' | '\n' | '\r' )+ -> channel(HIDDEN)
     ;
-
