@@ -153,7 +153,11 @@ class PrometheusManagerTest {
     String version = WorkflowUtils.getBulkLoaderVersion();
     String driverVersion = Session.OSS_DRIVER_COORDINATES.getVersion().toString();
     String expectedLabelsAsString =
-        "{name1=\"value1\",application_version=\"" + version + "\",application_name=\"DataStax Bulk Loader execution1\",client_id=\"de13b396-eb09-31d1-9876-cba56b790be0\",driver_version=\"" + driverVersion + "\",operation_id=\"execution1\",job=\"job1\",}";
+        "{name1=\"value1\",application_version=\""
+            + version
+            + "\",application_name=\"DataStax Bulk Loader execution1\",client_id=\"de13b396-eb09-31d1-9876-cba56b790be0\",driver_version=\""
+            + driverVersion
+            + "\",operation_id=\"execution1\",job=\"job1\",}";
     RequestPatternBuilder builder =
         postRequestedFor(urlPathMatching(pathRegex))
             .withHeader("Content-Type", containing("text/plain"))
