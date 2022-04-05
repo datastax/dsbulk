@@ -42,8 +42,9 @@ public class TypedCQLLiteral extends CQLLiteral implements MappingField {
       case UNALIASED_SELECTOR:
       case INTERNAL:
         return String.format("(%s)%s", castType, this.getLiteral());
+      default:
+        return super.render(mode);
     }
-    return super.render(mode);
   }
 
   @Override
