@@ -245,8 +245,7 @@ class SchemaSettingsTest {
     when(codecFactory.<String, Instant>createConvertingCodec(
             DataTypes.TIMESTAMP, GenericType.STRING, true))
         .thenReturn(codec);
-    when(codecFactory.getContext())
-        .thenReturn(new CommonConversionContext());
+    when(codecFactory.getContext()).thenReturn(new CommonConversionContext());
   }
 
   @Test

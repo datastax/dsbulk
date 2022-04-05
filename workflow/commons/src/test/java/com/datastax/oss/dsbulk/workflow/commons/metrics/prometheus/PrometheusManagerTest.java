@@ -29,12 +29,14 @@ import static org.awaitility.Awaitility.await;
 import static org.slf4j.event.Level.ERROR;
 
 import com.codahale.metrics.MetricRegistry;
+import com.datastax.oss.driver.api.core.session.Session;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.driver.shaded.guava.common.io.Resources;
 import com.datastax.oss.dsbulk.tests.logging.LogCapture;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptingExtension;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptor;
 import com.datastax.oss.dsbulk.tests.utils.NetworkUtils;
+import com.datastax.oss.dsbulk.workflow.api.utils.WorkflowUtils;
 import com.datastax.oss.dsbulk.workflow.commons.metrics.prometheus.PrometheusManager.PullConfig;
 import com.datastax.oss.dsbulk.workflow.commons.metrics.prometheus.PrometheusManager.PushConfig;
 import com.github.tomakehurst.wiremock.WireMockServer;
@@ -148,8 +150,10 @@ class PrometheusManagerTest {
     registry.counter("records/total").inc(123456);
     manager.pushMetrics(Duration.ofSeconds(123), success);
     // then
+    String version = WorkflowUtils.getBulkLoaderVersion();
+    String driverVersion = Session.OSS_DRIVER_COORDINATES.getVersion().toString();
     String expectedLabelsAsString =
-        "{name1=\"value1\",application_version=\"1.8.1-SNAPSHOT\",application_name=\"DataStax Bulk Loader execution1\",client_id=\"de13b396-eb09-31d1-9876-cba56b790be0\",driver_version=\"4.14.0\",operation_id=\"execution1\",job=\"job1\",}";
+        "{name1=\"value1\",application_version=\"" + version + "\",application_name=\"DataStax Bulk Loader execution1\",client_id=\"de13b396-eb09-31d1-9876-cba56b790be0\",driver_version=\"" + driverVersion + "\",operation_id=\"execution1\",job=\"job1\",}";
     RequestPatternBuilder builder =
         postRequestedFor(urlPathMatching(pathRegex))
             .withHeader("Content-Type", containing("text/plain"))
