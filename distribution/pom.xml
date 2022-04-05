@@ -113,6 +113,7 @@
     <profile>
       <id>release</id>
       <build>
+        <finalName>dsbulk-${project.version}</finalName>
         <plugins>
           <plugin>
             <groupId>org.codehaus.mojo</groupId>
@@ -217,7 +218,7 @@
                     <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
                       <resource>META-INF/io.netty.versions.properties</resource>
                     </transformer>
-                    <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
+                    <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                   </transformers>
                 </configuration>
               </execution>
