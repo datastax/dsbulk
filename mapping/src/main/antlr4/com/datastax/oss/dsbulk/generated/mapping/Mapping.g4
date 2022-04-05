@@ -291,10 +291,6 @@ K_INFINITY
     : I N F I N I T Y
     ;
 
-K_CONST
-    : C O N S T ':'
-    ;
-
 INTEGER
     : '-'? DIGIT+
     ;
