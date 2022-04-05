@@ -21,7 +21,7 @@
   <parent>
     <groupId>com.datastax.oss</groupId>
     <artifactId>dsbulk-parent</artifactId>
-    <version>1.8.1-SNAPSHOT</version>
+    <version>1.9.0</version>
   </parent>
   <artifactId>dsbulk-bom</artifactId>
   <packaging>pom</packaging>
