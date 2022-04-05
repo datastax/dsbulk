@@ -2344,8 +2344,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             "--schema.table",
             "preserve_ttl_timestamp",
             "--schema.mapping",
-            "fpk1=pk1, fpk2=pk2, fcc1=cc1, fcc2=cc2, fv1=v1, fv2=v2, "
-                + "wv1=writetime(v1), tv1=ttl(v1), wv2=writetime(v2), tv2=ttl(v2)",
+            "*=*, v1w=writetime(v1), v1t=ttl(v1), v2w=writetime(v2), v2t=ttl(v2)",
             "-timestamp",
             "true",
             "-ttl",
@@ -2357,9 +2356,12 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     Stream<String> line = FileUtils.readAllLinesInDirectoryAsStreamExcludingHeaders(unloadDir);
     assertThat(line)
         .singleElement(InstanceOfAssertFactories.STRING)
-        .contains("1,2,3,4,", csv1, csv2)
-        .containsPattern(",1970-01-01T00:00:00\\.001111Z,111\\d\\d\\d,")
-        .containsPattern(",1970-01-01T00:00:00\\.002222Z,222\\d\\d\\d");
+        .contains("1,2,3,4,")
+        .contains(csv1, csv2)
+        .containsPattern("1970-01-01T00:00:00\\.001111Z")
+        .containsPattern("111\\d\\d\\d,")
+        .containsPattern("1970-01-01T00:00:00\\.002222Z")
+        .containsPattern("222\\d\\d\\d");
 
     assertThat(logs)
         .doesNotHaveMessageContaining("Skipping timestamp preservation")
@@ -2383,8 +2385,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             "--schema.table",
             "preserve_ttl_timestamp",
             "--schema.mapping",
-            "fpk1=pk1, fpk2=pk2, fcc1=cc1, fcc2=cc2, fv1=v1, fv2=v2, "
-                + "wv1=writetime(v1), tv1=ttl(v1), wv2=writetime(v2), tv2=ttl(v2)",
+            "*=*, v1w=writetime(v1), v1t=ttl(v1), v2w=writetime(v2), v2t=ttl(v2)",
             "-timestamp",
             "true",
             "-ttl",
@@ -2408,6 +2409,115 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(row.getInt("cc2")).isEqualTo(4);
     assertThat(row.getObject("v1")).isEqualTo(value1);
     assertThat(row.getObject("v2")).isEqualTo(value2);
+    assertThat(row.getLong("v1w")).isEqualTo(1111L);
+    assertThat(row.getLong("v2w")).isEqualTo(2222L);
+    assertThat(row.getInt("v1t")).isLessThanOrEqualTo(111111).isGreaterThan(111000);
+    assertThat(row.getInt("v2t")).isLessThanOrEqualTo(222222).isGreaterThan(222000);
+
+    assertThat(logs)
+        .doesNotHaveMessageContaining("Skipping timestamp preservation")
+        .doesNotHaveMessageContaining("Skipping TTL preservation");
+  }
+
+  @Test
+  void unload_load_preserving_ttl_and_timestamp_custom_mapping_constant_expressions()
+      throws IOException {
+
+    assumeTrue(
+        ccm.getCassandraVersion().compareTo(V3_11_5) >= 0,
+        "Literal selectors are supported starting with C* 3.11.5, see CASSANDRA-9243");
+
+    session.execute("DROP TABLE IF EXISTS preserve_ttl_timestamp");
+    session.execute(
+        "CREATE TABLE preserve_ttl_timestamp (pk1 int, pk2 int, cc1 int, cc2 int, v1 int, v2 int, PRIMARY KEY ((pk1, pk2), cc1, cc2))");
+    session.execute(
+        "BEGIN BATCH "
+            + "INSERT INTO preserve_ttl_timestamp (pk1, pk2, cc1, cc2, v1) "
+            + "VALUES (1, 2, 3, 4, 100) "
+            + "USING TIMESTAMP 1111 AND TTL 111111; "
+            + "INSERT INTO preserve_ttl_timestamp (pk1, pk2, cc1, cc2, v2) "
+            + "VALUES (1, 2, 3, 4, 200) "
+            + "USING TIMESTAMP 2222; " // no TTL
+            + "APPLY BATCH");
+
+    List<String> args =
+        Lists.newArrayList(
+            "unload",
+            "--log.directory",
+            quoteJson(logDir),
+            "--connector.csv.url",
+            quoteJson(unloadDir),
+            "--connector.csv.header",
+            "true",
+            "--codec.nullStrings",
+            "NULL",
+            "--schema.keyspace",
+            session.getKeyspace().get().asInternal(),
+            "--schema.table",
+            "preserve_ttl_timestamp",
+            "-timestamp",
+            "true",
+            "-ttl",
+            "true");
+
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+
+    Stream<String> line = FileUtils.readAllLinesInDirectoryAsStreamExcludingHeaders(unloadDir);
+    assertThat(line)
+        .singleElement(InstanceOfAssertFactories.STRING)
+        .contains("1,2,3,4,")
+        .contains("100")
+        .contains("200")
+        .containsPattern("1970-01-01T00:00:00\\.001111Z,111\\d\\d\\d")
+        .containsPattern("1970-01-01T00:00:00\\.002222Z,NULL"); // no TTL
+
+    assertThat(logs)
+        .doesNotHaveMessageContaining("Skipping timestamp preservation")
+        .doesNotHaveMessageContaining("Skipping TTL preservation");
+
+    FileUtils.deleteDirectory(logDir);
+    logs.clear();
+    session.execute("TRUNCATE preserve_ttl_timestamp");
+
+    args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            quoteJson(logDir),
+            "--connector.csv.url",
+            quoteJson(unloadDir),
+            "--connector.csv.header",
+            "true",
+            "--schema.keyspace",
+            session.getKeyspace().get().asInternal(),
+            "--schema.table",
+            "preserve_ttl_timestamp",
+            "--schema.mapping",
+            "*=*, (int)222222 = ttl(v2)",
+            "-timestamp",
+            "true",
+            "-ttl",
+            "true");
+
+    status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+
+    ResultSet rs =
+        session.execute(
+            "SELECT pk1, pk2, cc1, cc2, "
+                + "v1, writetime(v1) AS v1w, ttl(v1) as v1t, "
+                + "v2, writetime(v2) AS v2w, ttl(v2) as v2t "
+                + "FROM preserve_ttl_timestamp "
+                + "WHERE pk1 = 1 AND pk2 = 2 AND cc1 = 3 AND cc2 = 4");
+    Row row = rs.one();
+    assertThat(row).isNotNull();
+    assertThat(row.getInt("pk1")).isEqualTo(1);
+    assertThat(row.getInt("pk2")).isEqualTo(2);
+    assertThat(row.getInt("cc1")).isEqualTo(3);
+    assertThat(row.getInt("cc2")).isEqualTo(4);
+    assertThat(row.getObject("v1")).isEqualTo(100);
+    assertThat(row.getObject("v2")).isEqualTo(200);
     assertThat(row.getLong("v1w")).isEqualTo(1111L);
     assertThat(row.getLong("v2w")).isEqualTo(2222L);
     assertThat(row.getInt("v1t")).isLessThanOrEqualTo(111111).isGreaterThan(111000);
@@ -4849,11 +4959,11 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   }
 
   @Test
-  void load_constant_preserve_timestamp() throws IOException {
+  void load_constant_writetime_ttl() {
 
-    session.execute("DROP TABLE IF EXISTS load_constant_preserve_timestamp");
+    session.execute("DROP TABLE IF EXISTS load_constant_writetime_ttl");
     session.execute(
-        "CREATE TABLE load_constant_preserve_timestamp (pk int PRIMARY KEY, v1 int, v2 int)");
+        "CREATE TABLE load_constant_writetime_ttl (pk int PRIMARY KEY, v1 int, v2 int)");
 
     MockConnector.mockReads(RecordUtils.mappedCSV("pk", "1"));
 
@@ -4864,10 +4974,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.keyspace");
     args.add(session.getKeyspace().get().asInternal());
     args.add("--schema.table");
-    args.add("load_constant_preserve_timestamp");
+    args.add("load_constant_writetime_ttl");
     args.add("--schema.mapping");
     args.add(
-        "pk=pk,(int)123=v1,(int)456=v2,(int)1000=ttl(*),(text)'2022-02-02T22:22:22Z'=writetime(*)");
+        "pk=pk,(int)123=v1,(int)456=v2,(int)1000=ttl(*),(timestamp)'2022-02-02T22:22:22Z'=writetime(*)");
 
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
@@ -4878,7 +4988,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
                 "SELECT v1, v2, "
                     + "ttl(v1) as ttlv1, ttl(v2) as ttlv2, "
                     + "writetime(v1) as wtv1, writetime(v2) as wtv2 "
-                    + "FROM load_constant_preserve_timestamp WHERE pk = 1")
+                    + "FROM load_constant_writetime_ttl WHERE pk = 1")
             .all();
     assertThat(rows).hasSize(1);
     assertThat(rows.get(0).getInt("v1")).isEqualTo(123);
