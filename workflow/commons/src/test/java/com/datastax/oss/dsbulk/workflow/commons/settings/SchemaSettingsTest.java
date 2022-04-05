@@ -75,6 +75,7 @@ import com.datastax.oss.driver.api.core.metadata.schema.IndexMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.ViewMetadata;
 import com.datastax.oss.driver.api.core.metadata.token.Token;
 import com.datastax.oss.driver.api.core.metadata.token.TokenRange;
+import com.datastax.oss.driver.api.core.servererrors.SyntaxError;
 import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import com.datastax.oss.driver.internal.core.metadata.token.DefaultTokenMap;
@@ -86,7 +87,12 @@ import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSetMultimap;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import com.datastax.oss.driver.shaded.guava.common.collect.SetMultimap;
 import com.datastax.oss.driver.shaded.guava.common.collect.Sets;
+import com.datastax.oss.dsbulk.codecs.api.CommonConversionContext;
+import com.datastax.oss.dsbulk.codecs.api.ConvertingCodec;
 import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
+import com.datastax.oss.dsbulk.codecs.api.format.temporal.CqlTemporalFormat;
+import com.datastax.oss.dsbulk.codecs.api.format.temporal.TemporalFormat;
+import com.datastax.oss.dsbulk.codecs.text.string.StringToInstantCodec;
 import com.datastax.oss.dsbulk.connectors.api.DefaultIndexedField;
 import com.datastax.oss.dsbulk.connectors.api.DefaultMappedField;
 import com.datastax.oss.dsbulk.connectors.api.Field;
@@ -104,9 +110,11 @@ import com.datastax.oss.dsbulk.workflow.commons.schema.ReadResultCounter;
 import com.datastax.oss.dsbulk.workflow.commons.schema.ReadResultMapper;
 import com.datastax.oss.dsbulk.workflow.commons.schema.RecordMapper;
 import com.typesafe.config.Config;
+import com.typesafe.config.ConfigValueFactory;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -229,6 +237,16 @@ class SchemaSettingsTest {
     when(ps.getVariableDefinitions()).thenReturn(definitions);
     when(ps.getResultSetDefinitions()).thenReturn(definitions);
     when(ps.getId()).thenReturn(ByteBuffer.wrap(new byte[] {1, 2, 3, 4}));
+
+    TemporalFormat format = new CqlTemporalFormat(ZoneOffset.UTC);
+    ConvertingCodec<String, Instant> codec =
+        new StringToInstantCodec(
+            format, ZoneOffset.UTC, EPOCH.atZone(ZoneOffset.UTC), Collections.emptyList());
+    when(codecFactory.<String, Instant>createConvertingCodec(
+            DataTypes.TIMESTAMP, GenericType.STRING, true))
+        .thenReturn(codec);
+    when(codecFactory.getContext())
+        .thenReturn(new CommonConversionContext());
   }
 
   @Test
@@ -243,8 +261,8 @@ class SchemaSettingsTest {
             "table",
             "t1");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, true, false);
-    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    settings.init(session, codecFactory, true, false);
+    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, false);
     assertThat(mapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -261,8 +279,8 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, false, true);
-    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    settings.init(session, codecFactory, false, true);
+    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, false);
     assertThat(mapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -287,9 +305,8 @@ class SchemaSettingsTest {
             "mapping",
             "\"f1=c1,f2=ttl(*),f3=writetime(*)\"");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, true, true);
-    assertThatThrownBy(
-            () -> settings.createRecordMapper(session, recordMetadata, codecFactory, false))
+    settings.init(session, codecFactory, true, true);
+    assertThatThrownBy(() -> settings.createRecordMapper(session, recordMetadata, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("function calls are not allowed when updating a counter table");
   }
@@ -303,11 +320,31 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "keyspace", "ks", "table", "t1", "mapping", "\"f1=c1,now()=c3\"");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, true, true);
-    assertThatThrownBy(
-            () -> settings.createRecordMapper(session, recordMetadata, codecFactory, false))
+    settings.init(session, codecFactory, true, true);
+    assertThatThrownBy(() -> settings.createRecordMapper(session, recordMetadata, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("function calls are not allowed when updating a counter table");
+  }
+
+  @Test
+  void should_error_out_when_counter_table_and_mapping_has_constants() {
+    when(col1.getType()).thenReturn(COUNTER);
+    when(col2.getType()).thenReturn(COUNTER);
+    when(col3.getType()).thenReturn(COUNTER);
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "keyspace",
+            "ks",
+            "table",
+            "t1",
+            "mapping",
+            "\"f1=c1,(text)'abc'=c3\"");
+    SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
+    settings.init(session, codecFactory, true, true);
+    assertThatThrownBy(() -> settings.createRecordMapper(session, recordMetadata, false))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("constant expressions are not allowed when updating a counter table");
   }
 
   @Test
@@ -322,8 +359,8 @@ class SchemaSettingsTest {
             "table",
             "t1");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, true, false);
-    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    settings.init(session, codecFactory, true, false);
+    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, false);
     assertThat(mapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -355,8 +392,8 @@ class SchemaSettingsTest {
             "table",
             "t1");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, true, false);
-    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    settings.init(session, codecFactory, true, false);
+    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, false);
     assertThat(mapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -379,8 +416,8 @@ class SchemaSettingsTest {
             "queryTtl",
             30);
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, false, true);
-    settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    settings.init(session, codecFactory, false, true);
+    settings.createRecordMapper(session, recordMetadata, false);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
@@ -401,8 +438,8 @@ class SchemaSettingsTest {
             "queryTimestamp",
             "\"2017-01-02T00:00:01Z\"");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, false, true);
-    settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    settings.init(session, codecFactory, false, true);
+    settings.createRecordMapper(session, recordMetadata, false);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
@@ -427,8 +464,8 @@ class SchemaSettingsTest {
             "queryTtl",
             25);
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, false, true);
-    settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    settings.init(session, codecFactory, false, true);
+    settings.createRecordMapper(session, recordMetadata, false);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
@@ -454,8 +491,8 @@ class SchemaSettingsTest {
             "query",
             "\"INSERT INTO ks.t1 (c2, c1) VALUES (:c2var, :c1var)\"");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, true, false);
-    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    settings.init(session, codecFactory, true, false);
+    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, false);
     assertThat(mapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -469,8 +506,8 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "mapping", "\"\\\"COL 2\\\", c1\", ", "keyspace", "ks", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, true, false);
-    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    settings.init(session, codecFactory, true, false);
+    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, false);
     assertThat(mapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -485,8 +522,8 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "mapping", "\"\\\"COL 2\\\", c1\", ", "keyspace", "ks", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, false, true);
-    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    settings.init(session, codecFactory, false, true);
+    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, false);
     assertThat(mapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -505,8 +542,8 @@ class SchemaSettingsTest {
             "query",
             "\"insert into ks.t1 (c1,\\\"COL 2\\\") values (:c1, :\\\"COL 2\\\")\"");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, true, false);
-    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    settings.init(session, codecFactory, true, false);
+    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, false);
     assertThat(mapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -520,8 +557,8 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, true, true);
-    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    settings.init(session, codecFactory, true, true);
+    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, false);
     assertThat(mapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -537,8 +574,8 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "keyspace", "ks", "table", "t1", "mapping", "\" *=*, c4 = c3 \"");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, false, true);
-    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    settings.init(session, codecFactory, false, true);
+    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, false);
     assertThat(mapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -554,8 +591,8 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "keyspace", "ks", "table", "t1", "mapping", "\" *=-\\\"COL 2\\\" \"");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, false, true);
-    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    settings.init(session, codecFactory, false, true);
+    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, false);
     assertThat(mapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -576,8 +613,8 @@ class SchemaSettingsTest {
             "mapping",
             "\" *=[-\\\"COL 2\\\", -c3] \"");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, false, true);
-    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    settings.init(session, codecFactory, false, true);
+    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, false);
     assertThat(mapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -597,7 +634,7 @@ class SchemaSettingsTest {
             "table",
             "t1");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    settings.init(session, true, false);
+    settings.init(session, codecFactory, true, false);
     ReadResultMapper mapper =
         settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
     assertThat(mapper).isNotNull();
@@ -615,7 +652,7 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "mapping", "\"\\\"COL 2\\\", c1\", ", "keyspace", "ks", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    settings.init(session, true, false);
+    settings.init(session, codecFactory, true, false);
     ReadResultMapper mapper =
         settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
     assertThat(mapper).isNotNull();
@@ -633,7 +670,7 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "mapping", "\"\\\"COL 2\\\", c1\", ", "keyspace", "ks", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    settings.init(session, false, true);
+    settings.init(session, codecFactory, false, true);
     ReadResultMapper mapper =
         settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
     assertThat(mapper).isNotNull();
@@ -652,7 +689,7 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "keyspace", "ks", "table", "t1", "mapping", "\" *=*, c4 = c3 \"");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    settings.init(session, false, true);
+    settings.init(session, codecFactory, false, true);
     ReadResultMapper mapper =
         settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
     assertThat(mapper).isNotNull();
@@ -671,7 +708,7 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "keyspace", "ks", "table", "t1", "mapping", "\" *=-\\\"COL 2\\\" \"");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    settings.init(session, false, true);
+    settings.init(session, codecFactory, false, true);
     ReadResultMapper mapper =
         settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
     assertThat(mapper).isNotNull();
@@ -695,7 +732,7 @@ class SchemaSettingsTest {
             "mapping",
             "\" *=[-\\\"COL 2\\\", -c3] \"");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    settings.init(session, false, true);
+    settings.init(session, codecFactory, false, true);
     ReadResultMapper mapper =
         settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
     assertThat(mapper).isNotNull();
@@ -716,7 +753,7 @@ class SchemaSettingsTest {
             "query",
             "\"select \\\"COL 2\\\", c1 from ks.t1\"");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    settings.init(session, true, false);
+    settings.init(session, codecFactory, true, false);
     ReadResultMapper mapper =
         settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
     assertThat(mapper).isNotNull();
@@ -733,7 +770,7 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    settings.init(session, false, true);
+    settings.init(session, codecFactory, false, true);
     ReadResultMapper mapper =
         settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
     assertThat(mapper).isNotNull();
@@ -758,8 +795,8 @@ class SchemaSettingsTest {
             "mapping",
             "\" *=*, f1 = writetime(*) \"");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, false, true);
-    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    settings.init(session, codecFactory, false, true);
+    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, false);
     DefaultMapping mapping = (DefaultMapping) getInternalState(mapper, "mapping");
     assertThat(mapping).isNotNull();
     @SuppressWarnings("unchecked")
@@ -785,8 +822,8 @@ class SchemaSettingsTest {
             "mapping",
             "\" f1 = c1 , f2 = c2 , f3 = c3 \" ");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, false, true);
-    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    settings.init(session, codecFactory, false, true);
+    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, false);
     DefaultMapping mapping = (DefaultMapping) getInternalState(mapper, "mapping");
     assertThat(mapping).isNotNull();
     @SuppressWarnings("unchecked")
@@ -810,8 +847,8 @@ class SchemaSettingsTest {
             "query",
             "\"INSERT INTO ks.t1 (c1,c2) VALUES (:c1, :c2) USING TTL 123 AND tImEsTaMp     :\\\"This is a quoted \\\"\\\" variable name\\\"\"");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, false, true);
-    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    settings.init(session, codecFactory, false, true);
+    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, false);
     DefaultMapping mapping = (DefaultMapping) getInternalState(mapper, "mapping");
     assertThat(mapping).isNotNull();
     @SuppressWarnings("unchecked")
@@ -836,8 +873,8 @@ class SchemaSettingsTest {
             "query",
             "\"INSERT INTO ks.t1 (c1,c2) VALUES (?, ?) USING TTL 123 AND tImEsTaMp ?\"");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, false, true);
-    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    settings.init(session, codecFactory, false, true);
+    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, false);
     DefaultMapping mapping = (DefaultMapping) getInternalState(mapper, "mapping");
     assertThat(mapping).isNotNull();
     @SuppressWarnings("unchecked")
@@ -858,8 +895,8 @@ class SchemaSettingsTest {
             "mapping",
             "\" f1 = c1, now() = c3 \"");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, false, true);
-    settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    settings.init(session, codecFactory, false, true);
+    settings.createRecordMapper(session, recordMetadata, false);
     assertThat(getInternalState(settings, "query"))
         .isEqualTo("INSERT INTO ks.t1 (c1, c3) VALUES (:c1, now())");
   }
@@ -876,8 +913,8 @@ class SchemaSettingsTest {
             "mapping",
             "\" f1 = c1, plus(c1,c1) = c3 \"");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, false, true);
-    settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    settings.init(session, codecFactory, false, true);
+    settings.createRecordMapper(session, recordMetadata, false);
     assertThat(getInternalState(settings, "query"))
         .isEqualTo("INSERT INTO ks.t1 (c1, c3) VALUES (:c1, plus(:c1, :c1))");
   }
@@ -894,7 +931,7 @@ class SchemaSettingsTest {
             "mapping",
             "\" f1 = c1, f2 = plus(c2,c3) \"");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    settings.init(session, false, true);
+    settings.init(session, codecFactory, false, true);
     settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
     assertThat(getInternalState(settings, "query"))
         .isEqualTo(
@@ -913,7 +950,7 @@ class SchemaSettingsTest {
             "mapping",
             "\" f1 = c1, f2 = now() \"");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, false, true))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, false, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Misplaced function call detected on the right side of a mapping entry; "
@@ -932,7 +969,7 @@ class SchemaSettingsTest {
             "mapping",
             "\" f1 = c1, now() = c3 \"");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    assertThatThrownBy(() -> settings.init(session, false, true))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, false, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Misplaced function call detected on the left side of a mapping entry; "
@@ -947,7 +984,7 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "query", "\"SELECT a,b,c FROM ks.t1\"");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    settings.init(session, false, true);
+    settings.init(session, codecFactory, false, true);
     settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
     List<?> statements = settings.createReadStatements(session);
     assertThat(statements).hasSize(1);
@@ -980,7 +1017,7 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "keyspace", "ks", "table", "t1", "splits", 3);
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    settings.init(session, false, true);
+    settings.init(session, codecFactory, false, true);
     settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
     List<Statement<?>> statements = settings.createReadStatements(session);
     assertThat(statements).hasSize(3).contains(bs1, bs2, bs3);
@@ -1018,7 +1055,7 @@ class SchemaSettingsTest {
             "splits",
             3);
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    settings.init(session, false, true);
+    settings.init(session, codecFactory, false, true);
     settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
     List<Statement<?>> statements = settings.createReadStatements(session);
     assertThat(statements).hasSize(3).contains(bs1, bs2, bs3);
@@ -1057,7 +1094,7 @@ class SchemaSettingsTest {
             "splits",
             3);
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    settings.init(session, false, true);
+    settings.init(session, codecFactory, false, true);
     settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
     List<Statement<?>> statements = settings.createReadStatements(session);
     assertThat(statements).hasSize(3).contains(bs1, bs2, bs3);
@@ -1089,7 +1126,7 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "keyspace", "ks", "table", "t1", "splits", 3);
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    settings.init(session, false, true);
+    settings.init(session, codecFactory, false, true);
     settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
     List<Statement<?>> statements = settings.createReadStatements(session);
     assertThat(statements).hasSize(3).contains(bs1, bs2, bs3);
@@ -1101,7 +1138,7 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_COUNT);
-    settings.init(session, false, true);
+    settings.init(session, codecFactory, false, true);
     ReadResultCounter counter =
         settings.createReadResultCounter(session, codecFactory, EnumSet.of(global), 10);
     assertThat(counter).isNotNull();
@@ -1117,7 +1154,7 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_COUNT);
-    settings.init(session, false, true);
+    settings.init(session, codecFactory, false, true);
     ReadResultCounter counter =
         settings.createReadResultCounter(session, codecFactory, EnumSet.of(partitions), 10);
     assertThat(counter).isNotNull();
@@ -1132,7 +1169,7 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_COUNT);
-    settings.init(session, false, true);
+    settings.init(session, codecFactory, false, true);
     ReadResultCounter counter =
         settings.createReadResultCounter(session, codecFactory, EnumSet.of(hosts), 10);
     assertThat(counter).isNotNull();
@@ -1147,7 +1184,7 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_COUNT);
-    settings.init(session, false, true);
+    settings.init(session, codecFactory, false, true);
     ReadResultCounter counter =
         settings.createReadResultCounter(session, codecFactory, EnumSet.of(ranges), 10);
     assertThat(counter).isNotNull();
@@ -1163,7 +1200,7 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_COUNT);
-    settings.init(session, false, true);
+    settings.init(session, codecFactory, false, true);
     ReadResultCounter counter =
         settings.createReadResultCounter(session, codecFactory, EnumSet.of(partitions, ranges), 10);
     assertThat(counter).isNotNull();
@@ -1180,7 +1217,7 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "query", "\"SELECT c1, c3 FROM ks.t1 WHERE c1 = 0\"");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_COUNT);
-    settings.init(session, false, true);
+    settings.init(session, codecFactory, false, true);
     ReadResultCounter counter =
         settings.createReadResultCounter(session, codecFactory, EnumSet.of(global), 10);
     assertThat(counter).isNotNull();
@@ -1195,7 +1232,7 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "query", "\"SELECT c1, c3 FROM ks.t1 WHERE c1 = 0\"");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_COUNT);
-    settings.init(session, false, true);
+    settings.init(session, codecFactory, false, true);
     assertThatThrownBy(
             () ->
                 settings.createReadResultCounter(
@@ -1223,7 +1260,7 @@ class SchemaSettingsTest {
             "query",
             "\"SELECT a,b,c FROM t1 WHERE token(a) > :\\\"My Start\\\" and token(a) <= :\\\"My End\\\"\"");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    settings.init(session, false, true);
+    settings.init(session, codecFactory, false, true);
     settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -1244,7 +1281,7 @@ class SchemaSettingsTest {
             "query",
             "\"SELECT a,b,c FROM t1 WHERE foo = :bar\"");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    settings.init(session, false, true);
+    settings.init(session, codecFactory, false, true);
     settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
     assertThatThrownBy(() -> settings.createReadStatements(session))
         .isInstanceOf(IllegalArgumentException.class)
@@ -1268,7 +1305,7 @@ class SchemaSettingsTest {
             "query",
             "\"SELECT a,b,c FROM t1 WHERE token(a) >= :foo and token(a) < :bar \"");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    settings.init(session, false, true);
+    settings.init(session, codecFactory, false, true);
     settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
     assertThatThrownBy(() -> settings.createReadStatements(session))
         .isInstanceOf(IllegalArgumentException.class)
@@ -1283,7 +1320,7 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "keyspace", "KS", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, false, true))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, false, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Keyspace \"KS\" does not exist, however a keyspace ks was found. Did you mean to use -k ks?");
@@ -1294,7 +1331,7 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "T1");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, false, true))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, false, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Table \"T1\" does not exist, however a table t1 was found. Did you mean to use -t t1?");
@@ -1305,7 +1342,7 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "MV1");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    assertThatThrownBy(() -> settings.init(session, false, true))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, false, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Table or materialized view \"MV1\" does not exist, however a materialized view mv1 was found. Did you mean to use -t mv1?");
@@ -1316,7 +1353,7 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "keyspace", "MyKs", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, false, true))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, false, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Keyspace \"MyKs\" does not exist");
   }
@@ -1326,7 +1363,7 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "MyTable");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, false, true))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, false, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Table \"MyTable\" does not exist");
   }
@@ -1336,7 +1373,7 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "MyTable");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    assertThatThrownBy(() -> settings.init(session, false, true))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, false, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Table or materialized view \"MyTable\" does not exist");
   }
@@ -1347,7 +1384,7 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "keyspace", "ks", "table", "t1", "mapping", "\"c1=c1\"");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, true, false))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Schema mapping contains named fields, but connector only supports indexed fields");
@@ -1357,7 +1394,7 @@ class SchemaSettingsTest {
   void should_error_invalid_schema_settings() {
     Config config = TestConfigUtils.createTestConfig("dsbulk.schema");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, true, false))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "When schema.query is not defined, then either schema.keyspace or schema.graph must be defined, and either schema.table, schema.vertex or schema.edge must be defined");
@@ -1367,7 +1404,7 @@ class SchemaSettingsTest {
   void should_error_invalid_schema_mapping_missing_keyspace_and_table() {
     Config config = TestConfigUtils.createTestConfig("dsbulk.schema", "mapping", "\"c1=c2\"");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, true, false))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "When schema.query is not defined, then either schema.keyspace or schema.graph must be defined, and either schema.table, schema.vertex or schema.edge must be defined");
@@ -1379,7 +1416,7 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "query", "\"INSERT INTO ks.t1 (col1) VALUES (?)\"", "keyspace", "ks");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, true, false))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "schema.keyspace must not be provided when schema.query contains a keyspace-qualified statement");
@@ -1391,7 +1428,7 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "query", "\"INSERT INTO t1 (col1) VALUES (?)\"");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, true, false))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "schema.keyspace must be provided when schema.query does not contain a keyspace-qualified statement");
@@ -1404,7 +1441,7 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "query", "\"INSERT INTO ks.t1 (col1) VALUES (?)\"");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, true, false))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("schema.query references a non-existent keyspace: ks");
   }
@@ -1416,7 +1453,7 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "query", "\"INSERT INTO ks.t1 (col1) VALUES (?)\"");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, true, false))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "schema.query references a non-existent table or materialized view: t1");
@@ -1434,7 +1471,7 @@ class SchemaSettingsTest {
             "keyspace",
             "ks");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, true, false))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "schema.query must not be defined if schema.queryTtl or schema.queryTimestamp is defined");
@@ -1452,7 +1489,7 @@ class SchemaSettingsTest {
             "keyspace",
             "ks");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, true, false))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "schema.query must not be defined if schema.queryTtl or schema.queryTimestamp is defined");
@@ -1470,7 +1507,7 @@ class SchemaSettingsTest {
             "keyspace",
             "ks");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, false, true))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, false, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Setting schema.query must not be defined when loading if schema.mapping "
@@ -1489,7 +1526,7 @@ class SchemaSettingsTest {
             "table",
             "table");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, true, false))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "schema.query must not be defined if schema.table, schema.vertex or schema.edge are defined");
@@ -1507,7 +1544,7 @@ class SchemaSettingsTest {
             "keyspace",
             "ks");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, false, true))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, false, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Setting schema.query must not be defined when loading if schema.mapping contains a writetime or ttl function on the right side of a mapping entry");
@@ -1519,7 +1556,7 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "keyspace", "ks", "table", "t1", "mapping", "\"col1,col2\"");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_COUNT);
-    assertThatThrownBy(() -> settings.init(session, true, false))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("schema.mapping must not be defined when counting rows in a table");
   }
@@ -1530,17 +1567,17 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "queryTimestamp", "junk", "keyspace", "ks", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, true, false))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
-            "Expecting schema.queryTimestamp to be in ISO_ZONED_DATE_TIME format but got 'junk'");
+            "Expecting schema.queryTimestamp to be in CQL_TIMESTAMP format but got 'junk'");
   }
 
   @Test
   void should_error_invalid_schema_missing_keyspace() {
     Config config = TestConfigUtils.createTestConfig("dsbulk.schema", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, true, false))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "schema.keyspace or schema.graph must be defined if schema.table, schema.vertex or schema.edge are defined");
@@ -1558,7 +1595,7 @@ class SchemaSettingsTest {
             "keyspace",
             "ks");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, true, false))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Setting schema.query must not be defined when loading "
@@ -1577,7 +1614,7 @@ class SchemaSettingsTest {
             "keyspace",
             "ks");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    assertThatThrownBy(() -> settings.init(session, false, true))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, false, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Setting schema.query must not be defined when unloading "
@@ -1590,7 +1627,7 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "keyspace", "ks", "table", "t1", "nullToUnset", "NotABoolean");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, true, false))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Invalid value for dsbulk.schema.nullToUnset, expecting BOOLEAN, got STRING");
@@ -1608,9 +1645,8 @@ class SchemaSettingsTest {
             "mapping",
             "\"fieldA = nonExistentCol\"");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, false, true);
-    assertThatThrownBy(
-            () -> settings.createRecordMapper(session, recordMetadata, codecFactory, false))
+    settings.init(session, codecFactory, false, true);
+    assertThatThrownBy(() -> settings.createRecordMapper(session, recordMetadata, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Schema mapping entry \"nonExistentCol\" doesn't match any column found in table t1");
@@ -1631,7 +1667,7 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "graph", "ks", "vertex", "v1");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, false, true))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, false, true))
         .isInstanceOf(IllegalStateException.class)
         .hasMessage("Graph operations not available due to incompatible cluster");
     assertThat(logs)
@@ -1649,7 +1685,7 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "graph", "ks", "vertex", "v1");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, false, true))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, false, true))
         .isInstanceOf(IllegalStateException.class)
         .hasMessage("Graph operations requested but provided keyspace is not a graph: ks");
   }
@@ -1663,7 +1699,7 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "graph", "ks", "vertex", "v1");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, false, true))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, false, true))
         .isInstanceOf(IllegalStateException.class)
         .hasMessage(
             "Graph operations requested but provided graph ks was created with an unsupported graph engine: Classic");
@@ -1675,7 +1711,7 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, true, false);
+    settings.init(session, codecFactory, true, false);
     assertThat(logs)
         .hasMessageContaining(
             "Provided keyspace is a graph; "
@@ -1689,7 +1725,7 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, true, false);
+    settings.init(session, codecFactory, true, false);
     assertThat(logs)
         .hasMessageContaining(
             "Provided keyspace is a graph created with a legacy graph engine: "
@@ -1707,9 +1743,8 @@ class SchemaSettingsTest {
             "mapping",
             "\"fieldA = nonExistentCol\"");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, false, true);
-    assertThatThrownBy(
-            () -> settings.createRecordMapper(session, recordMetadata, codecFactory, false))
+    settings.init(session, codecFactory, false, true);
+    assertThatThrownBy(() -> settings.createRecordMapper(session, recordMetadata, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Schema mapping entry \"nonExistentCol\" doesn't match any bound variable found in query: 'INSERT INTO ks.t1 (c1, c2) VALUES (:c1, :c2)'");
@@ -1721,9 +1756,8 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "keyspace", "ks", "table", "t1", "mapping", "\"fieldA = c3\"");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, false, true);
-    assertThatThrownBy(
-            () -> settings.createRecordMapper(session, recordMetadata, codecFactory, false))
+    settings.init(session, codecFactory, false, true);
+    assertThatThrownBy(() -> settings.createRecordMapper(session, recordMetadata, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Missing required primary key column c1 from schema.mapping or schema.query");
   }
@@ -1735,9 +1769,8 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "query", "\"INSERT INTO ks.t1 (c2) VALUES (:c2)\"");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, false, true);
-    assertThatThrownBy(
-            () -> settings.createRecordMapper(session, recordMetadata, codecFactory, false))
+    settings.init(session, codecFactory, false, true);
+    assertThatThrownBy(() -> settings.createRecordMapper(session, recordMetadata, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Missing required primary key column c1 from schema.mapping or schema.query");
   }
@@ -1753,8 +1786,8 @@ class SchemaSettingsTest {
     when(table.getClusteringColumns()).thenReturn(ImmutableMap.of(col2, ClusteringOrder.ASC));
     when(col3.isStatic()).thenReturn(true);
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, false, true);
-    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    settings.init(session, codecFactory, false, true);
+    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, false);
     @SuppressWarnings("unchecked")
     Set<CQLWord> primaryKeyVariables =
         (Set<CQLWord>) getInternalState(mapper, "primaryKeyVariables");
@@ -1766,7 +1799,7 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_COUNT);
-    settings.init(session, false, true);
+    settings.init(session, codecFactory, false, true);
     assertThatThrownBy(
             () ->
                 settings.createReadResultCounter(session, codecFactory, EnumSet.of(partitions), 10))
@@ -1800,7 +1833,7 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "keyspace", "ks", "query", "\"SELECT a,b,c FROM t1\"", "splits", 3);
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    settings.init(session, false, true);
+    settings.init(session, codecFactory, false, true);
     settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
     List<?> stmts = settings.createReadStatements(session);
     assertThat(stmts).hasSize(3);
@@ -1842,7 +1875,7 @@ class SchemaSettingsTest {
             "splits",
             3);
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    settings.init(session, false, true);
+    settings.init(session, codecFactory, false, true);
     settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
     List<?> stmts = settings.createReadStatements(session);
     assertThat(stmts).hasSize(3);
@@ -1886,7 +1919,7 @@ class SchemaSettingsTest {
             "splits",
             3);
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    settings.init(session, false, true);
+    settings.init(session, codecFactory, false, true);
     settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
     List<?> stmts = settings.createReadStatements(session);
     assertThat(stmts).hasSize(3);
@@ -1902,7 +1935,7 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "keyspace", "ks", "graph", "graph1");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, true, false))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Settings schema.keyspace and schema.graph are mutually exclusive");
   }
@@ -1912,7 +1945,7 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "table", "t1", "vertex", "v1");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, true, false))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Settings schema.table and schema.vertex are mutually exclusive");
   }
@@ -1921,7 +1954,7 @@ class SchemaSettingsTest {
   void should_error_when_table_and_edge_both_present() {
     Config config = TestConfigUtils.createTestConfig("dsbulk.schema", "table", "t1", "edge", "e1");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, true, false))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Settings schema.table and schema.edge are mutually exclusive");
   }
@@ -1930,7 +1963,7 @@ class SchemaSettingsTest {
   void should_error_when_vertex_and_edge_both_present() {
     Config config = TestConfigUtils.createTestConfig("dsbulk.schema", "vertex", "v1", "edge", "e1");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, true, false))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Settings schema.vertex and schema.edge are mutually exclusive");
   }
@@ -1939,7 +1972,7 @@ class SchemaSettingsTest {
   void should_error_when_edge_without_from_vertex() {
     Config config = TestConfigUtils.createTestConfig("dsbulk.schema", "edge", "e1");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, true, false))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Setting schema.from is required when schema.edge is specified");
   }
@@ -1948,7 +1981,7 @@ class SchemaSettingsTest {
   void should_error_when_edge_without_to_vertex() {
     Config config = TestConfigUtils.createTestConfig("dsbulk.schema", "edge", "e1", "from", "v1");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, true, false))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Setting schema.to is required when schema.edge is specified");
   }
@@ -1963,7 +1996,7 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "keyspace", "ks", "query", "\"SELECT a,b,c FROM t1 WHERE c1 = 1\"");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    settings.init(session, false, true);
+    settings.init(session, codecFactory, false, true);
     settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
     List<?> stmts = settings.createReadStatements(session);
     assertThat(stmts).hasSize(1);
@@ -1980,8 +2013,8 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "nullToUnset", true, "keyspace", "ks", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, true, false);
-    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    settings.init(session, codecFactory, true, false);
+    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, false);
     if (version.getCode() < V4.getCode()) {
       assertThat((Boolean) getInternalState(mapper, NULL_TO_UNSET)).isFalse();
     } else {
@@ -1996,8 +2029,8 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "nullToUnset", true, "keyspace", "ks", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, false, true);
-    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    settings.init(session, codecFactory, false, true);
+    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, false);
     assertThat(mapper).isNotNull();
     assertThat((Boolean) getInternalState(mapper, NULL_TO_UNSET)).isFalse();
     assertThat(logs)
@@ -2013,7 +2046,7 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, false, false))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, false, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Connector must support at least one of indexed or mapped mappings");
   }
@@ -2034,8 +2067,8 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, false, true);
-    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    settings.init(session, codecFactory, false, true);
+    RecordMapper mapper = settings.createRecordMapper(session, recordMetadata, false);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
@@ -2059,7 +2092,7 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    settings.init(session, false, true);
+    settings.init(session, codecFactory, false, true);
     ReadResultMapper mapper =
         settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
@@ -2085,7 +2118,7 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    settings.init(session, false, true);
+    settings.init(session, codecFactory, false, true);
     ReadResultMapper mapper =
         settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
@@ -2101,7 +2134,7 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "graph", "ks", "vertex", "v1");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, true, false))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Vertex label v1 does not exist");
   }
@@ -2114,7 +2147,7 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "graph", "ks", "vertex", "\"V1\"");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, true, false))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Vertex label \"V1\" does not exist, however a vertex label v1 was found. Did you mean to use -v v1?");
@@ -2126,7 +2159,7 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "graph", "ks", "edge", "e1", "from", "v1", "to", "v2");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, true, false))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Edge label e1 from v1 to v2 does not exist");
   }
@@ -2142,7 +2175,7 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "graph", "ks", "edge", "\"E1\"", "from", "\"V1\"", "to", "\"V2\"");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    assertThatThrownBy(() -> settings.init(session, true, false))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "Edge label \"E1\" from \"V1\" to \"V2\" does not exist, however an edge label e1 from v1 to \"V2\" was found. Did you mean to use -e e1 -from v1 -to \"V2\"?");
@@ -2157,7 +2190,7 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "graph", "ks", "vertex", "v1");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, true, false);
+    settings.init(session, codecFactory, true, false);
     assertThat(getInternalState(settings, "table")).isSameAs(table);
   }
 
@@ -2173,7 +2206,7 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "graph", "ks", "edge", "e1", "from", "v1", "to", "v2");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, true, false);
+    settings.init(session, codecFactory, true, false);
     assertThat(getInternalState(settings, "table")).isSameAs(table);
   }
 
@@ -2183,7 +2216,7 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "query", "\"select * from ks.t1 LIMIT 10\"");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, true, true);
+    settings.init(session, codecFactory, true, true);
     assertThat(getInternalState(settings, "query")).isEqualTo("select * from ks.t1 LIMIT 10");
   }
 
@@ -2203,7 +2236,7 @@ class SchemaSettingsTest {
             "table",
             quoteJson(tableName.asInternal()));
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, false, true);
+    settings.init(session, codecFactory, false, true);
     assertThat(settings.getTargetTableURI()).isEqualTo(uri);
   }
 
@@ -2227,8 +2260,8 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "keyspace", "ks", "table", "t1", "mapping", mapping);
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, true, true);
-    settings.createRecordMapper(session, recordMetadata, codecFactory, false);
+    settings.init(session, codecFactory, true, true);
+    settings.createRecordMapper(session, recordMetadata, false);
     assertThat(getInternalState(settings, "query")).isEqualTo(expectedQuery);
     assertThat(getInternalState(settings, "preparedStatements")).asList().hasSize(1);
   }
@@ -2315,7 +2348,7 @@ class SchemaSettingsTest {
             "mapping",
             "\"c1, writetime(c3), ttl(\\\"COL 2\\\") \"");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    settings.init(session, true, true);
+    settings.init(session, codecFactory, true, true);
     settings.createReadResultMapper(session, recordMetadata, codecFactory, false);
     assertThat(getInternalState(settings, "query"))
         .isEqualTo(
@@ -2333,9 +2366,8 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "keyspace", "ks", "table", "t1", "mapping", mapping);
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, true, true);
-    assertThatThrownBy(
-            () -> settings.createRecordMapper(session, recordMetadata, codecFactory, false))
+    settings.init(session, codecFactory, true, true);
+    assertThatThrownBy(() -> settings.createRecordMapper(session, recordMetadata, false))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining(expectedError);
   }
@@ -2370,7 +2402,7 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "keyspace", "ks", "table", "t1", "mapping", mapping);
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    assertThatThrownBy(() -> settings.init(session, true, true))
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(expectedError);
   }
@@ -2411,9 +2443,9 @@ class SchemaSettingsTest {
             "mapping",
             mapping);
     SchemaSettings settings = new SchemaSettings(config, schemaGenerationStrategy);
-    settings.init(session, true, true);
+    settings.init(session, codecFactory, true, true);
     if (schemaGenerationStrategy.isWriting()) {
-      settings.createRecordMapper(session, recordMetadata, codecFactory, true);
+      settings.createRecordMapper(session, recordMetadata, true);
     } else {
       settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
     }
@@ -2527,9 +2559,8 @@ class SchemaSettingsTest {
             "mapping",
             "\"*=*, f1 = writetime(*)\"");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, true, true);
-    assertThatThrownBy(
-            () -> settings.createRecordMapper(session, recordMetadata, codecFactory, false))
+    settings.init(session, codecFactory, true, true);
+    assertThatThrownBy(() -> settings.createRecordMapper(session, recordMetadata, false))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("writetime(*) is not allowed when schema.preserveTimestamp is true");
   }
@@ -2548,15 +2579,108 @@ class SchemaSettingsTest {
             "mapping",
             "\"*=*, f1 = ttl(*)\"");
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, true, true);
-    assertThatThrownBy(
-            () -> settings.createRecordMapper(session, recordMetadata, codecFactory, false))
+    settings.init(session, codecFactory, true, true);
+    assertThatThrownBy(() -> settings.createRecordMapper(session, recordMetadata, false))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("ttl(*) is not allowed when schema.preserveTtl is true");
   }
 
-  // TODO Function calls are not allowed when updating a counter table.
-  // TODO Cannot set TTL or timestamp when updating a counter table.
+  @Test
+  void should_reject_non_inferring_mapping_when_preserving_ttl() {
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "keyspace",
+            "ks",
+            "table",
+            "t1",
+            "preserveTtl",
+            true,
+            "mapping",
+            "\"f1 = c1, f2 = c2\"");
+    SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, true))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Setting schema.mapping must contain an inferring entry");
+  }
+
+  @Test
+  void should_reject_non_inferring_mapping_when_preserving_timestamp() {
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "keyspace",
+            "ks",
+            "table",
+            "t1",
+            "preserveTimestamp",
+            true,
+            "mapping",
+            "\"f1 = c1, f2 = c2\"");
+    SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, true))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Setting schema.mapping must contain an inferring entry");
+  }
+
+  @Test
+  void should_not_allow_function_on_left_side_when_loading_counter_table() {
+    when(col2.getType()).thenReturn(COUNTER);
+    when(col3.getType()).thenReturn(COUNTER);
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "keyspace",
+            "ks",
+            "table",
+            "t1",
+            "mapping",
+            quoteJson("fieldA=c1,fieldB=\"COL 2\",now()=c3"));
+    SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
+    settings.init(session, codecFactory, true, true);
+    assertThatThrownBy(() -> settings.createRecordMapper(session, recordMetadata, false))
+        .hasMessageContaining("function calls are not allowed when updating a counter table");
+  }
+
+  @Test
+  void should_not_allow_ttl_when_loading_counter_table() {
+    when(col2.getType()).thenReturn(COUNTER);
+    when(col3.getType()).thenReturn(COUNTER);
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "keyspace",
+            "ks",
+            "table",
+            "t1",
+            "mapping",
+            quoteJson("fieldA=c1,fieldB=\"COL 2\",fieldC=ttl(*)"));
+    SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
+    settings.init(session, codecFactory, true, true);
+    assertThatThrownBy(() -> settings.createRecordMapper(session, recordMetadata, false))
+        .hasMessageContaining("function calls are not allowed when updating a counter table");
+  }
+
+  @Test
+  void should_not_allow_fixed_ttl_on_right_side_when_loading_counter_table() {
+    when(col2.getType()).thenReturn(COUNTER);
+    when(col3.getType()).thenReturn(COUNTER);
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "keyspace",
+            "ks",
+            "table",
+            "t1",
+            "queryTtl",
+            "123",
+            "mapping",
+            quoteJson("fieldA=c1,fieldB=\"COL 2\",fieldC=c3"));
+    SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
+    settings.init(session, codecFactory, true, true);
+    assertThatThrownBy(() -> settings.createRecordMapper(session, recordMetadata, false))
+        .hasMessageContaining("Cannot set TTL or timestamp when updating a counter table");
+  }
 
   @Test
   void should_not_preserve_timestamp_when_unsupported_type() {
@@ -2565,7 +2689,7 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "keyspace", "ks", "table", "t1", "preserveTimestamp", true);
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    settings.init(session, true, true);
+    settings.init(session, codecFactory, true, true);
     settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
     assertThat(getInternalState(settings, "query"))
         .isEqualTo(
@@ -2583,7 +2707,7 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "keyspace", "ks", "table", "t1", "preserveTtl", true);
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
-    settings.init(session, true, true);
+    settings.init(session, codecFactory, true, true);
     settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
     assertThat(getInternalState(settings, "query"))
         .isEqualTo(
@@ -2600,8 +2724,8 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "query", StringUtils.quoteJson(query));
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, true, true);
-    settings.createRecordMapper(session, recordMetadata, codecFactory, true);
+    settings.init(session, codecFactory, true, true);
+    settings.createRecordMapper(session, recordMetadata, true);
     assertThat(getInternalState(settings, "preparedStatements")).asList().hasSize(2);
     List<String> childStatements = new QueryInspector(query).getBatchChildStatements();
     verify(session).prepare(childStatements.get(0));
@@ -2678,9 +2802,8 @@ class SchemaSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "query", StringUtils.quoteJson(query));
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, true, true);
-    assertThatThrownBy(
-            () -> settings.createRecordMapper(session, recordMetadata, codecFactory, true))
+    settings.init(session, codecFactory, true, true);
+    assertThatThrownBy(() -> settings.createRecordMapper(session, recordMetadata, true))
         .isInstanceOf(NestedBatchException.class)
         .hasMessageContaining(
             "Batching cannot be enabled when the prepared query is a BATCH of type " + batchType);
@@ -2722,12 +2845,333 @@ class SchemaSettingsTest {
                     + "INSERT INTO ks.t1 (c1, c3) VALUES (:c1, :c3) "
                     + "APPLY BATCH"));
     SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, true, true);
-    assertThatThrownBy(
-            () -> settings.createRecordMapper(session, recordMetadata, codecFactory, true))
+    settings.init(session, codecFactory, true, true);
+    assertThatThrownBy(() -> settings.createRecordMapper(session, recordMetadata, true))
         .isInstanceOf(NestedBatchException.class)
         .hasMessageContaining(
             "Batching cannot be enabled when the prepared query is a BATCH with a batch-level USING clause");
+  }
+
+  @Test
+  void should_infer_insert_query_with_constant_in_mapping() {
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "keyspace",
+            "ks",
+            "table",
+            "t1",
+            "mapping",
+            quoteJson("fieldA=c1,now()=\"COL 2\",(text)'abc'=c3"));
+    SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
+    settings.init(session, codecFactory, true, true);
+    settings.createRecordMapper(session, recordMetadata, false);
+    assertThat(getInternalState(settings, "query"))
+        .isEqualTo("INSERT INTO ks.t1 (c1, \"COL 2\", c3) VALUES (:c1, now(), 'abc')");
+  }
+
+  @Test
+  void should_infer_select_query_with_constant_in_mapping() {
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "keyspace",
+            "ks",
+            "table",
+            "t1",
+            "mapping",
+            quoteJson("fieldA=c1,fieldB=now(),fieldC=(text)'abc'"));
+    SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
+    settings.init(session, codecFactory, true, true);
+    settings.createReadResultMapper(session, recordMetadata, codecFactory, false);
+    assertThat(getInternalState(settings, "query"))
+        .isEqualTo(
+            "SELECT c1, now() AS \"now()\", (text)'abc' AS \"(text)'abc'\" FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end");
+  }
+
+  @Test
+  void should_infer_batch_query_with_constant_in_mapping() {
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "keyspace",
+            "ks",
+            "table",
+            "t1",
+            "mapping",
+            quoteJson(
+                "fieldA=c1,fieldB=\"COL 2\",(text)'abc'=c3,"
+                    + "fieldD=writetime(\"COL 2\"),fieldE=writetime(c3),"
+                    + "fieldF=ttl(\"COL 2\"),fieldG=ttl(c3)"));
+    SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
+    settings.init(session, codecFactory, true, true);
+    settings.createRecordMapper(session, recordMetadata, false);
+    assertThat(getInternalState(settings, "query"))
+        .isEqualTo(
+            "BEGIN UNLOGGED BATCH "
+                + "INSERT INTO ks.t1 (c1, \"COL 2\") VALUES (:c1, :\"COL 2\") USING TTL :\"ttl(COL 2)\" AND TIMESTAMP :\"writetime(COL 2)\"; "
+                + "INSERT INTO ks.t1 (c1, c3) VALUES (:c1, 'abc') USING TTL :\"ttl(c3)\" AND TIMESTAMP :\"writetime(c3)\"; "
+                + "APPLY BATCH");
+  }
+
+  @Test
+  void should_infer_batch_query_with_constant_in_mapping_2() {
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "keyspace",
+            "ks",
+            "table",
+            "t1",
+            "mapping",
+            quoteJson(
+                "fieldA=c1,fieldB=\"COL 2\",(text)'abc'=c3,"
+                    + "fieldD=writetime(\"COL 2\"),fieldF=ttl(\"COL 2\")"));
+    SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
+    settings.init(session, codecFactory, true, true);
+    settings.createRecordMapper(session, recordMetadata, false);
+    assertThat(getInternalState(settings, "query"))
+        .isEqualTo(
+            "BEGIN UNLOGGED BATCH "
+                + "INSERT INTO ks.t1 (c1, c3) VALUES (:c1, 'abc'); "
+                + "INSERT INTO ks.t1 (c1, \"COL 2\") VALUES (:c1, :\"COL 2\") USING TTL :\"ttl(COL 2)\" AND TIMESTAMP :\"writetime(COL 2)\"; "
+                + "APPLY BATCH");
+  }
+
+  @Test
+  void should_infer_batch_query_with_constant_in_mapping_3() {
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "keyspace",
+            "ks",
+            "table",
+            "t1",
+            "mapping",
+            quoteJson(
+                "fieldA=c1,fieldB=\"COL 2\",(text)'abc'=c3,"
+                    + "(timestamp)'2022-02-02T22:22:22Z'=writetime(\"COL 2\"),(int)123456=ttl(\"COL 2\"),"
+                    + "(timestamp)'2022-02-02T23:23:23Z'=writetime(*)"));
+    SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
+    settings.init(session, codecFactory, true, true);
+    settings.createRecordMapper(session, recordMetadata, false);
+    assertThat(getInternalState(settings, "query"))
+        .isEqualTo(
+            "BEGIN UNLOGGED BATCH "
+                + "INSERT INTO ks.t1 (c1, c3) VALUES (:c1, 'abc') USING TIMESTAMP 1643844203000000; "
+                + "INSERT INTO ks.t1 (c1, \"COL 2\") VALUES (:c1, :\"COL 2\") USING TTL 123456 AND TIMESTAMP 1643840542000000; "
+                + "APPLY BATCH");
+  }
+
+  @Test
+  void should_infer_batch_query_with_function_in_mapping() {
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "keyspace",
+            "ks",
+            "table",
+            "t1",
+            "mapping",
+            quoteJson(
+                "fieldA=c1,fieldB=\"COL 2\",now()=c3,"
+                    + "fieldD=writetime(\"COL 2\"),fieldE=writetime(c3),"
+                    + "fieldF=ttl(\"COL 2\"),fieldG=ttl(c3)"));
+    SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
+    settings.init(session, codecFactory, true, true);
+    settings.createRecordMapper(session, recordMetadata, false);
+    assertThat(getInternalState(settings, "query"))
+        .isEqualTo(
+            "BEGIN UNLOGGED BATCH "
+                + "INSERT INTO ks.t1 (c1, \"COL 2\") VALUES (:c1, :\"COL 2\") USING TTL :\"ttl(COL 2)\" AND TIMESTAMP :\"writetime(COL 2)\"; "
+                + "INSERT INTO ks.t1 (c1, c3) VALUES (:c1, now()) USING TTL :\"ttl(c3)\" AND TIMESTAMP :\"writetime(c3)\"; "
+                + "APPLY BATCH");
+  }
+
+  @Test
+  void should_infer_batch_query_with_function_in_mapping_2() {
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "keyspace",
+            "ks",
+            "table",
+            "t1",
+            "mapping",
+            quoteJson(
+                "fieldA=c1,fieldB=\"COL 2\",now()=c3,"
+                    + "fieldD=writetime(\"COL 2\"),fieldF=ttl(\"COL 2\")"));
+    SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
+    settings.init(session, codecFactory, true, true);
+    settings.createRecordMapper(session, recordMetadata, false);
+    assertThat(getInternalState(settings, "query"))
+        .isEqualTo(
+            "BEGIN UNLOGGED BATCH "
+                + "INSERT INTO ks.t1 (c1, c3) VALUES (:c1, now()); "
+                + "INSERT INTO ks.t1 (c1, \"COL 2\") VALUES (:c1, :\"COL 2\") USING TTL :\"ttl(COL 2)\" AND TIMESTAMP :\"writetime(COL 2)\"; "
+                + "APPLY BATCH");
+  }
+
+  @Test
+  void should_infer_batch_query_with_function_in_mapping_3() {
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "keyspace",
+            "ks",
+            "table",
+            "t1",
+            "mapping",
+            quoteJson(
+                "fieldA=c1,fieldB=\"COL 2\",now()=c3,"
+                    + "fieldD=writetime(\"COL 2\"),fieldF=ttl(\"COL 2\"),"
+                    + "fieldG=writetime(*)"));
+    SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
+    settings.init(session, codecFactory, true, true);
+    settings.createRecordMapper(session, recordMetadata, false);
+    assertThat(getInternalState(settings, "query"))
+        .isEqualTo(
+            "BEGIN UNLOGGED BATCH "
+                + "INSERT INTO ks.t1 (c1, c3) VALUES (:c1, now()) USING TIMESTAMP :\"writetime(*)\"; "
+                + "INSERT INTO ks.t1 (c1, \"COL 2\") VALUES (:c1, :\"COL 2\") USING TTL :\"ttl(COL 2)\" AND TIMESTAMP :\"writetime(COL 2)\"; "
+                + "APPLY BATCH");
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  void should_reject_invalid_constant_in_mapping(
+      String mapping, String query, SchemaGenerationStrategy mode, String expectedError) {
+    Config config = TestConfigUtils.createTestConfig("dsbulk.schema", "mapping", mapping);
+    if (query != null) {
+      config = config.withValue("query", ConfigValueFactory.fromAnyRef(query));
+    } else {
+      config =
+          config
+              .withValue("keyspace", ConfigValueFactory.fromAnyRef("ks"))
+              .withValue("table", ConfigValueFactory.fromAnyRef("t1"));
+    }
+    SchemaSettings settings = new SchemaSettings(config, mode);
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, true))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining(expectedError);
+  }
+
+  @SuppressWarnings("unused")
+  private static Stream<Arguments> should_reject_invalid_constant_in_mapping() {
+    return Stream.of(
+        Arguments.of(
+            "\"f1=c1,f2=(text)'abc'\"",
+            null,
+            MAP_AND_WRITE,
+            "Misplaced constant expression detected on the right side of a mapping entry"),
+        Arguments.of(
+            "\"f1=c1,(text)'abc'=c2\"",
+            null,
+            READ_AND_MAP,
+            "Misplaced constant expression detected on the left side of a mapping entry"),
+        Arguments.of(
+            "\"f1=c1,(text)'abc'=c2\"",
+            "INSERT INTO ks.t1 (c1, c2) VALUES (:c1,:c2)",
+            MAP_AND_WRITE,
+            "Setting schema.query must not be defined when loading if schema.mapping contains a constant expression on the left side of a mapping entry"),
+        Arguments.of(
+            "\"f1=c1,f2=(text)'abc'\"",
+            "SELECT * FROM ks.t1",
+            READ_AND_MAP,
+            "Setting schema.query must not be defined when unloading if schema.mapping contains a constant expression on the right side of a mapping entry"));
+  }
+
+  @Test
+  void should_reject_constant_in_mapping_when_literal_selector_unsupported() {
+    when(session.execute("SELECT (int)1 FROM system.local"))
+        .thenThrow(
+            new SyntaxError(
+                mock(Node.class), "Line 1:9 no viable alternative at input '(' (SELECT [(]...)"));
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "mapping",
+            "\"f1=c1,f2=(text)'abc'\"",
+            "keyspace",
+            "ks",
+            "table",
+            "t1");
+    SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
+    assertThatThrownBy(() -> settings.init(session, codecFactory, true, true))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining(
+            "At least one constant expression appears on the right side of a mapping entry, "
+                + "but the cluster does not support CQL literals in the SELECT clause");
+  }
+
+  @Test
+  void should_error_when_misplaced_function_call_in_writetime_ttl_entry_in_insert_statement() {
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "keyspace",
+            "ks",
+            "table",
+            "t1",
+            "mapping",
+            "\" f1 = c1, now() = writetime(*) \"");
+    SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
+    assertThatThrownBy(() -> settings.init(session, codecFactory, false, true))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(
+            "Misplaced function call detected on the left side of a writetime or TTL mapping entry; "
+                + "please review your schema.mapping setting");
+  }
+
+  @Test
+  void should_error_when_preserve_timestamp_and_query_provided() {
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "preserveTimestamp",
+            "true",
+            "query",
+            "\"INSERT INTO ks.t1(c1) VALUES (:c1)\"");
+    SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
+    assertThatThrownBy(() -> settings.init(session, codecFactory, false, true))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(
+            "Setting schema.query must not be defined if schema.preserveTimestamp or schema.preserveTtl is defined");
+  }
+
+  @Test
+  void should_error_when_preserve_ttl_and_query_provided() {
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "preserveTtl",
+            "true",
+            "query",
+            "\"INSERT INTO ks.t1(c1) VALUES (:c1)\"");
+    SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
+    assertThatThrownBy(() -> settings.init(session, codecFactory, false, true))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(
+            "Setting schema.query must not be defined if schema.preserveTimestamp or schema.preserveTtl is defined");
+  }
+
+  @Test
+  void should_infer_insert_query_with_literal_writetime_ttl() {
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.schema",
+            "keyspace",
+            "ks",
+            "table",
+            "t1",
+            "mapping",
+            "\" f1 = c1, f2 = \\\"COL 2\\\", f3 = c3, (int)123 = ttl(*), (timestamp)'2022-02-02T22:22:22Z' = writetime(*) \"");
+    SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
+    settings.init(session, codecFactory, false, true);
+    settings.createRecordMapper(session, recordMetadata, true);
+    assertThat(getInternalState(settings, "query"))
+        .isEqualTo(
+            "INSERT INTO ks.t1 (c1, \"COL 2\", c3) VALUES (:c1, :\"COL 2\", :c3) USING TTL 123 AND TIMESTAMP 1643840542000000");
   }
 
   private static void assertMapping(Object mapper, Object... fieldsAndVars) {

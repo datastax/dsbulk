@@ -9,6 +9,7 @@
 - [improvement] [#402](https://github.com/datastax/dsbulk/issues/402): Upload DSBulk binary distributions to Maven Central.
 - [improvement] [#411](https://github.com/datastax/dsbulk/issues/411): Don't check for emptiness of primary key columns.
 - [improvement] [#412](https://github.com/datastax/dsbulk/issues/412): Add support for nested functions in mappings.
+- [improvement] [#415](https://github.com/datastax/dsbulk/issues/415): Add support for literals in mappings.
 
 ## 1.8.0
 

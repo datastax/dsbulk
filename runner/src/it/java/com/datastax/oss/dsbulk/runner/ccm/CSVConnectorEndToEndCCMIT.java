@@ -108,6 +108,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.assertj.core.api.InstanceOfAssertFactories;
@@ -129,6 +130,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   private static final Version V3 = Version.parse("3.0");
   private static final Version V3_10 = Version.parse("3.10");
+  private static final Version V3_11_5 = Version.parse("3.11.5");
   private static final Version V2_2 = Version.parse("2.2");
   private static final Version V2_1 = Version.parse("2.1");
   private static final Version V5_1 = Version.parse("5.1");
@@ -415,6 +417,10 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
   /** Simple test case which attempts to load and unload data using ccm and compression (Snappy). */
   @Test
   void full_load_unload_snappy() throws Exception {
+
+    assumeTrue(
+        session.getContext().getProtocolVersion().getCode() != 5,
+        "Snappy compression is not supported in protocol v5");
 
     List<String> args = new ArrayList<>();
     args.add("load");
@@ -2299,21 +2305,30 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             session.getContext().getProtocolVersion()));
   }
 
-  @Test
-  void unload_load_preserving_ttl_and_timestamp_custom_mapping() throws IOException {
+  @ParameterizedTest
+  @MethodSource("unload_load_preserving_ttl_and_timestamp")
+  void unload_load_preserving_ttl_and_timestamp_custom_mapping(
+      DataType cqlType, Object value1, Object value2, String csv1, String csv2) throws IOException {
 
-    session.execute("DROP TABLE IF EXISTS preserve_ttl_timestamp_mapping");
+    checkCqlTypeSupported(cqlType);
+
+    session.execute("DROP TABLE IF EXISTS preserve_ttl_timestamp");
     session.execute(
-        "CREATE TABLE preserve_ttl_timestamp_mapping (pk1 int, pk2 int, cc1 int, cc2 int, v1 text, v2 text, PRIMARY KEY ((pk1, pk2), cc1, cc2))");
+        String.format(
+            "CREATE TABLE preserve_ttl_timestamp (pk1 int, pk2 int, cc1 int, cc2 int, v1 %s, v2 %s, PRIMARY KEY ((pk1, pk2), cc1, cc2))",
+            cqlType.asCql(true, true), cqlType.asCql(true, true)));
+    TypeCodec<Object> codec = CodecRegistry.DEFAULT.codecFor(cqlType);
     session.execute(
-        "BEGIN BATCH "
-            + "INSERT INTO preserve_ttl_timestamp_mapping (pk1, pk2, cc1, cc2, v1) "
-            + "VALUES (1, 2, 3, 4, 'foo') "
-            + "USING TIMESTAMP 1111 AND TTL 111111; "
-            + "INSERT INTO preserve_ttl_timestamp_mapping (pk1, pk2, cc1, cc2, v2) "
-            + "VALUES (1, 2, 3, 4, 'bar') "
-            + "USING TIMESTAMP 2222 AND TTL 222222; "
-            + "APPLY BATCH");
+        String.format(
+            "BEGIN BATCH "
+                + "INSERT INTO preserve_ttl_timestamp (pk1, pk2, cc1, cc2, v1) "
+                + "VALUES (1, 2, 3, 4, %s) "
+                + "USING TIMESTAMP 1111 AND TTL 111111; "
+                + "INSERT INTO preserve_ttl_timestamp (pk1, pk2, cc1, cc2, v2) "
+                + "VALUES (1, 2, 3, 4, %s) "
+                + "USING TIMESTAMP 2222 AND TTL 222222; "
+                + "APPLY BATCH",
+            codec.format(value1), codec.format(value2)));
 
     List<String> args =
         Lists.newArrayList(
@@ -2327,9 +2342,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             "--schema.keyspace",
             session.getKeyspace().get().asInternal(),
             "--schema.table",
-            "preserve_ttl_timestamp_mapping",
+            "preserve_ttl_timestamp",
             "--schema.mapping",
-            "*=*,v1_writetime=writetime(v1),v1_ttl=ttl(v1),v2_writetime=writetime(v2),v2_ttl=ttl(v2)",
+            "*=*, v1w=writetime(v1), v1t=ttl(v1), v2w=writetime(v2), v2t=ttl(v2)",
             "-timestamp",
             "true",
             "-ttl",
@@ -2341,11 +2356,20 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     Stream<String> line = FileUtils.readAllLinesInDirectoryAsStreamExcludingHeaders(unloadDir);
     assertThat(line)
         .singleElement(InstanceOfAssertFactories.STRING)
-        .contains("1,2,3,4,foo,bar")
-        .containsPattern(
-            "1970-01-01T00:00:00\\.001111Z,111\\d\\d\\d,1970-01-01T00:00:00\\.002222Z,222\\d\\d\\d");
+        .contains("1,2,3,4,")
+        .contains(csv1, csv2)
+        .containsPattern("1970-01-01T00:00:00\\.001111Z")
+        .containsPattern("111\\d\\d\\d,")
+        .containsPattern("1970-01-01T00:00:00\\.002222Z")
+        .containsPattern("222\\d\\d\\d");
+
+    assertThat(logs)
+        .doesNotHaveMessageContaining("Skipping timestamp preservation")
+        .doesNotHaveMessageContaining("Skipping TTL preservation");
+
     FileUtils.deleteDirectory(logDir);
-    session.execute("TRUNCATE preserve_ttl_timestamp_mapping");
+    logs.clear();
+    session.execute("TRUNCATE preserve_ttl_timestamp");
 
     args =
         Lists.newArrayList(
@@ -2359,9 +2383,9 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             "--schema.keyspace",
             session.getKeyspace().get().asInternal(),
             "--schema.table",
-            "preserve_ttl_timestamp_mapping",
+            "preserve_ttl_timestamp",
             "--schema.mapping",
-            "*=*,v1_writetime=writetime(v1),v1_ttl=ttl(v1),v2_writetime=writetime(v2),v2_ttl=ttl(v2)",
+            "*=*, v1w=writetime(v1), v1t=ttl(v1), v2w=writetime(v2), v2t=ttl(v2)",
             "-timestamp",
             "true",
             "-ttl",
@@ -2375,7 +2399,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             "SELECT pk1, pk2, cc1, cc2, "
                 + "v1, writetime(v1) AS v1w, ttl(v1) as v1t, "
                 + "v2, writetime(v2) AS v2w, ttl(v2) as v2t "
-                + "FROM preserve_ttl_timestamp_mapping "
+                + "FROM preserve_ttl_timestamp "
                 + "WHERE pk1 = 1 AND pk2 = 2 AND cc1 = 3 AND cc2 = 4");
     Row row = rs.one();
     assertThat(row).isNotNull();
@@ -2383,12 +2407,125 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(row.getInt("pk2")).isEqualTo(2);
     assertThat(row.getInt("cc1")).isEqualTo(3);
     assertThat(row.getInt("cc2")).isEqualTo(4);
-    assertThat(row.getString("v1")).isEqualTo("foo");
-    assertThat(row.getString("v2")).isEqualTo("bar");
+    assertThat(row.getObject("v1")).isEqualTo(value1);
+    assertThat(row.getObject("v2")).isEqualTo(value2);
     assertThat(row.getLong("v1w")).isEqualTo(1111L);
     assertThat(row.getLong("v2w")).isEqualTo(2222L);
     assertThat(row.getInt("v1t")).isLessThanOrEqualTo(111111).isGreaterThan(111000);
     assertThat(row.getInt("v2t")).isLessThanOrEqualTo(222222).isGreaterThan(222000);
+
+    assertThat(logs)
+        .doesNotHaveMessageContaining("Skipping timestamp preservation")
+        .doesNotHaveMessageContaining("Skipping TTL preservation");
+  }
+
+  @Test
+  void unload_load_preserving_ttl_and_timestamp_custom_mapping_constant_expressions()
+      throws IOException {
+
+    assumeTrue(
+        ccm.getCassandraVersion().compareTo(V3_11_5) >= 0,
+        "Literal selectors are supported starting with C* 3.11.5, see CASSANDRA-9243");
+
+    session.execute("DROP TABLE IF EXISTS preserve_ttl_timestamp");
+    session.execute(
+        "CREATE TABLE preserve_ttl_timestamp (pk1 int, pk2 int, cc1 int, cc2 int, v1 int, v2 int, PRIMARY KEY ((pk1, pk2), cc1, cc2))");
+    session.execute(
+        "BEGIN BATCH "
+            + "INSERT INTO preserve_ttl_timestamp (pk1, pk2, cc1, cc2, v1) "
+            + "VALUES (1, 2, 3, 4, 100) "
+            + "USING TIMESTAMP 1111 AND TTL 111111; "
+            + "INSERT INTO preserve_ttl_timestamp (pk1, pk2, cc1, cc2, v2) "
+            + "VALUES (1, 2, 3, 4, 200) "
+            + "USING TIMESTAMP 2222; " // no TTL
+            + "APPLY BATCH");
+
+    List<String> args =
+        Lists.newArrayList(
+            "unload",
+            "--log.directory",
+            quoteJson(logDir),
+            "--connector.csv.url",
+            quoteJson(unloadDir),
+            "--connector.csv.header",
+            "true",
+            "--codec.nullStrings",
+            "NULL",
+            "--schema.keyspace",
+            session.getKeyspace().get().asInternal(),
+            "--schema.table",
+            "preserve_ttl_timestamp",
+            "-timestamp",
+            "true",
+            "-ttl",
+            "true");
+
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+
+    Stream<String> line = FileUtils.readAllLinesInDirectoryAsStreamExcludingHeaders(unloadDir);
+    assertThat(line)
+        .singleElement(InstanceOfAssertFactories.STRING)
+        .contains("1,2,3,4,")
+        .contains("100")
+        .contains("200")
+        .containsPattern("1970-01-01T00:00:00\\.001111Z,111\\d\\d\\d")
+        .containsPattern("1970-01-01T00:00:00\\.002222Z,NULL"); // no TTL
+
+    assertThat(logs)
+        .doesNotHaveMessageContaining("Skipping timestamp preservation")
+        .doesNotHaveMessageContaining("Skipping TTL preservation");
+
+    FileUtils.deleteDirectory(logDir);
+    logs.clear();
+    session.execute("TRUNCATE preserve_ttl_timestamp");
+
+    args =
+        Lists.newArrayList(
+            "load",
+            "--log.directory",
+            quoteJson(logDir),
+            "--connector.csv.url",
+            quoteJson(unloadDir),
+            "--connector.csv.header",
+            "true",
+            "--schema.keyspace",
+            session.getKeyspace().get().asInternal(),
+            "--schema.table",
+            "preserve_ttl_timestamp",
+            "--schema.mapping",
+            "*=*, (int)222222 = ttl(v2)",
+            "-timestamp",
+            "true",
+            "-ttl",
+            "true");
+
+    status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+
+    ResultSet rs =
+        session.execute(
+            "SELECT pk1, pk2, cc1, cc2, "
+                + "v1, writetime(v1) AS v1w, ttl(v1) as v1t, "
+                + "v2, writetime(v2) AS v2w, ttl(v2) as v2t "
+                + "FROM preserve_ttl_timestamp "
+                + "WHERE pk1 = 1 AND pk2 = 2 AND cc1 = 3 AND cc2 = 4");
+    Row row = rs.one();
+    assertThat(row).isNotNull();
+    assertThat(row.getInt("pk1")).isEqualTo(1);
+    assertThat(row.getInt("pk2")).isEqualTo(2);
+    assertThat(row.getInt("cc1")).isEqualTo(3);
+    assertThat(row.getInt("cc2")).isEqualTo(4);
+    assertThat(row.getObject("v1")).isEqualTo(100);
+    assertThat(row.getObject("v2")).isEqualTo(200);
+    assertThat(row.getLong("v1w")).isEqualTo(1111L);
+    assertThat(row.getLong("v2w")).isEqualTo(2222L);
+    assertThat(row.getInt("v1t")).isLessThanOrEqualTo(111111).isGreaterThan(111000);
+    assertThat(row.getInt("v2t")).isLessThanOrEqualTo(222222).isGreaterThan(222000);
+
+    assertThat(logs)
+        .doesNotHaveMessageContaining("Skipping timestamp preservation")
+        .doesNotHaveMessageContaining("Skipping TTL preservation");
   }
 
   @Test
@@ -4690,9 +4827,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("test_nested_function");
     args.add("--schema.mapping");
-    args.add("*=*,totimestamp(now())=t");
-    args.add("-verbosity");
-    args.add("2");
+    args.add("*=*,dateof(now())=t");
 
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
@@ -4711,9 +4846,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--schema.table");
     args.add("test_nested_function");
     args.add("--schema.mapping");
-    args.add("pk,totimestamp(now())");
-    args.add("-verbosity");
-    args.add("2");
+    args.add("pk,dateof(now())");
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
@@ -4723,6 +4856,147 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
                 .collect(Collectors.toList()))
         .singleElement()
         .asString()
-        .matches("1,\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{3})?Z");
+        .matches("1,\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z");
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  void load_unload_constant(DataType cqlType, String literal, Object expectedIn, String expectedOut)
+      throws IOException {
+
+    assumeTrue(
+        ccm.getCassandraVersion().compareTo(V3_11_5) >= 0,
+        "Literal selectors are supported starting with C* 3.11.5, see CASSANDRA-9243");
+
+    session.execute("DROP TABLE IF EXISTS test_constant");
+    String cqlTypeAsString = cqlType.asCql(true, true);
+    session.execute(
+        String.format("CREATE TABLE test_constant (pk int PRIMARY KEY, v %s)", cqlTypeAsString));
+
+    MockConnector.mockReads(RecordUtils.mappedCSV("pk", "1"));
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--connector.name");
+    args.add("mock");
+    args.add("--schema.keyspace");
+    args.add(session.getKeyspace().get().asInternal());
+    args.add("--schema.table");
+    args.add("test_constant");
+    args.add("--schema.mapping");
+    args.add(String.format("pk=pk,(%s)%s=v", cqlTypeAsString, literal));
+
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+
+    List<Row> rows = session.execute("SELECT v FROM test_constant WHERE pk = 1").all();
+    assertThat(rows).hasSize(1);
+    assertThat(rows.get(0).getObject(0)).isNotNull().isEqualTo(expectedIn);
+
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--connector.csv.url");
+    args.add(quoteJson(unloadDir));
+    args.add("--codec.binary");
+    args.add("HEX");
+    args.add("--schema.keyspace");
+    args.add(session.getKeyspace().get().asInternal());
+    args.add("--schema.table");
+    args.add("test_constant");
+    args.add("--schema.mapping");
+    args.add(String.format("pk=pk,constant=(%s)%s", cqlTypeAsString, literal));
+
+    status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+
+    assertThat(
+            FileUtils.readAllLinesInDirectoryAsStreamExcludingHeaders(unloadDir)
+                .collect(Collectors.toList()))
+        .singleElement()
+        .asString()
+        .isEqualTo("1," + expectedOut);
+  }
+
+  @SuppressWarnings("unused")
+  static Stream<Arguments> load_unload_constant() throws UnknownHostException {
+    return Stream.of(
+        Arguments.of(DataTypes.ASCII, "'abc'", "abc", "abc"),
+        Arguments.of(DataTypes.BIGINT, "123", 123L, "123"),
+        Arguments.of(DataTypes.BLOB, "0x12", ByteBuffer.wrap(new byte[] {0x12}), "0x12"),
+        Arguments.of(DataTypes.BOOLEAN, "true", true, "1"),
+        Arguments.of(DataTypes.DECIMAL, "12.34", new BigDecimal("12.34"), "12.34"),
+        Arguments.of(DataTypes.DOUBLE, "12.34", 12.34, "12.34"),
+        Arguments.of(DataTypes.FLOAT, "12.34", 12.34f, "12.34"),
+        Arguments.of(DataTypes.INT, "123", 123, "123"),
+        Arguments.of(
+            DataTypes.TIMESTAMP,
+            "'2022-02-22T22:02:02Z'",
+            Instant.parse("2022-02-22T22:02:02Z"),
+            "2022-02-22T22:02:02Z"),
+        Arguments.of(
+            DataTypes.UUID,
+            "f0dea7f2-b3fd-11ec-b909-0242ac120002",
+            UUID.fromString("f0dea7f2-b3fd-11ec-b909-0242ac120002"),
+            "f0dea7f2-b3fd-11ec-b909-0242ac120002"),
+        Arguments.of(DataTypes.VARINT, "1234", new BigInteger("1234"), "1234"),
+        Arguments.of(
+            DataTypes.TIMEUUID,
+            "f0dea7f2-b3fd-11ec-b909-0242ac120002",
+            UUID.fromString("f0dea7f2-b3fd-11ec-b909-0242ac120002"),
+            "f0dea7f2-b3fd-11ec-b909-0242ac120002"),
+        Arguments.of(
+            DataTypes.INET,
+            "'1.2.3.4'",
+            InetAddress.getByAddress(new byte[] {1, 2, 3, 4}),
+            "1.2.3.4"),
+        Arguments.of(DataTypes.DATE, "'2021-01-11'", LocalDate.of(2021, 1, 11), "2021-01-11"),
+        Arguments.of(DataTypes.TEXT, "'abc'", "abc", "abc"),
+        Arguments.of(DataTypes.TIME, "'01:02:03'", LocalTime.of(1, 2, 3), "01:02:03"),
+        Arguments.of(DataTypes.SMALLINT, "12", (short) 12, "12"),
+        Arguments.of(DataTypes.TINYINT, "12", (byte) 12, "12"),
+        Arguments.of(
+            DataTypes.DURATION, "1mo2d34ns", CqlDuration.newInstance(1, 2, 34), "1mo2d34ns"));
+  }
+
+  @Test
+  void load_constant_writetime_ttl() {
+
+    session.execute("DROP TABLE IF EXISTS load_constant_writetime_ttl");
+    session.execute(
+        "CREATE TABLE load_constant_writetime_ttl (pk int PRIMARY KEY, v1 int, v2 int)");
+
+    MockConnector.mockReads(RecordUtils.mappedCSV("pk", "1"));
+
+    List<String> args = new ArrayList<>();
+    args.add("load");
+    args.add("--connector.name");
+    args.add("mock");
+    args.add("--schema.keyspace");
+    args.add(session.getKeyspace().get().asInternal());
+    args.add("--schema.table");
+    args.add("load_constant_writetime_ttl");
+    args.add("--schema.mapping");
+    args.add(
+        "pk=pk,(int)123=v1,(int)456=v2,(int)1000=ttl(*),(timestamp)'2022-02-02T22:22:22Z'=writetime(*)");
+
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+
+    List<Row> rows =
+        session
+            .execute(
+                "SELECT v1, v2, "
+                    + "ttl(v1) as ttlv1, ttl(v2) as ttlv2, "
+                    + "writetime(v1) as wtv1, writetime(v2) as wtv2 "
+                    + "FROM load_constant_writetime_ttl WHERE pk = 1")
+            .all();
+    assertThat(rows).hasSize(1);
+    assertThat(rows.get(0).getInt("v1")).isEqualTo(123);
+    assertThat(rows.get(0).getInt("v2")).isEqualTo(456);
+    assertThat(rows.get(0).getInt("ttlv1")).isNotZero();
+    assertThat(rows.get(0).getInt("ttlv2")).isNotZero();
+    Instant i = Instant.parse("2022-02-02T22:22:22Z");
+    assertThat(rows.get(0).getLong("wtv1")).isEqualTo(i.toEpochMilli() * 1000);
+    assertThat(rows.get(0).getLong("wtv2")).isEqualTo(i.toEpochMilli() * 1000);
   }
 }

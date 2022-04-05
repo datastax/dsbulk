@@ -144,6 +144,7 @@ public class LoadWorkflow implements Workflow {
     ClusterInformationUtils.printDebugInfoAboutCluster(session);
     schemaSettings.init(
         session,
+        codecFactory,
         connector.supports(CommonConnectorFeature.INDEXED_RECORDS),
         connector.supports(CommonConnectorFeature.MAPPED_RECORDS));
     logManager = logSettings.newLogManager(session, true);
@@ -155,13 +156,12 @@ public class LoadWorkflow implements Workflow {
     try {
       recordMapper =
           schemaSettings.createRecordMapper(
-              session, connector.getRecordMetadata(), codecFactory, batchingEnabled);
+              session, connector.getRecordMetadata(), batchingEnabled);
     } catch (NestedBatchException e) {
       LOGGER.warn(e.getMessage());
       batchingEnabled = false;
       recordMapper =
-          schemaSettings.createRecordMapper(
-              session, connector.getRecordMetadata(), codecFactory, false);
+          schemaSettings.createRecordMapper(session, connector.getRecordMetadata(), false);
     }
     mapper = recordMapper::map;
     if (batchingEnabled) {

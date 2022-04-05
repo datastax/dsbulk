@@ -15,6 +15,7 @@
  */
 package com.datastax.oss.dsbulk.workflow.commons.settings;
 
+import static com.datastax.oss.dsbulk.codecs.api.CommonConversionContext.TIMESTAMP_PATTERN;
 import static com.datastax.oss.dsbulk.codecs.api.util.CodecUtils.instantToNumber;
 import static com.datastax.oss.dsbulk.mapping.CQLRenderMode.ALIASED_SELECTOR;
 import static com.datastax.oss.dsbulk.mapping.CQLRenderMode.INTERNAL;
@@ -49,11 +50,13 @@ import com.datastax.oss.driver.api.core.metadata.schema.KeyspaceMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.RelationMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.ViewMetadata;
+import com.datastax.oss.driver.api.core.type.DataType;
 import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.api.core.type.ListType;
 import com.datastax.oss.driver.api.core.type.MapType;
 import com.datastax.oss.driver.api.core.type.SetType;
 import com.datastax.oss.driver.api.core.type.UserDefinedType;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.base.Preconditions;
 import com.datastax.oss.driver.shaded.guava.common.base.Predicates;
@@ -63,12 +66,14 @@ import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSet;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSetMultimap;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import com.datastax.oss.driver.shaded.guava.common.collect.Multimap;
+import com.datastax.oss.dsbulk.codecs.api.ConvertingCodec;
 import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
 import com.datastax.oss.dsbulk.config.ConfigUtils;
 import com.datastax.oss.dsbulk.connectors.api.Field;
 import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.datastax.oss.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.oss.dsbulk.mapping.CQLFragment;
+import com.datastax.oss.dsbulk.mapping.CQLLiteral;
 import com.datastax.oss.dsbulk.mapping.CQLRenderMode;
 import com.datastax.oss.dsbulk.mapping.CQLWord;
 import com.datastax.oss.dsbulk.mapping.DefaultMapping;
@@ -79,6 +84,7 @@ import com.datastax.oss.dsbulk.mapping.Mapping;
 import com.datastax.oss.dsbulk.mapping.MappingField;
 import com.datastax.oss.dsbulk.mapping.MappingInspector;
 import com.datastax.oss.dsbulk.mapping.MappingPreference;
+import com.datastax.oss.dsbulk.mapping.TypedCQLLiteral;
 import com.datastax.oss.dsbulk.partitioner.TokenRangeReadStatementGenerator;
 import com.datastax.oss.dsbulk.workflow.commons.schema.DefaultReadResultCounter;
 import com.datastax.oss.dsbulk.workflow.commons.schema.DefaultReadResultMapper;
@@ -96,7 +102,6 @@ import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import java.net.URI;
 import java.time.Instant;
-import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -108,6 +113,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -164,6 +170,7 @@ public class SchemaSettings {
   private QueryInspector queryInspector;
   private List<PreparedStatement> preparedStatements;
   private MappingPreference mappingPreference;
+  private ConvertingCodecFactory codecFactory;
 
   public SchemaSettings(Config config, SchemaGenerationStrategy schemaGenerationStrategy) {
     this.config = config;
@@ -171,7 +178,12 @@ public class SchemaSettings {
   }
 
   public void init(
-      CqlSession session, boolean indexedMappingSupported, boolean mappedMappingSupported) {
+      CqlSession session,
+      ConvertingCodecFactory codecFactory,
+      boolean indexedMappingSupported,
+      boolean mappedMappingSupported) {
+
+    this.codecFactory = codecFactory;
 
     try {
 
@@ -242,13 +254,16 @@ public class SchemaSettings {
       if (config.hasPath(QUERY_TIMESTAMP)) {
         String timestampStr = config.getString(QUERY_TIMESTAMP);
         try {
-          Instant instant = ZonedDateTime.parse(timestampStr).toInstant();
+          ConvertingCodec<String, Instant> codec =
+              codecFactory.createConvertingCodec(DataTypes.TIMESTAMP, GenericType.STRING, true);
+          Instant instant = codec.externalToInternal(timestampStr);
           this.timestampMicros = instantToNumber(instant, MICROSECONDS, EPOCH);
         } catch (Exception e) {
+          Object format = codecFactory.getContext().getAttribute(TIMESTAMP_PATTERN);
           throw new IllegalArgumentException(
               String.format(
-                  "Expecting schema.queryTimestamp to be in ISO_ZONED_DATE_TIME format but got '%s'",
-                  timestampStr));
+                  "Expecting schema.queryTimestamp to be in %s format but got '%s'",
+                  format, timestampStr));
         }
       } else {
         this.timestampMicros = -1L;
@@ -298,6 +313,11 @@ public class SchemaSettings {
         if (timestampMicros != -1 || ttlSeconds != -1) {
           throw new IllegalArgumentException(
               "Setting schema.query must not be defined if schema.queryTtl or schema.queryTimestamp is defined");
+        }
+
+        if (preserveTimestamp || preserveTtl) {
+          throw new IllegalArgumentException(
+              "Setting schema.query must not be defined if schema.preserveTimestamp or schema.preserveTtl is defined");
         }
 
       } else {
@@ -379,6 +399,23 @@ public class SchemaSettings {
                 "Setting schema.query must not be defined when loading if schema.mapping "
                     + "contains a function on the left side of a mapping entry");
           }
+          if (containsWritetimeOrTTLFunctionCalls(mapping.getExplicitMappings())) {
+            throw new IllegalArgumentException(
+                "Misplaced function call detected on the left side of a writetime or TTL mapping entry; "
+                    + "please review your schema.mapping setting");
+          }
+          // f1 = (text)'abc' never allowed when loading
+          // (text)'abc' = c1 only allowed if schema.query not present
+          if (containsConstantExpressions(variables)) {
+            throw new IllegalArgumentException(
+                "Misplaced constant expression detected on the right side of a mapping entry; "
+                    + "please review your schema.mapping setting");
+          }
+          if (query != null && containsConstantExpressions(fields)) {
+            throw new IllegalArgumentException(
+                "Setting schema.query must not be defined when loading if schema.mapping "
+                    + "contains a constant expression on the left side of a mapping entry");
+          }
         }
 
         if (schemaGenerationStrategy.isReading()) {
@@ -394,6 +431,33 @@ public class SchemaSettings {
                 "Setting schema.query must not be defined when unloading if schema.mapping "
                     + "contains a function on the right side of a mapping entry");
           }
+          // (text)'abc' = c1 never allowed when unloading
+          // f1 = (text)'abc' only allowed if schema.query not present and literal selectors
+          // supported
+          if (containsConstantExpressions(fields)) {
+            throw new IllegalArgumentException(
+                "Misplaced constant expression detected on the left side of a mapping entry; "
+                    + "please review your schema.mapping setting");
+          }
+          if (containsConstantExpressions(variables)) {
+            if (query != null) {
+              throw new IllegalArgumentException(
+                  "Setting schema.query must not be defined when unloading if schema.mapping "
+                      + "contains a constant expression on the right side of a mapping entry");
+            }
+            if (!checkLiteralSelectorsSupported(session)) {
+              throw new IllegalStateException(
+                  "At least one constant expression appears on the right side of a mapping entry, "
+                      + "but the cluster does not support CQL literals in the SELECT clause; "
+                      + " please review your schema.mapping setting");
+            }
+          }
+        }
+
+        if ((preserveTimestamp || preserveTtl) && !mapping.isInferring()) {
+          throw new IllegalStateException(
+              "Setting schema.mapping must contain an inferring entry (e.g. '*=*') "
+                  + "when schema.preserveTimestamp or schema.preserveTtl is enabled");
         }
 
       } else {
@@ -453,10 +517,7 @@ public class SchemaSettings {
   }
 
   public RecordMapper createRecordMapper(
-      CqlSession session,
-      RecordMetadata recordMetadata,
-      ConvertingCodecFactory codecFactory,
-      boolean batchingEnabled)
+      CqlSession session, RecordMetadata recordMetadata, boolean batchingEnabled)
       throws IllegalArgumentException {
     if (!schemaGenerationStrategy.isWriting() || !schemaGenerationStrategy.isMapping()) {
       throw new IllegalStateException(
@@ -465,7 +526,7 @@ public class SchemaSettings {
     }
     Mapping mapping =
         prepareStatementAndCreateMapping(
-            session, codecFactory, batchingEnabled, EnumSet.noneOf(StatisticsMode.class));
+            session, batchingEnabled, EnumSet.noneOf(StatisticsMode.class));
     ProtocolVersion protocolVersion = session.getContext().getProtocolVersion();
     if (protocolVersion.getCode() < DefaultProtocolVersion.V4.getCode() && nullToUnset) {
       LOGGER.warn(
@@ -511,8 +572,7 @@ public class SchemaSettings {
     // we don't check that mapping records are supported when unloading, the only thing that matters
     // is the order in which fields appear in the record.
     Mapping mapping =
-        prepareStatementAndCreateMapping(
-            session, codecFactory, false, EnumSet.noneOf(StatisticsMode.class));
+        prepareStatementAndCreateMapping(session, false, EnumSet.noneOf(StatisticsMode.class));
     return new DefaultReadResultMapper(
         mapping, recordMetadata, getTargetTableURI(), retainRecordSources);
   }
@@ -527,7 +587,7 @@ public class SchemaSettings {
           "Cannot create read result counter when schema generation strategy is "
               + schemaGenerationStrategy);
     }
-    prepareStatementAndCreateMapping(session, null, false, modes);
+    prepareStatementAndCreateMapping(session, false, modes);
     if (modes.contains(StatisticsMode.partitions) && table.getClusteringColumns().isEmpty()) {
       throw new IllegalArgumentException(
           String.format(
@@ -632,10 +692,7 @@ public class SchemaSettings {
 
   @NonNull
   private Mapping prepareStatementAndCreateMapping(
-      CqlSession session,
-      ConvertingCodecFactory codecFactory,
-      boolean batchingEnabled,
-      EnumSet<StatisticsMode> modes) {
+      CqlSession session, boolean batchingEnabled, EnumSet<StatisticsMode> modes) {
     ImmutableMultimap<MappingField, CQLFragment> fieldsToVariables = null;
     if (!config.hasPath(QUERY)) {
       // in the absence of user-provided queries, create the mapping *before* query generation and
@@ -801,7 +858,7 @@ public class SchemaSettings {
     if (!supported) {
       LOGGER.warn(
           "Skipping {} preservation for column {}: this feature is not supported for CQL type {}.",
-          functionName == WRITETIME ? "timestamp" : "TTL",
+          Objects.equals(functionName, WRITETIME) ? "timestamp" : "TTL",
           col.getName().asCql(true),
           col.getType().asCql(true, true));
     }
@@ -1162,17 +1219,25 @@ public class SchemaSettings {
   private String inferInsertQuery(ImmutableMultimap<MappingField, CQLFragment> fieldsToVariables) {
     ImmutableMultimap.Builder<MappingField, CQLFragment> regularFieldsToVariablesBuilder =
         ImmutableMultimap.builder();
-    FunctionCall writetime = null;
-    FunctionCall ttl = null;
+    CQLFragment writetime = null;
+    CQLFragment ttl = null;
     for (Entry<MappingField, CQLFragment> entry : fieldsToVariables.entries()) {
       if (entry.getValue() instanceof FunctionCall) {
         FunctionCall functionCall = (FunctionCall) entry.getValue();
         if (functionCall.getFunctionName().equals(WRITETIME)) {
           assert writetime == null;
-          writetime = functionCall;
+          if (entry.getKey() instanceof CQLLiteral) {
+            writetime = (CQLLiteral) entry.getKey();
+          } else {
+            writetime = CQLWord.fromInternal(functionCall.render(INTERNAL));
+          }
         } else if (functionCall.getFunctionName().equals(TTL)) {
           assert ttl == null;
-          ttl = functionCall;
+          if (entry.getKey() instanceof CQLLiteral) {
+            ttl = (CQLLiteral) entry.getKey();
+          } else {
+            ttl = CQLWord.fromInternal(functionCall.render(INTERNAL));
+          }
         }
       } else {
         regularFieldsToVariablesBuilder.put(entry);
@@ -1193,11 +1258,8 @@ public class SchemaSettings {
       CQLFragment col = it.next();
       // for insert queries there can be only one field mapped to a given column
       MappingField field = fieldsToVariables.inverse().get(col).iterator().next();
-      if (field instanceof FunctionCall) {
-        // append the function call as is, e.g.
-        // now() -> now()
-        // avg(a,1) -> avg(:a,1) - a being another variable in the mapping
-        sb.append(((FunctionCall) field).render(NAMED_ASSIGNMENT));
+      if (field instanceof CQLFragment) {
+        sb.append(((CQLFragment) field).render(NAMED_ASSIGNMENT));
       } else {
         sb.append(col.render(NAMED_ASSIGNMENT));
       }
@@ -1211,8 +1273,9 @@ public class SchemaSettings {
   }
 
   private static class WriteTimeAndTTL {
-    private FunctionCall writetime;
-    private FunctionCall ttl;
+    private CQLFragment value;
+    private CQLFragment writetime;
+    private CQLFragment ttl;
   }
 
   private String inferBatchInsertQuery(
@@ -1243,12 +1306,20 @@ public class SchemaSettings {
                 allSpecificVariables.add(col);
                 allSpecificVariables.add(functionCall);
                 specificWriteTimesAndTTLs.compute(
-                    (CQLWord) arg,
+                    col,
                     (k, v) -> {
                       if (v == null) {
                         v = new WriteTimeAndTTL();
+                        MappingField colField =
+                            fieldsToVariables.inverse().get(col).iterator().next();
+                        v.value = colField instanceof CQLFragment ? (CQLFragment) colField : col;
                       }
-                      v.writetime = functionCall;
+                      MappingField writetimeField =
+                          fieldsToVariables.inverse().get(functionCall).iterator().next();
+                      v.writetime =
+                          writetimeField instanceof CQLLiteral
+                              ? (CQLLiteral) writetimeField
+                              : CQLWord.fromInternal(functionCall.render(INTERNAL));
                       return v;
                     });
               } else {
@@ -1281,8 +1352,16 @@ public class SchemaSettings {
                     (k, v) -> {
                       if (v == null) {
                         v = new WriteTimeAndTTL();
+                        MappingField colField =
+                            fieldsToVariables.inverse().get(col).iterator().next();
+                        v.value = colField instanceof CQLFragment ? (CQLFragment) colField : col;
                       }
-                      v.ttl = functionCall;
+                      MappingField ttlField =
+                          fieldsToVariables.inverse().get(functionCall).iterator().next();
+                      v.ttl =
+                          ttlField instanceof CQLLiteral
+                              ? (CQLLiteral) ttlField
+                              : CQLWord.fromInternal(functionCall.render(INTERNAL));
                       return v;
                     });
               } else {
@@ -1332,7 +1411,12 @@ public class SchemaSettings {
       Entry<CQLWord, WriteTimeAndTTL> entry =
           specificWriteTimesAndTTLs.entrySet().iterator().next();
       appendBatchChildQuery(
-          sb, entry.getKey(), entry.getValue().writetime, entry.getValue().ttl, pks);
+          sb,
+          entry.getKey(),
+          entry.getValue().value,
+          entry.getValue().writetime,
+          entry.getValue().ttl,
+          pks);
     } else {
       sb.append("BEGIN UNLOGGED BATCH ");
       // if there are any variables not assigned to specific TTL or writetime function calls,
@@ -1344,7 +1428,12 @@ public class SchemaSettings {
       // generate a specific INSERT INTO query for that variable only + its TTL and/or writetime.
       for (Entry<CQLWord, WriteTimeAndTTL> entry : specificWriteTimesAndTTLs.entrySet()) {
         appendBatchChildQuery(
-            sb, entry.getKey(), entry.getValue().writetime, entry.getValue().ttl, pks);
+            sb,
+            entry.getKey(),
+            entry.getValue().value,
+            entry.getValue().writetime,
+            entry.getValue().ttl,
+            pks);
         sb.append("; ");
       }
       sb.append("APPLY BATCH");
@@ -1355,8 +1444,9 @@ public class SchemaSettings {
   private void appendBatchChildQuery(
       StringBuilder sb,
       CQLWord variable,
-      @Nullable FunctionCall writetime,
-      @Nullable FunctionCall ttl,
+      CQLFragment value,
+      @Nullable CQLFragment writetime,
+      @Nullable CQLFragment ttl,
       List<CQLWord> pks) {
     sb.append("INSERT INTO ")
         .append(keyspaceName.render(VARIABLE))
@@ -1372,7 +1462,7 @@ public class SchemaSettings {
       sb.append(pk.render(NAMED_ASSIGNMENT));
       sb.append(", ");
     }
-    sb.append(variable.render(NAMED_ASSIGNMENT)).append(")");
+    sb.append(value.render(NAMED_ASSIGNMENT)).append(")");
     appendWriteTimeAndTTL(sb, writetime, ttl);
   }
 
@@ -1381,7 +1471,8 @@ public class SchemaSettings {
     StringBuilder sb = new StringBuilder("UPDATE ");
     sb.append(keyspaceName.render(VARIABLE)).append('.').append(tableName.render(VARIABLE));
     // Note: TTL and timestamp are not allowed in counter queries;
-    // a test is made inside the following method
+    // a test is made inside the following method for fixed TTL and timestamps;
+    // function-style TTL and timestamps will be tested below and forbidden as well
     appendWriteTimeAndTTL(sb, null, null);
     sb.append(" SET ");
     Set<CQLFragment> cols = maybeSortCols(fieldsToVariables);
@@ -1393,6 +1484,7 @@ public class SchemaSettings {
       if (col instanceof CQLWord && pks.contains(col)) {
         continue;
       }
+      // forbid writetime and TTL right-hand function calls when updating a counter table
       if (col instanceof FunctionCall) {
         throw new IllegalArgumentException(
             "Invalid mapping: function calls are not allowed when updating a counter table.");
@@ -1402,6 +1494,9 @@ public class SchemaSettings {
       if (field instanceof FunctionCall) {
         throw new IllegalArgumentException(
             "Invalid mapping: function calls are not allowed when updating a counter table.");
+      } else if (field instanceof CQLLiteral) {
+        throw new IllegalArgumentException(
+            "Invalid mapping: constant expressions are not allowed when updating a counter table.");
       }
       if (!isFirst) {
         sb.append(", ");
@@ -1426,7 +1521,7 @@ public class SchemaSettings {
   }
 
   private void appendWriteTimeAndTTL(
-      StringBuilder sb, @Nullable FunctionCall writetime, @Nullable FunctionCall ttl) {
+      StringBuilder sb, @Nullable CQLFragment writetime, @Nullable CQLFragment ttl) {
     boolean hasTtl = ttlSeconds != -1 || ttl != null;
     boolean hasTimestamp = timestampMicros != -1 || writetime != null;
     if (hasTtl || hasTimestamp) {
@@ -1441,7 +1536,7 @@ public class SchemaSettings {
           sb.append(ttlSeconds);
         } else {
           assert ttl != null;
-          sb.append(':').append(ttl.render(VARIABLE));
+          sb.append(ttl.render(NAMED_ASSIGNMENT));
         }
         if (hasTimestamp) {
           sb.append(" AND ");
@@ -1453,7 +1548,18 @@ public class SchemaSettings {
           sb.append(timestampMicros);
         } else {
           assert writetime != null;
-          sb.append(':').append(writetime.render(VARIABLE));
+          if (writetime instanceof TypedCQLLiteral) {
+            DataType dataType = ((TypedCQLLiteral) writetime).getDataType();
+            if (dataType == DataTypes.TIMESTAMP) {
+              ConvertingCodec<String, Instant> codec =
+                  codecFactory.createConvertingCodec(DataTypes.TIMESTAMP, GenericType.STRING, true);
+              String literal = ((CQLLiteral) writetime).getLiteral();
+              Instant i = codec.externalToInternal(codec.parse(literal));
+              long micros = instantToNumber(i, MICROSECONDS, EPOCH);
+              writetime = new TypedCQLLiteral(Long.toString(micros), DataTypes.BIGINT);
+            }
+          }
+          sb.append(writetime.render(NAMED_ASSIGNMENT));
         }
       }
     }
@@ -1630,16 +1736,17 @@ public class SchemaSettings {
       ImmutableMultimap<MappingField, CQLFragment> fieldsToVariables) {
     ImmutableSetMultimap.Builder<Field, CQLWord> builder = ImmutableSetMultimap.builder();
     for (Entry<MappingField, CQLFragment> entry : fieldsToVariables.entries()) {
-      if (entry.getKey() instanceof FunctionCall) {
-        // functions in fields should not be included in the final mapping since
-        // the generated query includes the function call as is.
+      if (entry.getKey() instanceof CQLFragment) {
+        // functions and literals in fields should not be included in the final mapping since
+        // the generated query includes the function call or literal as is.
         continue;
       }
       // all variables must be included in the final mapping;
-      // function calls must be transformed here into a CQL word, e.g.
-      // plus(col1,col2) will generate a variable named "plus(col1, col2)".
+      // function calls and literals must be transformed here into a CQL word, e.g.
+      // plus(col1,col2) will generate a resultset variable named "plus(col1, col2)".
+      // A typed CQL literal (int)123 will generate a resultset variable named "(int)123".
       // This relies on creating names using the same logic that Cassandra uses
-      // server-side to create variable names from function calls.
+      // server-side to create variable names from function calls and literals.
       builder.put(entry.getKey(), toCQLWord(entry.getValue()));
     }
     return builder.build();
@@ -1665,6 +1772,10 @@ public class SchemaSettings {
     return CQLWord.fromInternal(internal);
   }
 
+  private static boolean containsConstantExpressions(Collection<?> coll) {
+    return coll.stream().anyMatch(TypedCQLLiteral.class::isInstance);
+  }
+
   private static boolean containsFunctionCalls(Collection<?> coll) {
     return containsFunctionCalls(coll, Predicates.alwaysTrue());
   }
@@ -1675,6 +1786,14 @@ public class SchemaSettings {
         .filter(FunctionCall.class::isInstance)
         .map(FunctionCall.class::cast)
         .anyMatch(predicate);
+  }
+
+  private static boolean containsWritetimeOrTTLFunctionCalls(
+      Multimap<MappingField, CQLFragment> mappings) {
+    return mappings.entries().stream()
+        .anyMatch(
+            entry ->
+                entry.getKey() instanceof FunctionCall && entry.getValue() instanceof FunctionCall);
   }
 
   private static boolean hasGraphOptions(Config config) {
@@ -1696,5 +1815,16 @@ public class SchemaSettings {
             .getGraphEngine()
             .filter(e -> e.equals(CORE))
             .isPresent();
+  }
+
+  private static boolean checkLiteralSelectorsSupported(CqlSession session) {
+    // Literal selectors are supported starting with C* 3.11.5
+    // https://issues.apache.org/jira/browse/CASSANDRA-9243
+    try {
+      session.execute("SELECT (int)1 FROM system.local");
+      return true;
+    } catch (Exception e) {
+      return false;
+    }
   }
 }
