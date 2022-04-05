@@ -15,6 +15,7 @@
  */
 package com.datastax.oss.dsbulk.workflow.commons.settings;
 
+import static com.datastax.oss.dsbulk.codecs.api.CommonConversionContext.TIMESTAMP_PATTERN;
 import static com.datastax.oss.dsbulk.codecs.api.util.CodecUtils.instantToNumber;
 import static com.datastax.oss.dsbulk.mapping.CQLRenderMode.ALIASED_SELECTOR;
 import static com.datastax.oss.dsbulk.mapping.CQLRenderMode.INTERNAL;
@@ -258,10 +259,11 @@ public class SchemaSettings {
           Instant instant = codec.externalToInternal(timestampStr);
           this.timestampMicros = instantToNumber(instant, MICROSECONDS, EPOCH);
         } catch (Exception e) {
+          Object format = codecFactory.getContext().getAttribute(TIMESTAMP_PATTERN);
           throw new IllegalArgumentException(
               String.format(
-                  "Expecting schema.queryTimestamp to be in ISO_ZONED_DATE_TIME format but got '%s'",
-                  timestampStr));
+                  "Expecting schema.queryTimestamp to be in %s format but got '%s'",
+                  format, timestampStr));
         }
       } else {
         this.timestampMicros = -1L;

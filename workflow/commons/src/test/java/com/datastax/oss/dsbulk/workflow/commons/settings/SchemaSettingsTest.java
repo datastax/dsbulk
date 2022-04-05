@@ -87,6 +87,7 @@ import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSetMultimap;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import com.datastax.oss.driver.shaded.guava.common.collect.SetMultimap;
 import com.datastax.oss.driver.shaded.guava.common.collect.Sets;
+import com.datastax.oss.dsbulk.codecs.api.CommonConversionContext;
 import com.datastax.oss.dsbulk.codecs.api.ConvertingCodec;
 import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
 import com.datastax.oss.dsbulk.codecs.api.format.temporal.CqlTemporalFormat;
@@ -244,6 +245,8 @@ class SchemaSettingsTest {
     when(codecFactory.<String, Instant>createConvertingCodec(
             DataTypes.TIMESTAMP, GenericType.STRING, true))
         .thenReturn(codec);
+    when(codecFactory.getContext())
+        .thenReturn(new CommonConversionContext());
   }
 
   @Test
@@ -1567,7 +1570,7 @@ class SchemaSettingsTest {
     assertThatThrownBy(() -> settings.init(session, codecFactory, true, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
-            "Expecting schema.queryTimestamp to be in ISO_ZONED_DATE_TIME format but got 'junk'");
+            "Expecting schema.queryTimestamp to be in CQL_TIMESTAMP format but got 'junk'");
   }
 
   @Test
