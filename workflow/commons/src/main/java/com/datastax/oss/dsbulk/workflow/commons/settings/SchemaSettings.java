@@ -1484,7 +1484,8 @@ public class SchemaSettings {
       if (col instanceof CQLWord && pks.contains(col)) {
         continue;
       }
-      if (col instanceof FunctionCall || col instanceof CQLLiteral) {
+      // forbid writetime and TTL right-hand function calls when updating a counter table
+      if (col instanceof FunctionCall) {
         throw new IllegalArgumentException(
             "Invalid mapping: function calls are not allowed when updating a counter table.");
       }
@@ -1735,16 +1736,17 @@ public class SchemaSettings {
       ImmutableMultimap<MappingField, CQLFragment> fieldsToVariables) {
     ImmutableSetMultimap.Builder<Field, CQLWord> builder = ImmutableSetMultimap.builder();
     for (Entry<MappingField, CQLFragment> entry : fieldsToVariables.entries()) {
-      if (entry.getKey() instanceof FunctionCall || entry.getKey() instanceof CQLLiteral) {
-        // functions in fields should not be included in the final mapping since
-        // the generated query includes the function call as is.
+      if (entry.getKey() instanceof CQLFragment) {
+        // functions and literals in fields should not be included in the final mapping since
+        // the generated query includes the function call or literal as is.
         continue;
       }
       // all variables must be included in the final mapping;
-      // function calls must be transformed here into a CQL word, e.g.
-      // plus(col1,col2) will generate a variable named "plus(col1, col2)".
+      // function calls and literals must be transformed here into a CQL word, e.g.
+      // plus(col1,col2) will generate a resultset variable named "plus(col1, col2)".
+      // A typed CQL literal (int)123 will generate a resultset variable named "(int)123".
       // This relies on creating names using the same logic that Cassandra uses
-      // server-side to create variable names from function calls.
+      // server-side to create variable names from function calls and literals.
       builder.put(entry.getKey(), toCQLWord(entry.getValue()));
     }
     return builder.build();
