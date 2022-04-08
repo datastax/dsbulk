@@ -57,15 +57,11 @@
       <outputDirectory>conf</outputDirectory>
     </fileSet>
     <fileSet>
-      <directory>${project.build.directory}/generated-sources/license</directory>
+      <directory>${project.build.directory}/generated-sources/license/META-INF</directory>
       <outputDirectory>./</outputDirectory>
       <includes>
         <include>THIRD-PARTY*</include>
       </includes>
-    </fileSet>
-    <fileSet>
-      <directory>${project.parent.basedir}/docs/target/site/apidocs</directory>
-      <outputDirectory>apidocs</outputDirectory>
     </fileSet>
   </fileSets>
   <dependencySets>

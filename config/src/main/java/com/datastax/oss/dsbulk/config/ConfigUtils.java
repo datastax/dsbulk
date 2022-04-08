@@ -15,6 +15,7 @@
  */
 package com.datastax.oss.dsbulk.config;
 
+import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigException.Missing;
@@ -305,6 +306,31 @@ public class ConfigUtils {
           String.format("%s: Expecting valid charset name, got '%s'", path, setting),
           e);
     }
+  }
+
+  /**
+   * Returns the string map at the given path.
+   *
+   * @param config The {@link Config} to use.
+   * @param path path expression.
+   * @throws ConfigException.WrongType if value is not convertible to a string map.
+   */
+  public static ImmutableMap<String, String> getStringMap(Config config, String path) {
+    ConfigObject configObject = config.getObject(path);
+    ImmutableMap.Builder<String, String> builder = ImmutableMap.builder();
+    configObject.forEach(
+        (name, value) -> {
+          if (value.valueType() == ConfigValueType.STRING) {
+            builder.put(name, (String) value.unwrapped());
+          } else {
+            throw new ConfigException.WrongType(
+                configObject.origin(),
+                path + '.' + name,
+                ConfigValueType.STRING.name(),
+                value.valueType().name());
+          }
+        });
+    return builder.build();
   }
 
   /**

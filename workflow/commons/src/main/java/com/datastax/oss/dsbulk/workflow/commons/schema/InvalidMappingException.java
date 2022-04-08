@@ -23,6 +23,8 @@ import com.datastax.oss.dsbulk.connectors.api.Field;
 import com.datastax.oss.dsbulk.mapping.CQLWord;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class InvalidMappingException extends RuntimeException {
 
@@ -46,12 +48,13 @@ public class InvalidMappingException extends RuntimeException {
 
   @NonNull
   public static InvalidMappingException missingField(
-      @NonNull Field field, @NonNull CQLWord variable) {
+      @NonNull Field field, @NonNull Set<CQLWord> variables) {
     return new InvalidMappingException(
         "Required field "
             + field.getFieldDescription()
-            + " (mapped to column "
-            + variable.render(VARIABLE)
+            + " (mapped to column"
+            + (variables.size() > 1 ? "s " : " ")
+            + variables.stream().map(v -> v.render(VARIABLE)).collect(Collectors.joining(", "))
             + ") was missing from record. "
             + "Please remove it from the mapping "
             + "or set schema.allowMissingFields to true.");
@@ -63,15 +66,6 @@ public class InvalidMappingException extends RuntimeException {
         "Primary key column "
             + variable.render(VARIABLE)
             + " cannot be set to null. "
-            + "Check that your settings (schema.mapping or schema.query) match your dataset contents.");
-  }
-
-  @NonNull
-  public static InvalidMappingException emptyPrimaryKey(@NonNull CQLWord variable) {
-    return new InvalidMappingException(
-        "Primary key column "
-            + variable.render(VARIABLE)
-            + " cannot be set to empty. "
             + "Check that your settings (schema.mapping or schema.query) match your dataset contents.");
   }
 

@@ -1,9 +1,19 @@
 ## Changelog
 
-## 1.9.0 (in progress)
+## 1.10.0 (in progress)
+
+- [improvement] BULK-22: Add ability to read from `s3://` URLs (#398).
+
+## 1.9.0
 
 - [improvement] Upgrade driver to 4.14.0.
-- [improvement] BULK-22: Add ability to read from `s3://` URLs (#398).
+- [new feature] [#400](https://github.com/datastax/dsbulk/issues/400): Add ability to unwrap BATCH queries.
+- [new feature] [#405](https://github.com/datastax/dsbulk/issues/405): Add support for Prometheus.
+- [improvement] [#403](https://github.com/datastax/dsbulk/issues/403): Exclude unsupported types from automatic timestamp and TTL preservation.
+- [improvement] [#402](https://github.com/datastax/dsbulk/issues/402): Upload DSBulk binary distributions to Maven Central.
+- [improvement] [#411](https://github.com/datastax/dsbulk/issues/411): Don't check for emptiness of primary key columns.
+- [improvement] [#412](https://github.com/datastax/dsbulk/issues/412): Add support for nested functions in mappings.
+- [improvement] [#415](https://github.com/datastax/dsbulk/issues/415): Add support for literals in mappings.
 
 ## 1.8.0
 

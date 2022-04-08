@@ -13,6 +13,27 @@ Out of the box, DSBulk provides the ability to:
 
 Currently, CSV and Json formats are supported for both loading and unloading data.  
 
+## Installation
+
+DSBulk can be downloaded from several locations:
+
+* From [DataStax Downloads](https://downloads.datastax.com/#bulk-loader).
+  * Available formats: zip, tar.gz.
+* From [GitHub](https://github.com/datastax/dsbulk/releases).
+  * Available formats: zip, tar.gz and executable jar.
+* From Maven Central: download the artifact `dsbulk-distribution`, for example from
+  [here](https://repo.maven.apache.org/maven2/com/datastax/oss/dsbulk-distribution/).
+  * Available formats: zip, tar.gz and executable jar.
+
+Please note: only the zip and tar.gz formats are considered production-ready. The executable jar is
+provided as a convenience for users that want to try DSBulk, but it should not be deployed in
+production environments.
+
+To install DSBulk, simply unpack the zip or tar.gz archives.
+
+The executable jar can be executed with a command like `java -jar dsbulk-distribution.jar
+[subcommand] [options]`. See below for command line options.
+
 ## Documentation
 
 The most up-to-date documentation is available [online][onlineDocs]. 

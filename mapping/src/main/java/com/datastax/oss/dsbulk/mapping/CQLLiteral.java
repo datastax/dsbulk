@@ -15,6 +15,7 @@
  */
 package com.datastax.oss.dsbulk.mapping;
 
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.util.Objects;
 
 /** A CQL literal, such as an integer, float, UUID, hex number, boolean, or string literal. */
@@ -22,10 +23,11 @@ public class CQLLiteral implements CQLFragment {
 
   private final String literal;
 
-  public CQLLiteral(String literal) {
+  public CQLLiteral(@NonNull String literal) {
     this.literal = literal;
   }
 
+  @NonNull
   public String getLiteral() {
     return literal;
   }

@@ -48,6 +48,7 @@ import static com.datastax.oss.dsbulk.workflow.commons.settings.BulkDriverOption
 import static com.datastax.oss.dsbulk.workflow.commons.settings.BulkDriverOption.LOAD_BALANCING_POLICY_FILTER_ALLOW;
 import static com.datastax.oss.dsbulk.workflow.commons.settings.BulkDriverOption.RETRY_POLICY_MAX_RETRIES;
 
+import com.codahale.metrics.MetricRegistry;
 import com.datastax.oss.driver.api.core.ConsistencyLevel;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
@@ -57,11 +58,13 @@ import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
 import com.datastax.oss.driver.api.core.config.DriverOption;
 import com.datastax.oss.driver.api.core.context.DriverContext;
 import com.datastax.oss.driver.api.core.session.ProgrammaticArguments;
+import com.datastax.oss.driver.api.core.session.Session;
 import com.datastax.oss.driver.api.core.time.TimestampGenerator;
 import com.datastax.oss.driver.api.core.type.codec.registry.MutableCodecRegistry;
 import com.datastax.oss.driver.internal.core.auth.PlainTextAuthProvider;
 import com.datastax.oss.driver.internal.core.config.typesafe.DefaultDriverConfigLoader;
 import com.datastax.oss.driver.internal.core.context.DefaultDriverContext;
+import com.datastax.oss.driver.internal.core.context.StartupOptionsBuilder;
 import com.datastax.oss.driver.internal.core.ssl.JdkSslHandlerFactory;
 import com.datastax.oss.driver.internal.core.ssl.SslHandlerFactory;
 import com.datastax.oss.driver.internal.core.time.AtomicTimestampGenerator;
@@ -89,6 +92,7 @@ import java.security.GeneralSecurityException;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -532,7 +536,8 @@ public class DriverSettings {
     return mergedDriverConfig;
   }
 
-  public CqlSession newSession(String executionId, MutableCodecRegistry codecRegistry) {
+  public CqlSession newSession(
+      String executionId, MutableCodecRegistry codecRegistry, MetricRegistry metricRegistry) {
     CqlSessionBuilder sessionBuilder =
         new BulkLoaderSessionBuilder()
             .withApplicationVersion(getBulkLoaderVersion())
@@ -540,8 +545,30 @@ public class DriverSettings {
             .withClientId(WorkflowUtils.clientId(executionId))
             .withAuthProvider(authProvider)
             .withConfigLoader(new DefaultDriverConfigLoader(this::getDriverConfig, false))
-            .withCodecRegistry(codecRegistry);
+            .withCodecRegistry(codecRegistry)
+            .withMetricRegistry(metricRegistry);
     return sessionBuilder.build();
+  }
+
+  /**
+   * Common driver labels, formatted for Prometheus. These labels contain the same info that the
+   * driver sends to Cassandra in its STARTUP messages.
+   */
+  public static ImmutableMap<String, String> driverPrometheusLabels(String executionId) {
+    return ImmutableMap.<String, String>builder()
+        .put(
+            StartupOptionsBuilder.APPLICATION_VERSION_KEY.toLowerCase(Locale.ROOT),
+            WorkflowUtils.getBulkLoaderVersion())
+        .put(
+            StartupOptionsBuilder.APPLICATION_NAME_KEY.toLowerCase(Locale.ROOT),
+            WorkflowUtils.BULK_LOADER_APPLICATION_NAME + " " + executionId)
+        .put(
+            StartupOptionsBuilder.CLIENT_ID_KEY.toLowerCase(Locale.ROOT),
+            WorkflowUtils.clientId(executionId).toString())
+        .put(
+            StartupOptionsBuilder.DRIVER_VERSION_KEY.toLowerCase(Locale.ROOT),
+            Session.OSS_DRIVER_COORDINATES.getVersion().toString())
+        .build();
   }
 
   private static Config addConfigValue(Config config, DriverOption option, Object value) {

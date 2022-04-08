@@ -22,6 +22,8 @@ import static com.datastax.oss.dsbulk.mapping.MappingPreference.MAPPED_ONLY;
 import static java.util.stream.Collectors.counting;
 import static java.util.stream.Collectors.groupingBy;
 
+import com.datastax.oss.driver.api.core.type.DataType;
+import com.datastax.oss.driver.internal.core.metadata.schema.parsing.DataTypeCqlNameParser;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMultimap;
 import com.datastax.oss.driver.shaded.guava.common.collect.LinkedHashMultimap;
 import com.datastax.oss.driver.shaded.guava.common.collect.Multimap;
@@ -41,6 +43,7 @@ import com.datastax.oss.dsbulk.generated.mapping.MappingParser.LiteralContext;
 import com.datastax.oss.dsbulk.generated.mapping.MappingParser.QualifiedFunctionNameContext;
 import com.datastax.oss.dsbulk.generated.mapping.MappingParser.SimpleEntryContext;
 import com.datastax.oss.dsbulk.generated.mapping.MappingParser.TtlContext;
+import com.datastax.oss.dsbulk.generated.mapping.MappingParser.TypedLiteralContext;
 import com.datastax.oss.dsbulk.generated.mapping.MappingParser.VariableContext;
 import com.datastax.oss.dsbulk.generated.mapping.MappingParser.VariableOrFunctionContext;
 import com.datastax.oss.dsbulk.generated.mapping.MappingParser.WritetimeContext;
@@ -212,6 +215,11 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
           "Invalid mapping: simple entries cannot contain function calls when loading, "
               + "please use mapped entries instead.");
     }
+    if (write && variable instanceof CQLLiteral) {
+      throw new IllegalArgumentException(
+          "Invalid mapping: simple entries cannot contain constants when loading, "
+              + "please use mapped entries instead.");
+    }
     if (mappingPreference == INDEXED_ONLY) {
       explicitMappingsBuilder.put(new IndexedMappingField(currentIndex++), variable);
     } else {
@@ -253,8 +261,11 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   public MappingField visitIndexOrFunction(IndexOrFunctionContext ctx) {
     if (ctx.index() != null) {
       return visitIndex(ctx.index());
-    } else {
+    } else if (ctx.function() != null) {
       return visitFunction(ctx.function());
+    } else {
+      assert ctx.typedLiteral() != null;
+      return visitTypedLiteral(ctx.typedLiteral());
     }
   }
 
@@ -263,8 +274,11 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   public MappingField visitFieldOrFunction(MappingParser.FieldOrFunctionContext ctx) {
     if (ctx.field() != null) {
       return visitField(ctx.field());
-    } else {
+    } else if (ctx.function() != null) {
       return visitFunction(ctx.function());
+    } else {
+      assert ctx.typedLiteral() != null;
+      return visitTypedLiteral(ctx.typedLiteral());
     }
   }
 
@@ -334,8 +348,11 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
         }
       }
       return visitVariable(ctx.variable());
-    } else {
+    } else if (ctx.function() != null) {
       return visitFunction(ctx.function());
+    } else {
+      assert ctx.typedLiteral() != null;
+      return visitTypedLiteral(ctx.typedLiteral());
     }
   }
 
@@ -458,10 +475,12 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   public CQLWord visitIdentifier(IdentifierContext ctx) {
     if (ctx.QUOTED_IDENTIFIER() != null) {
       return CQLWord.fromCql(ctx.QUOTED_IDENTIFIER().getText());
-    } else if (ctx.WRITETIME() != null) {
+    } else if (ctx.K_WRITETIME() != null) {
       return WRITETIME;
-    } else if (ctx.TTL() != null) {
+    } else if (ctx.K_TTL() != null) {
       return TTL;
+    } else if (ctx.nativeType() != null) {
+      return CQLWord.fromInternal(ctx.nativeType().getText());
     } else {
       assert ctx.UNQUOTED_IDENTIFIER() != null;
       // Note: contrary to how the CQL grammar handles unquoted identifiers,
@@ -476,10 +495,19 @@ public class MappingInspector extends MappingBaseVisitor<MappingToken> {
   public CQLFragment visitFunctionArg(FunctionArgContext ctx) {
     if (ctx.columnName() != null) {
       return visitColumnName(ctx.columnName());
-    } else {
-      assert ctx.literal() != null;
+    } else if (ctx.literal() != null) {
       return visitLiteral(ctx.literal());
+    } else {
+      assert ctx.function() != null;
+      return visitFunction(ctx.function());
     }
+  }
+
+  @Override
+  public TypedCQLLiteral visitTypedLiteral(TypedLiteralContext ctx) {
+    DataType dataType =
+        new DataTypeCqlNameParser().parse(null, ctx.nativeType().getText(), null, null);
+    return new TypedCQLLiteral(visitLiteral(ctx.literal()).getLiteral(), dataType);
   }
 
   @Override

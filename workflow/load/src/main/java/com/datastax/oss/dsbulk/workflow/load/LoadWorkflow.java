@@ -16,13 +16,11 @@
 package com.datastax.oss.dsbulk.workflow.load;
 
 import com.codahale.metrics.Histogram;
-import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Snapshot;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.BatchableStatement;
 import com.datastax.oss.driver.api.core.cql.BoundStatement;
 import com.datastax.oss.driver.api.core.cql.Statement;
-import com.datastax.oss.driver.api.core.metrics.Metrics;
 import com.datastax.oss.driver.shaded.guava.common.base.Stopwatch;
 import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
 import com.datastax.oss.dsbulk.connectors.api.CommonConnectorFeature;
@@ -37,6 +35,7 @@ import com.datastax.oss.dsbulk.workflow.api.utils.DurationUtils;
 import com.datastax.oss.dsbulk.workflow.api.utils.ThrowableUtils;
 import com.datastax.oss.dsbulk.workflow.commons.log.LogManager;
 import com.datastax.oss.dsbulk.workflow.commons.metrics.MetricsManager;
+import com.datastax.oss.dsbulk.workflow.commons.schema.NestedBatchException;
 import com.datastax.oss.dsbulk.workflow.commons.schema.RecordMapper;
 import com.datastax.oss.dsbulk.workflow.commons.settings.BatchSettings;
 import com.datastax.oss.dsbulk.workflow.commons.settings.CodecSettings;
@@ -92,7 +91,7 @@ public class LoadWorkflow implements Workflow {
   private int writeConcurrency;
   private boolean hasManyReaders;
 
-  private Function<Record, BatchableStatement<?>> mapper;
+  private Function<Record, Flux<BatchableStatement<?>>> mapper;
   private Function<Publisher<BatchableStatement<?>>, Publisher<Statement<?>>> batcher;
   private Function<Flux<Record>, Flux<Record>> totalItemsMonitor;
   private Function<Flux<Record>, Flux<Record>> totalItemsCounter;
@@ -139,20 +138,32 @@ public class LoadWorkflow implements Workflow {
     ConvertingCodecFactory codecFactory =
         codecSettings.createCodecFactory(
             schemaSettings.isAllowExtraFields(), schemaSettings.isAllowMissingFields());
-    session = driverSettings.newSession(executionId, codecFactory.getCodecRegistry());
+    session =
+        driverSettings.newSession(
+            executionId, codecFactory.getCodecRegistry(), monitoringSettings.getRegistry());
     ClusterInformationUtils.printDebugInfoAboutCluster(session);
     schemaSettings.init(
         session,
+        codecFactory,
         connector.supports(CommonConnectorFeature.INDEXED_RECORDS),
         connector.supports(CommonConnectorFeature.MAPPED_RECORDS));
     logManager = logSettings.newLogManager(session, true);
     logManager.init();
-    RecordMapper recordMapper =
-        schemaSettings.createRecordMapper(session, connector.getRecordMetadata(), codecFactory);
-    mapper = recordMapper::map;
-    batchSettings.init(schemaSettings.isBatchQuery());
+    batchSettings.init();
     batchingEnabled = batchSettings.isBatchingEnabled();
     batchBufferSize = batchSettings.getBufferSize();
+    RecordMapper recordMapper;
+    try {
+      recordMapper =
+          schemaSettings.createRecordMapper(
+              session, connector.getRecordMetadata(), batchingEnabled);
+    } catch (NestedBatchException e) {
+      LOGGER.warn(e.getMessage());
+      batchingEnabled = false;
+      recordMapper =
+          schemaSettings.createRecordMapper(session, connector.getRecordMetadata(), false);
+    }
+    mapper = recordMapper::map;
     if (batchingEnabled) {
       batcher = batchSettings.newStatementBatcher(session)::batchByGroupingKey;
     }
@@ -162,7 +173,6 @@ public class LoadWorkflow implements Workflow {
             batchingEnabled,
             logManager.getOperationDirectory(),
             logSettings.getVerbosity(),
-            session.getMetrics().map(Metrics::getRegistry).orElse(new MetricRegistry()),
             session.getContext().getProtocolVersion(),
             session.getContext().getCodecRegistry(),
             schemaSettings.getRowType());
@@ -219,11 +229,11 @@ public class LoadWorkflow implements Workflow {
         .transform(terminationHandler)
         .blockLast();
     timer.stop();
-    metricsManager.stop();
+    int totalErrors = logManager.getTotalErrors();
+    metricsManager.stop(timer.elapsed(), totalErrors == 0);
     Duration elapsed = DurationUtils.round(timer.elapsed(), TimeUnit.SECONDS);
     String elapsedStr =
         elapsed.isZero() ? "less than one second" : DurationUtils.formatDuration(elapsed);
-    int totalErrors = logManager.getTotalErrors();
     if (totalErrors == 0) {
       LOGGER.info("{} completed successfully in {}.", this, elapsedStr);
     } else {
@@ -249,7 +259,7 @@ public class LoadWorkflow implements Workflow {
                     .transform(totalItemsCounter)
                     .transform(failedRecordsMonitor)
                     .transform(failedRecordsHandler)
-                    .map(mapper)
+                    .flatMap(mapper)
                     .transform(failedStatementsMonitor)
                     .transform(unmappableStatementsHandler)
                     .transform(this::bufferAndBatch)
@@ -280,7 +290,7 @@ public class LoadWorkflow implements Workflow {
                     .transform(totalItemsCounter)
                     .transform(failedRecordsMonitor)
                     .transform(failedRecordsHandler)
-                    .map(mapper)
+                    .flatMap(mapper)
                     .transform(failedStatementsMonitor)
                     .transform(unmappableStatementsHandler)
                     .transform(this::batchBuffered)
@@ -396,7 +406,7 @@ public class LoadWorkflow implements Workflow {
           DataSizeSampler.sampleWrites(
               session.getContext(),
               Flux.merge(connector.read())
-                  .<Statement<?>>map(mapper)
+                  .<Statement<?>>flatMap(mapper)
                   .filter(BoundStatement.class::isInstance)
                   .take(1000)
                   .toIterable());

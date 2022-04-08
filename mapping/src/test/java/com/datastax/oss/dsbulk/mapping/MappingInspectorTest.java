@@ -24,10 +24,15 @@ import static com.datastax.oss.dsbulk.mapping.MappingPreference.MAPPED_OR_INDEXE
 import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat;
 import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThatThrownBy;
 
+import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptingExtension;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptor;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 @ExtendWith(LogInterceptingExtension.class)
 class MappingInspectorTest {
@@ -298,6 +303,24 @@ class MappingInspectorTest {
     assertThat(inspector.getExplicitMappings())
         .containsEntry(
             new IndexedMappingField(3), new FunctionCall(null, CQLWord.fromInternal("now")));
+  }
+
+  @Test
+  void should_reject_constant_in_simple_entry_when_loading() {
+    assertThatThrownBy(() -> new MappingInspector("a,b,c,(blob)0xcafebabe", true, MAPPED_ONLY))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("simple entries cannot contain constants when loading");
+  }
+
+  @Test
+  void should_accept_constant_in_simple_entry_when_unloading() {
+    MappingInspector inspector = new MappingInspector("a,b,c,(text)'abc'", false, MAPPED_ONLY);
+    assertThat(inspector.getExplicitMappings())
+        .containsEntry(
+            new MappedMappingField("(text)'abc'"), new TypedCQLLiteral("'abc'", DataTypes.TEXT));
+    inspector = new MappingInspector("a,b,c,(ascii)'abc'", false, INDEXED_ONLY);
+    assertThat(inspector.getExplicitMappings())
+        .containsEntry(new IndexedMappingField(3), new TypedCQLLiteral("'abc'", DataTypes.ASCII));
   }
 
   @Test
@@ -602,11 +625,89 @@ class MappingInspectorTest {
   }
 
   @Test
-  void should_accept_same_ttl_and_writetime_as_valid_identifiers() {
+  void should_accept_keywords_as_valid_identifiers() {
     MappingInspector inspector =
-        new MappingInspector(" ttl = ttl, writetime = writetime", true, MAPPED_ONLY);
+        new MappingInspector(
+            " ttl = ttl, writetime = writetime, int = int, decimal = decimal", true, MAPPED_ONLY);
     assertThat(inspector.getExplicitMappings())
         .containsEntry(new MappedMappingField("ttl"), CQLWord.fromInternal("ttl"))
-        .containsEntry(new MappedMappingField("writetime"), CQLWord.fromInternal("writetime"));
+        .containsEntry(new MappedMappingField("writetime"), CQLWord.fromInternal("writetime"))
+        .containsEntry(new MappedMappingField("int"), CQLWord.fromInternal("int"))
+        .containsEntry(new MappedMappingField("decimal"), CQLWord.fromInternal("decimal"));
+  }
+
+  @Test
+  void should_accept_nested_function() {
+    assertThat(
+            new MappingInspector("ks.foo(ks.\"BAR\"(1),'abc')=col1", true, MAPPED_ONLY)
+                .getExplicitMappings())
+        .containsEntry(
+            new FunctionCall(
+                CQLWord.fromInternal("ks"),
+                CQLWord.fromInternal("foo"),
+                new FunctionCall(
+                    CQLWord.fromInternal("ks"), CQLWord.fromInternal("BAR"), new CQLLiteral("1")),
+                new CQLLiteral("'abc'")),
+            CQLWord.fromCql("col1"));
+  }
+
+  @ParameterizedTest
+  @MethodSource("literals")
+  void should_accept_literal_on_left_side_of_entry(String literal, TypedCQLLiteral expected) {
+    assertThat(
+            new MappingInspector(String.format("%s=col1", literal), true, MAPPED_ONLY)
+                .getExplicitMappings())
+        .containsEntry(expected, CQLWord.fromCql("col1"));
+    assertThat(
+            new MappingInspector(String.format("%s=col1", literal), true, INDEXED_ONLY)
+                .getExplicitMappings())
+        .containsEntry(expected, CQLWord.fromCql("col1"));
+  }
+
+  @ParameterizedTest
+  @MethodSource("literals")
+  void should_accept_literal_on_right_side_of_entry(String literal, TypedCQLLiteral expected) {
+    assertThat(
+            new MappingInspector(String.format("0=%s", literal), true, INDEXED_ONLY)
+                .getExplicitMappings())
+        .containsEntry(new IndexedMappingField(0), expected);
+    assertThat(
+            new MappingInspector(String.format("fieldA=%s", literal), true, MAPPED_ONLY)
+                .getExplicitMappings())
+        .containsEntry(new MappedMappingField("fieldA"), expected);
+  }
+
+  public static Stream<Arguments> literals() {
+    return Stream.of(
+        Arguments.of("(int)0", new TypedCQLLiteral("0", DataTypes.INT)),
+        Arguments.of("(float)0.0", new TypedCQLLiteral("0.0", DataTypes.FLOAT)),
+        Arguments.of("(bigint)123456", new TypedCQLLiteral("123456", DataTypes.BIGINT)),
+        Arguments.of("(double)123.456", new TypedCQLLiteral("123.456", DataTypes.DOUBLE)),
+        Arguments.of("(int)-123456", new TypedCQLLiteral("-123456", DataTypes.INT)),
+        Arguments.of("(decimal)-123.456", new TypedCQLLiteral("-123.456", DataTypes.DECIMAL)),
+        Arguments.of("(text)'abc'", new TypedCQLLiteral("'abc'", DataTypes.TEXT)),
+        Arguments.of("(ascii)''", new TypedCQLLiteral("''", DataTypes.ASCII)),
+        Arguments.of("(text)'a''b''c'", new TypedCQLLiteral("'a''b''c'", DataTypes.TEXT)),
+        Arguments.of("(boolean)true", new TypedCQLLiteral("true", DataTypes.BOOLEAN)),
+        Arguments.of("(boolean)false", new TypedCQLLiteral("false", DataTypes.BOOLEAN)),
+        Arguments.of(
+            "(uuid)f0dea7f2-b3fd-11ec-b909-0242ac120002",
+            new TypedCQLLiteral("f0dea7f2-b3fd-11ec-b909-0242ac120002", DataTypes.UUID)),
+        Arguments.of(
+            "(timeuuid)F0DEA7F2-B3FD-11EC-B909-0242AC120002",
+            new TypedCQLLiteral("F0DEA7F2-B3FD-11EC-B909-0242AC120002", DataTypes.TIMEUUID)),
+        Arguments.of(
+            "(duration)-10mo5d4h3s", new TypedCQLLiteral("-10mo5d4h3s", DataTypes.DURATION)),
+        Arguments.of(
+            "(duration)-P5Y10M5DT4H3M2S",
+            new TypedCQLLiteral("-P5Y10M5DT4H3M2S", DataTypes.DURATION)),
+        Arguments.of("(duration)-P4W", new TypedCQLLiteral("-P4W", DataTypes.DURATION)),
+        Arguments.of(
+            "(duration)-P2022-01-01T12:34:56",
+            new TypedCQLLiteral("-P2022-01-01T12:34:56", DataTypes.DURATION)),
+        Arguments.of("(blob)0xcafebabe", new TypedCQLLiteral("0xcafebabe", DataTypes.BLOB)),
+        Arguments.of("(blob)0XCAFEBABE", new TypedCQLLiteral("0XCAFEBABE", DataTypes.BLOB)),
+        Arguments.of("(double)-NaN", new TypedCQLLiteral("-NaN", DataTypes.DOUBLE)),
+        Arguments.of("(float)Infinity", new TypedCQLLiteral("Infinity", DataTypes.FLOAT)));
   }
 }
