@@ -16,15 +16,19 @@
 package com.datastax.oss.dsbulk.url;
 
 import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.net.URLDecoder;
 import java.net.URLStreamHandler;
-import java.util.Collections;
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
-import org.apache.commons.collections4.map.LRUMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -47,10 +51,10 @@ public class S3URLStreamHandler extends URLStreamHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(S3URLStreamHandler.class);
 
-  private final Map<String, S3Client> s3ClientCache;
+  private final Cache<String, S3Client> s3ClientCache;
 
   S3URLStreamHandler(int s3ClientCacheSize) {
-    this.s3ClientCache = Collections.synchronizedMap(new LRUMap<>(s3ClientCacheSize));
+    this.s3ClientCache = Caffeine.newBuilder().maximumSize(s3ClientCacheSize).build();
   }
 
   @Override
@@ -61,14 +65,14 @@ public class S3URLStreamHandler extends URLStreamHandler {
   @VisibleForTesting
   static class S3Connection extends URLConnection {
 
-    private final Map<String, S3Client> s3ClientCache;
+    private final Cache<String, S3Client> s3ClientCache;
 
     @Override
     public void connect() {
       // Nothing to see here...
     }
 
-    S3Connection(URL url, Map<String, S3Client> s3ClientCache) {
+    S3Connection(URL url, Cache<String, S3Client> s3ClientCache) {
       super(url);
       this.s3ClientCache = s3ClientCache;
     }
@@ -81,11 +85,11 @@ public class S3URLStreamHandler extends URLStreamHandler {
       GetObjectRequest getObjectRequest =
           GetObjectRequest.builder().bucket(bucket).key(key).build();
       String query = url.getQuery();
-      if (query == null) {
+      if (StringUtils.isBlank(query)) {
         throw new IllegalArgumentException(
             "You must provide S3 client credentials in the URL query parameters.");
       }
-      S3Client s3Client = s3ClientCache.computeIfAbsent(query, this::getS3Client);
+      S3Client s3Client = s3ClientCache.get(query, this::getS3Client);
       return getInputStream(s3Client, getObjectRequest);
     }
 
@@ -96,20 +100,25 @@ public class S3URLStreamHandler extends URLStreamHandler {
 
     @VisibleForTesting
     S3Client getS3Client(String query) {
-      Map<String, String> parameters = parseParameters(query);
-      String region;
-      if (parameters.containsKey(REGION)) {
-        region = parameters.get(REGION);
-      } else {
+      LOGGER.debug("Building new S3Client for query '{}'.", query);
+      Map<String, List<String>> parameters;
+      try {
+        parameters = parseParameters(query);
+      } catch (UnsupportedEncodingException e) {
+        // This should never happen, since everyone should support UTF-8.
+        throw new IllegalArgumentException("UTF-8 encoding was not found on your system.", e);
+      }
+      String region = getQueryParam(parameters, REGION);
+      if (StringUtils.isBlank(region)) {
         throw new IllegalArgumentException("You must supply an AWS 'region' parameter on S3 URls.");
       }
 
       SdkHttpClient httpClient = UrlConnectionHttpClient.builder().build();
       S3ClientBuilder builder = S3Client.builder().httpClient(httpClient).region(Region.of(region));
 
-      String profile = parameters.getOrDefault(PROFILE, null);
-      String accessKeyId = parameters.getOrDefault(ACCESS_KEY_ID, null);
-      String secretAccessKey = parameters.getOrDefault(SECRET_ACCESS_KEY, null);
+      String profile = getQueryParam(parameters, PROFILE);
+      String accessKeyId = getQueryParam(parameters, ACCESS_KEY_ID);
+      String secretAccessKey = getQueryParam(parameters, SECRET_ACCESS_KEY);
       if (!StringUtils.isBlank(profile)) {
         LOGGER.info("Using AWS profile {} to connect to S3.", profile);
         builder.credentialsProvider(ProfileCredentialsProvider.create(profile));
@@ -129,16 +138,33 @@ public class S3URLStreamHandler extends URLStreamHandler {
       return builder.build();
     }
 
-    private Map<String, String> parseParameters(String query) {
-      Map<String, String> parameters = new HashMap<>();
-      String[] paramList = query.split("&", 0);
-      for (String param : paramList) {
-        String[] parts = param.split("=", 0);
-        if (parts.length > 1 && !StringUtils.isBlank(parts[1])) {
-          parameters.put(parts[0], parts[1]);
+    // Borrowed from
+    // https://stackoverflow.com/questions/13592236/parse-a-uri-string-into-name-value-collection
+    private static Map<String, List<String>> parseParameters(String query)
+        throws UnsupportedEncodingException {
+      final Map<String, List<String>> queryPairs = new LinkedHashMap<>();
+      final String[] pairs = query.split("&", 0);
+      for (String pair : pairs) {
+        final int idx = pair.indexOf("=");
+        final String key = idx > 0 ? URLDecoder.decode(pair.substring(0, idx), "UTF-8") : pair;
+        queryPairs.computeIfAbsent(key, k -> new ArrayList<>());
+        final String value =
+            idx > 0 && pair.length() > idx + 1
+                ? URLDecoder.decode(pair.substring(idx + 1), "UTF-8")
+                : null;
+        queryPairs.get(key).add(value);
+      }
+      return queryPairs;
+    }
+
+    private static String getQueryParam(Map<String, List<String>> parameters, String key) {
+      if (parameters.containsKey(key)) {
+        List<String> values = parameters.get(key);
+        if (values != null && !values.isEmpty()) {
+          return values.get(0);
         }
       }
-      return parameters;
+      return null;
     }
 
     @Override

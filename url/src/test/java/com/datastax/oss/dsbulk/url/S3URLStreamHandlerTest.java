@@ -138,48 +138,6 @@ class S3URLStreamHandlerTest {
   }
 
   @Test
-  void should_evict_cached_clients() throws IOException {
-    URL url1 = new URL("s3://test-bucket/test-key-1?region=us-west-1&test=should_evict");
-    S3Connection connection1 = spy((S3Connection) url1.openConnection());
-    URL url2 = new URL("s3://test-bucket/test-key-2?region=us-west-2&test=should_evict");
-    S3Connection connection2 = spy((S3Connection) url2.openConnection());
-    URL url3 = new URL("s3://test-bucket/test-key-3?region=us-east-1&test=should_evict");
-    S3Connection connection3 = spy((S3Connection) url3.openConnection());
-    URL url4 = new URL("s3://test-bucket/test-key-4?region=us-west-1&test=should_evict");
-    S3Connection connection4 = spy((S3Connection) url4.openConnection());
-
-    S3Client mockClient = mock(S3Client.class);
-    when(mockClient.getObjectAsBytes(any(GetObjectRequest.class)))
-        .thenAnswer(
-            (Answer<ResponseBytes<GetObjectResponse>>)
-                invocation -> {
-                  GetObjectResponse response = GetObjectResponse.builder().build();
-                  byte[] bytes = new byte[] {};
-                  InputStream is = new ByteArrayInputStream(bytes);
-                  return ResponseBytes.fromInputStream(response, is);
-                });
-    doReturn(mockClient).when(connection1).getS3Client(any());
-    doReturn(mockClient).when(connection2).getS3Client(any());
-    doReturn(mockClient).when(connection3).getS3Client(any());
-    doReturn(mockClient).when(connection4).getS3Client(any());
-
-    InputStream stream1 = connection1.getInputStream();
-    InputStream stream2 = connection2.getInputStream();
-    InputStream stream3 = connection3.getInputStream();
-    InputStream stream4 = connection4.getInputStream();
-
-    assertThat(stream1).isNotSameAs(stream2).isNotSameAs(stream3).isNotSameAs(stream4);
-    assertThat(stream2).isNotSameAs(stream3).isNotSameAs(stream4);
-    assertThat(stream3).isNotSameAs(stream4);
-    verify(mockClient, times(4)).getObjectAsBytes(any(GetObjectRequest.class));
-    verify(connection1).getS3Client("region=us-west-1&test=should_evict");
-    verify(connection2).getS3Client("region=us-west-2&test=should_evict");
-    verify(connection3).getS3Client("region=us-east-1&test=should_evict");
-    verify(connection4)
-        .getS3Client("region=us-west-1&test=should_evict"); // Original value was evicted!
-  }
-
-  @Test
   void should_not_support_writing_to_s3() throws IOException {
     URL url = new URL("s3://test-bucket/test-key");
     S3Connection connection = spy((S3Connection) url.openConnection());

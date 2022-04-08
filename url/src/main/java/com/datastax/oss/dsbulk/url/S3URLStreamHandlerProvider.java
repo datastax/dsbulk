@@ -23,7 +23,7 @@ import java.util.Optional;
 public class S3URLStreamHandlerProvider implements URLStreamHandlerProvider {
 
   private static final String S3CLIENT_CACHE_SIZE_PATH = "dsbulk.s3.clientCacheSize";
-  private static final int DEFAULT_S3CLIENT_CACHE_SIZE = 20;
+  private static final int DEFAULT_S3CLIENT_CACHE_SIZE = 20; // Totally arbitrary default.
 
   /** The protocol for AWS S3 URLs. I.e., URLs beginning with {@code s3://} */
   public static final String S3_STREAM_PROTOCOL = "s3";

@@ -1440,6 +1440,10 @@ Settings applicable for reading from AWS S3 URLs.
 The size (count) of the S3Client cache. Since each S3 URL
 must contain the credentials for the target bucket, we cache
 the clients to prevent rebuilding the same client over and over.
+The default size of 20 is totally arbitrary, as we generally
+expect that most S3 URLs in a given batch will be using the
+same credentials, meaning the cache will really only ever
+contain one entry.
 
 Default: **20**.
 
