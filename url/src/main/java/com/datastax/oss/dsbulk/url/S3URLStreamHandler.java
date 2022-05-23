@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -51,7 +52,7 @@ public class S3URLStreamHandler extends URLStreamHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(S3URLStreamHandler.class);
 
-  private final Cache<String, S3Client> s3ClientCache;
+  private final Cache<S3ClientInfo, S3Client> s3ClientCache;
 
   S3URLStreamHandler(int s3ClientCacheSize) {
     this.s3ClientCache = Caffeine.newBuilder().maximumSize(s3ClientCacheSize).build();
@@ -65,14 +66,14 @@ public class S3URLStreamHandler extends URLStreamHandler {
   @VisibleForTesting
   static class S3Connection extends URLConnection {
 
-    private final Cache<String, S3Client> s3ClientCache;
+    private final Cache<S3ClientInfo, S3Client> s3ClientCache;
 
     @Override
     public void connect() {
       // Nothing to see here...
     }
 
-    S3Connection(URL url, Cache<String, S3Client> s3ClientCache) {
+    S3Connection(URL url, Cache<S3ClientInfo, S3Client> s3ClientCache) {
       super(url);
       this.s3ClientCache = s3ClientCache;
     }
@@ -89,7 +90,8 @@ public class S3URLStreamHandler extends URLStreamHandler {
         throw new IllegalArgumentException(
             "You must provide S3 client credentials in the URL query parameters.");
       }
-      S3Client s3Client = s3ClientCache.get(query, this::getS3Client);
+      S3ClientInfo s3ClientInfo = new S3ClientInfo(query);
+      S3Client s3Client = s3ClientCache.get(s3ClientInfo, this::getS3Client);
       return getInputStream(s3Client, getObjectRequest);
     }
 
@@ -99,26 +101,14 @@ public class S3URLStreamHandler extends URLStreamHandler {
     }
 
     @VisibleForTesting
-    S3Client getS3Client(String query) {
-      LOGGER.debug("Building new S3Client for query '{}'.", query);
-      Map<String, List<String>> parameters;
-      try {
-        parameters = parseParameters(query);
-      } catch (UnsupportedEncodingException e) {
-        // This should never happen, since everyone should support UTF-8.
-        throw new IllegalArgumentException("UTF-8 encoding was not found on your system.", e);
-      }
-      String region = getQueryParam(parameters, REGION);
-      if (StringUtils.isBlank(region)) {
-        throw new IllegalArgumentException("You must supply an AWS 'region' parameter on S3 URls.");
-      }
-
+    S3Client getS3Client(S3ClientInfo s3ClientInfo) {
       SdkHttpClient httpClient = UrlConnectionHttpClient.builder().build();
-      S3ClientBuilder builder = S3Client.builder().httpClient(httpClient).region(Region.of(region));
+      S3ClientBuilder builder =
+          S3Client.builder().httpClient(httpClient).region(Region.of(s3ClientInfo.getRegion()));
 
-      String profile = getQueryParam(parameters, PROFILE);
-      String accessKeyId = getQueryParam(parameters, ACCESS_KEY_ID);
-      String secretAccessKey = getQueryParam(parameters, SECRET_ACCESS_KEY);
+      String profile = s3ClientInfo.getProfile();
+      String accessKeyId = s3ClientInfo.getAccessKeyId();
+      String secretAccessKey = s3ClientInfo.getSecretAccessKey();
       if (!StringUtils.isBlank(profile)) {
         LOGGER.info("Using AWS profile {} to connect to S3.", profile);
         builder.credentialsProvider(ProfileCredentialsProvider.create(profile));
@@ -136,6 +126,37 @@ public class S3URLStreamHandler extends URLStreamHandler {
       }
 
       return builder.build();
+    }
+
+    @Override
+    public OutputStream getOutputStream() {
+      throw new UnsupportedOperationException("Writing to S3 has not yet been implemented.");
+    }
+  }
+
+  @VisibleForTesting
+  static class S3ClientInfo {
+
+    private final String region;
+    private final String profile;
+    private final String accessKeyId;
+    private final String secretAccessKey;
+
+    S3ClientInfo(String query) {
+      Map<String, List<String>> parameters;
+      try {
+        parameters = parseParameters(query);
+      } catch (UnsupportedEncodingException e) {
+        // This should never happen, since everyone should support UTF-8.
+        throw new IllegalArgumentException("UTF-8 encoding was not found on your system.", e);
+      }
+      region = getQueryParam(parameters, REGION);
+      if (StringUtils.isBlank(region)) {
+        throw new IllegalArgumentException("You must supply an AWS 'region' parameter on S3 URls.");
+      }
+      profile = getQueryParam(parameters, PROFILE);
+      accessKeyId = getQueryParam(parameters, ACCESS_KEY_ID);
+      secretAccessKey = getQueryParam(parameters, SECRET_ACCESS_KEY);
     }
 
     // Borrowed from
@@ -167,9 +188,40 @@ public class S3URLStreamHandler extends URLStreamHandler {
       return null;
     }
 
+    public String getRegion() {
+      return region;
+    }
+
+    public String getProfile() {
+      return profile;
+    }
+
+    public String getAccessKeyId() {
+      return accessKeyId;
+    }
+
+    public String getSecretAccessKey() {
+      return secretAccessKey;
+    }
+
     @Override
-    public OutputStream getOutputStream() {
-      throw new UnsupportedOperationException("Writing to S3 has not yet been implemented.");
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      S3ClientInfo that = (S3ClientInfo) o;
+      return region.equals(that.region)
+          && Objects.equals(profile, that.profile)
+          && Objects.equals(accessKeyId, that.accessKeyId)
+          && Objects.equals(secretAccessKey, that.secretAccessKey);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(region, profile, accessKeyId, secretAccessKey);
     }
   }
 }

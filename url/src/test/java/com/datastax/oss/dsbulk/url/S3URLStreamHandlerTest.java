@@ -26,6 +26,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.datastax.oss.dsbulk.url.S3URLStreamHandler.S3ClientInfo;
 import com.datastax.oss.dsbulk.url.S3URLStreamHandler.S3Connection;
 import com.typesafe.config.Config;
 import java.io.ByteArrayInputStream;
@@ -133,7 +134,8 @@ class S3URLStreamHandlerTest {
     verify(mockClient, times(2)).getObjectAsBytes(any(GetObjectRequest.class));
     verify(connection1)
         .getS3Client(
-            "region=us-west-1&test=should_cache"); // We got the client for one connection...
+            new S3ClientInfo(
+                "region=us-west-1&test=should_cache")); // We got the client for one connection...
     verify(connection2, never()).getS3Client(any()); // ... but not the second connection.
   }
 
