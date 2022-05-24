@@ -1418,12 +1418,14 @@ Default: **"DSBulk"**.
 #### --monitoring.prometheus.labels<br />--dsbulk.monitoring.prometheus.labels _&lt;map&lt;string,string&gt;&gt;_
 
 A set of static labels to add to each exported metric, in both pull and push modes. Note that DSBulk automatically adds the following labels:
+
 - `operation_id` is set to the current operation ID (a.k.a. execution ID, see `engine.executionId`);
 - `job` is set to the job name (as defined by `monitoring.prometheus.job`, by default "DSBulk");
 - `application_name` is set to "DataStax Bulk Loader" followed by the operation ID;
 - `application_version` is set to the DSBulk's version;
 - `driver_version` is set to the DataStax Java driver version;
 - `client_id` is set to DSBulk's client UUID.
+
 The last four labels correspond to values that DSBulk also passes to the driver, which in turn uses the same info to connect to Cassandra. This makes it possible to correlate data sent by the driver to Cassandra with data sent by DSBulk to Prometheus.
 
 #### -prometheus,<br />--monitoring.prometheus.pull.enabled<br />--dsbulk.monitoring.prometheus.pull.enabled _&lt;boolean&gt;_
