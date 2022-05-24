@@ -1273,9 +1273,7 @@ Whether or not to use ANSI colors and other escape sequences in log messages pri
   - compatible with ANSI escape sequences; all common terminals on *nix and BSD systems, including MacOS, are ANSI-compatible, and some popular terminals for Windows (Mintty, MinGW);
   - a standard Windows DOS command prompt (ANSI sequences are translated on the fly).
 - `force`: DSBulk will use ANSI, even if the terminal has not been detected as ANSI-compatible.
-- `disable`: DSBulk will not use ANSI.
-
-Note to Windows users: ANSI support on Windows works best when the Microsoft Visual C++ 2008 SP1 Redistributable Package is installed; you can download it [here](https://www.microsoft.com/en-us/download/details.aspx?displaylang=en&id=5582).
+- `disabled`: DSBulk will not use ANSI.
 
 Default: **"normal"**.
 
