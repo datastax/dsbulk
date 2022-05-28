@@ -1,7 +1,8 @@
 ## Changelog
 
-## 1.9.1 (in progress)
+## 1.10.0 (in progress)
 
+- [improvement] Upgrade driver to 4.14.1.
 - [bug] [#419](https://github.com/datastax/dsbulk/issues/419): Fix wrong ANSI mode option name.
 
 ## 1.9.0
