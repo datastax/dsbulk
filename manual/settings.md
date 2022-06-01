@@ -286,15 +286,18 @@ The writable directory where all log files will be stored; if the directory spec
 
 Default: **"./logs"**.
 
-#### -verbosity,<br />--log.verbosity<br />--dsbulk.log.verbosity _&lt;number&gt;_
+#### -verbosity,<br />--log.verbosity<br />--dsbulk.log.verbosity _&lt;string&gt;_
 
 The desired level of verbosity. Valid values are:
 
-- 0 (quiet): DSBulk will only log WARN and ERROR messages.
-- 1 (normal): DSBulk will log INFO, WARN and ERROR messages.
-- 2 (verbose) DSBulk will log DEBUG, INFO, WARN and ERROR messages.
+- `quiet`: DSBulk will only log WARN and ERROR messages.
+- `normal`: DSBulk will log a few INFO messages, as well as WARN and ERROR messages.
+- `high`: DSBulk will also print some DEBUG messages at the beginning of the operation, such as DSBulk's settings, inferred query, and the read and write concurrency.
+- `max`: DSBulk will print numerous DEBUG messages from itself, the driver, and from some important libraries (Netty and Reactor).
 
-Default: **1**.
+Verbosity levels `quiet`, `normal` and `high` are suitable to use in a production environment. Verbosity `high` is the recommended level to diagnose problems related to configuration and/or performance in production environments. Verbosity `max`, however, should only be used for debugging, and preferably on small amounts of data; otherwise it could print hundreds of gigabytes of text to the main log file and to the console.
+
+Default: **"normal"**.
 
 #### -reportRate,<br />--monitoring.reportRate<br />--dsbulk.monitoring.reportRate _&lt;string&gt;_
 
@@ -1255,15 +1258,18 @@ The writable directory where all log files will be stored; if the directory spec
 
 Default: **"./logs"**.
 
-#### -verbosity,<br />--log.verbosity<br />--dsbulk.log.verbosity _&lt;number&gt;_
+#### -verbosity,<br />--log.verbosity<br />--dsbulk.log.verbosity _&lt;string&gt;_
 
 The desired level of verbosity. Valid values are:
 
-- 0 (quiet): DSBulk will only log WARN and ERROR messages.
-- 1 (normal): DSBulk will log INFO, WARN and ERROR messages.
-- 2 (verbose) DSBulk will log DEBUG, INFO, WARN and ERROR messages.
+- `quiet`: DSBulk will only log WARN and ERROR messages.
+- `normal`: DSBulk will log a few INFO messages, as well as WARN and ERROR messages.
+- `high`: DSBulk will also print some DEBUG messages at the beginning of the operation, such as DSBulk's settings, inferred query, and the read and write concurrency.
+- `max`: DSBulk will print numerous DEBUG messages from itself, the driver, and from some important libraries (Netty and Reactor).
 
-Default: **1**.
+Verbosity levels `quiet`, `normal` and `high` are suitable to use in a production environment. Verbosity `high` is the recommended level to diagnose problems related to configuration and/or performance in production environments. Verbosity `max`, however, should only be used for debugging, and preferably on small amounts of data; otherwise it could print hundreds of gigabytes of text to the main log file and to the console.
+
+Default: **"normal"**.
 
 #### --log.ansiMode<br />--dsbulk.log.ansiMode _&lt;string&gt;_
 

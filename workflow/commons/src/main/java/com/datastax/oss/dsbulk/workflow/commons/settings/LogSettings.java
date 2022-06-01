@@ -22,6 +22,7 @@ import ch.qos.logback.classic.filter.ThresholdFilter;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.Appender;
 import ch.qos.logback.core.FileAppender;
+import ch.qos.logback.core.OutputStreamAppender;
 import ch.qos.logback.core.filter.Filter;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.session.Session;
@@ -43,6 +44,7 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;
+import com.typesafe.config.ConfigValueType;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -61,7 +63,8 @@ public class LogSettings {
   public enum Verbosity {
     quiet,
     normal,
-    verbose
+    high,
+    max
   }
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LogSettings.class);
@@ -99,6 +102,9 @@ public class LogSettings {
       "%date{yyyy-MM-dd HH:mm:ss,UTC} %-5level %msg%n%ex{"
           + Joiner.on(',').join(STACK_TRACE_PRINTER_OPTIONS)
           + "}";
+
+  private static final String DEBUG_LAYOUT_PATTERN =
+      "%date{yyyy-MM-dd HH:mm:ss,UTC} %-5level %-15thread %-45logger{36} %msg%n";
 
   private static final Comparator<Entry<String, ConfigValue>> BASIC_SETTINGS_FIRST =
       Comparator.comparing(
@@ -184,19 +190,34 @@ public class LogSettings {
           operationDirectory.resolve(MAIN_LOG_FILE_NAME).normalize().toAbsolutePath();
       createMainLogFileAppender(mainLogFile);
       installJavaLoggingToSLF4JBridge();
-      int verbosity = config.getInt(VERBOSITY);
-      validateVerbosity(verbosity);
-      if (verbosity == 0) {
-        setQuiet();
-      } else if (verbosity == 2) {
-        setVerbose();
-      } else {
-        setNormal();
+      verbosity = processVerbosityLevel();
+      switch (verbosity) {
+        case quiet:
+          setQuiet();
+          break;
+        case high:
+          setVerbose();
+          break;
+        case max:
+          setDebug();
+          break;
+        default:
+          setNormal();
+          break;
       }
-      this.verbosity = Verbosity.values()[verbosity];
       sources = config.getBoolean(SOURCES);
     } catch (ConfigException e) {
       throw ConfigUtils.convertConfigException(e, "dsbulk.log");
+    }
+  }
+
+  private Verbosity processVerbosityLevel() {
+    if (config.getValue(VERBOSITY).valueType() == ConfigValueType.NUMBER) {
+      int verbosity = config.getInt(VERBOSITY);
+      validateVerbosity(verbosity);
+      return Verbosity.values()[verbosity];
+    } else {
+      return config.getEnum(Verbosity.class, VERBOSITY);
     }
   }
 
@@ -319,6 +340,20 @@ public class LogSettings {
   }
 
   @VisibleForTesting
+  public static void setDebug() {
+    setAppenderThreshold(CONSOLE_APPENDER, "TRACE");
+    setAppenderThreshold(MAIN_LOG_FILE_APPENDER, "TRACE");
+    setAppenderEncoderPattern(CONSOLE_APPENDER, DEBUG_LAYOUT_PATTERN);
+    setAppenderEncoderPattern(MAIN_LOG_FILE_APPENDER, DEBUG_LAYOUT_PATTERN);
+    // downgrade log levels to TRACE (dsbulk, driver) and DEBUG (Netty, Reactor)
+    seLoggerThreshold("com.datastax.oss.dsbulk", Level.TRACE);
+    seLoggerThreshold("com.datastax.oss.driver", Level.TRACE);
+    seLoggerThreshold("com.datastax.dse.driver", Level.TRACE);
+    seLoggerThreshold("io.netty", Level.DEBUG);
+    seLoggerThreshold("reactor.core", Level.DEBUG);
+  }
+
+  @VisibleForTesting
   public static void setNormal() {
     setAppenderThreshold(CONSOLE_APPENDER, "INFO");
     setAppenderThreshold(MAIN_LOG_FILE_APPENDER, "INFO");
@@ -350,6 +385,20 @@ public class LogSettings {
     }
   }
 
+  private static void setAppenderEncoderPattern(String appenderName, String pattern) {
+    ch.qos.logback.classic.Logger root =
+        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+    OutputStreamAppender<ILoggingEvent> appender =
+        ((OutputStreamAppender<ILoggingEvent>) root.getAppender(appenderName));
+    LoggerContext lc = root.getLoggerContext();
+    PatternLayoutEncoder ple = new PatternLayoutEncoder();
+    ple.setPattern(pattern);
+    ple.setContext(lc);
+    ple.setCharset(StandardCharsets.UTF_8);
+    ple.start();
+    appender.setEncoder(ple);
+  }
+
   private static boolean isPercent(String maxErrors) {
     return maxErrors.contains("%");
   }
@@ -362,9 +411,11 @@ public class LogSettings {
   }
 
   private static void validateVerbosity(int verbosity) {
-    if (verbosity < 0 || verbosity > 2) {
+    if (verbosity < Verbosity.quiet.ordinal() || verbosity > Verbosity.max.ordinal()) {
       throw new IllegalArgumentException(
-          "verbosity must either be 0 (quiet), 1 (normal) or 2 (verbose).");
+          "Verbosity must either be 0 (quiet), 1 (normal), 2 (high) or 3 (max).");
     }
+    LOGGER.warn(
+        "Numeric verbosity levels are deprecated, use 'quiet' (0), 'normal' (1), 'high' (2) or 'max' (3) instead.");
   }
 }
