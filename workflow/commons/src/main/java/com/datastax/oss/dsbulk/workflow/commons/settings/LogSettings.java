@@ -103,7 +103,7 @@ public class LogSettings {
           + "}";
 
   private static final String DEBUG_LAYOUT_PATTERN =
-      "%date{yyyy-MM-dd HH:mm:ss,UTC} %-5level %-15thread %-45logger{36} %msg%n";
+      "%date{yyyy-MM-dd HH:mm:ss,UTC} %-5level %-15thread %-45logger{45} %msg%n";
 
   private static final Comparator<Entry<String, ConfigValue>> BASIC_SETTINGS_FIRST =
       Comparator.comparing(
