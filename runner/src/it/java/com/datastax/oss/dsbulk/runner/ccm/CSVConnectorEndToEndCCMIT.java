@@ -2675,7 +2675,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--log.maxErrors");
     args.add("9");
     args.add("--log.verbosity");
-    args.add("2");
+    args.add("high");
     args.add("--connector.csv.url");
     args.add(quoteJson(resource));
     args.add("--connector.csv.header");

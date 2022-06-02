@@ -245,7 +245,7 @@ class MetricsManagerTest {
     Path executionDirectory = Files.createTempDirectory("test");
     Path mainLogFile = executionDirectory.resolve("operation.log");
     LogSettings.createMainLogFileAppender(mainLogFile);
-    LogSettings.setQuiet();
+    LogSettings.setVerbosityQuiet();
     MetricsManager manager =
         new MetricsManager(
             new MetricRegistry(),
@@ -291,7 +291,7 @@ class MetricsManagerTest {
     Path executionDirectory = Files.createTempDirectory("test");
     Path mainLogFile = executionDirectory.resolve("operation.log");
     LogSettings.createMainLogFileAppender(mainLogFile);
-    LogSettings.setVerbose();
+    LogSettings.setVerbosityHigh();
     MetricsManager manager =
         new MetricsManager(
             new MetricRegistry(),
@@ -308,7 +308,7 @@ class MetricsManagerTest {
             false,
             null,
             executionDirectory,
-            LogSettings.Verbosity.verbose,
+            LogSettings.Verbosity.high,
             Duration.ofSeconds(5),
             true,
             protocolVersion,
@@ -336,7 +336,7 @@ class MetricsManagerTest {
     Path executionDirectory = Files.createTempDirectory("test");
     Path mainLogFile = executionDirectory.resolve("operation.log");
     LogSettings.createMainLogFileAppender(mainLogFile);
-    LogSettings.setVerbose();
+    LogSettings.setVerbosityHigh();
     MetricsManager manager =
         new MetricsManager(
             new MetricRegistry(),
@@ -353,7 +353,7 @@ class MetricsManagerTest {
             true,
             null,
             executionDirectory,
-            LogSettings.Verbosity.verbose,
+            LogSettings.Verbosity.high,
             Duration.ofSeconds(5),
             true,
             protocolVersion,
@@ -408,7 +408,7 @@ class MetricsManagerTest {
             false,
             prometheus,
             executionDirectory,
-            LogSettings.Verbosity.verbose,
+            LogSettings.Verbosity.high,
             Duration.ofSeconds(5),
             true,
             protocolVersion,

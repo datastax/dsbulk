@@ -35,6 +35,7 @@ import com.datastax.oss.dsbulk.workflow.api.error.ErrorThreshold;
 import com.datastax.oss.dsbulk.workflow.api.error.RatioErrorThreshold;
 import com.datastax.oss.dsbulk.workflow.api.error.UnlimitedErrorThreshold;
 import com.datastax.oss.dsbulk.workflow.commons.log.LogManager;
+import com.datastax.oss.dsbulk.workflow.commons.settings.LogSettings.Verbosity;
 import com.typesafe.config.Config;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -167,7 +168,7 @@ class LogSettingsTest {
   }
 
   @Test
-  void should_log_to_main_log_file_in_normal_mode(@StreamCapture(STDERR) StreamInterceptor stdout)
+  void should_log_to_main_log_file_in_normal_mode(@StreamCapture(STDERR) StreamInterceptor stderr)
       throws Exception {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.log", "directory", quoteJson(customLogsDirectory));
@@ -198,7 +199,7 @@ class LogSettingsTest {
           .anySatisfy(line -> assertThat(line).endsWith("this is a test 3"))
           .anySatisfy(line -> assertThat(line).endsWith("this is a test 4"))
           .noneSatisfy(line -> assertThat(line).contains("this should not appear"));
-      assertThat(stdout.getStreamLinesPlain())
+      assertThat(stderr.getStreamLinesPlain())
           .contains("this is a test 1", "this is a test 2", "this is a test 3", "this is a test 4")
           .doesNotContain("this should not appear");
     } finally {
@@ -207,11 +208,11 @@ class LogSettingsTest {
   }
 
   @Test
-  void should_log_to_main_log_file_in_quiet_mode(@StreamCapture(STDERR) StreamInterceptor stdout)
+  void should_log_to_main_log_file_in_quiet_mode(@StreamCapture(STDERR) StreamInterceptor stderr)
       throws Exception {
     Config config =
         TestConfigUtils.createTestConfig(
-            "dsbulk.log", "directory", quoteJson(customLogsDirectory), "verbosity", 0);
+            "dsbulk.log", "directory", quoteJson(customLogsDirectory), "verbosity", "quiet");
     LogSettings settings = new LogSettings(config, executionId);
     settings.init();
     ch.qos.logback.classic.Logger dsbulkLogger =
@@ -235,17 +236,17 @@ class LogSettingsTest {
         .anySatisfy(line -> assertThat(line).endsWith("this is a test 3"))
         .anySatisfy(line -> assertThat(line).endsWith("this is a test 4"))
         .noneSatisfy(line -> assertThat(line).contains("this should not appear"));
-    assertThat(stdout.getStreamLinesPlain())
+    assertThat(stderr.getStreamLinesPlain())
         .contains("this is a test 1", "this is a test 2", "this is a test 3", "this is a test 4")
         .doesNotContain("this should not appear");
   }
 
   @Test
-  void should_log_to_main_log_file_in_verbose_mode(@StreamCapture(STDERR) StreamInterceptor stdout)
+  void should_log_to_main_log_file_in_verbose_mode(@StreamCapture(STDERR) StreamInterceptor stderr)
       throws Exception {
     Config config =
         TestConfigUtils.createTestConfig(
-            "dsbulk.log", "directory", quoteJson(customLogsDirectory), "verbosity", 2);
+            "dsbulk.log", "directory", quoteJson(customLogsDirectory), "verbosity", "high");
     LogSettings settings = new LogSettings(config, executionId);
     settings.init();
     ch.qos.logback.classic.Logger dsbulkLogger =
@@ -267,9 +268,40 @@ class LogSettingsTest {
         .anySatisfy(line -> assertThat(line).endsWith("this is a test 3"))
         .anySatisfy(line -> assertThat(line).endsWith("this is a test 4"))
         .noneSatisfy(line -> assertThat(line).contains("this should not appear"));
-    assertThat(stdout.getStreamLinesPlain())
+    assertThat(stderr.getStreamLinesPlain())
         .contains("this is a test 1", "this is a test 2", "this is a test 3", "this is a test 4")
         .doesNotContain("this should not appear");
+  }
+
+  @Test
+  void should_log_to_main_log_file_in_debug_mode(@StreamCapture(STDERR) StreamInterceptor stderr)
+      throws Exception {
+    Config config =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.log", "directory", quoteJson(customLogsDirectory), "verbosity", "max");
+    LogSettings settings = new LogSettings(config, executionId);
+    settings.init();
+    ch.qos.logback.classic.Logger dsbulkLogger =
+        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger("com.datastax.oss.dsbulk");
+    assertThat(dsbulkLogger.getLevel()).isEqualTo(Level.TRACE);
+    dsbulkLogger.trace("this is a test 1");
+    LOGGER.trace("this is a test 2");
+    // driver log level should now be INFO
+    LoggerFactory.getLogger("com.datastax.oss.driver").trace("this is a test 3");
+    LoggerFactory.getLogger("com.datastax.dse.driver").trace("this is a test 4");
+    Path logFile = customLogsDirectory.resolve(executionId).resolve("operation.log");
+    assertThat(logFile).exists();
+    List<String> contents = Files.readAllLines(logFile);
+    assertThat(contents)
+        .anySatisfy(line -> assertThat(line).endsWith("this is a test 1"))
+        .anySatisfy(line -> assertThat(line).endsWith("this is a test 2"))
+        .anySatisfy(line -> assertThat(line).endsWith("this is a test 3"))
+        .anySatisfy(line -> assertThat(line).endsWith("this is a test 4"));
+    assertThat(stderr.getStreamLinesPlain())
+        .anySatisfy(line -> assertThat(line).endsWith("this is a test 1"))
+        .anySatisfy(line -> assertThat(line).endsWith("this is a test 2"))
+        .anySatisfy(line -> assertThat(line).endsWith("this is a test 3"))
+        .anySatisfy(line -> assertThat(line).endsWith("this is a test 4"));
   }
 
   @Test
@@ -375,5 +407,38 @@ class LogSettingsTest {
     settings.init();
     ErrorThreshold threshold = settings.queryWarningsThreshold;
     assertThat(threshold).isInstanceOf(UnlimitedErrorThreshold.class);
+  }
+
+  @Test()
+  void should_log_warning_on_deprecated_verbosity_level(
+      @StreamCapture(STDERR) StreamInterceptor stderr) throws IOException {
+    Config config = TestConfigUtils.createTestConfig("dsbulk.log", "verbosity", 2);
+    LogSettings settings = new LogSettings(config, executionId);
+    settings.init();
+    assertThat(settings.getVerbosity()).isEqualTo(Verbosity.high);
+    assertThat(stderr.getStreamLinesPlain())
+        .contains(
+            "Numeric verbosity levels are deprecated, use 'quiet' (0), 'normal' (1), 'high' (2) or 'max' (3) instead.");
+  }
+
+  @Test
+  void should_throw_exception_when_numeric_verbosity_not_valid() {
+    Config config = TestConfigUtils.createTestConfig("dsbulk.log", "verbosity", -1);
+    LogSettings settings = new LogSettings(config, executionId);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining(
+            "Invalid numeric value for dsbulk.log.verbosity, expecting one of: 0 (quiet), 1 (normal), 2 (high) or 3 (max), got: -1");
+  }
+
+  @Test
+  void should_throw_exception_when_string_verbosity_not_valid() {
+    Config config =
+        TestConfigUtils.createTestConfig("dsbulk.log", "verbosity", "NotAValidVerbosity");
+    LogSettings settings = new LogSettings(config, executionId);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining(
+            "Invalid value for dsbulk.log.verbosity, expecting one of quiet, normal, high, max, got: 'NotAValidVerbosity'");
   }
 }
