@@ -245,7 +245,7 @@ class MetricsManagerTest {
     Path executionDirectory = Files.createTempDirectory("test");
     Path mainLogFile = executionDirectory.resolve("operation.log");
     LogSettings.createMainLogFileAppender(mainLogFile);
-    LogSettings.setQuiet();
+    LogSettings.setVerbosityQuiet();
     MetricsManager manager =
         new MetricsManager(
             new MetricRegistry(),
@@ -291,7 +291,7 @@ class MetricsManagerTest {
     Path executionDirectory = Files.createTempDirectory("test");
     Path mainLogFile = executionDirectory.resolve("operation.log");
     LogSettings.createMainLogFileAppender(mainLogFile);
-    LogSettings.setVerbose();
+    LogSettings.setVerbosityHigh();
     MetricsManager manager =
         new MetricsManager(
             new MetricRegistry(),
@@ -336,7 +336,7 @@ class MetricsManagerTest {
     Path executionDirectory = Files.createTempDirectory("test");
     Path mainLogFile = executionDirectory.resolve("operation.log");
     LogSettings.createMainLogFileAppender(mainLogFile);
-    LogSettings.setVerbose();
+    LogSettings.setVerbosityHigh();
     MetricsManager manager =
         new MetricsManager(
             new MetricRegistry(),

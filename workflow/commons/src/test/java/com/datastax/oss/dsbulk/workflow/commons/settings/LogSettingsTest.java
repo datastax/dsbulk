@@ -428,7 +428,7 @@ class LogSettingsTest {
     assertThatThrownBy(settings::init)
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
-            "Verbosity must either be 0 (quiet), 1 (normal), 2 (high) or 3 (max)");
+            "Invalid numeric value for dsbulk.log.verbosity, expecting one of: 0 (quiet), 1 (normal), 2 (high) or 3 (max), got: -1");
   }
 
   @Test

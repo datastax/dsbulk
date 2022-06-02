@@ -44,7 +44,6 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValue;
-import com.typesafe.config.ConfigValueType;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -193,31 +192,21 @@ public class LogSettings {
       verbosity = processVerbosityLevel();
       switch (verbosity) {
         case quiet:
-          setQuiet();
+          setVerbosityQuiet();
           break;
         case high:
-          setVerbose();
+          setVerbosityHigh();
           break;
         case max:
-          setDebug();
+          setVerbosityMax();
           break;
         default:
-          setNormal();
+          setVerbosityNormal();
           break;
       }
       sources = config.getBoolean(SOURCES);
     } catch (ConfigException e) {
       throw ConfigUtils.convertConfigException(e, "dsbulk.log");
-    }
-  }
-
-  private Verbosity processVerbosityLevel() {
-    if (config.getValue(VERBOSITY).valueType() == ConfigValueType.NUMBER) {
-      int verbosity = config.getInt(VERBOSITY);
-      validateVerbosity(verbosity);
-      return Verbosity.values()[verbosity];
-    } else {
-      return config.getEnum(Verbosity.class, VERBOSITY);
     }
   }
 
@@ -315,8 +304,18 @@ public class LogSettings {
     SLF4JBridgeHandler.install();
   }
 
+  private Verbosity processVerbosityLevel() {
+    try {
+      int verbosity = config.getInt(VERBOSITY);
+      validateNumericVerbosity(verbosity);
+      return Verbosity.values()[verbosity];
+    } catch (ConfigException.WrongType e) {
+      return config.getEnum(Verbosity.class, VERBOSITY);
+    }
+  }
+
   @VisibleForTesting
-  public static void setQuiet() {
+  public static void setVerbosityQuiet() {
     setAppenderThreshold(CONSOLE_APPENDER, "WARN");
     setAppenderThreshold(MAIN_LOG_FILE_APPENDER, "WARN");
     // raise log levels to WARN across the board
@@ -328,7 +327,7 @@ public class LogSettings {
   }
 
   @VisibleForTesting
-  public static void setVerbose() {
+  public static void setVerbosityHigh() {
     setAppenderThreshold(CONSOLE_APPENDER, "DEBUG");
     setAppenderThreshold(MAIN_LOG_FILE_APPENDER, "DEBUG");
     // downgrade log levels to DEBUG (dsbulk) and INFO (driver, Netty, Reactor)
@@ -340,7 +339,7 @@ public class LogSettings {
   }
 
   @VisibleForTesting
-  public static void setDebug() {
+  public static void setVerbosityMax() {
     setAppenderThreshold(CONSOLE_APPENDER, "TRACE");
     setAppenderThreshold(MAIN_LOG_FILE_APPENDER, "TRACE");
     setAppenderEncoderPattern(CONSOLE_APPENDER, DEBUG_LAYOUT_PATTERN);
@@ -354,7 +353,7 @@ public class LogSettings {
   }
 
   @VisibleForTesting
-  public static void setNormal() {
+  public static void setVerbosityNormal() {
     setAppenderThreshold(CONSOLE_APPENDER, "INFO");
     setAppenderThreshold(MAIN_LOG_FILE_APPENDER, "INFO");
     // These levels correspond to the ones declared in logback.xml,
@@ -402,7 +401,6 @@ public class LogSettings {
   private static boolean isPercent(String maxErrors) {
     return maxErrors.contains("%");
   }
-
   private static void validatePercentageRange(float maxErrorRatio) {
     if (maxErrorRatio <= 0 || maxErrorRatio >= 1) {
       throw new IllegalArgumentException(
@@ -410,10 +408,10 @@ public class LogSettings {
     }
   }
 
-  private static void validateVerbosity(int verbosity) {
+  private static void validateNumericVerbosity(int verbosity) {
     if (verbosity < Verbosity.quiet.ordinal() || verbosity > Verbosity.max.ordinal()) {
       throw new IllegalArgumentException(
-          "Verbosity must either be 0 (quiet), 1 (normal), 2 (high) or 3 (max).");
+          String.format("Invalid numeric value for dsbulk.log.verbosity, expecting one of: 0 (quiet), 1 (normal), 2 (high) or 3 (max), got: %s.", verbosity));
     }
     LOGGER.warn(
         "Numeric verbosity levels are deprecated, use 'quiet' (0), 'normal' (1), 'high' (2) or 'max' (3) instead.");
