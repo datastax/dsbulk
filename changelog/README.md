@@ -4,6 +4,7 @@
 
 - [improvement] Upgrade driver to 4.14.1.
 - [bug] [#419](https://github.com/datastax/dsbulk/issues/419): Fix wrong ANSI mode option name.
+- [bug] [#425](https://github.com/datastax/dsbulk/issues/425): Don't print count results if read result counter is null.
 - [improvement] [#424](https://github.com/datastax/dsbulk/issues/424): Add "max" verbosity level for debugging purposes.
 
 ## 1.9.0
