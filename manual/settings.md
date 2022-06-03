@@ -1958,7 +1958,7 @@ The node-level metrics to enable. Available metrics are:
 - ignores.unavailable
 - ignores.other
 - errors.connection.init
-* errors.connection.auth
+- errors.connection.auth
 
 Default: **[]**.
 
