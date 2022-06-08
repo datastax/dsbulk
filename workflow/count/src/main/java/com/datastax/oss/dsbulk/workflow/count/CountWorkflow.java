@@ -16,9 +16,9 @@
 package com.datastax.oss.dsbulk.workflow.count;
 
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.shaded.guava.common.base.Stopwatch;
 import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
+import com.datastax.oss.dsbulk.executor.api.listener.CompositeExecutionListener;
 import com.datastax.oss.dsbulk.executor.api.reader.BulkReader;
 import com.datastax.oss.dsbulk.executor.api.result.ReadResult;
 import com.datastax.oss.dsbulk.workflow.api.Workflow;
@@ -36,6 +36,7 @@ import com.datastax.oss.dsbulk.workflow.commons.settings.SchemaGenerationStrateg
 import com.datastax.oss.dsbulk.workflow.commons.settings.SchemaSettings;
 import com.datastax.oss.dsbulk.workflow.commons.settings.SettingsManager;
 import com.datastax.oss.dsbulk.workflow.commons.settings.StatsSettings;
+import com.datastax.oss.dsbulk.workflow.commons.statement.RangeReadBoundStatement;
 import com.datastax.oss.dsbulk.workflow.commons.utils.CloseableUtils;
 import com.datastax.oss.dsbulk.workflow.commons.utils.ClusterInformationUtils;
 import com.typesafe.config.Config;
@@ -49,6 +50,7 @@ import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
@@ -67,7 +69,7 @@ public class CountWorkflow implements Workflow {
   private LogManager logManager;
   private CqlSession session;
   private BulkReader executor;
-  private List<? extends Statement<?>> readStatements;
+  private List<RangeReadBoundStatement> readStatements;
   private volatile boolean success;
   private Function<Flux<ReadResult>, Flux<ReadResult>> totalItemsMonitor;
   private Function<Flux<ReadResult>, Flux<ReadResult>> totalItemsCounter;
@@ -114,7 +116,7 @@ public class CountWorkflow implements Workflow {
             executionId, codecFactory.getCodecRegistry(), monitoringSettings.getRegistry());
     ClusterInformationUtils.printDebugInfoAboutCluster(session);
     schemaSettings.init(session, codecFactory, false, false);
-    logManager = logSettings.newLogManager(session, false);
+    logManager = logSettings.newLogManager(session);
     logManager.init();
     metricsManager =
         monitoringSettings.newMetricsManager(
@@ -127,7 +129,11 @@ public class CountWorkflow implements Workflow {
             schemaSettings.getRowType());
     metricsManager.init();
     executor =
-        executorSettings.newReadExecutor(session, metricsManager.getExecutionListener(), false);
+        executorSettings.newReadExecutor(
+            session,
+            new CompositeExecutionListener(
+                metricsManager.getExecutionListener(), logManager.newReadExecutionListener()),
+            false);
     EnumSet<StatsSettings.StatisticsMode> modes = statsSettings.getStatisticsModes();
     int numPartitions = statsSettings.getNumPartitions();
     readResultCounter =
@@ -160,7 +166,8 @@ public class CountWorkflow implements Workflow {
     Flux.fromIterable(readStatements)
         .flatMap(
             statement ->
-                Flux.from(executor.readReactive(statement))
+                Mono.just(statement)
+                    .flatMapMany(executor::readReactive)
                     .transform(queryWarningsHandler)
                     .transform(totalItemsMonitor)
                     .transform(totalItemsCounter)

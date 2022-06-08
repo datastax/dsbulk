@@ -88,6 +88,7 @@ import com.typesafe.config.ConfigFactory;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -97,6 +98,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterAll;
@@ -634,7 +636,8 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
 
           @NonNull
           @Override
-          public Publisher<Publisher<Record>> read() {
+          public Publisher<Publisher<Record>> read(
+              BiFunction<URI, Publisher<Record>, Publisher<Record>> resourceTerminationHandler) {
             List<Publisher<Record>> resources = new ArrayList<>();
             for (int i = 0; i < 100; i++) {
               AtomicInteger counter = new AtomicInteger();

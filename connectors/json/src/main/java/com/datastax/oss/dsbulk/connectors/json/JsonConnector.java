@@ -173,8 +173,8 @@ public class JsonConnector extends AbstractFileBasedConnector {
 
   @Override
   @NonNull
-  protected RecordReader newSingleFileReader(@NonNull URL url) throws IOException {
-    return new JsonRecordReader(url);
+  protected RecordReader newSingleFileReader(@NonNull URL url, URI resource) throws IOException {
+    return new JsonRecordReader(url, resource);
   }
 
   private class JsonRecordReader implements RecordReader {
@@ -186,9 +186,9 @@ public class JsonConnector extends AbstractFileBasedConnector {
 
     private long recordNumber = 1;
 
-    private JsonRecordReader(URL url) throws IOException {
+    private JsonRecordReader(URL url, URI resource) throws IOException {
       this.url = url;
-      resource = URI.create(url.toExternalForm());
+      this.resource = resource;
       try {
         JsonFactory factory = objectMapper.getFactory();
         BufferedReader r = CompressedIOUtils.newBufferedReader(url, encoding, compression);

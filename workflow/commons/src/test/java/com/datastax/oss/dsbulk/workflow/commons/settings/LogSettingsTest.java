@@ -90,7 +90,7 @@ class LogSettingsTest {
     Config config = TestConfigUtils.createTestConfig("dsbulk.log");
     LogSettings settings = new LogSettings(config, executionId);
     settings.init();
-    try (LogManager logManager = settings.newLogManager(session, true)) {
+    try (LogManager logManager = settings.newLogManager(session)) {
       logManager.init();
       assertThat(logManager).isNotNull();
       assertThat(logManager.getOperationDirectory().toFile().getAbsolutePath())
@@ -159,7 +159,7 @@ class LogSettingsTest {
         TestConfigUtils.createTestConfig("dsbulk.log", "directory", quoteJson(customLogsDirectory));
     LogSettings settings = new LogSettings(config, executionId);
     settings.init();
-    try (LogManager logManager = settings.newLogManager(session, true)) {
+    try (LogManager logManager = settings.newLogManager(session)) {
       logManager.init();
       assertThat(logManager).isNotNull();
       assertThat(logManager.getOperationDirectory().toFile())

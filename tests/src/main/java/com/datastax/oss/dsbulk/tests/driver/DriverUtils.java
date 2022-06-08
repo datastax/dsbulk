@@ -227,6 +227,7 @@ public class DriverUtils {
         }
       }
     }
+    when(row.getFormattedContents()).thenReturn(Arrays.toString(values));
     ColumnDefinitions definitions = mockColumnDefinitions(defs);
     when(row.getColumnDefinitions()).thenReturn(definitions);
     return row;

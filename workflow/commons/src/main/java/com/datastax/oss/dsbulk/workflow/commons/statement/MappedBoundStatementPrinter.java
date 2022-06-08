@@ -13,17 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.dsbulk.workflow.commons.format.statement;
+package com.datastax.oss.dsbulk.workflow.commons.statement;
 
 import com.datastax.oss.driver.api.core.cql.BoundStatement;
+import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.datastax.oss.dsbulk.format.statement.BoundStatementPrinter;
 import com.datastax.oss.dsbulk.format.statement.StatementFormatVerbosity;
 import com.datastax.oss.dsbulk.format.statement.StatementWriter;
-import com.datastax.oss.dsbulk.workflow.commons.statement.MappedBoundStatement;
-import com.datastax.oss.dsbulk.workflow.commons.statement.MappedStatement;
+import com.datastax.oss.dsbulk.workflow.commons.log.LogManagerUtils;
 
-public class MappedBoundStatementPrinter extends BoundStatementPrinter
-    implements MappedStatementPrinter {
+public class MappedBoundStatementPrinter extends BoundStatementPrinter {
 
   @Override
   public Class<MappedBoundStatement> getSupportedStatementClass() {
@@ -37,6 +36,21 @@ public class MappedBoundStatementPrinter extends BoundStatementPrinter
     if (verbosity.compareTo(StatementFormatVerbosity.EXTENDED) >= 0) {
       MappedStatement mappedStatement = (MappedStatement) statement;
       appendRecord(mappedStatement, out);
+    }
+  }
+
+  private void appendRecord(MappedStatement statement, StatementWriter out) {
+    Record record = statement.getRecord();
+    out.newLine()
+        .indent()
+        .append("Resource: ")
+        .append(String.valueOf(record.getResource()))
+        .newLine()
+        .indent()
+        .append("Position: ")
+        .append(String.valueOf(record.getPosition()));
+    if (record.getSource() != null) {
+      out.newLine().indent().append("Source: ").append(LogManagerUtils.formatSource(record));
     }
   }
 }

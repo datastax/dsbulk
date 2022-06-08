@@ -52,9 +52,11 @@ import com.datastax.oss.dsbulk.workflow.commons.utils.CloseableUtils;
 import com.datastax.oss.dsbulk.workflow.commons.utils.ClusterInformationUtils;
 import com.typesafe.config.Config;
 import io.netty.util.concurrent.DefaultThreadFactory;
+import java.net.URI;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -104,8 +106,9 @@ public class LoadWorkflow implements Workflow {
   private Function<Flux<Statement<?>>, Flux<Statement<?>>> batcherMonitor;
   private Function<Flux<Void>, Flux<Void>> terminationHandler;
   private Function<Flux<WriteResult>, Flux<WriteResult>> failedWritesHandler;
-  private Function<Flux<WriteResult>, Flux<Void>> resultPositionsHndler;
+  private Function<Flux<WriteResult>, Flux<Void>> resultPositionsHandler;
   private Function<Flux<WriteResult>, Flux<WriteResult>> queryWarningsHandler;
+  private BiFunction<URI, Publisher<Record>, Publisher<Record>> resourceTerminationHandler;
 
   LoadWorkflow(Config config) {
     settingsManager = new SettingsManager(config);
@@ -147,7 +150,7 @@ public class LoadWorkflow implements Workflow {
         codecFactory,
         connector.supports(CommonConnectorFeature.INDEXED_RECORDS),
         connector.supports(CommonConnectorFeature.MAPPED_RECORDS));
-    logManager = logSettings.newLogManager(session, true);
+    logManager = logSettings.newLogManager(session);
     logManager.init();
     batchSettings.init();
     batchingEnabled = batchSettings.isBatchingEnabled();
@@ -192,8 +195,9 @@ public class LoadWorkflow implements Workflow {
     unmappableStatementsHandler = logManager.newUnmappableStatementsHandler();
     queryWarningsHandler = logManager.newQueryWarningsHandler();
     failedWritesHandler = logManager.newFailedWritesHandler();
-    resultPositionsHndler = logManager.newResultPositionsHandler();
+    resultPositionsHandler = logManager.newWriteResultPositionsHandler();
     terminationHandler = logManager.newTerminationHandler();
+    resourceTerminationHandler = logManager.newConnectorResourceHandler();
     numCores = Runtime.getRuntime().availableProcessors();
     if (connector.readConcurrency() < 1) {
       throw new IllegalArgumentException(
@@ -225,7 +229,7 @@ public class LoadWorkflow implements Workflow {
         .transform(this::executeStatements)
         .transform(queryWarningsHandler)
         .transform(failedWritesHandler)
-        .transform(resultPositionsHndler)
+        .transform(resultPositionsHandler)
         .transform(terminationHandler)
         .blockLast();
     timer.stop();
@@ -251,7 +255,7 @@ public class LoadWorkflow implements Workflow {
   private Flux<Statement<?>> manyReaders() {
     int numThreads = Math.min(readConcurrency, numCores);
     scheduler = Schedulers.newParallel(numThreads, new DefaultThreadFactory("workflow"));
-    return Flux.defer(() -> connector.read())
+    return Flux.defer(() -> connector.read(resourceTerminationHandler))
         .flatMap(
             records ->
                 Flux.from(records)
@@ -277,7 +281,7 @@ public class LoadWorkflow implements Workflow {
    */
   private Flux<Statement<?>> fewReaders() {
     scheduler = Schedulers.newParallel(numCores, new DefaultThreadFactory("workflow"));
-    return Flux.defer(() -> connector.read())
+    return Flux.defer(() -> connector.read(resourceTerminationHandler))
         .flatMap(
             records ->
                 Flux.from(records)

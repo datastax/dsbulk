@@ -40,9 +40,9 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.DefaultProtocolVersion;
 import com.datastax.oss.driver.api.core.ProtocolVersion;
 import com.datastax.oss.driver.api.core.cql.BatchType;
+import com.datastax.oss.driver.api.core.cql.BoundStatement;
 import com.datastax.oss.driver.api.core.cql.ColumnDefinitions;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
-import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.metadata.Metadata;
 import com.datastax.oss.driver.api.core.metadata.schema.ColumnMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.IndexMetadata;
@@ -50,6 +50,7 @@ import com.datastax.oss.driver.api.core.metadata.schema.KeyspaceMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.RelationMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
 import com.datastax.oss.driver.api.core.metadata.schema.ViewMetadata;
+import com.datastax.oss.driver.api.core.metadata.token.TokenRange;
 import com.datastax.oss.driver.api.core.type.DataType;
 import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.api.core.type.ListType;
@@ -57,7 +58,6 @@ import com.datastax.oss.driver.api.core.type.MapType;
 import com.datastax.oss.driver.api.core.type.SetType;
 import com.datastax.oss.driver.api.core.type.UserDefinedType;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
-import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.base.Preconditions;
 import com.datastax.oss.driver.shaded.guava.common.base.Predicates;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
@@ -70,7 +70,6 @@ import com.datastax.oss.dsbulk.codecs.api.ConvertingCodec;
 import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
 import com.datastax.oss.dsbulk.config.ConfigUtils;
 import com.datastax.oss.dsbulk.connectors.api.Field;
-import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.datastax.oss.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.oss.dsbulk.mapping.CQLFragment;
 import com.datastax.oss.dsbulk.mapping.CQLLiteral;
@@ -95,6 +94,8 @@ import com.datastax.oss.dsbulk.workflow.commons.schema.ReadResultCounter;
 import com.datastax.oss.dsbulk.workflow.commons.schema.ReadResultMapper;
 import com.datastax.oss.dsbulk.workflow.commons.schema.RecordMapper;
 import com.datastax.oss.dsbulk.workflow.commons.settings.StatsSettings.StatisticsMode;
+import com.datastax.oss.dsbulk.workflow.commons.statement.RangeReadBoundStatement;
+import com.datastax.oss.dsbulk.workflow.commons.statement.RangeReadStatement;
 import com.datastax.oss.dsbulk.workflow.commons.utils.GraphUtils;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
@@ -553,17 +554,11 @@ public class SchemaSettings {
    *
    * @param session The session to use when preparing the SELECT statement.
    * @param recordMetadata The {@link RecordMetadata} to use for column mappings.
-   * @param codecFactory The {@link ConvertingCodecFactory} to use to locate codecs for the mapping
-   *     operation.
    * @param retainRecordSources Whether the mapper should retain record sources; if {@code true},
-   *     all emitted records will contain the original row as {@linkplain Record#getSource() their
-   *     sources}.
+   *     all emitted records will contain the original row as their sources.
    */
   public ReadResultMapper createReadResultMapper(
-      CqlSession session,
-      RecordMetadata recordMetadata,
-      ConvertingCodecFactory codecFactory,
-      boolean retainRecordSources) {
+      CqlSession session, RecordMetadata recordMetadata, boolean retainRecordSources) {
     if (!schemaGenerationStrategy.isReading() || !schemaGenerationStrategy.isMapping()) {
       throw new IllegalStateException(
           "Cannot create read result mapper when schema generation strategy is "
@@ -573,8 +568,7 @@ public class SchemaSettings {
     // is the order in which fields appear in the record.
     Mapping mapping =
         prepareStatementAndCreateMapping(session, false, EnumSet.noneOf(StatisticsMode.class));
-    return new DefaultReadResultMapper(
-        mapping, recordMetadata, getTargetTableURI(), retainRecordSources);
+    return new DefaultReadResultMapper(mapping, recordMetadata, retainRecordSources);
   }
 
   public ReadResultCounter createReadResultCounter(
@@ -603,53 +597,64 @@ public class SchemaSettings {
         codecFactory);
   }
 
-  public List<Statement<?>> createReadStatements(CqlSession session) {
+  public List<RangeReadBoundStatement> createReadStatements(CqlSession session) {
     PreparedStatement preparedStatement = preparedStatements.get(0);
     ColumnDefinitions variables = preparedStatement.getVariableDefinitions();
-    if (variables.size() == 0) {
-      return Collections.singletonList(preparedStatement.bind());
-    }
-    boolean ok = true;
-    Optional<CQLWord> start = queryInspector.getTokenRangeRestrictionStartVariable();
-    Optional<CQLWord> end = queryInspector.getTokenRangeRestrictionEndVariable();
-    if (!start.isPresent() || !end.isPresent()) {
-      ok = false;
-    }
-    if (start.isPresent() && end.isPresent()) {
-      Optional<CQLWord> unrecognized =
-          StreamSupport.stream(variables.spliterator(), false)
-              .map(columnDefinition -> columnDefinition.getName().asInternal())
-              .map(CQLWord::fromInternal)
-              .filter(name -> !name.equals(start.get()) && !name.equals(end.get()))
-              .findAny();
-      ok = !unrecognized.isPresent();
-    }
-    if (!ok) {
-      throw new IllegalArgumentException(
-          "The provided statement (schema.query) contains unrecognized WHERE restrictions; "
-              + "the WHERE clause is only allowed to contain one token range restriction "
-              + "of the form: WHERE token(...) > ? AND token(...) <= ?");
-    }
     Metadata metadata = session.getMetadata();
     TokenRangeReadStatementGenerator generator =
         new TokenRangeReadStatementGenerator(table, metadata);
-    List<Statement<?>> statements =
-        generator.generate(
-            splits,
-            range ->
-                preparedStatement
-                    .bind()
-                    .setToken(
-                        queryInspector.getTokenRangeRestrictionStartVariableIndex(),
-                        range.getStart())
-                    .setToken(
-                        queryInspector.getTokenRangeRestrictionEndVariableIndex(), range.getEnd()));
+    Map<TokenRange, BoundStatement> statements;
+    if (variables.size() == 0) {
+      statements = generator.generate(1, range -> preparedStatement.bind());
+    } else {
+      boolean ok = true;
+      Optional<CQLWord> start = queryInspector.getTokenRangeRestrictionStartVariable();
+      Optional<CQLWord> end = queryInspector.getTokenRangeRestrictionEndVariable();
+      if (!start.isPresent() || !end.isPresent()) {
+        ok = false;
+      }
+      if (start.isPresent() && end.isPresent()) {
+        Optional<CQLWord> unrecognized =
+            StreamSupport.stream(variables.spliterator(), false)
+                .map(columnDefinition -> columnDefinition.getName().asInternal())
+                .map(CQLWord::fromInternal)
+                .filter(name -> !name.equals(start.get()) && !name.equals(end.get()))
+                .findAny();
+        ok = !unrecognized.isPresent();
+      }
+      if (!ok) {
+        throw new IllegalArgumentException(
+            "The provided statement (schema.query) contains unrecognized WHERE restrictions; "
+                + "the WHERE clause is only allowed to contain one token range restriction "
+                + "of the form: WHERE token(...) > ? AND token(...) <= ?");
+      }
+      statements =
+          generator.generate(
+              splits,
+              range ->
+                  preparedStatement
+                      .bind()
+                      .setToken(
+                          queryInspector.getTokenRangeRestrictionStartVariableIndex(),
+                          range.getStart())
+                      .setToken(
+                          queryInspector.getTokenRangeRestrictionEndVariableIndex(),
+                          range.getEnd()));
+    }
 
-    LOGGER.debug("Generated {} bound statements", statements.size());
+    LOGGER.debug("Generated {} token range read statements", statements.size());
+    List<RangeReadBoundStatement> statementsList = new ArrayList<>();
+    for (Entry<TokenRange, BoundStatement> entry : statements.entrySet()) {
+      URI resource =
+          RangeReadStatement.rangeReadResource(keyspace.getName(), table.getName(), entry.getKey());
+      RangeReadBoundStatement stmt =
+          new RangeReadBoundStatement(entry.getValue(), entry.getKey(), resource);
+      statementsList.add(stmt);
+    }
     // Shuffle the statements to avoid hitting the same replicas sequentially when
     // the statements will be executed.
-    Collections.shuffle(statements);
-    return statements;
+    Collections.shuffle(statementsList);
+    return statementsList;
   }
 
   @NonNull
@@ -663,19 +668,6 @@ public class SchemaSettings {
     } else {
       return RowType.REGULAR;
     }
-  }
-
-  /**
-   * Returns a "resource URI" identifying the operation's target table. Suitable to be used as the
-   * resource URI of records created by a {@link ReadResultMapper} targeting that same table.
-   */
-  @NonNull
-  @VisibleForTesting
-  URI getTargetTableURI() {
-    // Contrary to other identifiers, keyspace and table names MUST contain only alpha-numeric
-    // characters and underscores. So there is no need to escape path segments in the resulting URI.
-    return URI.create(
-        "cql://" + keyspace.getName().asInternal() + '/' + table.getName().asInternal());
   }
 
   public boolean isAllowExtraFields() {

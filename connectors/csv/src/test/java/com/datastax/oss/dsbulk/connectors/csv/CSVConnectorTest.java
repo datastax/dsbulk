@@ -68,7 +68,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -283,7 +288,7 @@ class CSVConnectorTest {
               ReflectionUtils.invokeMethod("isDataSizeSamplingAvailable", connector, Boolean.TYPE))
           .isFalse();
       List<Record> actual = Flux.merge(connector.read()).collectList().block();
-      assertThat(actual).hasSize(1);
+      assertThat(actual).isNotNull().hasSize(1);
       assertThat(actual.get(0).getSource()).isEqualTo(line);
       assertThat(actual.get(0).getResource()).isEqualTo(URI.create("std:/"));
       assertThat(actual.get(0).getPosition()).isEqualTo(1L);
@@ -390,7 +395,7 @@ class CSVConnectorTest {
               ReflectionUtils.invokeMethod("isDataSizeSamplingAvailable", connector, Boolean.TYPE))
           .isFalse();
       List<Record> actual = Flux.merge(connector.read()).collectList().block();
-      assertThat(actual).hasSize(1);
+      assertThat(actual).isNotNull().hasSize(1);
       assertThat(actual.get(0).getSource()).isEqualTo(line);
       assertThat(actual.get(0).values()).containsExactly("abc", "de\nf", "ghk");
       connector.close();
@@ -450,7 +455,7 @@ class CSVConnectorTest {
   @Test
   void should_read_all_resources_in_directory_with_path() throws Exception {
     CSVConnector connector = new CSVConnector();
-    Path rootPath = Paths.get(getClass().getResource("/root").toURI());
+    Path rootPath = Paths.get(Objects.requireNonNull(getClass().getResource("/root")).toURI());
     Config settings =
         TestConfigUtils.createTestConfig(
             "dsbulk.connector.csv",
@@ -794,9 +799,11 @@ class CSVConnectorTest {
         ReflectionUtils.locateMethod("getOrCreateDestinationURL", CSVConnector.class, 0);
     counter.set(999);
     URL nextFile = ReflectionUtils.invokeMethod(getOrCreateDestinationURL, connector, URL.class);
+    assertThat(nextFile).isNotNull();
     assertThat(nextFile.getPath()).endsWith("output-001000.csv");
     counter.set(999_999);
     nextFile = ReflectionUtils.invokeMethod(getOrCreateDestinationURL, connector, URL.class);
+    assertThat(nextFile).isNotNull();
     assertThat(nextFile.getPath()).endsWith("output-1000000.csv");
   }
 
@@ -855,7 +862,7 @@ class CSVConnectorTest {
       connector.configure(settings, true, true);
       connector.init();
       List<Record> actual = Flux.merge(connector.read()).collectList().block();
-      assertThat(actual).hasSize(1);
+      assertThat(actual).isNotNull().hasSize(1);
       assertThat(actual.get(0)).isInstanceOf(ErrorRecord.class);
       assertThat(actual.get(0).getSource()).isEqualTo("value1,value2,value3");
       assertThat(((ErrorRecord) actual.get(0)).getError())
@@ -954,8 +961,10 @@ class CSVConnectorTest {
     connector.configure(settings, true, true);
     connector.init();
     List<Record> records = Flux.merge(connector.read()).collectList().block();
-    assertThat(records).hasSize(1);
-    assertThat(records.get(0).getSource().toString().trim())
+    assertThat(records).isNotNull().hasSize(1);
+    Object source = records.get(0).getSource();
+    assertThat(source).isNotNull();
+    assertThat(source.toString().trim())
         .isEqualTo(
             "\"212.63.180.20\",\"212.63.180.23\",\"3560944660\",\"3560944663\",\"MZ\",\"Mozambique\"");
     connector.close();
@@ -981,7 +990,7 @@ class CSVConnectorTest {
     connector.configure(settings, true, true);
     connector.init();
     List<Record> records = Flux.merge(connector.read()).collectList().block();
-    assertThat(records).hasSize(1);
+    assertThat(records).isNotNull().hasSize(1);
     assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo(" foo ");
     connector.close();
   }
@@ -1006,7 +1015,7 @@ class CSVConnectorTest {
     connector.configure(settings, true, true);
     connector.init();
     List<Record> records = Flux.merge(connector.read()).collectList().block();
-    assertThat(records).hasSize(1);
+    assertThat(records).isNotNull().hasSize(1);
     assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo("foo");
     connector.close();
   }
@@ -1085,7 +1094,7 @@ class CSVConnectorTest {
     connector.configure(settings, true, true);
     connector.init();
     List<Record> records = Flux.merge(connector.read()).collectList().block();
-    assertThat(records).hasSize(1);
+    assertThat(records).isNotNull().hasSize(1);
     assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo(" foo ");
     connector.close();
   }
@@ -1110,7 +1119,7 @@ class CSVConnectorTest {
     connector.configure(settings, true, true);
     connector.init();
     List<Record> records = Flux.merge(connector.read()).collectList().block();
-    assertThat(records).hasSize(1);
+    assertThat(records).isNotNull().hasSize(1);
     assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo("foo");
     connector.close();
   }
@@ -1133,7 +1142,7 @@ class CSVConnectorTest {
     connector.configure(settings, true, true);
     connector.init();
     List<Record> records = Flux.merge(connector.read()).collectList().block();
-    assertThat(records).hasSize(1);
+    assertThat(records).isNotNull().hasSize(1);
     assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo(expected);
     connector.close();
   }
@@ -1210,7 +1219,7 @@ class CSVConnectorTest {
     connector.configure(settings, true, true);
     connector.init();
     List<Record> records = Flux.merge(connector.read()).collectList().block();
-    assertThat(records).hasSize(1);
+    assertThat(records).isNotNull().hasSize(1);
     assertThat(records.get(0).getFieldValue(new DefaultIndexedField(0))).isEqualTo(expected);
     connector.close();
   }
@@ -1314,9 +1323,8 @@ class CSVConnectorTest {
 
   @Test
   void should_error_when_directory_is_not_empty() throws Exception {
-    CSVConnector connector = new CSVConnector();
     Path out = Files.createTempDirectory("test");
-    try {
+    try (CSVConnector connector = new CSVConnector()) {
       Path file = out.resolve("output-000001.csv");
       // will cause the write to fail because the file already exists
       Files.createFile(file);
@@ -1332,14 +1340,18 @@ class CSVConnectorTest {
 
   @Test
   void should_error_when_newline_is_wrong() {
-    CSVConnector connector = new CSVConnector();
-    // empty string test
-    Config settings1 = TestConfigUtils.createTestConfig("dsbulk.connector.csv", "newline", "\"\"");
-    assertThrows(IllegalArgumentException.class, () -> connector.configure(settings1, false, true));
-    // long string test
-    Config settings2 =
-        TestConfigUtils.createTestConfig("dsbulk.connector.csv", "newline", "\"abc\"");
-    assertThrows(IllegalArgumentException.class, () -> connector.configure(settings2, false, true));
+    try (CSVConnector connector = new CSVConnector()) {
+      // empty string test
+      Config settings1 =
+          TestConfigUtils.createTestConfig("dsbulk.connector.csv", "newline", "\"\"");
+      assertThrows(
+          IllegalArgumentException.class, () -> connector.configure(settings1, false, true));
+      // long string test
+      Config settings2 =
+          TestConfigUtils.createTestConfig("dsbulk.connector.csv", "newline", "\"abc\"");
+      assertThrows(
+          IllegalArgumentException.class, () -> connector.configure(settings2, false, true));
+    }
   }
 
   @Test
@@ -1523,13 +1535,14 @@ class CSVConnectorTest {
 
   @Test
   void should_error_on_empty_url() {
-    CSVConnector connector = new CSVConnector();
-    Config settings = TestConfigUtils.createTestConfig("dsbulk.connector.csv", "url", null);
-    assertThatThrownBy(() -> connector.configure(settings, true, true))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining(
-            "A URL or URL file is mandatory when using the csv connector for LOAD. Please set connector.csv.url or connector.csv.urlfile and "
-                + "try again. See settings.md or help for more information.");
+    try (CSVConnector connector = new CSVConnector()) {
+      Config settings = TestConfigUtils.createTestConfig("dsbulk.connector.csv", "url", null);
+      assertThatThrownBy(() -> connector.configure(settings, true, true))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining(
+              "A URL or URL file is mandatory when using the csv connector for LOAD. Please set connector.csv.url or connector.csv.urlfile and "
+                  + "try again. See settings.md or help for more information.");
+    }
   }
 
   @Test
@@ -1665,11 +1678,13 @@ class CSVConnectorTest {
 
   @Test
   void should_error_when_compression_is_wrong() {
-    CSVConnector connector = new CSVConnector();
-    // empty string test
-    Config settings1 =
-        TestConfigUtils.createTestConfig("dsbulk.connector.csv", "compression", "\"abc\"");
-    assertThrows(IllegalArgumentException.class, () -> connector.configure(settings1, false, true));
+    try (CSVConnector connector = new CSVConnector()) {
+      // empty string test
+      Config settings1 =
+          TestConfigUtils.createTestConfig("dsbulk.connector.csv", "compression", "\"abc\"");
+      assertThrows(
+          IllegalArgumentException.class, () -> connector.configure(settings1, false, true));
+    }
   }
 
   @Test
@@ -1809,32 +1824,30 @@ class CSVConnectorTest {
 
   @Test
   void should_throw_if_passing_urlfile_parameter_for_write() {
-    CSVConnector connector = new CSVConnector();
+    try (CSVConnector connector = new CSVConnector()) {
+      Config settings =
+          TestConfigUtils.createTestConfig(
+              "dsbulk.connector.csv", "urlfile", StringUtils.quoteJson(multipleUrlsFile));
 
-    Config settings =
-        TestConfigUtils.createTestConfig(
-            "dsbulk.connector.csv", "urlfile", StringUtils.quoteJson(multipleUrlsFile));
-
-    assertThatThrownBy(() -> connector.configure(settings, false, true))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("The urlfile parameter is not supported for UNLOAD");
+      assertThatThrownBy(() -> connector.configure(settings, false, true))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("The urlfile parameter is not supported for UNLOAD");
+    }
   }
 
   @Test
   void should_not_throw_and_log_if_passing_both_url_and_urlfile_parameter(
       @LogCapture(level = Level.DEBUG) LogInterceptor logs) {
-    CSVConnector connector = new CSVConnector();
-
-    Config settings =
-        TestConfigUtils.createTestConfig(
-            "dsbulk.connector.csv",
-            "urlfile",
-            StringUtils.quoteJson(multipleUrlsFile),
-            "url",
-            StringUtils.quoteJson(multipleUrlsFile));
-
-    assertDoesNotThrow(() -> connector.configure(settings, true, true));
-
+    try (CSVConnector connector = new CSVConnector()) {
+      Config settings =
+          TestConfigUtils.createTestConfig(
+              "dsbulk.connector.csv",
+              "urlfile",
+              StringUtils.quoteJson(multipleUrlsFile),
+              "url",
+              StringUtils.quoteJson(multipleUrlsFile));
+      assertDoesNotThrow(() -> connector.configure(settings, true, true));
+    }
     assertThat(logs.getLoggedMessages())
         .contains("You specified both URL and URL file. The URL file will take precedence.");
   }
@@ -1907,7 +1920,7 @@ class CSVConnectorTest {
     connector.configure(settings, true, true);
     connector.init();
     List<Record> records = Flux.merge(connector.read()).collectList().block();
-    assertThat(records).hasSize(1);
+    assertThat(records).isNotNull().hasSize(1);
     Record record = records.get(0);
     assertThat(record.fields()).hasSize(6);
     assertThat(record.getFieldValue(new DefaultIndexedField(0))).isEqualTo("foo");
@@ -1919,13 +1932,92 @@ class CSVConnectorTest {
     connector.close();
   }
 
+  @Test
+  void should_invoke_termination_handler() throws Exception {
+    CSVConnector connector = new CSVConnector();
+    Config settings =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.connector.csv", "url", url("/root/ip-by-country-sample1.csv"), "maxRecords", 1);
+    connector.configure(settings, true, true);
+    connector.init();
+    AtomicReference<URI> uri = new AtomicReference<>();
+    BiFunction<URI, Publisher<Record>, Publisher<Record>> handler =
+        (resource, upstream) -> {
+          uri.set(resource);
+          return upstream;
+        };
+    Flux.merge(connector.read(handler)).blockLast();
+    connector.close();
+    assertThat(uri).hasValue(rawURL("/root/ip-by-country-sample1.csv").toURI());
+  }
+
+  @Test
+  void should_not_throw_when_error_but_termination_handler_filtered_error() throws Exception {
+    Path file1 = Files.createTempFile("file1", ".csv");
+    Path file2 = Files.createTempFile("file2", ".csv");
+    Files.write(file1, Arrays.asList("aaa", "bbb", "cccc"));
+    Files.write(file2, Arrays.asList("ddd", "eeee", "fff"));
+    URL url1 = file1.toUri().toURL();
+    URL url2 = file2.toUri().toURL();
+    Path urlFile = FileUtils.createURLFile(url1, url2);
+    CSVConnector connector = new CSVConnector();
+    Config settings =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.connector.csv",
+            "header",
+            false,
+            "urlfile",
+            StringUtils.quoteJson(urlFile),
+            "maxCharsPerColumn",
+            3);
+    connector.configure(settings, true, true);
+    connector.init();
+    Map<URI, Throwable> errorRef = new ConcurrentHashMap<>();
+    BiFunction<URI, Publisher<Record>, Publisher<Record>> handler =
+        (resource, upstream) ->
+            Flux.from(upstream)
+                .onErrorResume(
+                    error -> {
+                      errorRef.put(resource, error);
+                      return Flux.empty(); // filter out error and stop parsing the resource
+                    });
+    List<Record> records = Flux.merge(connector.read(handler)).collectList().block();
+    assertThat(records)
+        .hasSize(3)
+        .containsExactly(
+            DefaultRecord.indexed("aaa" + System.lineSeparator(), url1.toURI(), 1, "aaa"),
+            DefaultRecord.indexed("bbb" + System.lineSeparator(), url1.toURI(), 2, "bbb"),
+            DefaultRecord.indexed("ddd" + System.lineSeparator(), url2.toURI(), 1, "ddd"));
+    assertThat(errorRef)
+        .hasSize(2)
+        .hasEntrySatisfying(
+            file1.toUri(),
+            err ->
+                assertThat(err)
+                    .isInstanceOf(IOException.class)
+                    .hasMessageContaining(url1.toExternalForm())
+                    .hasMessageContaining("line 2")
+                    .hasCauseExactlyInstanceOf(TextParsingException.class)
+                    .hasRootCauseExactlyInstanceOf(ArrayIndexOutOfBoundsException.class))
+        .hasEntrySatisfying(
+            file2.toUri(),
+            err ->
+                assertThat(err)
+                    .isInstanceOf(IOException.class)
+                    .hasMessageContaining(url2.toExternalForm())
+                    .hasMessageContaining("line 1")
+                    .hasCauseExactlyInstanceOf(TextParsingException.class)
+                    .hasRootCauseExactlyInstanceOf(ArrayIndexOutOfBoundsException.class));
+    connector.close();
+  }
+
   private static String url(String resource) {
     return StringUtils.quoteJson(rawURL(resource));
   }
 
   private static Path path(@SuppressWarnings("SameParameterValue") String resource)
       throws URISyntaxException {
-    return Paths.get(CSVConnectorTest.class.getResource(resource).toURI());
+    return Paths.get(Objects.requireNonNull(CSVConnectorTest.class.getResource(resource)).toURI());
   }
 
   private static URL rawURL(String resource) {

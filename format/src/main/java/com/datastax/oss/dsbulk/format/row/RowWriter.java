@@ -130,6 +130,9 @@ public final class RowWriter implements Appendable {
    */
   public RowWriter appendClassNameAndHashCode(Row row) {
     String fqcn = row.getClass().getName();
+    if (fqcn.startsWith("com.datastax.oss")) {
+      fqcn = fqcn.substring(fqcn.lastIndexOf('.') + 1);
+    }
     buffer.append(fqcn);
     buffer.append('@');
     buffer.append(Integer.toHexString(row.hashCode()));

@@ -16,13 +16,13 @@
 package com.datastax.oss.dsbulk.workflow.unload;
 
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.shaded.guava.common.base.Stopwatch;
 import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
 import com.datastax.oss.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.oss.dsbulk.connectors.api.Connector;
 import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.datastax.oss.dsbulk.connectors.api.RecordMetadata;
+import com.datastax.oss.dsbulk.executor.api.listener.CompositeExecutionListener;
 import com.datastax.oss.dsbulk.executor.api.reader.BulkReader;
 import com.datastax.oss.dsbulk.executor.api.result.ReadResult;
 import com.datastax.oss.dsbulk.workflow.api.Workflow;
@@ -40,6 +40,7 @@ import com.datastax.oss.dsbulk.workflow.commons.settings.MonitoringSettings;
 import com.datastax.oss.dsbulk.workflow.commons.settings.SchemaGenerationStrategy;
 import com.datastax.oss.dsbulk.workflow.commons.settings.SchemaSettings;
 import com.datastax.oss.dsbulk.workflow.commons.settings.SettingsManager;
+import com.datastax.oss.dsbulk.workflow.commons.statement.RangeReadBoundStatement;
 import com.datastax.oss.dsbulk.workflow.commons.utils.CloseableUtils;
 import com.datastax.oss.dsbulk.workflow.commons.utils.ClusterInformationUtils;
 import com.typesafe.config.Config;
@@ -74,7 +75,7 @@ public class UnloadWorkflow implements Workflow {
   private LogManager logManager;
   private CqlSession session;
   private BulkReader executor;
-  private List<Statement<?>> readStatements;
+  private List<RangeReadBoundStatement> readStatements;
   private Function<Publisher<Record>, Publisher<Record>> writer;
   private Function<Flux<ReadResult>, Flux<ReadResult>> totalItemsMonitor;
   private Function<Flux<Record>, Flux<Record>> failedRecordsMonitor;
@@ -84,6 +85,7 @@ public class UnloadWorkflow implements Workflow {
   private Function<Flux<ReadResult>, Flux<ReadResult>> failedReadsHandler;
   private Function<Flux<ReadResult>, Flux<ReadResult>> queryWarningsHandler;
   private Function<Flux<Record>, Flux<Record>> unmappableRecordsHandler;
+  private Function<Flux<Record>, Flux<Void>> resultPositionsHandler;
   private Function<Flux<Void>, Flux<Void>> terminationHandler;
   private int readConcurrency;
   private int numCores;
@@ -133,7 +135,7 @@ public class UnloadWorkflow implements Workflow {
         codecFactory,
         connector.supports(CommonConnectorFeature.INDEXED_RECORDS),
         connector.supports(CommonConnectorFeature.MAPPED_RECORDS));
-    logManager = logSettings.newLogManager(session, false);
+    logManager = logSettings.newLogManager(session);
     logManager.init();
     metricsManager =
         monitoringSettings.newMetricsManager(
@@ -147,12 +149,14 @@ public class UnloadWorkflow implements Workflow {
     metricsManager.init();
     RecordMetadata recordMetadata = connector.getRecordMetadata();
     readResultMapper =
-        schemaSettings.createReadResultMapper(
-            session, recordMetadata, codecFactory, logSettings.isSources());
+        schemaSettings.createReadResultMapper(session, recordMetadata, logSettings.isSources());
     readStatements = schemaSettings.createReadStatements(session);
     executor =
         executorSettings.newReadExecutor(
-            session, metricsManager.getExecutionListener(), schemaSettings.isSearchQuery());
+            session,
+            new CompositeExecutionListener(
+                metricsManager.getExecutionListener(), logManager.newReadExecutionListener()),
+            schemaSettings.isSearchQuery());
     closed.set(false);
     writer = connector.write();
     totalItemsMonitor = metricsManager.newTotalItemsMonitor();
@@ -163,6 +167,7 @@ public class UnloadWorkflow implements Workflow {
     failedReadsHandler = logManager.newFailedReadsHandler();
     queryWarningsHandler = logManager.newQueryWarningsHandler();
     unmappableRecordsHandler = logManager.newUnmappableRecordsHandler();
+    resultPositionsHandler = logManager.newRecordPositionsHandler();
     terminationHandler = logManager.newTerminationHandler();
     numCores = Runtime.getRuntime().availableProcessors();
     if (connector.writeConcurrency() < 1) {
@@ -197,7 +202,7 @@ public class UnloadWorkflow implements Workflow {
       flux = manyWriters();
     }
     Stopwatch timer = Stopwatch.createStarted();
-    flux.then().flux().transform(terminationHandler).blockLast();
+    flux.transform(resultPositionsHandler).transform(terminationHandler).blockLast();
     timer.stop();
     int totalErrors = logManager.getTotalErrors();
     metricsManager.stop(timer.elapsed(), totalErrors == 0);
@@ -221,8 +226,8 @@ public class UnloadWorkflow implements Workflow {
     schedulers.add(scheduler);
     return Flux.fromIterable(readStatements)
         .flatMap(
-            results ->
-                Flux.from(executor.readReactive(results))
+            statements ->
+                Flux.from(executor.readReactive(statements))
                     .publishOn(scheduler, 500)
                     .transform(queryWarningsHandler)
                     .transform(totalItemsMonitor)
@@ -253,8 +258,8 @@ public class UnloadWorkflow implements Workflow {
     schedulers.add(schedulerForWrites);
     return Flux.fromIterable(readStatements)
         .flatMap(
-            results ->
-                Flux.from(executor.readReactive(results))
+            statements ->
+                Flux.from(executor.readReactive(statements))
                     .publishOn(schedulerForReads, 500)
                     .transform(queryWarningsHandler)
                     .transform(totalItemsMonitor)
@@ -287,9 +292,9 @@ public class UnloadWorkflow implements Workflow {
     schedulers.add(scheduler);
     return Flux.fromIterable(readStatements)
         .flatMap(
-            results -> {
+            statements -> {
               Flux<Record> records =
-                  Flux.from(executor.readReactive(results))
+                  Flux.from(executor.readReactive(statements))
                       .publishOn(scheduler, 500)
                       .transform(queryWarningsHandler)
                       .transform(totalItemsMonitor)

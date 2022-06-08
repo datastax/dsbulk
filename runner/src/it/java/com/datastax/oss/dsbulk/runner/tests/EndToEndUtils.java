@@ -234,8 +234,8 @@ public class EndToEndUtils {
       stream
           .filter(file -> !Files.isDirectory(file))
           .map(Path::getFileName)
-          .filter(p -> p.toString().endsWith("-errors.log"))
           .map(Path::toString)
+          .filter(s -> s.endsWith("-errors.log"))
           .forEach(fileName -> result.put(fileName, getFileContent(fileName)));
     }
   }
@@ -262,23 +262,28 @@ public class EndToEndUtils {
   }
 
   public static void validatePositionsFile(URI resource, long lastPosition) throws IOException {
+    validatePositionsFile(resource, 1, lastPosition);
+  }
+
+  public static void validatePositionsFile(URI resource, long firstPosition, long lastPosition)
+      throws IOException {
     Path logPath =
         OperationDirectory.getCurrentOperationDirectory().orElseThrow(IllegalStateException::new);
-    Path positions = logPath.resolve("positions.txt");
+    Path positions = logPath.resolve("summary.csv");
     assertThat(positions).exists();
     List<String> lines = Files.readAllLines(positions, UTF_8);
-    assertThat(lines).hasSize(1).containsExactly(resource + ":" + lastPosition);
+    assertThat(lines).contains(resource + ";[" + firstPosition + "," + lastPosition + "];1");
   }
 
   public static void validatePositionsFile(Map<URI, Long> lastPositions) throws IOException {
     Path logPath =
         OperationDirectory.getCurrentOperationDirectory().orElseThrow(IllegalStateException::new);
-    Path positions = logPath.resolve("positions.txt");
+    Path positions = logPath.resolve("summary.csv");
     assertThat(positions).exists();
     List<String> lines = Files.readAllLines(positions, UTF_8);
-    assertThat(lines).hasSize(lastPositions.size());
+    assertThat(lines).hasSize(lastPositions.size() + 1).contains("resource;ranges;done");
     for (Entry<URI, Long> entry : lastPositions.entrySet()) {
-      assertThat(lines).contains(entry.getKey() + ":" + entry.getValue());
+      assertThat(lines).contains(entry.getKey() + ";[1," + entry.getValue() + "];1");
     }
   }
 

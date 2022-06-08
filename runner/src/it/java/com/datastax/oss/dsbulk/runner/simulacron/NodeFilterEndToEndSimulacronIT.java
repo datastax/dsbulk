@@ -46,10 +46,12 @@ import com.typesafe.config.Config;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -278,7 +280,8 @@ class NodeFilterEndToEndSimulacronIT extends EndToEndSimulacronITBase {
 
     @NonNull
     @Override
-    public Publisher<Publisher<Record>> read() {
+    public Publisher<Publisher<Record>> read(
+        BiFunction<URI, Publisher<Record>, Publisher<Record>> resourceTerminationHandler) {
       List<Record> records = new ArrayList<>(1000);
       for (int i = 0; i < 1000; i++) {
         Record record =

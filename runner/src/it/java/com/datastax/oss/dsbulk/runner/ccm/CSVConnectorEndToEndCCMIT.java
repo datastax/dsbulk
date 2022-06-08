@@ -1041,7 +1041,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     validateResultSetSize(21, "SELECT * FROM ip_by_country");
     validateNumberOfBadRecords(3);
     validateExceptionsLog(3, "Source:", "mapping-errors.log");
-    validatePositionsFile(CsvUtils.CSV_RECORDS_SKIP, 27);
+    validatePositionsFile(CsvUtils.CSV_RECORDS_SKIP.toURI(), 4, 27);
     FileUtils.deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -2693,10 +2693,13 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertStatus(status, STATUS_ABORTED_TOO_MANY_ERRORS);
     assertThat(logs.getAllMessagesAsString())
         .contains("aborted: Too many errors, the maximum allowed is 9")
-        .contains("Records: total: 24, successful: 14, failed: 10");
-    // the number of writes may vary due to the abortion
+        .contains("Records: total: 24, successful: 14, failed: 10")
+        // the number of writes is zero because statements were being accumulated by the batcher
+        // when the error was triggered and were not flushed
+        .contains("Writes: total: 0, successful: 0, failed: 0, in-flight: 0");
     validateNumberOfBadRecords(10);
-    validatePositionsFile(resource, 24);
+    // first position is 15 because 1-14 were not flushed and not written
+    validatePositionsFile(resource.toURI(), 15, 24);
     validateExceptionsLog(
         10, "Primary key column \"COUNTRY CODE\" cannot be set to null", "mapping-errors.log");
   }

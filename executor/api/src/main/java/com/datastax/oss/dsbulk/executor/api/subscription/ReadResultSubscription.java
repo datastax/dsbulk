@@ -29,9 +29,12 @@ import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import java.util.Iterator;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicLong;
 import org.reactivestreams.Subscriber;
 
 public class ReadResultSubscription extends ResultSubscription<ReadResult, AsyncResultSet> {
+
+  private final AtomicLong position = new AtomicLong(0);
 
   public ReadResultSubscription(
       @NonNull Subscriber<? super ReadResult> subscriber,
@@ -56,7 +59,8 @@ public class ReadResultSubscription extends ResultSubscription<ReadResult, Async
               if (listener != null) {
                 listener.onRowReceived(row, local);
               }
-              return new DefaultReadResult(statement, rs.getExecutionInfo(), row);
+              return new DefaultReadResult(
+                  statement, rs.getExecutionInfo(), row, position.incrementAndGet());
             }
             return endOfData();
           }

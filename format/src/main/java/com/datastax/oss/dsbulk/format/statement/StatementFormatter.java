@@ -252,7 +252,7 @@ public final class StatementFormatter {
    * @param codecRegistry The codec registry in use.
    * @return The statement as a formatted string.
    */
-  @SuppressWarnings("unchecked")
+  @SuppressWarnings({"unchecked", "rawtypes"})
   public String format(
       Statement<?> statement,
       StatementFormatVerbosity verbosity,

@@ -38,9 +38,13 @@ import com.datastax.oss.driver.api.core.servererrors.InvalidQueryException;
 import com.datastax.oss.driver.api.core.servererrors.QueryExecutionException;
 import com.datastax.oss.driver.api.core.servererrors.ServerError;
 import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
+import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import com.datastax.oss.driver.shaded.guava.common.base.Joiner;
 import com.datastax.oss.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.oss.dsbulk.connectors.api.Record;
+import com.datastax.oss.dsbulk.executor.api.exception.BulkExecutionException;
+import com.datastax.oss.dsbulk.executor.api.listener.ExecutionContext;
+import com.datastax.oss.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.oss.dsbulk.executor.api.result.ReadResult;
 import com.datastax.oss.dsbulk.executor.api.result.Result;
 import com.datastax.oss.dsbulk.executor.api.result.WriteResult;
@@ -54,6 +58,7 @@ import com.datastax.oss.dsbulk.workflow.commons.schema.ReadResultMapper;
 import com.datastax.oss.dsbulk.workflow.commons.schema.RecordMapper;
 import com.datastax.oss.dsbulk.workflow.commons.settings.LogSettings;
 import com.datastax.oss.dsbulk.workflow.commons.statement.MappedStatement;
+import com.datastax.oss.dsbulk.workflow.commons.statement.RangeReadStatement;
 import com.datastax.oss.dsbulk.workflow.commons.statement.UnmappableStatement;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
@@ -66,14 +71,19 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -101,13 +111,12 @@ public class LogManager implements AutoCloseable {
   private static final String LOAD_BAD_FILE = "load.bad";
   private static final String CAS_BAD_FILE = "paxos.bad";
 
-  private static final String POSITIONS_FILE = "positions.txt";
+  private static final String SUMMARY_CSV = "summary.csv";
 
   private final CqlSession session;
   private final Path operationDirectory;
   private final ErrorThreshold errorThreshold;
   private final ErrorThreshold queryWarningsThreshold;
-  private final boolean trackPositions;
   private final StatementFormatter statementFormatter;
   private final StatementFormatVerbosity statementFormatVerbosity;
   private final RowFormatter rowFormatter;
@@ -127,8 +136,9 @@ public class LogManager implements AutoCloseable {
 
   private StackTracePrinter stackTracePrinter;
 
-  private PositionsTracker positionsTracker;
+  @VisibleForTesting final PositionsTracker positionsTracker = new PositionsTracker();
   private PrintWriter positionsPrinter;
+  @VisibleForTesting final Map<URI, Boolean> finishedResources = new ConcurrentHashMap<>();
 
   private FluxSink<ErrorRecord> failedRecordSink;
   private FluxSink<ErrorRecord> unmappableRecordSink;
@@ -148,7 +158,6 @@ public class LogManager implements AutoCloseable {
       Path operationDirectory,
       ErrorThreshold errorThreshold,
       ErrorThreshold queryWarningsThreshold,
-      boolean trackPositions,
       StatementFormatter statementFormatter,
       StatementFormatVerbosity statementFormatVerbosity,
       RowFormatter rowFormatter) {
@@ -156,7 +165,6 @@ public class LogManager implements AutoCloseable {
     this.operationDirectory = operationDirectory;
     this.errorThreshold = errorThreshold;
     this.queryWarningsThreshold = queryWarningsThreshold;
-    this.trackPositions = trackPositions;
     this.statementFormatter = statementFormatter;
     this.statementFormatVerbosity = statementFormatVerbosity;
     this.rowFormatter = rowFormatter;
@@ -168,7 +176,6 @@ public class LogManager implements AutoCloseable {
     stackTracePrinter = new StackTracePrinter();
     stackTracePrinter.setOptionList(LogSettings.STACK_TRACE_PRINTER_OPTIONS);
     stackTracePrinter.start();
-    positionsTracker = new PositionsTracker();
     failedRecordSink = newFailedRecordSink();
     unmappableRecordSink = newUnmappableRecordSink();
     unmappableStatementSink = newUnmappableStatementSink();
@@ -218,14 +225,20 @@ public class LogManager implements AutoCloseable {
               pw.close();
             });
     positionsSink.complete();
-    if (trackPositions && !positionsTracker.isEmpty()) {
+    if (!positionsTracker.isEmpty()) {
       positionsPrinter =
           new PrintWriter(
               Files.newBufferedWriter(
-                  operationDirectory.resolve(POSITIONS_FILE), UTF_8, CREATE_NEW, WRITE));
+                  operationDirectory.resolve(SUMMARY_CSV), UTF_8, CREATE_NEW, WRITE));
+      positionsPrinter.println("resource;ranges;done");
       // sort positions by URI
-      new TreeMap<>(positionsTracker.getPositions())
-          .forEach((resource, ranges) -> appendToPositionsFile(resource, ranges, positionsPrinter));
+      TreeMap<URI, List<Range>> positions = new TreeMap<>(positionsTracker.getPositions());
+      for (URI resource : finishedResources.keySet()) {
+        if (!positions.containsKey(resource)) {
+          positions.put(resource, new ArrayList<>());
+        }
+      }
+      positions.forEach(this::appendToPositionsFile);
       positionsPrinter.flush();
       positionsPrinter.close();
     }
@@ -250,8 +263,8 @@ public class LogManager implements AutoCloseable {
       LOGGER.info(
           "Errors are detailed in the following file(s): {}", Joiner.on(", ").join(debugFiles));
     }
-    if (positionsTracker != null) {
-      LOGGER.info("Last processed positions can be found in {}", POSITIONS_FILE);
+    if (!positionsTracker.isEmpty()) {
+      LOGGER.info("A summary of the operation in CSV format can be found in {}.", SUMMARY_CSV);
     }
   }
 
@@ -462,26 +475,63 @@ public class LogManager implements AutoCloseable {
   }
 
   /**
-   * Handler for result positions.
+   * Handler for write results.
    *
    * <p>Used only by the load workflow.
    *
    * <p>Extracts the result's {@link Record} and updates the positions.
    *
-   * @return A handler for result positions.
+   * @return A handler for write results.
    */
-  public Function<Flux<WriteResult>, Flux<Void>> newResultPositionsHandler() {
+  public Function<Flux<WriteResult>, Flux<Void>> newWriteResultPositionsHandler() {
     return upstream ->
         upstream
             .map(Result::getStatement)
-            .transform(newStatementToRecordMapper())
+            .transform(extractRecordFromMappedStatement())
             .flatMap(this::sendToPositionsSink)
             .then()
             .flux();
   }
 
+  /**
+   * Handler for result positions.
+   *
+   * <p>Used only by the unload workflow.
+   *
+   * <p>Updates the positions.
+   *
+   * @return A handler for read result positions.
+   */
+  public Function<Flux<Record>, Flux<Void>> newRecordPositionsHandler() {
+    return upstream -> upstream.flatMap(this::sendToPositionsSink).then().flux();
+  }
+
   public <T> Function<Flux<T>, Flux<T>> newTotalItemsCounter() {
     return upstream -> upstream.doOnNext(r -> totalItems.increment());
+  }
+
+  public BiFunction<URI, Publisher<Record>, Publisher<Record>> newConnectorResourceHandler() {
+    return (resource, upstream) ->
+        Flux.from(upstream)
+            .doOnComplete(() -> finishedResources.put(resource, true))
+            .doOnError(error -> finishedResources.put(resource, false))
+            .onErrorResume(error -> maybeTriggerOnError(error, errors.incrementAndGet()));
+  }
+
+  public ExecutionListener newReadExecutionListener() {
+    return new ExecutionListener() {
+      @Override
+      public void onExecutionSuccessful(Statement<?> statement, ExecutionContext context) {
+        URI resource = ((RangeReadStatement) statement).getResource();
+        finishedResources.put(resource, true);
+      }
+
+      @Override
+      public void onExecutionFailed(BulkExecutionException exception, ExecutionContext context) {
+        URI resource = ((RangeReadStatement) exception.getStatement()).getResource();
+        finishedResources.put(resource, false);
+      }
+    };
   }
 
   /**
@@ -495,7 +545,7 @@ public class LogManager implements AutoCloseable {
    * @return a mapper from statements to records.
    */
   @NonNull
-  private Function<Flux<? extends Statement<?>>, Flux<Record>> newStatementToRecordMapper() {
+  private Function<Flux<? extends Statement<?>>, Flux<Record>> extractRecordFromMappedStatement() {
     return upstream ->
         upstream
             .flatMap(
@@ -516,20 +566,19 @@ public class LogManager implements AutoCloseable {
    *
    * <p>Used in both load and unload workflows.
    *
-   * <p>Appends the record to the debug file, then (for load workflows only) to the bad file and
-   * forwards the record's position to the position tracker.
+   * <p>Appends the record to the debug file, then to the connector bad file and forwards the
+   * record's position to the position tracker.
    *
    * @return A processor for failed records.
    */
   @NonNull
   private FluxSink<ErrorRecord> newFailedRecordSink() {
     UnicastProcessor<ErrorRecord> processor = UnicastProcessor.create();
-    Flux<Record> flux = processor.flatMap(this::appendFailedRecordToDebugFile);
-    if (trackPositions) {
-      flux =
-          flux.flatMap(record -> appendToBadFile(record, CONNECTOR_BAD_FILE))
-              .flatMap(this::sendToPositionsSink);
-    }
+    Flux<Record> flux =
+        processor
+            .flatMap(this::appendFailedRecordToDebugFile)
+            .flatMap(record -> appendToBadFile(record, CONNECTOR_BAD_FILE))
+            .flatMap(this::sendToPositionsSink);
     flux.subscribe(v -> {}, this::onSinkError);
     return processor.sink(OverflowStrategy.BUFFER);
   }
@@ -539,7 +588,8 @@ public class LogManager implements AutoCloseable {
    *
    * <p>Used only in unload workflows.
    *
-   * <p>Appends the record to the debug file.
+   * <p>Appends the record to the debug file, to the bad file, then send the record to the positions
+   * sink.
    *
    * @return A processor for unmappable records.
    */
@@ -548,6 +598,8 @@ public class LogManager implements AutoCloseable {
     UnicastProcessor<ErrorRecord> processor = UnicastProcessor.create();
     processor
         .flatMap(this::appendUnmappableReadResultToDebugFile)
+        .flatMap(record -> appendToBadFile(record, MAPPING_BAD_FILE))
+        .flatMap(this::sendToPositionsSink)
         .subscribe(v -> {}, this::onSinkError);
     return processor.sink(OverflowStrategy.BUFFER);
   }
@@ -568,7 +620,7 @@ public class LogManager implements AutoCloseable {
     processor
         .doOnNext(this::maybeWarnInvalidMapping)
         .flatMap(this::appendUnmappableStatementToDebugFile)
-        .transform(newStatementToRecordMapper())
+        .transform(extractRecordFromMappedStatement())
         .flatMap(record -> appendToBadFile(record, MAPPING_BAD_FILE))
         .flatMap(this::sendToPositionsSink)
         .subscribe(v -> {}, this::onSinkError);
@@ -592,7 +644,7 @@ public class LogManager implements AutoCloseable {
     processor
         .flatMap(this::appendFailedWriteResultToDebugFile)
         .map(Result::getStatement)
-        .transform(newStatementToRecordMapper())
+        .transform(extractRecordFromMappedStatement())
         .flatMap(record -> appendToBadFile(record, LOAD_BAD_FILE))
         .flatMap(this::sendToPositionsSink)
         .subscribe(v -> {}, this::onSinkError);
@@ -616,7 +668,7 @@ public class LogManager implements AutoCloseable {
     processor
         .flatMap(this::appendFailedCASWriteResultToDebugFile)
         .map(Result::getStatement)
-        .transform(newStatementToRecordMapper())
+        .transform(extractRecordFromMappedStatement())
         .flatMap(record -> appendToBadFile(record, CAS_BAD_FILE))
         .flatMap(this::sendToPositionsSink)
         .subscribe(v -> {}, this::onSinkError);
@@ -637,6 +689,7 @@ public class LogManager implements AutoCloseable {
     UnicastProcessor<ReadResult> processor = UnicastProcessor.create();
     processor
         .flatMap(this::appendFailedReadResultToDebugFile)
+        // no bad file nor positions tracker for failed reads
         .subscribe(v -> {}, this::onSinkError);
     return processor.sink(OverflowStrategy.BUFFER);
   }
@@ -662,20 +715,38 @@ public class LogManager implements AutoCloseable {
   }
 
   // Bad file management
-  @SuppressWarnings("BlockingMethodInNonBlockingContext")
   private Mono<Record> appendToBadFile(Record record, String file) {
-    try {
-      Object source = record.getSource();
-      if (source != null) {
-        Path logFile = operationDirectory.resolve(file);
-        PrintWriter writer = openFiles.get(logFile);
-        assert writer != null;
+    return Mono.just(record)
+        .handle(
+            (r, sink) -> {
+              try {
+                doAppendToBadFile(r, file);
+                sink.next(r);
+              } catch (Exception e) {
+                sink.error(e);
+              }
+            });
+  }
+
+  private void doAppendToBadFile(Record record, String file) {
+    Object source = record.getSource();
+    if (source != null) {
+      Path logFile = operationDirectory.resolve(file);
+      PrintWriter writer = openFiles.get(logFile);
+      assert writer != null;
+      if (source instanceof ReadResult) {
+        ((ReadResult) source)
+            .getRow()
+            .ifPresent(
+                row -> {
+                  // In a bad file we must keep each element in one line, so use
+                  // getFormattedContents instead of rowFormatter
+                  LogManagerUtils.printAndMaybeAddNewLine(row.getFormattedContents(), writer);
+                });
+      } else {
         LogManagerUtils.printAndMaybeAddNewLine(source.toString(), writer);
-        writer.flush();
       }
-      return Mono.just(record);
-    } catch (Exception e) {
-      return Mono.error(e);
+      writer.flush();
     }
   }
 
@@ -683,131 +754,168 @@ public class LogManager implements AutoCloseable {
 
   // write query failed
   private Mono<WriteResult> appendFailedWriteResultToDebugFile(WriteResult result) {
-    return appendStatement(result, LOAD_ERRORS_FILE, true);
+    return appendStatement(result, LOAD_ERRORS_FILE);
   }
 
   // CAS write query failed
   private Mono<WriteResult> appendFailedCASWriteResultToDebugFile(WriteResult result) {
-    return appendStatement(result, CAS_ERRORS_FILE, true);
+    return appendStatement(result, CAS_ERRORS_FILE);
   }
 
   // read query failed
   private Mono<ReadResult> appendFailedReadResultToDebugFile(ReadResult result) {
-    return appendStatement(result, UNLOAD_ERRORS_FILE, true);
+    return appendStatement(result, UNLOAD_ERRORS_FILE);
   }
 
-  @SuppressWarnings("BlockingMethodInNonBlockingContext")
-  private <R extends Result> Mono<R> appendStatement(
+  private <R extends Result> Mono<R> appendStatement(R result, String logFileName) {
+    return Mono.just(result)
+        .handle(
+            (r, sink) -> {
+              try {
+                doAppendStatement(r, logFileName, true);
+                sink.next(r);
+              } catch (Exception e) {
+                sink.error(e);
+              }
+            });
+  }
+
+  private <R extends Result> void doAppendStatement(
       R result, String logFileName, boolean appendNewLine) {
-    try {
-      Path logFile = operationDirectory.resolve(logFileName);
-      PrintWriter writer = openFiles.get(logFile);
-      assert writer != null;
-      writer.print("Statement: ");
-      String format =
-          statementFormatter.format(
-              result.getStatement(), statementFormatVerbosity, protocolVersion, codecRegistry);
-      LogManagerUtils.printAndMaybeAddNewLine(format, writer);
-      if (result instanceof WriteResult) {
-        WriteResult writeResult = (WriteResult) result;
-        // If a conditional update could not be applied, print the failed mutations
-        if (writeResult.isSuccess() && !writeResult.wasApplied()) {
-          writer.println("Failed conditional updates: ");
-          writeResult
-              .getFailedWrites()
-              .forEach(
-                  row -> {
-                    String failed = rowFormatter.format(row, protocolVersion, codecRegistry);
-                    LogManagerUtils.printAndMaybeAddNewLine(failed, writer);
-                  });
-        }
+    Path logFile = operationDirectory.resolve(logFileName);
+    PrintWriter writer = openFiles.get(logFile);
+    assert writer != null;
+    writer.print("Statement: ");
+    String format =
+        statementFormatter.format(
+            result.getStatement(), statementFormatVerbosity, protocolVersion, codecRegistry);
+    LogManagerUtils.printAndMaybeAddNewLine(format, writer);
+    if (result instanceof WriteResult) {
+      WriteResult writeResult = (WriteResult) result;
+      // If a conditional update could not be applied, print the failed mutations
+      if (writeResult.isSuccess() && !writeResult.wasApplied()) {
+        writer.println("Failed conditional updates: ");
+        writeResult
+            .getFailedWrites()
+            .forEach(
+                row -> {
+                  String failed = rowFormatter.format(row, protocolVersion, codecRegistry);
+                  LogManagerUtils.printAndMaybeAddNewLine(failed, writer);
+                });
       }
-      if (result.getError().isPresent()) {
-        stackTracePrinter.printStackTrace(result.getError().get(), writer);
-      }
-      if (appendNewLine) {
-        writer.println();
-      }
-      writer.flush();
-      return Mono.just(result);
-    } catch (Exception e) {
-      return Mono.error(e);
     }
+    if (result.getError().isPresent()) {
+      stackTracePrinter.printStackTrace(result.getError().get(), writer);
+    }
+    if (appendNewLine) {
+      writer.println();
+    }
+    writer.flush();
   }
 
   // Mapping errors (failed record -> statement or row -> record mappings)
 
   // record -> statement failed (load workflow)
-  @SuppressWarnings("BlockingMethodInNonBlockingContext")
   private Mono<UnmappableStatement> appendUnmappableStatementToDebugFile(
       UnmappableStatement statement) {
-    try {
-      Path logFile = operationDirectory.resolve(MAPPING_ERRORS_FILE);
-      PrintWriter writer = openFiles.get(logFile);
-      assert writer != null;
-      Record record = statement.getRecord();
-      writer.println("Resource: " + record.getResource());
-      writer.println("Position: " + record.getPosition());
-      if (record.getSource() != null) {
-        writer.println("Source: " + LogManagerUtils.formatSource(record));
-      }
-      stackTracePrinter.printStackTrace(statement.getError(), writer);
-      writer.println();
-      writer.flush();
-      return Mono.just(statement);
-    } catch (Exception e) {
-      return Mono.error(e);
+    return Mono.just(statement)
+        .handle(
+            (s, sink) -> {
+              try {
+                doAppendUnmappableStatementToDebugFile(s);
+                sink.next(s);
+              } catch (Exception e) {
+                sink.error(e);
+              }
+            });
+  }
+
+  private void doAppendUnmappableStatementToDebugFile(UnmappableStatement statement) {
+    Path logFile = operationDirectory.resolve(MAPPING_ERRORS_FILE);
+    PrintWriter writer = openFiles.get(logFile);
+    assert writer != null;
+    Record record = statement.getRecord();
+    appendResourceAndPosition(writer, record);
+    if (record.getSource() != null) {
+      writer.println("Source: " + LogManagerUtils.formatSource(record));
     }
+    stackTracePrinter.printStackTrace(statement.getError(), writer);
+    writer.println();
+    writer.flush();
   }
 
   // row -> record failed (unload workflow)
-  @SuppressWarnings("BlockingMethodInNonBlockingContext")
   private Mono<ErrorRecord> appendUnmappableReadResultToDebugFile(ErrorRecord record) {
-    try {
-      Path logFile = operationDirectory.resolve(MAPPING_ERRORS_FILE);
-      PrintWriter writer = openFiles.get(logFile);
-      assert writer != null;
-      // Don't print the resource since it will be just cql://keyspace/table
-      if (record.getSource() instanceof ReadResult) {
-        ReadResult source = (ReadResult) record.getSource();
-        appendStatement(source, MAPPING_ERRORS_FILE, false);
-        source
-            .getRow()
-            .ifPresent(
-                row -> {
-                  writer.print("Row: ");
-                  String format = rowFormatter.format(row, protocolVersion, codecRegistry);
-                  LogManagerUtils.printAndMaybeAddNewLine(format, writer);
-                });
-      }
-      stackTracePrinter.printStackTrace(record.getError(), writer);
-      writer.println();
-      writer.flush();
-      return Mono.just(record);
-    } catch (Exception e) {
-      return Mono.error(e);
+    return Mono.just(record)
+        .handle(
+            (r, sink) -> {
+              try {
+                doAppendUnmappableReadResultToDebugFile(r);
+                sink.next(r);
+              } catch (Exception e) {
+                sink.error(e);
+              }
+            });
+  }
+
+  private void doAppendUnmappableReadResultToDebugFile(ErrorRecord record) {
+    Path logFile = operationDirectory.resolve(MAPPING_ERRORS_FILE);
+    PrintWriter writer = openFiles.get(logFile);
+    assert writer != null;
+    appendResourceAndPosition(writer, record);
+    if (record.getSource() instanceof ReadResult) {
+      appendReadResult((ReadResult) record.getSource(), MAPPING_ERRORS_FILE, writer);
     }
+    stackTracePrinter.printStackTrace(record.getError(), writer);
+    writer.println();
+    writer.flush();
   }
 
   // Connector errors
-  @SuppressWarnings("BlockingMethodInNonBlockingContext")
+  // record cannot be read or written (load and unload workflows)
   private Mono<ErrorRecord> appendFailedRecordToDebugFile(ErrorRecord record) {
-    try {
-      Path logFile = operationDirectory.resolve(CONNECTOR_ERRORS_FILE);
-      PrintWriter writer = openFiles.get(logFile);
-      assert writer != null;
-      writer.println("Resource: " + record.getResource());
-      writer.println("Position: " + record.getPosition());
-      if (record.getSource() != null) {
-        writer.println("Source: " + LogManagerUtils.formatSource(record));
-      }
-      stackTracePrinter.printStackTrace(record.getError(), writer);
-      writer.println();
-      writer.flush();
-      return Mono.just(record);
-    } catch (Exception e) {
-      return Mono.error(e);
+    return Mono.just(record)
+        .handle(
+            (r, sink) -> {
+              try {
+                doAppendFailedRecordToDebugFile(record);
+                sink.next(r);
+              } catch (Exception e) {
+                sink.error(e);
+              }
+            });
+  }
+
+  private void doAppendFailedRecordToDebugFile(ErrorRecord record) {
+    Path logFile = operationDirectory.resolve(CONNECTOR_ERRORS_FILE);
+    PrintWriter writer = openFiles.get(logFile);
+    assert writer != null;
+    appendResourceAndPosition(writer, record);
+    if (record.getSource() instanceof ReadResult) {
+      appendReadResult((ReadResult) record.getSource(), CONNECTOR_ERRORS_FILE, writer);
+    } else if (record.getSource() != null) {
+      writer.println("Source: " + LogManagerUtils.formatSource(record));
     }
+    stackTracePrinter.printStackTrace(record.getError(), writer);
+    writer.println();
+    writer.flush();
+  }
+
+  private void appendReadResult(ReadResult source, String logFileName, PrintWriter writer) {
+    doAppendStatement(source, logFileName, false);
+    source
+        .getRow()
+        .ifPresent(
+            row -> {
+              writer.print("Row: ");
+              String format = rowFormatter.format(row, protocolVersion, codecRegistry);
+              LogManagerUtils.printAndMaybeAddNewLine(format, writer);
+            });
+  }
+
+  private void appendResourceAndPosition(PrintWriter writer, Record record) {
+    writer.println("Resource: " + record.getResource());
+    writer.println("Position: " + record.getPosition());
   }
 
   @NonNull
@@ -822,11 +930,18 @@ public class LogManager implements AutoCloseable {
 
   // Utility methods
 
-  private static void appendToPositionsFile(
-      URI resource, List<Range> positions, PrintWriter positionsPrinter) {
+  private void appendToPositionsFile(URI resource, List<Range> positions) {
     positionsPrinter.print(resource);
-    positionsPrinter.print(':');
-    positions.stream().findFirst().ifPresent(pos -> positionsPrinter.print(pos.getUpper()));
+    positionsPrinter.print(';');
+    for (Range range : positions) {
+      positionsPrinter.print(range);
+    }
+    positionsPrinter.print(';');
+    if (finishedResources.getOrDefault(resource, false)) {
+      positionsPrinter.print('1');
+    } else {
+      positionsPrinter.print('0');
+    }
     positionsPrinter.println();
   }
 
