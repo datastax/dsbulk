@@ -41,7 +41,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -167,9 +166,12 @@ public abstract class AbstractFileBasedConnector implements Connector {
     return Flux.concat(
             Flux.fromIterable(roots).flatMap(this::scanRootDirectory), Flux.fromIterable(files))
         .map(
-            url ->
-                readSingleFile(url, resourceTerminationHandler)
-                    .transform(this::applyPerFileLimits));
+            url -> {
+              URI resource = URI.create(url.toExternalForm());
+              return readSingleFile(url, resource)
+                  .transform(this::applyPerFileLimits)
+                  .transform(upstream -> resourceTerminationHandler.apply(resource, upstream));
+            });
   }
 
   @NonNull
@@ -281,26 +283,21 @@ public abstract class AbstractFileBasedConnector implements Connector {
    *
    * @param url The URL to read; must not be null; must be accessible and readable (but not
    *     necessarily hosted on the local filesystem).
-   * @param resourceTerminationHandler a {@link BiConsumer} that must be notified when the resource
-   *     is done.
+   * @param resource
    * @return A stream of {@link Record}s; never null but may be empty.
    */
   @NonNull
-  protected Flux<Record> readSingleFile(
-      @NonNull URL url,
-      BiFunction<URI, Publisher<Record>, Publisher<Record>> resourceTerminationHandler) {
-    URI resource = URI.create(url.toExternalForm());
+  protected Flux<Record> readSingleFile(@NonNull URL url, URI resource) {
     return Flux.generate(
-            () -> newSingleFileReader(url, resource),
-            RecordReader::readNext,
-            recordReader -> {
-              try {
-                recordReader.close();
-              } catch (IOException e) {
-                LOGGER.error("Error closing " + url, e);
-              }
-            })
-        .transform(upstream -> resourceTerminationHandler.apply(resource, upstream));
+        () -> newSingleFileReader(url, resource),
+        RecordReader::readNext,
+        recordReader -> {
+          try {
+            recordReader.close();
+          } catch (IOException e) {
+            LOGGER.error("Error closing " + url, e);
+          }
+        });
   }
 
   /**
@@ -544,7 +541,7 @@ public abstract class AbstractFileBasedConnector implements Connector {
 
   /**
    * Applies per-file limits to a stream of records coming from {@link #readSingleFile(java.net.URL,
-   * BiFunction)}.
+   * URI)}.
    */
   @NonNull
   protected Flux<Record> applyPerFileLimits(@NonNull Flux<Record> records) {

@@ -514,6 +514,7 @@ public class LogManager implements AutoCloseable {
     return (resource, upstream) ->
         Flux.from(upstream)
             .doOnComplete(() -> finishedResources.put(resource, true))
+            .doOnCancel(() -> finishedResources.put(resource, false))
             .doOnError(error -> finishedResources.put(resource, false))
             .onErrorResume(error -> maybeTriggerOnError(error, errors.incrementAndGet()));
   }
