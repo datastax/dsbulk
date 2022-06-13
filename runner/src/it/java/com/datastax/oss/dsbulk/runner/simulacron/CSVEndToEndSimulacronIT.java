@@ -104,7 +104,6 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.file.Files;
@@ -1075,12 +1074,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
   }
 
   @Test
-  void unload_write_error() throws IOException {
-
-    Path file1 = unloadDir.resolve("output-000001.csv");
-    Path file2 = unloadDir.resolve("output-000002.csv");
-    Path file3 = unloadDir.resolve("output-000003.csv");
-    Path file4 = unloadDir.resolve("output-000004.csv");
+  void unload_connector_write_fatal_error() throws IOException {
 
     MockConnector.setDelegate(
         new CSVConnector() {
@@ -1098,19 +1092,17 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
             super.configure(settings, read, retainRecordSources);
           }
 
+          @Override
+          public int writeConcurrency() {
+            return 1;
+          }
+
           @NonNull
           @Override
           public Function<Publisher<Record>, Publisher<Record>> write() {
-            // will cause the write workers to fail because the files already exist
-            try {
-              Files.createFile(file1);
-              Files.createFile(file2);
-              Files.createFile(file3);
-              Files.createFile(file4);
-            } catch (IOException e) {
-              throw new UncheckedIOException(e);
-            }
-            return super.write();
+            // emulate the last record not being written and triggering a fatal IO error
+            return upstream ->
+                Flux.from(upstream).take(9).concatWith(Flux.error(new IOException("disk full")));
           }
         });
 
@@ -1132,16 +1124,12 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
 
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_ABORTED_FATAL_ERROR);
-    assertThat(stdErr.getStreamAsString())
-        .contains("failed")
-        .containsPattern("output-00000[1-4].csv");
-    assertThat(logs.getAllMessagesAsString())
-        .contains("failed")
-        .containsPattern("output-00000[1-4].csv");
+    assertThat(stdErr.getStreamAsString()).contains("failed").contains("disk full");
+    assertThat(logs.getAllMessagesAsString()).contains("failed").contains("disk full");
     validatePositionsFile(
         URI.create("cql://ks1/ip_by_country?start=-9223372036854775808&end=-9223372036854775808"),
-        0,
-        0,
+        1,
+        9,
         false);
   }
 

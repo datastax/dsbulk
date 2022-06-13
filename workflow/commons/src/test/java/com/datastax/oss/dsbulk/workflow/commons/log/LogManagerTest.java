@@ -1211,19 +1211,22 @@ class LogManagerTest {
         .hasEntrySatisfying(
             resource1,
             stats -> {
-              assertThat(stats.done).isTrue();
+              assertThat(stats.completed).isTrue();
+              assertThat(stats.failed).isFalse();
               assertThat(stats.counter).isEqualTo(3);
             })
         .hasEntrySatisfying(
             resource2,
             stats -> {
-              assertThat(stats.done).isTrue();
+              assertThat(stats.completed).isTrue();
+              assertThat(stats.failed).isFalse();
               assertThat(stats.counter).isEqualTo(4);
             })
         .hasEntrySatisfying(
             resource3,
             stats -> {
-              assertThat(stats.done).isTrue();
+              assertThat(stats.completed).isTrue();
+              assertThat(stats.failed).isFalse();
               assertThat(stats.counter).isEqualTo(0);
             });
 
@@ -1407,19 +1410,22 @@ class LogManagerTest {
         .hasEntrySatisfying(
             resource1,
             stats -> {
-              assertThat(stats.done).isTrue();
+              assertThat(stats.completed).isTrue();
+              assertThat(stats.failed).isFalse();
               assertThat(stats.counter).isEqualTo(3);
             })
         .hasEntrySatisfying(
             resource2,
             stats -> {
-              assertThat(stats.done).isFalse();
+              assertThat(stats.completed).isTrue(); // since the executor is failsafe
+              assertThat(stats.failed).isTrue();
               assertThat(stats.counter).isEqualTo(0);
             })
         .hasEntrySatisfying(
             resource3,
             stats -> {
-              assertThat(stats.done).isTrue();
+              assertThat(stats.completed).isTrue();
+              assertThat(stats.failed).isFalse();
               assertThat(stats.counter).isEqualTo(0);
             });
 

@@ -274,7 +274,7 @@ class PrometheusEndToEndSimulacronIT extends EndToEndSimulacronITBase {
                   }
                   if (running.get()) {
                     Record record =
-                        RecordUtils.indexedCSV(
+                        RecordUtils.mappedCSV(
                             resource, i, "pk", "pk" + 1, "cc", "cc" + 1, "v", "v" + 1);
                     sink.next(record);
                   } else {

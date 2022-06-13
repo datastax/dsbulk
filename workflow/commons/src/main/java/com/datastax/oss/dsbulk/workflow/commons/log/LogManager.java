@@ -500,12 +500,13 @@ public class LogManager implements AutoCloseable {
                   ResourceStats stats = ctx.get(ResourceStats.class);
                   return original
                       .doOnSubscribe(s -> resources.put(resource, stats))
-                      .doOnComplete(() -> stats.done = true)
+                      .doOnComplete(() -> stats.completed = true)
+                      .doOnError(error -> stats.failed = true)
                       // increment even for failed records since they will be considered processed
                       // and will increment the position tracker.
                       .doOnNext(r -> stats.counter++);
                 })
-            .contextWrite(ctx -> ctx.put(ResourceStats.class, new ResourceStats(false)));
+            .contextWrite(ctx -> ctx.put(ResourceStats.class, new ResourceStats()));
   }
 
   public BiFunction<URI, Publisher<ReadResult>, Publisher<ReadResult>>
@@ -517,19 +518,22 @@ public class LogManager implements AutoCloseable {
                   ResourceStats stats = ctx.get(ResourceStats.class);
                   return original
                       .doOnSubscribe(s -> resources.put(resource, stats))
+                      .doOnComplete(() -> stats.completed = true)
+                      // onError signals should not happen, since the executor is in failsafe mode
+                      .doOnError(error -> stats.failed = true)
                       .doOnNext(
                           r -> {
                             if (r.isSuccess()) {
                               stats.counter++;
                             } else {
-                              // read failures don't increment the position tracker, so don't
-                              // increment counter of rows, but instead set resource done to
-                              // false, in order to signal it didn't complete.
-                              stats.done = false;
+                              // read failures are global to the entire token range and don't
+                              // increment the position tracker, so don't increment counter of rows,
+                              // but instead signal that the entire resource failed.
+                              stats.failed = true;
                             }
                           });
                 })
-            .contextWrite(ctx -> ctx.put(ResourceStats.class, new ResourceStats(true)));
+            .contextWrite(ctx -> ctx.put(ResourceStats.class, new ResourceStats()));
   }
 
   /**
@@ -953,7 +957,7 @@ public class LogManager implements AutoCloseable {
       writer.print(range);
     }
     writer.print(';');
-    if (positions.size() != 1 || !stats.done) {
+    if (positions.size() != 1 || !stats.completed || stats.failed) {
       writer.print('0');
     } else {
       Range range = positions.get(0);
@@ -1052,10 +1056,8 @@ public class LogManager implements AutoCloseable {
 
   static class ResourceStats {
     long counter;
-    boolean done;
+    boolean completed;
 
-    ResourceStats(boolean done) {
-      this.done = done;
-    }
+    boolean failed;
   }
 }
