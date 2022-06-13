@@ -112,7 +112,7 @@ class NodeFilterEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "--schema.table",
       "table1",
       "-port",
-      port,
+      String.valueOf(port),
       "-allow",
       getHostList(allow)
     };
@@ -150,7 +150,7 @@ class NodeFilterEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "--schema.table",
       "table1",
       "-port",
-      port,
+      String.valueOf(port),
       "--dsbulk.driver.policy.lbp.whiteList.hosts",
       getHostList(allow)
     };
@@ -191,7 +191,7 @@ class NodeFilterEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       "--schema.table",
       "table1",
       "-port",
-      port,
+      String.valueOf(port),
       "-deny",
       getHostList(deny)
     };
@@ -283,10 +283,18 @@ class NodeFilterEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     public Publisher<Publisher<Record>> read(
         BiFunction<URI, Publisher<Record>, Publisher<Record>> resourceTerminationHandler) {
       List<Record> records = new ArrayList<>(1000);
+      URI resource = URI.create("file://file");
       for (int i = 0; i < 1000; i++) {
         Record record =
             RecordUtils.indexedCSV(
-                "pk", String.valueOf(i), "cc", String.valueOf(i), "v", String.valueOf(i));
+                resource,
+                i + 1,
+                "pk",
+                String.valueOf(i),
+                "cc",
+                String.valueOf(i),
+                "v",
+                String.valueOf(i));
         records.add(record);
       }
       return Flux.just(Flux.fromIterable(records));

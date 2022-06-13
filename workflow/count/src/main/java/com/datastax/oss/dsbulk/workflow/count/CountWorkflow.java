@@ -18,7 +18,6 @@ package com.datastax.oss.dsbulk.workflow.count;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.shaded.guava.common.base.Stopwatch;
 import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
-import com.datastax.oss.dsbulk.executor.api.listener.CompositeExecutionListener;
 import com.datastax.oss.dsbulk.executor.api.reader.BulkReader;
 import com.datastax.oss.dsbulk.executor.api.result.ReadResult;
 import com.datastax.oss.dsbulk.workflow.api.Workflow;
@@ -41,12 +40,15 @@ import com.datastax.oss.dsbulk.workflow.commons.utils.CloseableUtils;
 import com.datastax.oss.dsbulk.workflow.commons.utils.ClusterInformationUtils;
 import com.typesafe.config.Config;
 import io.netty.util.concurrent.DefaultThreadFactory;
+import java.net.URI;
 import java.time.Duration;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiFunction;
 import java.util.function.Function;
+import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -76,6 +78,7 @@ public class CountWorkflow implements Workflow {
   private Function<Flux<ReadResult>, Flux<ReadResult>> failedItemsMonitor;
   private Function<Flux<ReadResult>, Flux<ReadResult>> failedReadsHandler;
   private Function<Flux<ReadResult>, Flux<ReadResult>> queryWarningsHandler;
+  private BiFunction<URI, Publisher<ReadResult>, Publisher<ReadResult>> resourceStatsHandler;
   private Function<Flux<Void>, Flux<Void>> terminationHandler;
   private int readConcurrency;
 
@@ -129,11 +132,7 @@ public class CountWorkflow implements Workflow {
             schemaSettings.getRowType());
     metricsManager.init();
     executor =
-        executorSettings.newReadExecutor(
-            session,
-            new CompositeExecutionListener(
-                metricsManager.getExecutionListener(), logManager.newReadExecutionListener()),
-            false);
+        executorSettings.newReadExecutor(session, metricsManager.getExecutionListener(), false);
     EnumSet<StatsSettings.StatisticsMode> modes = statsSettings.getStatisticsModes();
     int numPartitions = statsSettings.getNumPartitions();
     readResultCounter =
@@ -146,6 +145,7 @@ public class CountWorkflow implements Workflow {
     totalItemsCounter = logManager.newTotalItemsCounter();
     failedReadsHandler = logManager.newFailedReadsHandler();
     queryWarningsHandler = logManager.newQueryWarningsHandler();
+    resourceStatsHandler = logManager.newCqlResourceStatsHandler();
     terminationHandler = logManager.newTerminationHandler();
     int numCores = Runtime.getRuntime().availableProcessors();
     readConcurrency =
@@ -168,6 +168,8 @@ public class CountWorkflow implements Workflow {
             statement ->
                 Mono.just(statement)
                     .flatMapMany(executor::readReactive)
+                    .transform(
+                        upstream -> resourceStatsHandler.apply(statement.getResource(), upstream))
                     .transform(queryWarningsHandler)
                     .transform(totalItemsMonitor)
                     .transform(totalItemsCounter)

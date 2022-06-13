@@ -22,7 +22,6 @@ import com.datastax.oss.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.oss.dsbulk.connectors.api.Connector;
 import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.datastax.oss.dsbulk.connectors.api.RecordMetadata;
-import com.datastax.oss.dsbulk.executor.api.listener.CompositeExecutionListener;
 import com.datastax.oss.dsbulk.executor.api.reader.BulkReader;
 import com.datastax.oss.dsbulk.executor.api.result.ReadResult;
 import com.datastax.oss.dsbulk.workflow.api.Workflow;
@@ -45,12 +44,14 @@ import com.datastax.oss.dsbulk.workflow.commons.utils.CloseableUtils;
 import com.datastax.oss.dsbulk.workflow.commons.utils.ClusterInformationUtils;
 import com.typesafe.config.Config;
 import io.netty.util.concurrent.DefaultThreadFactory;
+import java.net.URI;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -86,6 +87,7 @@ public class UnloadWorkflow implements Workflow {
   private Function<Flux<ReadResult>, Flux<ReadResult>> queryWarningsHandler;
   private Function<Flux<Record>, Flux<Record>> unmappableRecordsHandler;
   private Function<Flux<Record>, Flux<Void>> resultPositionsHandler;
+  private BiFunction<URI, Publisher<ReadResult>, Publisher<ReadResult>> resourceStatsHandler;
   private Function<Flux<Void>, Flux<Void>> terminationHandler;
   private int readConcurrency;
   private int numCores;
@@ -153,10 +155,7 @@ public class UnloadWorkflow implements Workflow {
     readStatements = schemaSettings.createReadStatements(session);
     executor =
         executorSettings.newReadExecutor(
-            session,
-            new CompositeExecutionListener(
-                metricsManager.getExecutionListener(), logManager.newReadExecutionListener()),
-            schemaSettings.isSearchQuery());
+            session, metricsManager.getExecutionListener(), schemaSettings.isSearchQuery());
     closed.set(false);
     writer = connector.write();
     totalItemsMonitor = metricsManager.newTotalItemsMonitor();
@@ -168,6 +167,7 @@ public class UnloadWorkflow implements Workflow {
     queryWarningsHandler = logManager.newQueryWarningsHandler();
     unmappableRecordsHandler = logManager.newUnmappableRecordsHandler();
     resultPositionsHandler = logManager.newRecordPositionsHandler();
+    resourceStatsHandler = logManager.newCqlResourceStatsHandler();
     terminationHandler = logManager.newTerminationHandler();
     numCores = Runtime.getRuntime().availableProcessors();
     if (connector.writeConcurrency() < 1) {
@@ -226,9 +226,11 @@ public class UnloadWorkflow implements Workflow {
     schedulers.add(scheduler);
     return Flux.fromIterable(readStatements)
         .flatMap(
-            statements ->
-                Flux.from(executor.readReactive(statements))
+            statement ->
+                Flux.from(executor.readReactive(statement))
                     .publishOn(scheduler, 500)
+                    .transform(
+                        upstream -> resourceStatsHandler.apply(statement.getResource(), upstream))
                     .transform(queryWarningsHandler)
                     .transform(totalItemsMonitor)
                     .transform(totalItemsCounter)
@@ -258,9 +260,11 @@ public class UnloadWorkflow implements Workflow {
     schedulers.add(schedulerForWrites);
     return Flux.fromIterable(readStatements)
         .flatMap(
-            statements ->
-                Flux.from(executor.readReactive(statements))
+            statement ->
+                Flux.from(executor.readReactive(statement))
                     .publishOn(schedulerForReads, 500)
+                    .transform(
+                        upstream -> resourceStatsHandler.apply(statement.getResource(), upstream))
                     .transform(queryWarningsHandler)
                     .transform(totalItemsMonitor)
                     .transform(totalItemsCounter)
@@ -292,10 +296,12 @@ public class UnloadWorkflow implements Workflow {
     schedulers.add(scheduler);
     return Flux.fromIterable(readStatements)
         .flatMap(
-            statements -> {
+            statement -> {
               Flux<Record> records =
-                  Flux.from(executor.readReactive(statements))
+                  Flux.from(executor.readReactive(statement))
                       .publishOn(scheduler, 500)
+                      .transform(
+                          upstream -> resourceStatsHandler.apply(statement.getResource(), upstream))
                       .transform(queryWarningsHandler)
                       .transform(totalItemsMonitor)
                       .transform(totalItemsCounter)

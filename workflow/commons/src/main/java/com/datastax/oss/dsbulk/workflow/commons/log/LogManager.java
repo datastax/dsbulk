@@ -42,9 +42,6 @@ import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting
 import com.datastax.oss.driver.shaded.guava.common.base.Joiner;
 import com.datastax.oss.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.oss.dsbulk.connectors.api.Record;
-import com.datastax.oss.dsbulk.executor.api.exception.BulkExecutionException;
-import com.datastax.oss.dsbulk.executor.api.listener.ExecutionContext;
-import com.datastax.oss.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.oss.dsbulk.executor.api.result.ReadResult;
 import com.datastax.oss.dsbulk.executor.api.result.Result;
 import com.datastax.oss.dsbulk.executor.api.result.WriteResult;
@@ -58,7 +55,6 @@ import com.datastax.oss.dsbulk.workflow.commons.schema.ReadResultMapper;
 import com.datastax.oss.dsbulk.workflow.commons.schema.RecordMapper;
 import com.datastax.oss.dsbulk.workflow.commons.settings.LogSettings;
 import com.datastax.oss.dsbulk.workflow.commons.statement.MappedStatement;
-import com.datastax.oss.dsbulk.workflow.commons.statement.RangeReadStatement;
 import com.datastax.oss.dsbulk.workflow.commons.statement.UnmappableStatement;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
@@ -71,9 +67,10 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -137,8 +134,7 @@ public class LogManager implements AutoCloseable {
   private StackTracePrinter stackTracePrinter;
 
   @VisibleForTesting final PositionsTracker positionsTracker = new PositionsTracker();
-  private PrintWriter positionsPrinter;
-  @VisibleForTesting final Map<URI, Boolean> finishedResources = new ConcurrentHashMap<>();
+  @VisibleForTesting final Map<URI, ResourceStats> resources = new ConcurrentHashMap<>();
 
   private FluxSink<ErrorRecord> failedRecordSink;
   private FluxSink<ErrorRecord> unmappableRecordSink;
@@ -225,22 +221,8 @@ public class LogManager implements AutoCloseable {
               pw.close();
             });
     positionsSink.complete();
-    if (!positionsTracker.isEmpty()) {
-      positionsPrinter =
-          new PrintWriter(
-              Files.newBufferedWriter(
-                  operationDirectory.resolve(SUMMARY_CSV), UTF_8, CREATE_NEW, WRITE));
-      positionsPrinter.println("resource;ranges;done");
-      // sort positions by URI
-      TreeMap<URI, List<Range>> positions = new TreeMap<>(positionsTracker.getPositions());
-      for (URI resource : finishedResources.keySet()) {
-        if (!positions.containsKey(resource)) {
-          positions.put(resource, new ArrayList<>());
-        }
-      }
-      positions.forEach(this::appendToPositionsFile);
-      positionsPrinter.flush();
-      positionsPrinter.close();
+    if (!resources.isEmpty()) {
+      printSummaryFile();
     }
   }
 
@@ -263,7 +245,7 @@ public class LogManager implements AutoCloseable {
       LOGGER.info(
           "Errors are detailed in the following file(s): {}", Joiner.on(", ").join(debugFiles));
     }
-    if (!positionsTracker.isEmpty()) {
+    if (!resources.isEmpty()) {
       LOGGER.info("A summary of the operation in CSV format can be found in {}.", SUMMARY_CSV);
     }
   }
@@ -510,29 +492,44 @@ public class LogManager implements AutoCloseable {
     return upstream -> upstream.doOnNext(r -> totalItems.increment());
   }
 
-  public BiFunction<URI, Publisher<Record>, Publisher<Record>> newConnectorResourceHandler() {
+  public BiFunction<URI, Publisher<Record>, Publisher<Record>> newConnectorResourceStatsHandler() {
     return (resource, upstream) ->
         Flux.from(upstream)
-            .doOnComplete(() -> finishedResources.put(resource, true))
-            .doOnCancel(() -> finishedResources.put(resource, false))
-            .doOnError(error -> finishedResources.put(resource, false))
-            .onErrorResume(error -> maybeTriggerOnError(error, errors.incrementAndGet()));
+            .transformDeferredContextual(
+                (original, ctx) -> {
+                  ResourceStats stats = ctx.get(ResourceStats.class);
+                  return original
+                      .doOnSubscribe(s -> resources.put(resource, stats))
+                      .doOnComplete(() -> stats.done = true)
+                      // increment even for failed records since they will be considered processed
+                      // and will increment the position tracker.
+                      .doOnNext(r -> stats.counter++);
+                })
+            .contextWrite(ctx -> ctx.put(ResourceStats.class, new ResourceStats(false)));
   }
 
-  public ExecutionListener newReadExecutionListener() {
-    return new ExecutionListener() {
-      @Override
-      public void onExecutionSuccessful(Statement<?> statement, ExecutionContext context) {
-        URI resource = ((RangeReadStatement) statement).getResource();
-        finishedResources.put(resource, true);
-      }
-
-      @Override
-      public void onExecutionFailed(BulkExecutionException exception, ExecutionContext context) {
-        URI resource = ((RangeReadStatement) exception.getStatement()).getResource();
-        finishedResources.put(resource, false);
-      }
-    };
+  public BiFunction<URI, Publisher<ReadResult>, Publisher<ReadResult>>
+      newCqlResourceStatsHandler() {
+    return (resource, upstream) ->
+        Flux.from(upstream)
+            .transformDeferredContextual(
+                (original, ctx) -> {
+                  ResourceStats stats = ctx.get(ResourceStats.class);
+                  return original
+                      .doOnSubscribe(s -> resources.put(resource, stats))
+                      .doOnNext(
+                          r -> {
+                            if (r.isSuccess()) {
+                              stats.counter++;
+                            } else {
+                              // read failures don't increment the position tracker, so don't
+                              // increment counter of rows, but instead set resource done to
+                              // false, in order to signal it didn't complete.
+                              stats.done = false;
+                            }
+                          });
+                })
+            .contextWrite(ctx -> ctx.put(ResourceStats.class, new ResourceStats(true)));
   }
 
   /**
@@ -931,19 +928,46 @@ public class LogManager implements AutoCloseable {
 
   // Utility methods
 
-  private void appendToPositionsFile(URI resource, List<Range> positions) {
-    positionsPrinter.print(resource);
-    positionsPrinter.print(';');
+  private void printSummaryFile() throws IOException {
+    try (PrintWriter writer =
+        new PrintWriter(
+            Files.newBufferedWriter(
+                operationDirectory.resolve(SUMMARY_CSV), UTF_8, CREATE_NEW, WRITE))) {
+      // sort resources by URI
+      TreeMap<URI, ResourceStats> stats = new TreeMap<>(resources);
+      for (Entry<URI, ResourceStats> entry : stats.entrySet()) {
+        appendToSummaryFile(entry.getKey(), entry.getValue(), writer);
+      }
+      writer.flush();
+    }
+  }
+
+  private void appendToSummaryFile(URI resource, ResourceStats stats, PrintWriter writer) {
+    List<Range> positions =
+        positionsTracker
+            .getPositions()
+            .getOrDefault(resource, Collections.singletonList(new Range(0)));
+    writer.print(resource);
+    writer.print(';');
     for (Range range : positions) {
-      positionsPrinter.print(range);
+      writer.print(range);
     }
-    positionsPrinter.print(';');
-    if (finishedResources.getOrDefault(resource, false)) {
-      positionsPrinter.print('1');
+    writer.print(';');
+    if (positions.size() != 1 || !stats.done) {
+      writer.print('0');
     } else {
-      positionsPrinter.print('0');
+      Range range = positions.get(0);
+      if (stats.counter == 0 && range.getLower() == 0 && range.getUpper() == 0) {
+        // empty file or token range
+        writer.print('1');
+      } else if (stats.counter == range.getUpper() - range.getLower() + 1) {
+        // range.getLower is not necessarily 1 when records were skipped
+        writer.print('1');
+      } else {
+        writer.print('0');
+      }
     }
-    positionsPrinter.println();
+    writer.println();
   }
 
   private <T> Flux<T> maybeTriggerOnError(@Nullable Throwable error, int currentErrorCount) {
@@ -1023,6 +1047,15 @@ public class LogManager implements AutoCloseable {
       // throwableProxyToString already appends a line break at the end
       writer.print(throwableProxyToString(new ThrowableProxy(t)));
       writer.flush();
+    }
+  }
+
+  static class ResourceStats {
+    long counter;
+    boolean done;
+
+    ResourceStats(boolean done) {
+      this.done = done;
     }
   }
 }

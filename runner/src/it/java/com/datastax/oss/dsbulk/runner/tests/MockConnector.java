@@ -83,7 +83,13 @@ public final class MockConnector implements Connector {
           @Override
           public Publisher<Publisher<Record>> read(
               BiFunction<URI, Publisher<Record>, Publisher<Record>> resourceTerminationHandler) {
-            return Flux.just(Flux.just(records).map(RecordUtils::cloneRecord));
+            return Flux.just(
+                Flux.just(records)
+                    .map(RecordUtils::cloneRecord)
+                    .transform(
+                        upstream ->
+                            resourceTerminationHandler.apply(
+                                RecordUtils.DEFAULT_RESOURCE, upstream)));
           }
 
           @NonNull

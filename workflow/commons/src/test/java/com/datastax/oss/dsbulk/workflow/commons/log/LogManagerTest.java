@@ -21,7 +21,6 @@ import static com.datastax.oss.dsbulk.tests.driver.DriverUtils.mockBoundStatemen
 import static com.datastax.oss.dsbulk.tests.driver.DriverUtils.mockRow;
 import static com.datastax.oss.dsbulk.tests.driver.DriverUtils.mockSession;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.api.Fail.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -48,8 +47,6 @@ import com.datastax.oss.dsbulk.connectors.api.DefaultErrorRecord;
 import com.datastax.oss.dsbulk.connectors.api.DefaultRecord;
 import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.datastax.oss.dsbulk.executor.api.exception.BulkExecutionException;
-import com.datastax.oss.dsbulk.executor.api.listener.DefaultExecutionContext;
-import com.datastax.oss.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.oss.dsbulk.executor.api.result.DefaultReadResult;
 import com.datastax.oss.dsbulk.executor.api.result.DefaultWriteResult;
 import com.datastax.oss.dsbulk.executor.api.result.ReadResult;
@@ -69,7 +66,6 @@ import com.datastax.oss.dsbulk.workflow.api.error.TooManyErrorsException;
 import com.datastax.oss.dsbulk.workflow.commons.statement.MappedBoundStatement;
 import com.datastax.oss.dsbulk.workflow.commons.statement.MappedBoundStatementPrinter;
 import com.datastax.oss.dsbulk.workflow.commons.statement.RangeReadBoundStatement;
-import com.datastax.oss.dsbulk.workflow.commons.statement.RangeReadBoundStatementPrinter;
 import com.datastax.oss.dsbulk.workflow.commons.statement.RangeReadStatement;
 import com.datastax.oss.dsbulk.workflow.commons.statement.UnmappableStatement;
 import java.net.URI;
@@ -134,8 +130,7 @@ class LogManagerTest {
           .withMaxBoundValueLength(50)
           .withMaxBoundValues(10)
           .withMaxInnerStatements(10)
-          .addStatementPrinters(
-              new MappedBoundStatementPrinter(), new RangeReadBoundStatementPrinter())
+          .addStatementPrinters(new MappedBoundStatementPrinter())
           .build();
 
   private final RowFormatter rowFormatter = new RowFormatter();
@@ -277,12 +272,10 @@ class LogManagerTest {
     logManager.close();
     Path bad = logManager.getOperationDirectory().resolve("mapping.bad");
     Path errors = logManager.getOperationDirectory().resolve("mapping-errors.log");
-    Path positions = logManager.getOperationDirectory().resolve("summary.csv");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
-    assertThat(positions.toFile()).exists();
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
-        .containsOnly(bad, errors, positions);
+        .containsOnly(bad, errors);
     List<String> badLines = Files.readAllLines(bad, UTF_8);
     assertThat(badLines).hasSize(3);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
@@ -300,11 +293,6 @@ class LogManagerTest {
         .containsOnlyOnce("Resource: " + resource3)
         .containsOnlyOnce("Source: " + LogManagerUtils.formatSingleLine(source3))
         .containsOnlyOnce("java.lang.RuntimeException: error 3");
-    List<String> positionLines = Files.readAllLines(positions, UTF_8);
-    assertThat(positionLines)
-        .contains("file:///file1.csv;[1,1];0")
-        .contains("file:///file2.csv;[2,2];0")
-        .contains("file:///file3.csv;[3,3];0");
   }
 
   @Test
@@ -331,12 +319,10 @@ class LogManagerTest {
     logManager.close();
     Path bad = logManager.getOperationDirectory().resolve("mapping.bad");
     Path errors = logManager.getOperationDirectory().resolve("mapping-errors.log");
-    Path positions = logManager.getOperationDirectory().resolve("summary.csv");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
-    assertThat(positions.toFile()).exists();
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
-        .containsOnly(bad, errors, positions);
+        .containsOnly(bad, errors);
     List<String> badLines = Files.readAllLines(bad, UTF_8);
     assertThat(badLines).hasSize(1);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
@@ -369,12 +355,10 @@ class LogManagerTest {
     logManager.close();
     Path bad = logManager.getOperationDirectory().resolve("mapping.bad");
     Path errors = logManager.getOperationDirectory().resolve("mapping-errors.log");
-    Path positions = logManager.getOperationDirectory().resolve("summary.csv");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
-    assertThat(positions.toFile()).exists();
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
-        .containsOnly(bad, errors, positions);
+        .containsOnly(bad, errors);
     List<String> badLines = Files.readAllLines(bad, UTF_8);
     assertThat(badLines).hasSize(3);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
@@ -418,12 +402,10 @@ class LogManagerTest {
     logManager.close();
     Path bad = logManager.getOperationDirectory().resolve("connector.bad");
     Path errors = logManager.getOperationDirectory().resolve("connector-errors.log");
-    Path positions = logManager.getOperationDirectory().resolve("summary.csv");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
-    assertThat(positions.toFile()).exists();
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
-        .containsOnly(bad, errors, positions);
+        .containsOnly(bad, errors);
     List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
@@ -465,17 +447,15 @@ class LogManagerTest {
     logManager.close();
     Path bad = logManager.getOperationDirectory().resolve("load.bad");
     Path errors = logManager.getOperationDirectory().resolve("load-errors.log");
-    Path positions = logManager.getOperationDirectory().resolve("summary.csv");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
-    assertThat(positions.toFile()).exists();
     List<String> badLines = Files.readAllLines(bad, UTF_8);
     assertThat(badLines).hasSize(3);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
     assertThat(badLines.get(1)).isEqualTo(source2.trim());
     assertThat(badLines.get(2)).isEqualTo(source3.trim());
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
-        .containsOnly(bad, errors, positions);
+        .containsOnly(bad, errors);
     List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
@@ -497,11 +477,6 @@ class LogManagerTest {
         .contains("INSERT 3")
         .containsOnlyOnce(
             "com.datastax.oss.dsbulk.executor.api.exception.BulkExecutionException: Statement execution failed: INSERT 3 (error 3)");
-    List<String> positionLines = Files.readAllLines(positions, UTF_8);
-    assertThat(positionLines)
-        .contains("file:///file1.csv;[1,1];0")
-        .contains("file:///file2.csv;[2,2];0")
-        .contains("file:///file3.csv;[3,3];0");
   }
 
   @Test
@@ -522,17 +497,15 @@ class LogManagerTest {
     logManager.close();
     Path bad = logManager.getOperationDirectory().resolve("load.bad");
     Path errors = logManager.getOperationDirectory().resolve("load-errors.log");
-    Path positions = logManager.getOperationDirectory().resolve("summary.csv");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
-    assertThat(positions.toFile()).exists();
     List<String> badLines = Files.readAllLines(bad, UTF_8);
     assertThat(badLines).hasSize(3);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
     assertThat(badLines.get(1)).isEqualTo(source2.trim());
     assertThat(badLines.get(2)).isEqualTo(source3.trim());
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
-        .containsOnly(bad, errors, positions);
+        .containsOnly(bad, errors);
     List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
@@ -551,11 +524,6 @@ class LogManagerTest {
         .contains("INSERT 3")
         .containsOnlyOnce(
             "com.datastax.oss.dsbulk.executor.api.exception.BulkExecutionException: Statement execution failed: INSERT 3 (error 3)");
-    List<String> positionLines = Files.readAllLines(positions, UTF_8);
-    assertThat(positionLines)
-        .contains("file:///file1.csv;[1,1];0")
-        .contains("file:///file2.csv;[2,2];0")
-        .contains("file:///file3.csv;[3,3];0");
   }
 
   @Test
@@ -582,17 +550,15 @@ class LogManagerTest {
     logManager.close();
     Path bad = logManager.getOperationDirectory().resolve("load.bad");
     Path errors = logManager.getOperationDirectory().resolve("load-errors.log");
-    Path positions = logManager.getOperationDirectory().resolve("summary.csv");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
-    assertThat(positions.toFile()).exists();
     List<String> badLines = Files.readAllLines(bad, UTF_8);
     assertThat(badLines).hasSize(3);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
     assertThat(badLines.get(1)).isEqualTo(source2.trim());
     assertThat(badLines.get(2)).isEqualTo(source3.trim());
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
-        .containsOnly(bad, errors, positions);
+        .containsOnly(bad, errors);
     List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
@@ -611,11 +577,6 @@ class LogManagerTest {
         .containsOnlyOnce(
             "com.datastax.oss.dsbulk.executor.api.exception.BulkExecutionException: Statement execution failed")
         .contains("error batch");
-    List<String> positionLines = Files.readAllLines(positions, UTF_8);
-    assertThat(positionLines)
-        .contains("file:///file1.csv;[1,1];0")
-        .contains("file:///file2.csv;[2,2];0")
-        .contains("file:///file3.csv;[3,3];0");
   }
 
   @Test
@@ -684,10 +645,8 @@ class LogManagerTest {
     assertThat(errors.toFile()).exists();
     Path bad = logManager.getOperationDirectory().resolve("mapping.bad");
     assertThat(errors.toFile()).exists();
-    Path summary = logManager.getOperationDirectory().resolve("summary.csv");
-    assertThat(errors.toFile()).exists();
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
-        .containsOnly(errors, bad, summary);
+        .containsOnly(errors, bad);
     List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
@@ -707,12 +666,6 @@ class LogManagerTest {
         .containsOnlyOnce("c1: 3")
         .containsOnlyOnce("java.lang.RuntimeException: error 3");
     assertThat(Files.readAllLines(bad, UTF_8)).containsExactly("[1]", "[2]", "[3]");
-    assertThat(Files.readAllLines(summary, UTF_8))
-        .containsExactly(
-            "resource;ranges;done",
-            "cql://ks1/table1?start=1&end=2;[1,1];0",
-            "cql://ks1/table1?start=2&end=3;[2,2];0",
-            "cql://ks1/table1?start=3&end=4;[3,3];0");
   }
 
   @Test
@@ -744,10 +697,8 @@ class LogManagerTest {
     assertThat(errors.toFile()).exists();
     Path bad = logManager.getOperationDirectory().resolve("mapping.bad");
     assertThat(errors.toFile()).exists();
-    Path summary = logManager.getOperationDirectory().resolve("summary.csv");
-    assertThat(errors.toFile()).exists();
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
-        .containsOnly(errors, bad, summary);
+        .containsOnly(errors, bad);
     List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
@@ -859,15 +810,13 @@ class LogManagerTest {
     logManager.close();
     Path bad = logManager.getOperationDirectory().resolve("load.bad");
     Path errors = logManager.getOperationDirectory().resolve("load-errors.log");
-    Path positions = logManager.getOperationDirectory().resolve("summary.csv");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
-    assertThat(positions.toFile()).exists();
     List<String> badLines = Files.readAllLines(bad, UTF_8);
     assertThat(badLines).hasSize(1);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
-        .containsOnly(bad, errors, positions);
+        .containsOnly(bad, errors);
     List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
@@ -878,8 +827,6 @@ class LogManagerTest {
         .contains("error 1")
         .containsOnlyOnce(
             "com.datastax.oss.dsbulk.executor.api.exception.BulkExecutionException: Statement execution failed: INSERT 1");
-    List<String> positionLines = Files.readAllLines(positions, UTF_8);
-    assertThat(positionLines).contains("file:///file1.csv;[1,1];0");
   }
 
   @Test
@@ -963,17 +910,15 @@ class LogManagerTest {
     logManager.close();
     Path bad = logManager.getOperationDirectory().resolve("paxos.bad");
     Path errors = logManager.getOperationDirectory().resolve("paxos-errors.log");
-    Path positions = logManager.getOperationDirectory().resolve("summary.csv");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
-    assertThat(positions.toFile()).exists();
     List<String> badLines = Files.readAllLines(bad, UTF_8);
     assertThat(badLines).hasSize(3);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
     assertThat(badLines.get(1)).isEqualTo(source2.trim());
     assertThat(badLines.get(2)).isEqualTo(source3.trim());
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
-        .containsOnly(bad, errors, positions);
+        .containsOnly(bad, errors);
     List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
@@ -1074,19 +1019,15 @@ class LogManagerTest {
     stmts.transform(logManager.newFailedRecordsHandler()).blockLast();
     logManager.close();
     Path errors = logManager.getOperationDirectory().resolve("connector-errors.log");
-    Path positions = logManager.getOperationDirectory().resolve("summary.csv");
     assertThat(errors.toFile()).exists();
-    assertThat(positions.toFile()).exists();
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
-        .containsOnly(errors, positions);
+        .containsOnly(errors);
     List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
         .doesNotContain("Source: ")
         .contains("Resource: " + resource1)
         .contains("java.lang.RuntimeException: error 1");
-    List<String> positionLines = Files.readAllLines(positions, UTF_8);
-    assertThat(positionLines).contains("file:///file1.csv;[1,1];0");
   }
 
   @Test
@@ -1108,11 +1049,9 @@ class LogManagerTest {
     stmts.transform(logManager.newUnmappableStatementsHandler()).blockLast();
     logManager.close();
     Path errors = logManager.getOperationDirectory().resolve("mapping-errors.log");
-    Path positions = logManager.getOperationDirectory().resolve("summary.csv");
     assertThat(errors.toFile()).exists();
-    assertThat(positions.toFile()).exists();
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
-        .containsOnly(errors, positions);
+        .containsOnly(errors);
     List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
@@ -1141,11 +1080,9 @@ class LogManagerTest {
     stmts.transform(logManager.newUnmappableRecordsHandler()).blockLast();
     logManager.close();
     Path errors = logManager.getOperationDirectory().resolve("mapping-errors.log");
-    Path positions = logManager.getOperationDirectory().resolve("summary.csv");
     assertThat(errors.toFile()).exists();
-    assertThat(positions.toFile()).exists();
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
-        .containsOnly(errors, positions);
+        .containsOnly(errors);
     List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
@@ -1171,17 +1108,33 @@ class LogManagerTest {
 
     // Emulate connector parsing
 
+    Record record1_1 = DefaultRecord.indexed(source1, resource1, 1, "line1");
+    Record record1_2 = DefaultRecord.indexed(source2, resource1, 2, "line2");
+    Record record1_3 = DefaultRecord.indexed(source3, resource1, 3, "line3");
+
+    Record record2_1 = DefaultRecord.indexed(source1, resource2, 1, "line1");
+    Record record2_2 =
+        new DefaultErrorRecord(
+            source2, resource2, 2, new RuntimeException("connector error line2"));
+    DefaultRecord record2_3 = DefaultRecord.indexed(source3, resource2, 3, "line3");
+    DefaultRecord record2_4 =
+        DefaultRecord.indexed(source3, resource2, 3, "line4"); // emulate "lost" record
+
+    // Emulate connector signaling successful resources
+
+    BiFunction<URI, Publisher<Record>, Publisher<Record>> connectorResourceHandler =
+        logManager.newConnectorResourceStatsHandler();
+
+    Flux.from(connectorResourceHandler.apply(resource1, Flux.just(record1_1, record1_2, record1_3)))
+        .blockLast();
+    Flux.from(
+            connectorResourceHandler.apply(
+                resource2, Flux.just(record2_1, record2_2, record2_3, record2_4)))
+        .blockLast();
+    Flux.from(connectorResourceHandler.apply(resource3, Flux.empty())).blockLast();
+
     Flux<Record> records =
-        Flux.just(
-            // resource 1: 3 records total (resource done)
-            DefaultRecord.indexed(source1, resource1, 1, "line1"),
-            DefaultRecord.indexed(source2, resource1, 2, "line2"),
-            DefaultRecord.indexed(source3, resource1, 3, "line3"),
-            // resource 2: 3+ records, one not parsable (resource not done)
-            DefaultRecord.indexed(source1, resource2, 1, "line1"),
-            new DefaultErrorRecord(
-                source2, resource2, 2, new RuntimeException("connector error line2")),
-            DefaultRecord.indexed(source3, resource2, 3, "line3"));
+        Flux.just(record1_1, record1_2, record1_3, record2_1, record2_2, record2_3);
 
     List<Record> goodRecords =
         records.transform(logManager.newFailedRecordsHandler()).collectList().block();
@@ -1200,9 +1153,7 @@ class LogManagerTest {
             mockMappedBoundStatement(2, source2, resource1),
             mockMappedBoundStatement(3, source3, resource1),
             // resource 2: 2 statements left, one unmappable
-            new UnmappableStatement(
-                DefaultRecord.indexed(source1, resource2, 1, "line1"),
-                new RuntimeException("mapping error line1")),
+            new UnmappableStatement(record2_1, new RuntimeException("mapping error line1")),
             mockMappedBoundStatement(3, source1, resource3));
 
     List<BatchableStatement<?>> goodStmts =
@@ -1232,8 +1183,7 @@ class LogManagerTest {
                 new BulkExecutionException(
                     new DriverTimeoutException("load error 3"),
                     new MappedBoundStatement(
-                        DefaultRecord.indexed(source3, resource2, 3, "line3"),
-                        mockMappedBoundStatement(3, source3, resource2)))));
+                        record2_3, mockMappedBoundStatement(3, source3, resource2)))));
 
     List<WriteResult> goodWrites =
         writes.transform(logManager.newFailedWritesHandler()).collectList().block();
@@ -1249,24 +1199,33 @@ class LogManagerTest {
         .transform(logManager.newWriteResultPositionsHandler())
         .blockLast();
 
+    logManager.close();
+
     assertThat(logManager.positionsTracker.getPositions()).containsOnlyKeys(resource1, resource2);
     assertThat(logManager.positionsTracker.getPositions().get(resource1))
         .containsExactly(new Range(1, 3));
     assertThat(logManager.positionsTracker.getPositions().get(resource2))
         .containsExactly(new Range(1, 3));
 
-    // Emulate connector signaling successful resources
-
-    BiFunction<URI, Publisher<Record>, Publisher<Record>> connectorResourceHandler =
-        logManager.newConnectorResourceHandler();
-    Flux.from(connectorResourceHandler.apply(resource1, Flux.empty())).blockLast();
-    // resource 2 not finished
-    Flux.from(connectorResourceHandler.apply(resource3, Flux.empty())).blockLast();
-
-    assertThat(logManager.finishedResources)
-        .containsOnly(entry(resource1, true), entry(resource3, true));
-
-    logManager.close();
+    assertThat(logManager.resources)
+        .hasEntrySatisfying(
+            resource1,
+            stats -> {
+              assertThat(stats.done).isTrue();
+              assertThat(stats.counter).isEqualTo(3);
+            })
+        .hasEntrySatisfying(
+            resource2,
+            stats -> {
+              assertThat(stats.done).isTrue();
+              assertThat(stats.counter).isEqualTo(4);
+            })
+        .hasEntrySatisfying(
+            resource3,
+            stats -> {
+              assertThat(stats.done).isTrue();
+              assertThat(stats.counter).isEqualTo(0);
+            });
 
     // Check connector files
 
@@ -1327,10 +1286,7 @@ class LogManagerTest {
     List<String> summaryLines = Files.readAllLines(summary, UTF_8);
     assertThat(summaryLines)
         .containsExactly(
-            "resource;ranges;done",
-            "file:///file1.csv;[1,3];1",
-            "file:///file2.csv;[1,3];0",
-            "file:///file3.csv;;1");
+            "file:///file1.csv;[1,3];1", "file:///file2.csv;[1,3];0", "file:///file3.csv;[0,0];1");
 
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(
@@ -1369,7 +1325,6 @@ class LogManagerTest {
 
     RangeReadBoundStatement statement1 = mockRangeReadBoundStatement(tokenRange1);
     RangeReadBoundStatement statement2 = mockRangeReadBoundStatement(tokenRange2);
-    RangeReadBoundStatement statement3 = mockRangeReadBoundStatement(tokenRange3);
 
     BulkExecutionException statement2Failure =
         new BulkExecutionException(new DriverTimeoutException("unload error 2"), statement2);
@@ -1381,9 +1336,18 @@ class LogManagerTest {
         new DefaultReadResult(statement1, mock(ExecutionInfo.class), mockRow(2), 2);
     DefaultReadResult result1_3 =
         new DefaultReadResult(statement1, mock(ExecutionInfo.class), mockRow(3), 3);
+
     // resource 2: read fails
     DefaultReadResult result2 = new DefaultReadResult(statement2Failure);
+
     // resource 3: empty
+
+    BiFunction<URI, Publisher<ReadResult>, Publisher<ReadResult>> cqlResourceHandler =
+        logManager.newCqlResourceStatsHandler();
+    Flux.from(cqlResourceHandler.apply(resource1, Flux.just(result1_1, result1_2, result1_3)))
+        .blockLast();
+    Flux.from(cqlResourceHandler.apply(resource2, Flux.just(result2))).blockLast();
+    Flux.from(cqlResourceHandler.apply(resource3, Flux.empty())).blockLast();
 
     Flux<ReadResult> reads = Flux.just(result1_1, result1_2, result1_3, result2);
 
@@ -1400,10 +1364,8 @@ class LogManagerTest {
         new DefaultErrorRecord(result1_2, resource1, 2, new RuntimeException("mapping error 2"));
     DefaultRecord record1_3 = new DefaultRecord(result1_3, resource1, 3);
 
-    Flux<Record> records =
-        Flux.just(
-            // resource 1: 3 records total, one not parsable
-            record1_1, record1_2, record1_3);
+    // resource 1: 3 records total, one not parsable
+    Flux<Record> records = Flux.just(record1_1, record1_2, record1_3);
 
     List<Record> goodRecords =
         records.transform(logManager.newUnmappableRecordsHandler()).collectList().block();
@@ -1415,9 +1377,9 @@ class LogManagerTest {
 
     // Emulate record -> connector
 
+    // resource 1: 2 records left, one nto writable
     records =
         Flux.just(
-            // resource 1: 2 records left, one nto writable
             new DefaultErrorRecord(
                 result1_1, resource1, 1, new RuntimeException("connector error 1")),
             record1_3);
@@ -1433,21 +1395,33 @@ class LogManagerTest {
 
     Flux.fromIterable(goodRecords).transform(logManager.newRecordPositionsHandler()).blockLast();
 
+    logManager.close();
+
     assertThat(logManager.positionsTracker.getPositions()).containsOnlyKeys(resource1);
     assertThat(logManager.positionsTracker.getPositions().get(resource1))
         .containsExactly(new Range(1, 3));
 
     // Emulate listener signaling successful and failed resources
 
-    ExecutionListener listener = logManager.newReadExecutionListener();
-    listener.onExecutionSuccessful(statement1, new DefaultExecutionContext());
-    listener.onExecutionFailed(statement2Failure, new DefaultExecutionContext());
-    listener.onExecutionSuccessful(statement3, new DefaultExecutionContext());
-
-    assertThat(logManager.finishedResources)
-        .containsOnly(entry(resource1, true), entry(resource2, false), entry(resource3, true));
-
-    logManager.close();
+    assertThat(logManager.resources)
+        .hasEntrySatisfying(
+            resource1,
+            stats -> {
+              assertThat(stats.done).isTrue();
+              assertThat(stats.counter).isEqualTo(3);
+            })
+        .hasEntrySatisfying(
+            resource2,
+            stats -> {
+              assertThat(stats.done).isFalse();
+              assertThat(stats.counter).isEqualTo(0);
+            })
+        .hasEntrySatisfying(
+            resource3,
+            stats -> {
+              assertThat(stats.done).isTrue();
+              assertThat(stats.counter).isEqualTo(0);
+            });
 
     // Check unload files
 
@@ -1455,7 +1429,6 @@ class LogManagerTest {
     assertThat(unloadErrors.toFile()).exists();
     List<String> loadErrorLines = Files.readAllLines(unloadErrors, UTF_8);
     assertThat(String.join("\n", loadErrorLines))
-        .containsOnlyOnce("Token Range: ]2,3]")
         .containsOnlyOnce(
             "BulkExecutionException: Statement execution failed: SELECT 2 (unload error 2)")
         .containsOnlyOnce(".DriverTimeoutException: unload error 2");
@@ -1473,7 +1446,6 @@ class LogManagerTest {
     List<String> mappingErrorLines = Files.readAllLines(mappingErrors, UTF_8);
     assertThat(String.join("\n", mappingErrorLines))
         .containsOnlyOnce("Position: 2")
-        .containsOnlyOnce("Token Range: ]1,2]")
         .containsOnlyOnce("SELECT 1")
         .containsOnlyOnce("Statement: RangeReadBoundStatement")
         .containsOnlyOnce("Row: Row")
@@ -1493,7 +1465,6 @@ class LogManagerTest {
     assertThat(String.join("\n", connectorErrorLines))
         .containsOnlyOnce("Resource: " + resource1)
         .containsOnlyOnce("Position: 1")
-        .containsOnlyOnce("Token Range: ]1,2]")
         .containsOnlyOnce("SELECT 1")
         .containsOnlyOnce("Statement: RangeReadBoundStatement")
         .containsOnlyOnce("Row: Row")
@@ -1506,10 +1477,9 @@ class LogManagerTest {
     List<String> summaryLines = Files.readAllLines(summary, UTF_8);
     assertThat(summaryLines)
         .containsExactly(
-            "resource;ranges;done",
             "cql://ks/t?start=1&end=2;[1,3];1", // 3 records processed, finished
-            "cql://ks/t?start=2&end=3;;0", // no records processed, failed
-            "cql://ks/t?start=3&end=4;;1" // no records processed, finished (empty)
+            "cql://ks/t?start=2&end=3;[0,0];0", // no records processed, failed
+            "cql://ks/t?start=3&end=4;[0,0];1" // no records processed, finished (empty)
             );
 
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))

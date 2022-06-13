@@ -264,16 +264,18 @@ class PrometheusEndToEndSimulacronIT extends EndToEndSimulacronITBase {
           BiFunction<URI, Publisher<Record>, Publisher<Record>> resourceTerminationHandler) {
         AtomicInteger counter = new AtomicInteger();
         AtomicBoolean running = new AtomicBoolean(true);
+        URI resource = URI.create("file://file");
         return Flux.just(
             Flux.generate(
                 sink -> {
-                  int i = counter.getAndAdd(1);
-                  if (i == 0) {
+                  int i = counter.incrementAndGet();
+                  if (i == 1) {
                     startTimer(running);
                   }
                   if (running.get()) {
                     Record record =
-                        RecordUtils.indexedCSV("pk", "pk" + 1, "cc", "cc" + 1, "v", "v" + 1);
+                        RecordUtils.indexedCSV(
+                            resource, i, "pk", "pk" + 1, "cc", "cc" + 1, "v", "v" + 1);
                     sink.next(record);
                   } else {
                     sink.complete();

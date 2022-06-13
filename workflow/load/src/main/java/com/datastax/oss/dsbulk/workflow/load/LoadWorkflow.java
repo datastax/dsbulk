@@ -108,7 +108,7 @@ public class LoadWorkflow implements Workflow {
   private Function<Flux<WriteResult>, Flux<WriteResult>> failedWritesHandler;
   private Function<Flux<WriteResult>, Flux<Void>> resultPositionsHandler;
   private Function<Flux<WriteResult>, Flux<WriteResult>> queryWarningsHandler;
-  private BiFunction<URI, Publisher<Record>, Publisher<Record>> resourceTerminationHandler;
+  private BiFunction<URI, Publisher<Record>, Publisher<Record>> resourceStatsHandler;
 
   LoadWorkflow(Config config) {
     settingsManager = new SettingsManager(config);
@@ -197,7 +197,7 @@ public class LoadWorkflow implements Workflow {
     failedWritesHandler = logManager.newFailedWritesHandler();
     resultPositionsHandler = logManager.newWriteResultPositionsHandler();
     terminationHandler = logManager.newTerminationHandler();
-    resourceTerminationHandler = logManager.newConnectorResourceHandler();
+    resourceStatsHandler = logManager.newConnectorResourceStatsHandler();
     numCores = Runtime.getRuntime().availableProcessors();
     if (connector.readConcurrency() < 1) {
       throw new IllegalArgumentException(
@@ -255,7 +255,7 @@ public class LoadWorkflow implements Workflow {
   private Flux<Statement<?>> manyReaders() {
     int numThreads = Math.min(readConcurrency, numCores);
     scheduler = Schedulers.newParallel(numThreads, new DefaultThreadFactory("workflow"));
-    return Flux.defer(() -> connector.read(resourceTerminationHandler))
+    return Flux.defer(() -> connector.read(resourceStatsHandler))
         .flatMap(
             records ->
                 Flux.from(records)
@@ -281,7 +281,7 @@ public class LoadWorkflow implements Workflow {
    */
   private Flux<Statement<?>> fewReaders() {
     scheduler = Schedulers.newParallel(numCores, new DefaultThreadFactory("workflow"));
-    return Flux.defer(() -> connector.read(resourceTerminationHandler))
+    return Flux.defer(() -> connector.read(resourceStatsHandler))
         .flatMap(
             records ->
                 Flux.from(records)
