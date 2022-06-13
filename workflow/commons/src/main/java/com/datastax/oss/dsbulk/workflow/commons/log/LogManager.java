@@ -504,7 +504,7 @@ public class LogManager implements AutoCloseable {
                       .doOnError(error -> stats.failed = true)
                       // increment even for failed records since they will be considered processed
                       // and will increment the position tracker.
-                      .doOnNext(r -> stats.counter++);
+                      .doOnNext(r -> stats.produced++);
                 })
             .contextWrite(ctx -> ctx.put(ResourceStats.class, new ResourceStats()));
   }
@@ -524,7 +524,7 @@ public class LogManager implements AutoCloseable {
                       .doOnNext(
                           r -> {
                             if (r.isSuccess()) {
-                              stats.counter++;
+                              stats.produced++;
                             } else {
                               // read failures are global to the entire token range and don't
                               // increment the position tracker, so don't increment counter of rows,
@@ -961,10 +961,10 @@ public class LogManager implements AutoCloseable {
       writer.print('0');
     } else {
       Range range = positions.get(0);
-      if (stats.counter == 0 && range.getLower() == 0 && range.getUpper() == 0) {
+      if (stats.produced == 0 && range.getLower() == 0 && range.getUpper() == 0) {
         // empty file or token range
         writer.print('1');
-      } else if (stats.counter == range.getUpper() - range.getLower() + 1) {
+      } else if (stats.produced == range.getUpper() - range.getLower() + 1) {
         // range.getLower is not necessarily 1 when records were skipped
         writer.print('1');
       } else {
@@ -1055,7 +1055,7 @@ public class LogManager implements AutoCloseable {
   }
 
   static class ResourceStats {
-    long counter;
+    long produced;
     boolean completed;
 
     boolean failed;

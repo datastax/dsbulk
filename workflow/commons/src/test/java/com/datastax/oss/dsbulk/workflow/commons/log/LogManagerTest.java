@@ -1213,21 +1213,21 @@ class LogManagerTest {
             stats -> {
               assertThat(stats.completed).isTrue();
               assertThat(stats.failed).isFalse();
-              assertThat(stats.counter).isEqualTo(3);
+              assertThat(stats.produced).isEqualTo(3);
             })
         .hasEntrySatisfying(
             resource2,
             stats -> {
               assertThat(stats.completed).isTrue();
               assertThat(stats.failed).isFalse();
-              assertThat(stats.counter).isEqualTo(4);
+              assertThat(stats.produced).isEqualTo(4);
             })
         .hasEntrySatisfying(
             resource3,
             stats -> {
               assertThat(stats.completed).isTrue();
               assertThat(stats.failed).isFalse();
-              assertThat(stats.counter).isEqualTo(0);
+              assertThat(stats.produced).isEqualTo(0);
             });
 
     // Check connector files
@@ -1412,21 +1412,21 @@ class LogManagerTest {
             stats -> {
               assertThat(stats.completed).isTrue();
               assertThat(stats.failed).isFalse();
-              assertThat(stats.counter).isEqualTo(3);
+              assertThat(stats.produced).isEqualTo(3);
             })
         .hasEntrySatisfying(
             resource2,
             stats -> {
               assertThat(stats.completed).isTrue(); // since the executor is failsafe
               assertThat(stats.failed).isTrue();
-              assertThat(stats.counter).isEqualTo(0);
+              assertThat(stats.produced).isEqualTo(0);
             })
         .hasEntrySatisfying(
             resource3,
             stats -> {
               assertThat(stats.completed).isTrue();
               assertThat(stats.failed).isFalse();
-              assertThat(stats.counter).isEqualTo(0);
+              assertThat(stats.produced).isEqualTo(0);
             });
 
     // Check unload files

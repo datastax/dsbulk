@@ -1074,7 +1074,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
   }
 
   @Test
-  void unload_connector_write_fatal_error() throws IOException {
+  void unload_write_fatal_error() throws IOException {
 
     MockConnector.setDelegate(
         new CSVConnector() {
@@ -1100,9 +1100,17 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
           @NonNull
           @Override
           public Function<Publisher<Record>, Publisher<Record>> write() {
-            // emulate the last record not being written and triggering a fatal IO error
+            // emulate the last record triggering a fatal IO error
+            AtomicInteger counter = new AtomicInteger();
             return upstream ->
-                Flux.from(upstream).take(9).concatWith(Flux.error(new IOException("disk full")));
+                Flux.from(upstream)
+                    .flatMap(
+                        record -> {
+                          if (counter.incrementAndGet() == 10) {
+                            return Flux.error(new IOException("disk full"));
+                          }
+                          return Flux.just(record);
+                        });
           }
         });
 
