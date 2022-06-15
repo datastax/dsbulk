@@ -1011,7 +1011,8 @@ public class LogManager implements AutoCloseable {
 
   // Utility methods
 
-  private void writeSummaryFile() throws IOException {
+  @VisibleForTesting
+  void writeSummaryFile() throws IOException {
     PositionTracker tracker = mergePositionTrackers();
     try (PrintWriter writer =
         new PrintWriter(

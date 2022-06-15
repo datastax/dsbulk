@@ -1285,6 +1285,7 @@ class LogManagerTest {
 
     // Check summary.csv
 
+    logManager.writeSummaryFile();
     Path summary = logManager.getOperationDirectory().resolve("summary.csv");
     assertThat(summary.toFile()).exists();
     List<String> summaryLines = Files.readAllLines(summary, UTF_8);
@@ -1479,6 +1480,7 @@ class LogManagerTest {
 
     // Check summary.csv
 
+    logManager.writeSummaryFile();
     Path summary = logManager.getOperationDirectory().resolve("summary.csv");
     assertThat(summary.toFile()).exists();
     List<String> summaryLines = Files.readAllLines(summary, UTF_8);
