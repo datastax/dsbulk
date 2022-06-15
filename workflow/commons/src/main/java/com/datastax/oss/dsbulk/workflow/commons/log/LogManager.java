@@ -1014,6 +1014,7 @@ public class LogManager implements AutoCloseable {
   // Utility methods
 
   private void printSummaryFile() throws IOException {
+    PositionsTracker positionsTracker = mergePositionTrackers();
     try (PrintWriter writer =
         new PrintWriter(
             Files.newBufferedWriter(
@@ -1021,18 +1022,18 @@ public class LogManager implements AutoCloseable {
       // sort resources by URI
       TreeMap<URI, ResourceStats> stats = new TreeMap<>(resources);
       for (Entry<URI, ResourceStats> entry : stats.entrySet()) {
-        appendToSummaryFile(entry.getKey(), entry.getValue(), writer);
+        List<Range> ranges =
+            positionsTracker
+                .getPositions()
+                .getOrDefault(entry.getKey(), Collections.singletonList(new Range(0)));
+        appendToSummaryFile(entry.getKey(), entry.getValue(), ranges, writer);
       }
       writer.flush();
     }
   }
 
-  private void appendToSummaryFile(URI resource, ResourceStats stats, PrintWriter writer) {
-    PositionsTracker positionsTracker = mergePositionTrackers();
-    List<Range> positions =
-        positionsTracker
-            .getPositions()
-            .getOrDefault(resource, Collections.singletonList(new Range(0)));
+  private void appendToSummaryFile(
+      URI resource, ResourceStats stats, List<Range> positions, PrintWriter writer) {
     writer.print(resource);
     writer.print(';');
     for (Range range : positions) {
