@@ -274,10 +274,10 @@ public class LoadWorkflow implements Workflow {
   /**
    * Reads the resources one by one.
    *
-   * <p>Even if resources are subscribed with {@code readConcurrency} parallelism, they are read one
-   * by one by the main workflow thread. The chunks of parsed records are then dispatched to the
-   * workflow thread pool. Each thread in the workflow thread pool is responsible for processing a
-   * chunk of records, with {@code numCores} parallelism.
+   * <p>Even if resources are subscribed with {@code readConcurrency} parallelism, they are read,
+   * one by one, by the main workflow thread. The chunks of parsed records are then dispatched to
+   * the workflow thread pool. Each thread in the workflow thread pool is responsible for processing
+   * a chunk of records, with {@code numCores} parallelism.
    */
   private Flux<Statement<?>> fewReaders() {
     scheduler = Schedulers.newParallel(numCores, new DefaultThreadFactory("workflow"));

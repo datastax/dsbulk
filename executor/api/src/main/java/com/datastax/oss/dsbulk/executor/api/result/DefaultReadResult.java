@@ -79,11 +79,6 @@ public final class DefaultReadResult extends DefaultResult implements ReadResult
 
   @Override
   public String toString() {
-    if (getError().isPresent()) {
-
-    } else {
-      assert row != null;
-    }
     return "DefaultReadResult["
         + "row="
         + getRow()

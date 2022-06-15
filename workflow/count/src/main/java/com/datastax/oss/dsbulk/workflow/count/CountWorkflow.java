@@ -80,6 +80,7 @@ public class CountWorkflow implements Workflow {
   private Function<Flux<ReadResult>, Flux<ReadResult>> queryWarningsHandler;
   private BiFunction<URI, Publisher<ReadResult>, Publisher<ReadResult>> resourceStatsHandler;
   private Function<Flux<Void>, Flux<Void>> terminationHandler;
+  private Function<Flux<ReadResult>, Flux<Void>> resultPositionsHandler;
   private int readConcurrency;
 
   CountWorkflow(Config config) {
@@ -146,6 +147,7 @@ public class CountWorkflow implements Workflow {
     failedReadsHandler = logManager.newFailedReadsHandler();
     queryWarningsHandler = logManager.newQueryWarningsHandler();
     resourceStatsHandler = logManager.newCqlResourceStatsHandler();
+    resultPositionsHandler = logManager.newReadResultPositionsHandler();
     terminationHandler = logManager.newTerminationHandler();
     int numCores = Runtime.getRuntime().availableProcessors();
     readConcurrency =
@@ -182,9 +184,9 @@ public class CountWorkflow implements Workflow {
                     // inner flows; this is guaranteed since statements are split by token range
                     // (users cannot supply a custom query for these counting modes).
                     .doOnNext(readResultCounter.newCountingUnit()::update)
-                    .then()
                     .subscribeOn(scheduler),
             readConcurrency)
+        .transform(resultPositionsHandler)
         .transform(terminationHandler)
         .blockLast();
     timer.stop();

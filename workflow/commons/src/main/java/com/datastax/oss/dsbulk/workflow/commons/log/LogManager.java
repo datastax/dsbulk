@@ -42,6 +42,7 @@ import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting
 import com.datastax.oss.driver.shaded.guava.common.base.Joiner;
 import com.datastax.oss.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.oss.dsbulk.connectors.api.Record;
+import com.datastax.oss.dsbulk.connectors.api.Trackable;
 import com.datastax.oss.dsbulk.executor.api.result.ReadResult;
 import com.datastax.oss.dsbulk.executor.api.result.Result;
 import com.datastax.oss.dsbulk.executor.api.result.WriteResult;
@@ -55,6 +56,7 @@ import com.datastax.oss.dsbulk.workflow.commons.schema.ReadResultMapper;
 import com.datastax.oss.dsbulk.workflow.commons.schema.RecordMapper;
 import com.datastax.oss.dsbulk.workflow.commons.settings.LogSettings;
 import com.datastax.oss.dsbulk.workflow.commons.statement.MappedStatement;
+import com.datastax.oss.dsbulk.workflow.commons.statement.RangeReadStatement;
 import com.datastax.oss.dsbulk.workflow.commons.statement.UnmappableStatement;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
@@ -139,8 +141,8 @@ public class LogManager implements AutoCloseable {
 
   private StackTracePrinter stackTracePrinter;
 
-  @VisibleForTesting
-  final Deque<PositionsTracker> positionsTrackers = new ConcurrentLinkedDeque<>();
+  private final Deque<PositionsTracker> positionsTrackers = new ConcurrentLinkedDeque<>();
+  private final PositionsTracker failedPositionsTracker = new PositionsTracker();
 
   @VisibleForTesting final Map<URI, ResourceStats> resources = new ConcurrentHashMap<>();
 
@@ -150,7 +152,7 @@ public class LogManager implements AutoCloseable {
   private FluxSink<WriteResult> failedWriteSink;
   private FluxSink<WriteResult> failedCASWriteSink;
   private FluxSink<ReadResult> failedReadSink;
-  private FluxSink<Record> positionsSink;
+  private FluxSink<Record> failedPositionsSink;
 
   private UnicastProcessor<Void> uncaughtExceptionProcessor;
   private FluxSink<Void> uncaughtExceptionSink;
@@ -186,7 +188,7 @@ public class LogManager implements AutoCloseable {
     failedWriteSink = newFailedWriteResultSink();
     failedCASWriteSink = newFailedCASWriteSink();
     failedReadSink = newFailedReadResultSink();
-    positionsSink = newPositionsSink();
+    failedPositionsSink = newFailedPositionsSink();
     uncaughtExceptionProcessor = UnicastProcessor.create();
     uncaughtExceptionSink = uncaughtExceptionProcessor.sink();
     invalidMappingWarningDone = new AtomicBoolean(false);
@@ -220,8 +222,10 @@ public class LogManager implements AutoCloseable {
     failedWriteSink.complete();
     failedCASWriteSink.complete();
     failedReadSink.complete();
+    failedPositionsSink.complete();
     uncaughtExceptionSink.complete();
     stackTracePrinter.stop();
+    positionsTrackerScheduler.dispose();
     // Forcibly close all open files on the thread that invokes close()
     // Using a cache removal listener is not an option because cache listeners
     // are invoked on the common ForkJoinPool, which uses daemon threads.
@@ -233,8 +237,6 @@ public class LogManager implements AutoCloseable {
               pw.flush();
               pw.close();
             });
-    positionsSink.complete();
-    positionsTrackerScheduler.dispose();
     if (!resources.isEmpty()) {
       printSummaryFile();
     }
@@ -471,35 +473,49 @@ public class LogManager implements AutoCloseable {
   }
 
   /**
-   * Handler for write results.
+   * Handler for successful write results.
    *
    * <p>Used only by the load workflow.
    *
    * <p>Extracts the result's {@link Record} and updates the positions.
    *
-   * @return A handler for write results.
+   * @return A handler for successful write results.
    */
   public Function<Flux<WriteResult>, Flux<Void>> newWriteResultPositionsHandler() {
     return upstream ->
         upstream
             .map(Result::getStatement)
-            .transform(extractRecordFromMappedStatement())
-            .flatMap(this::sendToPositionsSink)
-            .then()
-            .flux();
+            .transform(this::extractRecordFromMappedStatement)
+            .transform(this::recordSuccessfulPositions);
   }
 
   /**
-   * Handler for result positions.
+   * Handler for successful read results.
+   *
+   * <p>Used only by the count workflow.
+   *
+   * <p>Extracts the result's {@link Record} and updates the positions.
+   *
+   * @return A handler for successful read results.
+   */
+  public Function<Flux<ReadResult>, Flux<Void>> newReadResultPositionsHandler() {
+    return upstream ->
+        upstream
+            .transform(this::extractTrackableFromReadResult)
+            .transform(this::recordSuccessfulPositions);
+  }
+
+  /**
+   * Handler for successful record positions.
    *
    * <p>Used only by the unload workflow.
    *
    * <p>Updates the positions.
    *
-   * @return A handler for read result positions.
+   * @return A handler for successful record positions.
    */
-  public Function<Flux<Record>, Flux<Record>> newRecordPositionsHandler() {
-    return upstream -> upstream.flatMap(this::sendToPositionsSink);
+  public Function<Flux<Record>, Flux<Void>> newRecordPositionsHandler() {
+    return upstream -> upstream.transform(this::recordSuccessfulPositions);
   }
 
   public <T> Function<Flux<T>, Flux<T>> newTotalItemsCounter() {
@@ -561,19 +577,45 @@ public class LogManager implements AutoCloseable {
    * @return a mapper from statements to records.
    */
   @NonNull
-  private Function<Flux<? extends Statement<?>>, Flux<Record>> extractRecordFromMappedStatement() {
-    return upstream ->
-        upstream
-            .flatMap(
-                statement -> {
-                  if (statement instanceof BatchStatement) {
-                    return Flux.fromIterable(((BatchStatement) statement));
-                  } else {
-                    return Flux.just(statement);
-                  }
-                })
-            .cast(MappedStatement.class)
-            .map(MappedStatement::getRecord);
+  private Flux<Record> extractRecordFromMappedStatement(Flux<? extends Statement<?>> upstream) {
+    return upstream
+        .flatMap(
+            statement -> {
+              if (statement instanceof BatchStatement) {
+                return Flux.fromIterable(((BatchStatement) statement));
+              } else {
+                return Flux.just(statement);
+              }
+            })
+        .cast(MappedStatement.class)
+        .map(MappedStatement::getRecord);
+  }
+
+  @NonNull
+  private Flux<Trackable> extractTrackableFromReadResult(Flux<ReadResult> upstream) {
+    return upstream.map(
+        result -> {
+          URI resource = ((RangeReadStatement) result.getStatement()).getResource();
+          long position = result.getPosition();
+          return new Trackable() {
+            @Nullable
+            @Override
+            public Object getSource() {
+              return null;
+            }
+
+            @NonNull
+            @Override
+            public URI getResource() {
+              return resource;
+            }
+
+            @Override
+            public long getPosition() {
+              return position;
+            }
+          };
+        });
   }
 
   /**
@@ -590,12 +632,11 @@ public class LogManager implements AutoCloseable {
   @NonNull
   private FluxSink<ErrorRecord> newFailedRecordSink() {
     UnicastProcessor<ErrorRecord> processor = UnicastProcessor.create();
-    Flux<Record> flux =
-        processor
-            .flatMap(this::appendFailedRecordToDebugFile)
-            .flatMap(record -> appendToBadFile(record, CONNECTOR_BAD_FILE))
-            .flatMap(this::sendToPositionsSink);
-    flux.subscribe(v -> {}, this::onSinkError);
+    processor
+        .flatMap(this::appendFailedRecordToDebugFile)
+        .flatMap(record -> appendToBadFile(record, CONNECTOR_BAD_FILE))
+        .flatMap(this::sendToFailedPositionsSink)
+        .subscribe(v -> {}, this::onSinkError);
     return processor.sink(OverflowStrategy.BUFFER);
   }
 
@@ -615,7 +656,7 @@ public class LogManager implements AutoCloseable {
     processor
         .flatMap(this::appendUnmappableReadResultToDebugFile)
         .flatMap(record -> appendToBadFile(record, MAPPING_BAD_FILE))
-        .flatMap(this::sendToPositionsSink)
+        .flatMap(this::sendToFailedPositionsSink)
         .subscribe(v -> {}, this::onSinkError);
     return processor.sink(OverflowStrategy.BUFFER);
   }
@@ -636,9 +677,9 @@ public class LogManager implements AutoCloseable {
     processor
         .doOnNext(this::maybeWarnInvalidMapping)
         .flatMap(this::appendUnmappableStatementToDebugFile)
-        .transform(extractRecordFromMappedStatement())
+        .transform(this::extractRecordFromMappedStatement)
         .flatMap(record -> appendToBadFile(record, MAPPING_BAD_FILE))
-        .flatMap(this::sendToPositionsSink)
+        .flatMap(this::sendToFailedPositionsSink)
         .subscribe(v -> {}, this::onSinkError);
     return processor.sink(OverflowStrategy.BUFFER);
   }
@@ -660,9 +701,9 @@ public class LogManager implements AutoCloseable {
     processor
         .flatMap(this::appendFailedWriteResultToDebugFile)
         .map(Result::getStatement)
-        .transform(extractRecordFromMappedStatement())
+        .transform(this::extractRecordFromMappedStatement)
         .flatMap(record -> appendToBadFile(record, LOAD_BAD_FILE))
-        .flatMap(this::sendToPositionsSink)
+        .flatMap(this::sendToFailedPositionsSink)
         .subscribe(v -> {}, this::onSinkError);
     return processor.sink(OverflowStrategy.BUFFER);
   }
@@ -684,9 +725,9 @@ public class LogManager implements AutoCloseable {
     processor
         .flatMap(this::appendFailedCASWriteResultToDebugFile)
         .map(Result::getStatement)
-        .transform(extractRecordFromMappedStatement())
+        .transform(this::extractRecordFromMappedStatement)
         .flatMap(record -> appendToBadFile(record, CAS_BAD_FILE))
-        .flatMap(this::sendToPositionsSink)
+        .flatMap(this::sendToFailedPositionsSink)
         .subscribe(v -> {}, this::onSinkError);
     return processor.sink(OverflowStrategy.BUFFER);
   }
@@ -720,9 +761,20 @@ public class LogManager implements AutoCloseable {
    * @return A processor for record positions.
    */
   @NonNull
-  private FluxSink<Record> newPositionsSink() {
+  private FluxSink<Record> newFailedPositionsSink() {
     UnicastProcessor<Record> processor = UnicastProcessor.create();
     processor
+        // do not need to be published on the dedicated log scheduler, the computation is fairly
+        // cheap, and we don't expect tons of failed records.
+        .doOnNext(
+            record -> failedPositionsTracker.update(record.getResource(), record.getPosition()))
+        .subscribe(v -> {}, this::onSinkError);
+    return processor.sink(OverflowStrategy.BUFFER);
+  }
+
+  @NonNull
+  private <T extends Trackable> Flux<Void> recordSuccessfulPositions(Flux<T> upstream) {
+    return upstream
         .window(100)
         .flatMap(
             records ->
@@ -741,8 +793,8 @@ public class LogManager implements AutoCloseable {
                         ctx -> ctx.put(PositionsTracker.class, positionsTrackers.remove()))
                     .subscribeOn(positionsTrackerScheduler),
             Runtime.getRuntime().availableProcessors() / 2)
-        .subscribe(v -> {}, this::onSinkError);
-    return processor.sink(OverflowStrategy.BUFFER);
+        .then()
+        .flux();
   }
 
   // Bad file management
@@ -950,9 +1002,9 @@ public class LogManager implements AutoCloseable {
   }
 
   @NonNull
-  private Mono<Record> sendToPositionsSink(Record record) {
+  private Mono<Record> sendToFailedPositionsSink(Record record) {
     try {
-      positionsSink.next(record);
+      failedPositionsSink.next(record);
       return Mono.just(record);
     } catch (Exception e) {
       return Mono.error(e);
@@ -1007,7 +1059,7 @@ public class LogManager implements AutoCloseable {
   @NonNull
   @VisibleForTesting
   PositionsTracker mergePositionTrackers() {
-    PositionsTracker positionsTracker = new PositionsTracker();
+    PositionsTracker positionsTracker = failedPositionsTracker;
     for (PositionsTracker child : positionsTrackers) {
       positionsTracker.update(child);
     }

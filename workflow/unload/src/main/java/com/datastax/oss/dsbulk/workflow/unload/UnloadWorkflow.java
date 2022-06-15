@@ -86,7 +86,7 @@ public class UnloadWorkflow implements Workflow {
   private Function<Flux<ReadResult>, Flux<ReadResult>> failedReadsHandler;
   private Function<Flux<ReadResult>, Flux<ReadResult>> queryWarningsHandler;
   private Function<Flux<Record>, Flux<Record>> unmappableRecordsHandler;
-  private Function<Flux<Record>, Flux<Record>> resultPositionsHandler;
+  private Function<Flux<Record>, Flux<Void>> resultPositionsHandler;
   private BiFunction<URI, Publisher<ReadResult>, Publisher<ReadResult>> resourceStatsHandler;
   private Function<Flux<Void>, Flux<Void>> terminationHandler;
   private int readConcurrency;
@@ -202,7 +202,7 @@ public class UnloadWorkflow implements Workflow {
       flux = manyWriters();
     }
     Stopwatch timer = Stopwatch.createStarted();
-    flux.then().flux().transform(terminationHandler).blockLast();
+    flux.transform(resultPositionsHandler).transform(terminationHandler).blockLast();
     timer.stop();
     int totalErrors = logManager.getTotalErrors();
     metricsManager.stop(timer.elapsed(), totalErrors == 0);
@@ -243,8 +243,7 @@ public class UnloadWorkflow implements Workflow {
             500)
         .transform(writer)
         .transform(failedRecordsMonitor)
-        .transform(failedRecordsHandler)
-        .transform(resultPositionsHandler);
+        .transform(failedRecordsHandler);
   }
 
   private Flux<Record> fewWriters() {
@@ -284,8 +283,7 @@ public class UnloadWorkflow implements Workflow {
                 records
                     .transform(writer)
                     .transform(failedRecordsMonitor)
-                    .transform(failedRecordsHandler)
-                    .transform(resultPositionsHandler),
+                    .transform(failedRecordsHandler),
             writeConcurrency,
             500);
   }
@@ -323,10 +321,7 @@ public class UnloadWorkflow implements Workflow {
                 // in a round-robin fashion.
                 records = records.window(500).flatMap(window -> window.transform(writer), 1, 500);
               }
-              return records
-                  .transform(failedRecordsMonitor)
-                  .transform(failedRecordsHandler)
-                  .transform(resultPositionsHandler);
+              return records.transform(failedRecordsMonitor).transform(failedRecordsHandler);
             },
             actualConcurrency,
             500);
