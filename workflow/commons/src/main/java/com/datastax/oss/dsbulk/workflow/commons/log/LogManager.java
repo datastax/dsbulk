@@ -68,12 +68,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
@@ -89,6 +91,8 @@ import reactor.core.publisher.FluxSink.OverflowStrategy;
 import reactor.core.publisher.Hooks;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.UnicastProcessor;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
 
 // FIXME UnicastProcessor and FluxSink were deprecated, but the Sinks.Many API does not offer
 // support for multi-threaded access to the sink, see:
@@ -128,12 +132,16 @@ public class LogManager implements AutoCloseable {
       Caffeine.newBuilder()
           .build(path -> new PrintWriter(Files.newBufferedWriter(path, UTF_8, CREATE_NEW, WRITE)));
 
+  private Scheduler positionsTrackerScheduler;
+
   private CodecRegistry codecRegistry;
   private ProtocolVersion protocolVersion;
 
   private StackTracePrinter stackTracePrinter;
 
-  @VisibleForTesting final PositionsTracker positionsTracker = new PositionsTracker();
+  @VisibleForTesting
+  final Deque<PositionsTracker> positionsTrackers = new ConcurrentLinkedDeque<>();
+
   @VisibleForTesting final Map<URI, ResourceStats> resources = new ConcurrentHashMap<>();
 
   private FluxSink<ErrorRecord> failedRecordSink;
@@ -189,6 +197,11 @@ public class LogManager implements AutoCloseable {
     // workflow will receive these error signals and stop as expected.
     Hooks.onErrorDropped(t -> uncaughtExceptionSink.error(t));
     Thread.setDefaultUncaughtExceptionHandler((thread, t) -> uncaughtExceptionSink.error(t));
+    positionsTrackerScheduler =
+        Schedulers.newParallel("positions-tracker", Runtime.getRuntime().availableProcessors() / 2);
+    for (int i = 0; i < Runtime.getRuntime().availableProcessors() / 2; i++) {
+      positionsTrackers.offer(new PositionsTracker());
+    }
   }
 
   public Path getOperationDirectory() {
@@ -221,6 +234,7 @@ public class LogManager implements AutoCloseable {
               pw.close();
             });
     positionsSink.complete();
+    positionsTrackerScheduler.dispose();
     if (!resources.isEmpty()) {
       printSummaryFile();
     }
@@ -484,8 +498,8 @@ public class LogManager implements AutoCloseable {
    *
    * @return A handler for read result positions.
    */
-  public Function<Flux<Record>, Flux<Void>> newRecordPositionsHandler() {
-    return upstream -> upstream.flatMap(this::sendToPositionsSink).then().flux();
+  public Function<Flux<Record>, Flux<Record>> newRecordPositionsHandler() {
+    return upstream -> upstream.flatMap(this::sendToPositionsSink);
   }
 
   public <T> Function<Flux<T>, Flux<T>> newTotalItemsCounter() {
@@ -709,9 +723,24 @@ public class LogManager implements AutoCloseable {
   private FluxSink<Record> newPositionsSink() {
     UnicastProcessor<Record> processor = UnicastProcessor.create();
     processor
-        // do not need to be published on the dedicated log scheduler, the computation is fairly
-        // cheap
-        .doOnNext(record -> positionsTracker.update(record.getResource(), record.getPosition()))
+        .window(100)
+        .flatMap(
+            records ->
+                records
+                    .transformDeferredContextual(
+                        (original, ctx) -> {
+                          PositionsTracker positionsTracker = ctx.get(PositionsTracker.class);
+                          return original
+                              .doOnNext(
+                                  record ->
+                                      positionsTracker.update(
+                                          record.getResource(), record.getPosition()))
+                              .doOnTerminate(() -> positionsTrackers.offer(positionsTracker));
+                        })
+                    .contextWrite(
+                        ctx -> ctx.put(PositionsTracker.class, positionsTrackers.remove()))
+                    .subscribeOn(positionsTrackerScheduler),
+            Runtime.getRuntime().availableProcessors() / 2)
         .subscribe(v -> {}, this::onSinkError);
     return processor.sink(OverflowStrategy.BUFFER);
   }
@@ -947,6 +976,7 @@ public class LogManager implements AutoCloseable {
   }
 
   private void appendToSummaryFile(URI resource, ResourceStats stats, PrintWriter writer) {
+    PositionsTracker positionsTracker = mergePositionTrackers();
     List<Range> positions =
         positionsTracker
             .getPositions()
@@ -972,6 +1002,16 @@ public class LogManager implements AutoCloseable {
       }
     }
     writer.println();
+  }
+
+  @NonNull
+  @VisibleForTesting
+  PositionsTracker mergePositionTrackers() {
+    PositionsTracker positionsTracker = new PositionsTracker();
+    for (PositionsTracker child : positionsTrackers) {
+      positionsTracker.update(child);
+    }
+    return positionsTracker;
   }
 
   private <T> Flux<T> maybeTriggerOnError(@Nullable Throwable error, int currentErrorCount) {

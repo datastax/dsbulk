@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Map.Entry;
 
 public class PositionsTracker {
 
@@ -80,5 +81,15 @@ public class PositionsTracker {
     }
     iterator.add(new Range(position));
     return positions;
+  }
+
+  public void update(PositionsTracker child) {
+    for (Entry<URI, List<Range>> entry : child.getPositions().entrySet()) {
+      for (Range range : entry.getValue()) {
+        for (long position = range.getLower(); position <= range.getUpper(); position++) {
+          update(entry.getKey(), position);
+        }
+      }
+    }
   }
 }

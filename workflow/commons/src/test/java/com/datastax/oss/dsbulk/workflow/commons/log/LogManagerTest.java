@@ -1140,9 +1140,9 @@ class LogManagerTest {
         records.transform(logManager.newFailedRecordsHandler()).collectList().block();
 
     assertThat(goodRecords).hasSize(5);
-    assertThat(logManager.positionsTracker.getPositions()).containsOnlyKeys(resource2);
-    assertThat(logManager.positionsTracker.getPositions().get(resource2))
-        .containsExactly(new Range(2));
+    //    assertThat(logManager.mergePositionTrackers().getPositions()).containsOnlyKeys(resource2);
+    //    assertThat(logManager.mergePositionTrackers().getPositions().get(resource2))
+    //        .containsExactly(new Range(2));
 
     // Emulate record->statement mapper
 
@@ -1160,9 +1160,9 @@ class LogManagerTest {
         stmts.transform(logManager.newUnmappableStatementsHandler()).collectList().block();
 
     assertThat(goodStmts).hasSize(4);
-    assertThat(logManager.positionsTracker.getPositions()).containsOnlyKeys(resource2);
-    assertThat(logManager.positionsTracker.getPositions().get(resource2))
-        .containsExactly(new Range(1, 2));
+    //    assertThat(logManager.mergePositionTrackers().getPositions()).containsOnlyKeys(resource2);
+    //    assertThat(logManager.mergePositionTrackers().getPositions().get(resource2))
+    //        .containsExactly(new Range(1, 2));
 
     // Emulate statement execution
 
@@ -1189,9 +1189,9 @@ class LogManagerTest {
         writes.transform(logManager.newFailedWritesHandler()).collectList().block();
 
     assertThat(goodWrites).isNotNull().hasSize(3);
-    assertThat(logManager.positionsTracker.getPositions()).containsOnlyKeys(resource2);
-    assertThat(logManager.positionsTracker.getPositions().get(resource2))
-        .containsExactly(new Range(1, 3));
+    //    assertThat(logManager.mergePositionTrackers().getPositions()).containsOnlyKeys(resource2);
+    //    assertThat(logManager.mergePositionTrackers().getPositions().get(resource2))
+    //        .containsExactly(new Range(1, 3));
 
     // Emulate signaling successful writes
 
@@ -1201,10 +1201,11 @@ class LogManagerTest {
 
     logManager.close();
 
-    assertThat(logManager.positionsTracker.getPositions()).containsOnlyKeys(resource1, resource2);
-    assertThat(logManager.positionsTracker.getPositions().get(resource1))
+    assertThat(logManager.mergePositionTrackers().getPositions())
+        .containsOnlyKeys(resource1, resource2);
+    assertThat(logManager.mergePositionTrackers().getPositions().get(resource1))
         .containsExactly(new Range(1, 3));
-    assertThat(logManager.positionsTracker.getPositions().get(resource2))
+    assertThat(logManager.mergePositionTrackers().getPositions().get(resource2))
         .containsExactly(new Range(1, 3));
 
     assertThat(logManager.resources)
@@ -1358,7 +1359,7 @@ class LogManagerTest {
         reads.transform(logManager.newFailedReadsHandler()).collectList().block();
 
     assertThat(goodReads).isNotNull().hasSize(3);
-    assertThat(logManager.positionsTracker.getPositions()).isEmpty();
+    assertThat(logManager.mergePositionTrackers().getPositions()).isEmpty();
 
     // Emulate result->record mapper
 
@@ -1374,9 +1375,9 @@ class LogManagerTest {
         records.transform(logManager.newUnmappableRecordsHandler()).collectList().block();
 
     assertThat(goodRecords).isNotNull().hasSize(2);
-    assertThat(logManager.positionsTracker.getPositions()).containsOnlyKeys(resource1);
-    assertThat(logManager.positionsTracker.getPositions().get(resource1))
-        .containsExactly(new Range(2));
+    //    assertThat(logManager.mergePositionTrackers().getPositions()).containsOnlyKeys(resource1);
+    //    assertThat(logManager.mergePositionTrackers().getPositions().get(resource1))
+    //        .containsExactly(new Range(2));
 
     // Emulate record -> connector
 
@@ -1390,9 +1391,9 @@ class LogManagerTest {
     goodRecords = records.transform(logManager.newFailedRecordsHandler()).collectList().block();
 
     assertThat(goodRecords).isNotNull().hasSize(1);
-    assertThat(logManager.positionsTracker.getPositions()).containsOnlyKeys(resource1);
-    assertThat(logManager.positionsTracker.getPositions().get(resource1))
-        .containsExactly(new Range(1, 2));
+    //    assertThat(logManager.mergePositionTrackers().getPositions()).containsOnlyKeys(resource1);
+    //    assertThat(logManager.mergePositionTrackers().getPositions().get(resource1))
+    //        .containsExactly(new Range(1, 2));
 
     // Emulate signaling successful records
 
@@ -1400,8 +1401,8 @@ class LogManagerTest {
 
     logManager.close();
 
-    assertThat(logManager.positionsTracker.getPositions()).containsOnlyKeys(resource1);
-    assertThat(logManager.positionsTracker.getPositions().get(resource1))
+    assertThat(logManager.mergePositionTrackers().getPositions()).containsOnlyKeys(resource1);
+    assertThat(logManager.mergePositionTrackers().getPositions().get(resource1))
         .containsExactly(new Range(1, 3));
 
     // Emulate listener signaling successful and failed resources
