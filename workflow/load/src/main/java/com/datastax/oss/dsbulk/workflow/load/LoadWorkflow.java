@@ -410,9 +410,9 @@ public class LoadWorkflow implements Workflow {
           DataSizeSampler.sampleWrites(
               session.getContext(),
               Flux.merge(connector.read())
+                  .take(1000)
                   .<Statement<?>>flatMap(mapper)
                   .filter(BoundStatement.class::isInstance)
-                  .take(1000)
                   .toIterable());
       if (sample.getCount() < 1000) {
         // sample too small, go with a common value
