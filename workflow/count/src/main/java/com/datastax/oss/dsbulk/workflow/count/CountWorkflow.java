@@ -217,6 +217,9 @@ public class CountWorkflow implements Workflow {
       if (metricsManager != null) {
         metricsManager.reportFinalMetrics();
       }
+      if (logManager != null) {
+        logManager.reportAvailableFiles();
+      }
 
       // Print results even if any failures.
       // It has no sense to query billions rows for a few hours and show nothing if some failure

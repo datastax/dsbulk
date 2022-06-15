@@ -348,7 +348,7 @@ public class LoadWorkflow implements Workflow {
         metricsManager.reportFinalMetrics();
       }
       if (logManager != null) {
-        logManager.reportLastLocations();
+        logManager.reportAvailableFiles();
       }
       LOGGER.debug("{} closed.", this);
       if (e != null) {

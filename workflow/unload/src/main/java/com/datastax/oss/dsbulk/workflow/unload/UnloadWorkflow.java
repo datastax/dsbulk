@@ -344,6 +344,9 @@ public class UnloadWorkflow implements Workflow {
       if (metricsManager != null) {
         metricsManager.reportFinalMetrics();
       }
+      if (logManager != null) {
+        logManager.reportAvailableFiles();
+      }
       LOGGER.debug("{} closed.", this);
       if (e != null) {
         throw e;

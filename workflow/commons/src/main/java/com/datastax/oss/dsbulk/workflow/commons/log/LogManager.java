@@ -200,8 +200,9 @@ public class LogManager implements AutoCloseable {
     Hooks.onErrorDropped(t -> uncaughtExceptionSink.error(t));
     Thread.setDefaultUncaughtExceptionHandler((thread, t) -> uncaughtExceptionSink.error(t));
     positionsTrackerScheduler =
-        Schedulers.newParallel("positions-tracker", Runtime.getRuntime().availableProcessors() / 2);
-    for (int i = 0; i < Runtime.getRuntime().availableProcessors() / 2; i++) {
+        Schedulers.newParallel(
+            "positions-tracker", Math.max(2, Runtime.getRuntime().availableProcessors() / 4));
+    for (int i = 0; i < Runtime.getRuntime().availableProcessors() * 2; i++) {
       positionsTrackers.offer(new PositionsTracker());
     }
   }
@@ -237,12 +238,9 @@ public class LogManager implements AutoCloseable {
               pw.flush();
               pw.close();
             });
-    if (!resources.isEmpty()) {
-      printSummaryFile();
-    }
   }
 
-  public void reportLastLocations() {
+  public void reportAvailableFiles() throws IOException {
     PathMatcher badFileMatcher = FileSystems.getDefault().getPathMatcher("glob:*.bad");
     Set<Path> files = openFiles.asMap().keySet();
     List<Path> badFiles =
@@ -261,7 +259,9 @@ public class LogManager implements AutoCloseable {
       LOGGER.info(
           "Errors are detailed in the following file(s): {}", Joiner.on(", ").join(debugFiles));
     }
+    System.out.println(resources);
     if (!resources.isEmpty()) {
+      printSummaryFile();
       LOGGER.info("A summary of the operation in CSV format can be found in {}.", SUMMARY_CSV);
     }
   }
@@ -775,7 +775,7 @@ public class LogManager implements AutoCloseable {
   @NonNull
   private <T extends Trackable> Flux<Void> recordSuccessfulPositions(Flux<T> upstream) {
     return upstream
-        .window(100)
+        .window(1000)
         .flatMap(
             records ->
                 records
@@ -792,7 +792,7 @@ public class LogManager implements AutoCloseable {
                     .contextWrite(
                         ctx -> ctx.put(PositionsTracker.class, positionsTrackers.remove()))
                     .subscribeOn(positionsTrackerScheduler),
-            Runtime.getRuntime().availableProcessors() / 2)
+            Runtime.getRuntime().availableProcessors() * 2)
         .then()
         .flux();
   }
