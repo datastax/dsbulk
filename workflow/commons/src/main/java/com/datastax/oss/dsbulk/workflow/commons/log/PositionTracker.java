@@ -15,6 +15,7 @@
  */
 package com.datastax.oss.dsbulk.workflow.commons.log;
 
+import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.net.URI;
 import java.util.ArrayList;
@@ -22,9 +23,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
-import java.util.Map.Entry;
 
-public class PositionsTracker {
+public class PositionTracker {
 
   private final Map<URI, List<Range>> positions = new HashMap<>();
 
@@ -49,6 +49,24 @@ public class PositionsTracker {
               return addPosition(positions, position);
             }
           });
+    }
+  }
+
+  public void merge(@NonNull PositionTracker child) {
+    Map<URI, List<Range>> childPositions = child.getPositions();
+    for (URI resource : childPositions.keySet()) {
+      List<Range> childRanges = childPositions.get(resource);
+      if (childRanges != null) {
+        positions.merge(
+            resource,
+            childRanges,
+            (cur, next) -> {
+              for (Range range : next) {
+                addRange(cur, range);
+              }
+              return cur;
+            });
+      }
     }
   }
 
@@ -83,13 +101,36 @@ public class PositionsTracker {
     return positions;
   }
 
-  public void update(PositionsTracker child) {
-    for (Entry<URI, List<Range>> entry : child.getPositions().entrySet()) {
-      for (Range range : entry.getValue()) {
-        for (long position = range.getLower(); position <= range.getUpper(); position++) {
-          update(entry.getKey(), position);
+  @VisibleForTesting
+  static void addRange(@NonNull List<Range> positions, @NonNull Range toAdd) {
+    ListIterator<Range> iterator = positions.listIterator();
+    while (iterator.hasNext()) {
+      Range range = iterator.next();
+      if (range.contains(toAdd)) {
+        return;
+      } else if (toAdd.getUpper() < range.getLower() - 1L) {
+        // disjoint and lesser, insert before
+        iterator.previous();
+        iterator.add(toAdd);
+        return;
+      } else if (toAdd.getUpper() <= range.getUpper()) {
+        // adjacent and lesser or equal: modify current
+        range.setLower(toAdd.getLower());
+        return;
+      } else if (toAdd.getLower() <= range.getUpper() + 1L) {
+        // adjacent and strictly greater: merge with current
+        range.merge(toAdd);
+        // then merge successors until successor is disjoint
+        while (iterator.hasNext()) {
+          Range next = iterator.next();
+          if (range.getUpper() >= next.getLower() - 1L) {
+            iterator.remove();
+            range.merge(next);
+          }
         }
+        return;
       }
     }
+    iterator.add(toAdd);
   }
 }

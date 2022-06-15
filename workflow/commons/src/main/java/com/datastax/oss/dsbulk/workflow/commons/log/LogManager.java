@@ -141,8 +141,8 @@ public class LogManager implements AutoCloseable {
 
   private StackTracePrinter stackTracePrinter;
 
-  private final Deque<PositionsTracker> positionsTrackers = new ConcurrentLinkedDeque<>();
-  private final PositionsTracker failedPositionsTracker = new PositionsTracker();
+  private final Deque<PositionTracker> positionTrackers = new ConcurrentLinkedDeque<>();
+  private final PositionTracker failedPositionTracker = new PositionTracker();
 
   @VisibleForTesting final Map<URI, ResourceStats> resources = new ConcurrentHashMap<>();
 
@@ -199,11 +199,11 @@ public class LogManager implements AutoCloseable {
     // workflow will receive these error signals and stop as expected.
     Hooks.onErrorDropped(t -> uncaughtExceptionSink.error(t));
     Thread.setDefaultUncaughtExceptionHandler((thread, t) -> uncaughtExceptionSink.error(t));
+    int numCores = Runtime.getRuntime().availableProcessors();
     positionsTrackerScheduler =
-        Schedulers.newParallel(
-            "positions-tracker", Math.max(2, Runtime.getRuntime().availableProcessors() / 4));
-    for (int i = 0; i < Runtime.getRuntime().availableProcessors() * 2; i++) {
-      positionsTrackers.offer(new PositionsTracker());
+        Schedulers.newParallel("positions-tracker", Math.max(2, numCores / 4));
+    for (int i = 0; i < numCores * 2; i++) {
+      positionTrackers.offer(new PositionTracker());
     }
   }
 
@@ -259,9 +259,8 @@ public class LogManager implements AutoCloseable {
       LOGGER.info(
           "Errors are detailed in the following file(s): {}", Joiner.on(", ").join(debugFiles));
     }
-    System.out.println(resources);
     if (!resources.isEmpty()) {
-      printSummaryFile();
+      writeSummaryFile();
       LOGGER.info("A summary of the operation in CSV format can be found in {}.", SUMMARY_CSV);
     }
   }
@@ -767,7 +766,7 @@ public class LogManager implements AutoCloseable {
         // do not need to be published on the dedicated log scheduler, the computation is fairly
         // cheap, and we don't expect tons of failed records.
         .doOnNext(
-            record -> failedPositionsTracker.update(record.getResource(), record.getPosition()))
+            record -> failedPositionTracker.update(record.getResource(), record.getPosition()))
         .subscribe(v -> {}, this::onSinkError);
     return processor.sink(OverflowStrategy.BUFFER);
   }
@@ -781,16 +780,15 @@ public class LogManager implements AutoCloseable {
                 records
                     .transformDeferredContextual(
                         (original, ctx) -> {
-                          PositionsTracker positionsTracker = ctx.get(PositionsTracker.class);
+                          PositionTracker positionTracker = ctx.get(PositionTracker.class);
                           return original
                               .doOnNext(
                                   record ->
-                                      positionsTracker.update(
+                                      positionTracker.update(
                                           record.getResource(), record.getPosition()))
-                              .doOnTerminate(() -> positionsTrackers.offer(positionsTracker));
+                              .doOnTerminate(() -> positionTrackers.offer(positionTracker));
                         })
-                    .contextWrite(
-                        ctx -> ctx.put(PositionsTracker.class, positionsTrackers.remove()))
+                    .contextWrite(ctx -> ctx.put(PositionTracker.class, positionTrackers.remove()))
                     .subscribeOn(positionsTrackerScheduler),
             Runtime.getRuntime().availableProcessors() * 2)
         .then()
@@ -1013,8 +1011,8 @@ public class LogManager implements AutoCloseable {
 
   // Utility methods
 
-  private void printSummaryFile() throws IOException {
-    PositionsTracker positionsTracker = mergePositionTrackers();
+  private void writeSummaryFile() throws IOException {
+    PositionTracker tracker = mergePositionTrackers();
     try (PrintWriter writer =
         new PrintWriter(
             Files.newBufferedWriter(
@@ -1023,7 +1021,7 @@ public class LogManager implements AutoCloseable {
       TreeMap<URI, ResourceStats> stats = new TreeMap<>(resources);
       for (Entry<URI, ResourceStats> entry : stats.entrySet()) {
         List<Range> ranges =
-            positionsTracker
+            tracker
                 .getPositions()
                 .getOrDefault(entry.getKey(), Collections.singletonList(new Range(0)));
         appendToSummaryFile(entry.getKey(), entry.getValue(), ranges, writer);
@@ -1059,12 +1057,12 @@ public class LogManager implements AutoCloseable {
 
   @NonNull
   @VisibleForTesting
-  PositionsTracker mergePositionTrackers() {
-    PositionsTracker positionsTracker = failedPositionsTracker;
-    for (PositionsTracker child : positionsTrackers) {
-      positionsTracker.update(child);
+  PositionTracker mergePositionTrackers() {
+    PositionTracker merged = failedPositionTracker;
+    for (PositionTracker child : positionTrackers) {
+      merged.merge(child);
     }
-    return positionsTracker;
+    return merged;
   }
 
   private <T> Flux<T> maybeTriggerOnError(@Nullable Throwable error, int currentErrorCount) {
