@@ -381,13 +381,13 @@ public class LoadWorkflow implements Workflow {
     int writeConcurrency;
     if (meanSize <= 512) {
       if (hasManyReaders) {
-        writeConcurrency = numCores * 64;
+        writeConcurrency = numCores * 32;
       } else {
         writeConcurrency = numCores * 16;
       }
     } else if (meanSize <= _1_KB) {
       if (hasManyReaders) {
-        writeConcurrency = numCores * 32;
+        writeConcurrency = numCores * 16;
       } else {
         writeConcurrency = numCores * 8;
       }

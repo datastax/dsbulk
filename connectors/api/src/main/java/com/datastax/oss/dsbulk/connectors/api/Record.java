@@ -17,6 +17,7 @@ package com.datastax.oss.dsbulk.connectors.api;
 
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
+import java.net.URI;
 import java.util.Collection;
 import java.util.Set;
 
@@ -26,7 +27,7 @@ import java.util.Set;
  *
  * <p>Records typically originate from a line in a file, or a row in a database table.
  */
-public interface Record extends Trackable {
+public interface Record {
 
   /**
    * Returns the record source, typically a line in a file or a row in a database table.
@@ -36,6 +37,34 @@ public interface Record extends Trackable {
    */
   @Nullable
   Object getSource();
+
+  /**
+   * Returns the record's resource location, typically the file or database table where it was
+   * extracted from.
+   *
+   * <p>Details about the returned URI, and in particular its scheme, are implementation-specific.
+   *
+   * @return The record's resource.
+   */
+  @NonNull
+  URI getResource();
+
+  /**
+   * Returns the record's position inside its {@linkplain #getResource() resource}, typically the
+   * line number if the resource is a file, or the row number, if the resource is a database table.
+   *
+   * <p>Note that in the case of a file, the record's position is not necessarily equal to the line
+   * number where it appears. First, if there is one or more header lines, the actual line number
+   * would be its position + the number of header lines. Moreover, it the resource contains
+   * multi-line records, then it is not possible to draw a direct relationship between the record's
+   * position and its line.
+   *
+   * <p>Positions should be 1-based, i.e., the first record in the resource has position 1, and so
+   * on. If the position cannot be determined, this method should return -1.
+   *
+   * @return the record's position, or -1 if the position cannot be determined.
+   */
+  long getPosition();
 
   /**
    * Returns a set containing all the fields in this record.

@@ -193,7 +193,7 @@ public class UnloadWorkflow implements Workflow {
   public boolean execute() {
     LOGGER.debug("{} started.", this);
     metricsManager.start();
-    Flux<Record> flux;
+    Flux<Void> flux;
     if (writeConcurrency == 1) {
       flux = oneWriter();
     } else if (writeConcurrency < numCores / 2 || readConcurrency < numCores / 2) {
@@ -202,7 +202,7 @@ public class UnloadWorkflow implements Workflow {
       flux = manyWriters();
     }
     Stopwatch timer = Stopwatch.createStarted();
-    flux.transform(resultPositionsHandler).transform(terminationHandler).blockLast();
+    flux.transform(terminationHandler).blockLast();
     timer.stop();
     int totalErrors = logManager.getTotalErrors();
     metricsManager.stop(timer.elapsed(), totalErrors == 0);
@@ -217,7 +217,7 @@ public class UnloadWorkflow implements Workflow {
     return totalErrors == 0;
   }
 
-  private Flux<Record> oneWriter() {
+  private Flux<Void> oneWriter() {
     int numThreads = Math.min(numCores * 2, readConcurrency);
     Scheduler scheduler =
         numThreads == 1
@@ -243,10 +243,11 @@ public class UnloadWorkflow implements Workflow {
             500)
         .transform(writer)
         .transform(failedRecordsMonitor)
-        .transform(failedRecordsHandler);
+        .transform(failedRecordsHandler)
+        .transform(resultPositionsHandler);
   }
 
-  private Flux<Record> fewWriters() {
+  private Flux<Void> fewWriters() {
     // writeConcurrency cannot be 1 here, but readConcurrency can
     int numThreadsForReads = Math.min(numCores, readConcurrency);
     Scheduler schedulerForReads =
@@ -283,12 +284,13 @@ public class UnloadWorkflow implements Workflow {
                 records
                     .transform(writer)
                     .transform(failedRecordsMonitor)
-                    .transform(failedRecordsHandler),
+                    .transform(failedRecordsHandler)
+                    .transform(resultPositionsHandler),
             writeConcurrency,
             500);
   }
 
-  private Flux<Record> manyWriters() {
+  private Flux<Void> manyWriters() {
     // writeConcurrency and readConcurrency are >= 0.5C here
     int actualConcurrency = Math.min(readConcurrency, writeConcurrency);
     int numThreads = Math.min(numCores * 2, actualConcurrency);
@@ -321,7 +323,10 @@ public class UnloadWorkflow implements Workflow {
                 // in a round-robin fashion.
                 records = records.window(500).flatMap(window -> window.transform(writer), 1, 500);
               }
-              return records.transform(failedRecordsMonitor).transform(failedRecordsHandler);
+              return records
+                  .transform(failedRecordsMonitor)
+                  .transform(failedRecordsHandler)
+                  .transform(resultPositionsHandler);
             },
             actualConcurrency,
             500);
