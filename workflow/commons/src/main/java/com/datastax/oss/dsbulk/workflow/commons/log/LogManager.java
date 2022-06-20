@@ -42,7 +42,6 @@ import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting
 import com.datastax.oss.driver.shaded.guava.common.base.Joiner;
 import com.datastax.oss.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.oss.dsbulk.connectors.api.Record;
-import com.datastax.oss.dsbulk.connectors.api.Trackable;
 import com.datastax.oss.dsbulk.executor.api.result.ReadResult;
 import com.datastax.oss.dsbulk.executor.api.result.Result;
 import com.datastax.oss.dsbulk.executor.api.result.WriteResult;
@@ -485,7 +484,7 @@ public class LogManager implements AutoCloseable {
         upstream
             .map(Result::getStatement)
             .transform(this::extractRecordFromMappedStatement)
-            .transform(this::recordSuccessfulPositions);
+            .transform(this::recordSuccessfulRecordPositions);
   }
 
   /**
@@ -498,10 +497,7 @@ public class LogManager implements AutoCloseable {
    * @return A handler for successful read results.
    */
   public Function<Flux<ReadResult>, Flux<Void>> newReadResultPositionsHandler() {
-    return upstream ->
-        upstream
-            .transform(this::extractTrackableFromReadResult)
-            .transform(this::recordSuccessfulPositions);
+    return upstream -> upstream.transform(this::recordSuccessfulReadResultPositions);
   }
 
   /**
@@ -514,7 +510,7 @@ public class LogManager implements AutoCloseable {
    * @return A handler for successful record positions.
    */
   public Function<Flux<Record>, Flux<Void>> newRecordPositionsHandler() {
-    return upstream -> upstream.transform(this::recordSuccessfulPositions);
+    return upstream -> upstream.transform(this::recordSuccessfulRecordPositions);
   }
 
   public <T> Function<Flux<T>, Flux<T>> newTotalItemsCounter() {
@@ -588,33 +584,6 @@ public class LogManager implements AutoCloseable {
             })
         .cast(MappedStatement.class)
         .map(MappedStatement::getRecord);
-  }
-
-  @NonNull
-  private Flux<Trackable> extractTrackableFromReadResult(Flux<ReadResult> upstream) {
-    return upstream.map(
-        result -> {
-          URI resource = ((RangeReadStatement) result.getStatement()).getResource();
-          long position = result.getPosition();
-          return new Trackable() {
-            @Nullable
-            @Override
-            public Object getSource() {
-              return null;
-            }
-
-            @NonNull
-            @Override
-            public URI getResource() {
-              return resource;
-            }
-
-            @Override
-            public long getPosition() {
-              return position;
-            }
-          };
-        });
   }
 
   /**
@@ -772,7 +741,7 @@ public class LogManager implements AutoCloseable {
   }
 
   @NonNull
-  private <T extends Trackable> Flux<Void> recordSuccessfulPositions(Flux<T> upstream) {
+  private Flux<Void> recordSuccessfulRecordPositions(Flux<Record> upstream) {
     return upstream
         .window(1000)
         .flatMap(
@@ -786,6 +755,32 @@ public class LogManager implements AutoCloseable {
                                   record ->
                                       positionTracker.update(
                                           record.getResource(), record.getPosition()))
+                              .doOnTerminate(() -> positionTrackers.offer(positionTracker));
+                        })
+                    .contextWrite(ctx -> ctx.put(PositionTracker.class, positionTrackers.remove()))
+                    .subscribeOn(positionsTrackerScheduler),
+            Runtime.getRuntime().availableProcessors() * 2)
+        .then()
+        .flux();
+  }
+
+  private Flux<Void> recordSuccessfulReadResultPositions(Flux<ReadResult> upstream) {
+    return upstream
+        .window(1000)
+        .flatMap(
+            results ->
+                results
+                    .transformDeferredContextual(
+                        (original, ctx) -> {
+                          PositionTracker positionTracker = ctx.get(PositionTracker.class);
+                          return original
+                              .doOnNext(
+                                  result -> {
+                                    URI resource =
+                                        ((RangeReadStatement) result.getStatement()).getResource();
+                                    long position = result.getPosition();
+                                    positionTracker.update(resource, position);
+                                  })
                               .doOnTerminate(() -> positionTrackers.offer(positionTracker));
                         })
                     .contextWrite(ctx -> ctx.put(PositionTracker.class, positionTrackers.remove()))
@@ -1149,7 +1144,6 @@ public class LogManager implements AutoCloseable {
   static class ResourceStats {
     long produced;
     boolean completed;
-
     boolean failed;
   }
 }

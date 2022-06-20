@@ -29,6 +29,15 @@ import java.util.Set;
 public interface Record extends Trackable {
 
   /**
+   * Returns the record source, typically a line in a file or a row in a database table.
+   *
+   * @return The record source; may be null if the source cannot be determined or should not be
+   *     retained.
+   */
+  @Nullable
+  Object getSource();
+
+  /**
    * Returns a set containing all the fields in this record.
    *
    * @return a set containing all the fields in this record.

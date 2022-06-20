@@ -16,19 +16,9 @@
 package com.datastax.oss.dsbulk.connectors.api;
 
 import edu.umd.cs.findbugs.annotations.NonNull;
-import edu.umd.cs.findbugs.annotations.Nullable;
 import java.net.URI;
 
 public interface Trackable {
-
-  /**
-   * Returns the record source, typically a line in a file or a row in a database table.
-   *
-   * @return The record source; may be null if the source cannot be determined or should not be
-   *     retained.
-   */
-  @Nullable
-  Object getSource();
 
   /**
    * Returns the record's resource location, typically the file or database table where it was
