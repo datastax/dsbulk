@@ -234,8 +234,8 @@ public class EndToEndUtils {
       stream
           .filter(file -> !Files.isDirectory(file))
           .map(Path::getFileName)
-          .filter(p -> p.toString().endsWith("-errors.log"))
           .map(Path::toString)
+          .filter(s -> s.endsWith("-errors.log"))
           .forEach(fileName -> result.put(fileName, getFileContent(fileName)));
     }
   }
@@ -251,9 +251,46 @@ public class EndToEndUtils {
     }
   }
 
+  public static void validateNumberOfBadRecords(int size, String fileName) {
+    Path logPath =
+        OperationDirectory.getCurrentOperationDirectory().orElseThrow(IllegalStateException::new);
+    Path badPath = logPath.resolve(fileName);
+    long numBadOps = FileUtils.readAllLines(badPath).count();
+    assertThat(numBadOps).isEqualTo(size);
+  }
+
   public static void validatePositionsFile(Path resource, long lastPosition)
       throws IOException, URISyntaxException {
     validatePositionsFile(resource.toUri().toURL(), lastPosition);
+  }
+
+  public static void validatePositionsFile(long expectedTotal, boolean onlyDone)
+      throws IOException {
+    Path logPath =
+        OperationDirectory.getCurrentOperationDirectory().orElseThrow(IllegalStateException::new);
+    Path positions = logPath.resolve("summary.csv");
+    assertThat(positions).exists();
+    List<String> lines = Files.readAllLines(positions, UTF_8);
+    long actualTotal = 0;
+    for (String line : lines) {
+      if (onlyDone) {
+        assertThat(line).endsWith(";1");
+      }
+      int firstColon = line.indexOf(';');
+      int secondColon = line.lastIndexOf(';');
+      String ranges = line.substring(firstColon + 1, secondColon);
+      if (!ranges.equals("[0,0]")) {
+        assertThat(ranges).startsWith("[1,");
+        int comma = ranges.lastIndexOf(',');
+        int closingBracket = ranges.lastIndexOf(']');
+        actualTotal += Long.parseLong(ranges.substring(comma + 1, closingBracket));
+      }
+    }
+    assertThat(actualTotal).isEqualTo(expectedTotal);
+  }
+
+  public static void validatePositionsFile(long expectedTotal) throws IOException {
+    validatePositionsFile(expectedTotal, true);
   }
 
   public static void validatePositionsFile(URL resource, long lastPosition)
@@ -262,23 +299,34 @@ public class EndToEndUtils {
   }
 
   public static void validatePositionsFile(URI resource, long lastPosition) throws IOException {
+    validatePositionsFile(resource, 1, lastPosition);
+  }
+
+  public static void validatePositionsFile(URI resource, long firstPosition, long lastPosition)
+      throws IOException {
+    validatePositionsFile(resource, firstPosition, lastPosition, true);
+  }
+
+  public static void validatePositionsFile(
+      URI resource, long firstPosition, long lastPosition, boolean done) throws IOException {
     Path logPath =
         OperationDirectory.getCurrentOperationDirectory().orElseThrow(IllegalStateException::new);
-    Path positions = logPath.resolve("positions.txt");
+    Path positions = logPath.resolve("summary.csv");
     assertThat(positions).exists();
     List<String> lines = Files.readAllLines(positions, UTF_8);
-    assertThat(lines).hasSize(1).containsExactly(resource + ":" + lastPosition);
+    assertThat(lines)
+        .contains(resource + ";[" + firstPosition + "," + lastPosition + "];" + (done ? 1 : 0));
   }
 
   public static void validatePositionsFile(Map<URI, Long> lastPositions) throws IOException {
     Path logPath =
         OperationDirectory.getCurrentOperationDirectory().orElseThrow(IllegalStateException::new);
-    Path positions = logPath.resolve("positions.txt");
+    Path positions = logPath.resolve("summary.csv");
     assertThat(positions).exists();
     List<String> lines = Files.readAllLines(positions, UTF_8);
     assertThat(lines).hasSize(lastPositions.size());
     for (Entry<URI, Long> entry : lastPositions.entrySet()) {
-      assertThat(lines).contains(entry.getKey() + ":" + entry.getValue());
+      assertThat(lines).contains(entry.getKey() + ";[1," + entry.getValue() + "];1");
     }
   }
 

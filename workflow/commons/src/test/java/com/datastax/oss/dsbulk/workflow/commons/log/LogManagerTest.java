@@ -26,6 +26,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.slf4j.event.Level.WARN;
 
+import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.DriverExecutionException;
 import com.datastax.oss.driver.api.core.DriverTimeoutException;
@@ -38,6 +39,9 @@ import com.datastax.oss.driver.api.core.cql.ExecutionInfo;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.api.core.metadata.token.TokenRange;
+import com.datastax.oss.driver.internal.core.metadata.token.Murmur3Token;
+import com.datastax.oss.driver.internal.core.metadata.token.Murmur3TokenRange;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
 import com.datastax.oss.dsbulk.connectors.api.DefaultErrorRecord;
 import com.datastax.oss.dsbulk.connectors.api.DefaultRecord;
@@ -49,6 +53,8 @@ import com.datastax.oss.dsbulk.executor.api.result.ReadResult;
 import com.datastax.oss.dsbulk.executor.api.result.WriteResult;
 import com.datastax.oss.dsbulk.format.row.RowFormatter;
 import com.datastax.oss.dsbulk.format.statement.StatementFormatter;
+import com.datastax.oss.dsbulk.partitioner.utils.TokenUtils;
+import com.datastax.oss.dsbulk.tests.driver.MockAsyncResultSet;
 import com.datastax.oss.dsbulk.tests.logging.LogCapture;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptingExtension;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptor;
@@ -57,25 +63,31 @@ import com.datastax.oss.dsbulk.workflow.api.error.AbsoluteErrorThreshold;
 import com.datastax.oss.dsbulk.workflow.api.error.ErrorThreshold;
 import com.datastax.oss.dsbulk.workflow.api.error.RatioErrorThreshold;
 import com.datastax.oss.dsbulk.workflow.api.error.TooManyErrorsException;
-import com.datastax.oss.dsbulk.workflow.commons.format.statement.MappedBoundStatementPrinter;
 import com.datastax.oss.dsbulk.workflow.commons.statement.MappedBoundStatement;
+import com.datastax.oss.dsbulk.workflow.commons.statement.MappedBoundStatementPrinter;
+import com.datastax.oss.dsbulk.workflow.commons.statement.RangeReadBoundStatement;
+import com.datastax.oss.dsbulk.workflow.commons.statement.RangeReadStatement;
 import com.datastax.oss.dsbulk.workflow.commons.statement.UnmappableStatement;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.function.BiFunction;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 
 @ExtendWith(LogInterceptingExtension.class)
 class LogManagerTest {
 
-  private final URI tableResource = URI.create("cql://ks1/table1");
+  private final URI tableResource1 = URI.create("cql://ks1/table1?start=1&end=2");
+  private final URI tableResource2 = URI.create("cql://ks1/table1?start=2&end=3");
+  private final URI tableResource3 = URI.create("cql://ks1/table1?start=3&end=4");
 
   private final String source1 = "line1\n";
   private final String source2 = "line2\n";
@@ -150,18 +162,42 @@ class LogManagerTest {
             new BulkExecutionException(
                 new DriverTimeoutException("error 3"),
                 new MappedBoundStatement(csvRecord3, mockBoundStatement("INSERT 3"))));
+    TokenRange tokenRange1 = new Murmur3TokenRange(new Murmur3Token(1), new Murmur3Token(2));
+    TokenRange tokenRange2 = new Murmur3TokenRange(new Murmur3Token(2), new Murmur3Token(3));
+    TokenRange tokenRange3 = new Murmur3TokenRange(new Murmur3Token(3), new Murmur3Token(4));
     failedReadResult1 =
         new DefaultReadResult(
             new BulkExecutionException(
-                new DriverTimeoutException("error 1"), mockBoundStatement("SELECT 1")));
+                new DriverTimeoutException("error 1"),
+                new RangeReadBoundStatement(
+                    mockBoundStatement("SELECT 1"),
+                    tokenRange1,
+                    URI.create(
+                        String.format(
+                            "cql://ks/t?start=%s&end=%s",
+                            tokenRange1.getStart(), tokenRange1.getEnd())))));
     failedReadResult2 =
         new DefaultReadResult(
             new BulkExecutionException(
-                new DriverTimeoutException("error 2"), mockBoundStatement("SELECT 2")));
+                new DriverTimeoutException("error 2"),
+                new RangeReadBoundStatement(
+                    mockBoundStatement("SELECT 2"),
+                    tokenRange2,
+                    URI.create(
+                        String.format(
+                            "cql://ks/t?start=%s&end=%s",
+                            tokenRange2.getStart(), tokenRange2.getEnd())))));
     failedReadResult3 =
         new DefaultReadResult(
             new BulkExecutionException(
-                new DriverTimeoutException("error 3"), mockBoundStatement("SELECT 3")));
+                new DriverTimeoutException("error 3"),
+                new RangeReadBoundStatement(
+                    mockBoundStatement("SELECT 3"),
+                    tokenRange3,
+                    URI.create(
+                        String.format(
+                            "cql://ks/t?start=%s&end=%s",
+                            tokenRange3.getStart(), tokenRange3.getEnd())))));
     BatchStatement batch =
         BatchStatement.newInstance(
             DefaultBatchType.UNLOGGED,
@@ -175,21 +211,39 @@ class LogManagerTest {
     row1 = mockRow(1);
     Row row2 = mockRow(2);
     Row row3 = mockRow(3);
-    Statement<?> stmt1 = SimpleStatement.newInstance("SELECT 1");
-    Statement<?> stmt2 = SimpleStatement.newInstance("SELECT 2");
-    Statement<?> stmt3 = SimpleStatement.newInstance("SELECT 3");
-    successfulReadResult1 = new DefaultReadResult(stmt1, info, row1);
-    ReadResult successfulReadResult2 = new DefaultReadResult(stmt2, info, row2);
-    ReadResult successfulReadResult3 = new DefaultReadResult(stmt3, info, row3);
+    Statement<?> stmt1 =
+        new RangeReadBoundStatement(
+            mockBoundStatement("SELECT 1"),
+            tokenRange1,
+            URI.create(
+                String.format(
+                    "cql://ks/t?start=%s&end=%s", tokenRange1.getStart(), tokenRange1.getEnd())));
+    Statement<?> stmt2 =
+        new RangeReadBoundStatement(
+            mockBoundStatement("SELECT 2"),
+            tokenRange2,
+            URI.create(
+                String.format(
+                    "cql://ks/t?start=%s&end=%s", tokenRange2.getStart(), tokenRange2.getEnd())));
+    Statement<?> stmt3 =
+        new RangeReadBoundStatement(
+            mockBoundStatement("SELECT 3"),
+            tokenRange3,
+            URI.create(
+                String.format(
+                    "cql://ks/t?start=%s&end=%s", tokenRange3.getStart(), tokenRange3.getEnd())));
+    successfulReadResult1 = new DefaultReadResult(stmt1, info, row1, 1);
+    ReadResult successfulReadResult2 = new DefaultReadResult(stmt2, info, row2, 2);
+    ReadResult successfulReadResult3 = new DefaultReadResult(stmt3, info, row3, 3);
     rowRecord1 =
         new DefaultErrorRecord(
-            successfulReadResult1, tableResource, 1, new RuntimeException("error 1"));
+            successfulReadResult1, tableResource1, 1, new RuntimeException("error 1"));
     rowRecord2 =
         new DefaultErrorRecord(
-            successfulReadResult2, tableResource, 2, new RuntimeException("error 2"));
+            successfulReadResult2, tableResource2, 2, new RuntimeException("error 2"));
     rowRecord3 =
         new DefaultErrorRecord(
-            successfulReadResult3, tableResource, 3, new RuntimeException("error 3"));
+            successfulReadResult3, tableResource3, 3, new RuntimeException("error 3"));
   }
 
   @Test
@@ -201,7 +255,6 @@ class LogManagerTest {
             outputDir,
             ErrorThreshold.forAbsoluteValue(2),
             ErrorThreshold.forAbsoluteValue(0),
-            true,
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -219,12 +272,10 @@ class LogManagerTest {
     logManager.close();
     Path bad = logManager.getOperationDirectory().resolve("mapping.bad");
     Path errors = logManager.getOperationDirectory().resolve("mapping-errors.log");
-    Path positions = logManager.getOperationDirectory().resolve("positions.txt");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
-    assertThat(positions.toFile()).exists();
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
-        .containsOnly(bad, errors, positions);
+        .containsOnly(bad, errors);
     List<String> badLines = Files.readAllLines(bad, UTF_8);
     assertThat(badLines).hasSize(3);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
@@ -242,11 +293,6 @@ class LogManagerTest {
         .containsOnlyOnce("Resource: " + resource3)
         .containsOnlyOnce("Source: " + LogManagerUtils.formatSingleLine(source3))
         .containsOnlyOnce("java.lang.RuntimeException: error 3");
-    List<String> positionLines = Files.readAllLines(positions, UTF_8);
-    assertThat(positionLines)
-        .contains("file:///file1.csv:1")
-        .contains("file:///file2.csv:2")
-        .contains("file:///file3.csv:3");
   }
 
   @Test
@@ -258,7 +304,6 @@ class LogManagerTest {
             outputDir,
             ErrorThreshold.forAbsoluteValue(0),
             ErrorThreshold.forAbsoluteValue(0),
-            true,
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -274,12 +319,10 @@ class LogManagerTest {
     logManager.close();
     Path bad = logManager.getOperationDirectory().resolve("mapping.bad");
     Path errors = logManager.getOperationDirectory().resolve("mapping-errors.log");
-    Path positions = logManager.getOperationDirectory().resolve("positions.txt");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
-    assertThat(positions.toFile()).exists();
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
-        .containsOnly(bad, errors, positions);
+        .containsOnly(bad, errors);
     List<String> badLines = Files.readAllLines(bad, UTF_8);
     assertThat(badLines).hasSize(1);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
@@ -301,7 +344,6 @@ class LogManagerTest {
             outputDir,
             ErrorThreshold.unlimited(),
             ErrorThreshold.forAbsoluteValue(0),
-            true,
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -313,12 +355,10 @@ class LogManagerTest {
     logManager.close();
     Path bad = logManager.getOperationDirectory().resolve("mapping.bad");
     Path errors = logManager.getOperationDirectory().resolve("mapping-errors.log");
-    Path positions = logManager.getOperationDirectory().resolve("positions.txt");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
-    assertThat(positions.toFile()).exists();
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
-        .containsOnly(bad, errors, positions);
+        .containsOnly(bad, errors);
     List<String> badLines = Files.readAllLines(bad, UTF_8);
     assertThat(badLines).hasSize(3);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
@@ -347,7 +387,6 @@ class LogManagerTest {
             outputDir,
             ErrorThreshold.forAbsoluteValue(2),
             ErrorThreshold.forAbsoluteValue(0),
-            true,
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -363,12 +402,10 @@ class LogManagerTest {
     logManager.close();
     Path bad = logManager.getOperationDirectory().resolve("connector.bad");
     Path errors = logManager.getOperationDirectory().resolve("connector-errors.log");
-    Path positions = logManager.getOperationDirectory().resolve("positions.txt");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
-    assertThat(positions.toFile()).exists();
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
-        .containsOnly(bad, errors, positions);
+        .containsOnly(bad, errors);
     List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
@@ -395,7 +432,6 @@ class LogManagerTest {
             outputDir,
             ErrorThreshold.forAbsoluteValue(2),
             ErrorThreshold.forAbsoluteValue(0),
-            true,
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -411,17 +447,15 @@ class LogManagerTest {
     logManager.close();
     Path bad = logManager.getOperationDirectory().resolve("load.bad");
     Path errors = logManager.getOperationDirectory().resolve("load-errors.log");
-    Path positions = logManager.getOperationDirectory().resolve("positions.txt");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
-    assertThat(positions.toFile()).exists();
     List<String> badLines = Files.readAllLines(bad, UTF_8);
     assertThat(badLines).hasSize(3);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
     assertThat(badLines.get(1)).isEqualTo(source2.trim());
     assertThat(badLines.get(2)).isEqualTo(source3.trim());
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
-        .containsOnly(bad, errors, positions);
+        .containsOnly(bad, errors);
     List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
@@ -443,11 +477,6 @@ class LogManagerTest {
         .contains("INSERT 3")
         .containsOnlyOnce(
             "com.datastax.oss.dsbulk.executor.api.exception.BulkExecutionException: Statement execution failed: INSERT 3 (error 3)");
-    List<String> positionLines = Files.readAllLines(positions, UTF_8);
-    assertThat(positionLines)
-        .contains("file:///file1.csv:1")
-        .contains("file:///file2.csv:2")
-        .contains("file:///file3.csv:3");
   }
 
   @Test
@@ -459,7 +488,6 @@ class LogManagerTest {
             outputDir,
             ErrorThreshold.forRatio(0.2f, 100),
             ErrorThreshold.forAbsoluteValue(0),
-            true,
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -469,17 +497,15 @@ class LogManagerTest {
     logManager.close();
     Path bad = logManager.getOperationDirectory().resolve("load.bad");
     Path errors = logManager.getOperationDirectory().resolve("load-errors.log");
-    Path positions = logManager.getOperationDirectory().resolve("positions.txt");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
-    assertThat(positions.toFile()).exists();
     List<String> badLines = Files.readAllLines(bad, UTF_8);
     assertThat(badLines).hasSize(3);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
     assertThat(badLines.get(1)).isEqualTo(source2.trim());
     assertThat(badLines.get(2)).isEqualTo(source3.trim());
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
-        .containsOnly(bad, errors, positions);
+        .containsOnly(bad, errors);
     List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
@@ -498,11 +524,6 @@ class LogManagerTest {
         .contains("INSERT 3")
         .containsOnlyOnce(
             "com.datastax.oss.dsbulk.executor.api.exception.BulkExecutionException: Statement execution failed: INSERT 3 (error 3)");
-    List<String> positionLines = Files.readAllLines(positions, UTF_8);
-    assertThat(positionLines)
-        .contains("file:///file1.csv:1")
-        .contains("file:///file2.csv:2")
-        .contains("file:///file3.csv:3");
   }
 
   @Test
@@ -514,7 +535,6 @@ class LogManagerTest {
             outputDir,
             ErrorThreshold.forAbsoluteValue(1),
             ErrorThreshold.forAbsoluteValue(0),
-            true,
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -530,17 +550,15 @@ class LogManagerTest {
     logManager.close();
     Path bad = logManager.getOperationDirectory().resolve("load.bad");
     Path errors = logManager.getOperationDirectory().resolve("load-errors.log");
-    Path positions = logManager.getOperationDirectory().resolve("positions.txt");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
-    assertThat(positions.toFile()).exists();
     List<String> badLines = Files.readAllLines(bad, UTF_8);
     assertThat(badLines).hasSize(3);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
     assertThat(badLines.get(1)).isEqualTo(source2.trim());
     assertThat(badLines.get(2)).isEqualTo(source3.trim());
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
-        .containsOnly(bad, errors, positions);
+        .containsOnly(bad, errors);
     List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
@@ -559,11 +577,6 @@ class LogManagerTest {
         .containsOnlyOnce(
             "com.datastax.oss.dsbulk.executor.api.exception.BulkExecutionException: Statement execution failed")
         .contains("error batch");
-    List<String> positionLines = Files.readAllLines(positions, UTF_8);
-    assertThat(positionLines)
-        .contains("file:///file1.csv:1")
-        .contains("file:///file2.csv:2")
-        .contains("file:///file3.csv:3");
   }
 
   @Test
@@ -575,7 +588,6 @@ class LogManagerTest {
             outputDir,
             ErrorThreshold.forAbsoluteValue(2),
             ErrorThreshold.forAbsoluteValue(0),
-            true,
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -616,7 +628,6 @@ class LogManagerTest {
             outputDir,
             ErrorThreshold.forAbsoluteValue(2),
             ErrorThreshold.forAbsoluteValue(0),
-            true,
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -632,21 +643,29 @@ class LogManagerTest {
     logManager.close();
     Path errors = logManager.getOperationDirectory().resolve("mapping-errors.log");
     assertThat(errors.toFile()).exists();
+    Path bad = logManager.getOperationDirectory().resolve("mapping.bad");
+    assertThat(errors.toFile()).exists();
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
-        .containsOnly(errors);
+        .containsOnly(errors, bad);
     List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
         .doesNotContain("Source: ")
-        .doesNotContain("Resource: ")
-        .doesNotContain("Position: ")
-        .contains("SELECT 1")
+        .containsOnlyOnce("Resource: cql://ks1/table1?start=1&end=2")
+        .containsOnlyOnce("Position: 1")
+        .containsOnlyOnce("SELECT 1")
         .containsOnlyOnce("c1: 1")
         .containsOnlyOnce("java.lang.RuntimeException: error 1")
-        .contains("SELECT 2")
+        .containsOnlyOnce("Resource: cql://ks1/table1?start=2&end=3")
+        .containsOnlyOnce("Position: 2")
+        .containsOnlyOnce("SELECT 2")
         .containsOnlyOnce("c1: 2")
         .containsOnlyOnce("java.lang.RuntimeException: error 2")
-        .doesNotContain("c3: 3");
+        .containsOnlyOnce("Resource: cql://ks1/table1?start=3&end=4")
+        .containsOnlyOnce("Position: 3")
+        .containsOnlyOnce("c1: 3")
+        .containsOnlyOnce("java.lang.RuntimeException: error 3");
+    assertThat(Files.readAllLines(bad, UTF_8)).containsExactly("[1]", "[2]", "[3]");
   }
 
   @Test
@@ -658,7 +677,6 @@ class LogManagerTest {
             outputDir,
             ErrorThreshold.forAbsoluteValue(2),
             ErrorThreshold.forAbsoluteValue(0),
-            true,
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -670,20 +688,22 @@ class LogManagerTest {
             "Could not deserialize column c1 of type int as java.lang.Integer", cause);
     when(row1.getObject(0)).thenThrow(cause);
     when(row1.getBytesUnsafe(0)).thenReturn(ByteBuffer.wrap(new byte[] {1, 2, 3, 4, 5}));
-    rowRecord1 = new DefaultErrorRecord(successfulReadResult1, tableResource, 1, iae);
+    rowRecord1 = new DefaultErrorRecord(successfulReadResult1, tableResource1, 1, iae);
     logManager.init();
     Flux<Record> stmts = Flux.just(rowRecord1);
     stmts.transform(logManager.newUnmappableRecordsHandler()).blockLast();
     logManager.close();
     Path errors = logManager.getOperationDirectory().resolve("mapping-errors.log");
     assertThat(errors.toFile()).exists();
+    Path bad = logManager.getOperationDirectory().resolve("mapping.bad");
+    assertThat(errors.toFile()).exists();
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
-        .containsOnly(errors);
+        .containsOnly(errors, bad);
     List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
-        .doesNotContain("Resource: ")
-        .doesNotContain("Position: ")
+        .contains("Resource: cql://ks1/table1?start=1&end=2")
+        .contains("Position: 1")
         .contains("SELECT 1")
         .contains("c1: 0x0102030405 (malformed buffer for type INT)")
         .contains(iae.getMessage())
@@ -699,7 +719,6 @@ class LogManagerTest {
             outputDir,
             ErrorThreshold.forRatio(0.01f, 100),
             ErrorThreshold.forAbsoluteValue(0),
-            true,
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -736,7 +755,6 @@ class LogManagerTest {
             outputDir,
             ErrorThreshold.forRatio(0.01f, 100),
             ErrorThreshold.forAbsoluteValue(0),
-            true,
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -773,7 +791,6 @@ class LogManagerTest {
             outputDir,
             ErrorThreshold.forAbsoluteValue(1000),
             ErrorThreshold.forAbsoluteValue(0),
-            true,
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -793,15 +810,13 @@ class LogManagerTest {
     logManager.close();
     Path bad = logManager.getOperationDirectory().resolve("load.bad");
     Path errors = logManager.getOperationDirectory().resolve("load-errors.log");
-    Path positions = logManager.getOperationDirectory().resolve("positions.txt");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
-    assertThat(positions.toFile()).exists();
     List<String> badLines = Files.readAllLines(bad, UTF_8);
     assertThat(badLines).hasSize(1);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
-        .containsOnly(bad, errors, positions);
+        .containsOnly(bad, errors);
     List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
@@ -812,8 +827,6 @@ class LogManagerTest {
         .contains("error 1")
         .containsOnlyOnce(
             "com.datastax.oss.dsbulk.executor.api.exception.BulkExecutionException: Statement execution failed: INSERT 1");
-    List<String> positionLines = Files.readAllLines(positions, UTF_8);
-    assertThat(positionLines).contains("file:///file1.csv:1");
   }
 
   @Test
@@ -825,7 +838,6 @@ class LogManagerTest {
             outputDir,
             ErrorThreshold.forAbsoluteValue(2),
             ErrorThreshold.forAbsoluteValue(0),
-            true,
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -864,9 +876,9 @@ class LogManagerTest {
     BatchStatement casBatch =
         BatchStatement.newInstance(
             DefaultBatchType.UNLOGGED,
-            mockBulkBoundStatement(1, source1, resource1),
-            mockBulkBoundStatement(2, source2, resource2),
-            mockBulkBoundStatement(3, source3, resource3));
+            mockMappedBoundStatement(1, source1, resource1),
+            mockMappedBoundStatement(2, source2, resource2),
+            mockMappedBoundStatement(3, source3, resource3));
     Row row1 = mockRow(1);
     Row row2 = mockRow(2);
     Row row3 = mockRow(3);
@@ -883,7 +895,6 @@ class LogManagerTest {
             outputDir,
             ErrorThreshold.forAbsoluteValue(2),
             ErrorThreshold.forAbsoluteValue(0),
-            true,
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -899,17 +910,15 @@ class LogManagerTest {
     logManager.close();
     Path bad = logManager.getOperationDirectory().resolve("paxos.bad");
     Path errors = logManager.getOperationDirectory().resolve("paxos-errors.log");
-    Path positions = logManager.getOperationDirectory().resolve("positions.txt");
     assertThat(bad.toFile()).exists();
     assertThat(errors.toFile()).exists();
-    assertThat(positions.toFile()).exists();
     List<String> badLines = Files.readAllLines(bad, UTF_8);
     assertThat(badLines).hasSize(3);
     assertThat(badLines.get(0)).isEqualTo(source1.trim());
     assertThat(badLines.get(1)).isEqualTo(source2.trim());
     assertThat(badLines.get(2)).isEqualTo(source3.trim());
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
-        .containsOnly(bad, errors, positions);
+        .containsOnly(bad, errors);
     List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
@@ -932,7 +941,6 @@ class LogManagerTest {
             outputDir,
             ErrorThreshold.forAbsoluteValue(100),
             ErrorThreshold.forAbsoluteValue(1),
-            true,
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -942,8 +950,8 @@ class LogManagerTest {
     ExecutionInfo info2 = mock(ExecutionInfo.class);
     when(info2.getWarnings()).thenReturn(ImmutableList.of("warning3"));
     Flux.just(
-            new DefaultReadResult(SimpleStatement.newInstance("SELECT 1"), info1, mockRow(1)),
-            new DefaultReadResult(SimpleStatement.newInstance("SELECT 2"), info2, mockRow(2)))
+            new DefaultReadResult(SimpleStatement.newInstance("SELECT 1"), info1, mockRow(1), 1),
+            new DefaultReadResult(SimpleStatement.newInstance("SELECT 2"), info2, mockRow(2), 2))
         .transform(logManager.newQueryWarningsHandler())
         .blockLast();
     logManager.close();
@@ -966,7 +974,6 @@ class LogManagerTest {
             outputDir,
             ErrorThreshold.forAbsoluteValue(100),
             ErrorThreshold.forAbsoluteValue(1),
-            true,
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -1003,7 +1010,6 @@ class LogManagerTest {
             outputDir,
             ErrorThreshold.forAbsoluteValue(1),
             ErrorThreshold.forAbsoluteValue(0),
-            true,
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -1013,19 +1019,15 @@ class LogManagerTest {
     stmts.transform(logManager.newFailedRecordsHandler()).blockLast();
     logManager.close();
     Path errors = logManager.getOperationDirectory().resolve("connector-errors.log");
-    Path positions = logManager.getOperationDirectory().resolve("positions.txt");
     assertThat(errors.toFile()).exists();
-    assertThat(positions.toFile()).exists();
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
-        .containsOnly(errors, positions);
+        .containsOnly(errors);
     List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
         .doesNotContain("Source: ")
         .contains("Resource: " + resource1)
         .contains("java.lang.RuntimeException: error 1");
-    List<String> positionLines = Files.readAllLines(positions, UTF_8);
-    assertThat(positionLines).containsOnly("file:///file1.csv:1");
   }
 
   @Test
@@ -1037,7 +1039,6 @@ class LogManagerTest {
             outputDir,
             ErrorThreshold.forAbsoluteValue(1),
             ErrorThreshold.forAbsoluteValue(0),
-            true,
             statementFormatter,
             EXTENDED,
             rowFormatter);
@@ -1048,11 +1049,9 @@ class LogManagerTest {
     stmts.transform(logManager.newUnmappableStatementsHandler()).blockLast();
     logManager.close();
     Path errors = logManager.getOperationDirectory().resolve("mapping-errors.log");
-    Path positions = logManager.getOperationDirectory().resolve("positions.txt");
     assertThat(errors.toFile()).exists();
-    assertThat(positions.toFile()).exists();
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
-        .containsOnly(errors, positions);
+        .containsOnly(errors);
     List<String> lines = Files.readAllLines(errors, UTF_8);
     String content = String.join("\n", lines);
     assertThat(content)
@@ -1071,12 +1070,12 @@ class LogManagerTest {
             outputDir,
             ErrorThreshold.forAbsoluteValue(1),
             ErrorThreshold.forAbsoluteValue(0),
-            true,
             statementFormatter,
             EXTENDED,
             rowFormatter);
     logManager.init();
-    Record record = new DefaultErrorRecord(null, tableResource, 1, new RuntimeException("error 1"));
+    Record record =
+        new DefaultErrorRecord(null, tableResource1, 1, new RuntimeException("error 1"));
     Flux<Record> stmts = Flux.just(record);
     stmts.transform(logManager.newUnmappableRecordsHandler()).blockLast();
     logManager.close();
@@ -1088,14 +1087,426 @@ class LogManagerTest {
     String content = String.join("\n", lines);
     assertThat(content)
         .doesNotContain("Source: ")
-        .doesNotContain("Resource: ")
-        .doesNotContain("Position: ")
+        .contains("Resource: cql://ks1/table1?start=1&end=2")
+        .contains("Position: 1")
         .contains("java.lang.RuntimeException: error 1");
   }
 
-  private static MappedBoundStatement mockBulkBoundStatement(
+  @Test
+  void should_record_positions_and_successful_resources_when_loading() throws Exception {
+    Path outputDir = Files.createTempDirectory("test");
+    LogManager logManager =
+        new LogManager(
+            session,
+            outputDir,
+            ErrorThreshold.forAbsoluteValue(3),
+            ErrorThreshold.forAbsoluteValue(0),
+            statementFormatter,
+            EXTENDED,
+            rowFormatter);
+    logManager.init();
+
+    // Emulate connector parsing
+
+    Record record1_1 = DefaultRecord.indexed(source1, resource1, 1, "line1");
+    Record record1_2 = DefaultRecord.indexed(source2, resource1, 2, "line2");
+    Record record1_3 = DefaultRecord.indexed(source3, resource1, 3, "line3");
+
+    Record record2_1 = DefaultRecord.indexed(source1, resource2, 1, "line1");
+    Record record2_2 =
+        new DefaultErrorRecord(
+            source2, resource2, 2, new RuntimeException("connector error line2"));
+    DefaultRecord record2_3 = DefaultRecord.indexed(source3, resource2, 3, "line3");
+    DefaultRecord record2_4 =
+        DefaultRecord.indexed(source3, resource2, 3, "line4"); // emulate "lost" record
+
+    // Emulate connector signaling successful resources
+
+    BiFunction<URI, Publisher<Record>, Publisher<Record>> connectorResourceHandler =
+        logManager.newConnectorResourceStatsHandler();
+
+    Flux.from(connectorResourceHandler.apply(resource1, Flux.just(record1_1, record1_2, record1_3)))
+        .blockLast();
+    Flux.from(
+            connectorResourceHandler.apply(
+                resource2, Flux.just(record2_1, record2_2, record2_3, record2_4)))
+        .blockLast();
+    Flux.from(connectorResourceHandler.apply(resource3, Flux.empty())).blockLast();
+
+    Flux<Record> records =
+        Flux.just(record1_1, record1_2, record1_3, record2_1, record2_2, record2_3);
+
+    List<Record> goodRecords =
+        records.transform(logManager.newFailedRecordsHandler()).collectList().block();
+
+    assertThat(goodRecords).hasSize(5);
+    //    assertThat(logManager.mergePositionTrackers().getPositions()).containsOnlyKeys(resource2);
+    //    assertThat(logManager.mergePositionTrackers().getPositions().get(resource2))
+    //        .containsExactly(new Range(2));
+
+    // Emulate record->statement mapper
+
+    Flux<BatchableStatement<?>> stmts =
+        Flux.just(
+            // resource 1: 3 statements total
+            mockMappedBoundStatement(1, source1, resource1),
+            mockMappedBoundStatement(2, source2, resource1),
+            mockMappedBoundStatement(3, source3, resource1),
+            // resource 2: 2 statements left, one unmappable
+            new UnmappableStatement(record2_1, new RuntimeException("mapping error line1")),
+            mockMappedBoundStatement(3, source1, resource3));
+
+    List<BatchableStatement<?>> goodStmts =
+        stmts.transform(logManager.newUnmappableStatementsHandler()).collectList().block();
+
+    assertThat(goodStmts).hasSize(4);
+    //    assertThat(logManager.mergePositionTrackers().getPositions()).containsOnlyKeys(resource2);
+    //    assertThat(logManager.mergePositionTrackers().getPositions().get(resource2))
+    //        .containsExactly(new Range(1, 2));
+
+    // Emulate statement execution
+
+    Flux<WriteResult> writes =
+        Flux.just(
+            // resource 1: 3 writes
+            new DefaultWriteResult(
+                mockMappedBoundStatement(1, source1, resource1),
+                new MockAsyncResultSet(0, null, null)),
+            new DefaultWriteResult(
+                mockMappedBoundStatement(2, source2, resource1),
+                new MockAsyncResultSet(0, null, null)),
+            new DefaultWriteResult(
+                mockMappedBoundStatement(3, source3, resource1),
+                new MockAsyncResultSet(0, null, null)),
+            // resource 2: 1 write left, which fails
+            new DefaultWriteResult(
+                new BulkExecutionException(
+                    new DriverTimeoutException("load error 3"),
+                    new MappedBoundStatement(
+                        record2_3, mockMappedBoundStatement(3, source3, resource2)))));
+
+    List<WriteResult> goodWrites =
+        writes.transform(logManager.newFailedWritesHandler()).collectList().block();
+
+    assertThat(goodWrites).isNotNull().hasSize(3);
+    //    assertThat(logManager.mergePositionTrackers().getPositions()).containsOnlyKeys(resource2);
+    //    assertThat(logManager.mergePositionTrackers().getPositions().get(resource2))
+    //        .containsExactly(new Range(1, 3));
+
+    // Emulate signaling successful writes
+
+    Flux.fromIterable(goodWrites)
+        .transform(logManager.newWriteResultPositionsHandler())
+        .blockLast();
+
+    logManager.close();
+
+    assertThat(logManager.mergePositionTrackers().getPositions())
+        .containsOnlyKeys(resource1, resource2);
+    assertThat(logManager.mergePositionTrackers().getPositions().get(resource1))
+        .containsExactly(new Range(1, 3));
+    assertThat(logManager.mergePositionTrackers().getPositions().get(resource2))
+        .containsExactly(new Range(1, 3));
+
+    assertThat(logManager.resources)
+        .hasEntrySatisfying(
+            resource1,
+            stats -> {
+              assertThat(stats.completed).isTrue();
+              assertThat(stats.failed).isFalse();
+              assertThat(stats.produced).isEqualTo(3);
+            })
+        .hasEntrySatisfying(
+            resource2,
+            stats -> {
+              assertThat(stats.completed).isTrue();
+              assertThat(stats.failed).isFalse();
+              assertThat(stats.produced).isEqualTo(4);
+            })
+        .hasEntrySatisfying(
+            resource3,
+            stats -> {
+              assertThat(stats.completed).isTrue();
+              assertThat(stats.failed).isFalse();
+              assertThat(stats.produced).isEqualTo(0);
+            });
+
+    // Check connector files
+
+    Path connectorBad = logManager.getOperationDirectory().resolve("connector.bad");
+    assertThat(connectorBad.toFile()).exists();
+    List<String> connectorBadLines = Files.readAllLines(connectorBad, UTF_8);
+    assertThat(connectorBadLines).hasSize(1);
+    assertThat(connectorBadLines.get(0)).isEqualTo(source2.trim());
+
+    Path connectorErrors = logManager.getOperationDirectory().resolve("connector-errors.log");
+    assertThat(connectorErrors.toFile()).exists();
+    List<String> connectorErrorLines = Files.readAllLines(connectorErrors, UTF_8);
+    assertThat(String.join("\n", connectorErrorLines))
+        .containsOnlyOnce("Resource: " + resource2)
+        .containsOnlyOnce("Position: 2")
+        .containsOnlyOnce("Source: " + LogManagerUtils.formatSingleLine(source2))
+        .containsOnlyOnce("java.lang.RuntimeException: connector error line2");
+
+    // Check mapping files
+
+    Path mappingBad = logManager.getOperationDirectory().resolve("mapping.bad");
+    assertThat(mappingBad.toFile()).exists();
+    List<String> mappingBadLines = Files.readAllLines(mappingBad, UTF_8);
+    assertThat(mappingBadLines).hasSize(1);
+    assertThat(mappingBadLines.get(0)).isEqualTo(source1.trim());
+
+    Path mappingErrors = logManager.getOperationDirectory().resolve("mapping-errors.log");
+    assertThat(mappingErrors.toFile()).exists();
+    List<String> mappingErrorLines = Files.readAllLines(mappingErrors, UTF_8);
+    assertThat(String.join("\n", mappingErrorLines))
+        .containsOnlyOnce("Resource: " + resource2)
+        .containsOnlyOnce("Position: 1")
+        .containsOnlyOnce("Source: " + LogManagerUtils.formatSingleLine(source1))
+        .containsOnlyOnce("java.lang.RuntimeException: mapping error line1");
+
+    // Check load files
+
+    Path loadBad = logManager.getOperationDirectory().resolve("load.bad");
+    assertThat(loadBad.toFile()).exists();
+    List<String> loadBadLines = Files.readAllLines(loadBad, UTF_8);
+    assertThat(loadBadLines).hasSize(1);
+    assertThat(loadBadLines.get(0)).isEqualTo(source3.trim());
+
+    Path loadErrors = logManager.getOperationDirectory().resolve("load-errors.log");
+    assertThat(loadErrors.toFile()).exists();
+    List<String> loadErrorLines = Files.readAllLines(loadErrors, UTF_8);
+    assertThat(String.join("\n", loadErrorLines))
+        .containsOnlyOnce("Resource: " + resource2)
+        .containsOnlyOnce("Position: 3")
+        .containsOnlyOnce("Source: " + LogManagerUtils.formatSingleLine(source3))
+        .containsOnlyOnce(
+            "BulkExecutionException: Statement execution failed: INSERT INTO 3 (load error 3)");
+
+    // Check summary.csv
+
+    logManager.writeSummaryFile();
+    Path summary = logManager.getOperationDirectory().resolve("summary.csv");
+    assertThat(summary.toFile()).exists();
+    List<String> summaryLines = Files.readAllLines(summary, UTF_8);
+    assertThat(summaryLines)
+        .containsExactly(
+            "file:///file1.csv;[1,3];1", "file:///file2.csv;[1,3];0", "file:///file3.csv;[0,0];1");
+
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
+        .containsOnly(
+            connectorBad, connectorErrors, mappingBad, mappingErrors, loadBad, loadErrors, summary);
+  }
+
+  @Test
+  void should_record_positions_and_successful_resources_when_unloading() throws Exception {
+    Path outputDir = Files.createTempDirectory("test");
+    LogManager logManager =
+        new LogManager(
+            session,
+            outputDir,
+            ErrorThreshold.forAbsoluteValue(3),
+            ErrorThreshold.forAbsoluteValue(0),
+            statementFormatter,
+            EXTENDED,
+            rowFormatter);
+    logManager.init();
+
+    // Emulate statement execution
+
+    TokenRange tokenRange1 = new Murmur3TokenRange(new Murmur3Token(1), new Murmur3Token(2));
+    TokenRange tokenRange2 = new Murmur3TokenRange(new Murmur3Token(2), new Murmur3Token(3));
+    TokenRange tokenRange3 = new Murmur3TokenRange(new Murmur3Token(3), new Murmur3Token(4));
+
+    URI resource1 =
+        RangeReadStatement.rangeReadResource(
+            CqlIdentifier.fromInternal("ks"), CqlIdentifier.fromInternal("t"), tokenRange1);
+    URI resource2 =
+        RangeReadStatement.rangeReadResource(
+            CqlIdentifier.fromInternal("ks"), CqlIdentifier.fromInternal("t"), tokenRange2);
+    URI resource3 =
+        RangeReadStatement.rangeReadResource(
+            CqlIdentifier.fromInternal("ks"), CqlIdentifier.fromInternal("t"), tokenRange3);
+
+    RangeReadBoundStatement statement1 = mockRangeReadBoundStatement(tokenRange1);
+    RangeReadBoundStatement statement2 = mockRangeReadBoundStatement(tokenRange2);
+
+    BulkExecutionException statement2Failure =
+        new BulkExecutionException(new DriverTimeoutException("unload error 2"), statement2);
+
+    // resource 1: 3 reads
+    DefaultReadResult result1_1 =
+        new DefaultReadResult(statement1, mock(ExecutionInfo.class), mockRow(1), 1);
+    DefaultReadResult result1_2 =
+        new DefaultReadResult(statement1, mock(ExecutionInfo.class), mockRow(2), 2);
+    DefaultReadResult result1_3 =
+        new DefaultReadResult(statement1, mock(ExecutionInfo.class), mockRow(3), 3);
+
+    // resource 2: read fails
+    DefaultReadResult result2 = new DefaultReadResult(statement2Failure);
+
+    // resource 3: empty
+
+    BiFunction<URI, Publisher<ReadResult>, Publisher<ReadResult>> cqlResourceHandler =
+        logManager.newCqlResourceStatsHandler();
+    Flux.from(cqlResourceHandler.apply(resource1, Flux.just(result1_1, result1_2, result1_3)))
+        .blockLast();
+    Flux.from(cqlResourceHandler.apply(resource2, Flux.just(result2))).blockLast();
+    Flux.from(cqlResourceHandler.apply(resource3, Flux.empty())).blockLast();
+
+    Flux<ReadResult> reads = Flux.just(result1_1, result1_2, result1_3, result2);
+
+    List<ReadResult> goodReads =
+        reads.transform(logManager.newFailedReadsHandler()).collectList().block();
+
+    assertThat(goodReads).isNotNull().hasSize(3);
+    assertThat(logManager.mergePositionTrackers().getPositions()).isEmpty();
+
+    // Emulate result->record mapper
+
+    DefaultRecord record1_1 = new DefaultRecord(result1_1, resource1, 1);
+    DefaultErrorRecord record1_2 =
+        new DefaultErrorRecord(result1_2, resource1, 2, new RuntimeException("mapping error 2"));
+    DefaultRecord record1_3 = new DefaultRecord(result1_3, resource1, 3);
+
+    // resource 1: 3 records total, one not parsable
+    Flux<Record> records = Flux.just(record1_1, record1_2, record1_3);
+
+    List<Record> goodRecords =
+        records.transform(logManager.newUnmappableRecordsHandler()).collectList().block();
+
+    assertThat(goodRecords).isNotNull().hasSize(2);
+    //    assertThat(logManager.mergePositionTrackers().getPositions()).containsOnlyKeys(resource1);
+    //    assertThat(logManager.mergePositionTrackers().getPositions().get(resource1))
+    //        .containsExactly(new Range(2));
+
+    // Emulate record -> connector
+
+    // resource 1: 2 records left, one nto writable
+    records =
+        Flux.just(
+            new DefaultErrorRecord(
+                result1_1, resource1, 1, new RuntimeException("connector error 1")),
+            record1_3);
+
+    goodRecords = records.transform(logManager.newFailedRecordsHandler()).collectList().block();
+
+    assertThat(goodRecords).isNotNull().hasSize(1);
+    //    assertThat(logManager.mergePositionTrackers().getPositions()).containsOnlyKeys(resource1);
+    //    assertThat(logManager.mergePositionTrackers().getPositions().get(resource1))
+    //        .containsExactly(new Range(1, 2));
+
+    // Emulate signaling successful records
+
+    Flux.fromIterable(goodRecords).transform(logManager.newRecordPositionsHandler()).blockLast();
+
+    logManager.close();
+
+    assertThat(logManager.mergePositionTrackers().getPositions()).containsOnlyKeys(resource1);
+    assertThat(logManager.mergePositionTrackers().getPositions().get(resource1))
+        .containsExactly(new Range(1, 3));
+
+    // Emulate listener signaling successful and failed resources
+
+    assertThat(logManager.resources)
+        .hasEntrySatisfying(
+            resource1,
+            stats -> {
+              assertThat(stats.completed).isTrue();
+              assertThat(stats.failed).isFalse();
+              assertThat(stats.produced).isEqualTo(3);
+            })
+        .hasEntrySatisfying(
+            resource2,
+            stats -> {
+              assertThat(stats.completed).isTrue(); // since the executor is failsafe
+              assertThat(stats.failed).isTrue();
+              assertThat(stats.produced).isEqualTo(0);
+            })
+        .hasEntrySatisfying(
+            resource3,
+            stats -> {
+              assertThat(stats.completed).isTrue();
+              assertThat(stats.failed).isFalse();
+              assertThat(stats.produced).isEqualTo(0);
+            });
+
+    // Check unload files
+
+    Path unloadErrors = logManager.getOperationDirectory().resolve("unload-errors.log");
+    assertThat(unloadErrors.toFile()).exists();
+    List<String> loadErrorLines = Files.readAllLines(unloadErrors, UTF_8);
+    assertThat(String.join("\n", loadErrorLines))
+        .containsOnlyOnce(
+            "BulkExecutionException: Statement execution failed: SELECT 2 (unload error 2)")
+        .containsOnlyOnce(".DriverTimeoutException: unload error 2");
+
+    // Check mapping files
+
+    Path mappingBad = logManager.getOperationDirectory().resolve("mapping.bad");
+    assertThat(mappingBad.toFile()).exists();
+    List<String> mappingBadLines = Files.readAllLines(mappingBad, UTF_8);
+    assertThat(mappingBadLines).hasSize(1);
+    assertThat(mappingBadLines.get(0)).isEqualTo("[2]"); // mocked getFormattedContents
+
+    Path mappingErrors = logManager.getOperationDirectory().resolve("mapping-errors.log");
+    assertThat(mappingErrors.toFile()).exists();
+    List<String> mappingErrorLines = Files.readAllLines(mappingErrors, UTF_8);
+    assertThat(String.join("\n", mappingErrorLines))
+        .containsOnlyOnce("Position: 2")
+        .containsOnlyOnce("SELECT 1")
+        .containsOnlyOnce("Statement: RangeReadBoundStatement")
+        .containsOnlyOnce("Row: Row")
+        .containsOnlyOnce("java.lang.RuntimeException: mapping error 2");
+
+    // Check connector files
+
+    Path connectorBad = logManager.getOperationDirectory().resolve("connector.bad");
+    assertThat(connectorBad.toFile()).exists();
+    List<String> connectorBadLines = Files.readAllLines(connectorBad, UTF_8);
+    assertThat(connectorBadLines).hasSize(1);
+    assertThat(connectorBadLines.get(0)).isEqualTo("[1]"); // mocked getFormattedContents
+
+    Path connectorErrors = logManager.getOperationDirectory().resolve("connector-errors.log");
+    assertThat(connectorErrors.toFile()).exists();
+    List<String> connectorErrorLines = Files.readAllLines(connectorErrors, UTF_8);
+    assertThat(String.join("\n", connectorErrorLines))
+        .containsOnlyOnce("Resource: " + resource1)
+        .containsOnlyOnce("Position: 1")
+        .containsOnlyOnce("SELECT 1")
+        .containsOnlyOnce("Statement: RangeReadBoundStatement")
+        .containsOnlyOnce("Row: Row")
+        .containsOnlyOnce("java.lang.RuntimeException: connector error 1");
+
+    // Check summary.csv
+
+    logManager.writeSummaryFile();
+    Path summary = logManager.getOperationDirectory().resolve("summary.csv");
+    assertThat(summary.toFile()).exists();
+    List<String> summaryLines = Files.readAllLines(summary, UTF_8);
+    assertThat(summaryLines)
+        .containsExactly(
+            "cql://ks/t?start=1&end=2;[1,3];1", // 3 records processed, finished
+            "cql://ks/t?start=2&end=3;[0,0];0", // no records processed, failed
+            "cql://ks/t?start=3&end=4;[0,0];1" // no records processed, finished (empty)
+            );
+
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
+        .containsOnly(
+            connectorBad, connectorErrors, mappingBad, mappingErrors, unloadErrors, summary);
+  }
+
+  private static MappedBoundStatement mockMappedBoundStatement(
       int value, Object source, URI resource) {
     BoundStatement bs = mockBoundStatement("INSERT INTO " + value, value);
-    return new MappedBoundStatement(DefaultRecord.indexed(source, resource, 1, 1), bs);
+    return new MappedBoundStatement(DefaultRecord.indexed(source, resource, value, value), bs);
+  }
+
+  private static RangeReadBoundStatement mockRangeReadBoundStatement(TokenRange range) {
+    BoundStatement bs = mockBoundStatement("SELECT " + TokenUtils.getTokenValue(range.getStart()));
+    URI resource =
+        RangeReadStatement.rangeReadResource(
+            CqlIdentifier.fromInternal("ks"), CqlIdentifier.fromInternal("t"), range);
+    return new RangeReadBoundStatement(bs, range, resource);
   }
 }

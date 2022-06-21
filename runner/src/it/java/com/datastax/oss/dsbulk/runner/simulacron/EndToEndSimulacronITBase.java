@@ -49,7 +49,7 @@ class EndToEndSimulacronITBase {
   final StreamInterceptor stdOut;
   final StreamInterceptor stdErr;
   final String hostname;
-  final String port;
+  final int port;
 
   Path unloadDir;
   Path logDir;
@@ -65,12 +65,13 @@ class EndToEndSimulacronITBase {
     this.stdErr = stdErr;
     InetSocketAddress node = simulacron.dc(0).node(0).inetSocketAddress();
     hostname = node.getAddress().getHostAddress();
-    port = Integer.toString(node.getPort());
+    port = node.getPort();
   }
 
   @BeforeEach
   void resetPrimes() {
     simulacron.clearPrimes(true);
+    simulacron.clearLogs();
     SimulacronUtils.primeSystemLocal(simulacron, Collections.emptyMap());
     SimulacronUtils.primeSystemPeers(simulacron);
     SimulacronUtils.primeSystemPeersV2(simulacron);
@@ -96,7 +97,7 @@ class EndToEndSimulacronITBase {
           "-h",
           hostname,
           "-port",
-          port,
+          String.valueOf(port),
           "-dc",
           "dc1",
           "-cl",

@@ -238,7 +238,7 @@ public class SimulacronUtils {
       this.rows = rows;
     }
 
-    private List<Column> allColumns() {
+    public List<Column> allColumns() {
       List<Column> all = new ArrayList<>();
       all.addAll(partitionKey);
       all.addAll(clusteringColumns);
@@ -246,7 +246,7 @@ public class SimulacronUtils {
       return all;
     }
 
-    private LinkedHashMap<String, String> allColumnTypes() {
+    public LinkedHashMap<String, String> allColumnTypes() {
       return allColumns().stream()
           .map(col -> new SimpleEntry<>(col.name, col.getTypeAsString()))
           .collect(
@@ -422,13 +422,12 @@ public class SimulacronUtils {
                     table.allColumns().stream().map(col -> asCql(col.name)).collect(COMMA),
                     table.allColumns().stream().map(col -> ":" + asCql(col.name)).collect(COMMA)),
                 emptyList(),
-                new LinkedHashMap<String, Object>(),
+                new LinkedHashMap<>(),
                 table.allColumnTypes());
         simulacron.prime(
             new Prime(
                 new RequestPrime(
-                    whenInsertIntoTable,
-                    new SuccessResult(emptyList(), new LinkedHashMap<String, String>()))));
+                    whenInsertIntoTable, new SuccessResult(emptyList(), new LinkedHashMap<>()))));
 
         // UPDATE table
         Query whenUpdateIntoTable =
@@ -441,13 +440,12 @@ public class SimulacronUtils {
                         .map(col -> asCql(col.name) + "=:" + asCql(col.name))
                         .collect(COMMA)),
                 emptyList(),
-                new LinkedHashMap<String, Object>(),
+                new LinkedHashMap<>(),
                 table.allColumnTypes());
         simulacron.prime(
             new Prime(
                 new RequestPrime(
-                    whenUpdateIntoTable,
-                    new SuccessResult(emptyList(), new LinkedHashMap<String, String>()))));
+                    whenUpdateIntoTable, new SuccessResult(emptyList(), new LinkedHashMap<>()))));
 
         // SELECT cols from table
         Query whenSelectFromTable =

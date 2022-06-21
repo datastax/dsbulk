@@ -22,7 +22,7 @@ import java.util.Objects;
  *
  * <p>This class is a simplified, mutable version of Guava's {@link
  * com.datastax.oss.driver.shaded.guava.common.collect.Range Range} designed to reduce the
- * allocation rate of Range instances in the {@link PositionsTracker}.
+ * allocation rate of Range instances in the {@link PositionTracker}.
  */
 public final class Range {
 
@@ -56,6 +56,15 @@ public final class Range {
 
   public boolean contains(long value) {
     return value >= lower && value <= upper;
+  }
+
+  public boolean contains(Range that) {
+    return this.lower <= that.lower && this.upper >= that.upper;
+  }
+
+  public void merge(Range other) {
+    if (other.getLower() < this.getLower()) lower = other.lower;
+    if (other.getUpper() > this.getUpper()) upper = other.upper;
   }
 
   @Override

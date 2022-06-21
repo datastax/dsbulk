@@ -39,7 +39,8 @@ public class MappedSimpleStatement implements SimpleStatement, MappedStatement {
   }
 
   @Override
-  public @NonNull Record getRecord() {
+  @NonNull
+  public Record getRecord() {
     return source;
   }
 

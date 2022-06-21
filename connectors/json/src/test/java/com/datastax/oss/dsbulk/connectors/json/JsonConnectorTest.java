@@ -42,6 +42,7 @@ import com.datastax.oss.dsbulk.tests.logging.LogInterceptingExtension;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptor;
 import com.datastax.oss.dsbulk.tests.utils.FileUtils;
 import com.datastax.oss.dsbulk.tests.utils.ReflectionUtils;
+import com.datastax.oss.dsbulk.tests.utils.StringUtils;
 import com.datastax.oss.dsbulk.tests.utils.TestConfigUtils;
 import com.datastax.oss.dsbulk.url.BulkLoaderURLStreamHandlerFactory;
 import com.fasterxml.jackson.core.JsonParseException;
@@ -70,7 +71,12 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -283,7 +289,7 @@ class JsonConnectorTest {
               ReflectionUtils.invokeMethod("isDataSizeSamplingAvailable", connector, Boolean.TYPE))
           .isFalse();
       List<Record> actual = Flux.merge(connector.read()).collectList().block();
-      assertThat(actual).hasSize(1);
+      assertThat(actual).isNotNull().hasSize(1);
       assertThat(actual.get(0).getSource()).isEqualTo(objectMapper.readTree(line));
       assertThat(actual.get(0).getResource()).isEqualTo(URI.create("std:/"));
       assertThat(actual.get(0).getPosition()).isEqualTo(1L);
@@ -403,7 +409,7 @@ class JsonConnectorTest {
   @Test
   void should_read_all_resources_in_directory_with_path() throws Exception {
     JsonConnector connector = new JsonConnector();
-    Path rootPath = Paths.get(getClass().getResource("/root").toURI());
+    Path rootPath = Paths.get(Objects.requireNonNull(getClass().getResource("/root")).toURI());
     Config settings =
         TestConfigUtils.createTestConfig(
             "dsbulk.connector.json",
@@ -830,9 +836,11 @@ class JsonConnectorTest {
         ReflectionUtils.locateMethod("getOrCreateDestinationURL", JsonConnector.class, 0);
     counter.set(999);
     URL nextFile = ReflectionUtils.invokeMethod(getOrCreateDestinationURL, connector, URL.class);
+    assertThat(nextFile).isNotNull();
     assertThat(nextFile.getPath()).endsWith("output-001000.json");
     counter.set(999_999);
     nextFile = ReflectionUtils.invokeMethod(getOrCreateDestinationURL, connector, URL.class);
+    assertThat(nextFile).isNotNull();
     assertThat(nextFile.getPath()).endsWith("output-1000000.json");
   }
 
@@ -963,8 +971,10 @@ class JsonConnectorTest {
     connector.configure(settings, true, true);
     connector.init();
     List<Record> records = Flux.merge(connector.read()).collectList().block();
-    assertThat(records).hasSize(1);
-    assertThat(records.get(0).getSource().toString().trim())
+    assertThat(records).isNotNull().hasSize(1);
+    Object source = records.get(0).getSource();
+    assertThat(source).isNotNull();
+    assertThat(source.toString().trim())
         .isEqualTo(
             "{\"beginning IP Address\":\"212.63.180.20\",\"ending IP Address\":\"212.63.180.23\",\"beginning IP Number\":3560944660,\"ending IP Number\":3560944663,\"ISO 3166 Country Code\":\"MZ\",\"Country Name\":\"Mozambique\"}");
     connector.close();
@@ -972,43 +982,42 @@ class JsonConnectorTest {
 
   @Test
   void should_error_on_empty_url() {
-    JsonConnector connector = new JsonConnector();
-    Config settings = TestConfigUtils.createTestConfig("dsbulk.connector.json", "url", "\"\"");
-    assertThatThrownBy(() -> connector.configure(settings, true, true))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining(
-            "A URL or URL file is mandatory when using the json connector for LOAD. Please set connector.json.url or connector.json.urlfile and "
-                + "try again. See settings.md or help for more information.");
+    try (JsonConnector connector = new JsonConnector()) {
+      Config settings = TestConfigUtils.createTestConfig("dsbulk.connector.json", "url", "\"\"");
+      assertThatThrownBy(() -> connector.configure(settings, true, true))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining(
+              "A URL or URL file is mandatory when using the json connector for LOAD. Please set connector.json.url or connector.json.urlfile and "
+                  + "try again. See settings.md or help for more information.");
+    }
   }
 
   @Test
   void should_throw_if_passing_urlfile_parameter_for_write() {
-    JsonConnector connector = new JsonConnector();
-
-    Config settings =
-        TestConfigUtils.createTestConfig(
-            "dsbulk.connector.json", "urlfile", quoteJson(multipleUrlsFile));
-
-    assertThatThrownBy(() -> connector.configure(settings, false, true))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("The urlfile parameter is not supported for UNLOAD");
+    try (JsonConnector connector = new JsonConnector()) {
+      Config settings =
+          TestConfigUtils.createTestConfig(
+              "dsbulk.connector.json", "urlfile", quoteJson(multipleUrlsFile));
+      assertThatThrownBy(() -> connector.configure(settings, false, true))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("The urlfile parameter is not supported for UNLOAD");
+    }
   }
 
   @Test
   void should_not_throw_and_log_if_passing_both_url_and_urlfile_parameter(
       @LogCapture(level = Level.DEBUG) LogInterceptor logs) {
-    JsonConnector connector = new JsonConnector();
+    try (JsonConnector connector = new JsonConnector()) {
+      Config settings =
+          TestConfigUtils.createTestConfig(
+              "dsbulk.connector.json",
+              "urlfile",
+              quoteJson(multipleUrlsFile),
+              "url",
+              quoteJson(multipleUrlsFile));
 
-    Config settings =
-        TestConfigUtils.createTestConfig(
-            "dsbulk.connector.json",
-            "urlfile",
-            quoteJson(multipleUrlsFile),
-            "url",
-            quoteJson(multipleUrlsFile));
-
-    assertDoesNotThrow(() -> connector.configure(settings, true, true));
-
+      assertDoesNotThrow(() -> connector.configure(settings, true, true));
+    }
     assertThat(logs.getLoggedMessages())
         .contains("You specified both URL and URL file. The URL file will take precedence.");
   }
@@ -1037,9 +1046,8 @@ class JsonConnectorTest {
 
   @Test
   void should_error_when_directory_is_not_empty() throws Exception {
-    JsonConnector connector = new JsonConnector();
     Path out = Files.createTempDirectory("test");
-    try {
+    try (JsonConnector connector = new JsonConnector()) {
       Path file = out.resolve("output-000001.json");
       // will cause the write to fail because the file already exists
       Files.createFile(file);
@@ -1294,11 +1302,13 @@ class JsonConnectorTest {
 
   @Test()
   void should_throw_exception_when_compression_is_wrong() {
-    JsonConnector connector = new JsonConnector();
-    // empty string test
-    Config settings1 =
-        TestConfigUtils.createTestConfig("dsbulk.connector.json", "compression", "abc");
-    assertThrows(IllegalArgumentException.class, () -> connector.configure(settings1, false, true));
+    try (JsonConnector connector = new JsonConnector()) {
+      // empty string test
+      Config settings1 =
+          TestConfigUtils.createTestConfig("dsbulk.connector.json", "compression", "abc");
+      assertThrows(
+          IllegalArgumentException.class, () -> connector.configure(settings1, false, true));
+    }
   }
 
   @Test
@@ -1325,6 +1335,81 @@ class JsonConnectorTest {
             t ->
                 assertThat(getRootCause(t))
                     .hasMessageContaining("Stream is not in the BZip2 format"));
+    connector.close();
+  }
+
+  @Test
+  void should_invoke_termination_handler() throws Exception {
+    JsonConnector connector = new JsonConnector();
+    Config settings =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.connector.json",
+            "url",
+            url("/root/ip-by-country-sample1.json"),
+            "maxRecords",
+            1);
+    connector.configure(settings, true, true);
+    connector.init();
+    AtomicReference<URI> uri = new AtomicReference<>();
+    BiFunction<URI, Publisher<Record>, Publisher<Record>> handler =
+        (resource, upstream) -> {
+          uri.set(resource);
+          return upstream;
+        };
+    Flux.merge(connector.read(handler)).blockLast();
+    connector.close();
+    assertThat(uri).hasValue(rawURL("/root/ip-by-country-sample1.json").toURI());
+  }
+
+  @Test
+  void should_not_throw_when_error_but_termination_handler_filtered_error() throws Exception {
+    Path file1 = Files.createTempFile("file1", ".csv");
+    Path file2 = Files.createTempFile("file2", ".csv");
+    Files.write(file1, Arrays.asList("{\"a\":1}", "{\"b\":2}", "{\"c\":}"));
+    Files.write(file2, Arrays.asList("{\"d\":4}", "{\"f\":}", "{\"g\":6}"));
+    URL url1 = file1.toUri().toURL();
+    URL url2 = file2.toUri().toURL();
+    Path urlFile = FileUtils.createURLFile(url1, url2);
+    JsonConnector connector = new JsonConnector();
+    Config settings =
+        TestConfigUtils.createTestConfig(
+            "dsbulk.connector.json", "urlfile", StringUtils.quoteJson(urlFile));
+    connector.configure(settings, true, true);
+    connector.init();
+    Map<URI, Throwable> errorRef = new ConcurrentHashMap<>();
+    BiFunction<URI, Publisher<Record>, Publisher<Record>> handler =
+        (resource, upstream) ->
+            Flux.from(upstream)
+                .onErrorResume(
+                    error -> {
+                      errorRef.put(resource, error);
+                      return Flux.empty(); // filter out error and stop parsing the resource
+                    });
+    List<Record> records = Flux.merge(connector.read(handler)).collectList().block();
+    assertThat(records).isNotNull().hasSize(3);
+    assertThat(records.get(0).getSource()).asString().isEqualTo("{\"a\":1}");
+    assertThat(records.get(0).getResource()).isEqualTo(url1.toURI());
+    assertThat(records.get(0).getPosition()).isEqualTo(1);
+    assertThat(records.get(1).getSource()).asString().isEqualTo("{\"b\":2}");
+    assertThat(records.get(1).getResource()).isEqualTo(url1.toURI());
+    assertThat(records.get(1).getPosition()).isEqualTo(2);
+    assertThat(records.get(2).getSource()).asString().isEqualTo("{\"d\":4}");
+    assertThat(records.get(2).getResource()).isEqualTo(url2.toURI());
+    assertThat(records.get(2).getPosition()).isEqualTo(1);
+    assertThat(errorRef)
+        .hasSize(2)
+        .hasEntrySatisfying(
+            file1.toUri(),
+            err ->
+                assertThat(err)
+                    .isInstanceOf(IOException.class)
+                    .hasMessageContaining(url1.toExternalForm()))
+        .hasEntrySatisfying(
+            file2.toUri(),
+            err ->
+                assertThat(err)
+                    .isInstanceOf(IOException.class)
+                    .hasMessageContaining(url2.toExternalForm()));
     connector.close();
   }
 
@@ -1463,6 +1548,6 @@ class JsonConnectorTest {
 
   private static Path path(@SuppressWarnings("SameParameterValue") String resource)
       throws URISyntaxException {
-    return Paths.get(JsonConnectorTest.class.getResource(resource).toURI());
+    return Paths.get(Objects.requireNonNull(JsonConnectorTest.class.getResource(resource)).toURI());
   }
 }

@@ -25,6 +25,7 @@ import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.Charset;
@@ -40,6 +41,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import org.reactivestreams.Publisher;
@@ -158,14 +160,20 @@ public abstract class AbstractFileBasedConnector implements Connector {
 
   @NonNull
   @Override
-  public Publisher<Publisher<Record>> read() {
+  public Publisher<Publisher<Record>> read(
+      BiFunction<URI, Publisher<Record>, Publisher<Record>> resourceTerminationHandler) {
     assert read;
     return Flux.concat(
             Flux.fromIterable(roots).flatMap(this::scanRootDirectory), Flux.fromIterable(files))
-        .map(url -> readSingleFile(url).transform(this::applyPerFileLimits));
+        .map(
+            url -> {
+              URI resource = URI.create(url.toExternalForm());
+              return readSingleFile(url, resource)
+                  .transform(this::applyPerFileLimits)
+                  .transform(upstream -> resourceTerminationHandler.apply(resource, upstream));
+            });
   }
 
-  @SuppressWarnings("BlockingMethodInNonBlockingContext")
   @NonNull
   @Override
   public Function<Publisher<Record>, Publisher<Record>> write() {
@@ -275,12 +283,13 @@ public abstract class AbstractFileBasedConnector implements Connector {
    *
    * @param url The URL to read; must not be null; must be accessible and readable (but not
    *     necessarily hosted on the local filesystem).
+   * @param resource
    * @return A stream of {@link Record}s; never null but may be empty.
    */
   @NonNull
-  protected Flux<Record> readSingleFile(@NonNull URL url) {
+  protected Flux<Record> readSingleFile(@NonNull URL url, URI resource) {
     return Flux.generate(
-        () -> newSingleFileReader(url),
+        () -> newSingleFileReader(url, resource),
         RecordReader::readNext,
         recordReader -> {
           try {
@@ -298,7 +307,8 @@ public abstract class AbstractFileBasedConnector implements Connector {
    * {@link IOException} if the reader cannot be initialized.
    */
   @NonNull
-  protected abstract RecordReader newSingleFileReader(@NonNull URL url) throws IOException;
+  protected abstract RecordReader newSingleFileReader(@NonNull URL url, URI resource)
+      throws IOException;
 
   /**
    * A reader for {@link Record}s. Implementors are not expected to deal with thread-safety issues,
@@ -530,10 +540,9 @@ public abstract class AbstractFileBasedConnector implements Connector {
   }
 
   /**
-   * Applies per-file limits to a stream of records coming from {@link
-   * #readSingleFile(java.net.URL)}.
+   * Applies per-file limits to a stream of records coming from {@link #readSingleFile(java.net.URL,
+   * URI)}.
    */
-  @SuppressWarnings("ReactiveStreamsUnusedPublisher")
   @NonNull
   protected Flux<Record> applyPerFileLimits(@NonNull Flux<Record> records) {
     if (skipRecords > 0) {

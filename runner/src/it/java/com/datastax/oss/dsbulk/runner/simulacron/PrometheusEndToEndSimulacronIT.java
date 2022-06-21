@@ -42,6 +42,7 @@ import com.datastax.oss.dsbulk.workflow.api.utils.WorkflowUtils;
 import com.datastax.oss.simulacron.server.BoundCluster;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Timer;
@@ -49,6 +50,7 @@ import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
@@ -258,19 +260,22 @@ class PrometheusEndToEndSimulacronIT extends EndToEndSimulacronITBase {
 
       @NonNull
       @Override
-      public Publisher<Publisher<Record>> read() {
+      public Publisher<Publisher<Record>> read(
+          BiFunction<URI, Publisher<Record>, Publisher<Record>> resourceTerminationHandler) {
         AtomicInteger counter = new AtomicInteger();
         AtomicBoolean running = new AtomicBoolean(true);
+        URI resource = URI.create("file://file");
         return Flux.just(
             Flux.generate(
                 sink -> {
-                  int i = counter.getAndAdd(1);
-                  if (i == 0) {
+                  int i = counter.incrementAndGet();
+                  if (i == 1) {
                     startTimer(running);
                   }
                   if (running.get()) {
                     Record record =
-                        RecordUtils.indexedCSV("pk", "pk" + 1, "cc", "cc" + 1, "v", "v" + 1);
+                        RecordUtils.mappedCSV(
+                            resource, i, "pk", "pk" + 1, "cc", "cc" + 1, "v", "v" + 1);
                     sink.next(record);
                   } else {
                     sink.complete();

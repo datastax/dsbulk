@@ -26,22 +26,33 @@ import java.util.Optional;
 public final class DefaultReadResult extends DefaultResult implements ReadResult {
 
   private final Row row;
+  private final long position;
 
   public DefaultReadResult(
-      @NonNull Statement<?> statement, @NonNull ExecutionInfo executionInfo, @NonNull Row row) {
+      @NonNull Statement<?> statement,
+      @NonNull ExecutionInfo executionInfo,
+      @NonNull Row row,
+      long position) {
     super(statement, executionInfo);
     this.row = row;
+    this.position = position;
   }
 
   public DefaultReadResult(@NonNull BulkExecutionException error) {
     super(error);
     row = null;
+    position = -1;
   }
 
   @NonNull
   @Override
   public Optional<Row> getRow() {
     return Optional.ofNullable(row);
+  }
+
+  @Override
+  public long getPosition() {
+    return position;
   }
 
   @Override
@@ -68,11 +79,6 @@ public final class DefaultReadResult extends DefaultResult implements ReadResult
 
   @Override
   public String toString() {
-    if (getError().isPresent()) {
-
-    } else {
-      assert row != null;
-    }
     return "DefaultReadResult["
         + "row="
         + getRow()

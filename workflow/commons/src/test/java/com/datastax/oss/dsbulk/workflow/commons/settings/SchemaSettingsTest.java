@@ -66,7 +66,6 @@ import com.datastax.oss.driver.api.core.cql.BatchType;
 import com.datastax.oss.driver.api.core.cql.BoundStatement;
 import com.datastax.oss.driver.api.core.cql.ColumnDefinitions;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
-import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.metadata.Metadata;
 import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.driver.api.core.metadata.schema.ClusteringOrder;
@@ -109,9 +108,9 @@ import com.datastax.oss.dsbulk.workflow.commons.schema.QueryInspector;
 import com.datastax.oss.dsbulk.workflow.commons.schema.ReadResultCounter;
 import com.datastax.oss.dsbulk.workflow.commons.schema.ReadResultMapper;
 import com.datastax.oss.dsbulk.workflow.commons.schema.RecordMapper;
+import com.datastax.oss.dsbulk.workflow.commons.statement.RangeReadBoundStatement;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigValueFactory;
-import java.net.URI;
 import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -634,8 +633,7 @@ class SchemaSettingsTest {
             "t1");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
     settings.init(session, codecFactory, true, false);
-    ReadResultMapper mapper =
-        settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
+    ReadResultMapper mapper = settings.createReadResultMapper(session, recordMetadata, true);
     assertThat(mapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -652,8 +650,7 @@ class SchemaSettingsTest {
             "dsbulk.schema", "mapping", "\"\\\"COL 2\\\", c1\", ", "keyspace", "ks", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
     settings.init(session, codecFactory, true, false);
-    ReadResultMapper mapper =
-        settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
+    ReadResultMapper mapper = settings.createReadResultMapper(session, recordMetadata, true);
     assertThat(mapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -670,8 +667,7 @@ class SchemaSettingsTest {
             "dsbulk.schema", "mapping", "\"\\\"COL 2\\\", c1\", ", "keyspace", "ks", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
     settings.init(session, codecFactory, false, true);
-    ReadResultMapper mapper =
-        settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
+    ReadResultMapper mapper = settings.createReadResultMapper(session, recordMetadata, true);
     assertThat(mapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -689,8 +685,7 @@ class SchemaSettingsTest {
             "dsbulk.schema", "keyspace", "ks", "table", "t1", "mapping", "\" *=*, c4 = c3 \"");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
     settings.init(session, codecFactory, false, true);
-    ReadResultMapper mapper =
-        settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
+    ReadResultMapper mapper = settings.createReadResultMapper(session, recordMetadata, true);
     assertThat(mapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -708,8 +703,7 @@ class SchemaSettingsTest {
             "dsbulk.schema", "keyspace", "ks", "table", "t1", "mapping", "\" *=-\\\"COL 2\\\" \"");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
     settings.init(session, codecFactory, false, true);
-    ReadResultMapper mapper =
-        settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
+    ReadResultMapper mapper = settings.createReadResultMapper(session, recordMetadata, true);
     assertThat(mapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -732,8 +726,7 @@ class SchemaSettingsTest {
             "\" *=[-\\\"COL 2\\\", -c3] \"");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
     settings.init(session, codecFactory, false, true);
-    ReadResultMapper mapper =
-        settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
+    ReadResultMapper mapper = settings.createReadResultMapper(session, recordMetadata, true);
     assertThat(mapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -753,8 +746,7 @@ class SchemaSettingsTest {
             "\"select \\\"COL 2\\\", c1 from ks.t1\"");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
     settings.init(session, codecFactory, true, false);
-    ReadResultMapper mapper =
-        settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
+    ReadResultMapper mapper = settings.createReadResultMapper(session, recordMetadata, true);
     assertThat(mapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -770,8 +762,7 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
     settings.init(session, codecFactory, false, true);
-    ReadResultMapper mapper =
-        settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
+    ReadResultMapper mapper = settings.createReadResultMapper(session, recordMetadata, true);
     assertThat(mapper).isNotNull();
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
@@ -931,7 +922,7 @@ class SchemaSettingsTest {
             "\" f1 = c1, f2 = plus(c2,c3) \"");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
     settings.init(session, codecFactory, false, true);
-    settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
+    settings.createReadResultMapper(session, recordMetadata, true);
     assertThat(getInternalState(settings, "query"))
         .isEqualTo(
             "SELECT c1, plus(c2, c3) AS \"plus(c2, c3)\" FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end");
@@ -979,15 +970,17 @@ class SchemaSettingsTest {
   void should_create_single_read_statement_when_no_variables() {
     when(ps.getVariableDefinitions()).thenReturn(mockColumnDefinitions());
     BoundStatement bs = mock(BoundStatement.class);
+    when(bs.setRoutingKeyspace(any(CqlIdentifier.class))).thenReturn(bs);
+    when(bs.setRoutingToken(any(Token.class))).thenReturn(bs);
     when(ps.bind()).thenReturn(bs);
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.schema", "query", "\"SELECT a,b,c FROM ks.t1\"");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
     settings.init(session, codecFactory, false, true);
-    settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
+    settings.createReadResultMapper(session, recordMetadata, true);
     List<?> statements = settings.createReadStatements(session);
     assertThat(statements).hasSize(1);
-    assertThat(statements.get(0)).isEqualTo(bs);
+    assertThat(statements).extracting("delegate").containsOnly(bs);
   }
 
   @Test
@@ -1017,9 +1010,9 @@ class SchemaSettingsTest {
             "dsbulk.schema", "keyspace", "ks", "table", "t1", "splits", 3);
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
     settings.init(session, codecFactory, false, true);
-    settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
-    List<Statement<?>> statements = settings.createReadStatements(session);
-    assertThat(statements).hasSize(3).contains(bs1, bs2, bs3);
+    settings.createReadResultMapper(session, recordMetadata, true);
+    List<RangeReadBoundStatement> statements = settings.createReadStatements(session);
+    assertThat(statements).extracting("delegate").hasSize(3).contains(bs1, bs2, bs3);
   }
 
   @Test
@@ -1055,9 +1048,9 @@ class SchemaSettingsTest {
             3);
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
     settings.init(session, codecFactory, false, true);
-    settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
-    List<Statement<?>> statements = settings.createReadStatements(session);
-    assertThat(statements).hasSize(3).contains(bs1, bs2, bs3);
+    settings.createReadResultMapper(session, recordMetadata, true);
+    List<RangeReadBoundStatement> statements = settings.createReadStatements(session);
+    assertThat(statements).extracting("delegate").hasSize(3).contains(bs1, bs2, bs3);
   }
 
   @Test
@@ -1094,9 +1087,9 @@ class SchemaSettingsTest {
             3);
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
     settings.init(session, codecFactory, false, true);
-    settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
-    List<Statement<?>> statements = settings.createReadStatements(session);
-    assertThat(statements).hasSize(3).contains(bs1, bs2, bs3);
+    settings.createReadResultMapper(session, recordMetadata, true);
+    List<RangeReadBoundStatement> statements = settings.createReadStatements(session);
+    assertThat(statements).extracting("delegate").hasSize(3).contains(bs1, bs2, bs3);
   }
 
   @Test
@@ -1126,9 +1119,9 @@ class SchemaSettingsTest {
             "dsbulk.schema", "keyspace", "ks", "table", "t1", "splits", 3);
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
     settings.init(session, codecFactory, false, true);
-    settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
-    List<Statement<?>> statements = settings.createReadStatements(session);
-    assertThat(statements).hasSize(3).contains(bs1, bs2, bs3);
+    settings.createReadResultMapper(session, recordMetadata, true);
+    List<RangeReadBoundStatement> statements = settings.createReadStatements(session);
+    assertThat(statements).extracting("delegate").hasSize(3).contains(bs1, bs2, bs3);
   }
 
   @Test
@@ -1260,7 +1253,7 @@ class SchemaSettingsTest {
             "\"SELECT a,b,c FROM t1 WHERE token(a) > :\\\"My Start\\\" and token(a) <= :\\\"My End\\\"\"");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
     settings.init(session, codecFactory, false, true);
-    settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
+    settings.createReadResultMapper(session, recordMetadata, true);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
@@ -1281,7 +1274,7 @@ class SchemaSettingsTest {
             "\"SELECT a,b,c FROM t1 WHERE foo = :bar\"");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
     settings.init(session, codecFactory, false, true);
-    settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
+    settings.createReadResultMapper(session, recordMetadata, true);
     assertThatThrownBy(() -> settings.createReadStatements(session))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
@@ -1305,7 +1298,7 @@ class SchemaSettingsTest {
             "\"SELECT a,b,c FROM t1 WHERE token(a) >= :foo and token(a) < :bar \"");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
     settings.init(session, codecFactory, false, true);
-    settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
+    settings.createReadResultMapper(session, recordMetadata, true);
     assertThatThrownBy(() -> settings.createReadStatements(session))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
@@ -1833,7 +1826,7 @@ class SchemaSettingsTest {
             "dsbulk.schema", "keyspace", "ks", "query", "\"SELECT a,b,c FROM t1\"", "splits", 3);
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
     settings.init(session, codecFactory, false, true);
-    settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
+    settings.createReadResultMapper(session, recordMetadata, true);
     List<?> stmts = settings.createReadStatements(session);
     assertThat(stmts).hasSize(3);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
@@ -1875,7 +1868,7 @@ class SchemaSettingsTest {
             3);
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
     settings.init(session, codecFactory, false, true);
-    settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
+    settings.createReadResultMapper(session, recordMetadata, true);
     List<?> stmts = settings.createReadStatements(session);
     assertThat(stmts).hasSize(3);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
@@ -1919,7 +1912,7 @@ class SchemaSettingsTest {
             3);
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
     settings.init(session, codecFactory, false, true);
-    settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
+    settings.createReadResultMapper(session, recordMetadata, true);
     List<?> stmts = settings.createReadStatements(session);
     assertThat(stmts).hasSize(3);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
@@ -1990,13 +1983,15 @@ class SchemaSettingsTest {
     ColumnDefinitions definitions = mockColumnDefinitions();
     when(ps.getVariableDefinitions()).thenReturn(definitions);
     BoundStatement bs1 = mock(BoundStatement.class);
+    when(bs1.setRoutingKeyspace(any(CqlIdentifier.class))).thenReturn(bs1);
+    when(bs1.setRoutingToken(any(Token.class))).thenReturn(bs1);
     when(ps.bind()).thenReturn(bs1);
     Config config =
         TestConfigUtils.createTestConfig(
             "dsbulk.schema", "keyspace", "ks", "query", "\"SELECT a,b,c FROM t1 WHERE c1 = 1\"");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
     settings.init(session, codecFactory, false, true);
-    settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
+    settings.createReadResultMapper(session, recordMetadata, true);
     List<?> stmts = settings.createReadStatements(session);
     assertThat(stmts).hasSize(1);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
@@ -2092,8 +2087,7 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
     settings.init(session, codecFactory, false, true);
-    ReadResultMapper mapper =
-        settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
+    ReadResultMapper mapper = settings.createReadResultMapper(session, recordMetadata, true);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
@@ -2118,8 +2112,7 @@ class SchemaSettingsTest {
         TestConfigUtils.createTestConfig("dsbulk.schema", "keyspace", "ks", "table", "t1");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
     settings.init(session, codecFactory, false, true);
-    ReadResultMapper mapper =
-        settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
+    ReadResultMapper mapper = settings.createReadResultMapper(session, recordMetadata, true);
     ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     verify(session).prepare(argument.capture());
     assertThat(argument.getValue())
@@ -2221,39 +2214,6 @@ class SchemaSettingsTest {
 
   @ParameterizedTest
   @MethodSource
-  void should_create_target_table_uri(
-      CqlIdentifier keyspaceName, CqlIdentifier tableName, URI uri) {
-    when(metadata.getKeyspace(keyspaceName)).thenReturn(Optional.ofNullable(keyspace));
-    when(keyspace.getTable(tableName)).thenReturn(Optional.ofNullable(table));
-    when(keyspace.getName()).thenReturn(keyspaceName);
-    when(table.getName()).thenReturn(tableName);
-    Config config =
-        TestConfigUtils.createTestConfig(
-            "dsbulk.schema",
-            "keyspace",
-            quoteJson(keyspaceName.asInternal()),
-            "table",
-            quoteJson(tableName.asInternal()));
-    SchemaSettings settings = new SchemaSettings(config, MAP_AND_WRITE);
-    settings.init(session, codecFactory, false, true);
-    assertThat(settings.getTargetTableURI()).isEqualTo(uri);
-  }
-
-  @SuppressWarnings("unused")
-  private static Stream<Arguments> should_create_target_table_uri() {
-    return Stream.of(
-        Arguments.of(
-            CqlIdentifier.fromInternal("ks1"),
-            CqlIdentifier.fromInternal("table1"),
-            URI.create("cql://ks1/table1")),
-        Arguments.of(
-            CqlIdentifier.fromInternal("MY_KEYSPACE_1"),
-            CqlIdentifier.fromInternal("MY_TABLE_1"),
-            URI.create("cql://MY_KEYSPACE_1/MY_TABLE_1")));
-  }
-
-  @ParameterizedTest
-  @MethodSource
   void should_infer_batch_insert_query(String mapping, String expectedQuery) {
     Config config =
         TestConfigUtils.createTestConfig(
@@ -2348,7 +2308,7 @@ class SchemaSettingsTest {
             "\"c1, writetime(c3), ttl(\\\"COL 2\\\") \"");
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
     settings.init(session, codecFactory, true, true);
-    settings.createReadResultMapper(session, recordMetadata, codecFactory, false);
+    settings.createReadResultMapper(session, recordMetadata, false);
     assertThat(getInternalState(settings, "query"))
         .isEqualTo(
             "SELECT c1, "
@@ -2446,7 +2406,7 @@ class SchemaSettingsTest {
     if (schemaGenerationStrategy.isWriting()) {
       settings.createRecordMapper(session, recordMetadata, true);
     } else {
-      settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
+      settings.createReadResultMapper(session, recordMetadata, true);
     }
     assertThat(getInternalState(settings, "query")).isEqualTo(expectedQuery);
     QueryInspector queryInspector = new QueryInspector(expectedQuery);
@@ -2689,7 +2649,7 @@ class SchemaSettingsTest {
             "dsbulk.schema", "keyspace", "ks", "table", "t1", "preserveTimestamp", true);
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
     settings.init(session, codecFactory, true, true);
-    settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
+    settings.createReadResultMapper(session, recordMetadata, true);
     assertThat(getInternalState(settings, "query"))
         .isEqualTo(
             "SELECT c1, \"COL 2\", writetime(\"COL 2\") AS \"writetime(COL 2)\", c3 "
@@ -2707,7 +2667,7 @@ class SchemaSettingsTest {
             "dsbulk.schema", "keyspace", "ks", "table", "t1", "preserveTtl", true);
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
     settings.init(session, codecFactory, true, true);
-    settings.createReadResultMapper(session, recordMetadata, codecFactory, true);
+    settings.createReadResultMapper(session, recordMetadata, true);
     assertThat(getInternalState(settings, "query"))
         .isEqualTo(
             "SELECT c1, \"COL 2\", ttl(\"COL 2\") AS \"ttl(COL 2)\", c3 "
@@ -2882,7 +2842,7 @@ class SchemaSettingsTest {
             quoteJson("fieldA=c1,fieldB=now(),fieldC=(text)'abc'"));
     SchemaSettings settings = new SchemaSettings(config, READ_AND_MAP);
     settings.init(session, codecFactory, true, true);
-    settings.createReadResultMapper(session, recordMetadata, codecFactory, false);
+    settings.createReadResultMapper(session, recordMetadata, false);
     assertThat(getInternalState(settings, "query"))
         .isEqualTo(
             "SELECT c1, now() AS \"now()\", (text)'abc' AS \"(text)'abc'\" FROM ks.t1 WHERE token(c1) > :start AND token(c1) <= :end");

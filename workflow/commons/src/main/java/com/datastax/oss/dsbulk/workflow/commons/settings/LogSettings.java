@@ -38,8 +38,8 @@ import com.datastax.oss.dsbulk.workflow.api.error.ErrorThreshold;
 import com.datastax.oss.dsbulk.workflow.api.log.OperationDirectory;
 import com.datastax.oss.dsbulk.workflow.api.log.OperationDirectoryResolver;
 import com.datastax.oss.dsbulk.workflow.api.utils.WorkflowUtils;
-import com.datastax.oss.dsbulk.workflow.commons.format.statement.MappedBoundStatementPrinter;
 import com.datastax.oss.dsbulk.workflow.commons.log.LogManager;
+import com.datastax.oss.dsbulk.workflow.commons.statement.MappedBoundStatementPrinter;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigRenderOptions;
@@ -240,7 +240,7 @@ public class LogSettings {
     }
   }
 
-  public LogManager newLogManager(CqlSession session, boolean trackPositions) {
+  public LogManager newLogManager(CqlSession session) {
     StatementFormatter statementFormatter =
         StatementFormatter.builder()
             .withMaxQueryStringLength(maxQueryStringLength)
@@ -255,7 +255,6 @@ public class LogSettings {
         operationDirectory,
         errorThreshold,
         queryWarningsThreshold,
-        trackPositions,
         statementFormatter,
         level,
         rowFormatter);
@@ -401,6 +400,7 @@ public class LogSettings {
   private static boolean isPercent(String maxErrors) {
     return maxErrors.contains("%");
   }
+
   private static void validatePercentageRange(float maxErrorRatio) {
     if (maxErrorRatio <= 0 || maxErrorRatio >= 1) {
       throw new IllegalArgumentException(
@@ -411,7 +411,9 @@ public class LogSettings {
   private static void validateNumericVerbosity(int verbosity) {
     if (verbosity < Verbosity.quiet.ordinal() || verbosity > Verbosity.max.ordinal()) {
       throw new IllegalArgumentException(
-          String.format("Invalid numeric value for dsbulk.log.verbosity, expecting one of: 0 (quiet), 1 (normal), 2 (high) or 3 (max), got: %s.", verbosity));
+          String.format(
+              "Invalid numeric value for dsbulk.log.verbosity, expecting one of: 0 (quiet), 1 (normal), 2 (high) or 3 (max), got: %s.",
+              verbosity));
     }
     LOGGER.warn(
         "Numeric verbosity levels are deprecated, use 'quiet' (0), 'normal' (1), 'high' (2) or 'max' (3) instead.");
