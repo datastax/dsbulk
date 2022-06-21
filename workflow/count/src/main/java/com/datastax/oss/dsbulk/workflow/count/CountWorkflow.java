@@ -52,7 +52,6 @@ import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
@@ -168,8 +167,7 @@ public class CountWorkflow implements Workflow {
     Flux.fromIterable(readStatements)
         .flatMap(
             statement ->
-                Mono.just(statement)
-                    .flatMapMany(executor::readReactive)
+                Flux.from(executor.readReactive(statement))
                     .transform(
                         upstream -> resourceStatsHandler.apply(statement.getResource(), upstream))
                     .transform(queryWarningsHandler)

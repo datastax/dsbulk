@@ -375,6 +375,46 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(rowWithNull.isNull("v3")).isTrue();
   }
 
+  @Test
+  void partial_unload_clustering_order_by() throws IOException, InterruptedException {
+
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS unload_clustering_order_by (pk int, date timeuuid, v text, primary key (pk, date)) with clustering order by (date DESC)");
+    UUID uuid1 = Uuids.timeBased();
+    Thread.sleep(500);
+    UUID uuid2 = Uuids.timeBased();
+    for (int i = 0; i < 1000; i++) {
+      session.execute(
+          "INSERT INTO unload_clustering_order_by (pk, date, v) VALUES (?, ?, 'abc')", i, uuid1);
+    }
+    for (int i = 1000; i < 2000; i++) {
+      session.execute(
+          "INSERT INTO unload_clustering_order_by (pk, date, v) VALUES (?, ?, 'abc')", i, uuid2);
+    }
+
+    List<String> args;
+
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--connector.csv.url");
+    args.add(quoteJson(unloadDir));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--schema.keyspace");
+    args.add(session.getKeyspace().get().asInternal());
+    args.add("--schema.query");
+    args.add(
+        quoteJson(
+            "select * from unload_clustering_order_by where token(pk) > :start and token(pk) <= :end and date > "
+                + uuid1
+                + " allow filtering"));
+
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+    assertThat(FileUtils.readAllLinesInDirectoryAsStream(unloadDir)).hasSize(1000);
+    validatePositionsFile(1000);
+  }
+
   /** Simple test case which attempts to load and unload data using ccm and compression (LZ4). */
   @Test
   void full_load_unload_lz4() throws Exception {
