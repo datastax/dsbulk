@@ -13,19 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.dsbulk.workflow.commons.schema;
+package com.datastax.oss.dsbulk.workflow.commons.log;
 
 import com.datastax.oss.dsbulk.executor.api.result.ReadResult;
-import java.io.IOException;
+import edu.umd.cs.findbugs.annotations.NonNull;
+import java.net.URI;
+import org.reactivestreams.Publisher;
 
-public interface ReadResultCounter extends AutoCloseable {
+/**
+ * The equivalent of a connector Resource, but for range reads. Used to enable checkpointing in
+ * unload and count workflows.
+ */
+public interface RangeReadResource {
 
-  CountingUnit newCountingUnit(long initial);
+  @NonNull
+  URI getURI();
 
-  void reportTotals() throws IOException;
-
-  interface CountingUnit extends AutoCloseable {
-
-    void update(ReadResult result);
-  }
+  @NonNull
+  Publisher<ReadResult> read();
 }

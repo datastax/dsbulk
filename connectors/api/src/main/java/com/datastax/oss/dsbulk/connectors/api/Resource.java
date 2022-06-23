@@ -13,19 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.dsbulk.workflow.commons.schema;
+package com.datastax.oss.dsbulk.connectors.api;
 
-import com.datastax.oss.dsbulk.executor.api.result.ReadResult;
-import java.io.IOException;
+import edu.umd.cs.findbugs.annotations.NonNull;
+import java.net.URI;
+import org.reactivestreams.Publisher;
 
-public interface ReadResultCounter extends AutoCloseable {
+/**
+ * A resource that can be read from or written to. It could be a file, a database table, etc.
+ *
+ * <p>Resources are sources of records, and are identified by a unique URI.
+ */
+public interface Resource {
 
-  CountingUnit newCountingUnit(long initial);
+  /** @return The URI of this resource. */
+  @NonNull
+  URI getURI();
 
-  void reportTotals() throws IOException;
-
-  interface CountingUnit extends AutoCloseable {
-
-    void update(ReadResult result);
-  }
+  /** @return A publisher that will emit records from this resource. */
+  @NonNull
+  Publisher<Record> read();
 }

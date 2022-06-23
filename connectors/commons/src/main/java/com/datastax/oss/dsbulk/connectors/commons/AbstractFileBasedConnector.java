@@ -17,7 +17,9 @@ package com.datastax.oss.dsbulk.connectors.commons;
 
 import com.datastax.oss.dsbulk.config.ConfigUtils;
 import com.datastax.oss.dsbulk.connectors.api.Connector;
+import com.datastax.oss.dsbulk.connectors.api.DefaultResource;
 import com.datastax.oss.dsbulk.connectors.api.Record;
+import com.datastax.oss.dsbulk.connectors.api.Resource;
 import com.datastax.oss.dsbulk.io.CompressedIOUtils;
 import com.datastax.oss.dsbulk.io.IOUtils;
 import com.typesafe.config.Config;
@@ -41,7 +43,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import org.reactivestreams.Publisher;
@@ -165,17 +166,15 @@ public abstract class AbstractFileBasedConnector implements Connector {
 
   @NonNull
   @Override
-  public Publisher<Publisher<Record>> read(
-      BiFunction<URI, Publisher<Record>, Publisher<Record>> resourceTerminationHandler) {
+  public Publisher<Resource> read() {
     assert read;
     return Flux.concat(
             Flux.fromIterable(roots).flatMap(this::scanRootDirectory), Flux.fromIterable(files))
         .map(
             url -> {
               URI resource = URI.create(url.toExternalForm());
-              return readSingleFile(url, resource)
-                  .transform(this::applyPerFileLimits)
-                  .transform(upstream -> resourceTerminationHandler.apply(resource, upstream));
+              Flux<Record> flux = readSingleFile(url, resource).transform(this::applyPerFileLimits);
+              return new DefaultResource(resource, flux);
             });
   }
 
@@ -263,11 +262,11 @@ public abstract class AbstractFileBasedConnector implements Connector {
    *
    * @param url The URL to read; must not be null; must be accessible and readable (but not
    *     necessarily hosted on the local filesystem).
-   * @param resource
+   * @param resource The resource URI.
    * @return A stream of {@link Record}s; never null but may be empty.
    */
   @NonNull
-  protected Flux<Record> readSingleFile(@NonNull URL url, URI resource) {
+  protected Flux<Record> readSingleFile(@NonNull URL url, @NonNull URI resource) {
     return Flux.generate(
         () -> newSingleFileReader(url, resource),
         RecordReader::readNext,

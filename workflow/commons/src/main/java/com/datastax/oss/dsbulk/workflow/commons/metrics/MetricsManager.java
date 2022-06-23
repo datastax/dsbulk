@@ -144,9 +144,13 @@ public class MetricsManager implements AutoCloseable {
     this.rowType = rowType;
   }
 
-  public void init() {
+  public void init(long total, int errors) {
     totalItems = registry.counter("records/total");
     failedItems = registry.counter("records/failed");
+    totalItems.inc(total);
+    failedItems.inc(errors);
+    // don't increment executor listener counters, we want them to reflect what was actually read or
+    // written, otherwise the totals and the throughput will appear skewed.
     batchSize = registry.histogram("batches", () -> new Histogram(new UniformReservoir()));
     createMemoryGauges();
     logSink =

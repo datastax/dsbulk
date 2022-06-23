@@ -42,6 +42,7 @@ import com.datastax.oss.driver.shaded.guava.common.annotations.VisibleForTesting
 import com.datastax.oss.driver.shaded.guava.common.base.Joiner;
 import com.datastax.oss.dsbulk.connectors.api.ErrorRecord;
 import com.datastax.oss.dsbulk.connectors.api.Record;
+import com.datastax.oss.dsbulk.connectors.api.Resource;
 import com.datastax.oss.dsbulk.executor.api.result.ReadResult;
 import com.datastax.oss.dsbulk.executor.api.result.Result;
 import com.datastax.oss.dsbulk.executor.api.result.WriteResult;
@@ -50,6 +51,10 @@ import com.datastax.oss.dsbulk.format.statement.StatementFormatVerbosity;
 import com.datastax.oss.dsbulk.format.statement.StatementFormatter;
 import com.datastax.oss.dsbulk.workflow.api.error.ErrorThreshold;
 import com.datastax.oss.dsbulk.workflow.api.error.TooManyErrorsException;
+import com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.Checkpoint;
+import com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.Checkpoint.Status;
+import com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.CheckpointManager;
+import com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.ReplayStrategy;
 import com.datastax.oss.dsbulk.workflow.commons.schema.InvalidMappingException;
 import com.datastax.oss.dsbulk.workflow.commons.schema.ReadResultMapper;
 import com.datastax.oss.dsbulk.workflow.commons.schema.RecordMapper;
@@ -68,22 +73,15 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
-import java.util.function.BiFunction;
 import java.util.function.Function;
-import java.util.stream.Collectors;
-import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -111,7 +109,7 @@ public class LogManager implements AutoCloseable {
   private static final String LOAD_BAD_FILE = "load.bad";
   private static final String CAS_BAD_FILE = "paxos.bad";
 
-  private static final String SUMMARY_CSV = "summary.csv";
+  private static final String CHECKPOINT_CSV = "checkpoint.csv";
 
   private final CqlSession session;
   private final Path operationDirectory;
@@ -120,6 +118,7 @@ public class LogManager implements AutoCloseable {
   private final StatementFormatter statementFormatter;
   private final StatementFormatVerbosity statementFormatVerbosity;
   private final RowFormatter rowFormatter;
+  private final boolean checkpointEnabled;
 
   private final AtomicInteger errors = new AtomicInteger(0);
   private final LongAdder totalItems = new LongAdder();
@@ -136,8 +135,9 @@ public class LogManager implements AutoCloseable {
 
   private StackTracePrinter stackTracePrinter;
 
-  private final Queue<PositionTracker> positionTrackers = new ConcurrentLinkedQueue<>();
-  @VisibleForTesting final Map<URI, ResourceStats> resources = new ConcurrentHashMap<>();
+  private final CheckpointManager initialCheckpointManager;
+  private final ReplayStrategy replayStrategy;
+  private final Queue<CheckpointManager> checkpointManagers = new ConcurrentLinkedQueue<>();
 
   private FluxSink<ErrorRecord> failedRecordSink;
   private FluxSink<ErrorRecord> unmappableRecordSink;
@@ -157,7 +157,10 @@ public class LogManager implements AutoCloseable {
       ErrorThreshold queryWarningsThreshold,
       StatementFormatter statementFormatter,
       StatementFormatVerbosity statementFormatVerbosity,
-      RowFormatter rowFormatter) {
+      RowFormatter rowFormatter,
+      boolean checkpointEnabled,
+      @NonNull CheckpointManager initialCheckpointManager,
+      ReplayStrategy replayStrategy) {
     this.session = session;
     this.operationDirectory = operationDirectory;
     this.errorThreshold = errorThreshold;
@@ -165,6 +168,9 @@ public class LogManager implements AutoCloseable {
     this.statementFormatter = statementFormatter;
     this.statementFormatVerbosity = statementFormatVerbosity;
     this.rowFormatter = rowFormatter;
+    this.checkpointEnabled = checkpointEnabled;
+    this.initialCheckpointManager = initialCheckpointManager;
+    this.replayStrategy = replayStrategy;
   }
 
   public void init() {
@@ -189,10 +195,16 @@ public class LogManager implements AutoCloseable {
     // workflow will receive these error signals and stop as expected.
     Hooks.onErrorDropped(t -> uncaughtExceptionSink.error(t));
     Thread.setDefaultUncaughtExceptionHandler((thread, t) -> uncaughtExceptionSink.error(t));
+    totalItems.add(initialCheckpointManager.getTotalItems(replayStrategy));
+    errors.set((int) initialCheckpointManager.getTotalErrors(replayStrategy));
   }
 
   public Path getOperationDirectory() {
     return operationDirectory;
+  }
+
+  public long getTotalItems() {
+    return totalItems.sum();
   }
 
   public int getTotalErrors() {
@@ -241,9 +253,12 @@ public class LogManager implements AutoCloseable {
       LOGGER.info(
           "Errors are detailed in the following file(s): {}", Joiner.on(", ").join(debugFiles));
     }
-    if (!resources.isEmpty()) {
-      writeSummaryFile();
-      LOGGER.info("A summary of the operation in CSV format can be found in {}.", SUMMARY_CSV);
+    if (checkpointEnabled) {
+      CheckpointManager manager = mergeCheckpointManagers();
+      if (!manager.isEmpty()) {
+        writeCheckpointFile(manager);
+        LOGGER.info("Checkpoints for the current operation were written to {}.", CHECKPOINT_CSV);
+      }
     }
   }
 
@@ -462,12 +477,15 @@ public class LogManager implements AutoCloseable {
    *
    * @return A handler for successful write results.
    */
-  public Function<Flux<WriteResult>, Flux<Void>> newWriteResultPositionsHandler() {
-    return upstream ->
-        upstream
-            .map(Result::getStatement)
-            .transform(this::extractRecordFromMappedStatement)
-            .transform(this::recordSuccessfulRecordPositions);
+  public Function<Flux<WriteResult>, Flux<Void>> newSuccessfulWritesHandler() {
+    return upstream -> {
+      Flux<Record> flux =
+          upstream.map(Result::getStatement).transform(this::extractRecordFromMappedStatement);
+      if (checkpointEnabled) {
+        flux = flux.transform(r -> recordCheckpoint(r, true));
+      }
+      return flux.then().flux();
+    };
   }
 
   /**
@@ -479,8 +497,14 @@ public class LogManager implements AutoCloseable {
    *
    * @return A handler for successful read results.
    */
-  public Function<Flux<ReadResult>, Flux<Void>> newReadResultPositionsHandler() {
-    return upstream -> upstream.transform(this::recordSuccessfulReadResultPositions);
+  public Function<Flux<ReadResult>, Flux<Void>> newSuccessfulReadsHandler() {
+    return upstream -> {
+      Flux<ReadResult> flux = upstream;
+      if (checkpointEnabled) {
+        flux = flux.transform(this::readResultCheckpoint);
+      }
+      return flux.then().flux();
+    };
   }
 
   /**
@@ -492,56 +516,74 @@ public class LogManager implements AutoCloseable {
    *
    * @return A handler for successful record positions.
    */
-  public Function<Flux<Record>, Flux<Void>> newRecordPositionsHandler() {
-    return upstream -> upstream.transform(this::recordSuccessfulRecordPositions);
+  public Function<Flux<Record>, Flux<Void>> newSuccessfulRecordsHandler() {
+    return upstream -> {
+      Flux<Record> flux = upstream;
+      if (checkpointEnabled) {
+        flux = flux.transform(r -> recordCheckpoint(r, true));
+      }
+      return flux.then().flux();
+    };
   }
 
   public <T> Function<Flux<T>, Flux<T>> newTotalItemsCounter() {
     return upstream -> upstream.doOnNext(r -> totalItems.increment());
   }
 
-  public BiFunction<URI, Publisher<Record>, Publisher<Record>> newConnectorResourceStatsHandler() {
-    return (resource, upstream) ->
-        Flux.from(upstream)
-            .transformDeferredContextual(
-                (original, ctx) -> {
-                  ResourceStats stats = ctx.get(ResourceStats.class);
-                  return original
-                      .doOnSubscribe(s -> resources.put(resource, stats))
-                      .doOnComplete(() -> stats.completed = true)
-                      .doOnError(error -> stats.failed = true)
-                      // increment even for failed records since they will be considered processed
-                      // and will increment the position tracker.
-                      .doOnNext(r -> stats.produced++);
-                })
-            .contextWrite(ctx -> ctx.put(ResourceStats.class, new ResourceStats()));
+  public Function<Flux<Resource>, Flux<Flux<Record>>> newConnectorCheckpointHandler() {
+    if (!checkpointEnabled) {
+      return upstream -> upstream.map(resource -> Flux.from(resource.read()));
+    }
+    return upstream ->
+        upstream.map(
+            resource -> {
+              Checkpoint initial = initialCheckpointManager.getCheckpoint(resource.getURI());
+              if (replayStrategy.isComplete(initial)) {
+                return Flux.empty();
+              }
+              replayStrategy.reset(initial);
+              return Flux.from(resource.read())
+                  .doOnComplete(() -> initial.setStatus(Status.FINISHED))
+                  .doOnError(error -> initial.setStatus(Status.FAILED))
+                  .filter(record -> replayStrategy.shouldReplay(initial, record.getPosition()))
+                  // increment even for failed records since they will be considered
+                  // processed and will increment the position manager.
+                  .doOnNext(r -> initial.incrementProduced());
+            });
   }
 
-  public BiFunction<URI, Publisher<ReadResult>, Publisher<ReadResult>>
-      newCqlResourceStatsHandler() {
-    return (resource, upstream) ->
-        Flux.from(upstream)
-            .transformDeferredContextual(
-                (original, ctx) -> {
-                  ResourceStats stats = ctx.get(ResourceStats.class);
-                  return original
-                      .doOnSubscribe(s -> resources.put(resource, stats))
-                      .doOnComplete(() -> stats.completed = true)
-                      // onError signals should not happen, since the executor is in failsafe mode
-                      .doOnError(error -> stats.failed = true)
-                      .doOnNext(
-                          r -> {
-                            if (r.isSuccess()) {
-                              stats.produced++;
-                            } else {
-                              // read failures are global to the entire token range and don't
-                              // increment the position tracker, so don't increment counter of rows,
-                              // but instead signal that the entire resource failed.
-                              stats.failed = true;
-                            }
-                          });
-                })
-            .contextWrite(ctx -> ctx.put(ResourceStats.class, new ResourceStats()));
+  public Function<Flux<RangeReadResource>, Flux<Flux<ReadResult>>> newRangeReadCheckpointHandler() {
+    if (!checkpointEnabled) {
+      return upstream -> upstream.map(resource -> Flux.from(resource.read()));
+    }
+    return upstream ->
+        upstream.map(
+            resource -> {
+              Checkpoint initial = initialCheckpointManager.getCheckpoint(resource.getURI());
+              if (replayStrategy.isComplete(initial)) {
+                return Flux.empty();
+              }
+              replayStrategy.reset(initial);
+              AtomicBoolean failed = new AtomicBoolean();
+              return Flux.from(resource.read())
+                  .doOnComplete(
+                      () -> initial.setStatus(failed.get() ? Status.FAILED : Status.FINISHED))
+                  // onError signals should not happen, since the executor is in failsafe mode,
+                  // which is why we also test if the read result is a success below.
+                  .doOnError(error -> initial.setStatus(Status.FAILED))
+                  .filter(record -> replayStrategy.shouldReplay(initial, record.getPosition()))
+                  .doOnNext(
+                      r -> {
+                        if (r.isSuccess()) {
+                          initial.incrementProduced();
+                        } else {
+                          // read failures are global to the entire token range and don't
+                          // increment the checkpoint, so don't increment counter of produced rows,
+                          // but instead signal that the entire resource failed.
+                          failed.set(true);
+                        }
+                      });
+            });
   }
 
   /**
@@ -576,29 +618,21 @@ public class LogManager implements AutoCloseable {
    * <p>Used in both load and unload workflows.
    *
    * <p>Appends the record to the debug file, then to the connector bad file and forwards the
-   * record's position to the position tracker.
+   * record's position to the position manager.
    *
    * @return A processor for failed records.
    */
   @NonNull
   private FluxSink<ErrorRecord> newFailedRecordSink() {
     UnicastProcessor<ErrorRecord> processor = UnicastProcessor.create();
-    processor
-        .flatMap(this::appendFailedRecordToDebugFile)
-        .flatMap(record -> appendToBadFile(record, CONNECTOR_BAD_FILE))
-        .transformDeferredContextual(
-            (original, ctx) -> {
-              PositionTracker tracker = ctx.get(PositionTracker.class);
-              return original.doOnNext(
-                  record -> tracker.update(record.getResource(), record.getPosition()));
-            })
-        .contextWrite(
-            ctx -> {
-              PositionTracker tracker = new PositionTracker();
-              positionTrackers.add(tracker);
-              return ctx.put(PositionTracker.class, tracker);
-            })
-        .subscribe(v -> {}, this::onSinkError);
+    Flux<Record> flux =
+        processor
+            .flatMap(this::appendFailedRecordToDebugFile)
+            .flatMap(record -> appendToBadFile(record, CONNECTOR_BAD_FILE));
+    if (checkpointEnabled) {
+      flux = flux.transform(r -> recordCheckpoint(r, false));
+    }
+    flux.subscribe(v -> {}, this::onSinkError);
     return processor.sink(OverflowStrategy.BUFFER);
   }
 
@@ -615,22 +649,14 @@ public class LogManager implements AutoCloseable {
   @NonNull
   private FluxSink<ErrorRecord> newUnmappableRecordSink() {
     UnicastProcessor<ErrorRecord> processor = UnicastProcessor.create();
-    processor
-        .flatMap(this::appendUnmappableReadResultToDebugFile)
-        .flatMap(record -> appendToBadFile(record, MAPPING_BAD_FILE))
-        .transformDeferredContextual(
-            (original, ctx) -> {
-              PositionTracker tracker = ctx.get(PositionTracker.class);
-              return original.doOnNext(
-                  record -> tracker.update(record.getResource(), record.getPosition()));
-            })
-        .contextWrite(
-            ctx -> {
-              PositionTracker tracker = new PositionTracker();
-              positionTrackers.add(tracker);
-              return ctx.put(PositionTracker.class, tracker);
-            })
-        .subscribe(v -> {}, this::onSinkError);
+    Flux<Record> flux =
+        processor
+            .flatMap(this::appendUnmappableReadResultToDebugFile)
+            .flatMap(record -> appendToBadFile(record, MAPPING_BAD_FILE));
+    if (checkpointEnabled) {
+      flux = flux.transform(r -> recordCheckpoint(r, false));
+    }
+    flux.subscribe(v -> {}, this::onSinkError);
     return processor.sink(OverflowStrategy.BUFFER);
   }
 
@@ -640,31 +666,23 @@ public class LogManager implements AutoCloseable {
    * <p>Used only in the load workflow.
    *
    * <p>Appends the statement to the debug file, then extracts its record, appends it to the bad
-   * file, then forwards the record's position to the position tracker.
+   * file, then forwards the record's position to the position manager.
    *
    * @return A processor for unmappable statements.
    */
   @NonNull
   private FluxSink<UnmappableStatement> newUnmappableStatementSink() {
     UnicastProcessor<UnmappableStatement> processor = UnicastProcessor.create();
-    processor
-        .doOnNext(this::maybeWarnInvalidMapping)
-        .flatMap(this::appendUnmappableStatementToDebugFile)
-        .transform(this::extractRecordFromMappedStatement)
-        .flatMap(record -> appendToBadFile(record, MAPPING_BAD_FILE))
-        .transformDeferredContextual(
-            (original, ctx) -> {
-              PositionTracker tracker = ctx.get(PositionTracker.class);
-              return original.doOnNext(
-                  record -> tracker.update(record.getResource(), record.getPosition()));
-            })
-        .contextWrite(
-            ctx -> {
-              PositionTracker tracker = new PositionTracker();
-              positionTrackers.add(tracker);
-              return ctx.put(PositionTracker.class, tracker);
-            })
-        .subscribe(v -> {}, this::onSinkError);
+    Flux<Record> flux =
+        processor
+            .doOnNext(this::maybeWarnInvalidMapping)
+            .flatMap(this::appendUnmappableStatementToDebugFile)
+            .transform(this::extractRecordFromMappedStatement)
+            .flatMap(record -> appendToBadFile(record, MAPPING_BAD_FILE));
+    if (checkpointEnabled) {
+      flux = flux.transform(r -> recordCheckpoint(r, false));
+    }
+    flux.subscribe(v -> {}, this::onSinkError);
     return processor.sink(OverflowStrategy.BUFFER);
   }
 
@@ -675,31 +693,23 @@ public class LogManager implements AutoCloseable {
    *
    * <p>Appends the failed result to the debug file, then extracts its statement, then extracts its
    * record, then appends it to the bad file, then forwards the record's position to the position
-   * tracker.
+   * manager.
    *
    * @return A processor for failed write results.
    */
   @NonNull
   private FluxSink<WriteResult> newFailedWriteResultSink() {
     UnicastProcessor<WriteResult> processor = UnicastProcessor.create();
-    processor
-        .flatMap(this::appendFailedWriteResultToDebugFile)
-        .map(Result::getStatement)
-        .transform(this::extractRecordFromMappedStatement)
-        .flatMap(record -> appendToBadFile(record, LOAD_BAD_FILE))
-        .transformDeferredContextual(
-            (original, ctx) -> {
-              PositionTracker tracker = ctx.get(PositionTracker.class);
-              return original.doOnNext(
-                  record -> tracker.update(record.getResource(), record.getPosition()));
-            })
-        .contextWrite(
-            ctx -> {
-              PositionTracker tracker = new PositionTracker();
-              positionTrackers.add(tracker);
-              return ctx.put(PositionTracker.class, tracker);
-            })
-        .subscribe(v -> {}, this::onSinkError);
+    Flux<Record> flux =
+        processor
+            .flatMap(this::appendFailedWriteResultToDebugFile)
+            .map(Result::getStatement)
+            .transform(this::extractRecordFromMappedStatement)
+            .flatMap(record -> appendToBadFile(record, LOAD_BAD_FILE));
+    if (checkpointEnabled) {
+      flux = flux.transform(r -> recordCheckpoint(r, false));
+    }
+    flux.subscribe(v -> {}, this::onSinkError);
     return processor.sink(OverflowStrategy.BUFFER);
   }
 
@@ -710,31 +720,23 @@ public class LogManager implements AutoCloseable {
    *
    * <p>Appends the failed result to the debug file, then extracts its statement, then extracts its
    * record, then appends it to the bad file, then forwards the record's position to the position
-   * tracker.
+   * manager.
    *
    * @return A processor for failed CAS write results.
    */
   @NonNull
   private FluxSink<WriteResult> newFailedCASWriteSink() {
     UnicastProcessor<WriteResult> processor = UnicastProcessor.create();
-    processor
-        .flatMap(this::appendFailedCASWriteResultToDebugFile)
-        .map(Result::getStatement)
-        .transform(this::extractRecordFromMappedStatement)
-        .flatMap(record -> appendToBadFile(record, CAS_BAD_FILE))
-        .transformDeferredContextual(
-            (original, ctx) -> {
-              PositionTracker tracker = ctx.get(PositionTracker.class);
-              return original.doOnNext(
-                  record -> tracker.update(record.getResource(), record.getPosition()));
-            })
-        .contextWrite(
-            ctx -> {
-              PositionTracker tracker = new PositionTracker();
-              positionTrackers.add(tracker);
-              return ctx.put(PositionTracker.class, tracker);
-            })
-        .subscribe(v -> {}, this::onSinkError);
+    Flux<Record> flux =
+        processor
+            .flatMap(this::appendFailedCASWriteResultToDebugFile)
+            .map(Result::getStatement)
+            .transform(this::extractRecordFromMappedStatement)
+            .flatMap(record -> appendToBadFile(record, CAS_BAD_FILE));
+    if (checkpointEnabled) {
+      flux = flux.transform(r -> recordCheckpoint(r, false));
+    }
+    flux.subscribe(v -> {}, this::onSinkError);
     return processor.sink(OverflowStrategy.BUFFER);
   }
 
@@ -752,50 +754,47 @@ public class LogManager implements AutoCloseable {
     UnicastProcessor<ReadResult> processor = UnicastProcessor.create();
     processor
         .flatMap(this::appendFailedReadResultToDebugFile)
-        // no bad file nor positions tracker for failed reads
+        // no bad file nor record tracking for failed reads
         .subscribe(v -> {}, this::onSinkError);
     return processor.sink(OverflowStrategy.BUFFER);
   }
 
   @NonNull
-  private Flux<Void> recordSuccessfulRecordPositions(Flux<Record> upstream) {
+  private Flux<Record> recordCheckpoint(Flux<Record> upstream, boolean success) {
     return upstream
         .transformDeferredContextual(
             (original, ctx) -> {
-              PositionTracker tracker = ctx.get(PositionTracker.class);
+              CheckpointManager manager = ctx.get(CheckpointManager.class);
               return original.doOnNext(
-                  record -> tracker.update(record.getResource(), record.getPosition()));
+                  record -> manager.update(record.getResource(), record.getPosition(), success));
             })
         .contextWrite(
             ctx -> {
-              PositionTracker tracker = new PositionTracker();
-              positionTrackers.add(tracker);
-              return ctx.put(PositionTracker.class, tracker);
-            })
-        .then()
-        .flux();
+              CheckpointManager manager = new CheckpointManager();
+              checkpointManagers.add(manager);
+              return ctx.put(CheckpointManager.class, manager);
+            });
   }
 
-  private Flux<Void> recordSuccessfulReadResultPositions(Flux<ReadResult> upstream) {
+  @NonNull
+  private Flux<ReadResult> readResultCheckpoint(Flux<ReadResult> upstream) {
     return upstream
         .transformDeferredContextual(
             (original, ctx) -> {
-              PositionTracker tracker = ctx.get(PositionTracker.class);
+              CheckpointManager manager = ctx.get(CheckpointManager.class);
               return original.doOnNext(
                   result -> {
                     URI resource = ((RangeReadStatement) result.getStatement()).getResource();
                     long position = result.getPosition();
-                    tracker.update(resource, position);
+                    manager.update(resource, position, result.isSuccess());
                   });
             })
         .contextWrite(
             ctx -> {
-              PositionTracker tracker = new PositionTracker();
-              positionTrackers.add(tracker);
-              return ctx.put(PositionTracker.class, tracker);
-            })
-        .then()
-        .flux();
+              CheckpointManager manager = new CheckpointManager();
+              checkpointManagers.add(manager);
+              return ctx.put(CheckpointManager.class, manager);
+            });
   }
 
   // Bad file management
@@ -825,7 +824,8 @@ public class LogManager implements AutoCloseable {
                 row -> {
                   // In a bad file we must keep each element in one line, so use
                   // getFormattedContents instead of rowFormatter
-                  LogManagerUtils.printAndMaybeAddNewLine(row.getFormattedContents(), writer);
+                  String line = LogManagerUtils.formatSingleLine(row.getFormattedContents());
+                  LogManagerUtils.printAndMaybeAddNewLine(line, writer);
                 });
       } else {
         LogManagerUtils.printAndMaybeAddNewLine(source.toString(), writer);
@@ -1002,62 +1002,30 @@ public class LogManager implements AutoCloseable {
     writer.println("Position: " + record.getPosition());
   }
 
-  // Utility methods
+  // Checkpoint methods
 
   @VisibleForTesting
-  void writeSummaryFile() throws IOException {
-    PositionTracker tracker = mergePositionTrackers();
+  void writeCheckpointFile(CheckpointManager manager) throws IOException {
     try (PrintWriter writer =
         new PrintWriter(
             Files.newBufferedWriter(
-                operationDirectory.resolve(SUMMARY_CSV), UTF_8, CREATE_NEW, WRITE))) {
-      // sort resources by URI
-      TreeMap<URI, ResourceStats> stats = new TreeMap<>(resources);
-      for (Entry<URI, ResourceStats> entry : stats.entrySet()) {
-        List<Range> ranges =
-            tracker
-                .getPositions()
-                .getOrDefault(entry.getKey(), Collections.singletonList(new Range(0)));
-        appendToSummaryFile(entry.getKey(), entry.getValue(), ranges, writer);
-      }
+                operationDirectory.resolve(CHECKPOINT_CSV), UTF_8, CREATE_NEW, WRITE))) {
+      manager.printCsv(writer);
       writer.flush();
     }
   }
 
-  private void appendToSummaryFile(
-      URI resource, ResourceStats stats, List<Range> positions, PrintWriter writer) {
-    writer.print(resource);
-    writer.print(';');
-    for (Range range : positions) {
-      writer.print(range);
-    }
-    writer.print(';');
-    if (positions.size() != 1 || !stats.completed || stats.failed) {
-      writer.print('0');
-    } else {
-      Range range = positions.get(0);
-      if (stats.produced == 0 && range.getLower() == 0 && range.getUpper() == 0) {
-        // empty file or token range
-        writer.print('1');
-      } else if (stats.produced == range.getUpper() - range.getLower() + 1) {
-        // range.getLower is not necessarily 1 when records were skipped
-        writer.print('1');
-      } else {
-        writer.print('0');
-      }
-    }
-    writer.println();
-  }
-
-  @NonNull
   @VisibleForTesting
-  PositionTracker mergePositionTrackers() {
-    PositionTracker merged = new PositionTracker();
-    for (PositionTracker child : positionTrackers) {
-      merged.merge(child);
+  CheckpointManager mergeCheckpointManagers() {
+    CheckpointManager merged = new CheckpointManager(new TreeMap<>());
+    merged.merge(initialCheckpointManager);
+    for (CheckpointManager manager : checkpointManagers) {
+      merged.merge(manager);
     }
     return merged;
   }
+
+  // Utility methods
 
   private <T> Flux<T> maybeTriggerOnError(@Nullable Throwable error, int currentErrorCount) {
     if (error != null && isUnrecoverable(error)) {
@@ -1103,16 +1071,10 @@ public class LogManager implements AutoCloseable {
 
   private static boolean isUnrecoverable(Throwable error) {
     if (error instanceof AllNodesFailedException) {
-      for (Throwable child :
-          ((AllNodesFailedException) error)
-              .getAllErrors().values().stream()
-                  .flatMap(List::stream)
-                  .collect(Collectors.toList())) {
-        if (isUnrecoverable(child)) {
-          return true;
-        }
-      }
-      return false;
+      return ((AllNodesFailedException) error)
+          .getAllErrors().values().stream()
+              .flatMap(List::stream)
+              .anyMatch(LogManager::isUnrecoverable);
     }
     return !(error instanceof ServerError
         || error instanceof QueryExecutionException
@@ -1137,11 +1099,5 @@ public class LogManager implements AutoCloseable {
       writer.print(throwableProxyToString(new ThrowableProxy(t)));
       writer.flush();
     }
-  }
-
-  static class ResourceStats {
-    long produced;
-    boolean completed;
-    boolean failed;
   }
 }

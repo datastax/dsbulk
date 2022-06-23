@@ -10,6 +10,7 @@
 - [improvement] [#438](https://github.com/datastax/dsbulk/issues/438): Ability to limit throughput in bytes per second.
 - [bug] [#440](https://github.com/datastax/dsbulk/issues/440): Properly close files when unload is interrupted.
 - [bug] [#444](https://github.com/datastax/dsbulk/issues/444): Increment records/failed counter for failed writes.
+- [new feature] [#431](https://github.com/datastax/dsbulk/issues/431): Ability to resume a failed operation.
 
 ## 1.9.1
 

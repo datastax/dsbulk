@@ -22,7 +22,9 @@ import com.datastax.oss.dsbulk.executor.api.reader.BulkReader;
 import com.datastax.oss.dsbulk.executor.api.result.ReadResult;
 import com.datastax.oss.dsbulk.workflow.api.Workflow;
 import com.datastax.oss.dsbulk.workflow.api.utils.DurationUtils;
+import com.datastax.oss.dsbulk.workflow.commons.log.DefaultRangeReadResource;
 import com.datastax.oss.dsbulk.workflow.commons.log.LogManager;
+import com.datastax.oss.dsbulk.workflow.commons.log.RangeReadResource;
 import com.datastax.oss.dsbulk.workflow.commons.metrics.MetricsManager;
 import com.datastax.oss.dsbulk.workflow.commons.schema.ReadResultCounter;
 import com.datastax.oss.dsbulk.workflow.commons.settings.CodecSettings;
@@ -40,15 +42,12 @@ import com.datastax.oss.dsbulk.workflow.commons.utils.CloseableUtils;
 import com.datastax.oss.dsbulk.workflow.commons.utils.ClusterInformationUtils;
 import com.typesafe.config.Config;
 import io.netty.util.concurrent.DefaultThreadFactory;
-import java.net.URI;
 import java.time.Duration;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BiFunction;
 import java.util.function.Function;
-import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -77,9 +76,9 @@ public class CountWorkflow implements Workflow {
   private Function<Flux<ReadResult>, Flux<ReadResult>> failedItemsMonitor;
   private Function<Flux<ReadResult>, Flux<ReadResult>> failedReadsHandler;
   private Function<Flux<ReadResult>, Flux<ReadResult>> queryWarningsHandler;
-  private BiFunction<URI, Publisher<ReadResult>, Publisher<ReadResult>> resourceStatsHandler;
+  private Function<Flux<RangeReadResource>, Flux<Flux<ReadResult>>> checkpointHandler;
   private Function<Flux<Void>, Flux<Void>> terminationHandler;
-  private Function<Flux<ReadResult>, Flux<Void>> resultPositionsHandler;
+  private Function<Flux<ReadResult>, Flux<Void>> successfulReadsHandler;
   private int readConcurrency;
 
   CountWorkflow(Config config) {
@@ -133,13 +132,15 @@ public class CountWorkflow implements Workflow {
             session.getContext().getProtocolVersion(),
             session.getContext().getCodecRegistry(),
             schemaSettings.getRowType());
-    metricsManager.init();
+    metricsManager.init(logManager.getTotalItems(), logManager.getTotalErrors());
     executor =
         executorSettings.newReadExecutor(session, metricsManager.getExecutionListener(), false);
     EnumSet<StatsSettings.StatisticsMode> modes = statsSettings.getStatisticsModes();
     int numPartitions = statsSettings.getNumPartitions();
     readResultCounter =
         schemaSettings.createReadResultCounter(session, codecFactory, modes, numPartitions);
+    // incorporate totals from the previous run
+    readResultCounter.newCountingUnit(logManager.getTotalItems());
     readStatements = schemaSettings.createReadStatements(session);
     closed.set(false);
     success = false;
@@ -148,8 +149,8 @@ public class CountWorkflow implements Workflow {
     totalItemsCounter = logManager.newTotalItemsCounter();
     failedReadsHandler = logManager.newFailedReadsHandler();
     queryWarningsHandler = logManager.newQueryWarningsHandler();
-    resourceStatsHandler = logManager.newCqlResourceStatsHandler();
-    resultPositionsHandler = logManager.newReadResultPositionsHandler();
+    checkpointHandler = logManager.newRangeReadCheckpointHandler();
+    successfulReadsHandler = logManager.newSuccessfulReadsHandler();
     terminationHandler = logManager.newTerminationHandler();
     int numCores = Runtime.getRuntime().availableProcessors();
     readConcurrency =
@@ -168,11 +169,11 @@ public class CountWorkflow implements Workflow {
     metricsManager.start();
     Stopwatch timer = Stopwatch.createStarted();
     Flux.fromIterable(readStatements)
+        .map(stmt -> (RangeReadResource) new DefaultRangeReadResource(stmt, executor))
+        .transform(checkpointHandler)
         .flatMap(
-            statement ->
-                Flux.from(executor.readReactive(statement))
-                    .transform(
-                        upstream -> resourceStatsHandler.apply(statement.getResource(), upstream))
+            results ->
+                Flux.from(results)
                     .transform(queryWarningsHandler)
                     .transform(totalItemsMonitor)
                     .transform(totalItemsCounter)
@@ -184,10 +185,10 @@ public class CountWorkflow implements Workflow {
                     // 2) When counting partitions or ranges, a partition cannot be split in two
                     // inner flows; this is guaranteed since statements are split by token range
                     // (users cannot supply a custom query for these counting modes).
-                    .doOnNext(readResultCounter.newCountingUnit()::update)
+                    .doOnNext(readResultCounter.newCountingUnit(0L)::update)
                     .subscribeOn(scheduler),
             readConcurrency)
-        .transform(resultPositionsHandler)
+        .transform(successfulReadsHandler)
         .transform(terminationHandler)
         .blockLast();
     timer.stop();
@@ -200,7 +201,11 @@ public class CountWorkflow implements Workflow {
       success = true;
       LOGGER.info("{} completed successfully in {}.", this, elapsedStr);
     } else {
-      LOGGER.warn("{} completed with {} errors in {}.", this, totalErrors, elapsedStr);
+      LOGGER.warn(
+          "{} completed with {} errors in {}.",
+          this,
+          String.format("%,d", totalErrors),
+          elapsedStr);
     }
     return totalErrors == 0;
   }
@@ -230,7 +235,7 @@ public class CountWorkflow implements Workflow {
         if (!success) {
           LOGGER.warn(
               "Please note: the totals reported above are probably inaccurate, "
-                  + "since the operation completed with errors.");
+                  + "since the operation did not complete successfully.");
         }
       }
       LOGGER.debug("{} closed.", this);

@@ -13,19 +13,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.dsbulk.workflow.commons.schema;
+package com.datastax.oss.dsbulk.connectors.api;
 
-import com.datastax.oss.dsbulk.executor.api.result.ReadResult;
-import java.io.IOException;
+import edu.umd.cs.findbugs.annotations.NonNull;
+import java.net.URI;
+import org.reactivestreams.Publisher;
 
-public interface ReadResultCounter extends AutoCloseable {
+public class DefaultResource implements Resource {
 
-  CountingUnit newCountingUnit(long initial);
+  private final URI uri;
+  private final Publisher<Record> records;
 
-  void reportTotals() throws IOException;
+  public DefaultResource(@NonNull URI uri, @NonNull Publisher<Record> records) {
+    this.uri = uri;
+    this.records = records;
+  }
 
-  interface CountingUnit extends AutoCloseable {
+  @NonNull
+  @Override
+  public URI getURI() {
+    return uri;
+  }
 
-    void update(ReadResult result);
+  @NonNull
+  @Override
+  public Publisher<Record> read() {
+    return records;
   }
 }

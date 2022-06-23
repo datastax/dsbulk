@@ -137,7 +137,7 @@ class MetricsManagerTest {
             protocolVersion,
             codecRegistry,
             RowType.REGULAR)) {
-      manager.init();
+      manager.init(100, 10);
       manager.start();
       Flux<Record> records = Flux.just(record1, record2, record3);
       records
@@ -238,11 +238,11 @@ class MetricsManagerTest {
       manager.stop(Duration.ofSeconds(123), true);
       MetricRegistry registry =
           (MetricRegistry) ReflectionUtils.getInternalState(manager, "registry");
-      assertThat(registry.counter("records/total").getCount()).isEqualTo(3);
-      assertThat(registry.counter("records/failed").getCount()).isEqualTo(1);
+      assertThat(registry.counter("records/total").getCount()).isEqualTo(103);
+      assertThat(registry.counter("records/failed").getCount()).isEqualTo(11);
       assertThat(logs.getLoggedEvents()).isEmpty();
       assertThat(stderr.getStreamLinesPlain())
-          .anySatisfy(line -> assertThat(line).startsWith("    3 |      1 |"));
+          .anySatisfy(line -> assertThat(line).startsWith("  103 |     11 |"));
     }
   }
 
@@ -272,7 +272,7 @@ class MetricsManagerTest {
             protocolVersion,
             codecRegistry,
             RowType.REGULAR)) {
-      manager.init();
+      manager.init(0, 0);
       manager.start();
       Flux<Statement<?>> statements = Flux.just(batch, stmt3);
       statements.transform(manager.newBatcherMonitor()).blockLast();
@@ -318,7 +318,7 @@ class MetricsManagerTest {
             codecRegistry,
             RowType.REGULAR);
     try {
-      manager.init();
+      manager.init(0, 0);
       manager.start();
       WritesReportingExecutionListener writesReporter =
           (WritesReportingExecutionListener)
@@ -375,7 +375,7 @@ class MetricsManagerTest {
             codecRegistry,
             RowType.REGULAR);
     try {
-      manager.init();
+      manager.init(0, 0);
       manager.start();
       WritesReportingExecutionListener writesReporter =
           (WritesReportingExecutionListener)
@@ -421,7 +421,7 @@ class MetricsManagerTest {
             codecRegistry,
             RowType.REGULAR);
     try {
-      manager.init();
+      manager.init(0, 0);
       manager.start();
       ConsoleReporter consoleReporter =
           (ConsoleReporter) ReflectionUtils.getInternalState(manager, "consoleReporter");
@@ -466,7 +466,7 @@ class MetricsManagerTest {
             codecRegistry,
             RowType.REGULAR);
     try {
-      manager.init();
+      manager.init(0, 0);
       manager.start();
       WritesReportingExecutionListener writesReporter =
           (WritesReportingExecutionListener)
@@ -520,7 +520,7 @@ class MetricsManagerTest {
             protocolVersion,
             codecRegistry,
             RowType.REGULAR);
-    manager.init();
+    manager.init(0, 0);
     manager.start();
     manager.stop(Duration.ofSeconds(123), true);
     manager.close();

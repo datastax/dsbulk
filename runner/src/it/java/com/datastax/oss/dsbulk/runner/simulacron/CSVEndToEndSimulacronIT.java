@@ -32,11 +32,12 @@ import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.createQueryWith
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.createQueryWithResultSet;
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.createQueryWithResultSetWithQuotes;
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.createSimpleParameterizedQuery;
+import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.getCheckpointManager;
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.primeIpByCountryTable;
+import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.validateCheckpointFile;
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.validateExceptionsLog;
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.validateNumberOfBadRecords;
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.validateOutputFiles;
-import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.validatePositionsFile;
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.validatePrepare;
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.validateQueryCount;
 import static com.datastax.oss.dsbulk.tests.logging.StreamType.STDERR;
@@ -66,7 +67,9 @@ import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import com.datastax.oss.driver.shaded.guava.common.collect.Maps;
 import com.datastax.oss.dsbulk.config.ConfigUtils;
+import com.datastax.oss.dsbulk.connectors.api.DefaultResource;
 import com.datastax.oss.dsbulk.connectors.api.Record;
+import com.datastax.oss.dsbulk.connectors.api.Resource;
 import com.datastax.oss.dsbulk.connectors.csv.CSVConnector;
 import com.datastax.oss.dsbulk.partitioner.TokenRangeReadStatementGenerator;
 import com.datastax.oss.dsbulk.partitioner.utils.TokenUtils;
@@ -84,6 +87,11 @@ import com.datastax.oss.dsbulk.tests.simulacron.SimulacronUtils.Column;
 import com.datastax.oss.dsbulk.tests.simulacron.SimulacronUtils.Keyspace;
 import com.datastax.oss.dsbulk.tests.simulacron.SimulacronUtils.Table;
 import com.datastax.oss.dsbulk.tests.utils.StringUtils;
+import com.datastax.oss.dsbulk.workflow.api.log.OperationDirectory;
+import com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.Checkpoint;
+import com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.Checkpoint.Status;
+import com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.CheckpointManager;
+import com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.ReplayStrategy;
 import com.datastax.oss.dsbulk.workflow.commons.statement.RangeReadStatement;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
@@ -116,7 +124,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterAll;
@@ -125,6 +132,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
@@ -162,7 +170,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
   }
 
   @Test
-  void full_load() {
+  void full_load() throws IOException {
 
     primeIpByCountryTable(simulacron);
     RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
@@ -191,6 +199,45 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
         .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
         .contains("Writes: total: 24, successful: 24, failed: 0");
     validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", LOCAL_ONE);
+    validateCheckpointFile(24);
+  }
+
+  @Test
+  void full_load_no_checkpoint() {
+
+    primeIpByCountryTable(simulacron);
+    RequestPrime insert = createSimpleParameterizedQuery(INSERT_INTO_IP_BY_COUNTRY);
+    simulacron.prime(new Prime(insert));
+
+    String[] args = {
+      "load",
+      "--log.verbosity",
+      "high",
+      "-header",
+      "false",
+      "--connector.csv.url",
+      StringUtils.quoteJson(CsvUtils.CSV_RECORDS_UNIQUE),
+      "--schema.keyspace",
+      "ks1",
+      "--schema.query",
+      INSERT_INTO_IP_BY_COUNTRY,
+      "--schema.mapping",
+      IP_BY_COUNTRY_MAPPING_INDEXED,
+      "--log.checkpoint.enabled",
+      "false"
+    };
+
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+    assertThat(logs.getAllMessagesAsString())
+        .contains("Records: total: 24, successful: 24, failed: 0")
+        .contains("Batches: total: 24, size: 1.00 mean, 1 min, 1 max")
+        .contains("Writes: total: 24, successful: 24, failed: 0");
+    validateQueryCount(simulacron, 24, "INSERT INTO ip_by_country", LOCAL_ONE);
+    Path logPath =
+        OperationDirectory.getCurrentOperationDirectory().orElseThrow(IllegalStateException::new);
+    Path checkpointFile = logPath.resolve("checkpoint.csv");
+    assertThat(checkpointFile).doesNotExist();
   }
 
   @Test
@@ -627,22 +674,18 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     validateExceptionsLog(3, "Extraneous field C was found in record", "mapping-errors.log");
   }
 
-  /**
-   * Test for DAT-593 originally. Emulates 100 resources with 1000 records each, among which 100 bad
-   * records, for a total of 10,000 failed records. Then emulates 10 write failures for each
-   * resource, for a total of 1,000 failed writes. The total expected number of errors is then
-   * 11,000. Verifies that LogManager is capable of handling a high number of bad records, without
-   * disrupting the main load workflow.
-   */
-  @Test
-  void massive_load_with_errors() throws Exception {
+  /** Test for DAT-593 originally, enhanced to verify checkpointing. */
+  @ParameterizedTest
+  @EnumSource(ReplayStrategy.class)
+  void massive_load_with_errors(ReplayStrategy replayStrategy) throws Exception {
 
-    SimulacronUtils.primeTables(
-        simulacron,
+    Keyspace ks =
         new Keyspace(
             "ks1",
             new Table(
-                "table1", new Column("pk", TEXT), new Column("cc", TEXT), new Column("v", TEXT))));
+                "table1", new Column("pk", TEXT), new Column("cc", TEXT), new Column("v", TEXT)));
+
+    SimulacronUtils.primeTables(simulacron, ks);
 
     // generated 10 failed writes every 10 writes = 10 * 100 resources = 1000 writes failed
     for (int i = 1; i < 1000; i += 100) {
@@ -684,39 +727,39 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
 
           @NonNull
           @Override
-          public Publisher<Publisher<Record>> read(
-              BiFunction<URI, Publisher<Record>, Publisher<Record>> resourceTerminationHandler) {
-            List<Publisher<Record>> resources = new ArrayList<>();
+          public Publisher<Resource> read() {
+            List<Resource> resources = new ArrayList<>();
             for (int i = 0; i < 100; i++) {
+              boolean first = i == 0;
               AtomicInteger counter = new AtomicInteger();
               URI resource = URI.create("file://file" + (i + 1));
-              resources.add(
-                  Flux.<Record>generate(
-                          (sink) -> {
-                            int next = counter.getAndIncrement();
-                            if (next == 1_000) {
-                              sink.complete();
-                            } else if (next % 10 == 0) {
-                              sink.next(
-                                  RecordUtils.error(
-                                      resource,
-                                      next + 1,
-                                      new IllegalArgumentException(
-                                          "Record could not be read: " + next)));
-                            } else {
-                              sink.next(
-                                  RecordUtils.mappedCSV(
-                                      resource,
-                                      next + 1,
-                                      "pk",
-                                      String.valueOf(next),
-                                      "cc",
-                                      String.valueOf(next),
-                                      "v",
-                                      String.valueOf(next)));
-                            }
-                          })
-                      .transform(upstream -> resourceTerminationHandler.apply(resource, upstream)));
+              Flux<Record> records =
+                  Flux.generate(
+                      (sink) -> {
+                        int next = counter.getAndIncrement();
+                        if (next == 1_000) {
+                          sink.complete();
+                        } else if (next % 10 == 0 && !first) {
+                          sink.next(
+                              RecordUtils.error(
+                                  resource,
+                                  next + 1,
+                                  new IllegalArgumentException(
+                                      "Record could not be read: " + next)));
+                        } else {
+                          sink.next(
+                              RecordUtils.mappedCSV(
+                                  resource,
+                                  next + 1,
+                                  "pk",
+                                  String.valueOf(next),
+                                  "cc",
+                                  String.valueOf(next),
+                                  "v",
+                                  String.valueOf(next)));
+                        }
+                      });
+              resources.add(new DefaultResource(resource, records));
             }
             return Flux.fromIterable(resources);
           }
@@ -737,25 +780,152 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_COMPLETED_WITH_ERRORS);
     assertThat(logs.getAllMessagesAsString())
-        .contains("completed with 11000 errors")
-        .contains("Records: total: 100,000, successful: 89,000, failed: 11,000")
-        .contains("Writes: total: 90,000, successful: 89,000, failed: 1,000, in-flight: 0");
-    validateExceptionsLog(10_000, "Record could not be read:", "connector-errors.log");
+        // successful (1000) + (1000-100)*99 = 90100
+        // failed 100000 - 90100 = 9900
+        .contains("completed with 10,900 errors")
+        .contains("Records: total: 100,000, successful: 90,100, failed: 9,900")
+        // successful (1000-10)+(1000-100-10)*99 = 89100
+        // failed 10*100 = 1000
+        .contains("Writes: total: 90,100, successful: 89,100, failed: 1,000, in-flight: 0");
+    validateExceptionsLog(9_900, "Record could not be read:", "connector-errors.log");
     validateExceptionsLog(
         1_000,
         "Statement execution failed: INSERT INTO ks1.table1 (pk,cc,v) VALUES (:pk,:cc,:v)",
         "load-errors.log");
-    validatePositionsFile(100_000);
+    validateCheckpointFile(100_000);
+
+    CheckpointManager manager = getCheckpointManager();
+
+    // first resource has only 10 failed writes
+    checkCheckpointFile(manager, 0, 990, 10);
+    for (int i = 1; i < 100; i++) {
+      // other resources: 100 failed connector reads + 10 failed writes = 110 failed records
+      checkCheckpointFile(manager, i, 890, 110);
+    }
+
+    // Resume failed operation
+
+    simulacron.clearPrimes(true);
+    simulacron.clearLogs();
+
+    SimulacronUtils.primeTables(simulacron, ks);
+    simulacron.prime(new Prime(new RequestPrime(when, then)));
+
+    MockConnector.setDelegate(
+        new CSVConnector() {
+
+          @Override
+          public void configure(
+              @NonNull Config settings, boolean read, boolean retainRecordSources) {}
+
+          @Override
+          public void init() {}
+
+          @Override
+          public int readConcurrency() {
+            return Integer.MAX_VALUE; // to force runner to use maximum parallelism
+          }
+
+          @NonNull
+          @Override
+          public Publisher<Resource> read() {
+            List<Resource> resources = new ArrayList<>();
+            for (int i = 0; i < 100; i++) {
+              AtomicInteger counter = new AtomicInteger();
+              URI resource = URI.create("file://file" + (i + 1));
+              Flux<Record> records =
+                  Flux.generate(
+                      (sink) -> {
+                        int next = counter.getAndIncrement();
+                        if (next == 1_000) {
+                          sink.complete();
+                        } else {
+                          sink.next(
+                              RecordUtils.mappedCSV(
+                                  resource,
+                                  next + 1,
+                                  "pk",
+                                  String.valueOf(next),
+                                  "cc",
+                                  String.valueOf(next),
+                                  "v",
+                                  String.valueOf(next)));
+                        }
+                      });
+              resources.add(new DefaultResource(resource, records));
+            }
+            return Flux.fromIterable(resources);
+          }
+        });
+
+    Path checkpointFile =
+        OperationDirectory.getCurrentOperationDirectory()
+            .orElseThrow(IllegalStateException::new)
+            .resolve("checkpoint.csv");
+
+    args =
+        new String[] {
+          "load",
+          "-c",
+          "mock",
+          "--batch.mode",
+          "DISABLED",
+          "--log.maxErrors",
+          "11000",
+          "--schema.query",
+          "INSERT INTO ks1.table1 (pk,cc,v) VALUES (:pk,:cc,:v)",
+          "--log.checkpoint.file",
+          quoteJson(checkpointFile.toAbsolutePath()),
+          "--log.checkpoint.replayStrategy",
+          replayStrategy.name()
+        };
+
+    status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+
+    switch (replayStrategy) {
+      case resume:
+        assertStatus(status, STATUS_ABORTED_FATAL_ERROR);
+        assertThat(logs.getAllMessagesAsString()).contains("Nothing to replay");
+        break;
+      case retry:
+        assertStatus(status, STATUS_OK);
+        assertThat(logs.getAllMessagesAsString()).contains("completed successfully");
+        assertThat(logs.getAllMessagesAsString())
+            .contains("Writes: total: 10,900, successful: 10,900, failed: 0")
+            .contains("Records: total: 100,000, successful: 100,000, failed: 0");
+        validateCheckpointFile(100_000, replayStrategy, true);
+        manager = getCheckpointManager();
+        for (int i = 0; i < 100; i++) {
+          checkCheckpointFile(manager, i, 1000, 0);
+        }
+        break;
+      case rewind:
+        assertStatus(status, STATUS_OK);
+        assertThat(logs.getAllMessagesAsString()).contains("completed successfully");
+        assertThat(logs.getAllMessagesAsString())
+            .contains("Writes: total: 100,000, successful: 100,000, failed: 0")
+            .contains("Records: total: 100,000, successful: 100,000, failed: 0");
+        validateCheckpointFile(100_000, replayStrategy, true);
+        manager = getCheckpointManager();
+        for (int i = 0; i < 100; i++) {
+          checkCheckpointFile(manager, i, 1000, 0);
+        }
+        break;
+    }
   }
 
-  /**
-   * Emulates 100 range reads with 1000 rows each, among which 10 failed range reads. Then emulates
-   * 900 successful record writes per range, i.o.w, 100 failed records per range, for a total of 90
-   * successful ranges * 900 successful records per range = 81,000 successful records. Expects 90 *
-   * 100 failed records + 10 failed reads = 9,010 failures total.
-   */
-  @Test
-  void massive_unload_with_errors() throws Exception {
+  private void checkCheckpointFile(
+      CheckpointManager manager, int i, int expectedSuccessful, int expectedFailed) {
+    URI resource = URI.create("file://file" + (i + 1));
+    Checkpoint checkpoint = manager.getCheckpoint(resource);
+    assertThat(checkpoint.getStatus()).isEqualTo(Status.FINISHED);
+    assertThat(checkpoint.getConsumedSuccessful().sum()).isEqualTo(expectedSuccessful);
+    assertThat(checkpoint.getConsumedFailed().sum()).isEqualTo(expectedFailed);
+  }
+
+  @ParameterizedTest
+  @EnumSource(ReplayStrategy.class)
+  void massive_unload_with_errors(ReplayStrategy replayStrategy) throws Exception {
 
     List<Column> partitionKeys = Collections.singletonList(new Column("pk", TEXT));
     List<Column> clusteringColumns = Collections.singletonList(new Column("cc", TEXT));
@@ -778,6 +948,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     OptionsMap optionsMap = OptionsMap.driverDefaults();
     optionsMap.put(TypedDriverOption.PROTOCOL_VERSION, "V4");
 
+    Map<TokenRange, SimpleStatement> stmts;
     try (CqlSession session =
         CqlSession.builder()
             .addContactPoint(InetSocketAddress.createUnresolved(hostname, port))
@@ -796,7 +967,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
 
       TokenRangeReadStatementGenerator generator =
           new TokenRangeReadStatementGenerator(tableMetadata, metadata);
-      Map<TokenRange, SimpleStatement> stmts = generator.generate(100);
+      stmts = generator.generate(100);
       int i = 0;
       for (Entry<TokenRange, SimpleStatement> entry : stmts.entrySet()) {
         Query when =
@@ -874,7 +1045,8 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_COMPLETED_WITH_ERRORS);
     assertThat(logs.getAllMessagesAsString())
-        .contains("completed with 9010 errors")
+        .contains("completed with 9,010 errors")
+        .contains("Reads: total: 90,010, successful: 90,000, failed: 10")
         // successful: 90 successful ranges * 900 successful records  = 81,000
         // total: 90 successful ranges * 1000 records + 10 failed reads = 90,010
         // failed: 90 * 100 failed records + 10 failed reads = 9,010
@@ -885,22 +1057,135 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
         "unload-errors.log");
     validateExceptionsLog(9_000, "Record could not be written:", "connector-errors.log");
     validateNumberOfBadRecords(9_000, "connector.bad");
-    validatePositionsFile(90_000, false);
+
+    CheckpointManager manager = getCheckpointManager();
 
     for (TokenRange range : goodRanges) {
-      validatePositionsFile(
-          RangeReadStatement.rangeReadResource(
-              CqlIdentifier.fromInternal("ks1"), CqlIdentifier.fromInternal("table1"), range),
-          1000);
+      checkRangeCheckpoint(manager, range, Status.FINISHED, 900, 100);
     }
     for (TokenRange range : badRanges) {
-      validatePositionsFile(
-          RangeReadStatement.rangeReadResource(
-              CqlIdentifier.fromInternal("ks1"), CqlIdentifier.fromInternal("table1"), range),
-          0,
-          0,
-          false);
+      checkRangeCheckpoint(manager, range, Status.FAILED, 0, 0);
     }
+
+    // Resume failed operation
+
+    simulacron.clearPrimes(true);
+    simulacron.clearLogs();
+    SimulacronUtils.primeTables(simulacron, ks);
+
+    for (Entry<TokenRange, SimpleStatement> entry : stmts.entrySet()) {
+      Query when =
+          new Query(
+              "SELECT pk,cc,v FROM ks1.table1 WHERE token(pk) > :start AND token(pk) <= :end",
+              (String[]) null,
+              Maps.newLinkedHashMap(
+                  ImmutableMap.of(
+                      "start",
+                      TokenUtils.getTokenValue(entry.getKey().getStart()),
+                      "end",
+                      TokenUtils.getTokenValue(entry.getKey().getEnd()))),
+              Maps.newLinkedHashMap(ImmutableMap.of("start", "bigint", "end", "bigint")));
+      Result then = new SuccessResult(rows, table.allColumnTypes());
+      simulacron.prime(new Prime(new RequestPrime(when, then)));
+    }
+
+    MockConnector.setDelegate(
+        new CSVConnector() {
+
+          @Override
+          public void configure(
+              @NonNull Config settings, boolean read, boolean retainRecordSources) {}
+
+          @Override
+          public void init() {}
+
+          @Override
+          public int writeConcurrency() {
+            return 100;
+          }
+
+          @NonNull
+          @Override
+          public Function<Publisher<Record>, Publisher<Record>> write() {
+            return upstream -> upstream;
+          }
+        });
+
+    Path checkpointFile =
+        OperationDirectory.getCurrentOperationDirectory()
+            .orElseThrow(IllegalStateException::new)
+            .resolve("checkpoint.csv");
+
+    args =
+        new String[] {
+          "unload",
+          "-c",
+          "mock",
+          "--log.maxErrors",
+          "0",
+          "-maxConcurrentQueries",
+          "100",
+          "--schema.splits",
+          "100",
+          "--schema.query",
+          "SELECT pk,cc,v FROM ks1.table1 WHERE token(pk) > :start AND token(pk) <= :end",
+          "--log.checkpoint.file",
+          quoteJson(checkpointFile.toAbsolutePath()),
+          "--log.checkpoint.replayStrategy",
+          replayStrategy.name()
+        };
+
+    status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+
+    validateCheckpointFile(100_000, replayStrategy, true);
+
+    manager = getCheckpointManager();
+
+    switch (replayStrategy) {
+      case resume:
+        assertStatus(status, STATUS_COMPLETED_WITH_ERRORS);
+        assertThat(logs.getAllMessagesAsString()).contains("completed with 9,000 errors");
+        assertThat(logs.getAllMessagesAsString())
+            // should have read only failed ranges: 10 * 1000 records = 10,000 records total
+            .contains("Reads: total: 10,000, successful: 10,000, failed: 0")
+            .contains("Records: total: 100,000, successful: 91,000, failed: 9,000");
+        for (TokenRange range : goodRanges) {
+          checkRangeCheckpoint(manager, range, Status.FINISHED, 900, 100);
+        }
+        for (TokenRange range : badRanges) {
+          checkRangeCheckpoint(manager, range, Status.FINISHED, 1000, 0);
+        }
+        break;
+      case retry:
+      case rewind:
+        assertStatus(status, STATUS_OK);
+        assertThat(logs.getAllMessagesAsString()).contains("completed successfully");
+        assertThat(logs.getAllMessagesAsString())
+            .contains("Reads: total: 100,000, successful: 100,000, failed: 0")
+            .contains("Records: total: 100,000, successful: 100,000, failed: 0");
+        for (TokenRange range : goodRanges) {
+          checkRangeCheckpoint(manager, range, Status.FINISHED, 1000, 0);
+        }
+        for (TokenRange range : badRanges) {
+          checkRangeCheckpoint(manager, range, Status.FINISHED, 1000, 0);
+        }
+        break;
+    }
+  }
+
+  private void checkRangeCheckpoint(
+      CheckpointManager manager,
+      TokenRange range,
+      Status expectedStatus,
+      int expectedSuccessful,
+      int expectedFailed) {
+    CqlIdentifier ks1 = CqlIdentifier.fromInternal("ks1");
+    CqlIdentifier table1 = CqlIdentifier.fromInternal("table1");
+    URI resource = RangeReadStatement.rangeReadResource(ks1, table1, range);
+    Checkpoint checkpoint = manager.getCheckpoint(resource);
+    assertThat(checkpoint.getStatus()).isEqualTo(expectedStatus);
+    assertThat(checkpoint.getConsumedSuccessful().sum()).isEqualTo(expectedSuccessful);
+    assertThat(checkpoint.getConsumedFailed().sum()).isEqualTo(expectedFailed);
   }
 
   @Test
@@ -932,10 +1217,48 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
         .contains("Records: total: 24, successful: 24, failed: 0")
         .contains("Reads: total: 24, successful: 24, failed: 0");
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, LOCAL_ONE);
-    validatePositionsFile(
+    validateCheckpointFile(
         URI.create("cql://ks1/ip_by_country?start=-9223372036854775808&end=-9223372036854775808"),
         24);
     validateOutputFiles(24, unloadDir);
+  }
+
+  @Test
+  void full_unload_no_checkpoint() throws Exception {
+
+    primeIpByCountryTable(simulacron);
+    RequestPrime select = createQueryWithResultSet(SELECT_FROM_IP_BY_COUNTRY, 24);
+    simulacron.prime(new Prime(select));
+
+    String[] args = {
+      "unload",
+      "--log.verbosity",
+      "high",
+      "-header",
+      "false",
+      "--connector.csv.url",
+      quoteJson(unloadDir),
+      "--schema.keyspace",
+      "ks1",
+      "--schema.query",
+      SELECT_FROM_IP_BY_COUNTRY,
+      "--schema.mapping",
+      IP_BY_COUNTRY_MAPPING_INDEXED,
+      "--log.checkpoint.enabled",
+      "false"
+    };
+
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+    assertThat(logs.getAllMessagesAsString())
+        .contains("Records: total: 24, successful: 24, failed: 0")
+        .contains("Reads: total: 24, successful: 24, failed: 0");
+    validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, LOCAL_ONE);
+    validateOutputFiles(24, unloadDir);
+    Path logPath =
+        OperationDirectory.getCurrentOperationDirectory().orElseThrow(IllegalStateException::new);
+    Path checkpointFile = logPath.resolve("checkpoint.csv");
+    assertThat(checkpointFile).doesNotExist();
   }
 
   /**
@@ -973,7 +1296,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     verifyDelimiterCount('<', 96);
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, LOCAL_ONE);
     validateOutputFiles(24, unloadDir);
-    validatePositionsFile(
+    validateCheckpointFile(
         URI.create("cql://ks1/ip_by_country?start=-9223372036854775808&end=-9223372036854775808"),
         24);
   }
@@ -1005,7 +1328,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     assertStatus(status, STATUS_OK);
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, ConsistencyLevel.LOCAL_ONE);
     validateOutputFiles(10_000, unloadDir);
-    validatePositionsFile(
+    validateCheckpointFile(
         URI.create("cql://ks1/ip_by_country?start=-9223372036854775808&end=-9223372036854775808"),
         10_000);
   }
@@ -1139,11 +1462,12 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     assertStatus(status, STATUS_ABORTED_FATAL_ERROR);
     assertThat(stdErr.getStreamAsString()).contains("failed").contains("disk full");
     assertThat(logs.getAllMessagesAsString()).contains("failed").contains("disk full");
-    validatePositionsFile(
+    validateCheckpointFile(
         URI.create("cql://ks1/ip_by_country?start=-9223372036854775808&end=-9223372036854775808"),
         1,
         9,
-        false);
+        false,
+        ReplayStrategy.resume);
   }
 
   @Test
@@ -1172,7 +1496,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
 
     validateQueryCount(simulacron, 1, SELECT_FROM_IP_BY_COUNTRY, LOCAL_ONE);
     assertThat(stdOut.getStreamLines()).hasSize(24);
-    validatePositionsFile(
+    validateCheckpointFile(
         URI.create("cql://ks1/ip_by_country?start=-9223372036854775808&end=-9223372036854775808"),
         24);
   }
@@ -1215,7 +1539,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     assertThat(readAllLinesInDirectoryAsStream(unloadDir)).containsExactly(expected);
-    validatePositionsFile(
+    validateCheckpointFile(
         URI.create("cql://ks1/table1?start=-9223372036854775808&end=-9223372036854775808"), 1);
   }
 

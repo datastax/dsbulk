@@ -25,7 +25,13 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.dsbulk.runner.ExitStatus;
 import com.datastax.oss.dsbulk.tests.simulacron.SimulacronUtils;
 import com.datastax.oss.dsbulk.tests.utils.FileUtils;
+import com.datastax.oss.dsbulk.tests.utils.ReflectionUtils;
 import com.datastax.oss.dsbulk.workflow.api.log.OperationDirectory;
+import com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.Checkpoint;
+import com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.CheckpointManager;
+import com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.Range;
+import com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.RangeSet;
+import com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.ReplayStrategy;
 import com.datastax.oss.simulacron.common.cluster.QueryLog;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
@@ -34,6 +40,7 @@ import com.datastax.oss.simulacron.common.result.ErrorResult;
 import com.datastax.oss.simulacron.common.result.Result;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
 import com.datastax.oss.simulacron.server.BoundCluster;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -50,7 +57,6 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.assertj.core.api.Assertions;
@@ -259,75 +265,77 @@ public class EndToEndUtils {
     assertThat(numBadOps).isEqualTo(size);
   }
 
-  public static void validatePositionsFile(Path resource, long lastPosition)
-      throws IOException, URISyntaxException {
-    validatePositionsFile(resource.toUri().toURL(), lastPosition);
+  public static void validateCheckpointFile(long expectedTotal) throws IOException {
+    validateCheckpointFile(expectedTotal, ReplayStrategy.resume, true);
   }
 
-  public static void validatePositionsFile(long expectedTotal, boolean onlyDone)
-      throws IOException {
-    Path logPath =
-        OperationDirectory.getCurrentOperationDirectory().orElseThrow(IllegalStateException::new);
-    Path positions = logPath.resolve("summary.csv");
-    assertThat(positions).exists();
-    List<String> lines = Files.readAllLines(positions, UTF_8);
+  public static void validateCheckpointFile(
+      long expectedTotal, ReplayStrategy replayStrategy, boolean onlyCompleted) throws IOException {
+    CheckpointManager manager = getCheckpointManager();
+    if (onlyCompleted) {
+      assertThat(manager.isComplete(replayStrategy)).isTrue();
+    }
     long actualTotal = 0;
-    for (String line : lines) {
-      if (onlyDone) {
-        assertThat(line).endsWith(";1");
-      }
-      int firstColon = line.indexOf(';');
-      int secondColon = line.lastIndexOf(';');
-      String ranges = line.substring(firstColon + 1, secondColon);
-      if (!ranges.equals("[0,0]")) {
-        assertThat(ranges).startsWith("[1,");
-        int comma = ranges.lastIndexOf(',');
-        int closingBracket = ranges.lastIndexOf(']');
-        actualTotal += Long.parseLong(ranges.substring(comma + 1, closingBracket));
-      }
+    @SuppressWarnings("unchecked")
+    Map<URI, Checkpoint> checkpoints =
+        (Map<URI, Checkpoint>) ReflectionUtils.getInternalState(manager, "checkpoints");
+    for (Checkpoint checkpoint : checkpoints.values()) {
+      actualTotal +=
+          checkpoint.getConsumedSuccessful().sum() + checkpoint.getConsumedFailed().sum();
     }
     assertThat(actualTotal).isEqualTo(expectedTotal);
   }
 
-  public static void validatePositionsFile(long expectedTotal) throws IOException {
-    validatePositionsFile(expectedTotal, true);
-  }
-
-  public static void validatePositionsFile(URL resource, long lastPosition)
+  public static void validateCheckpointFile(Path resource, long lastPosition)
       throws IOException, URISyntaxException {
-    validatePositionsFile(resource.toURI(), lastPosition);
+    validateCheckpointFile(resource.toUri().toURL(), lastPosition);
   }
 
-  public static void validatePositionsFile(URI resource, long lastPosition) throws IOException {
-    validatePositionsFile(resource, 1, lastPosition);
+  public static void validateCheckpointFile(URL resource, long lastPosition)
+      throws IOException, URISyntaxException {
+    validateCheckpointFile(resource.toURI(), lastPosition);
   }
 
-  public static void validatePositionsFile(URI resource, long firstPosition, long lastPosition)
+  public static void validateCheckpointFile(URI resource, long lastPosition) throws IOException {
+    validateCheckpointFile(resource, 1, lastPosition);
+  }
+
+  public static void validateCheckpointFile(URI resource, long firstPosition, long lastPosition)
       throws IOException {
-    validatePositionsFile(resource, firstPosition, lastPosition, true);
+    validateCheckpointFile(resource, firstPosition, lastPosition, true, ReplayStrategy.resume);
   }
 
-  public static void validatePositionsFile(
-      URI resource, long firstPosition, long lastPosition, boolean done) throws IOException {
-    Path logPath =
-        OperationDirectory.getCurrentOperationDirectory().orElseThrow(IllegalStateException::new);
-    Path positions = logPath.resolve("summary.csv");
-    assertThat(positions).exists();
-    List<String> lines = Files.readAllLines(positions, UTF_8);
-    assertThat(lines)
-        .contains(resource + ";[" + firstPosition + "," + lastPosition + "];" + (done ? 1 : 0));
-  }
-
-  public static void validatePositionsFile(Map<URI, Long> lastPositions) throws IOException {
-    Path logPath =
-        OperationDirectory.getCurrentOperationDirectory().orElseThrow(IllegalStateException::new);
-    Path positions = logPath.resolve("summary.csv");
-    assertThat(positions).exists();
-    List<String> lines = Files.readAllLines(positions, UTF_8);
-    assertThat(lines).hasSize(lastPositions.size());
-    for (Entry<URI, Long> entry : lastPositions.entrySet()) {
-      assertThat(lines).contains(entry.getKey() + ";[1," + entry.getValue() + "];1");
+  public static void validateCheckpointFile(
+      URI resource,
+      long firstPosition,
+      long lastPosition,
+      boolean complete,
+      ReplayStrategy replayStrategy)
+      throws IOException {
+    CheckpointManager manager = getCheckpointManager();
+    Checkpoint checkpoint = manager.getCheckpoint(resource);
+    assertThat(replayStrategy.isComplete(checkpoint)).isEqualTo(complete);
+    RangeSet consumedSuccessful = checkpoint.getConsumedSuccessful();
+    RangeSet consumedFailed = checkpoint.getConsumedFailed();
+    RangeSet merged = RangeSet.of();
+    merged.merge(consumedSuccessful);
+    merged.merge(consumedFailed);
+    if (firstPosition == 0 && lastPosition == 0) {
+      assertThat(merged.isEmpty()).isTrue();
+    } else {
+      Range range = merged.iterator().next();
+      assertThat(range.getLower()).isEqualTo(firstPosition);
+      assertThat(range.getUpper()).isEqualTo(lastPosition);
     }
+  }
+
+  @NonNull
+  public static CheckpointManager getCheckpointManager() throws IOException {
+    Path logPath =
+        OperationDirectory.getCurrentOperationDirectory().orElseThrow(IllegalStateException::new);
+    Path checkpointFile = logPath.resolve("checkpoint.csv");
+    assertThat(checkpointFile).exists();
+    return CheckpointManager.parse(Files.newBufferedReader(checkpointFile, UTF_8));
   }
 
   public static void validateOutputFiles(int numOfRecords, Path dir) throws IOException {

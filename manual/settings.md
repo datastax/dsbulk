@@ -1307,6 +1307,34 @@ Whether or not to use ANSI colors and other escape sequences in log messages pri
 
 Default: **"normal"**.
 
+#### --log.checkpoint.enabled<br />--dsbulk.log.checkpoint.enabled _&lt;boolean&gt;_
+
+Whether to enable checkpointing for the current operation. When set to true (the default), DSBulk will track records that were processed and will produce a checkpoint file at the end of the operation. The checkpoint file can then be used later on to resume the same operation, if not all records were processed, or if the operation was interrupted.
+
+Note that a checkpointed operation consumes more memory, and is slightly slower. If you don't need checkpointing, you should disable it.
+
+Default: **true**.
+
+#### --log.checkpoint.file<br />--dsbulk.log.checkpoint.file _&lt;string&gt;_
+
+The path to a checkpoint file to resume an operation from. If this option is set, and depending on the replay strategy, then only unprocessed and/or failed data will be re-processed.
+
+When using a checkpoint file to resume an operation, make sure that both operations target the same dataset:
+
+- When loading, make sure that the files to load weren't renamed or moved, otherwise all files would be considered new and loaded entirely. Also, if the file contents have changed, new records may go unnoticed, or cause other records to be processed twice.
+- When unloading, make sure that the read query, the token distribution across the ring, the number of splits (see `schema.splits`) and the data to read are all the same across operations, otherwise the unloaded data could be inconsistent.
+
+Default: **null**.
+
+#### --log.checkpoint.replayStrategy<br />--dsbulk.log.checkpoint.replayStrategy _&lt;string&gt;_
+
+The replay strategy to use when resuming an operation from a checkpoint file. Valid values are:
+- `resume`: this is the default option. DSBulk will only process new records from resources that weren't consumed entirely. Records that were already processed will be ignored, including rejected ones (rejected records are always written to bad files). This is the safest option when loading if the operation is not idempotent.
+- `retry`: DSBulk will process new and rejected records from resources that weren't consumed entirely, or consumed with errors. Note that this strategy may result in some rows being inserted twice and thus should only be used if the operation is idempotent.
+- `rewind`: DSBulk will process all records (new, successful and rejected) from resources that weren't consumed entirely, or consumed with errors. This effectively makes DSBulk restart reading each non-successful resource from its very first record. Note that this strategy may result in some rows being inserted twice and thus should only be used if the operation is idempotent.
+
+Default: **"resume"**.
+
 #### --log.maxQueryWarnings<br />--dsbulk.log.maxQueryWarnings _&lt;number&gt;_
 
 The maximum number of query warnings to log before muting them. Query warnings are sent by the server (for example, if the number of statements in a batch is greater than the warning threshold configured on the server). They are useful to diagnose suboptimal configurations but tend to be too invasive, which is why DSBulk by default will only log the 50 first query warnings; any subsequent warnings will be muted and won't be logged at all. Setting this value to any negative integer disables this feature (not recommended).
