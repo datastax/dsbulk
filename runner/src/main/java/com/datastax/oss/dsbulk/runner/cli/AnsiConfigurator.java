@@ -15,34 +15,54 @@
  */
 package com.datastax.oss.dsbulk.runner.cli;
 
-import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 import org.fusesource.jansi.AnsiConsole;
 
 public class AnsiConfigurator {
 
-  public static void configureAnsi(String... args) throws ParseException {
+  public enum AnsiMode {
+    normal,
+    disabled,
+    force
+  }
+
+  public static void configureAnsi(List<String> args) throws ParseException {
     // log.ansiMode should logically be handled by LogSettings,
     // but this setting has to be processed very early
     // (before the console is used).
-    String ansiMode = "normal";
-    Iterator<String> iterator = Arrays.asList(args).iterator();
+    AnsiMode ansiMode = AnsiMode.normal;
+    Iterator<String> iterator = args.iterator();
     while (iterator.hasNext()) {
       String arg = iterator.next();
-      if (arg.equals("--log.ansiMode")) {
+      if (arg.equals("--log.ansiMode") || arg.equals("--dsbulk.log.ansiMode")) {
         if (iterator.hasNext()) {
-          ansiMode = iterator.next();
+          ansiMode = parseAnsiMode(arg, iterator.next());
           break;
         } else {
-          throw new ParseException("Expecting value after --log.ansiMode");
+          throw new ParseException("Expecting value after: " + arg);
         }
+      } else if (arg.startsWith("--log.ansiMode=") || arg.startsWith("--dsbulk.log.ansiMode=")) {
+        int i = arg.indexOf('=');
+        ansiMode = parseAnsiMode(arg.substring(0, i), arg.substring(i + 1));
       }
     }
-    if (ansiMode.equals("disabled")) {
+    if (ansiMode == AnsiMode.disabled) {
       System.setProperty("jansi.strip", "true");
-    } else if (ansiMode.equals("force")) {
+    } else if (ansiMode == AnsiMode.force) {
       System.setProperty("jansi.force", "true");
     }
     AnsiConsole.systemInstall();
+  }
+
+  private static AnsiMode parseAnsiMode(String name, String value) throws ParseException {
+    try {
+      return AnsiMode.valueOf(value);
+    } catch (IllegalArgumentException e) {
+      throw new ParseException(
+          String.format(
+              "Invalid value for %s, expecting one of '%s', '%s', '%s', got: '%s'",
+              name, AnsiMode.normal, AnsiMode.disabled, AnsiMode.force, value));
+    }
   }
 }

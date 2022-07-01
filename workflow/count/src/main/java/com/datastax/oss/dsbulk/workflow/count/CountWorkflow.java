@@ -16,7 +16,6 @@
 package com.datastax.oss.dsbulk.workflow.count;
 
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.shaded.guava.common.base.Stopwatch;
 import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
 import com.datastax.oss.dsbulk.executor.api.reader.BulkReader;
@@ -36,16 +35,20 @@ import com.datastax.oss.dsbulk.workflow.commons.settings.SchemaGenerationStrateg
 import com.datastax.oss.dsbulk.workflow.commons.settings.SchemaSettings;
 import com.datastax.oss.dsbulk.workflow.commons.settings.SettingsManager;
 import com.datastax.oss.dsbulk.workflow.commons.settings.StatsSettings;
+import com.datastax.oss.dsbulk.workflow.commons.statement.RangeReadBoundStatement;
 import com.datastax.oss.dsbulk.workflow.commons.utils.CloseableUtils;
 import com.datastax.oss.dsbulk.workflow.commons.utils.ClusterInformationUtils;
 import com.typesafe.config.Config;
 import io.netty.util.concurrent.DefaultThreadFactory;
+import java.net.URI;
 import java.time.Duration;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiFunction;
 import java.util.function.Function;
+import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -67,14 +70,16 @@ public class CountWorkflow implements Workflow {
   private LogManager logManager;
   private CqlSession session;
   private BulkReader executor;
-  private List<? extends Statement<?>> readStatements;
+  private List<RangeReadBoundStatement> readStatements;
   private volatile boolean success;
   private Function<Flux<ReadResult>, Flux<ReadResult>> totalItemsMonitor;
   private Function<Flux<ReadResult>, Flux<ReadResult>> totalItemsCounter;
   private Function<Flux<ReadResult>, Flux<ReadResult>> failedItemsMonitor;
   private Function<Flux<ReadResult>, Flux<ReadResult>> failedReadsHandler;
   private Function<Flux<ReadResult>, Flux<ReadResult>> queryWarningsHandler;
+  private BiFunction<URI, Publisher<ReadResult>, Publisher<ReadResult>> resourceStatsHandler;
   private Function<Flux<Void>, Flux<Void>> terminationHandler;
+  private Function<Flux<ReadResult>, Flux<Void>> resultPositionsHandler;
   private int readConcurrency;
 
   CountWorkflow(Config config) {
@@ -114,7 +119,7 @@ public class CountWorkflow implements Workflow {
             executionId, codecFactory.getCodecRegistry(), monitoringSettings.getRegistry());
     ClusterInformationUtils.printDebugInfoAboutCluster(session);
     schemaSettings.init(session, codecFactory, false, false);
-    logManager = logSettings.newLogManager(session, false);
+    logManager = logSettings.newLogManager(session);
     logManager.init();
     metricsManager =
         monitoringSettings.newMetricsManager(
@@ -140,6 +145,8 @@ public class CountWorkflow implements Workflow {
     totalItemsCounter = logManager.newTotalItemsCounter();
     failedReadsHandler = logManager.newFailedReadsHandler();
     queryWarningsHandler = logManager.newQueryWarningsHandler();
+    resourceStatsHandler = logManager.newCqlResourceStatsHandler();
+    resultPositionsHandler = logManager.newReadResultPositionsHandler();
     terminationHandler = logManager.newTerminationHandler();
     int numCores = Runtime.getRuntime().availableProcessors();
     readConcurrency =
@@ -161,6 +168,8 @@ public class CountWorkflow implements Workflow {
         .flatMap(
             statement ->
                 Flux.from(executor.readReactive(statement))
+                    .transform(
+                        upstream -> resourceStatsHandler.apply(statement.getResource(), upstream))
                     .transform(queryWarningsHandler)
                     .transform(totalItemsMonitor)
                     .transform(totalItemsCounter)
@@ -173,9 +182,9 @@ public class CountWorkflow implements Workflow {
                     // inner flows; this is guaranteed since statements are split by token range
                     // (users cannot supply a custom query for these counting modes).
                     .doOnNext(readResultCounter.newCountingUnit()::update)
-                    .then()
                     .subscribeOn(scheduler),
             readConcurrency)
+        .transform(resultPositionsHandler)
         .transform(terminationHandler)
         .blockLast();
     timer.stop();
@@ -206,17 +215,21 @@ public class CountWorkflow implements Workflow {
       if (metricsManager != null) {
         metricsManager.reportFinalMetrics();
       }
+      if (logManager != null) {
+        logManager.reportAvailableFiles();
+      }
 
       // Print results even if any failures.
       // It has no sense to query billions rows for a few hours and show nothing if some failure
       // happens
-      readResultCounter.reportTotals();
-      if (!success) {
-        LOGGER.warn(
-            "Please note: the totals reported above are probably inaccurate, "
-                + "since the operation completed with errors.");
+      if (readResultCounter != null) {
+        readResultCounter.reportTotals();
+        if (!success) {
+          LOGGER.warn(
+              "Please note: the totals reported above are probably inaccurate, "
+                  + "since the operation completed with errors.");
+        }
       }
-
       LOGGER.debug("{} closed.", this);
       if (e != null) {
         throw e;

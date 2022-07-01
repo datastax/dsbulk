@@ -75,6 +75,8 @@ public class CommandLineParser {
 
     checkVersionRequest();
 
+    AnsiConfigurator.configureAnsi(args);
+
     Path applicationPath = resolveApplicationPath();
     String connectorName = resolveConnectorName();
 
@@ -139,7 +141,9 @@ public class CommandLineParser {
     Iterator<String> iterator = args.iterator();
     while (iterator.hasNext()) {
       String arg = iterator.next();
-      if (arg.equals("-c") || arg.equals("--connector.name")) {
+      if (arg.equals("-c")
+          || arg.equals("--connector.name")
+          || arg.equals("--dsbulk.connector.name")) {
         if (iterator.hasNext()) {
           return iterator.next();
         } else {
@@ -193,7 +197,9 @@ public class CommandLineParser {
   private boolean skipConnector(ListIterator<String> it) {
     if (it.hasNext()) {
       String arg = it.next();
-      if (arg.equals("-c") || arg.equals("--connector.name")) {
+      if (arg.equals("-c")
+          || arg.equals("--connector.name")
+          || arg.equals("--dsbulk.connector.name")) {
         it.next(); // already validated that there is at least one more arg
       } else {
         it.previous();

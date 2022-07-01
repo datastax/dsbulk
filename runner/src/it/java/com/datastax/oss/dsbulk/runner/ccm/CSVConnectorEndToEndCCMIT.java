@@ -92,6 +92,7 @@ import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.net.InetAddress;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
@@ -225,6 +226,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateOutputFiles(24, unloadDir);
+    validatePositionsFile(24);
   }
 
   /** Test for DAT-612 */
@@ -268,6 +270,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
       status = new DataStaxBulkLoader(addCommonSettings(args)).run();
       assertStatus(status, STATUS_OK);
       assertThat(stdout.getStreamLines()).hasSize(500);
+      validatePositionsFile(500);
     } finally {
       System.setIn(stdin);
     }
@@ -292,6 +295,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
+    validatePositionsFile(24);
     FileUtils.deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -310,11 +314,12 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateOutputFiles(24, unloadDir);
+    validatePositionsFile(24);
   }
 
   /** Test for DAT-605. */
   @Test
-  void unload_load_empty_strings() throws IOException {
+  void unload_load_empty_strings() throws IOException, URISyntaxException {
 
     session.execute(
         "CREATE TABLE IF NOT EXISTS dat605 (pk int PRIMARY KEY, v1 text, v2 ascii, v3 blob)");
@@ -338,6 +343,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertStatus(status, STATUS_OK);
     assertThat(FileUtils.readAllLinesInDirectoryAsStream(unloadDir))
         .containsExactlyInAnyOrder("1,\"\",\"\",\"\"", "2,,,");
+    validatePositionsFile(2);
 
     args = new ArrayList<>();
     args.add("load");
@@ -367,6 +373,46 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(rowWithNull.isNull("v1")).isTrue();
     assertThat(rowWithNull.isNull("v2")).isTrue();
     assertThat(rowWithNull.isNull("v3")).isTrue();
+  }
+
+  @Test
+  void partial_unload_clustering_order_by() throws IOException, InterruptedException {
+
+    session.execute(
+        "CREATE TABLE IF NOT EXISTS unload_clustering_order_by (pk int, date timeuuid, v text, primary key (pk, date)) with clustering order by (date DESC)");
+    UUID uuid1 = Uuids.timeBased();
+    Thread.sleep(500);
+    UUID uuid2 = Uuids.timeBased();
+    for (int i = 0; i < 1000; i++) {
+      session.execute(
+          "INSERT INTO unload_clustering_order_by (pk, date, v) VALUES (?, ?, 'abc')", i, uuid1);
+    }
+    for (int i = 1000; i < 2000; i++) {
+      session.execute(
+          "INSERT INTO unload_clustering_order_by (pk, date, v) VALUES (?, ?, 'abc')", i, uuid2);
+    }
+
+    List<String> args;
+
+    args = new ArrayList<>();
+    args.add("unload");
+    args.add("--connector.csv.url");
+    args.add(quoteJson(unloadDir));
+    args.add("--connector.csv.header");
+    args.add("false");
+    args.add("--schema.keyspace");
+    args.add(session.getKeyspace().get().asInternal());
+    args.add("--schema.query");
+    args.add(
+        quoteJson(
+            "select * from unload_clustering_order_by where token(pk) > :start and token(pk) <= :end and date > "
+                + uuid1
+                + " allow filtering"));
+
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+    assertThat(FileUtils.readAllLinesInDirectoryAsStream(unloadDir)).hasSize(1000);
+    validatePositionsFile(1000);
   }
 
   /** Simple test case which attempts to load and unload data using ccm and compression (LZ4). */
@@ -412,6 +458,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateOutputFiles(24, unloadDir);
+    validatePositionsFile(24);
   }
 
   /** Simple test case which attempts to load and unload data using ccm and compression (Snappy). */
@@ -461,6 +508,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateOutputFiles(24, unloadDir);
+    validatePositionsFile(24);
   }
 
   /** Simple test case which attempts to load and unload data using ccm and compressed files. */
@@ -517,6 +565,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
                 destinationFile.toUri().toURL(), UTF_8, "deflate"))) {
       assertThat(reader.lines()).hasSize(24);
     }
+    validatePositionsFile(24);
   }
 
   /**
@@ -593,6 +642,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateOutputFiles(2, unloadDir);
+    validatePositionsFile(2);
 
     args = new ArrayList<>();
     args.add("load");
@@ -716,6 +766,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateOutputFiles(1, unloadDir);
+    validatePositionsFile(1);
     assertThat(FileUtils.readAllLinesInDirectoryAsStream(unloadDir)).containsExactly("1,2,42,0,");
   }
 
@@ -783,6 +834,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateOutputFiles(2, unloadDir);
+    validatePositionsFile(1);
     assertThat(FileUtils.readAllLinesInDirectoryAsStream(unloadDir))
         // the result set order wins over the mapping order
         .containsExactly("Field A,Field B,Field C,Field D", "1,2,42,0");
@@ -847,6 +899,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateOutputFiles(1, unloadDir);
+    validatePositionsFile(1);
     assertThat(FileUtils.readAllLinesInDirectoryAsStream(unloadDir)).containsExactly("1,2,42,0,");
   }
 
@@ -889,6 +942,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateOutputFiles(500, unloadDir);
+    validatePositionsFile(500);
   }
 
   /** Test for DAT-451. */
@@ -1011,6 +1065,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateOutputFiles(3, unloadDir);
+    validatePositionsFile(1);
   }
 
   /** Attempts to load and unload data, some of which will be unsuccessful. */
@@ -1041,7 +1096,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     validateResultSetSize(21, "SELECT * FROM ip_by_country");
     validateNumberOfBadRecords(3);
     validateExceptionsLog(3, "Source:", "mapping-errors.log");
-    validatePositionsFile(CsvUtils.CSV_RECORDS_SKIP, 27);
+    validatePositionsFile(CsvUtils.CSV_RECORDS_SKIP.toURI(), 4, 27);
     FileUtils.deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -1062,6 +1117,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateOutputFiles(21, unloadDir);
+    validatePositionsFile(21);
   }
 
   @Test
@@ -1116,6 +1172,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateOutputFiles(2, unloadDir);
+    validatePositionsFile(1);
   }
 
   @Test
@@ -1150,6 +1207,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         .hasMessageContaining("The special __ttl mapping token has been deprecated")
         .hasMessageContaining("The special __timestamp mapping token has been deprecated");
     logs.clear();
+    validatePositionsFile(1);
     FileUtils.deleteDirectory(logDir);
 
     args =
@@ -1174,6 +1232,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateOutputFiles(2, unloadDir);
+    validatePositionsFile(1);
   }
 
   @Test
@@ -1426,6 +1485,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     assertTTLAndTimestampUnsetValues();
+    validatePositionsFile(2);
     FileUtils.deleteDirectory(logDir);
 
     args =
@@ -1452,6 +1512,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateOutputFiles(3, unloadDir);
+    validatePositionsFile(2);
   }
 
   @Test
@@ -1740,6 +1801,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         .contains("1,foo,")
         .contains(CodecUtils.numberToInstant(123456789, MICROSECONDS, EPOCH).toString())
         .containsPattern(",\\d+");
+    validatePositionsFile(1);
     FileUtils.deleteDirectory(logDir);
     session.execute("TRUNCATE unload_and_load_timestamp_ttl");
 
@@ -1806,6 +1868,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         .contains("1,foo,")
         .contains(CodecUtils.numberToInstant(123456789, MICROSECONDS, EPOCH).toString())
         .containsPattern(",\\d+");
+    validatePositionsFile(1);
     FileUtils.deleteDirectory(logDir);
     session.execute("TRUNCATE \"UNLOAD_AND_LOAD_TIMESTAMP_TTL\"");
 
@@ -1876,6 +1939,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         .contains("1,foo,")
         .contains(CodecUtils.numberToInstant(123456789, MICROSECONDS, EPOCH).toString())
         .containsPattern(",\\d+");
+    validatePositionsFile(1);
     FileUtils.deleteDirectory(logDir);
     session.execute("TRUNCATE \"UNLOAD_AND_LOAD_TIMESTAMP_TTL\"");
 
@@ -1944,6 +2008,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         .contains("1,foo,")
         .contains(CodecUtils.numberToInstant(123456789, MICROSECONDS, EPOCH).toString())
         .containsPattern(",\\d+");
+    validatePositionsFile(1);
     FileUtils.deleteDirectory(logDir);
     session.execute("TRUNCATE \"UNLOAD_AND_LOAD_TIMESTAMP_TTL\"");
 
@@ -2034,6 +2099,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         .doesNotHaveMessageContaining("Skipping timestamp preservation")
         .doesNotHaveMessageContaining("Skipping TTL preservation");
 
+    validatePositionsFile(1);
+
     FileUtils.deleteDirectory(logDir);
     logs.clear();
     session.execute("TRUNCATE preserve_ttl_timestamp");
@@ -2058,6 +2125,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
+    validatePositionsFile(1);
 
     ResultSet rs =
         session.execute(
@@ -2222,6 +2290,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
                 "Skipping TTL preservation for column v1: this feature is not supported for CQL type %s",
                 typeAsCql));
 
+    validatePositionsFile(1);
+
     FileUtils.deleteDirectory(logDir);
     logs.clear();
     session.execute("TRUNCATE preserve_ttl_timestamp");
@@ -2367,6 +2437,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         .doesNotHaveMessageContaining("Skipping timestamp preservation")
         .doesNotHaveMessageContaining("Skipping TTL preservation");
 
+    validatePositionsFile(1);
+
     FileUtils.deleteDirectory(logDir);
     logs.clear();
     session.execute("TRUNCATE preserve_ttl_timestamp");
@@ -2393,6 +2465,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
+
+    validatePositionsFile(1);
 
     ResultSet rs =
         session.execute(
@@ -2476,6 +2550,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         .doesNotHaveMessageContaining("Skipping timestamp preservation")
         .doesNotHaveMessageContaining("Skipping TTL preservation");
 
+    validatePositionsFile(1);
+
     FileUtils.deleteDirectory(logDir);
     logs.clear();
     session.execute("TRUNCATE preserve_ttl_timestamp");
@@ -2502,6 +2578,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
+    validatePositionsFile(1);
 
     ResultSet rs =
         session.execute(
@@ -2675,7 +2752,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     args.add("--log.maxErrors");
     args.add("9");
     args.add("--log.verbosity");
-    args.add("2");
+    args.add("high");
     args.add("--connector.csv.url");
     args.add(quoteJson(resource));
     args.add("--connector.csv.header");
@@ -2693,10 +2770,13 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertStatus(status, STATUS_ABORTED_TOO_MANY_ERRORS);
     assertThat(logs.getAllMessagesAsString())
         .contains("aborted: Too many errors, the maximum allowed is 9")
-        .contains("Records: total: 24, successful: 14, failed: 10");
-    // the number of writes may vary due to the abortion
+        .contains("Records: total: 24, successful: 14, failed: 10")
+        // the number of writes is zero because statements were being accumulated by the batcher
+        // when the error was triggered and were not flushed
+        .contains("Writes: total: 0, successful: 0, failed: 0, in-flight: 0");
     validateNumberOfBadRecords(10);
-    validatePositionsFile(resource, 24);
+    // first position is 15 because 1-14 were not flushed and not written
+    validatePositionsFile(resource.toURI(), 15, 24, false);
     validateExceptionsLog(
         10, "Primary key column \"COUNTRY CODE\" cannot be set to null", "mapping-errors.log");
   }
@@ -3631,6 +3711,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     if (status == STATUS_COMPLETED_WITH_ERRORS) {
       validateNumberOfBadRecords(1);
     }
+    validatePositionsFile(3);
 
     // load static columns only
     args =
@@ -3712,6 +3793,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertThat(lines).hasSize(2);
     assertThat(lines.get(0)).isEqualTo("pk,v,date_created");
     assertThat(lines.get(1)).matches("0,1,\\d{4}-\\d{2}-\\d{2}");
+    validatePositionsFile(1);
   }
 
   @Test
@@ -3748,6 +3830,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
         FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
     assertThat(lines).hasSize(1);
     assertThat(lines.get(0)).matches("0,1,\\d{4}-\\d{2}-\\d{2}");
+    validatePositionsFile(1);
   }
 
   /** test for DAT-372 exercising custom bound variable names in WHERE clause restrictions */
@@ -3782,6 +3865,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> lines =
         FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
     assertThat(lines).hasSize(1).containsExactly("0,1,2");
+    validatePositionsFile(1);
   }
 
   @Test
@@ -3815,6 +3899,81 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     List<String> lines =
         FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
     assertThat(lines).hasSize(1).containsExactly("0,1,2");
+    validatePositionsFile(1);
+  }
+
+  @Test
+  void unload_non_parallelizable_custom_where_clause() throws IOException {
+
+    session.execute("DROP TABLE IF EXISTS unload_non_parallelizable");
+    session.execute(
+        "CREATE TABLE unload_non_parallelizable (pk int, cc int, v int, PRIMARY KEY (pk, cc))");
+    session.execute("INSERT INTO unload_non_parallelizable (pk, cc, v) values (0, 1, 2)");
+
+    List<String> args =
+        Lists.newArrayList(
+            "unload",
+            "--log.directory",
+            quoteJson(logDir),
+            "-header",
+            "false",
+            "--connector.csv.url",
+            quoteJson(unloadDir),
+            "--connector.csv.maxConcurrentFiles",
+            "1",
+            "--schema.keyspace",
+            session.getKeyspace().get().asInternal(),
+            "--schema.query",
+            quoteJson("SELECT pk, cc, v FROM unload_non_parallelizable WHERE pk = 0"));
+
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+    List<String> lines =
+        FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
+    assertThat(lines).hasSize(1).containsExactly("0,1,2");
+    validatePositionsFile(
+        URI.create(
+            "cql://"
+                + session.getKeyspace().get().asInternal()
+                + "/unload_non_parallelizable?start=-9223372036854775808&end=-9223372036854775808"),
+        1);
+  }
+
+  @Test
+  void unload_non_parallelizable_limit() throws IOException {
+
+    session.execute("DROP TABLE IF EXISTS unload_non_parallelizable");
+    session.execute(
+        "CREATE TABLE unload_non_parallelizable (pk int, cc int, v int, PRIMARY KEY (pk, cc))");
+    session.execute("INSERT INTO unload_non_parallelizable (pk, cc, v) values (0, 1, 2)");
+
+    List<String> args =
+        Lists.newArrayList(
+            "unload",
+            "--log.directory",
+            quoteJson(logDir),
+            "-header",
+            "false",
+            "--connector.csv.url",
+            quoteJson(unloadDir),
+            "--connector.csv.maxConcurrentFiles",
+            "1",
+            "--schema.keyspace",
+            session.getKeyspace().get().asInternal(),
+            "--schema.query",
+            quoteJson("SELECT pk, cc, v FROM unload_non_parallelizable LIMIT 1"));
+
+    ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
+    assertStatus(status, STATUS_OK);
+    List<String> lines =
+        FileUtils.readAllLinesInDirectoryAsStream(unloadDir).collect(Collectors.toList());
+    assertThat(lines).hasSize(1).containsExactly("0,1,2");
+    validatePositionsFile(
+        URI.create(
+            "cql://"
+                + session.getKeyspace().get().asInternal()
+                + "/unload_non_parallelizable?start=-9223372036854775808&end=-9223372036854775808"),
+        1);
   }
 
   /** Test for DAT-373. */
@@ -4539,7 +4698,7 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
   /** Test for CAS failures (DAT-384). */
   @Test
-  void cas_load_with_errors() {
+  void cas_load_with_errors() throws IOException {
 
     session.execute("DROP TABLE IF EXISTS test_cas");
     session.execute("CREATE TABLE test_cas (pk int, cc int, v int, PRIMARY KEY (pk, cc))");
@@ -4548,10 +4707,15 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     session.execute("INSERT INTO test_cas (pk, cc, v) VALUES (1, 3, 3)");
 
     // two failed CAS records will cause the entire batch to fail
-    Record record1Failed = RecordUtils.mappedCSV("pk", "1", "cc", "1", "v", "1"); // will fail
-    Record record2Failed = RecordUtils.mappedCSV("pk", "1", "cc", "2", "v", "2"); // will fail
+    Record record1Failed =
+        RecordUtils.mappedCSV(
+            RecordUtils.DEFAULT_RESOURCE, 1, "pk", "1", "cc", "1", "v", "1"); // will fail
+    Record record2Failed =
+        RecordUtils.mappedCSV(
+            RecordUtils.DEFAULT_RESOURCE, 2, "pk", "1", "cc", "2", "v", "2"); // will fail
     Record record3NotApplied =
-        RecordUtils.mappedCSV("pk", "1", "cc", "4", "v", "4"); // will not be applied
+        RecordUtils.mappedCSV(
+            RecordUtils.DEFAULT_RESOURCE, 3, "pk", "1", "cc", "4", "v", "4"); // will not be applied
 
     MockConnector.mockReads(record1Failed, record2Failed, record3NotApplied);
 
@@ -4621,6 +4785,8 @@ class CSVConnectorEndToEndCCMIT extends EndToEndCCMITBase {
             "Failed conditional updates:",
             "\"[applied]\": false\npk: 1\ncc: 1\nv: 1",
             "\"[applied]\": false\npk: 1\ncc: 2\nv: 2");
+
+    validatePositionsFile(3);
 
     List<Row> rows = session.execute("SELECT v FROM test_cas WHERE pk = 1").all();
     assertThat(rows).hasSize(3);

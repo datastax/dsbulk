@@ -26,8 +26,9 @@ import com.datastax.oss.driver.api.core.metadata.schema.RelationMetadata;
 import com.datastax.oss.driver.api.core.metadata.token.TokenRange;
 import com.datastax.oss.driver.internal.core.metadata.token.DefaultTokenMap;
 import edu.umd.cs.findbugs.annotations.NonNull;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -68,7 +69,7 @@ public class TokenRangeReadStatementGenerator {
    * @return A list of SELECT statements to read the entire table.
    */
   @NonNull
-  public List<Statement<?>> generate(int splitCount) {
+  public Map<TokenRange, SimpleStatement> generate(int splitCount) {
     return generate(splitCount, this::generateSimpleStatement);
   }
 
@@ -93,17 +94,17 @@ public class TokenRangeReadStatementGenerator {
    * @return A list of SELECT statements to read the entire table.
    */
   @NonNull
-  public List<Statement<?>> generate(
-      int splitCount, @NonNull Function<TokenRange, Statement<?>> statementFactory) {
+  public <StatementT extends Statement<StatementT>> Map<TokenRange, StatementT> generate(
+      int splitCount, @NonNull Function<TokenRange, StatementT> statementFactory) {
     BulkTokenFactory tokenFactory =
         BulkTokenFactory.forPartitioner(
             ((DefaultTokenMap) tokenMap).getTokenFactory().getPartitionerName());
     PartitionGenerator generator =
         new PartitionGenerator(table.getKeyspace(), tokenMap, tokenFactory);
     List<BulkTokenRange> partitions = generator.partition(splitCount);
-    List<Statement<?>> statements = new ArrayList<>();
-    for (TokenRange range : partitions) {
-      Statement<?> stmt = statementFactory.apply(range);
+    Map<TokenRange, StatementT> statements = new TreeMap<>();
+    for (BulkTokenRange range : partitions) {
+      StatementT stmt = statementFactory.apply(range);
       if (stmt.getKeyspace() != null) {
         if (!stmt.getKeyspace().equals(table.getKeyspace())) {
           throw new IllegalStateException(
@@ -115,12 +116,12 @@ public class TokenRangeReadStatementGenerator {
         stmt = stmt.setRoutingKeyspace(table.getKeyspace());
       }
       stmt = stmt.setRoutingToken(range.getEnd());
-      statements.add(stmt);
+      statements.put(range, stmt);
     }
     return statements;
   }
 
-  private Statement<?> generateSimpleStatement(TokenRange range) {
+  private SimpleStatement generateSimpleStatement(TokenRange range) {
     String all =
         table.getColumns().keySet().stream()
             .map(id -> id.asCql(true))

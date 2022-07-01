@@ -30,6 +30,7 @@ import com.datastax.oss.dsbulk.connectors.api.RecordMetadata;
 import com.datastax.oss.dsbulk.executor.api.result.ReadResult;
 import com.datastax.oss.dsbulk.mapping.CQLWord;
 import com.datastax.oss.dsbulk.mapping.Mapping;
+import com.datastax.oss.dsbulk.workflow.commons.statement.RangeReadStatement;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.net.URI;
 import java.util.Set;
@@ -38,14 +39,12 @@ public class DefaultReadResultMapper implements ReadResultMapper {
 
   private final Mapping mapping;
   private final RecordMetadata recordMetadata;
-  private final URI resource;
   private final boolean retainRecordSources;
 
   public DefaultReadResultMapper(
-      Mapping mapping, RecordMetadata recordMetadata, URI resource, boolean retainRecordSources) {
+      Mapping mapping, RecordMetadata recordMetadata, boolean retainRecordSources) {
     this.mapping = mapping;
     this.recordMetadata = recordMetadata;
-    this.resource = resource;
     this.retainRecordSources = retainRecordSources;
   }
 
@@ -53,10 +52,11 @@ public class DefaultReadResultMapper implements ReadResultMapper {
   @Override
   public Record map(@NonNull ReadResult result) {
     Object source = retainRecordSources ? result : null;
+    URI resource = ((RangeReadStatement) result.getStatement()).getResource();
     try {
       Row row = result.getRow().orElseThrow(IllegalStateException::new);
       ColumnDefinitions columnDefinitions = row.getColumnDefinitions();
-      DefaultRecord record = new DefaultRecord(source, resource, -1);
+      DefaultRecord record = new DefaultRecord(source, resource, result.getPosition());
       for (ColumnDefinition def : columnDefinitions) {
         CQLWord variable = CQLWord.fromInternal(def.getName().asInternal());
         CqlIdentifier name = variable.asIdentifier();

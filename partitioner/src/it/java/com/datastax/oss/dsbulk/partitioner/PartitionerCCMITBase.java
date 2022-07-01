@@ -38,6 +38,7 @@ import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.driver.api.core.metadata.TokenMap;
 import com.datastax.oss.driver.api.core.metadata.schema.TableMetadata;
 import com.datastax.oss.driver.api.core.metadata.token.Token;
+import com.datastax.oss.driver.api.core.metadata.token.TokenRange;
 import com.datastax.oss.driver.api.testinfra.session.SessionUtils;
 import com.datastax.oss.driver.shaded.guava.common.util.concurrent.Uninterruptibles;
 import com.datastax.oss.dsbulk.tests.ccm.CCMCluster;
@@ -48,7 +49,7 @@ import com.datastax.oss.dsbulk.tests.ccm.annotations.CCMVersionRequirement;
 import com.datastax.oss.dsbulk.tests.driver.VersionUtils;
 import com.datastax.oss.dsbulk.tests.utils.CQLUtils;
 import com.datastax.oss.dsbulk.tests.utils.StringUtils;
-import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -104,10 +105,10 @@ abstract class PartitionerCCMITBase {
     TableMetadata table = getTable(ks).orElseThrow(IllegalStateException::new);
     TokenRangeReadStatementGenerator generator =
         new TokenRangeReadStatementGenerator(table, session.getMetadata());
-    List<Statement<?>> statements = generator.generate(splitCount);
+    Map<TokenRange, SimpleStatement> statements = generator.generate(splitCount);
     int total = 0;
     TokenMap tokenMap = session.getMetadata().getTokenMap().get();
-    for (Statement<?> stmt : statements) {
+    for (Statement<?> stmt : statements.values()) {
       stmt = stmt.setConsistencyLevel(ALL).setExecutionProfile(SessionUtils.slowProfile(session));
       ResultSet rs = null;
       try {

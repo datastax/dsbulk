@@ -18,7 +18,6 @@ package com.datastax.oss.dsbulk.runner;
 import static com.datastax.oss.dsbulk.runner.ExitStatus.STATUS_CRASHED;
 import static com.datastax.oss.dsbulk.runner.ExitStatus.STATUS_OK;
 
-import com.datastax.oss.dsbulk.runner.cli.AnsiConfigurator;
 import com.datastax.oss.dsbulk.runner.cli.CommandLineParser;
 import com.datastax.oss.dsbulk.runner.cli.GlobalHelpRequestException;
 import com.datastax.oss.dsbulk.runner.cli.ParsedCommandLine;
@@ -59,8 +58,6 @@ public class DataStaxBulkLoader {
 
     Workflow workflow = null;
     try {
-
-      AnsiConfigurator.configureAnsi(args);
 
       CommandLineParser parser = new CommandLineParser(args);
       ParsedCommandLine result = parser.parse();

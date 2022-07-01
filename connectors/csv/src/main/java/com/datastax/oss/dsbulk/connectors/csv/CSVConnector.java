@@ -228,8 +228,8 @@ public class CSVConnector extends AbstractFileBasedConnector {
 
   @Override
   @NonNull
-  protected RecordReader newSingleFileReader(@NonNull URL url) throws IOException {
-    return new CSVRecordReader(url);
+  protected RecordReader newSingleFileReader(@NonNull URL url, URI resource) throws IOException {
+    return new CSVRecordReader(url, resource);
   }
 
   private class CSVRecordReader implements RecordReader {
@@ -242,10 +242,10 @@ public class CSVConnector extends AbstractFileBasedConnector {
 
     private long recordNumber = 1;
 
-    private CSVRecordReader(URL url) throws IOException {
+    private CSVRecordReader(URL url, URI resource) throws IOException {
       this.url = url;
+      this.resource = resource;
       try {
-        resource = URI.create(url.toExternalForm());
         parser = new CsvParser(parserSettings);
         Reader r = CompressedIOUtils.newBufferedReader(url, encoding, compression);
         parser.beginParsing(r);

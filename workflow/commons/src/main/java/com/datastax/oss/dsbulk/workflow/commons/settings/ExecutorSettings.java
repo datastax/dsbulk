@@ -27,7 +27,6 @@ import com.datastax.oss.dsbulk.executor.api.BulkExecutor;
 import com.datastax.oss.dsbulk.executor.api.BulkExecutorBuilder;
 import com.datastax.oss.dsbulk.executor.api.BulkExecutorBuilderFactory;
 import com.datastax.oss.dsbulk.executor.api.listener.ExecutionListener;
-import com.datastax.oss.dsbulk.executor.api.listener.MetricsCollectingExecutionListener;
 import com.datastax.oss.dsbulk.executor.api.reader.BulkReader;
 import com.datastax.oss.dsbulk.executor.api.writer.BulkWriter;
 import com.typesafe.config.Config;
@@ -85,7 +84,7 @@ public class ExecutorSettings {
   @NonNull
   public BulkReader newReadExecutor(
       @NonNull CqlSession session,
-      @NonNull MetricsCollectingExecutionListener executionListener,
+      @NonNull ExecutionListener executionListener,
       boolean searchQuery) {
     return newBulkExecutor(session, executionListener, true, searchQuery);
   }

@@ -23,9 +23,11 @@ import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.datastax.oss.dsbulk.connectors.api.RecordMetadata;
 import com.typesafe.config.Config;
 import edu.umd.cs.findbugs.annotations.NonNull;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
@@ -79,8 +81,15 @@ public final class MockConnector implements Connector {
 
           @NonNull
           @Override
-          public Publisher<Publisher<Record>> read() {
-            return Flux.just(Flux.just(records).map(RecordUtils::cloneRecord));
+          public Publisher<Publisher<Record>> read(
+              BiFunction<URI, Publisher<Record>, Publisher<Record>> resourceTerminationHandler) {
+            return Flux.just(
+                Flux.just(records)
+                    .map(RecordUtils::cloneRecord)
+                    .transform(
+                        upstream ->
+                            resourceTerminationHandler.apply(
+                                RecordUtils.DEFAULT_RESOURCE, upstream)));
           }
 
           @NonNull
@@ -132,7 +141,8 @@ public final class MockConnector implements Connector {
 
           @NonNull
           @Override
-          public Publisher<Publisher<Record>> read() {
+          public Publisher<Publisher<Record>> read(
+              BiFunction<URI, Publisher<Record>, Publisher<Record>> resourceTerminationHandler) {
             return Flux::just;
           }
 
@@ -187,7 +197,8 @@ public final class MockConnector implements Connector {
 
           @NonNull
           @Override
-          public Publisher<Publisher<Record>> read() {
+          public Publisher<Publisher<Record>> read(
+              BiFunction<URI, Publisher<Record>, Publisher<Record>> resourceTerminationHandler) {
             return Flux::just;
           }
 
@@ -202,8 +213,9 @@ public final class MockConnector implements Connector {
 
   @NonNull
   @Override
-  public Publisher<Publisher<Record>> read() {
-    return delegate.read();
+  public Publisher<Publisher<Record>> read(
+      BiFunction<URI, Publisher<Record>, Publisher<Record>> resourceTerminationHandler) {
+    return delegate.read(resourceTerminationHandler);
   }
 
   @NonNull

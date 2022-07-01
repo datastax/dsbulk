@@ -170,11 +170,9 @@ public final class StatementWriter implements Appendable {
    */
   public StatementWriter appendClassNameAndHashCode(Statement<?> statement) {
     String fqcn = statement.getClass().getName();
-    if (fqcn.startsWith("com.datastax.driver.core.querybuilder")) fqcn = "BuiltStatement";
-    if (fqcn.startsWith("com.datastax.driver.core.schemabuilder")) fqcn = "SchemaStatement";
-    else if (fqcn.startsWith("com.datastax.driver.core.")) fqcn = fqcn.substring(25);
-    else if (fqcn.startsWith("com.datastax.oss.dsbulk.executor.api.statement."))
-      fqcn = fqcn.substring(43);
+    if (fqcn.startsWith("com.datastax.oss")) {
+      fqcn = fqcn.substring(fqcn.lastIndexOf('.') + 1);
+    }
     buffer.append(fqcn);
     buffer.append('@');
     buffer.append(Integer.toHexString(statement.hashCode()));

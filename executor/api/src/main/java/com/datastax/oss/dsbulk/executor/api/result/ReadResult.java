@@ -39,6 +39,11 @@ public interface ReadResult extends Result {
   Optional<Row> getRow();
 
   /**
+   * @return the position of this result, that is, which row in the result set it was created from.
+   */
+  long getPosition();
+
+  /**
    * If the result is a success, invoke the specified consumer with the returned {@link Row},
    * otherwise do nothing.
    *

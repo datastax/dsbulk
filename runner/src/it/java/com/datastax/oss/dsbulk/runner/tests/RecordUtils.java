@@ -24,40 +24,38 @@ import com.datastax.oss.dsbulk.connectors.api.Field;
 import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.net.URI;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class RecordUtils {
 
-  private static final AtomicInteger COUNTER = new AtomicInteger(0);
+  public static final URI DEFAULT_RESOURCE = URI.create("file://file1.txt");
 
-  public static Record mappedCSV(String... tokens) {
-    int counter = COUNTER.incrementAndGet();
-    DefaultRecord record =
-        DefaultRecord.indexed(
-            "source" + counter, URI.create("file://file" + counter + ".csv"), counter - 1);
+  public static Record mappedCSV(URI resource, long position, String... tokens) {
+    DefaultRecord record = DefaultRecord.indexed("source" + position, resource, position);
     for (int i = 0; i < tokens.length; i += 2) {
       record.put(new DefaultMappedField(tokens[i]), tokens[i + 1]);
-      record.put(new DefaultIndexedField(i % 2), tokens[i + 1]);
+      record.put(new DefaultIndexedField(i / 2), tokens[i + 1]);
     }
     return record;
   }
 
-  public static Record indexedCSV(String... values) {
-    int counter = COUNTER.incrementAndGet();
-    DefaultRecord record =
-        DefaultRecord.indexed(
-            "source" + counter, URI.create("file://file" + counter + ".csv"), counter - 1);
+  public static Record mappedCSV(String... tokens) {
+    return mappedCSV(DEFAULT_RESOURCE, 1, tokens);
+  }
+
+  public static Record indexedCSV(URI resource, long position, String... values) {
+    DefaultRecord record = DefaultRecord.indexed("source" + position, resource, position);
     for (int i = 0; i < values.length; i++) {
       record.put(new DefaultIndexedField(i), values[i]);
     }
     return record;
   }
 
-  public static Record mappedJson(String... tokens) {
-    int counter = COUNTER.incrementAndGet();
-    DefaultRecord record =
-        DefaultRecord.indexed(
-            "source" + counter, URI.create("file://file" + counter + ".json"), counter - 1);
+  public static Record indexedCSV(String... values) {
+    return indexedCSV(DEFAULT_RESOURCE, 1, values);
+  }
+
+  public static Record mappedJson(URI resource, long position, String... tokens) {
+    DefaultRecord record = DefaultRecord.indexed("source" + position, resource, position);
     for (int i = 0; i < tokens.length; i += 2) {
       record.put(
           new DefaultMappedField(tokens[i]), JsonNodeFactory.instance.textNode(tokens[i + 1]));
@@ -65,10 +63,16 @@ public class RecordUtils {
     return record;
   }
 
+  public static Record mappedJson(String... tokens) {
+    return mappedJson(DEFAULT_RESOURCE, 1, tokens);
+  }
+
+  public static Record error(URI resource, long position, Throwable error) {
+    return new DefaultErrorRecord("source" + position, resource, position, error);
+  }
+
   public static Record error(Throwable error) {
-    int counter = COUNTER.incrementAndGet();
-    return new DefaultErrorRecord(
-        "source" + counter, URI.create("file://file" + counter + ".csv"), counter - 1, error);
+    return error(DEFAULT_RESOURCE, 1, error);
   }
 
   public static Record cloneRecord(Record record) {

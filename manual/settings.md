@@ -287,15 +287,18 @@ The writable directory where all log files will be stored; if the directory spec
 
 Default: **"./logs"**.
 
-#### -verbosity,<br />--log.verbosity<br />--dsbulk.log.verbosity _&lt;number&gt;_
+#### -verbosity,<br />--log.verbosity<br />--dsbulk.log.verbosity _&lt;string&gt;_
 
 The desired level of verbosity. Valid values are:
 
-- 0 (quiet): DSBulk will only log WARN and ERROR messages.
-- 1 (normal): DSBulk will log INFO, WARN and ERROR messages.
-- 2 (verbose) DSBulk will log DEBUG, INFO, WARN and ERROR messages.
+- `quiet`: DSBulk will only log WARN and ERROR messages.
+- `normal`: DSBulk will log a few INFO messages, as well as WARN and ERROR messages.
+- `high`: DSBulk will also print some DEBUG messages at the beginning of the operation, such as DSBulk's settings, inferred query, and the read and write concurrency.
+- `max`: DSBulk will print numerous DEBUG messages from itself, the driver, and from some important libraries (Netty and Reactor).
 
-Default: **1**.
+Verbosity levels `quiet`, `normal` and `high` are suitable to use in a production environment. Verbosity `high` is the recommended level to diagnose problems related to configuration and/or performance in production environments. Verbosity `max`, however, should only be used for debugging, and preferably on small amounts of data; otherwise it could print hundreds of gigabytes of text to the main log file and to the console.
+
+Default: **"normal"**.
 
 #### -reportRate,<br />--monitoring.reportRate<br />--dsbulk.monitoring.reportRate _&lt;string&gt;_
 
@@ -1256,15 +1259,18 @@ The writable directory where all log files will be stored; if the directory spec
 
 Default: **"./logs"**.
 
-#### -verbosity,<br />--log.verbosity<br />--dsbulk.log.verbosity _&lt;number&gt;_
+#### -verbosity,<br />--log.verbosity<br />--dsbulk.log.verbosity _&lt;string&gt;_
 
 The desired level of verbosity. Valid values are:
 
-- 0 (quiet): DSBulk will only log WARN and ERROR messages.
-- 1 (normal): DSBulk will log INFO, WARN and ERROR messages.
-- 2 (verbose) DSBulk will log DEBUG, INFO, WARN and ERROR messages.
+- `quiet`: DSBulk will only log WARN and ERROR messages.
+- `normal`: DSBulk will log a few INFO messages, as well as WARN and ERROR messages.
+- `high`: DSBulk will also print some DEBUG messages at the beginning of the operation, such as DSBulk's settings, inferred query, and the read and write concurrency.
+- `max`: DSBulk will print numerous DEBUG messages from itself, the driver, and from some important libraries (Netty and Reactor).
 
-Default: **1**.
+Verbosity levels `quiet`, `normal` and `high` are suitable to use in a production environment. Verbosity `high` is the recommended level to diagnose problems related to configuration and/or performance in production environments. Verbosity `max`, however, should only be used for debugging, and preferably on small amounts of data; otherwise it could print hundreds of gigabytes of text to the main log file and to the console.
+
+Default: **"normal"**.
 
 #### --log.ansiMode<br />--dsbulk.log.ansiMode _&lt;string&gt;_
 
@@ -1274,9 +1280,7 @@ Whether or not to use ANSI colors and other escape sequences in log messages pri
   - compatible with ANSI escape sequences; all common terminals on *nix and BSD systems, including MacOS, are ANSI-compatible, and some popular terminals for Windows (Mintty, MinGW);
   - a standard Windows DOS command prompt (ANSI sequences are translated on the fly).
 - `force`: DSBulk will use ANSI, even if the terminal has not been detected as ANSI-compatible.
-- `disable`: DSBulk will not use ANSI.
-
-Note to Windows users: ANSI support on Windows works best when the Microsoft Visual C++ 2008 SP1 Redistributable Package is installed; you can download it [here](https://www.microsoft.com/en-us/download/details.aspx?displaylang=en&id=5582).
+- `disabled`: DSBulk will not use ANSI.
 
 Default: **"normal"**.
 
@@ -1419,12 +1423,14 @@ Default: **"DSBulk"**.
 #### --monitoring.prometheus.labels<br />--dsbulk.monitoring.prometheus.labels _&lt;map&lt;string,string&gt;&gt;_
 
 A set of static labels to add to each exported metric, in both pull and push modes. Note that DSBulk automatically adds the following labels:
+
 - `operation_id` is set to the current operation ID (a.k.a. execution ID, see `engine.executionId`);
 - `job` is set to the job name (as defined by `monitoring.prometheus.job`, by default "DSBulk");
 - `application_name` is set to "DataStax Bulk Loader" followed by the operation ID;
 - `application_version` is set to the DSBulk's version;
 - `driver_version` is set to the DataStax Java driver version;
 - `client_id` is set to DSBulk's client UUID.
+
 The last four labels correspond to values that DSBulk also passes to the driver, which in turn uses the same info to connect to Cassandra. This makes it possible to correlate data sent by the driver to Cassandra with data sent by DSBulk to Prometheus.
 
 #### -prometheus,<br />--monitoring.prometheus.pull.enabled<br />--dsbulk.monitoring.prometheus.pull.enabled _&lt;boolean&gt;_
@@ -1970,7 +1976,7 @@ The node-level metrics to enable. Available metrics are:
 - ignores.unavailable
 - ignores.other
 - errors.connection.init
-* errors.connection.auth
+- errors.connection.auth
 
 Default: **[]**.
 

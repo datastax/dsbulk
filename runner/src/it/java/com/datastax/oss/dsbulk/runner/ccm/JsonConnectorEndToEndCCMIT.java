@@ -137,6 +137,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
+    validatePositionsFile(JsonUtils.JSON_RECORDS_UNIQUE, 24);
     FileUtils.deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -161,6 +162,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateOutputFiles(24, unloadDir);
+    validatePositionsFile(24);
   }
 
   /** Test for DAT-451. */
@@ -245,6 +247,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
+    validatePositionsFile(24);
     FileUtils.deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -269,6 +272,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateOutputFiles(24, unloadDir);
+    validatePositionsFile(24);
   }
 
   /** DAT-307: Test to validate that missing primary keys will fail to load. */
@@ -377,6 +381,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
+    validatePositionsFile(JsonUtils.JSON_RECORDS_UNIQUE, 24);
     FileUtils.deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -403,6 +408,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateOutputFiles(24, unloadDir);
+    validatePositionsFile(24);
   }
 
   /** Simple test case which attempts to load and unload data using ccm and compression (Snappy). */
@@ -435,6 +441,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateResultSetSize(24, "SELECT * FROM ip_by_country");
+    validatePositionsFile(JsonUtils.JSON_RECORDS_UNIQUE, 24);
     FileUtils.deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -461,6 +468,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateOutputFiles(24, unloadDir);
+    validatePositionsFile(24);
   }
 
   /**
@@ -517,6 +525,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
 
     assertComplexRows(session);
 
+    validatePositionsFile(2);
     FileUtils.deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -544,6 +553,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertStatus(status, STATUS_OK);
     // 2 documents + 2 lines for single document mode
     validateOutputFiles(4, unloadDir);
+    validatePositionsFile(2);
 
     args = new ArrayList<>();
     args.add("load");
@@ -568,6 +578,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     assertStatus(status, STATUS_OK);
 
     assertComplexRows(session);
+    validatePositionsFile(2);
   }
 
   /** Attempts to load and unload a larger dataset which can be batched. */
@@ -594,6 +605,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateResultSetSize(500, "SELECT * FROM ip_by_country");
+    validatePositionsFile(JsonUtils.JSON_RECORDS, 500);
     FileUtils.deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -618,6 +630,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateOutputFiles(500, unloadDir);
+    validatePositionsFile(500);
   }
 
   /**
@@ -644,6 +657,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateResultSetSize(1, "SELECT * FROM \"MYKS\".\"WITH_SPACES\"");
+    validatePositionsFile(JsonUtils.JSON_RECORDS_WITH_SPACES, 1);
     FileUtils.deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -664,6 +678,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateOutputFiles(1, unloadDir);
+    validatePositionsFile(1);
   }
 
   /** Attempts to load and unload data, some of which will be unsuccessful. */
@@ -698,6 +713,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     validateResultSetSize(21, "SELECT * FROM ip_by_country");
     validateNumberOfBadRecords(3);
     validateExceptionsLog(3, "Source:", "mapping-errors.log");
+    validatePositionsFile(JsonUtils.JSON_RECORDS_SKIP.toURI(), 4, 27);
     FileUtils.deleteDirectory(logDir);
 
     args = new ArrayList<>();
@@ -722,6 +738,7 @@ class JsonConnectorEndToEndCCMIT extends EndToEndCCMITBase {
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_OK);
     validateOutputFiles(21, unloadDir);
+    validatePositionsFile(21);
   }
 
   /** Test for DAT-224. */

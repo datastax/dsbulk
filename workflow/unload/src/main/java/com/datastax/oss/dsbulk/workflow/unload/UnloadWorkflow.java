@@ -16,7 +16,6 @@
 package com.datastax.oss.dsbulk.workflow.unload;
 
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.shaded.guava.common.base.Stopwatch;
 import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
 import com.datastax.oss.dsbulk.connectors.api.CommonConnectorFeature;
@@ -40,16 +39,19 @@ import com.datastax.oss.dsbulk.workflow.commons.settings.MonitoringSettings;
 import com.datastax.oss.dsbulk.workflow.commons.settings.SchemaGenerationStrategy;
 import com.datastax.oss.dsbulk.workflow.commons.settings.SchemaSettings;
 import com.datastax.oss.dsbulk.workflow.commons.settings.SettingsManager;
+import com.datastax.oss.dsbulk.workflow.commons.statement.RangeReadBoundStatement;
 import com.datastax.oss.dsbulk.workflow.commons.utils.CloseableUtils;
 import com.datastax.oss.dsbulk.workflow.commons.utils.ClusterInformationUtils;
 import com.typesafe.config.Config;
 import io.netty.util.concurrent.DefaultThreadFactory;
+import java.net.URI;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -74,7 +76,7 @@ public class UnloadWorkflow implements Workflow {
   private LogManager logManager;
   private CqlSession session;
   private BulkReader executor;
-  private List<Statement<?>> readStatements;
+  private List<RangeReadBoundStatement> readStatements;
   private Function<Publisher<Record>, Publisher<Record>> writer;
   private Function<Flux<ReadResult>, Flux<ReadResult>> totalItemsMonitor;
   private Function<Flux<Record>, Flux<Record>> failedRecordsMonitor;
@@ -84,6 +86,8 @@ public class UnloadWorkflow implements Workflow {
   private Function<Flux<ReadResult>, Flux<ReadResult>> failedReadsHandler;
   private Function<Flux<ReadResult>, Flux<ReadResult>> queryWarningsHandler;
   private Function<Flux<Record>, Flux<Record>> unmappableRecordsHandler;
+  private Function<Flux<Record>, Flux<Void>> resultPositionsHandler;
+  private BiFunction<URI, Publisher<ReadResult>, Publisher<ReadResult>> resourceStatsHandler;
   private Function<Flux<Void>, Flux<Void>> terminationHandler;
   private int readConcurrency;
   private int numCores;
@@ -133,7 +137,7 @@ public class UnloadWorkflow implements Workflow {
         codecFactory,
         connector.supports(CommonConnectorFeature.INDEXED_RECORDS),
         connector.supports(CommonConnectorFeature.MAPPED_RECORDS));
-    logManager = logSettings.newLogManager(session, false);
+    logManager = logSettings.newLogManager(session);
     logManager.init();
     metricsManager =
         monitoringSettings.newMetricsManager(
@@ -147,8 +151,7 @@ public class UnloadWorkflow implements Workflow {
     metricsManager.init();
     RecordMetadata recordMetadata = connector.getRecordMetadata();
     readResultMapper =
-        schemaSettings.createReadResultMapper(
-            session, recordMetadata, codecFactory, logSettings.isSources());
+        schemaSettings.createReadResultMapper(session, recordMetadata, logSettings.isSources());
     readStatements = schemaSettings.createReadStatements(session);
     executor =
         executorSettings.newReadExecutor(
@@ -163,6 +166,8 @@ public class UnloadWorkflow implements Workflow {
     failedReadsHandler = logManager.newFailedReadsHandler();
     queryWarningsHandler = logManager.newQueryWarningsHandler();
     unmappableRecordsHandler = logManager.newUnmappableRecordsHandler();
+    resultPositionsHandler = logManager.newRecordPositionsHandler();
+    resourceStatsHandler = logManager.newCqlResourceStatsHandler();
     terminationHandler = logManager.newTerminationHandler();
     numCores = Runtime.getRuntime().availableProcessors();
     if (connector.writeConcurrency() < 1) {
@@ -188,7 +193,7 @@ public class UnloadWorkflow implements Workflow {
   public boolean execute() {
     LOGGER.debug("{} started.", this);
     metricsManager.start();
-    Flux<Record> flux;
+    Flux<Void> flux;
     if (writeConcurrency == 1) {
       flux = oneWriter();
     } else if (writeConcurrency < numCores / 2 || readConcurrency < numCores / 2) {
@@ -197,7 +202,7 @@ public class UnloadWorkflow implements Workflow {
       flux = manyWriters();
     }
     Stopwatch timer = Stopwatch.createStarted();
-    flux.then().flux().transform(terminationHandler).blockLast();
+    flux.transform(terminationHandler).blockLast();
     timer.stop();
     int totalErrors = logManager.getTotalErrors();
     metricsManager.stop(timer.elapsed(), totalErrors == 0);
@@ -212,7 +217,7 @@ public class UnloadWorkflow implements Workflow {
     return totalErrors == 0;
   }
 
-  private Flux<Record> oneWriter() {
+  private Flux<Void> oneWriter() {
     int numThreads = Math.min(numCores * 2, readConcurrency);
     Scheduler scheduler =
         numThreads == 1
@@ -221,9 +226,11 @@ public class UnloadWorkflow implements Workflow {
     schedulers.add(scheduler);
     return Flux.fromIterable(readStatements)
         .flatMap(
-            results ->
-                Flux.from(executor.readReactive(results))
+            statement ->
+                Flux.from(executor.readReactive(statement))
                     .publishOn(scheduler, 500)
+                    .transform(
+                        upstream -> resourceStatsHandler.apply(statement.getResource(), upstream))
                     .transform(queryWarningsHandler)
                     .transform(totalItemsMonitor)
                     .transform(totalItemsCounter)
@@ -236,10 +243,11 @@ public class UnloadWorkflow implements Workflow {
             500)
         .transform(writer)
         .transform(failedRecordsMonitor)
-        .transform(failedRecordsHandler);
+        .transform(failedRecordsHandler)
+        .transform(resultPositionsHandler);
   }
 
-  private Flux<Record> fewWriters() {
+  private Flux<Void> fewWriters() {
     // writeConcurrency cannot be 1 here, but readConcurrency can
     int numThreadsForReads = Math.min(numCores, readConcurrency);
     Scheduler schedulerForReads =
@@ -253,9 +261,11 @@ public class UnloadWorkflow implements Workflow {
     schedulers.add(schedulerForWrites);
     return Flux.fromIterable(readStatements)
         .flatMap(
-            results ->
-                Flux.from(executor.readReactive(results))
+            statement ->
+                Flux.from(executor.readReactive(statement))
                     .publishOn(schedulerForReads, 500)
+                    .transform(
+                        upstream -> resourceStatsHandler.apply(statement.getResource(), upstream))
                     .transform(queryWarningsHandler)
                     .transform(totalItemsMonitor)
                     .transform(totalItemsCounter)
@@ -274,12 +284,13 @@ public class UnloadWorkflow implements Workflow {
                 records
                     .transform(writer)
                     .transform(failedRecordsMonitor)
-                    .transform(failedRecordsHandler),
+                    .transform(failedRecordsHandler)
+                    .transform(resultPositionsHandler),
             writeConcurrency,
             500);
   }
 
-  private Flux<Record> manyWriters() {
+  private Flux<Void> manyWriters() {
     // writeConcurrency and readConcurrency are >= 0.5C here
     int actualConcurrency = Math.min(readConcurrency, writeConcurrency);
     int numThreads = Math.min(numCores * 2, actualConcurrency);
@@ -287,10 +298,12 @@ public class UnloadWorkflow implements Workflow {
     schedulers.add(scheduler);
     return Flux.fromIterable(readStatements)
         .flatMap(
-            results -> {
+            statement -> {
               Flux<Record> records =
-                  Flux.from(executor.readReactive(results))
+                  Flux.from(executor.readReactive(statement))
                       .publishOn(scheduler, 500)
+                      .transform(
+                          upstream -> resourceStatsHandler.apply(statement.getResource(), upstream))
                       .transform(queryWarningsHandler)
                       .transform(totalItemsMonitor)
                       .transform(totalItemsCounter)
@@ -310,7 +323,10 @@ public class UnloadWorkflow implements Workflow {
                 // in a round-robin fashion.
                 records = records.window(500).flatMap(window -> window.transform(writer), 1, 500);
               }
-              return records.transform(failedRecordsMonitor).transform(failedRecordsHandler);
+              return records
+                  .transform(failedRecordsMonitor)
+                  .transform(failedRecordsHandler)
+                  .transform(resultPositionsHandler);
             },
             actualConcurrency,
             500);
@@ -332,6 +348,9 @@ public class UnloadWorkflow implements Workflow {
       e = CloseableUtils.closeQuietly(session, e);
       if (metricsManager != null) {
         metricsManager.reportFinalMetrics();
+      }
+      if (logManager != null) {
+        logManager.reportAvailableFiles();
       }
       LOGGER.debug("{} closed.", this);
       if (e != null) {
