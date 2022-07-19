@@ -36,7 +36,7 @@ The executable jar can be executed with a command like `java -jar dsbulk-distrib
 
 ## Documentation
 
-The most up-to-date documentation is available [online][onlineDocs]. 
+The most up-to-date documentation is available [online](https://docs.datastax.com/en/dsbulk/docs/1.9.0/dsbulkAbout.html). 
 
 We also recommend reading the series of blog posts made by 
 [Brian Hess](https://github.com/brianmhess); they target a somewhat older version of DSBulk, but
