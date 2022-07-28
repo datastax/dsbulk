@@ -170,6 +170,41 @@ class ExecutorSettingsTest {
   }
 
   @Test
+  void should_enable_maxBytesPerSecond() {
+    Config config =
+        TestConfigUtils.createTestConfig("dsbulk.executor", "maxBytesPerSecond", "1 kilobyte");
+    ExecutorSettings settings = new ExecutorSettings(config);
+    DriverExecutionProfile profile = session.getContext().getConfig().getDefaultProfile();
+    when(profile.getString(DefaultDriverOption.REQUEST_CONSISTENCY)).thenReturn("ONE");
+    settings.init();
+    ReactiveBulkReader executor = settings.newReadExecutor(session, null, false);
+    assertThat(((RateLimiter) getInternalState(executor, "bytesRateLimiter")).getRate())
+        .isEqualTo(1000);
+  }
+
+  @Test
+  void should_disable_maxBytesPerSecond() {
+    Config config = TestConfigUtils.createTestConfig("dsbulk.executor", "maxBytesPerSecond", -1);
+    DriverExecutionProfile profile = session.getContext().getConfig().getDefaultProfile();
+    when(profile.getString(DefaultDriverOption.REQUEST_CONSISTENCY)).thenReturn("ONE");
+    ExecutorSettings settings = new ExecutorSettings(config);
+    settings.init();
+    ReactiveBulkReader executor = settings.newReadExecutor(session, null, false);
+    assertThat(getInternalState(executor, "bytesRateLimiter")).isNull();
+  }
+
+  @Test
+  void should_throw_exception_when_maxBytesPerSecond_not_a_number() {
+    Config config =
+        TestConfigUtils.createTestConfig("dsbulk.executor", "maxBytesPerSecond", "NotANumber");
+    ExecutorSettings settings = new ExecutorSettings(config);
+    assertThatThrownBy(settings::init)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining(
+            "Invalid value for dsbulk.executor.maxBytesPerSecond, expecting NUMBER or STRING in size-in-bytes format, got 'NotANumber'");
+  }
+
+  @Test
   void should_enable_maxInFlight() {
     Config config = TestConfigUtils.createTestConfig("dsbulk.executor", "maxInFlight", 100);
     ExecutorSettings settings = new ExecutorSettings(config);

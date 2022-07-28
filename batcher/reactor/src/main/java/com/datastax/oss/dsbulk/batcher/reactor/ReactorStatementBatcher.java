@@ -17,7 +17,6 @@ package com.datastax.oss.dsbulk.batcher.reactor;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.ProtocolVersion;
-import com.datastax.oss.driver.api.core.cql.BatchStatement;
 import com.datastax.oss.driver.api.core.cql.BatchType;
 import com.datastax.oss.driver.api.core.cql.BatchableStatement;
 import com.datastax.oss.driver.api.core.cql.DefaultBatchType;
@@ -194,7 +193,7 @@ public class ReactorStatementBatcher extends DefaultStatementBatcher
                         children ->
                             children.size() == 1
                                 ? children.get(0)
-                                : BatchStatement.newInstance(batchType, children)));
+                                : createBatchStatement(children)));
   }
 
   private class ReactorAdaptiveSizingBatchPredicate extends AdaptiveSizingBatchPredicate {}

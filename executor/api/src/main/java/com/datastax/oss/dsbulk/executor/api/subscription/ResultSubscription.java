@@ -20,6 +20,7 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.BatchStatement;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.api.core.detach.AttachmentPoint;
 import com.datastax.oss.driver.shaded.guava.common.util.concurrent.RateLimiter;
 import com.datastax.oss.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.oss.dsbulk.executor.api.listener.DefaultExecutionContext;
@@ -75,9 +76,11 @@ public abstract class ResultSubscription<R extends Result, P extends AsyncPaging
   are shared with other query executions.
    */
 
+  final @NonNull AttachmentPoint attachmentPoint;
   final @Nullable ExecutionListener listener;
   private final @Nullable Semaphore maxConcurrentRequests;
   final @Nullable RateLimiter rateLimiter;
+  final @Nullable RateLimiter bytesRateLimiter;
   private final boolean failFast;
 
   /** The number of writes in the batch. 1 for other types of statement. */
@@ -144,15 +147,19 @@ public abstract class ResultSubscription<R extends Result, P extends AsyncPaging
   ResultSubscription(
       @NonNull Subscriber<? super R> subscriber,
       @NonNull Statement<?> statement,
+      @NonNull AttachmentPoint attachmentPoint,
       @Nullable ExecutionListener listener,
       @Nullable Semaphore maxConcurrentRequests,
       @Nullable RateLimiter rateLimiter,
+      @Nullable RateLimiter bytesRateLimiter,
       boolean failFast) {
-    this.statement = statement;
     this.subscriber = subscriber;
+    this.statement = statement;
+    this.attachmentPoint = attachmentPoint;
     this.listener = listener;
     this.maxConcurrentRequests = maxConcurrentRequests;
     this.rateLimiter = rateLimiter;
+    this.bytesRateLimiter = bytesRateLimiter;
     this.failFast = failFast;
     if (statement instanceof BatchStatement) {
       batchSize = ((BatchStatement) statement).size();

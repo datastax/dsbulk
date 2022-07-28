@@ -30,6 +30,7 @@ import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
 import com.datastax.oss.driver.shaded.guava.common.base.Preconditions;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
 import com.datastax.oss.dsbulk.sampler.DataSizes;
+import com.datastax.oss.dsbulk.sampler.SizeableBatchStatement;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import java.nio.ByteBuffer;
@@ -288,8 +289,14 @@ public class DefaultStatementBatcher implements StatementBatcher {
     if (current.size() == 1) {
       batches.add(current.get(0));
     } else {
-      batches.add(BatchStatement.newInstance(batchType, current));
+      batches.add(createBatchStatement(current));
     }
+  }
+
+  @NonNull
+  protected BatchStatement createBatchStatement(@NonNull Iterable<BatchableStatement<?>> children) {
+    return new SizeableBatchStatement(
+        BatchStatement.newInstance(batchType, children), protocolVersion, codecRegistry);
   }
 
   @NonNull

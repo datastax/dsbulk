@@ -330,6 +330,32 @@ public class ConfigUtils {
   }
 
   /**
+   * Returns the size-in-bytes value at the given path. Contrary to {@link Config#getBytes(String)},
+   * this method also accepts negative long integer values.
+   *
+   * @param config The {@link Config} to use.
+   * @param path path expression.
+   * @throws ConfigException.WrongType if value is not convertible to a long or a size-in-bytes
+   *     value.
+   */
+  public static long getBytes(Config config, String path) {
+    try {
+      return config.getLong(path);
+    } catch (Exception e) {
+      try {
+        return config.getBytes(path);
+      } catch (Exception e1) {
+        throw new ConfigException.WrongType(
+            config.origin(),
+            String.format(
+                "%s: Expecting NUMBER or STRING in size-in-bytes format, got '%s'",
+                path, config.getString(path)),
+            e);
+      }
+    }
+  }
+
+  /**
    * Resolves the given path.
    *
    * <p>The returned path is normalized and absolute. If the input denotes a relative path, it is

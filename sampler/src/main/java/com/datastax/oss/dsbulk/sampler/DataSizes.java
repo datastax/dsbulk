@@ -60,6 +60,9 @@ public class DataSizes {
       @NonNull Statement<?> stmt,
       @NonNull ProtocolVersion version,
       @NonNull CodecRegistry registry) {
+    if (stmt instanceof Sizeable) {
+      return ((Sizeable) stmt).getDataSize();
+    }
     long dataSize = 0;
     if (stmt instanceof BoundStatement) {
       BoundStatement bs = (BoundStatement) stmt;
@@ -98,6 +101,9 @@ public class DataSizes {
    * @return The total size in bytes of all the encoded data contained in the row.
    */
   public static long getDataSize(@NonNull Row row) {
+    if (row instanceof Sizeable) {
+      return ((Sizeable) row).getDataSize();
+    }
     return getDataSize(row, row.getColumnDefinitions());
   }
 

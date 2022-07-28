@@ -84,6 +84,22 @@ public interface BulkExecutorBuilder<T extends BulkExecutor> {
   BulkExecutorBuilder<T> withMaxRequestsPerSecond(int maxRequestsPerSecond);
 
   /**
+   * Sets the maximum number of bytes per second. If that limit is reached, the executor will block
+   * until the number of bytes per second drops below the threshold. <em>This feature should not be
+   * used in a fully non-blocking application</em>.
+   *
+   * <p>This acts as a safeguard against workflows that could overwhelm the cluster with more
+   * requests than it can handle. The default is {@link
+   * AbstractBulkExecutor#DEFAULT_MAX_BYTES_PER_SECOND}. Setting this option to any negative value
+   * will disable it.
+   *
+   * @param maxBytesPerSecond the maximum number of bytes per second.
+   * @return this builder (for method chaining).
+   */
+  @SuppressWarnings("UnusedReturnValue")
+  BulkExecutorBuilder<T> withMaxBytesPerSecond(long maxBytesPerSecond);
+
+  /**
    * Sets an optional {@link ExecutionListener}.
    *
    * @param listener the {@link ExecutionListener} to use.

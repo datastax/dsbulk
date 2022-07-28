@@ -76,7 +76,7 @@ public class BatchSettings {
 
       mode = config.getEnum(WorkloadBatchMode.class, MODE);
 
-      maxSizeInBytes = config.getLong(MAX_SIZE_IN_BYTES);
+      maxSizeInBytes = ConfigUtils.getBytes(config, MAX_SIZE_IN_BYTES);
 
       if (config.hasPath(MAX_BATCH_SIZE)) {
 

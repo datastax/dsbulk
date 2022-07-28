@@ -127,6 +127,10 @@ public class MonitoringSettings {
         pushConfig);
   }
 
+  public void forceTrackBytes() {
+    trackBytes = true;
+  }
+
   public MetricsManager newMetricsManager(
       boolean monitorWrites,
       boolean batchingEnabled,

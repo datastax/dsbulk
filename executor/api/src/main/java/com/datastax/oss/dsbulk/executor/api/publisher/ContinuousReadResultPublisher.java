@@ -42,6 +42,7 @@ public class ContinuousReadResultPublisher implements Publisher<ReadResult> {
   private final @Nullable ExecutionListener listener;
   private final @Nullable Semaphore maxConcurrentRequests;
   private final @Nullable RateLimiter rateLimiter;
+  private final @Nullable RateLimiter bytesRateLimiter;
   private final boolean failFast;
 
   /**
@@ -54,7 +55,7 @@ public class ContinuousReadResultPublisher implements Publisher<ReadResult> {
    */
   public ContinuousReadResultPublisher(
       @NonNull Statement<?> statement, @NonNull ContinuousSession session, boolean failFast) {
-    this(statement, session, failFast, null, null, null);
+    this(statement, session, failFast, null, null, null, null);
   }
 
   /**
@@ -66,7 +67,9 @@ public class ContinuousReadResultPublisher implements Publisher<ReadResult> {
    * @param listener The {@link ExecutionListener} to use.
    * @param maxConcurrentRequests The {@link Semaphore} to use to regulate the amount of in-flight
    *     requests.
-   * @param rateLimiter The {@link RateLimiter} to use to regulate throughput.
+   * @param rateLimiter The {@link RateLimiter} to use to regulate throughput in rows per second.
+   * @param bytesRateLimiter The {@link RateLimiter} to use to regulate throughput in bytes per
+   *     second.
    */
   public ContinuousReadResultPublisher(
       @NonNull Statement<?> statement,
@@ -74,13 +77,15 @@ public class ContinuousReadResultPublisher implements Publisher<ReadResult> {
       boolean failFast,
       @Nullable ExecutionListener listener,
       @Nullable Semaphore maxConcurrentRequests,
-      @Nullable RateLimiter rateLimiter) {
+      @Nullable RateLimiter rateLimiter,
+      @Nullable RateLimiter bytesRateLimiter) {
     this.statement = statement;
     this.session = session;
+    this.failFast = failFast;
     this.listener = listener;
     this.maxConcurrentRequests = maxConcurrentRequests;
     this.rateLimiter = rateLimiter;
-    this.failFast = failFast;
+    this.bytesRateLimiter = bytesRateLimiter;
   }
 
   @Override
@@ -92,7 +97,14 @@ public class ContinuousReadResultPublisher implements Publisher<ReadResult> {
     // of the results.
     ContinuousReadResultSubscription subscription =
         new ContinuousReadResultSubscription(
-            subscriber, statement, listener, maxConcurrentRequests, rateLimiter, failFast);
+            subscriber,
+            statement,
+            session.getContext(),
+            listener,
+            maxConcurrentRequests,
+            rateLimiter,
+            bytesRateLimiter,
+            failFast);
     try {
       subscriber.onSubscribe(subscription);
       // must be called after onSubscribe

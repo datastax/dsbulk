@@ -46,6 +46,7 @@ public class ExecutorSettings {
   private final Config config;
 
   private int maxPerSecond;
+  private long maxBytesPerSecond;
   private int maxInFlight;
   private boolean continuousPagingEnabled;
 
@@ -56,6 +57,7 @@ public class ExecutorSettings {
   public void init() {
     try {
       maxPerSecond = config.getInt("maxPerSecond");
+      maxBytesPerSecond = ConfigUtils.getBytes(config, "maxBytesPerSecond");
       maxInFlight = config.getInt("maxInFlight");
     } catch (ConfigException e) {
       throw ConfigUtils.convertConfigException(e, "dsbulk.executor");
@@ -79,7 +81,7 @@ public class ExecutorSettings {
   }
 
   public void enforceCloudRateLimit(int numberOfCoordinators) {
-    if (maxPerSecond == -1) {
+    if (ConfigUtils.hasReferenceValue(config, "maxPerSecond")) {
       maxPerSecond = numberOfCoordinators * CLOUD_MAX_REQUESTS_PER_SECOND_PER_COORDINATOR;
       LOGGER.info(
           "Setting executor.maxPerSecond not set when connecting to DataStax Astra: "
@@ -90,6 +92,10 @@ public class ExecutorSettings {
           "If your Astra database has higher limits, "
               + "please define executor.maxPerSecond explicitly.");
     }
+  }
+
+  public boolean isTrackingBytes() {
+    return maxBytesPerSecond > 0;
   }
 
   @NonNull
@@ -121,6 +127,7 @@ public class ExecutorSettings {
         .withExecutionListener(executionListener)
         .withMaxInFlightRequests(maxInFlight)
         .withMaxRequestsPerSecond(maxPerSecond)
+        .withMaxBytesPerSecond(maxBytesPerSecond)
         .failSafe();
     return builder.build();
   }
