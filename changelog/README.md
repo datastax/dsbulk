@@ -1,5 +1,14 @@
 ## Changelog
 
+## 1.10.0 (in progress)
+
+- [improvement] Upgrade driver to 4.14.1.
+- [bug] [#419](https://github.com/datastax/dsbulk/issues/419): Fix wrong ANSI mode option name.
+- [bug] [#425](https://github.com/datastax/dsbulk/issues/425): Don't print count results if read result counter is null.
+- [improvement] [#424](https://github.com/datastax/dsbulk/issues/424): Add "max" verbosity level for debugging purposes.
+- [new feature] [#429](https://github.com/datastax/dsbulk/issues/429): Produce a positions file when unloading / counting.
+- [improvement] [#435](https://github.com/datastax/dsbulk/issues/435): Auto-detect cloud server-side rate-limit.
+
 ## 1.9.0
 
 - [improvement] Upgrade driver to 4.14.0.

@@ -41,6 +41,9 @@ public class ExecutorSettings {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ExecutorSettings.class);
 
+  /** The actual value is 4096, but we don't want to risk hitting that value. */
+  private static final int CLOUD_MAX_REQUESTS_PER_SECOND_PER_COORDINATOR = 4_000;
+
   private final Config config;
 
   private int maxPerSecond;
@@ -73,6 +76,20 @@ public class ExecutorSettings {
       }
     } catch (ConfigException e) {
       throw ConfigUtils.convertConfigException(e, "dsbulk.executor.continuousPaging");
+    }
+  }
+
+  public void enforceCloudRateLimit(int numberOfCoordinators) {
+    if (maxPerSecond == -1) {
+      maxPerSecond = numberOfCoordinators * CLOUD_MAX_REQUESTS_PER_SECOND_PER_COORDINATOR;
+      LOGGER.info(
+          "Setting executor.maxPerSecond not set when connecting to DataStax Astra: "
+              + "applying a limit of {} ops/second based on the number of coordinators ({}).",
+          maxPerSecond,
+          numberOfCoordinators);
+      LOGGER.info(
+          "If your Astra database has higher limits, "
+              + "please define executor.maxPerSecond explicitly.");
     }
   }
 

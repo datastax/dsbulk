@@ -177,6 +177,9 @@ public class LoadWorkflow implements Workflow {
             session.getContext().getCodecRegistry(),
             schemaSettings.getRowType());
     metricsManager.init();
+    if (driverSettings.isCloud()) {
+      executorSettings.enforceCloudRateLimit(session.getMetadata().getNodes().size());
+    }
     executor = executorSettings.newWriteExecutor(session, metricsManager.getExecutionListener());
     dryRun = engineSettings.isDryRun();
     if (dryRun) {
