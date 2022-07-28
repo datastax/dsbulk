@@ -1233,6 +1233,8 @@ The maximum number of concurrent operations per second. When writing to the data
 
 This acts as a safeguard to prevent overloading the cluster. Reduce this value when the throughput for reads and writes cannot match the throughput of connectors, and latencies get too high; this is usually a sign that the workflow engine is not well calibrated and will eventually run out of memory, or some queries will timeout.
 
+When connecting to DataStax Astra clusters, a rate limit is always enforced. By default, the limit is 4,096 operations per second and per coordinator; therefore, if no rate limit is set, and the cluster is an Astra cluster, DSBulk will automatically apply an appropriate limit and log a message.
+
 This setting applies a "hard" limit to the gloabl throughput, capping it at a fixed value. If you need a a soft throughput limit, you should use `maxInFlight` instead.
 
 Note that this setting is implemented by a semaphore and may block application threads if there are too many in-flight requests.

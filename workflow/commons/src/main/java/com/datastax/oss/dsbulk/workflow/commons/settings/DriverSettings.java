@@ -114,6 +114,7 @@ public class DriverSettings {
   private int defaultPort;
   private AuthProvider authProvider;
   @VisibleForTesting SslHandlerFactory sslHandlerFactory;
+  private boolean cloud;
 
   public DriverSettings(
       Config deprecatedDriverConfig,
@@ -140,6 +141,15 @@ public class DriverSettings {
     processCloudSettings(write);
     processContactPointSettings();
     processForcedSettings();
+  }
+
+  /**
+   * Returns true if the driver is configured to connect to a cloud database, false otherwise.
+   *
+   * <p>This method should not be called before {@link #init(boolean)} is called.
+   */
+  public boolean isCloud() {
+    return cloud;
   }
 
   private void convertDriverDeprecatedConfig() throws GeneralSecurityException, IOException {
@@ -434,7 +444,7 @@ public class DriverSettings {
   }
 
   private void processCloudSettings(boolean write) throws MalformedURLException {
-    boolean cloud = mergedDriverConfig.hasPath(CLOUD_SECURE_CONNECT_BUNDLE.getPath());
+    cloud = mergedDriverConfig.hasPath(CLOUD_SECURE_CONNECT_BUNDLE.getPath());
     if (cloud) {
 
       // resolve URL to benefit from DSBulk special URL and Path processing

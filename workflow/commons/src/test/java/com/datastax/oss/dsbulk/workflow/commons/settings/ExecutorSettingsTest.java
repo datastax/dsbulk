@@ -18,11 +18,9 @@ package com.datastax.oss.dsbulk.workflow.commons.settings;
 import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat;
 import static com.datastax.oss.dsbulk.tests.utils.ReflectionUtils.getInternalState;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.datastax.dse.driver.api.core.DseProtocolVersion;
-import com.datastax.dse.driver.api.core.metadata.DseNodeProperties;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
 import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
@@ -40,6 +38,7 @@ import com.datastax.oss.dsbulk.tests.logging.LogInterceptor;
 import com.datastax.oss.dsbulk.tests.utils.TestConfigUtils;
 import com.typesafe.config.Config;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.Semaphore;
 import org.junit.jupiter.api.BeforeEach;
@@ -84,7 +83,7 @@ class ExecutorSettingsTest {
     DriverExecutionProfile profile = session.getContext().getConfig().getDefaultProfile();
     when(profile.getString(DefaultDriverOption.REQUEST_CONSISTENCY)).thenReturn("TWO");
     when(session.getContext().getProtocolVersion()).thenReturn(DseProtocolVersion.DSE_V1);
-    mockNode(true);
+    mockNode();
     Config config = TestConfigUtils.createTestConfig("dsbulk.executor");
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
@@ -101,7 +100,7 @@ class ExecutorSettingsTest {
     DriverExecutionProfile profile = session.getContext().getConfig().getDefaultProfile();
     when(profile.getString(DefaultDriverOption.REQUEST_CONSISTENCY)).thenReturn("LOCAL_ONE");
     when(session.getContext().getProtocolVersion()).thenReturn(DseProtocolVersion.DSE_V1);
-    mockNode(true);
+    mockNode();
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
     ReactiveBulkReader executor = settings.newReadExecutor(session, null, false);
@@ -127,7 +126,7 @@ class ExecutorSettingsTest {
     Config config =
         TestConfigUtils.createTestConfig("dsbulk.executor", "continuousPaging.enabled", true);
     when(session.getContext().getProtocolVersion()).thenReturn(DseProtocolVersion.DSE_V1);
-    mockNode(true);
+    mockNode();
     ExecutorSettings settings = new ExecutorSettings(config);
     settings.init();
     ReactiveBulkReader executor = settings.newReadExecutor(session, null, true);
@@ -220,15 +219,20 @@ class ExecutorSettingsTest {
             "Setting executor.continuousPaging.maxConcurrentQueries has been removed and is not honored anymore");
   }
 
-  private void mockNode(boolean dse) {
-    Node node = mock(Node.class);
-    when(node.getHostId()).thenReturn(UUID.randomUUID());
-    if (dse) {
-      when(node.getExtras()).thenReturn(ImmutableMap.of(DseNodeProperties.DSE_VERSION, "6.8.0"));
-    } else {
-      when(node.getExtras()).thenReturn(ImmutableMap.of());
-    }
-    Map<UUID, Node> nodes = ImmutableMap.of(node.getHostId(), node);
+  @Test
+  void should_log_warning_when_cloud_and_maxPerSecond_not_defined(@LogCapture LogInterceptor logs) {
+    Config config = TestConfigUtils.createTestConfig("dsbulk.executor");
+    ExecutorSettings settings = new ExecutorSettings(config);
+    settings.init();
+    settings.enforceCloudRateLimit(3);
+    assertThat(logs)
+        .hasMessageContaining(
+            "Setting executor.maxPerSecond not set when connecting to DataStax Astra: applying a limit of 12000 ops/second");
+  }
+
+  private void mockNode() {
+    Node node = DriverUtils.mockNode();
+    Map<UUID, Node> nodes = ImmutableMap.of(Objects.requireNonNull(node.getHostId()), node);
     when(session.getMetadata().getNodes()).thenReturn(nodes);
   }
 }
