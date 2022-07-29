@@ -358,7 +358,6 @@ available on the command-line via the `help` subcommand.
 
   `dsbulk help connector.csv`
   
-[onlineDocs]:https://docs.datastax.com/en/dsbulk/doc/
 [HOCON]:https://github.com/lightbend/config/blob/master/HOCON.md
 [DataStax Bulk Loader Pt. 1 — Introduction and Loading]: https://www.datastax.com/blog/2019/03/datastax-bulk-loader-introduction-and-loading
 [DataStax Bulk Loader Pt. 2 — More Loading]: https://www.datastax.com/blog/2019/04/datastax-bulk-loader-more-loading
