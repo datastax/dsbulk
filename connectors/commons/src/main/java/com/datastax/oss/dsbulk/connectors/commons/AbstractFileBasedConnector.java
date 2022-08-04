@@ -83,6 +83,7 @@ public abstract class AbstractFileBasedConnector implements Connector {
   protected int maxConcurrentFiles;
   protected Deque<RecordWriter> writers;
   protected RecordWriter singleWriter;
+  protected List<RecordWriter> writersToClose;
   protected AtomicInteger fileCounter;
   protected AtomicInteger nextWriterIndex;
 
@@ -147,13 +148,17 @@ public abstract class AbstractFileBasedConnector implements Connector {
       processURLsForWrite();
       fileCounter = new AtomicInteger(0);
       nextWriterIndex = new AtomicInteger(0);
+      writersToClose = new ArrayList<>();
       if (!roots.isEmpty() && maxConcurrentFiles > 1) {
         writers = new ConcurrentLinkedDeque<>();
         for (int i = 0; i < maxConcurrentFiles; i++) {
-          writers.add(newSingleFileWriter());
+          RecordWriter writer = newSingleFileWriter();
+          writers.add(writer);
+          writersToClose.add(writer);
         }
       } else {
         singleWriter = newSingleFileWriter();
+        writersToClose.add(singleWriter);
       }
     }
   }
@@ -180,64 +185,47 @@ public abstract class AbstractFileBasedConnector implements Connector {
     assert !read;
     if (!roots.isEmpty() && maxConcurrentFiles > 1) {
       return records ->
-          Flux.from(records)
-              .concatMap(
-                  record ->
-                      Mono.deferContextual(
-                          ctx -> {
-                            try {
-                              RecordWriter writer = ctx.get("WRITER");
-                              writer.write(record);
-                              return Mono.just(record);
-                            } catch (Exception e) {
-                              return Mono.error(e);
-                            }
-                          }),
-                  500)
-              .concatWith(
-                  Mono.deferContextual(
-                      ctx -> {
-                        try {
-                          RecordWriter writer = ctx.get("WRITER");
-                          writer.flush();
-                          writers.offer(writer);
-                          return Mono.empty();
-                        } catch (Exception e) {
-                          return Mono.error(e);
-                        }
-                      }))
+          Flux.deferContextual(
+                  ctx -> {
+                    RecordWriter writer = ctx.get("WRITER");
+                    return writeRecordFlux(records, writer)
+                        .doOnTerminate(() -> writers.offer(writer));
+                  })
               .contextWrite(ctx -> ctx.put("WRITER", writers.remove()));
     } else {
-      return records ->
-          Flux.from(records)
-              .concatMap(
-                  record -> {
-                    try {
-                      singleWriter.write(record);
-                      return Mono.just(record);
-                    } catch (Exception e) {
-                      return Mono.error(e);
-                    }
-                  },
-                  500)
-              .concatWith(
-                  Flux.create(
-                      sink -> {
-                        try {
-                          singleWriter.flush();
-                          sink.complete();
-                        } catch (Exception e) {
-                          sink.error(e);
-                        }
-                      }));
+      return records -> writeRecordFlux(records, singleWriter);
     }
+  }
+
+  private Flux<Record> writeRecordFlux(Publisher<Record> records, RecordWriter writer) {
+    return Flux.from(records)
+        .concatMap(
+            record -> {
+              try {
+                writer.write(record);
+                return Mono.just(record);
+              } catch (Exception e) {
+                return Mono.error(e);
+              }
+            },
+            500)
+        .concatWith(
+            Flux.create(
+                sink -> {
+                  try {
+                    writer.flush();
+                    sink.complete();
+                  } catch (Exception e) {
+                    sink.error(e);
+                  }
+                }));
   }
 
   @Override
   public void close() {
-    if (writers != null) {
+    if (writersToClose != null) {
       IOException e = null;
-      for (RecordWriter writer : writers) {
+      for (RecordWriter writer : writersToClose) {
         try {
           writer.flush();
           writer.close();
@@ -250,14 +238,6 @@ public abstract class AbstractFileBasedConnector implements Connector {
         }
       }
       if (e != null) {
-        throw new UncheckedIOException(e);
-      }
-    }
-    if (singleWriter != null) {
-      try {
-        singleWriter.flush();
-        singleWriter.close();
-      } catch (IOException e) {
         throw new UncheckedIOException(e);
       }
     }
