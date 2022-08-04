@@ -32,6 +32,9 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
   /** The default maximum number of concurrent requests per second. */
   static final int DEFAULT_MAX_REQUESTS_PER_SECOND = 100_000;
 
+  /** The default maximum number of bytes per second. */
+  static final long DEFAULT_MAX_BYTES_PER_SECOND = -1;
+
   protected final @NonNull CqlSession session;
 
   protected final boolean failFast;
@@ -40,10 +43,18 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
 
   protected final @Nullable RateLimiter rateLimiter;
 
+  protected final @Nullable RateLimiter bytesRateLimiter;
+
   protected final @Nullable ExecutionListener listener;
 
   protected AbstractBulkExecutor(CqlSession session) {
-    this(session, true, DEFAULT_MAX_IN_FLIGHT_REQUESTS, DEFAULT_MAX_REQUESTS_PER_SECOND, null);
+    this(
+        session,
+        true,
+        DEFAULT_MAX_IN_FLIGHT_REQUESTS,
+        DEFAULT_MAX_REQUESTS_PER_SECOND,
+        DEFAULT_MAX_BYTES_PER_SECOND,
+        null);
   }
 
   protected AbstractBulkExecutor(AbstractBulkExecutorBuilder<?> builder) {
@@ -52,6 +63,7 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
         builder.failFast,
         builder.maxInFlightRequests,
         builder.maxRequestsPerSecond,
+        builder.maxBytesPerSecond,
         builder.listener);
   }
 
@@ -60,6 +72,7 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
       boolean failFast,
       int maxInFlightRequests,
       int maxRequestsPerSecond,
+      long maxBytesPerSecond,
       @Nullable ExecutionListener listener) {
     Objects.requireNonNull(session, "session cannot be null");
     this.session = session;
@@ -67,6 +80,7 @@ public abstract class AbstractBulkExecutor implements BulkExecutor, AutoCloseabl
     this.maxConcurrentRequests =
         maxInFlightRequests <= 0 ? null : new Semaphore(maxInFlightRequests);
     this.rateLimiter = maxRequestsPerSecond <= 0 ? null : RateLimiter.create(maxRequestsPerSecond);
+    this.bytesRateLimiter = maxBytesPerSecond <= 0 ? null : RateLimiter.create(maxBytesPerSecond);
     this.listener = listener;
   }
 

@@ -8,6 +8,7 @@
 - [improvement] [#424](https://github.com/datastax/dsbulk/issues/424): Add "max" verbosity level for debugging purposes.
 - [new feature] [#429](https://github.com/datastax/dsbulk/issues/429): Produce a positions file when unloading / counting.
 - [improvement] [#435](https://github.com/datastax/dsbulk/issues/435): Auto-detect cloud server-side rate-limit.
+- [improvement] [#438](https://github.com/datastax/dsbulk/issues/438): Ability to limit throughput in bytes per second.
 
 ## 1.9.0
 

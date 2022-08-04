@@ -139,6 +139,9 @@ public class UnloadWorkflow implements Workflow {
         connector.supports(CommonConnectorFeature.MAPPED_RECORDS));
     logManager = logSettings.newLogManager(session);
     logManager.init();
+    if (executorSettings.isTrackingBytes()) {
+      monitoringSettings.forceTrackBytes();
+    }
     metricsManager =
         monitoringSettings.newMetricsManager(
             false,

@@ -16,9 +16,11 @@
 package com.datastax.oss.dsbulk.sampler;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
 import com.datastax.dse.driver.api.core.DseProtocolVersion;
 import com.datastax.oss.driver.api.core.cql.BatchStatement;
@@ -28,6 +30,7 @@ import com.datastax.oss.driver.api.core.cql.ColumnDefinitions;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
+import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.detach.AttachmentPoint;
 import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.internal.core.cql.DefaultColumnDefinition;
@@ -46,7 +49,6 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
-import org.mockito.Mockito;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class DataSizesTest {
@@ -144,7 +146,7 @@ class DataSizesTest {
 
   @Test
   void should_measure_size_of_row() {
-    Row row = Mockito.mock(Row.class);
+    Row row = mock(Row.class);
     when(row.getColumnDefinitions()).thenReturn(mockColumnDefinitions());
     when(row.getBytesUnsafe(0)).thenReturn(Bytes.fromHexString("0xCAFEBABE"));
     when(row.getBytesUnsafe(1)).thenReturn(ByteBuffer.wrap(new byte[0]));
@@ -152,15 +154,32 @@ class DataSizesTest {
     assertThat(DataSizes.getDataSize(row)).isEqualTo(4);
   }
 
+  @Test
+  void should_measure_size_of_sizeable_statement() {
+    Sizeable stmt = mock(Sizeable.class, withSettings().extraInterfaces(Statement.class));
+    when(stmt.getDataSize()).thenReturn(1234L);
+    assertThat(
+            DataSizes.getDataSize(
+                (Statement<?>) stmt, DseProtocolVersion.DSE_V2, DefaultCodecRegistry.DEFAULT))
+        .isEqualTo(1234L);
+  }
+
+  @Test
+  void should_measure_size_of_sizeable_row() {
+    Sizeable row = mock(Sizeable.class, withSettings().extraInterfaces(Row.class));
+    when(row.getDataSize()).thenReturn(1234L);
+    assertThat(DataSizes.getDataSize((Row) row)).isEqualTo(1234L);
+  }
+
   private BatchStatement mockBatchStatement(BatchableStatement<?>... statements) {
-    BatchStatement batch = Mockito.mock(BatchStatement.class);
+    BatchStatement batch = mock(BatchStatement.class);
     when(batch.iterator()).thenAnswer(args -> Iterators.forArray(statements));
     return batch;
   }
 
   private BoundStatement mockBoundStatement(Integer col1, String col2) {
     PreparedStatement ps = mockPreparedStatement();
-    BoundStatement bs = Mockito.mock(BoundStatement.class);
+    BoundStatement bs = mock(BoundStatement.class);
     when(bs.getPreparedStatement()).thenReturn(ps);
     ByteBuffer col1bb = new IntCodec().encode(col1, DseProtocolVersion.DSE_V2);
     ByteBuffer col2bb =
@@ -173,7 +192,7 @@ class DataSizesTest {
 
   private PreparedStatement mockPreparedStatement() {
     ColumnDefinitions columnDefinitions = mockColumnDefinitions();
-    PreparedStatement ps = Mockito.mock(PreparedStatement.class);
+    PreparedStatement ps = mock(PreparedStatement.class);
     when(ps.getVariableDefinitions()).thenReturn(columnDefinitions);
     return ps;
   }

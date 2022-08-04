@@ -18,6 +18,7 @@ package com.datastax.oss.dsbulk.executor.api.subscription;
 import com.datastax.dse.driver.api.core.cql.continuous.ContinuousAsyncResultSet;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.api.core.detach.AttachmentPoint;
 import com.datastax.oss.driver.shaded.guava.common.collect.AbstractIterator;
 import com.datastax.oss.driver.shaded.guava.common.util.concurrent.RateLimiter;
 import com.datastax.oss.dsbulk.executor.api.exception.BulkExecutionException;
@@ -25,6 +26,8 @@ import com.datastax.oss.dsbulk.executor.api.listener.ExecutionContext;
 import com.datastax.oss.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.oss.dsbulk.executor.api.result.DefaultReadResult;
 import com.datastax.oss.dsbulk.executor.api.result.ReadResult;
+import com.datastax.oss.dsbulk.sampler.DataSizes;
+import com.datastax.oss.dsbulk.sampler.SizeableRow;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import java.util.Iterator;
@@ -40,11 +43,21 @@ public class ContinuousReadResultSubscription
   public ContinuousReadResultSubscription(
       @NonNull Subscriber<? super ReadResult> subscriber,
       @NonNull Statement<?> statement,
+      @NonNull AttachmentPoint attachmentPoint,
       @Nullable ExecutionListener listener,
       @Nullable Semaphore maxConcurrentRequests,
       @Nullable RateLimiter rateLimiter,
+      @Nullable RateLimiter bytesRateLimiter,
       boolean failFast) {
-    super(subscriber, statement, listener, maxConcurrentRequests, rateLimiter, failFast);
+    super(
+        subscriber,
+        statement,
+        attachmentPoint,
+        listener,
+        maxConcurrentRequests,
+        rateLimiter,
+        bytesRateLimiter,
+        failFast);
   }
 
   @Override
@@ -56,7 +69,7 @@ public class ContinuousReadResultSubscription
           @Override
           protected ReadResult computeNext() {
             if (rows.hasNext()) {
-              Row row = rows.next();
+              Row row = new SizeableRow(rows.next());
               if (listener != null) {
                 listener.onRowReceived(row, local);
               }
@@ -104,6 +117,10 @@ public class ContinuousReadResultSubscription
   void onBeforeResultEmitted(ReadResult result) {
     if (rateLimiter != null) {
       rateLimiter.acquire();
+    }
+    if (bytesRateLimiter != null && result.getRow().isPresent()) {
+      long dataSize = DataSizes.getDataSize(result.getRow().get());
+      bytesRateLimiter.acquire((int) dataSize);
     }
   }
 

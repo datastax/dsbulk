@@ -30,6 +30,8 @@ public abstract class AbstractBulkExecutorBuilder<T extends BulkExecutor>
 
   protected int maxRequestsPerSecond = AbstractBulkExecutor.DEFAULT_MAX_REQUESTS_PER_SECOND;
 
+  protected long maxBytesPerSecond = AbstractBulkExecutor.DEFAULT_MAX_BYTES_PER_SECOND;
+
   protected ExecutionListener listener;
 
   protected AbstractBulkExecutorBuilder(CqlSession session) {
@@ -54,6 +56,13 @@ public abstract class AbstractBulkExecutorBuilder<T extends BulkExecutor>
   @SuppressWarnings("UnusedReturnValue")
   public AbstractBulkExecutorBuilder<T> withMaxRequestsPerSecond(int maxRequestsPerSecond) {
     this.maxRequestsPerSecond = maxRequestsPerSecond;
+    return this;
+  }
+
+  @Override
+  @SuppressWarnings("UnusedReturnValue")
+  public AbstractBulkExecutorBuilder<T> withMaxBytesPerSecond(long maxBytesPerSecond) {
+    this.maxBytesPerSecond = maxBytesPerSecond;
     return this;
   }
 

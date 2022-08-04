@@ -121,6 +121,9 @@ public class CountWorkflow implements Workflow {
     schemaSettings.init(session, codecFactory, false, false);
     logManager = logSettings.newLogManager(session);
     logManager.init();
+    if (executorSettings.isTrackingBytes()) {
+      monitoringSettings.forceTrackBytes();
+    }
     metricsManager =
         monitoringSettings.newMetricsManager(
             false,

@@ -17,12 +17,14 @@ package com.datastax.oss.dsbulk.executor.api.subscription;
 
 import com.datastax.oss.driver.api.core.cql.AsyncResultSet;
 import com.datastax.oss.driver.api.core.cql.Statement;
+import com.datastax.oss.driver.api.core.detach.AttachmentPoint;
 import com.datastax.oss.driver.shaded.guava.common.util.concurrent.RateLimiter;
 import com.datastax.oss.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.oss.dsbulk.executor.api.listener.ExecutionContext;
 import com.datastax.oss.dsbulk.executor.api.listener.ExecutionListener;
 import com.datastax.oss.dsbulk.executor.api.result.DefaultWriteResult;
 import com.datastax.oss.dsbulk.executor.api.result.WriteResult;
+import com.datastax.oss.dsbulk.sampler.DataSizes;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import java.util.Collections;
@@ -35,11 +37,21 @@ public class WriteResultSubscription extends ResultSubscription<WriteResult, Asy
   public WriteResultSubscription(
       @NonNull Subscriber<? super WriteResult> subscriber,
       @NonNull Statement<?> statement,
+      @NonNull AttachmentPoint attachmentPoint,
       @Nullable ExecutionListener listener,
       @Nullable Semaphore maxConcurrentRequests,
       @Nullable RateLimiter rateLimiter,
+      @Nullable RateLimiter bytesRateLimiter,
       boolean failFast) {
-    super(subscriber, statement, listener, maxConcurrentRequests, rateLimiter, failFast);
+    super(
+        subscriber,
+        statement,
+        attachmentPoint,
+        listener,
+        maxConcurrentRequests,
+        rateLimiter,
+        bytesRateLimiter,
+        failFast);
   }
 
   @Override
@@ -58,6 +70,12 @@ public class WriteResultSubscription extends ResultSubscription<WriteResult, Asy
   void onBeforeRequestStarted() {
     if (rateLimiter != null) {
       rateLimiter.acquire(batchSize);
+    }
+    if (bytesRateLimiter != null) {
+      long dataSize =
+          DataSizes.getDataSize(
+              statement, attachmentPoint.getProtocolVersion(), attachmentPoint.getCodecRegistry());
+      bytesRateLimiter.acquire((int) dataSize);
     }
     super.onBeforeRequestStarted();
   }

@@ -15,7 +15,6 @@
  */
 package com.datastax.oss.dsbulk.executor.api.result;
 
-import com.datastax.oss.driver.api.core.cql.BatchStatement;
 import com.datastax.oss.driver.api.core.cql.ExecutionInfo;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.dsbulk.executor.api.exception.BulkExecutionException;
@@ -54,16 +53,6 @@ public interface Result {
 
   @NonNull
   Optional<ExecutionInfo> getExecutionInfo();
-
-  /**
-   * Returns the size of the batch, if the executed statement was a {@link BatchStatement batch
-   * statement}, or 1 otherwise.
-   *
-   * @return the size of the batch, or 1 if the statement was not a batch statement.
-   */
-  default int getBatchSize() {
-    return getStatement() instanceof BatchStatement ? ((BatchStatement) getStatement()).size() : 1;
-  }
 
   /**
    * Returns an optional {@link BulkExecutionException}. The value is only present if the statement

@@ -170,6 +170,9 @@ public class LoadWorkflow implements Workflow {
     if (batchingEnabled) {
       batcher = batchSettings.newStatementBatcher(session)::batchByGroupingKey;
     }
+    if (executorSettings.isTrackingBytes()) {
+      monitoringSettings.forceTrackBytes();
+    }
     metricsManager =
         monitoringSettings.newMetricsManager(
             true,
