@@ -15,6 +15,20 @@
  */
 package com.datastax.oss.dsbulk.sampler;
 
+/**
+ * A data container that can report the size of its contents.
+ *
+ * <p>This interface is used by {@link DataSizes} to determine the size of the data. It is meant to
+ * be implemented by {@link com.datastax.oss.driver.api.core.cql.Row Row} and {@link
+ * com.datastax.oss.driver.api.core.cql.Statement Statement} implementations wishing to optimize or
+ * cache the data size computation.
+ *
+ * @see SizeableRow
+ * @see SizeableBoundStatement
+ * @see SizeableBatchStatement
+ */
 public interface Sizeable {
+
+  /** @return the size of the container data in bytes. */
   long getDataSize();
 }

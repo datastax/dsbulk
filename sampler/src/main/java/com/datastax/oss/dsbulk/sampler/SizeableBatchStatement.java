@@ -19,7 +19,6 @@ import com.datastax.oss.driver.api.core.ConsistencyLevel;
 import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.ProtocolVersion;
 import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
-import com.datastax.oss.driver.api.core.context.DriverContext;
 import com.datastax.oss.driver.api.core.cql.BatchStatement;
 import com.datastax.oss.driver.api.core.cql.BatchType;
 import com.datastax.oss.driver.api.core.cql.BatchableStatement;
@@ -59,7 +58,7 @@ public class SizeableBatchStatement implements BatchStatement, Sizeable {
 
   @NonNull
   @Override
-  public BatchStatement setExecutionProfileName(String newConfigProfileName) {
+  public SizeableBatchStatement setExecutionProfileName(String newConfigProfileName) {
     delegate = delegate.setExecutionProfileName(newConfigProfileName);
     return this;
   }
@@ -71,7 +70,7 @@ public class SizeableBatchStatement implements BatchStatement, Sizeable {
 
   @NonNull
   @Override
-  public BatchStatement setExecutionProfile(DriverExecutionProfile newProfile) {
+  public SizeableBatchStatement setExecutionProfile(DriverExecutionProfile newProfile) {
     delegate = delegate.setExecutionProfile(newProfile);
     return this;
   }
@@ -84,7 +83,7 @@ public class SizeableBatchStatement implements BatchStatement, Sizeable {
 
   @NonNull
   @Override
-  public BatchStatement setBatchType(@NonNull BatchType newBatchType) {
+  public SizeableBatchStatement setBatchType(@NonNull BatchType newBatchType) {
     delegate = delegate.setBatchType(newBatchType);
     return this;
   }
@@ -97,7 +96,7 @@ public class SizeableBatchStatement implements BatchStatement, Sizeable {
 
   @NonNull
   @Override
-  public BatchStatement setKeyspace(@Nullable CqlIdentifier newKeyspace) {
+  public SizeableBatchStatement setKeyspace(@Nullable CqlIdentifier newKeyspace) {
     delegate = delegate.setKeyspace(newKeyspace);
     return this;
   }
@@ -110,7 +109,7 @@ public class SizeableBatchStatement implements BatchStatement, Sizeable {
 
   @NonNull
   @Override
-  public BatchStatement setRoutingKeyspace(CqlIdentifier newRoutingKeyspace) {
+  public SizeableBatchStatement setRoutingKeyspace(CqlIdentifier newRoutingKeyspace) {
     delegate = delegate.setRoutingKeyspace(newRoutingKeyspace);
     return this;
   }
@@ -123,7 +122,7 @@ public class SizeableBatchStatement implements BatchStatement, Sizeable {
 
   @NonNull
   @Override
-  public BatchStatement setRoutingKey(ByteBuffer newRoutingKey) {
+  public SizeableBatchStatement setRoutingKey(ByteBuffer newRoutingKey) {
     delegate = delegate.setRoutingKey(newRoutingKey);
     return this;
   }
@@ -136,7 +135,7 @@ public class SizeableBatchStatement implements BatchStatement, Sizeable {
 
   @NonNull
   @Override
-  public BatchStatement setRoutingToken(Token newRoutingToken) {
+  public SizeableBatchStatement setRoutingToken(Token newRoutingToken) {
     delegate = delegate.setRoutingToken(newRoutingToken);
     return this;
   }
@@ -149,7 +148,8 @@ public class SizeableBatchStatement implements BatchStatement, Sizeable {
 
   @NonNull
   @Override
-  public BatchStatement setCustomPayload(@NonNull Map<String, ByteBuffer> newCustomPayload) {
+  public SizeableBatchStatement setCustomPayload(
+      @NonNull Map<String, ByteBuffer> newCustomPayload) {
     delegate = delegate.setCustomPayload(newCustomPayload);
     return this;
   }
@@ -162,7 +162,7 @@ public class SizeableBatchStatement implements BatchStatement, Sizeable {
 
   @NonNull
   @Override
-  public BatchStatement setIdempotent(Boolean newIdempotence) {
+  public SizeableBatchStatement setIdempotent(Boolean newIdempotence) {
     delegate = delegate.setIdempotent(newIdempotence);
     return this;
   }
@@ -174,7 +174,7 @@ public class SizeableBatchStatement implements BatchStatement, Sizeable {
 
   @NonNull
   @Override
-  public BatchStatement setTracing(boolean newTracing) {
+  public SizeableBatchStatement setTracing(boolean newTracing) {
     delegate = delegate.setTracing(newTracing);
     return this;
   }
@@ -186,7 +186,7 @@ public class SizeableBatchStatement implements BatchStatement, Sizeable {
 
   @NonNull
   @Override
-  public BatchStatement setQueryTimestamp(long newTimestamp) {
+  public SizeableBatchStatement setQueryTimestamp(long newTimestamp) {
     delegate = delegate.setQueryTimestamp(newTimestamp);
     return this;
   }
@@ -199,7 +199,7 @@ public class SizeableBatchStatement implements BatchStatement, Sizeable {
 
   @NonNull
   @Override
-  public BatchStatement setTimeout(Duration newTimeout) {
+  public SizeableBatchStatement setTimeout(Duration newTimeout) {
     delegate = delegate.setTimeout(newTimeout);
     return this;
   }
@@ -212,7 +212,7 @@ public class SizeableBatchStatement implements BatchStatement, Sizeable {
 
   @NonNull
   @Override
-  public BatchStatement setPagingState(ByteBuffer newPagingState) {
+  public SizeableBatchStatement setPagingState(ByteBuffer newPagingState) {
     delegate = delegate.setPagingState(newPagingState);
     return this;
   }
@@ -224,7 +224,7 @@ public class SizeableBatchStatement implements BatchStatement, Sizeable {
 
   @NonNull
   @Override
-  public BatchStatement setPageSize(int newPageSize) {
+  public SizeableBatchStatement setPageSize(int newPageSize) {
     delegate = delegate.setPageSize(newPageSize);
     return this;
   }
@@ -237,7 +237,7 @@ public class SizeableBatchStatement implements BatchStatement, Sizeable {
 
   @NonNull
   @Override
-  public BatchStatement setConsistencyLevel(ConsistencyLevel newConsistencyLevel) {
+  public SizeableBatchStatement setConsistencyLevel(ConsistencyLevel newConsistencyLevel) {
     delegate = delegate.setConsistencyLevel(newConsistencyLevel);
     return this;
   }
@@ -250,7 +250,8 @@ public class SizeableBatchStatement implements BatchStatement, Sizeable {
 
   @NonNull
   @Override
-  public BatchStatement setSerialConsistencyLevel(ConsistencyLevel newSerialConsistencyLevel) {
+  public SizeableBatchStatement setSerialConsistencyLevel(
+      ConsistencyLevel newSerialConsistencyLevel) {
     delegate = delegate.setSerialConsistencyLevel(newSerialConsistencyLevel);
     return this;
   }
@@ -262,14 +263,15 @@ public class SizeableBatchStatement implements BatchStatement, Sizeable {
 
   @NonNull
   @Override
-  public BatchStatement add(@NonNull BatchableStatement<?> statement) {
+  public SizeableBatchStatement add(@NonNull BatchableStatement<?> statement) {
     delegate = delegate.add(statement);
     return this;
   }
 
   @NonNull
   @Override
-  public BatchStatement addAll(@NonNull Iterable<? extends BatchableStatement<?>> statements) {
+  public SizeableBatchStatement addAll(
+      @NonNull Iterable<? extends BatchableStatement<?>> statements) {
     delegate = delegate.addAll(statements);
     return this;
   }
@@ -281,7 +283,7 @@ public class SizeableBatchStatement implements BatchStatement, Sizeable {
 
   @NonNull
   @Override
-  public BatchStatement clear() {
+  public SizeableBatchStatement clear() {
     delegate = delegate.clear();
     return this;
   }
@@ -294,13 +296,8 @@ public class SizeableBatchStatement implements BatchStatement, Sizeable {
 
   @NonNull
   @Override
-  public BatchStatement setNode(Node node) {
+  public SizeableBatchStatement setNode(Node node) {
     delegate = delegate.setNode(node);
     return this;
-  }
-
-  @Override
-  public int computeSizeInBytes(@NonNull DriverContext context) {
-    return delegate.computeSizeInBytes(context);
   }
 }

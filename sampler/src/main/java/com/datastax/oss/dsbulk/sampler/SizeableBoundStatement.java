@@ -19,7 +19,6 @@ import com.datastax.oss.driver.api.core.ConsistencyLevel;
 import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.ProtocolVersion;
 import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
-import com.datastax.oss.driver.api.core.context.DriverContext;
 import com.datastax.oss.driver.api.core.cql.BoundStatement;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.metadata.Node;
@@ -69,7 +68,7 @@ public class SizeableBoundStatement implements BoundStatement, Sizeable {
 
   @NonNull
   @Override
-  public BoundStatement setExecutionProfileName(String newConfigProfileName) {
+  public SizeableBoundStatement setExecutionProfileName(String newConfigProfileName) {
     delegate = delegate.setExecutionProfileName(newConfigProfileName);
     return this;
   }
@@ -81,7 +80,7 @@ public class SizeableBoundStatement implements BoundStatement, Sizeable {
 
   @NonNull
   @Override
-  public BoundStatement setExecutionProfile(DriverExecutionProfile newProfile) {
+  public SizeableBoundStatement setExecutionProfile(DriverExecutionProfile newProfile) {
     delegate = delegate.setExecutionProfile(newProfile);
     return this;
   }
@@ -100,7 +99,7 @@ public class SizeableBoundStatement implements BoundStatement, Sizeable {
 
   @NonNull
   @Override
-  public BoundStatement setRoutingKeyspace(CqlIdentifier newRoutingKeyspace) {
+  public SizeableBoundStatement setRoutingKeyspace(CqlIdentifier newRoutingKeyspace) {
     delegate = delegate.setRoutingKeyspace(newRoutingKeyspace);
     return this;
   }
@@ -113,7 +112,7 @@ public class SizeableBoundStatement implements BoundStatement, Sizeable {
 
   @NonNull
   @Override
-  public BoundStatement setRoutingKey(ByteBuffer newRoutingKey) {
+  public SizeableBoundStatement setRoutingKey(ByteBuffer newRoutingKey) {
     delegate = delegate.setRoutingKey(newRoutingKey);
     return this;
   }
@@ -126,7 +125,7 @@ public class SizeableBoundStatement implements BoundStatement, Sizeable {
 
   @NonNull
   @Override
-  public BoundStatement setRoutingToken(Token newRoutingToken) {
+  public SizeableBoundStatement setRoutingToken(Token newRoutingToken) {
     delegate = delegate.setRoutingToken(newRoutingToken);
     return this;
   }
@@ -139,7 +138,8 @@ public class SizeableBoundStatement implements BoundStatement, Sizeable {
 
   @NonNull
   @Override
-  public BoundStatement setCustomPayload(@NonNull Map<String, ByteBuffer> newCustomPayload) {
+  public SizeableBoundStatement setCustomPayload(
+      @NonNull Map<String, ByteBuffer> newCustomPayload) {
     delegate = delegate.setCustomPayload(newCustomPayload);
     return this;
   }
@@ -152,7 +152,7 @@ public class SizeableBoundStatement implements BoundStatement, Sizeable {
 
   @NonNull
   @Override
-  public BoundStatement setIdempotent(Boolean newIdempotence) {
+  public SizeableBoundStatement setIdempotent(Boolean newIdempotence) {
     delegate = delegate.setIdempotent(newIdempotence);
     return this;
   }
@@ -164,7 +164,7 @@ public class SizeableBoundStatement implements BoundStatement, Sizeable {
 
   @NonNull
   @Override
-  public BoundStatement setTracing(boolean newTracing) {
+  public SizeableBoundStatement setTracing(boolean newTracing) {
     delegate = delegate.setTracing(newTracing);
     return this;
   }
@@ -176,7 +176,7 @@ public class SizeableBoundStatement implements BoundStatement, Sizeable {
 
   @NonNull
   @Override
-  public BoundStatement setQueryTimestamp(long newTimestamp) {
+  public SizeableBoundStatement setQueryTimestamp(long newTimestamp) {
     delegate = delegate.setQueryTimestamp(newTimestamp);
     return this;
   }
@@ -189,7 +189,7 @@ public class SizeableBoundStatement implements BoundStatement, Sizeable {
 
   @NonNull
   @Override
-  public BoundStatement setTimeout(Duration newTimeout) {
+  public SizeableBoundStatement setTimeout(Duration newTimeout) {
     delegate = delegate.setTimeout(newTimeout);
     return this;
   }
@@ -202,7 +202,7 @@ public class SizeableBoundStatement implements BoundStatement, Sizeable {
 
   @NonNull
   @Override
-  public BoundStatement setPagingState(ByteBuffer newPagingState) {
+  public SizeableBoundStatement setPagingState(ByteBuffer newPagingState) {
     delegate = delegate.setPagingState(newPagingState);
     return this;
   }
@@ -214,7 +214,7 @@ public class SizeableBoundStatement implements BoundStatement, Sizeable {
 
   @NonNull
   @Override
-  public BoundStatement setPageSize(int newPageSize) {
+  public SizeableBoundStatement setPageSize(int newPageSize) {
     delegate = delegate.setPageSize(newPageSize);
     return this;
   }
@@ -227,7 +227,7 @@ public class SizeableBoundStatement implements BoundStatement, Sizeable {
 
   @NonNull
   @Override
-  public BoundStatement setConsistencyLevel(ConsistencyLevel newConsistencyLevel) {
+  public SizeableBoundStatement setConsistencyLevel(ConsistencyLevel newConsistencyLevel) {
     delegate = delegate.setConsistencyLevel(newConsistencyLevel);
     return this;
   }
@@ -240,7 +240,8 @@ public class SizeableBoundStatement implements BoundStatement, Sizeable {
 
   @NonNull
   @Override
-  public BoundStatement setSerialConsistencyLevel(ConsistencyLevel newSerialConsistencyLevel) {
+  public SizeableBoundStatement setSerialConsistencyLevel(
+      ConsistencyLevel newSerialConsistencyLevel) {
     delegate = delegate.setSerialConsistencyLevel(newSerialConsistencyLevel);
     return this;
   }
@@ -253,7 +254,7 @@ public class SizeableBoundStatement implements BoundStatement, Sizeable {
 
   @NonNull
   @Override
-  public BoundStatement setBytesUnsafe(int i, ByteBuffer v) {
+  public SizeableBoundStatement setBytesUnsafe(int i, ByteBuffer v) {
     delegate = delegate.setBytesUnsafe(i, v);
     return this;
   }
@@ -299,13 +300,8 @@ public class SizeableBoundStatement implements BoundStatement, Sizeable {
 
   @NonNull
   @Override
-  public BoundStatement setNode(Node node) {
+  public SizeableBoundStatement setNode(Node node) {
     delegate = delegate.setNode(node);
     return this;
-  }
-
-  @Override
-  public int computeSizeInBytes(@NonNull DriverContext context) {
-    return delegate.computeSizeInBytes(context);
   }
 }
