@@ -26,9 +26,9 @@ import java.util.function.LongSupplier;
 
 class StatementSizeMemoizer implements LongSupplier {
 
-  private volatile Statement<?> stmt;
-  private volatile ProtocolVersion version;
-  private volatile CodecRegistry registry;
+  private final Statement<?> stmt;
+  private final ProtocolVersion version;
+  private final CodecRegistry registry;
   private volatile boolean initialized;
   // "value" does not need to be volatile; visibility piggy-backs
   // on volatile read of "initialized".
@@ -52,10 +52,6 @@ class StatementSizeMemoizer implements LongSupplier {
           long t = DataSizes.getDataSize(stmt, version, registry);
           value = t;
           initialized = true;
-          // Release the delegates to GC.
-          stmt = null;
-          version = null;
-          registry = null;
           return t;
         }
       }
@@ -66,7 +62,7 @@ class StatementSizeMemoizer implements LongSupplier {
 
 class RowSizeMemoizer implements LongSupplier {
 
-  private volatile Row row;
+  private final Row row;
   private volatile boolean initialized;
   // "value" does not need to be volatile; visibility piggy-backs
   // on volatile read of "initialized".
@@ -85,8 +81,6 @@ class RowSizeMemoizer implements LongSupplier {
           long t = DataSizes.getDataSize(row);
           value = t;
           initialized = true;
-          // Release the delegate to GC.
-          row = null;
           return t;
         }
       }
