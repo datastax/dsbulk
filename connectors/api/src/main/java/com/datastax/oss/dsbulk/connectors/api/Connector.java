@@ -157,6 +157,9 @@ public interface Connector extends AutoCloseable {
   /**
    * Returns a function that handles writing records to the datasource.
    *
+   * <p>The returned function is guaranteed to be invoked with a parallelism no greater than the
+   * {@linkplain #writeConcurrency() write concurrency}.
+   *
    * <p>This method should only be called after the connector is properly {@link #configure(Config,
    * boolean, boolean) configured} and {@link #init() initialized}.
    *
