@@ -227,7 +227,7 @@ class ExecutorSettingsTest {
     settings.enforceCloudRateLimit(3);
     assertThat(logs)
         .hasMessageContaining(
-            "Setting executor.maxPerSecond not set when connecting to DataStax Astra: applying a limit of 12000 ops/second");
+            "Setting executor.maxPerSecond not set when connecting to DataStax Astra: applying a limit of 9,000 ops/second");
   }
 
   private void mockNode() {
