@@ -41,7 +41,7 @@ public class ExecutorSettings {
   private static final Logger LOGGER = LoggerFactory.getLogger(ExecutorSettings.class);
 
   /** The actual value is 4096, but we don't want to risk hitting that value. */
-  private static final int CLOUD_MAX_REQUESTS_PER_SECOND_PER_COORDINATOR = 4_000;
+  private static final int CLOUD_MAX_REQUESTS_PER_SECOND_PER_COORDINATOR = 3_000;
 
   private final Config config;
 
