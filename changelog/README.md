@@ -10,6 +10,7 @@
 - [improvement] [#435](https://github.com/datastax/dsbulk/issues/435): Auto-detect cloud server-side rate-limit.
 - [improvement] [#438](https://github.com/datastax/dsbulk/issues/438): Ability to limit throughput in bytes per second.
 - [bug] [#440](https://github.com/datastax/dsbulk/issues/440): Properly close files when unload is interrupted.
+- [bug] [#444](https://github.com/datastax/dsbulk/issues/444): Increment records/failed counter for failed writes.
 
 ## 1.9.0
 

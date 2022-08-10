@@ -27,10 +27,12 @@ import com.codahale.metrics.UniformReservoir;
 import com.codahale.metrics.jmx.JmxReporter;
 import com.datastax.oss.driver.api.core.ProtocolVersion;
 import com.datastax.oss.driver.api.core.cql.BatchStatement;
+import com.datastax.oss.driver.api.core.cql.BatchableStatement;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
 import com.datastax.oss.driver.shaded.guava.common.util.concurrent.MoreExecutors;
 import com.datastax.oss.dsbulk.connectors.api.ErrorRecord;
+import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.datastax.oss.dsbulk.executor.api.listener.AbstractMetricsReportingExecutionListenerBuilder;
 import com.datastax.oss.dsbulk.executor.api.listener.LogSink;
 import com.datastax.oss.dsbulk.executor.api.listener.MetricsCollectingExecutionListener;
@@ -457,13 +459,31 @@ public class MetricsManager implements AutoCloseable {
     return upstream -> upstream.doOnNext(item -> totalItems.inc());
   }
 
-  public <T> Function<Flux<T>, Flux<T>> newFailedItemsMonitor() {
+  public Function<Flux<Record>, Flux<Record>> newFailedRecordsMonitor() {
     return upstream ->
         upstream.doOnNext(
             item -> {
-              if (item instanceof ErrorRecord
-                  || item instanceof UnmappableStatement
-                  || (item instanceof Result && !((Result) item).isSuccess())) {
+              if (item instanceof ErrorRecord) {
+                failedItems.inc();
+              }
+            });
+  }
+
+  public Function<Flux<BatchableStatement<?>>, Flux<BatchableStatement<?>>> newUnmappableStatementsMonitor() {
+    return upstream ->
+        upstream.doOnNext(
+            item -> {
+              if (item instanceof UnmappableStatement) {
+                failedItems.inc();
+              }
+            });
+  }
+
+  public <T extends Result> Function<Flux<T>, Flux<T>> newFailedResultsMonitor() {
+    return upstream ->
+        upstream.doOnNext(
+            item -> {
+              if (!item.isSuccess()) {
                 failedItems.inc();
               }
             });
