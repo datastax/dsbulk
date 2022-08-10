@@ -1,6 +1,6 @@
 ## Changelog
 
-## 1.9.1 (in progress)
+## 1.9.1
 
 - [improvement] [#435](https://github.com/datastax/dsbulk/issues/435): Auto-detect cloud server-side rate-limit.
 
