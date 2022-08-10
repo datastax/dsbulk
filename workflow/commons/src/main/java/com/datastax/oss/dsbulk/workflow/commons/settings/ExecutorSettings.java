@@ -86,7 +86,7 @@ public class ExecutorSettings {
       LOGGER.info(
           "Setting executor.maxPerSecond not set when connecting to DataStax Astra: "
               + "applying a limit of {} ops/second based on the number of coordinators ({}).",
-          maxPerSecond,
+          String.format("%,d", maxPerSecond),
           numberOfCoordinators);
       LOGGER.info(
           "If your Astra database has higher limits, "
