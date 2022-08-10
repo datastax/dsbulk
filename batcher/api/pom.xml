@@ -21,7 +21,7 @@
   <parent>
     <artifactId>dsbulk-batcher</artifactId>
     <groupId>com.datastax.oss</groupId>
-    <version>1.9.1</version>
+    <version>1.9.2-SNAPSHOT</version>
   </parent>
   <artifactId>dsbulk-batcher-api</artifactId>
   <name>DataStax Bulk Loader - Batcher - API</name>
