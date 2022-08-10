@@ -738,7 +738,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     assertStatus(status, STATUS_COMPLETED_WITH_ERRORS);
     assertThat(logs.getAllMessagesAsString())
         .contains("completed with 11000 errors")
-        .contains("Records: total: 100,000, successful: 90,000, failed: 10,000")
+        .contains("Records: total: 100,000, successful: 89,000, failed: 11,000")
         .contains("Writes: total: 90,000, successful: 89,000, failed: 1,000, in-flight: 0");
     validateExceptionsLog(10_000, "Record could not be read:", "connector-errors.log");
     validateExceptionsLog(
