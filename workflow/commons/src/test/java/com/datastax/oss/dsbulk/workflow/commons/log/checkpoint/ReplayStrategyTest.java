@@ -15,9 +15,6 @@
  */
 package com.datastax.oss.dsbulk.workflow.commons.log.checkpoint;
 
-import static com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.Checkpoint.Status.FAILED;
-import static com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.Checkpoint.Status.FINISHED;
-import static com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.Checkpoint.Status.UNFINISHED;
 import static com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.RangeUtilsTest.r;
 import static com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.ReplayStrategy.resume;
 import static com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.ReplayStrategy.retry;
@@ -42,45 +39,26 @@ class ReplayStrategyTest {
         Arguments.of(resume, new Checkpoint(), false),
         Arguments.of(retry, new Checkpoint(), false),
         Arguments.of(rewind, new Checkpoint(), false),
-        Arguments.of(resume, new Checkpoint(0, RangeSet.of(), RangeSet.of(), UNFINISHED), false),
-        Arguments.of(retry, new Checkpoint(0, RangeSet.of(), RangeSet.of(), UNFINISHED), false),
-        Arguments.of(rewind, new Checkpoint(0, RangeSet.of(), RangeSet.of(), UNFINISHED), false),
+        Arguments.of(resume, new Checkpoint(0, RangeSet.of(), RangeSet.of(), false), false),
+        Arguments.of(retry, new Checkpoint(0, RangeSet.of(), RangeSet.of(), false), false),
+        Arguments.of(rewind, new Checkpoint(0, RangeSet.of(), RangeSet.of(), false), false),
         Arguments.of(
-            resume, new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), UNFINISHED), false),
+            resume, new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), false), false),
+        Arguments.of(retry, new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), false), false),
         Arguments.of(
-            retry, new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), UNFINISHED), false),
+            rewind, new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), false), false),
+        Arguments.of(resume, new Checkpoint(0, RangeSet.of(), RangeSet.of(), true), true),
+        Arguments.of(retry, new Checkpoint(0, RangeSet.of(), RangeSet.of(), true), true),
+        Arguments.of(rewind, new Checkpoint(0, RangeSet.of(), RangeSet.of(), true), true),
+        Arguments.of(resume, new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), true), true),
+        Arguments.of(retry, new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), true), true),
+        Arguments.of(rewind, new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), true), true),
         Arguments.of(
-            rewind, new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), UNFINISHED), false),
-        Arguments.of(resume, new Checkpoint(0, RangeSet.of(), RangeSet.of(), FAILED), false),
-        Arguments.of(retry, new Checkpoint(0, RangeSet.of(), RangeSet.of(), FAILED), false),
-        Arguments.of(rewind, new Checkpoint(0, RangeSet.of(), RangeSet.of(), FAILED), false),
+            resume, new Checkpoint(10, RangeSet.of(r(1, 5)), RangeSet.of(r(6, 10)), true), true),
         Arguments.of(
-            resume, new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), FAILED), false),
+            retry, new Checkpoint(10, RangeSet.of(r(1, 5)), RangeSet.of(r(6, 10)), true), false),
         Arguments.of(
-            retry, new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), FAILED), false),
-        Arguments.of(
-            rewind, new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), FAILED), false),
-        Arguments.of(resume, new Checkpoint(0, RangeSet.of(), RangeSet.of(), FINISHED), true),
-        Arguments.of(retry, new Checkpoint(0, RangeSet.of(), RangeSet.of(), FINISHED), true),
-        Arguments.of(rewind, new Checkpoint(0, RangeSet.of(), RangeSet.of(), FINISHED), true),
-        Arguments.of(
-            resume, new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), FINISHED), true),
-        Arguments.of(
-            retry, new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), FINISHED), true),
-        Arguments.of(
-            rewind, new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), FINISHED), true),
-        Arguments.of(
-            resume,
-            new Checkpoint(10, RangeSet.of(r(1, 5)), RangeSet.of(r(6, 10)), FINISHED),
-            true),
-        Arguments.of(
-            retry,
-            new Checkpoint(10, RangeSet.of(r(1, 5)), RangeSet.of(r(6, 10)), FINISHED),
-            false),
-        Arguments.of(
-            rewind,
-            new Checkpoint(10, RangeSet.of(r(1, 5)), RangeSet.of(r(6, 10)), FINISHED),
-            false));
+            rewind, new Checkpoint(10, RangeSet.of(r(1, 5)), RangeSet.of(r(6, 10)), true), false));
   }
 
   @ParameterizedTest
@@ -97,40 +75,16 @@ class ReplayStrategyTest {
         Arguments.of(rewind, new Checkpoint(), new Checkpoint()),
         Arguments.of(
             resume,
-            new Checkpoint(0, RangeSet.of(), RangeSet.of(), FAILED),
-            new Checkpoint(0, RangeSet.of(), RangeSet.of(), UNFINISHED)),
+            new Checkpoint(21, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), true),
+            new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), false)),
         Arguments.of(
             retry,
-            new Checkpoint(0, RangeSet.of(), RangeSet.of(), FAILED),
-            new Checkpoint(0, RangeSet.of(), RangeSet.of(), UNFINISHED)),
+            new Checkpoint(21, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), true),
+            new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), false)),
         Arguments.of(
             rewind,
-            new Checkpoint(0, RangeSet.of(), RangeSet.of(), FAILED),
-            new Checkpoint(0, RangeSet.of(), RangeSet.of(), UNFINISHED)),
-        Arguments.of(
-            resume,
-            new Checkpoint(21, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), FAILED),
-            new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), UNFINISHED)),
-        Arguments.of(
-            retry,
-            new Checkpoint(21, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), FAILED),
-            new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), UNFINISHED)),
-        Arguments.of(
-            rewind,
-            new Checkpoint(21, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), FAILED),
-            new Checkpoint(0, RangeSet.of(), RangeSet.of(), UNFINISHED)),
-        Arguments.of(
-            resume,
-            new Checkpoint(21, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), FINISHED),
-            new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), UNFINISHED)),
-        Arguments.of(
-            retry,
-            new Checkpoint(21, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), FINISHED),
-            new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), UNFINISHED)),
-        Arguments.of(
-            rewind,
-            new Checkpoint(21, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), FINISHED),
-            new Checkpoint(0, RangeSet.of(), RangeSet.of(), UNFINISHED)));
+            new Checkpoint(21, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), true),
+            new Checkpoint(0, RangeSet.of(), RangeSet.of(), false)));
   }
 
   @ParameterizedTest
@@ -146,32 +100,32 @@ class ReplayStrategyTest {
         Arguments.of(rewind, new Checkpoint(), 1, true),
         Arguments.of(
             resume,
-            new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), UNFINISHED),
+            new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), false),
             1,
             false),
         Arguments.of(
             retry,
-            new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), UNFINISHED),
+            new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), false),
             1,
             false),
         Arguments.of(
             rewind,
-            new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), UNFINISHED),
+            new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), false),
             1,
             true),
         Arguments.of(
             resume,
-            new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), UNFINISHED),
+            new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), false),
             11,
             false),
         Arguments.of(
             retry,
-            new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), UNFINISHED),
+            new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), false),
             11,
             true),
         Arguments.of(
             rewind,
-            new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), UNFINISHED),
+            new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), false),
             11,
             true));
   }
@@ -188,44 +142,40 @@ class ReplayStrategyTest {
         Arguments.of(retry, new Checkpoint(), 0),
         Arguments.of(rewind, new Checkpoint(), 0),
         Arguments.of(
-            resume,
-            new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), UNFINISHED),
-            20),
+            resume, new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), false), 20),
         Arguments.of(
             retry,
-            new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), UNFINISHED),
+            new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), false),
             10,
             false),
         Arguments.of(
             rewind,
-            new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), UNFINISHED),
+            new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), false),
             0,
             true));
   }
 
   @ParameterizedTest
   @MethodSource
-  void getTotalErrors(ReplayStrategy strategy, Checkpoint cp, long expected) {
-    assertThat(strategy.getTotalErrors(cp)).isEqualTo(expected);
+  void getRejectedItems(ReplayStrategy strategy, Checkpoint cp, long expected) {
+    assertThat(strategy.getRejectedItems(cp)).isEqualTo(expected);
   }
 
-  static Stream<Arguments> getTotalErrors() {
+  static Stream<Arguments> getRejectedItems() {
     return Stream.of(
         Arguments.of(resume, new Checkpoint(), 0),
         Arguments.of(retry, new Checkpoint(), 0),
         Arguments.of(rewind, new Checkpoint(), 0),
         Arguments.of(
-            resume,
-            new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), UNFINISHED),
-            10),
+            resume, new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), false), 10),
         Arguments.of(
             retry,
-            new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), UNFINISHED),
+            new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), false),
             0,
             false),
         Arguments.of(
             rewind,
-            new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), UNFINISHED),
+            new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), false),
             0,
             true));
   }

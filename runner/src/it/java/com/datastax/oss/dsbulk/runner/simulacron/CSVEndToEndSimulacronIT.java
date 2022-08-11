@@ -89,7 +89,6 @@ import com.datastax.oss.dsbulk.tests.simulacron.SimulacronUtils.Table;
 import com.datastax.oss.dsbulk.tests.utils.StringUtils;
 import com.datastax.oss.dsbulk.workflow.api.log.OperationDirectory;
 import com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.Checkpoint;
-import com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.Checkpoint.Status;
 import com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.CheckpointManager;
 import com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.ReplayStrategy;
 import com.datastax.oss.dsbulk.workflow.commons.statement.RangeReadStatement;
@@ -918,7 +917,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
       CheckpointManager manager, int i, int expectedSuccessful, int expectedFailed) {
     URI resource = URI.create("file://file" + (i + 1));
     Checkpoint checkpoint = manager.getCheckpoint(resource);
-    assertThat(checkpoint.getStatus()).isEqualTo(Status.FINISHED);
+    assertThat(checkpoint.isComplete()).isTrue();
     assertThat(checkpoint.getConsumedSuccessful().sum()).isEqualTo(expectedSuccessful);
     assertThat(checkpoint.getConsumedFailed().sum()).isEqualTo(expectedFailed);
   }
@@ -1061,10 +1060,10 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     CheckpointManager manager = getCheckpointManager();
 
     for (TokenRange range : goodRanges) {
-      checkRangeCheckpoint(manager, range, Status.FINISHED, 900, 100);
+      checkRangeCheckpoint(manager, range, true, 900, 100);
     }
     for (TokenRange range : badRanges) {
-      checkRangeCheckpoint(manager, range, Status.FAILED, 0, 0);
+      checkRangeCheckpoint(manager, range, false, 0, 0);
     }
 
     // Resume failed operation
@@ -1150,10 +1149,10 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
             .contains("Reads: total: 10,000, successful: 10,000, failed: 0")
             .contains("Records: total: 100,000, successful: 91,000, failed: 9,000");
         for (TokenRange range : goodRanges) {
-          checkRangeCheckpoint(manager, range, Status.FINISHED, 900, 100);
+          checkRangeCheckpoint(manager, range, true, 900, 100);
         }
         for (TokenRange range : badRanges) {
-          checkRangeCheckpoint(manager, range, Status.FINISHED, 1000, 0);
+          checkRangeCheckpoint(manager, range, true, 1000, 0);
         }
         break;
       case retry:
@@ -1164,10 +1163,10 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
             .contains("Reads: total: 100,000, successful: 100,000, failed: 0")
             .contains("Records: total: 100,000, successful: 100,000, failed: 0");
         for (TokenRange range : goodRanges) {
-          checkRangeCheckpoint(manager, range, Status.FINISHED, 1000, 0);
+          checkRangeCheckpoint(manager, range, true, 1000, 0);
         }
         for (TokenRange range : badRanges) {
-          checkRangeCheckpoint(manager, range, Status.FINISHED, 1000, 0);
+          checkRangeCheckpoint(manager, range, true, 1000, 0);
         }
         break;
     }
@@ -1176,14 +1175,14 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
   private void checkRangeCheckpoint(
       CheckpointManager manager,
       TokenRange range,
-      Status expectedStatus,
+      boolean expectedComplete,
       int expectedSuccessful,
       int expectedFailed) {
     CqlIdentifier ks1 = CqlIdentifier.fromInternal("ks1");
     CqlIdentifier table1 = CqlIdentifier.fromInternal("table1");
     URI resource = RangeReadStatement.rangeReadResource(ks1, table1, range);
     Checkpoint checkpoint = manager.getCheckpoint(resource);
-    assertThat(checkpoint.getStatus()).isEqualTo(expectedStatus);
+    assertThat(checkpoint.isComplete()).isEqualTo(expectedComplete);
     assertThat(checkpoint.getConsumedSuccessful().sum()).isEqualTo(expectedSuccessful);
     assertThat(checkpoint.getConsumedFailed().sum()).isEqualTo(expectedFailed);
   }

@@ -52,7 +52,6 @@ import com.datastax.oss.dsbulk.format.statement.StatementFormatter;
 import com.datastax.oss.dsbulk.workflow.api.error.ErrorThreshold;
 import com.datastax.oss.dsbulk.workflow.api.error.TooManyErrorsException;
 import com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.Checkpoint;
-import com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.Checkpoint.Status;
 import com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.CheckpointManager;
 import com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.ReplayStrategy;
 import com.datastax.oss.dsbulk.workflow.commons.schema.InvalidMappingException;
@@ -196,7 +195,7 @@ public class LogManager implements AutoCloseable {
     Hooks.onErrorDropped(t -> uncaughtExceptionSink.error(t));
     Thread.setDefaultUncaughtExceptionHandler((thread, t) -> uncaughtExceptionSink.error(t));
     totalItems.add(initialCheckpointManager.getTotalItems(replayStrategy));
-    errors.set((int) initialCheckpointManager.getTotalErrors(replayStrategy));
+    errors.set((int) initialCheckpointManager.getRejectedItems(replayStrategy));
   }
 
   public Path getOperationDirectory() {
@@ -543,8 +542,7 @@ public class LogManager implements AutoCloseable {
               }
               replayStrategy.reset(initial);
               return Flux.from(resource.read())
-                  .doOnComplete(() -> initial.setStatus(Status.FINISHED))
-                  .doOnError(error -> initial.setStatus(Status.FAILED))
+                  .doOnComplete(() -> initial.setComplete(true))
                   .filter(record -> replayStrategy.shouldReplay(initial, record.getPosition()))
                   // increment even for failed records since they will be considered
                   // processed and will increment the position manager.
@@ -566,11 +564,7 @@ public class LogManager implements AutoCloseable {
               replayStrategy.reset(initial);
               AtomicBoolean failed = new AtomicBoolean();
               return Flux.from(resource.read())
-                  .doOnComplete(
-                      () -> initial.setStatus(failed.get() ? Status.FAILED : Status.FINISHED))
-                  // onError signals should not happen, since the executor is in failsafe mode,
-                  // which is why we also test if the read result is a success below.
-                  .doOnError(error -> initial.setStatus(Status.FAILED))
+                  .doOnComplete(() -> initial.setComplete(!failed.get()))
                   .filter(record -> replayStrategy.shouldReplay(initial, record.getPosition()))
                   .doOnNext(
                       r -> {

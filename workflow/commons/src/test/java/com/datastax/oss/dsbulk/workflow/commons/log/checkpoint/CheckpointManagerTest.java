@@ -15,9 +15,6 @@
  */
 package com.datastax.oss.dsbulk.workflow.commons.log.checkpoint;
 
-import static com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.Checkpoint.Status.FAILED;
-import static com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.Checkpoint.Status.FINISHED;
-import static com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.Checkpoint.Status.UNFINISHED;
 import static com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.RangeUtilsTest.r;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
@@ -157,17 +154,17 @@ class CheckpointManagerTest {
   static Stream<Arguments> should_parse() {
     return Stream.of(
         Arguments.of(
-            "file://file.csv;2;20;1:10;11:20",
+            "file://file.csv;1;20;1:10;11:20",
             ImmutableMap.of(
                 URI.create("file://file.csv"),
-                new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), FINISHED))),
+                new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), true))),
         Arguments.of(
             "file://file1.csv;1;20;1:10;11:20\nfile://file2.csv;0;0;;",
             ImmutableMap.of(
                 URI.create("file://file1.csv"),
-                new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), FAILED),
+                new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), true),
                 URI.create("file://file2.csv"),
-                new Checkpoint(0, RangeSet.of(), RangeSet.of(), UNFINISHED))));
+                new Checkpoint(0, RangeSet.of(), RangeSet.of(), false))));
   }
 
   @ParameterizedTest
@@ -188,26 +185,26 @@ class CheckpointManagerTest {
             new CheckpointManager(
                 ImmutableMap.of(
                     RESOURCE1,
-                    new Checkpoint(10, RangeSet.of(r(1, 5)), RangeSet.of(r(6, 10)), FINISHED))),
-            "file://data1.csv;2;10;1:5;6:10" + System.lineSeparator()),
+                    new Checkpoint(10, RangeSet.of(r(1, 5)), RangeSet.of(r(6, 10)), true))),
+            "file://data1.csv;1;10;1:5;6:10" + System.lineSeparator()),
         Arguments.of(
             new CheckpointManager(
                 ImmutableMap.of(
-                    RESOURCE1, new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), FAILED))),
-            "file://data1.csv;1;10;1:10;" + System.lineSeparator()),
+                    RESOURCE1, new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), false))),
+            "file://data1.csv;0;10;1:10;" + System.lineSeparator()),
         Arguments.of(
             new CheckpointManager(
                 ImmutableMap.of(
                     RESOURCE1,
                     new Checkpoint(
-                        30, RangeSet.of(r(1, 10), r(20, 30)), RangeSet.of(r(11, 19)), UNFINISHED))),
+                        30, RangeSet.of(r(1, 10), r(20, 30)), RangeSet.of(r(11, 19)), false))),
             "file://data1.csv;0;30;1:10,20:30;11:19" + System.lineSeparator()));
   }
 
   private static CheckpointManager manager(long produced, RangeSet consumed, RangeSet failed) {
     CheckpointManager manager = new CheckpointManager();
     manager.checkpoints.put(
-        CheckpointManagerTest.RESOURCE1, new Checkpoint(produced, consumed, failed, UNFINISHED));
+        CheckpointManagerTest.RESOURCE1, new Checkpoint(produced, consumed, failed, false));
     return manager;
   }
 
@@ -219,8 +216,8 @@ class CheckpointManagerTest {
       RangeSet successful2,
       RangeSet failed2) {
     CheckpointManager manager = new CheckpointManager();
-    manager.checkpoints.put(RESOURCE1, new Checkpoint(produced1, successful1, failed1, UNFINISHED));
-    manager.checkpoints.put(RESOURCE2, new Checkpoint(produced2, successful2, failed2, UNFINISHED));
+    manager.checkpoints.put(RESOURCE1, new Checkpoint(produced1, successful1, failed1, false));
+    manager.checkpoints.put(RESOURCE2, new Checkpoint(produced2, successful2, failed2, false));
     return manager;
   }
 }

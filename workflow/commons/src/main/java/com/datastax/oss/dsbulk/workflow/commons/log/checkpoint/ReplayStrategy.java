@@ -15,7 +15,6 @@
  */
 package com.datastax.oss.dsbulk.workflow.commons.log.checkpoint;
 
-import com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.Checkpoint.Status;
 import edu.umd.cs.findbugs.annotations.NonNull;
 
 /** Defines the strategy to use when replaying a failed operation. */
@@ -24,14 +23,14 @@ public enum ReplayStrategy {
   resume {
     @Override
     public boolean isComplete(@NonNull Checkpoint checkpoint) {
-      return checkpoint.getStatus() == Status.FINISHED
+      return checkpoint.isComplete()
           && checkpoint.getProduced()
               == checkpoint.getConsumedSuccessful().sum() + checkpoint.getConsumedFailed().sum();
     }
 
     @Override
     public void reset(@NonNull Checkpoint checkpoint) {
-      checkpoint.setStatus(Status.UNFINISHED);
+      checkpoint.setComplete(false);
       // In practice, produced can be greater than consumed if the operation was interrupted, but it
       // cannot be lesser.
       checkpoint.setProduced(
@@ -50,7 +49,7 @@ public enum ReplayStrategy {
     }
 
     @Override
-    public long getTotalErrors(@NonNull Checkpoint checkpoint) {
+    public long getRejectedItems(@NonNull Checkpoint checkpoint) {
       return checkpoint.getConsumedFailed().sum();
     }
   },
@@ -59,14 +58,14 @@ public enum ReplayStrategy {
   retry {
     @Override
     public boolean isComplete(@NonNull Checkpoint checkpoint) {
-      return checkpoint.getStatus() == Status.FINISHED
+      return checkpoint.isComplete()
           && checkpoint.getProduced() == checkpoint.getConsumedSuccessful().sum()
           && checkpoint.getConsumedFailed().sum() == 0;
     }
 
     @Override
     public void reset(@NonNull Checkpoint checkpoint) {
-      checkpoint.setStatus(Status.UNFINISHED);
+      checkpoint.setComplete(false);
       checkpoint.setProduced(checkpoint.getConsumedSuccessful().sum());
       checkpoint.getConsumedFailed().clear();
     }
@@ -82,7 +81,7 @@ public enum ReplayStrategy {
     }
 
     @Override
-    public long getTotalErrors(@NonNull Checkpoint checkpoint) {
+    public long getRejectedItems(@NonNull Checkpoint checkpoint) {
       return 0;
     }
   },
@@ -91,14 +90,14 @@ public enum ReplayStrategy {
   rewind {
     @Override
     public boolean isComplete(@NonNull Checkpoint checkpoint) {
-      return checkpoint.getStatus() == Status.FINISHED
+      return checkpoint.isComplete()
           && checkpoint.getProduced() == checkpoint.getConsumedSuccessful().sum()
           && checkpoint.getConsumedFailed().sum() == 0;
     }
 
     @Override
     public void reset(@NonNull Checkpoint checkpoint) {
-      checkpoint.setStatus(Status.UNFINISHED);
+      checkpoint.setComplete(false);
       checkpoint.setProduced(0);
       checkpoint.getConsumedSuccessful().clear();
       checkpoint.getConsumedFailed().clear();
@@ -118,7 +117,7 @@ public enum ReplayStrategy {
     }
 
     @Override
-    public long getTotalErrors(@NonNull Checkpoint checkpoint) {
+    public long getRejectedItems(@NonNull Checkpoint checkpoint) {
       return 0;
     }
   };
@@ -161,5 +160,5 @@ public enum ReplayStrategy {
    * <p>This is mainly intended to update record metrics at the beginning of the operation, with
    * numbers computed from the previous checkpoint.
    */
-  public abstract long getTotalErrors(@NonNull Checkpoint checkpoint);
+  public abstract long getRejectedItems(@NonNull Checkpoint checkpoint);
 }

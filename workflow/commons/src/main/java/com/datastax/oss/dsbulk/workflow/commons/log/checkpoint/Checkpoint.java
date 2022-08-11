@@ -27,58 +27,34 @@ import net.jcip.annotations.NotThreadSafe;
 @NotThreadSafe
 public class Checkpoint {
 
-  /** The global status of a checkpoint. The order of this enum's constants matters. */
-  public enum Status {
-    /**
-     * The resource wasn't fully consumed, that is, there might be more records to produce than what
-     * was actually produced. Such resources should typically be replayed.
-     */
-    UNFINISHED,
-    /**
-     * The resource wasn't fully consumed because of an error such as an I/O error when reading a
-     * file. Such resources should typically be replayed.
-     */
-    FAILED,
-    /**
-     * The resource was fully consumed, that is, no more records are expected to be produced than
-     * those that were already processed. Such resources should typically not be replayed.
-     */
-    FINISHED,
-    ;
-
-    public Status merge(Status that) {
-      return this.compareTo(that) >= 0 ? this : that;
-    }
-  }
-
   @NonNull
   public static Checkpoint parse(@NonNull String line) {
     String[] tokens = line.split(";", -1);
-    Status status = Status.values()[Integer.parseInt(tokens[0])];
+    boolean complete = tokens[0].equals("1");
     long produced = Long.parseLong(tokens[1]);
     RangeSet consumedSuccessful = RangeSet.parse(tokens[2]);
     RangeSet consumedFailed = RangeSet.parse(tokens[3]);
-    return new Checkpoint(produced, consumedSuccessful, consumedFailed, status);
+    return new Checkpoint(produced, consumedSuccessful, consumedFailed, complete);
   }
 
   private long produced;
   private final RangeSet consumedSuccessful;
   private final RangeSet consumedFailed;
-  private Status status;
+  private boolean complete;
 
   public Checkpoint() {
-    this(0, new RangeSet(), new RangeSet(), Status.UNFINISHED);
+    this(0, new RangeSet(), new RangeSet(), false);
   }
 
   Checkpoint(
       long produced,
       @NonNull RangeSet consumedSuccessful,
       @NonNull RangeSet consumedFailed,
-      @NonNull Status status) {
+      @NonNull boolean complete) {
     this.produced = produced;
     this.consumedSuccessful = consumedSuccessful;
     this.consumedFailed = consumedFailed;
-    this.status = status;
+    this.complete = complete;
   }
 
   public long getProduced() {
@@ -93,8 +69,8 @@ public class Checkpoint {
     return consumedFailed;
   }
 
-  public Status getStatus() {
-    return status;
+  public boolean isComplete() {
+    return complete;
   }
 
   public void incrementProduced() {
@@ -113,8 +89,8 @@ public class Checkpoint {
     }
   }
 
-  public void setStatus(Status status) {
-    this.status = status;
+  public void setComplete(boolean complete) {
+    this.complete = complete;
   }
 
   public void merge(Checkpoint other) {
@@ -124,7 +100,7 @@ public class Checkpoint {
     // already present in any of the range sets.
     consumedSuccessful.merge(other.consumedSuccessful);
     consumedFailed.merge(other.consumedFailed);
-    status = status.merge(other.status);
+    complete |= other.complete;
   }
 
   @Override
@@ -135,17 +111,19 @@ public class Checkpoint {
     if (!(o instanceof Checkpoint)) {
       return false;
     }
+
     Checkpoint that = (Checkpoint) o;
+
     if (produced != that.produced) {
+      return false;
+    }
+    if (complete != that.complete) {
       return false;
     }
     if (!consumedSuccessful.equals(that.consumedSuccessful)) {
       return false;
     }
-    if (!consumedFailed.equals(that.consumedFailed)) {
-      return false;
-    }
-    return status == that.status;
+    return consumedFailed.equals(that.consumedFailed);
   }
 
   @Override
@@ -153,7 +131,7 @@ public class Checkpoint {
     int result = (int) (produced ^ (produced >>> 32));
     result = 31 * result + consumedSuccessful.hashCode();
     result = 31 * result + consumedFailed.hashCode();
-    result = 31 * result + status.hashCode();
+    result = 31 * result + (complete ? 1 : 0);
     return result;
   }
 
@@ -166,14 +144,14 @@ public class Checkpoint {
         + consumedSuccessful
         + ", consumedFailed="
         + consumedFailed
-        + ", status="
-        + status
+        + ", complete="
+        + complete
         + '}';
   }
 
   @NonNull
   public String asCsv() {
-    return status.ordinal()
+    return (complete ? 1 : 0)
         + ";"
         + produced
         + ";"

@@ -124,8 +124,8 @@ public class CheckpointManager {
    * Returns the number of rejected items already processed and that won't be processed again
    * according to the replay strategy.
    */
-  public long getTotalErrors(@NonNull ReplayStrategy replayStrategy) {
-    return checkpoints.values().stream().mapToLong(replayStrategy::getTotalErrors).sum();
+  public long getRejectedItems(@NonNull ReplayStrategy replayStrategy) {
+    return checkpoints.values().stream().mapToLong(replayStrategy::getRejectedItems).sum();
   }
 
   public void merge(@NonNull CheckpointManager other) {

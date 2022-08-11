@@ -15,9 +15,6 @@
  */
 package com.datastax.oss.dsbulk.workflow.commons.log.checkpoint;
 
-import static com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.Checkpoint.Status.FAILED;
-import static com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.Checkpoint.Status.FINISHED;
-import static com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.Checkpoint.Status.UNFINISHED;
 import static com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.RangeUtilsTest.r;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -39,33 +36,29 @@ class CheckpointTest {
   static Stream<Arguments> should_parse() {
     return Stream.of(
         Arguments.of(
-            "0;10;1:10;",
-            new Checkpoint(10, RangeSet.of(new Range(1, 10)), RangeSet.of(), UNFINISHED)),
+            "0;10;1:10;", new Checkpoint(10, RangeSet.of(new Range(1, 10)), RangeSet.of(), false)),
         Arguments.of(
-            "2;10;1:10;",
-            new Checkpoint(10, RangeSet.of(new Range(1, 10)), RangeSet.of(), FINISHED)),
+            "1;10;1:10;", new Checkpoint(10, RangeSet.of(new Range(1, 10)), RangeSet.of(), true)),
         Arguments.of(
-            "1;30;1:10,12:20,30:30;",
+            "0;30;1:10,12:20,30:30;",
             new Checkpoint(
                 30,
                 RangeSet.of(new Range(1, 10), new Range(12, 20), new Range(30)),
                 RangeSet.of(),
-                FAILED)),
+                false)),
         Arguments.of(
-            "0;10;;1:10",
-            new Checkpoint(10, RangeSet.of(), RangeSet.of(new Range(1, 10)), UNFINISHED)),
+            "0;10;;1:10", new Checkpoint(10, RangeSet.of(), RangeSet.of(new Range(1, 10)), false)),
         Arguments.of(
-            "2;10;;1:10",
-            new Checkpoint(10, RangeSet.of(), RangeSet.of(new Range(1, 10)), FINISHED)),
+            "1;10;;1:10", new Checkpoint(10, RangeSet.of(), RangeSet.of(new Range(1, 10)), true)),
         Arguments.of(
-            "1;30;;1:10,12:20,30:30",
+            "0;30;;1:10,12:20,30:30",
             new Checkpoint(
                 30,
                 RangeSet.of(),
                 RangeSet.of(new Range(1, 10), new Range(12, 20), new Range(30)),
-                FAILED)),
-        Arguments.of("0;0;;", new Checkpoint(0, RangeSet.of(), RangeSet.of(), UNFINISHED)),
-        Arguments.of("2;10;;", new Checkpoint(10, RangeSet.of(), RangeSet.of(), FINISHED)));
+                false)),
+        Arguments.of("0;0;;", new Checkpoint(0, RangeSet.of(), RangeSet.of(), false)),
+        Arguments.of("1;10;;", new Checkpoint(10, RangeSet.of(), RangeSet.of(), true)));
   }
 
   @ParameterizedTest
@@ -76,43 +69,26 @@ class CheckpointTest {
 
   static Stream<Arguments> should_serialize_as_text() {
     return Stream.of(
-        Arguments.of(new Checkpoint(0, RangeSet.of(), RangeSet.of(), UNFINISHED), "0;0;;"),
-        Arguments.of(new Checkpoint(0, RangeSet.of(), RangeSet.of(), FAILED), "1;0;;"),
-        Arguments.of(new Checkpoint(0, RangeSet.of(), RangeSet.of(), FINISHED), "2;0;;"),
+        Arguments.of(new Checkpoint(0, RangeSet.of(), RangeSet.of(), false), "0;0;;"),
+        Arguments.of(new Checkpoint(0, RangeSet.of(), RangeSet.of(), true), "1;0;;"),
         Arguments.of(
             new Checkpoint(
                 30,
                 RangeSet.of(new Range(1, 10), new Range(12, 20), new Range(30)),
                 RangeSet.of(),
-                UNFINISHED),
+                false),
             "0;30;1:10,12:20,30;"),
         Arguments.of(
-            new Checkpoint(
-                30,
-                RangeSet.of(new Range(1, 10), new Range(12, 20), new Range(30)),
-                RangeSet.of(),
-                FAILED),
-            "1;30;1:10,12:20,30;"),
-        Arguments.of(
-            new Checkpoint(10, RangeSet.of(new Range(1, 10)), RangeSet.of(), FINISHED),
-            "2;10;1:10;"),
+            new Checkpoint(10, RangeSet.of(new Range(1, 10)), RangeSet.of(), true), "1;10;1:10;"),
         Arguments.of(
             new Checkpoint(
                 30,
                 RangeSet.of(),
                 RangeSet.of(new Range(1, 10), new Range(12, 20), new Range(30)),
-                UNFINISHED),
+                false),
             "0;30;;1:10,12:20,30"),
         Arguments.of(
-            new Checkpoint(
-                30,
-                RangeSet.of(),
-                RangeSet.of(new Range(1, 10), new Range(12, 20), new Range(30)),
-                FAILED),
-            "1;30;;1:10,12:20,30"),
-        Arguments.of(
-            new Checkpoint(10, RangeSet.of(), RangeSet.of(new Range(1, 10)), FINISHED),
-            "2;10;;1:10"));
+            new Checkpoint(10, RangeSet.of(), RangeSet.of(new Range(1, 10)), true), "1;10;;1:10"));
   }
 
   @ParameterizedTest
@@ -126,69 +102,45 @@ class CheckpointTest {
     return Stream.of(
         Arguments.of(new Checkpoint(), new Checkpoint(), new Checkpoint()),
         Arguments.of(
-            new Checkpoint(2, RangeSet.of(r(1, 2)), RangeSet.of(), UNFINISHED),
-            new Checkpoint(2, RangeSet.of(r(3, 4)), RangeSet.of(), UNFINISHED),
-            new Checkpoint(4, RangeSet.of(r(1, 4)), RangeSet.of(), UNFINISHED)),
+            new Checkpoint(2, RangeSet.of(r(1, 2)), RangeSet.of(), false),
+            new Checkpoint(2, RangeSet.of(r(3, 4)), RangeSet.of(), false),
+            new Checkpoint(4, RangeSet.of(r(1, 4)), RangeSet.of(), false)),
         Arguments.of(
-            new Checkpoint(2, RangeSet.of(r(3, 4)), RangeSet.of(), FAILED),
-            new Checkpoint(2, RangeSet.of(r(1, 2)), RangeSet.of(), FAILED),
-            new Checkpoint(4, RangeSet.of(r(1, 4)), RangeSet.of(), FAILED)),
+            new Checkpoint(2, RangeSet.of(r(3, 4)), RangeSet.of(), false),
+            new Checkpoint(2, RangeSet.of(r(1, 2)), RangeSet.of(), false),
+            new Checkpoint(4, RangeSet.of(r(1, 4)), RangeSet.of(), false)),
         Arguments.of(
-            new Checkpoint(2, RangeSet.of(r(1, 2)), RangeSet.of(), UNFINISHED),
-            new Checkpoint(2, RangeSet.of(r(4, 5)), RangeSet.of(), UNFINISHED),
-            new Checkpoint(4, RangeSet.of(r(1, 2), r(4, 5)), RangeSet.of(), UNFINISHED)),
+            new Checkpoint(2, RangeSet.of(r(1, 2)), RangeSet.of(), false),
+            new Checkpoint(2, RangeSet.of(r(4, 5)), RangeSet.of(), false),
+            new Checkpoint(4, RangeSet.of(r(1, 2), r(4, 5)), RangeSet.of(), false)),
         Arguments.of(
-            new Checkpoint(2, RangeSet.of(r(4, 5)), RangeSet.of(), FAILED),
-            new Checkpoint(2, RangeSet.of(r(1, 2)), RangeSet.of(), FAILED),
-            new Checkpoint(4, RangeSet.of(r(1, 2), r(4, 5)), RangeSet.of(), FAILED)),
+            new Checkpoint(2, RangeSet.of(r(4, 5)), RangeSet.of(), false),
+            new Checkpoint(2, RangeSet.of(r(1, 2)), RangeSet.of(), false),
+            new Checkpoint(4, RangeSet.of(r(1, 2), r(4, 5)), RangeSet.of(), false)),
         Arguments.of(
-            new Checkpoint(2, RangeSet.of(r(1, 2)), RangeSet.of(), FINISHED),
-            new Checkpoint(2, RangeSet.of(r(1, 2)), RangeSet.of(), UNFINISHED),
-            new Checkpoint(4, RangeSet.of(r(1, 2)), RangeSet.of(), FINISHED)),
+            new Checkpoint(2, RangeSet.of(r(1, 2)), RangeSet.of(), true),
+            new Checkpoint(2, RangeSet.of(r(1, 2)), RangeSet.of(), false),
+            new Checkpoint(4, RangeSet.of(r(1, 2)), RangeSet.of(), true)),
         Arguments.of(
-            new Checkpoint(2, RangeSet.of(r(1, 2)), RangeSet.of(), UNFINISHED),
-            new Checkpoint(2, RangeSet.of(r(1, 2)), RangeSet.of(), FINISHED),
-            new Checkpoint(4, RangeSet.of(r(1, 2)), RangeSet.of(), FINISHED)),
+            new Checkpoint(2, RangeSet.of(r(1, 2)), RangeSet.of(), false),
+            new Checkpoint(2, RangeSet.of(r(1, 2)), RangeSet.of(), true),
+            new Checkpoint(4, RangeSet.of(r(1, 2)), RangeSet.of(), true)),
         Arguments.of(
-            new Checkpoint(2, RangeSet.of(r(1, 2)), RangeSet.of(), FINISHED),
-            new Checkpoint(2, RangeSet.of(r(1, 2)), RangeSet.of(), FAILED),
-            new Checkpoint(4, RangeSet.of(r(1, 2)), RangeSet.of(), FINISHED)),
+            new Checkpoint(2, RangeSet.of(), RangeSet.of(r(1, 2)), false),
+            new Checkpoint(2, RangeSet.of(), RangeSet.of(r(3, 4)), false),
+            new Checkpoint(4, RangeSet.of(), RangeSet.of(r(1, 4)), false)),
         Arguments.of(
-            new Checkpoint(2, RangeSet.of(r(1, 2)), RangeSet.of(), FAILED),
-            new Checkpoint(2, RangeSet.of(r(1, 2)), RangeSet.of(), FINISHED),
-            new Checkpoint(4, RangeSet.of(r(1, 2)), RangeSet.of(), FINISHED)),
+            new Checkpoint(2, RangeSet.of(), RangeSet.of(r(1, 2)), false),
+            new Checkpoint(2, RangeSet.of(), RangeSet.of(r(4, 5)), false),
+            new Checkpoint(4, RangeSet.of(), RangeSet.of(r(1, 2), r(4, 5)), false)),
         Arguments.of(
-            new Checkpoint(2, RangeSet.of(), RangeSet.of(r(1, 2)), UNFINISHED),
-            new Checkpoint(2, RangeSet.of(), RangeSet.of(r(3, 4)), UNFINISHED),
-            new Checkpoint(4, RangeSet.of(), RangeSet.of(r(1, 4)), UNFINISHED)),
+            new Checkpoint(2, RangeSet.of(), RangeSet.of(r(1, 2)), true),
+            new Checkpoint(2, RangeSet.of(), RangeSet.of(r(1, 2)), false),
+            new Checkpoint(4, RangeSet.of(), RangeSet.of(r(1, 2)), true)),
         Arguments.of(
-            new Checkpoint(2, RangeSet.of(), RangeSet.of(r(3, 4)), FAILED),
-            new Checkpoint(2, RangeSet.of(), RangeSet.of(r(1, 2)), FAILED),
-            new Checkpoint(4, RangeSet.of(), RangeSet.of(r(1, 4)), FAILED)),
-        Arguments.of(
-            new Checkpoint(2, RangeSet.of(), RangeSet.of(r(1, 2)), UNFINISHED),
-            new Checkpoint(2, RangeSet.of(), RangeSet.of(r(4, 5)), UNFINISHED),
-            new Checkpoint(4, RangeSet.of(), RangeSet.of(r(1, 2), r(4, 5)), UNFINISHED)),
-        Arguments.of(
-            new Checkpoint(2, RangeSet.of(), RangeSet.of(r(4, 5)), FAILED),
-            new Checkpoint(2, RangeSet.of(), RangeSet.of(r(1, 2)), FAILED),
-            new Checkpoint(4, RangeSet.of(), RangeSet.of(r(1, 2), r(4, 5)), FAILED)),
-        Arguments.of(
-            new Checkpoint(2, RangeSet.of(), RangeSet.of(r(1, 2)), FINISHED),
-            new Checkpoint(2, RangeSet.of(), RangeSet.of(r(1, 2)), UNFINISHED),
-            new Checkpoint(4, RangeSet.of(), RangeSet.of(r(1, 2)), FINISHED)),
-        Arguments.of(
-            new Checkpoint(2, RangeSet.of(), RangeSet.of(r(1, 2)), UNFINISHED),
-            new Checkpoint(2, RangeSet.of(), RangeSet.of(r(1, 2)), FINISHED),
-            new Checkpoint(4, RangeSet.of(), RangeSet.of(r(1, 2)), FINISHED)),
-        Arguments.of(
-            new Checkpoint(2, RangeSet.of(), RangeSet.of(r(1, 2)), FINISHED),
-            new Checkpoint(2, RangeSet.of(), RangeSet.of(r(1, 2)), FAILED),
-            new Checkpoint(4, RangeSet.of(), RangeSet.of(r(1, 2)), FINISHED)),
-        Arguments.of(
-            new Checkpoint(2, RangeSet.of(), RangeSet.of(r(1, 2)), FAILED),
-            new Checkpoint(2, RangeSet.of(), RangeSet.of(r(1, 2)), FINISHED),
-            new Checkpoint(4, RangeSet.of(), RangeSet.of(r(1, 2)), FINISHED)));
+            new Checkpoint(2, RangeSet.of(), RangeSet.of(r(1, 2)), false),
+            new Checkpoint(2, RangeSet.of(), RangeSet.of(r(1, 2)), true),
+            new Checkpoint(4, RangeSet.of(), RangeSet.of(r(1, 2)), true)));
   }
 
   @Test

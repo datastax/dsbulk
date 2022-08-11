@@ -1347,7 +1347,7 @@ class LogManagerTest {
     List<String> checkpointLines = Files.readAllLines(checkpointFile, UTF_8);
     assertThat(checkpointLines)
         .containsExactly(
-            "file:///file1.csv;2;3;1:3;", "file:///file2.csv;2;4;;1:3", "file:///file3.csv;2;0;;");
+            "file:///file1.csv;1;3;1:3;", "file:///file2.csv;1;4;;1:3", "file:///file3.csv;1;0;;");
 
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(
@@ -1501,16 +1501,16 @@ class LogManagerTest {
       case rewind:
         assertThat(checkpointLines)
             .containsExactly(
-                "file:///file1.csv;2;3;1:3;",
-                "file:///file2.csv;2;4;1:4;",
-                "file:///file3.csv;2;0;;");
+                "file:///file1.csv;1;3;1:3;",
+                "file:///file2.csv;1;4;1:4;",
+                "file:///file3.csv;1;0;;");
         break;
       case resume:
         assertThat(checkpointLines)
             .containsExactly(
-                "file:///file1.csv;2;3;1:3;",
-                "file:///file2.csv;2;4;4;1:3",
-                "file:///file3.csv;2;0;;");
+                "file:///file1.csv;1;3;1:3;",
+                "file:///file2.csv;1;4;4;1:3",
+                "file:///file3.csv;1;0;;");
         break;
     }
 
@@ -1697,9 +1697,9 @@ class LogManagerTest {
     List<String> checkpointLines = Files.readAllLines(checkpointFile, UTF_8);
     assertThat(checkpointLines)
         .containsExactly(
-            "cql://ks/t?start=1&end=2;2;3;3;1:2", // 3 records processed, 2 failed, finished
-            "cql://ks/t?start=2&end=3;1;0;;", // no records processed, failed
-            "cql://ks/t?start=3&end=4;2;0;;" // no records processed, finished (empty)
+            "cql://ks/t?start=1&end=2;1;3;3;1:2", // 3 records processed, 2 failed, finished
+            "cql://ks/t?start=2&end=3;0;0;;", // no records processed, failed
+            "cql://ks/t?start=3&end=4;1;0;;" // no records processed, finished (empty)
             );
 
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
@@ -1866,16 +1866,16 @@ class LogManagerTest {
       case rewind:
         assertThat(checkpointLines)
             .containsExactly(
-                "cql://ks/t?start=1&end=2;2;3;1:3;",
-                "cql://ks/t?start=2&end=3;2;3;1:3;",
-                "cql://ks/t?start=3&end=4;2;0;;");
+                "cql://ks/t?start=1&end=2;1;3;1:3;",
+                "cql://ks/t?start=2&end=3;1;3;1:3;",
+                "cql://ks/t?start=3&end=4;1;0;;");
         break;
       case resume:
         assertThat(checkpointLines)
             .containsExactly(
-                "cql://ks/t?start=1&end=2;2;3;3;1:2",
-                "cql://ks/t?start=2&end=3;2;3;1:3;",
-                "cql://ks/t?start=3&end=4;2;0;;");
+                "cql://ks/t?start=1&end=2;1;3;3;1:2",
+                "cql://ks/t?start=2&end=3;1;3;1:3;",
+                "cql://ks/t?start=3&end=4;1;0;;");
         break;
     }
 
