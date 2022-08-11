@@ -1329,11 +1329,11 @@ Default: **null**.
 #### --log.checkpoint.replayStrategy<br />--dsbulk.log.checkpoint.replayStrategy _&lt;string&gt;_
 
 The replay strategy to use when resuming an operation from a checkpoint file. Valid values are:
-- `resume`: this is the default option. DSBulk will only process new records from resources that weren't consumed entirely. Records that were already processed will be ignored, including rejected ones (rejected records are always written to bad files). This is the safest option when loading if the operation is not idempotent.
-- `retry`: DSBulk will process new and rejected records from resources that weren't consumed entirely, or consumed with errors. Note that this strategy may result in some rows being inserted twice and thus should only be used if the operation is idempotent.
+- `resume`: DSBulk will only process new records from resources that weren't consumed entirely. Records that were already processed will be ignored, including rejected ones (rejected records are always written to bad files). This is the safest option when loading if the operation is not idempotent.
+- `retry`: this is the default option. DSBulk will process new and rejected records from resources that weren't consumed entirely, or consumed with errors. Note that this strategy may result in some rows being inserted twice and thus should only be used if the operation is idempotent.
 - `rewind`: DSBulk will process all records (new, successful and rejected) from resources that weren't consumed entirely, or consumed with errors. This effectively makes DSBulk restart reading each non-successful resource from its very first record. Note that this strategy may result in some rows being inserted twice and thus should only be used if the operation is idempotent.
 
-Default: **"resume"**.
+Default: **"retry"**.
 
 #### --log.maxQueryWarnings<br />--dsbulk.log.maxQueryWarnings _&lt;number&gt;_
 
