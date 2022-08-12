@@ -147,11 +147,11 @@ class MetricsManagerTest {
       manager.stop(Duration.ofSeconds(123), true);
       MetricRegistry registry =
           (MetricRegistry) ReflectionUtils.getInternalState(manager, "registry");
-      assertThat(registry.counter("records/total").getCount()).isEqualTo(3);
-      assertThat(registry.counter("records/failed").getCount()).isEqualTo(1);
+      assertThat(registry.counter("records/total").getCount()).isEqualTo(103);
+      assertThat(registry.counter("records/failed").getCount()).isEqualTo(11);
       assertThat(logs.getLoggedEvents()).isEmpty();
       assertThat(stderr.getStreamLinesPlain())
-          .anySatisfy(line -> assertThat(line).startsWith("    3 |      1 |"));
+          .anySatisfy(line -> assertThat(line).startsWith("  103 |     11 |"));
     }
   }
 
@@ -181,7 +181,7 @@ class MetricsManagerTest {
             protocolVersion,
             codecRegistry,
             RowType.REGULAR)) {
-      manager.init();
+      manager.init(100, 10);
       manager.start();
       Flux<BatchableStatement<?>> records = Flux.just(stmt1, stmt2, stmt3);
       records
@@ -191,11 +191,11 @@ class MetricsManagerTest {
       manager.stop(Duration.ofSeconds(123), true);
       MetricRegistry registry =
           (MetricRegistry) ReflectionUtils.getInternalState(manager, "registry");
-      assertThat(registry.counter("records/total").getCount()).isEqualTo(3);
-      assertThat(registry.counter("records/failed").getCount()).isEqualTo(1);
+      assertThat(registry.counter("records/total").getCount()).isEqualTo(103);
+      assertThat(registry.counter("records/failed").getCount()).isEqualTo(11);
       assertThat(logs.getLoggedEvents()).isEmpty();
       assertThat(stderr.getStreamLinesPlain())
-          .anySatisfy(line -> assertThat(line).startsWith("    3 |      1 |"));
+          .anySatisfy(line -> assertThat(line).startsWith("  103 |     11 |"));
     }
   }
 
@@ -228,7 +228,7 @@ class MetricsManagerTest {
             protocolVersion,
             codecRegistry,
             RowType.REGULAR)) {
-      manager.init();
+      manager.init(100, 10);
       manager.start();
       Flux<Result> records = Flux.just(result1, result2, result3);
       records
