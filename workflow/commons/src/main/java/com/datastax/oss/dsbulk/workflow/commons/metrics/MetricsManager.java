@@ -511,8 +511,12 @@ public class MetricsManager implements AutoCloseable {
    *
    * <ul>
    *   <li>when loading, to count records that could not be written to the database.
-   *   <li>when unloading, to count records that could not be written to the database.
+   *   <li>when unloading, to count token range reads that could not be executed.
    * </ul>
+   *
+   * TODO: we currently increment the records/failed counter by 1 for a token range read failure. It
+   * would be better to not increment the counter at all, since this is a global failure; this
+   * counter should be specialized in counting problems affecting individual records/rows only.
    */
   public <T extends Result> Function<Flux<T>, Flux<T>> newFailedResultsMonitor() {
     return upstream ->
