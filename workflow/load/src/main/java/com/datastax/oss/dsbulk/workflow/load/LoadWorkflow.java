@@ -100,8 +100,7 @@ public class LoadWorkflow implements Workflow {
   private Function<Flux<Record>, Flux<Record>> failedRecordsMonitor;
   private Function<Flux<BatchableStatement<?>>, Flux<BatchableStatement<?>>>
       unmappableStatementsMonitor;
-  private Function<Flux<WriteResult>, Flux<WriteResult>>
-      failedWritesMonitor;
+  private Function<Flux<WriteResult>, Flux<WriteResult>> failedWritesMonitor;
   private Function<Flux<Record>, Flux<Record>> failedRecordsHandler;
   private Function<Flux<BatchableStatement<?>>, Flux<BatchableStatement<?>>>
       unmappableStatementsHandler;
