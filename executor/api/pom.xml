@@ -21,7 +21,7 @@
   <parent>
     <artifactId>dsbulk-executor</artifactId>
     <groupId>com.datastax.oss</groupId>
-    <version>1.10.0</version>
+    <version>1.11.0-SNAPSHOT</version>
   </parent>
   <artifactId>dsbulk-executor-api</artifactId>
   <name>DataStax Bulk Loader - Executor - API</name>
