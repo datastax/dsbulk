@@ -467,6 +467,7 @@ public class MetricsManager implements AutoCloseable {
    *
    * <ul>
    *   <li>when loading, to count records that the connector could not read properly;
+   *   <li>when unloading, to count records could not be mapped from database rows;
    *   <li>when unloading, to count records that the connector could not write properly.
    * </ul>
    */
