@@ -27,10 +27,12 @@ import com.codahale.metrics.UniformReservoir;
 import com.codahale.metrics.jmx.JmxReporter;
 import com.datastax.oss.driver.api.core.ProtocolVersion;
 import com.datastax.oss.driver.api.core.cql.BatchStatement;
+import com.datastax.oss.driver.api.core.cql.BatchableStatement;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
 import com.datastax.oss.driver.shaded.guava.common.util.concurrent.MoreExecutors;
 import com.datastax.oss.dsbulk.connectors.api.ErrorRecord;
+import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.datastax.oss.dsbulk.executor.api.listener.AbstractMetricsReportingExecutionListenerBuilder;
 import com.datastax.oss.dsbulk.executor.api.listener.LogSink;
 import com.datastax.oss.dsbulk.executor.api.listener.MetricsCollectingExecutionListener;
@@ -457,18 +459,85 @@ public class MetricsManager implements AutoCloseable {
     return upstream -> upstream.doOnNext(item -> totalItems.inc());
   }
 
-  public <T> Function<Flux<T>, Flux<T>> newFailedItemsMonitor() {
+  /**
+   * Returns a new monitor that will increment the records/failed metric when the record is a
+   * rejected record (that is, an instance of {@link ErrorRecord}).
+   *
+   * <p>This monitor is suitable for use in the following cases:
+   *
+   * <ul>
+   *   <li>when loading, to count records that the connector could not read properly;
+   *   <li>when unloading, to count records could not be mapped from database rows;
+   *   <li>when unloading, to count records that the connector could not write properly.
+   * </ul>
+   */
+  public Function<Flux<Record>, Flux<Record>> newFailedRecordsMonitor() {
     return upstream ->
         upstream.doOnNext(
             item -> {
-              if (item instanceof ErrorRecord
-                  || item instanceof UnmappableStatement
-                  || (item instanceof Result && !((Result) item).isSuccess())) {
+              if (item instanceof ErrorRecord) {
                 failedItems.inc();
               }
             });
   }
 
+  /**
+   * Returns a new monitor that will increment the records/failed metric when a record cannot be
+   * mapped to a bound statement (that is, the resulting statement is an instance of {@link
+   * UnmappableStatement}).
+   *
+   * <p>This monitor is suitable for use in the following cases:
+   *
+   * <ul>
+   *   <li>when loading, to count records that the mapper could not map.
+   * </ul>
+   */
+  public Function<Flux<BatchableStatement<?>>, Flux<BatchableStatement<?>>>
+      newUnmappableStatementsMonitor() {
+    return upstream ->
+        upstream.doOnNext(
+            item -> {
+              if (item instanceof UnmappableStatement) {
+                failedItems.inc();
+              }
+            });
+  }
+
+  /**
+   * Returns a new monitor that will increment the records/failed metric when a record cannot be
+   * written to or read from the database (that is, when {@link Result#isSuccess()} returns false).
+   *
+   * <p>This monitor is suitable for use in the following cases:
+   *
+   * <ul>
+   *   <li>when loading, to count records that could not be written to the database.
+   *   <li>when unloading, to count token range reads that could not be executed.
+   * </ul>
+   *
+   * TODO: we currently increment the records/failed counter by 1 for a token range read failure. It
+   * would be better to not increment the counter at all, since this is a global failure; this
+   * counter should be specialized in counting problems affecting individual records/rows only.
+   */
+  public <T extends Result> Function<Flux<T>, Flux<T>> newFailedResultsMonitor() {
+    return upstream ->
+        upstream.doOnNext(
+            item -> {
+              if (!item.isSuccess()) {
+                failedItems.inc();
+              }
+            });
+  }
+
+  /**
+   * Returns a new monitor that will increment the "batches" histogram.
+   *
+   * <p>This monitor is suitable for use in the following cases:
+   *
+   * <ul>
+   *   <li>when loading, to track batching efficiency of statements grouped together by the batcher
+   *       component.
+   * </ul>
+   */
   public Function<Flux<Statement<?>>, Flux<Statement<?>>> newBatcherMonitor() {
     return upstream ->
         upstream.doOnNext(

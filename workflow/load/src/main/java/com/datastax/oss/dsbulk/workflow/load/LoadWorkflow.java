@@ -99,7 +99,8 @@ public class LoadWorkflow implements Workflow {
   private Function<Flux<Record>, Flux<Record>> totalItemsCounter;
   private Function<Flux<Record>, Flux<Record>> failedRecordsMonitor;
   private Function<Flux<BatchableStatement<?>>, Flux<BatchableStatement<?>>>
-      failedStatementsMonitor;
+      unmappableStatementsMonitor;
+  private Function<Flux<WriteResult>, Flux<WriteResult>> failedWritesMonitor;
   private Function<Flux<Record>, Flux<Record>> failedRecordsHandler;
   private Function<Flux<BatchableStatement<?>>, Flux<BatchableStatement<?>>>
       unmappableStatementsHandler;
@@ -193,8 +194,9 @@ public class LoadWorkflow implements Workflow {
     }
     closed.set(false);
     totalItemsMonitor = metricsManager.newTotalItemsMonitor();
-    failedRecordsMonitor = metricsManager.newFailedItemsMonitor();
-    failedStatementsMonitor = metricsManager.newFailedItemsMonitor();
+    failedRecordsMonitor = metricsManager.newFailedRecordsMonitor();
+    unmappableStatementsMonitor = metricsManager.newUnmappableStatementsMonitor();
+    failedWritesMonitor = metricsManager.newFailedResultsMonitor();
     batcherMonitor = metricsManager.newBatcherMonitor();
     totalItemsCounter = logManager.newTotalItemsCounter();
     failedRecordsHandler = logManager.newFailedRecordsHandler();
@@ -234,6 +236,7 @@ public class LoadWorkflow implements Workflow {
     statements
         .transform(this::executeStatements)
         .transform(queryWarningsHandler)
+        .transform(failedWritesMonitor)
         .transform(failedWritesHandler)
         .transform(resultPositionsHandler)
         .transform(terminationHandler)
@@ -270,7 +273,7 @@ public class LoadWorkflow implements Workflow {
                     .transform(failedRecordsMonitor)
                     .transform(failedRecordsHandler)
                     .flatMap(mapper)
-                    .transform(failedStatementsMonitor)
+                    .transform(unmappableStatementsMonitor)
                     .transform(unmappableStatementsHandler)
                     .transform(this::bufferAndBatch)
                     .subscribeOn(scheduler),
@@ -301,7 +304,7 @@ public class LoadWorkflow implements Workflow {
                     .transform(failedRecordsMonitor)
                     .transform(failedRecordsHandler)
                     .flatMap(mapper)
-                    .transform(failedStatementsMonitor)
+                    .transform(unmappableStatementsMonitor)
                     .transform(unmappableStatementsHandler)
                     .transform(this::batchBuffered)
                     .subscribeOn(scheduler),

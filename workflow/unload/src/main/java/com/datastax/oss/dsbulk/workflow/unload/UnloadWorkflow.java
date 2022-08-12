@@ -162,8 +162,8 @@ public class UnloadWorkflow implements Workflow {
     closed.set(false);
     writer = connector.write();
     totalItemsMonitor = metricsManager.newTotalItemsMonitor();
-    failedRecordsMonitor = metricsManager.newFailedItemsMonitor();
-    failedReadResultsMonitor = metricsManager.newFailedItemsMonitor();
+    failedRecordsMonitor = metricsManager.newFailedRecordsMonitor();
+    failedReadResultsMonitor = metricsManager.newFailedResultsMonitor();
     failedRecordsHandler = logManager.newFailedRecordsHandler();
     totalItemsCounter = logManager.newTotalItemsCounter();
     failedReadsHandler = logManager.newFailedReadsHandler();

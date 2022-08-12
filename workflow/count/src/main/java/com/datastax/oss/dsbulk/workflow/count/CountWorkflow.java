@@ -144,7 +144,7 @@ public class CountWorkflow implements Workflow {
     closed.set(false);
     success = false;
     totalItemsMonitor = metricsManager.newTotalItemsMonitor();
-    failedItemsMonitor = metricsManager.newFailedItemsMonitor();
+    failedItemsMonitor = metricsManager.newFailedResultsMonitor();
     totalItemsCounter = logManager.newTotalItemsCounter();
     failedReadsHandler = logManager.newFailedReadsHandler();
     queryWarningsHandler = logManager.newQueryWarningsHandler();
