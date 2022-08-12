@@ -26,7 +26,9 @@ import com.datastax.oss.dsbulk.executor.api.reader.BulkReader;
 import com.datastax.oss.dsbulk.executor.api.result.ReadResult;
 import com.datastax.oss.dsbulk.workflow.api.Workflow;
 import com.datastax.oss.dsbulk.workflow.api.utils.DurationUtils;
+import com.datastax.oss.dsbulk.workflow.commons.log.DefaultRangeReadResource;
 import com.datastax.oss.dsbulk.workflow.commons.log.LogManager;
+import com.datastax.oss.dsbulk.workflow.commons.log.RangeReadResource;
 import com.datastax.oss.dsbulk.workflow.commons.metrics.MetricsManager;
 import com.datastax.oss.dsbulk.workflow.commons.schema.ReadResultMapper;
 import com.datastax.oss.dsbulk.workflow.commons.settings.CodecSettings;
@@ -44,14 +46,12 @@ import com.datastax.oss.dsbulk.workflow.commons.utils.CloseableUtils;
 import com.datastax.oss.dsbulk.workflow.commons.utils.ClusterInformationUtils;
 import com.typesafe.config.Config;
 import io.netty.util.concurrent.DefaultThreadFactory;
-import java.net.URI;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -86,8 +86,8 @@ public class UnloadWorkflow implements Workflow {
   private Function<Flux<ReadResult>, Flux<ReadResult>> failedReadsHandler;
   private Function<Flux<ReadResult>, Flux<ReadResult>> queryWarningsHandler;
   private Function<Flux<Record>, Flux<Record>> unmappableRecordsHandler;
-  private Function<Flux<Record>, Flux<Void>> resultPositionsHandler;
-  private BiFunction<URI, Publisher<ReadResult>, Publisher<ReadResult>> resourceStatsHandler;
+  private Function<Flux<Record>, Flux<Void>> successfulRecordsHandler;
+  private Function<Flux<RangeReadResource>, Flux<Flux<ReadResult>>> checkpointHandler;
   private Function<Flux<Void>, Flux<Void>> terminationHandler;
   private int readConcurrency;
   private int numCores;
@@ -151,7 +151,7 @@ public class UnloadWorkflow implements Workflow {
             session.getContext().getProtocolVersion(),
             session.getContext().getCodecRegistry(),
             schemaSettings.getRowType());
-    metricsManager.init();
+    metricsManager.init(logManager.getTotalItems(), logManager.getTotalErrors());
     RecordMetadata recordMetadata = connector.getRecordMetadata();
     readResultMapper =
         schemaSettings.createReadResultMapper(session, recordMetadata, logSettings.isSources());
@@ -169,8 +169,8 @@ public class UnloadWorkflow implements Workflow {
     failedReadsHandler = logManager.newFailedReadsHandler();
     queryWarningsHandler = logManager.newQueryWarningsHandler();
     unmappableRecordsHandler = logManager.newUnmappableRecordsHandler();
-    resultPositionsHandler = logManager.newRecordPositionsHandler();
-    resourceStatsHandler = logManager.newCqlResourceStatsHandler();
+    successfulRecordsHandler = logManager.newSuccessfulRecordsHandler();
+    checkpointHandler = logManager.newRangeReadCheckpointHandler();
     terminationHandler = logManager.newTerminationHandler();
     numCores = Runtime.getRuntime().availableProcessors();
     if (connector.writeConcurrency() < 1) {
@@ -215,7 +215,11 @@ public class UnloadWorkflow implements Workflow {
     if (totalErrors == 0) {
       LOGGER.info("{} completed successfully in {}.", this, elapsedStr);
     } else {
-      LOGGER.warn("{} completed with {} errors in {}.", this, totalErrors, elapsedStr);
+      LOGGER.warn(
+          "{} completed with {} errors in {}.",
+          this,
+          String.format("%,d", totalErrors),
+          elapsedStr);
     }
     return totalErrors == 0;
   }
@@ -228,12 +232,12 @@ public class UnloadWorkflow implements Workflow {
             : Schedulers.newParallel(numThreads, new DefaultThreadFactory("workflow"));
     schedulers.add(scheduler);
     return Flux.fromIterable(readStatements)
+        .map(stmt -> (RangeReadResource) new DefaultRangeReadResource(stmt, executor))
+        .transform(checkpointHandler)
         .flatMap(
-            statement ->
-                Flux.from(executor.readReactive(statement))
+            results ->
+                results
                     .publishOn(scheduler, 500)
-                    .transform(
-                        upstream -> resourceStatsHandler.apply(statement.getResource(), upstream))
                     .transform(queryWarningsHandler)
                     .transform(totalItemsMonitor)
                     .transform(totalItemsCounter)
@@ -247,7 +251,7 @@ public class UnloadWorkflow implements Workflow {
         .transform(writer)
         .transform(failedRecordsMonitor)
         .transform(failedRecordsHandler)
-        .transform(resultPositionsHandler);
+        .transform(successfulRecordsHandler);
   }
 
   private Flux<Void> fewWriters() {
@@ -263,12 +267,12 @@ public class UnloadWorkflow implements Workflow {
     schedulers.add(schedulerForReads);
     schedulers.add(schedulerForWrites);
     return Flux.fromIterable(readStatements)
+        .map(stmt -> (RangeReadResource) new DefaultRangeReadResource(stmt, executor))
+        .transform(checkpointHandler)
         .flatMap(
-            statement ->
-                Flux.from(executor.readReactive(statement))
+            results ->
+                results
                     .publishOn(schedulerForReads, 500)
-                    .transform(
-                        upstream -> resourceStatsHandler.apply(statement.getResource(), upstream))
                     .transform(queryWarningsHandler)
                     .transform(totalItemsMonitor)
                     .transform(totalItemsCounter)
@@ -288,7 +292,7 @@ public class UnloadWorkflow implements Workflow {
                     .transform(writer)
                     .transform(failedRecordsMonitor)
                     .transform(failedRecordsHandler)
-                    .transform(resultPositionsHandler),
+                    .transform(successfulRecordsHandler),
             writeConcurrency,
             500);
   }
@@ -300,13 +304,13 @@ public class UnloadWorkflow implements Workflow {
     Scheduler scheduler = Schedulers.newParallel(numThreads, new DefaultThreadFactory("workflow"));
     schedulers.add(scheduler);
     return Flux.fromIterable(readStatements)
+        .map(stmt -> (RangeReadResource) new DefaultRangeReadResource(stmt, executor))
+        .transform(checkpointHandler)
         .flatMap(
-            statement -> {
+            results -> {
               Flux<Record> records =
-                  Flux.from(executor.readReactive(statement))
+                  results
                       .publishOn(scheduler, 500)
-                      .transform(
-                          upstream -> resourceStatsHandler.apply(statement.getResource(), upstream))
                       .transform(queryWarningsHandler)
                       .transform(totalItemsMonitor)
                       .transform(totalItemsCounter)
@@ -329,7 +333,7 @@ public class UnloadWorkflow implements Workflow {
               return records
                   .transform(failedRecordsMonitor)
                   .transform(failedRecordsHandler)
-                  .transform(resultPositionsHandler);
+                  .transform(successfulRecordsHandler);
             },
             actualConcurrency,
             500);

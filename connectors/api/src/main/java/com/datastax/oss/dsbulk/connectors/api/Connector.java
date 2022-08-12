@@ -17,8 +17,6 @@ package com.datastax.oss.dsbulk.connectors.api;
 
 import com.typesafe.config.Config;
 import edu.umd.cs.findbugs.annotations.NonNull;
-import java.net.URI;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import org.reactivestreams.Publisher;
 
@@ -112,47 +110,21 @@ import org.reactivestreams.Publisher;
 public interface Connector extends AutoCloseable {
 
   /**
-   * Reads all records from the datasource in a flow of flows that can be consumed in parallel. Each
-   * inner flow is expected to contain the records read from a single resource.
+   * Reads records from all the resources in the datasource.
    *
-   * <p>The inner flows are guaranteed to be consumed with a parallelism no greater than the
-   * {@linkplain #readConcurrency() read concurrency}.
+   * <p>Resources are guaranteed to be consumed with a parallelism no greater than the {@linkplain
+   * #readConcurrency() read concurrency}.
    *
-   * <p>If the underlying datasource cannot split its records into multiple flows in any efficient
-   * manner, then this method should return a publisher of one single inner publisher.
-   *
-   * <p>This method should only be called after the connector is properly {@link #configure(Config,
-   * boolean, boolean) configured} and {@link #init() initialized}.
-   *
-   * @return a {@link Publisher} of records read from the datasource, grouped by resources.
-   */
-  @NonNull
-  default Publisher<Publisher<Record>> read() {
-    return read((resource, upstream) -> upstream);
-  }
-
-  /**
-   * Reads all records from the datasource in a flow of flows that can be consumed in parallel. Each
-   * inner flow is expected to contain the records read from a single resource.
-   *
-   * <p>The inner flows are guaranteed to be consumed with a parallelism no greater than the
-   * {@linkplain #readConcurrency() read concurrency}.
-   *
-   * <p>If the underlying datasource cannot split its records into multiple flows in any efficient
-   * manner, then this method should return a publisher of one single inner publisher.
+   * <p>If the underlying datasource cannot split its records into multiple resources in any
+   * efficient manner, then this method should return a publisher of one single resource.
    *
    * <p>This method should only be called after the connector is properly {@link #configure(Config,
    * boolean, boolean) configured} and {@link #init() initialized}.
    *
-   * <p>The connector is expected to invoke the termination handler for each inner flow / resource.
-   *
-   * @param resourceTerminationHandler a handler that reacts to terminated resources and decides
-   *     whether errors should be propagated downstream or filtered out.
-   * @return a {@link Publisher} of records read from the datasource, grouped by resources.
+   * @return a {@link Publisher} of resources from the datasource.
    */
   @NonNull
-  Publisher<Publisher<Record>> read(
-      BiFunction<URI, Publisher<Record>, Publisher<Record>> resourceTerminationHandler);
+  Publisher<Resource> read();
 
   /**
    * Returns a function that handles writing records to the datasource.

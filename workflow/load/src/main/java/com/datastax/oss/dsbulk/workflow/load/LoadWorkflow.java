@@ -26,6 +26,7 @@ import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
 import com.datastax.oss.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.oss.dsbulk.connectors.api.Connector;
 import com.datastax.oss.dsbulk.connectors.api.Record;
+import com.datastax.oss.dsbulk.connectors.api.Resource;
 import com.datastax.oss.dsbulk.executor.api.result.EmptyWriteResult;
 import com.datastax.oss.dsbulk.executor.api.result.WriteResult;
 import com.datastax.oss.dsbulk.executor.api.writer.BulkWriter;
@@ -52,11 +53,9 @@ import com.datastax.oss.dsbulk.workflow.commons.utils.CloseableUtils;
 import com.datastax.oss.dsbulk.workflow.commons.utils.ClusterInformationUtils;
 import com.typesafe.config.Config;
 import io.netty.util.concurrent.DefaultThreadFactory;
-import java.net.URI;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -107,9 +106,9 @@ public class LoadWorkflow implements Workflow {
   private Function<Flux<Statement<?>>, Flux<Statement<?>>> batcherMonitor;
   private Function<Flux<Void>, Flux<Void>> terminationHandler;
   private Function<Flux<WriteResult>, Flux<WriteResult>> failedWritesHandler;
-  private Function<Flux<WriteResult>, Flux<Void>> resultPositionsHandler;
+  private Function<Flux<WriteResult>, Flux<Void>> successfulWritesHandler;
   private Function<Flux<WriteResult>, Flux<WriteResult>> queryWarningsHandler;
-  private BiFunction<URI, Publisher<Record>, Publisher<Record>> resourceStatsHandler;
+  private Function<Flux<Resource>, Flux<Flux<Record>>> checkpointHandler;
 
   LoadWorkflow(Config config) {
     settingsManager = new SettingsManager(config);
@@ -183,7 +182,7 @@ public class LoadWorkflow implements Workflow {
             session.getContext().getProtocolVersion(),
             session.getContext().getCodecRegistry(),
             schemaSettings.getRowType());
-    metricsManager.init();
+    metricsManager.init(logManager.getTotalItems(), logManager.getTotalErrors());
     if (driverSettings.isCloud()) {
       executorSettings.enforceCloudRateLimit(session.getMetadata().getNodes().size());
     }
@@ -203,9 +202,9 @@ public class LoadWorkflow implements Workflow {
     unmappableStatementsHandler = logManager.newUnmappableStatementsHandler();
     queryWarningsHandler = logManager.newQueryWarningsHandler();
     failedWritesHandler = logManager.newFailedWritesHandler();
-    resultPositionsHandler = logManager.newWriteResultPositionsHandler();
+    successfulWritesHandler = logManager.newSuccessfulWritesHandler();
     terminationHandler = logManager.newTerminationHandler();
-    resourceStatsHandler = logManager.newConnectorResourceStatsHandler();
+    checkpointHandler = logManager.newConnectorCheckpointHandler();
     numCores = Runtime.getRuntime().availableProcessors();
     if (connector.readConcurrency() < 1) {
       throw new IllegalArgumentException(
@@ -238,7 +237,7 @@ public class LoadWorkflow implements Workflow {
         .transform(queryWarningsHandler)
         .transform(failedWritesMonitor)
         .transform(failedWritesHandler)
-        .transform(resultPositionsHandler)
+        .transform(successfulWritesHandler)
         .transform(terminationHandler)
         .blockLast();
     timer.stop();
@@ -250,7 +249,11 @@ public class LoadWorkflow implements Workflow {
     if (totalErrors == 0) {
       LOGGER.info("{} completed successfully in {}.", this, elapsedStr);
     } else {
-      LOGGER.warn("{} completed with {} errors in {}.", this, totalErrors, elapsedStr);
+      LOGGER.warn(
+          "{} completed with {} errors in {}.",
+          this,
+          String.format("%,d", totalErrors),
+          elapsedStr);
     }
     return totalErrors == 0;
   }
@@ -264,7 +267,8 @@ public class LoadWorkflow implements Workflow {
   private Flux<Statement<?>> manyReaders() {
     int numThreads = Math.min(readConcurrency, numCores);
     scheduler = Schedulers.newParallel(numThreads, new DefaultThreadFactory("workflow"));
-    return Flux.defer(() -> connector.read(resourceStatsHandler))
+    return Flux.defer(() -> connector.read())
+        .transform(checkpointHandler)
         .flatMap(
             records ->
                 Flux.from(records)
@@ -290,7 +294,8 @@ public class LoadWorkflow implements Workflow {
    */
   private Flux<Statement<?>> fewReaders() {
     scheduler = Schedulers.newParallel(numCores, new DefaultThreadFactory("workflow"));
-    return Flux.defer(() -> connector.read(resourceStatsHandler))
+    return Flux.defer(() -> connector.read())
+        .transform(checkpointHandler)
         .flatMap(
             records ->
                 Flux.from(records)
@@ -418,7 +423,8 @@ public class LoadWorkflow implements Workflow {
       Histogram sample =
           DataSizeSampler.sampleWrites(
               session.getContext(),
-              Flux.merge(connector.read())
+              Flux.from(connector.read())
+                  .flatMap(Resource::read)
                   .take(1000)
                   .<Statement<?>>flatMap(mapper)
                   .filter(BoundStatement.class::isInstance)

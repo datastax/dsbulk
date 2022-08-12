@@ -140,8 +140,8 @@ public class DefaultReadResultCounter implements ReadResultCounter {
   }
 
   @Override
-  public DefaultCountingUnit newCountingUnit() {
-    DefaultCountingUnit unit = new DefaultCountingUnit();
+  public DefaultCountingUnit newCountingUnit(long initial) {
+    DefaultCountingUnit unit = new DefaultCountingUnit(initial);
     units.add(unit);
     return unit;
   }
@@ -237,6 +237,10 @@ public class DefaultReadResultCounter implements ReadResultCounter {
     final List<PartitionKeyCount> totalsByPartitionKey = new ArrayList<>(numPartitions + 1);
     long currentPkCount = 0;
     PartitionKey currentPk;
+
+    DefaultCountingUnit(long initial) {
+      total = initial;
+    }
 
     @Override
     public void update(ReadResult result) {

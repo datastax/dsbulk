@@ -210,16 +210,16 @@ class DefaultReadResultCounterTest {
     DefaultReadResultCounter counter =
         new DefaultReadResultCounter(ks, metadata, EnumSet.of(global), 10, V4, codecFactory);
 
-    counter.newCountingUnit().update(result1);
+    counter.newCountingUnit(0L).update(result1);
     counter.consolidateUnitCounts();
     assertThat(counter.totalRows).isOne();
 
-    counter.newCountingUnit().update(result2);
+    counter.newCountingUnit(100L).update(result2);
     counter.consolidateUnitCounts();
-    assertThat(counter.totalRows).isEqualTo(2);
+    assertThat(counter.totalRows).isEqualTo(102);
 
     counter.reportTotals();
-    assertThat(stdout.getStreamLines()).contains("2");
+    assertThat(stdout.getStreamLines()).contains("102");
   }
 
   @Test
@@ -227,7 +227,7 @@ class DefaultReadResultCounterTest {
     DefaultReadResultCounter counter =
         new DefaultReadResultCounter(ks, metadata, EnumSet.of(hosts), 10, V4, codecFactory);
 
-    ReadResultCounter.CountingUnit unit = counter.newCountingUnit();
+    ReadResultCounter.CountingUnit unit = counter.newCountingUnit(0L);
 
     // add token1a, belongs to range1/node1
     unit.update(result1);
@@ -270,7 +270,7 @@ class DefaultReadResultCounterTest {
     DefaultReadResultCounter counter =
         new DefaultReadResultCounter(ks, metadata, EnumSet.of(ranges), 10, V4, codecFactory);
 
-    ReadResultCounter.CountingUnit unit = counter.newCountingUnit();
+    ReadResultCounter.CountingUnit unit = counter.newCountingUnit(0L);
 
     // add token1a, belongs to range1/node1
     unit.update(result1);
@@ -317,7 +317,7 @@ class DefaultReadResultCounterTest {
     DefaultReadResultCounter counter =
         new DefaultReadResultCounter(ks, metadata, EnumSet.of(partitions), 3, V4, codecFactory);
 
-    DefaultReadResultCounter.DefaultCountingUnit unit = counter.newCountingUnit();
+    DefaultReadResultCounter.DefaultCountingUnit unit = counter.newCountingUnit(0L);
 
     unit.update(result1);
 
@@ -546,10 +546,10 @@ class DefaultReadResultCounterTest {
     DefaultReadResultCounter counter =
         new DefaultReadResultCounter(ks, metadata, EnumSet.of(partitions), 3, V4, codecFactory);
 
-    DefaultReadResultCounter.DefaultCountingUnit unit1 = counter.newCountingUnit();
-    DefaultReadResultCounter.DefaultCountingUnit unit2 = counter.newCountingUnit();
-    DefaultReadResultCounter.DefaultCountingUnit unit3 = counter.newCountingUnit();
-    DefaultReadResultCounter.DefaultCountingUnit unit4 = counter.newCountingUnit();
+    DefaultReadResultCounter.DefaultCountingUnit unit1 = counter.newCountingUnit(0L);
+    DefaultReadResultCounter.DefaultCountingUnit unit2 = counter.newCountingUnit(0L);
+    DefaultReadResultCounter.DefaultCountingUnit unit3 = counter.newCountingUnit(0L);
+    DefaultReadResultCounter.DefaultCountingUnit unit4 = counter.newCountingUnit(0L);
 
     Thread t1 =
         new Thread(
