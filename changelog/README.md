@@ -1,6 +1,6 @@
 ## Changelog
 
-## 1.10.0 (in progress)
+## 1.10.0
 
 - [improvement] [#423](https://github.com/datastax/dsbulk/issues/423): Upgrade driver to 4.14.1, and other DSBulk dependencies.
 - [bug] [#419](https://github.com/datastax/dsbulk/issues/419): Fix wrong ANSI mode option name.
