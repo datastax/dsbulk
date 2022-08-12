@@ -35,6 +35,9 @@ public class RangeSet {
 
   @NonNull
   public static RangeSet parse(@NonNull String text) {
+    if (text.isEmpty()) {
+      return RangeSet.of();
+    }
     List<Range> ranges =
         Pattern.compile(",").splitAsStream(text).map(Range::parse).collect(Collectors.toList());
     return RangeSet.of(ranges);
