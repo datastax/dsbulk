@@ -1398,7 +1398,7 @@ class LogManagerTest {
             record -> {
               switch (strategy) {
                 case retry:
-                case rewind:
+                case retryAll:
                   if (record.equals(record2_1)) {
                     return stmt2_1a;
                   }
@@ -1425,7 +1425,7 @@ class LogManagerTest {
             stmt -> {
               switch (strategy) {
                 case retry:
-                case rewind:
+                case retryAll:
                   if (stmt == stmt2_1a) {
                     return new DefaultWriteResult(stmt2_1a, rs);
                   }
@@ -1469,7 +1469,7 @@ class LogManagerTest {
         .containsExactly(new Range(1, 3));
     switch (strategy) {
       case retry:
-      case rewind:
+      case retryAll:
         assertThat(checkpoints.get(resource2).getConsumedSuccessful().stream())
             .containsExactly(new Range(1, 4));
         assertThat(checkpoints.get(resource3).getConsumedSuccessful().stream()).isEmpty();
@@ -1498,7 +1498,7 @@ class LogManagerTest {
     checkpointLines = Files.readAllLines(checkpointFile, UTF_8);
     switch (strategy) {
       case retry:
-      case rewind:
+      case retryAll:
         assertThat(checkpointLines)
             .containsExactly(
                 "file:///file1.csv;1;3;1:3;",
@@ -1748,11 +1748,7 @@ class LogManagerTest {
         .map(
             result -> {
               switch (strategy) {
-                case rewind:
-                  if (result.equals(result1_3)) {
-                    return record1_3;
-                  }
-                  // fall through
+                case retryAll:
                 case retry:
                   if (result.equals(result1_1)) {
                     return record1_1;
@@ -1781,11 +1777,7 @@ class LogManagerTest {
         .map(
             record -> {
               switch (strategy) {
-                case rewind:
-                  if (record.equals(record1_3)) {
-                    return record1_3;
-                  }
-                  // fall through
+                case retryAll:
                 case retry:
                   if (record.equals(record1_1)) {
                     return record1_1;
@@ -1829,7 +1821,7 @@ class LogManagerTest {
 
     switch (strategy) {
       case retry:
-      case rewind:
+      case retryAll:
         assertThat(checkpoints.get(resource1).getConsumedSuccessful().stream())
             .containsExactly(new Range(1, 3));
         assertThat(checkpoints.get(resource2).getConsumedSuccessful().stream())
@@ -1863,7 +1855,7 @@ class LogManagerTest {
 
     switch (strategy) {
       case retry:
-      case rewind:
+      case retryAll:
         assertThat(checkpointLines)
             .containsExactly(
                 "cql://ks/t?start=1&end=2;1;3;1:3;",

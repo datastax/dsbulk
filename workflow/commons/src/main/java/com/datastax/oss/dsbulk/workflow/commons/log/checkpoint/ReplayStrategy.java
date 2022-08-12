@@ -86,34 +86,28 @@ public enum ReplayStrategy {
     }
   },
 
-  /** Replay all records, unless the resource was consumed entirely and without any errors. */
-  rewind {
+  /** Replay new and failed records, including from completed resources. */
+  retryAll {
     @Override
     public boolean isComplete(@NonNull Checkpoint checkpoint) {
-      return checkpoint.isComplete()
-          && checkpoint.getProduced() == checkpoint.getConsumedSuccessful().sum()
-          && checkpoint.getConsumedFailed().sum() == 0;
+      return false;
     }
 
     @Override
     public void reset(@NonNull Checkpoint checkpoint) {
       checkpoint.setComplete(false);
-      checkpoint.setProduced(0);
-      checkpoint.getConsumedSuccessful().clear();
+      checkpoint.setProduced(checkpoint.getConsumedSuccessful().sum());
       checkpoint.getConsumedFailed().clear();
     }
 
     @Override
     public boolean shouldReplay(@NonNull Checkpoint checkpoint, long position) {
-      return true;
+      return !checkpoint.getConsumedSuccessful().contains(position);
     }
 
     @Override
     public long getTotalItems(@NonNull Checkpoint checkpoint) {
-      if (isComplete(checkpoint)) {
-        return checkpoint.getConsumedSuccessful().sum();
-      }
-      return 0;
+      return checkpoint.getConsumedSuccessful().sum();
     }
 
     @Override

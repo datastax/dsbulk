@@ -45,6 +45,7 @@ import static com.datastax.oss.dsbulk.tests.logging.StreamType.STDOUT;
 import static com.datastax.oss.dsbulk.tests.utils.FileUtils.createURLFile;
 import static com.datastax.oss.dsbulk.tests.utils.FileUtils.readAllLinesInDirectoryAsStream;
 import static com.datastax.oss.dsbulk.tests.utils.StringUtils.quoteJson;
+import static com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.ReplayStrategy.retry;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.LOCAL_ONE;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.ONE;
 import static java.util.Collections.emptyList;
@@ -886,24 +887,13 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
         assertThat(logs.getAllMessagesAsString()).contains("Nothing to replay");
         break;
       case retry:
+      case retryAll:
         assertStatus(status, STATUS_OK);
         assertThat(logs.getAllMessagesAsString()).contains("completed successfully");
         assertThat(logs.getAllMessagesAsString())
             .contains("Writes: total: 10,900, successful: 10,900, failed: 0")
             .contains("Records: total: 100,000, successful: 100,000, failed: 0");
-        validateCheckpointFile(100_000, replayStrategy, true);
-        manager = getCheckpointManager();
-        for (int i = 0; i < 100; i++) {
-          checkCheckpointFile(manager, i, 1000, 0);
-        }
-        break;
-      case rewind:
-        assertStatus(status, STATUS_OK);
-        assertThat(logs.getAllMessagesAsString()).contains("completed successfully");
-        assertThat(logs.getAllMessagesAsString())
-            .contains("Writes: total: 100,000, successful: 100,000, failed: 0")
-            .contains("Records: total: 100,000, successful: 100,000, failed: 0");
-        validateCheckpointFile(100_000, replayStrategy, true);
+        validateCheckpointFile(100_000, replayStrategy, replayStrategy == retry);
         manager = getCheckpointManager();
         for (int i = 0; i < 100; i++) {
           checkCheckpointFile(manager, i, 1000, 0);
@@ -1135,12 +1125,11 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
 
     status = new DataStaxBulkLoader(addCommonSettings(args)).run();
 
-    validateCheckpointFile(100_000, replayStrategy, true);
-
     manager = getCheckpointManager();
 
     switch (replayStrategy) {
       case resume:
+        validateCheckpointFile(100_000, replayStrategy, true);
         assertStatus(status, STATUS_COMPLETED_WITH_ERRORS);
         assertThat(logs.getAllMessagesAsString()).contains("completed with 9,000 errors");
         assertThat(logs.getAllMessagesAsString())
@@ -1155,12 +1144,14 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
         }
         break;
       case retry:
-      case rewind:
+      case retryAll:
         assertStatus(status, STATUS_OK);
         assertThat(logs.getAllMessagesAsString()).contains("completed successfully");
         assertThat(logs.getAllMessagesAsString())
             .contains("Reads: total: 100,000, successful: 100,000, failed: 0")
             .contains("Records: total: 100,000, successful: 100,000, failed: 0");
+        validateCheckpointFile(100_000, replayStrategy, replayStrategy == retry);
+        manager = getCheckpointManager();
         for (TokenRange range : goodRanges) {
           checkRangeCheckpoint(manager, range, true, 1000, 0);
         }

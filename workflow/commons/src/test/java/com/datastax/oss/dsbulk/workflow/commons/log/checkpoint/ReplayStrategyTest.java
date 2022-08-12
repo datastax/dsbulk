@@ -18,7 +18,7 @@ package com.datastax.oss.dsbulk.workflow.commons.log.checkpoint;
 import static com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.RangeUtilsTest.r;
 import static com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.ReplayStrategy.resume;
 import static com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.ReplayStrategy.retry;
-import static com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.ReplayStrategy.rewind;
+import static com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.ReplayStrategy.retryAll;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.stream.Stream;
@@ -38,27 +38,30 @@ class ReplayStrategyTest {
     return Stream.of(
         Arguments.of(resume, new Checkpoint(), false),
         Arguments.of(retry, new Checkpoint(), false),
-        Arguments.of(rewind, new Checkpoint(), false),
+        Arguments.of(retryAll, new Checkpoint(), false),
         Arguments.of(resume, new Checkpoint(0, RangeSet.of(), RangeSet.of(), false), false),
         Arguments.of(retry, new Checkpoint(0, RangeSet.of(), RangeSet.of(), false), false),
-        Arguments.of(rewind, new Checkpoint(0, RangeSet.of(), RangeSet.of(), false), false),
+        Arguments.of(retryAll, new Checkpoint(0, RangeSet.of(), RangeSet.of(), false), false),
         Arguments.of(
             resume, new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), false), false),
         Arguments.of(retry, new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), false), false),
         Arguments.of(
-            rewind, new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), false), false),
+            retryAll, new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), false), false),
         Arguments.of(resume, new Checkpoint(0, RangeSet.of(), RangeSet.of(), true), true),
         Arguments.of(retry, new Checkpoint(0, RangeSet.of(), RangeSet.of(), true), true),
-        Arguments.of(rewind, new Checkpoint(0, RangeSet.of(), RangeSet.of(), true), true),
+        Arguments.of(retryAll, new Checkpoint(0, RangeSet.of(), RangeSet.of(), true), false),
         Arguments.of(resume, new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), true), true),
         Arguments.of(retry, new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), true), true),
-        Arguments.of(rewind, new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), true), true),
+        Arguments.of(
+            retryAll, new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), true), false),
         Arguments.of(
             resume, new Checkpoint(10, RangeSet.of(r(1, 5)), RangeSet.of(r(6, 10)), true), true),
         Arguments.of(
             retry, new Checkpoint(10, RangeSet.of(r(1, 5)), RangeSet.of(r(6, 10)), true), false),
         Arguments.of(
-            rewind, new Checkpoint(10, RangeSet.of(r(1, 5)), RangeSet.of(r(6, 10)), true), false));
+            retryAll,
+            new Checkpoint(10, RangeSet.of(r(1, 5)), RangeSet.of(r(6, 10)), true),
+            false));
   }
 
   @ParameterizedTest
@@ -72,7 +75,7 @@ class ReplayStrategyTest {
     return Stream.of(
         Arguments.of(resume, new Checkpoint(), new Checkpoint()),
         Arguments.of(retry, new Checkpoint(), new Checkpoint()),
-        Arguments.of(rewind, new Checkpoint(), new Checkpoint()),
+        Arguments.of(retryAll, new Checkpoint(), new Checkpoint()),
         Arguments.of(
             resume,
             new Checkpoint(21, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), true),
@@ -82,9 +85,9 @@ class ReplayStrategyTest {
             new Checkpoint(21, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), true),
             new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), false)),
         Arguments.of(
-            rewind,
+            retryAll,
             new Checkpoint(21, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), true),
-            new Checkpoint(0, RangeSet.of(), RangeSet.of(), false)));
+            new Checkpoint(10, RangeSet.of(r(1, 10)), RangeSet.of(), false)));
   }
 
   @ParameterizedTest
@@ -97,7 +100,7 @@ class ReplayStrategyTest {
     return Stream.of(
         Arguments.of(resume, new Checkpoint(), 1, true),
         Arguments.of(retry, new Checkpoint(), 1, true),
-        Arguments.of(rewind, new Checkpoint(), 1, true),
+        Arguments.of(retryAll, new Checkpoint(), 1, true),
         Arguments.of(
             resume,
             new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), false),
@@ -109,10 +112,10 @@ class ReplayStrategyTest {
             1,
             false),
         Arguments.of(
-            rewind,
+            retryAll,
             new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), false),
             1,
-            true),
+            false),
         Arguments.of(
             resume,
             new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), false),
@@ -124,7 +127,7 @@ class ReplayStrategyTest {
             11,
             true),
         Arguments.of(
-            rewind,
+            retryAll,
             new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), false),
             11,
             true));
@@ -140,19 +143,13 @@ class ReplayStrategyTest {
     return Stream.of(
         Arguments.of(resume, new Checkpoint(), 0),
         Arguments.of(retry, new Checkpoint(), 0),
-        Arguments.of(rewind, new Checkpoint(), 0),
+        Arguments.of(retryAll, new Checkpoint(), 0),
         Arguments.of(
             resume, new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), false), 20),
         Arguments.of(
-            retry,
-            new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), false),
-            10,
-            false),
+            retry, new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), false), 10),
         Arguments.of(
-            rewind,
-            new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), false),
-            0,
-            true));
+            retryAll, new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), true), 10));
   }
 
   @ParameterizedTest
@@ -165,7 +162,7 @@ class ReplayStrategyTest {
     return Stream.of(
         Arguments.of(resume, new Checkpoint(), 0),
         Arguments.of(retry, new Checkpoint(), 0),
-        Arguments.of(rewind, new Checkpoint(), 0),
+        Arguments.of(retryAll, new Checkpoint(), 0),
         Arguments.of(
             resume, new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), false), 10),
         Arguments.of(
@@ -174,7 +171,7 @@ class ReplayStrategyTest {
             0,
             false),
         Arguments.of(
-            rewind,
+            retryAll,
             new Checkpoint(20, RangeSet.of(r(1, 10)), RangeSet.of(r(11, 20)), false),
             0,
             true));
