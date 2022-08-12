@@ -79,17 +79,12 @@ class MetricsManagerTest {
   private Record record2;
   private Record record3;
 
-  @Mock
-  private WriteResult result1;
-  @Mock
-  private WriteResult result2;
-  @Mock
-  private WriteResult result3;
+  @Mock private WriteResult result1;
+  @Mock private WriteResult result2;
+  @Mock private WriteResult result3;
 
-  @Mock
-  private BatchableStatement<?> stmt1;
-  @Mock
-  private BatchableStatement<?> stmt2;
+  @Mock private BatchableStatement<?> stmt1;
+  @Mock private BatchableStatement<?> stmt2;
   private BatchableStatement<?> stmt3;
 
   private BatchStatement batch;

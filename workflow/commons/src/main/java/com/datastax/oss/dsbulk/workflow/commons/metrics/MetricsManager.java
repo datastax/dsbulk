@@ -459,6 +459,17 @@ public class MetricsManager implements AutoCloseable {
     return upstream -> upstream.doOnNext(item -> totalItems.inc());
   }
 
+  /**
+   * Returns a new monitor that will increment the records/failed metric when the record is a
+   * rejected record (that is, an instance of {@link ErrorRecord}).
+   *
+   * <p>This monitor is suitable for use in the following cases:
+   *
+   * <ul>
+   *   <li>when loading, to count records that the connector could not read properly;
+   *   <li>when unloading, to count records that the connector could not write properly.
+   * </ul>
+   */
   public Function<Flux<Record>, Flux<Record>> newFailedRecordsMonitor() {
     return upstream ->
         upstream.doOnNext(
@@ -469,7 +480,19 @@ public class MetricsManager implements AutoCloseable {
             });
   }
 
-  public Function<Flux<BatchableStatement<?>>, Flux<BatchableStatement<?>>> newUnmappableStatementsMonitor() {
+  /**
+   * Returns a new monitor that will increment the records/failed metric when a record cannot be
+   * mapped to a bound statement (that is, the resulting statement is an instance of {@link
+   * UnmappableStatement}).
+   *
+   * <p>This monitor is suitable for use in the following cases:
+   *
+   * <ul>
+   *   <li>when loading, to count records that the mapper could not map.
+   * </ul>
+   */
+  public Function<Flux<BatchableStatement<?>>, Flux<BatchableStatement<?>>>
+      newUnmappableStatementsMonitor() {
     return upstream ->
         upstream.doOnNext(
             item -> {
@@ -479,6 +502,17 @@ public class MetricsManager implements AutoCloseable {
             });
   }
 
+  /**
+   * Returns a new monitor that will increment the records/failed metric when a record cannot be
+   * written to or read from the database (that is, when {@link Result#isSuccess()} returns false).
+   *
+   * <p>This monitor is suitable for use in the following cases:
+   *
+   * <ul>
+   *   <li>when loading, to count records that could not be written to the database.
+   *   <li>when unloading, to count records that could not be written to the database.
+   * </ul>
+   */
   public <T extends Result> Function<Flux<T>, Flux<T>> newFailedResultsMonitor() {
     return upstream ->
         upstream.doOnNext(
@@ -489,6 +523,16 @@ public class MetricsManager implements AutoCloseable {
             });
   }
 
+  /**
+   * Returns a new monitor that will increment the "batches" histogram.
+   *
+   * <p>This monitor is suitable for use in the following cases:
+   *
+   * <ul>
+   *   <li>when loading, to track batching efficiency of statements grouped together by the batcher
+   *       component.
+   * </ul>
+   */
   public Function<Flux<Statement<?>>, Flux<Statement<?>>> newBatcherMonitor() {
     return upstream ->
         upstream.doOnNext(
