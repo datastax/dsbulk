@@ -254,9 +254,12 @@ public class LogManager implements AutoCloseable {
     }
     if (checkpointEnabled) {
       CheckpointManager manager = mergeCheckpointManagers();
-      if (!manager.isEmpty()) {
+      if (!manager.isEmpty() && !manager.isComplete(replayStrategy)) {
         writeCheckpointFile(manager);
         LOGGER.info("Checkpoints for the current operation were written to {}.", CHECKPOINT_CSV);
+        LOGGER.info(
+            "To resume the current operation, re-run DSBulk with the same settings, and add the following command line flag:");
+        LOGGER.info("--dsbulk.log.checkpoint.file={}/{} .", operationDirectory, CHECKPOINT_CSV);
       }
     }
   }
