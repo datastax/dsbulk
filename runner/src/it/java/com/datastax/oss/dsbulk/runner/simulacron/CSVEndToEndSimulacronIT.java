@@ -739,6 +739,7 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
                         if (next == 1_000) {
                           sink.complete();
                         } else if (next % 10 == 0 && !first) {
+                          // generate 99 failed records
                           sink.next(
                               RecordUtils.error(
                                   resource,
@@ -779,11 +780,9 @@ class CSVEndToEndSimulacronIT extends EndToEndSimulacronITBase {
     ExitStatus status = new DataStaxBulkLoader(addCommonSettings(args)).run();
     assertStatus(status, STATUS_COMPLETED_WITH_ERRORS);
     assertThat(logs.getAllMessagesAsString())
-        // successful (1000) + (1000-100)*99 = 90100
-        // failed 100000 - 90100 = 9900
+        // failed (99 bad records + 10 bad writes)*100 = 10900
         .contains("completed with 10,900 errors")
-        .contains("Records: total: 100,000, successful: 90,100, failed: 9,900")
-        // successful (1000-10)+(1000-100-10)*99 = 89100
+        .contains("Records: total: 100,000, successful: 89,100, failed: 10,900")
         // failed 10*100 = 1000
         .contains("Writes: total: 90,100, successful: 89,100, failed: 1,000, in-flight: 0");
     validateExceptionsLog(9_900, "Record could not be read:", "connector-errors.log");
