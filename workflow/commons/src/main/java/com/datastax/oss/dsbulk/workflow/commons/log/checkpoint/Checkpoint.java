@@ -50,7 +50,7 @@ public class Checkpoint {
       long produced,
       @NonNull RangeSet consumedSuccessful,
       @NonNull RangeSet consumedFailed,
-      @NonNull boolean complete) {
+      boolean complete) {
     this.produced = produced;
     this.consumedSuccessful = consumedSuccessful;
     this.consumedFailed = consumedFailed;
@@ -77,7 +77,7 @@ public class Checkpoint {
     produced++;
   }
 
-  void setProduced(long produced) {
+  public void setProduced(long produced) {
     this.produced = produced;
   }
 
