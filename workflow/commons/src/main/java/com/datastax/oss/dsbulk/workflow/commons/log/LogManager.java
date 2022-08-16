@@ -254,7 +254,7 @@ public class LogManager implements AutoCloseable {
     }
     if (checkpointEnabled) {
       CheckpointManager manager = mergeCheckpointManagers();
-      if (!manager.isEmpty()) {
+      if (!manager.isEmpty() && !manager.isComplete(replayStrategy)) {
         writeCheckpointFile(manager);
         LOGGER.info("Checkpoints for the current operation were written to {}.", CHECKPOINT_CSV);
         LOGGER.info(
