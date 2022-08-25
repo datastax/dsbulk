@@ -40,9 +40,13 @@ public class ExecutorSettings {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ExecutorSettings.class);
 
+  /** The actual value is 4096, but we don't want to risk hitting that value. */
+  private static final int CLOUD_MAX_REQUESTS_PER_SECOND_PER_COORDINATOR = 3_000;
+
   private final Config config;
 
   private int maxPerSecond;
+  private long maxBytesPerSecond;
   private int maxInFlight;
   private boolean continuousPagingEnabled;
 
@@ -53,6 +57,7 @@ public class ExecutorSettings {
   public void init() {
     try {
       maxPerSecond = config.getInt("maxPerSecond");
+      maxBytesPerSecond = ConfigUtils.getBytes(config, "maxBytesPerSecond");
       maxInFlight = config.getInt("maxInFlight");
     } catch (ConfigException e) {
       throw ConfigUtils.convertConfigException(e, "dsbulk.executor");
@@ -73,6 +78,24 @@ public class ExecutorSettings {
     } catch (ConfigException e) {
       throw ConfigUtils.convertConfigException(e, "dsbulk.executor.continuousPaging");
     }
+  }
+
+  public void enforceCloudRateLimit(int numberOfCoordinators) {
+    if (ConfigUtils.hasReferenceValue(config, "maxPerSecond")) {
+      maxPerSecond = numberOfCoordinators * CLOUD_MAX_REQUESTS_PER_SECOND_PER_COORDINATOR;
+      LOGGER.info(
+          "Setting executor.maxPerSecond not set when connecting to DataStax Astra: "
+              + "applying a limit of {} ops/second based on the number of coordinators ({}).",
+          String.format("%,d", maxPerSecond),
+          numberOfCoordinators);
+      LOGGER.info(
+          "If your Astra database has higher limits, "
+              + "please define executor.maxPerSecond explicitly.");
+    }
+  }
+
+  public boolean isTrackingBytes() {
+    return maxBytesPerSecond > 0;
   }
 
   @NonNull
@@ -104,6 +127,7 @@ public class ExecutorSettings {
         .withExecutionListener(executionListener)
         .withMaxInFlightRequests(maxInFlight)
         .withMaxRequestsPerSecond(maxPerSecond)
+        .withMaxBytesPerSecond(maxBytesPerSecond)
         .failSafe();
     return builder.build();
   }

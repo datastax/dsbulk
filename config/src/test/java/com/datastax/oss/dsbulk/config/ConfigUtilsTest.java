@@ -561,6 +561,30 @@ class ConfigUtilsTest {
         .hasMessageContaining("not_a_map has type BOOLEAN rather than OBJECT");
   }
 
+  @Test
+  void should_read_bytes() {
+    assertThat(ConfigUtils.getBytes(ConfigFactory.parseString("bytes = -1"), "bytes"))
+        .isEqualTo(-1L);
+    assertThat(ConfigUtils.getBytes(ConfigFactory.parseString("bytes = 0"), "bytes")).isEqualTo(0L);
+    assertThat(ConfigUtils.getBytes(ConfigFactory.parseString("bytes = 123"), "bytes"))
+        .isEqualTo(123L);
+    assertThat(ConfigUtils.getBytes(ConfigFactory.parseString("bytes = 1 kilobyte"), "bytes"))
+        .isEqualTo(1000L);
+    assertThat(ConfigUtils.getBytes(ConfigFactory.parseString("bytes = 10 mebibytes"), "bytes"))
+        .isEqualTo(10 * 1024 * 1024L);
+    assertThatThrownBy(
+            () ->
+                ConfigUtils.getBytes(
+                    ConfigFactory.parseString("not_a_bytes = NotABytes"), "not_a_bytes"))
+        .hasMessageContaining(
+            "Expecting NUMBER or STRING in size-in-bytes format, got 'NotABytes'");
+    assertThatThrownBy(
+            () ->
+                ConfigUtils.getBytes(
+                    ConfigFactory.parseString("not_a_bytes = true"), "not_a_bytes"))
+        .hasMessageContaining("Expecting NUMBER or STRING in size-in-bytes format, got 'true'");
+  }
+
   private static Path createURLFile(URL... urls) throws IOException {
     Path file = Files.createTempFile("urlfile", null);
     Files.write(

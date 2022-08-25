@@ -217,7 +217,7 @@ class BatchSettingsTest {
     assertThatThrownBy(settings::init)
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
-            "Invalid value for dsbulk.batch.maxSizeInBytes, expecting NUMBER, got STRING");
+            "Invalid value for dsbulk.batch.maxSizeInBytes, expecting NUMBER or STRING in size-in-bytes format, got 'NotANumber'");
   }
 
   @Test
@@ -303,7 +303,7 @@ class BatchSettingsTest {
             "mode",
             "PARTITION_KEY",
             "maxSizeInBytes",
-            1,
+            "1K",
             "bufferSize",
             10,
             "maxBatchSize",
@@ -312,12 +312,12 @@ class BatchSettingsTest {
             null);
     BatchSettings settings = new BatchSettings(config);
     settings.init();
-    assertThat(ReflectionUtils.getInternalState(settings, "maxSizeInBytes")).isEqualTo(1L);
+    assertThat(ReflectionUtils.getInternalState(settings, "maxSizeInBytes")).isEqualTo(1024L);
     assertThat(ReflectionUtils.getInternalState(settings, "maxBatchStatements")).isEqualTo(10);
     ReactiveStatementBatcher batcher = settings.newStatementBatcher(session);
     assertThat(batcher).isInstanceOf(ReactorStatementBatcher.class);
     assertThat(ReflectionUtils.getInternalState(batcher, "batchMode")).isEqualTo(PARTITION_KEY);
-    assertThat(ReflectionUtils.getInternalState(batcher, "maxSizeInBytes")).isEqualTo(1L);
+    assertThat(ReflectionUtils.getInternalState(batcher, "maxSizeInBytes")).isEqualTo(1024L);
     assertThat(ReflectionUtils.getInternalState(batcher, "maxBatchStatements")).isEqualTo(10);
   }
 

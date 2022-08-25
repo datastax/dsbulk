@@ -22,6 +22,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.slf4j.event.Level.DEBUG;
 import static org.slf4j.event.Level.INFO;
 import static org.slf4j.event.Level.WARN;
@@ -38,6 +39,8 @@ import com.datastax.oss.dsbulk.connectors.api.DefaultErrorRecord;
 import com.datastax.oss.dsbulk.connectors.api.DefaultRecord;
 import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.datastax.oss.dsbulk.executor.api.listener.WritesReportingExecutionListener;
+import com.datastax.oss.dsbulk.executor.api.result.Result;
+import com.datastax.oss.dsbulk.executor.api.result.WriteResult;
 import com.datastax.oss.dsbulk.tests.logging.LogCapture;
 import com.datastax.oss.dsbulk.tests.logging.LogConfigurationResource;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptingExtension;
@@ -59,8 +62,14 @@ import java.util.concurrent.Executors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import reactor.core.publisher.Flux;
 
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @ExtendWith(LogInterceptingExtension.class)
 @ExtendWith(StreamInterceptingExtension.class)
 @LogConfigurationResource("logback.xml")
@@ -70,7 +79,13 @@ class MetricsManagerTest {
   private Record record2;
   private Record record3;
 
-  private Statement<?> stmt3;
+  @Mock private WriteResult result1;
+  @Mock private WriteResult result2;
+  @Mock private WriteResult result3;
+
+  @Mock private BatchableStatement<?> stmt1;
+  @Mock private BatchableStatement<?> stmt2;
+  private BatchableStatement<?> stmt3;
 
   private BatchStatement batch;
 
@@ -122,21 +137,112 @@ class MetricsManagerTest {
             protocolVersion,
             codecRegistry,
             RowType.REGULAR)) {
-      manager.init();
+      manager.init(100, 10);
       manager.start();
       Flux<Record> records = Flux.just(record1, record2, record3);
       records
           .transform(manager.newTotalItemsMonitor())
-          .transform(manager.newFailedItemsMonitor())
+          .transform(manager.newFailedRecordsMonitor())
           .blockLast();
       manager.stop(Duration.ofSeconds(123), true);
       MetricRegistry registry =
           (MetricRegistry) ReflectionUtils.getInternalState(manager, "registry");
-      assertThat(registry.counter("records/total").getCount()).isEqualTo(3);
-      assertThat(registry.counter("records/failed").getCount()).isEqualTo(1);
+      assertThat(registry.counter("records/total").getCount()).isEqualTo(103);
+      assertThat(registry.counter("records/failed").getCount()).isEqualTo(11);
       assertThat(logs.getLoggedEvents()).isEmpty();
       assertThat(stderr.getStreamLinesPlain())
-          .anySatisfy(line -> assertThat(line).startsWith("    3 |      1 |"));
+          .anySatisfy(line -> assertThat(line).startsWith("  103 |     11 |"));
+    }
+  }
+
+  @Test
+  void should_increment_mapped_statements(
+      @LogCapture(value = MetricsManager.class, level = INFO) LogInterceptor logs,
+      @StreamCapture(STDERR) StreamInterceptor stderr) {
+    try (MetricsManager manager =
+        new MetricsManager(
+            new MetricRegistry(),
+            false,
+            "test",
+            Executors.newSingleThreadScheduledExecutor(),
+            SECONDS,
+            MILLISECONDS,
+            -1,
+            -1,
+            true,
+            false,
+            false,
+            true,
+            null,
+            null,
+            LogSettings.Verbosity.normal,
+            Duration.ofSeconds(5),
+            false,
+            protocolVersion,
+            codecRegistry,
+            RowType.REGULAR)) {
+      manager.init(100, 10);
+      manager.start();
+      Flux<BatchableStatement<?>> records = Flux.just(stmt1, stmt2, stmt3);
+      records
+          .transform(manager.newTotalItemsMonitor())
+          .transform(manager.newUnmappableStatementsMonitor())
+          .blockLast();
+      manager.stop(Duration.ofSeconds(123), true);
+      MetricRegistry registry =
+          (MetricRegistry) ReflectionUtils.getInternalState(manager, "registry");
+      assertThat(registry.counter("records/total").getCount()).isEqualTo(103);
+      assertThat(registry.counter("records/failed").getCount()).isEqualTo(11);
+      assertThat(logs.getLoggedEvents()).isEmpty();
+      assertThat(stderr.getStreamLinesPlain())
+          .anySatisfy(line -> assertThat(line).startsWith("  103 |     11 |"));
+    }
+  }
+
+  @Test
+  void should_increment_results(
+      @LogCapture(value = MetricsManager.class, level = INFO) LogInterceptor logs,
+      @StreamCapture(STDERR) StreamInterceptor stderr) {
+    when(result1.isSuccess()).thenReturn(true);
+    when(result2.isSuccess()).thenReturn(true);
+    when(result3.isSuccess()).thenReturn(false);
+    try (MetricsManager manager =
+        new MetricsManager(
+            new MetricRegistry(),
+            false,
+            "test",
+            Executors.newSingleThreadScheduledExecutor(),
+            SECONDS,
+            MILLISECONDS,
+            -1,
+            -1,
+            true,
+            false,
+            false,
+            true,
+            null,
+            null,
+            LogSettings.Verbosity.normal,
+            Duration.ofSeconds(5),
+            false,
+            protocolVersion,
+            codecRegistry,
+            RowType.REGULAR)) {
+      manager.init(100, 10);
+      manager.start();
+      Flux<Result> records = Flux.just(result1, result2, result3);
+      records
+          .transform(manager.newTotalItemsMonitor())
+          .transform(manager.newFailedResultsMonitor())
+          .blockLast();
+      manager.stop(Duration.ofSeconds(123), true);
+      MetricRegistry registry =
+          (MetricRegistry) ReflectionUtils.getInternalState(manager, "registry");
+      assertThat(registry.counter("records/total").getCount()).isEqualTo(103);
+      assertThat(registry.counter("records/failed").getCount()).isEqualTo(11);
+      assertThat(logs.getLoggedEvents()).isEmpty();
+      assertThat(stderr.getStreamLinesPlain())
+          .anySatisfy(line -> assertThat(line).startsWith("  103 |     11 |"));
     }
   }
 
@@ -166,7 +272,7 @@ class MetricsManagerTest {
             protocolVersion,
             codecRegistry,
             RowType.REGULAR)) {
-      manager.init();
+      manager.init(0, 0);
       manager.start();
       Flux<Statement<?>> statements = Flux.just(batch, stmt3);
       statements.transform(manager.newBatcherMonitor()).blockLast();
@@ -212,7 +318,7 @@ class MetricsManagerTest {
             codecRegistry,
             RowType.REGULAR);
     try {
-      manager.init();
+      manager.init(0, 0);
       manager.start();
       WritesReportingExecutionListener writesReporter =
           (WritesReportingExecutionListener)
@@ -269,7 +375,7 @@ class MetricsManagerTest {
             codecRegistry,
             RowType.REGULAR);
     try {
-      manager.init();
+      manager.init(0, 0);
       manager.start();
       WritesReportingExecutionListener writesReporter =
           (WritesReportingExecutionListener)
@@ -315,7 +421,7 @@ class MetricsManagerTest {
             codecRegistry,
             RowType.REGULAR);
     try {
-      manager.init();
+      manager.init(0, 0);
       manager.start();
       ConsoleReporter consoleReporter =
           (ConsoleReporter) ReflectionUtils.getInternalState(manager, "consoleReporter");
@@ -360,7 +466,7 @@ class MetricsManagerTest {
             codecRegistry,
             RowType.REGULAR);
     try {
-      manager.init();
+      manager.init(0, 0);
       manager.start();
       WritesReportingExecutionListener writesReporter =
           (WritesReportingExecutionListener)
@@ -414,7 +520,7 @@ class MetricsManagerTest {
             protocolVersion,
             codecRegistry,
             RowType.REGULAR);
-    manager.init();
+    manager.init(0, 0);
     manager.start();
     manager.stop(Duration.ofSeconds(123), true);
     manager.close();

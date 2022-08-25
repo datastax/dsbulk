@@ -471,6 +471,7 @@ class DriverSettingsTest {
     settings.init(true);
     assertThat(settings.getDriverConfig().getString("basic.cloud.secure-connect-bundle"))
         .isEqualTo(expected);
+    assertThat(settings.isCloud()).isTrue();
   }
 
   @SuppressWarnings("unused")

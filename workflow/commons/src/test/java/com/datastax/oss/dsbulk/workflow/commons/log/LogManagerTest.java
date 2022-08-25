@@ -20,6 +20,7 @@ import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat
 import static com.datastax.oss.dsbulk.tests.driver.DriverUtils.mockBoundStatement;
 import static com.datastax.oss.dsbulk.tests.driver.DriverUtils.mockRow;
 import static com.datastax.oss.dsbulk.tests.driver.DriverUtils.mockSession;
+import static com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.ReplayStrategy.resume;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Fail.fail;
 import static org.mockito.Mockito.mock;
@@ -45,7 +46,9 @@ import com.datastax.oss.driver.internal.core.metadata.token.Murmur3TokenRange;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
 import com.datastax.oss.dsbulk.connectors.api.DefaultErrorRecord;
 import com.datastax.oss.dsbulk.connectors.api.DefaultRecord;
+import com.datastax.oss.dsbulk.connectors.api.DefaultResource;
 import com.datastax.oss.dsbulk.connectors.api.Record;
+import com.datastax.oss.dsbulk.connectors.api.Resource;
 import com.datastax.oss.dsbulk.executor.api.exception.BulkExecutionException;
 import com.datastax.oss.dsbulk.executor.api.result.DefaultReadResult;
 import com.datastax.oss.dsbulk.executor.api.result.DefaultWriteResult;
@@ -59,10 +62,15 @@ import com.datastax.oss.dsbulk.tests.logging.LogCapture;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptingExtension;
 import com.datastax.oss.dsbulk.tests.logging.LogInterceptor;
 import com.datastax.oss.dsbulk.tests.utils.FileUtils;
+import com.datastax.oss.dsbulk.tests.utils.ReflectionUtils;
 import com.datastax.oss.dsbulk.workflow.api.error.AbsoluteErrorThreshold;
 import com.datastax.oss.dsbulk.workflow.api.error.ErrorThreshold;
 import com.datastax.oss.dsbulk.workflow.api.error.RatioErrorThreshold;
 import com.datastax.oss.dsbulk.workflow.api.error.TooManyErrorsException;
+import com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.Checkpoint;
+import com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.CheckpointManager;
+import com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.Range;
+import com.datastax.oss.dsbulk.workflow.commons.log.checkpoint.ReplayStrategy;
 import com.datastax.oss.dsbulk.workflow.commons.statement.MappedBoundStatement;
 import com.datastax.oss.dsbulk.workflow.commons.statement.MappedBoundStatementPrinter;
 import com.datastax.oss.dsbulk.workflow.commons.statement.RangeReadBoundStatement;
@@ -73,13 +81,14 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.function.BiFunction;
+import java.util.Map;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.reactivestreams.Publisher;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import reactor.core.publisher.Flux;
 
 @ExtendWith(LogInterceptingExtension.class)
@@ -257,7 +266,10 @@ class LogManagerTest {
             ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
-            rowFormatter);
+            rowFormatter,
+            true,
+            new CheckpointManager(),
+            resume);
     logManager.init();
     Flux<BatchableStatement<?>> stmts =
         Flux.just(unmappableStmt1, unmappableStmt2, unmappableStmt3);
@@ -306,7 +318,10 @@ class LogManagerTest {
             ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
-            rowFormatter);
+            rowFormatter,
+            true,
+            new CheckpointManager(),
+            resume);
     logManager.init();
     Flux<BatchableStatement<?>> stmts = Flux.just(unmappableStmt1);
     try {
@@ -346,7 +361,10 @@ class LogManagerTest {
             ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
-            rowFormatter);
+            rowFormatter,
+            true,
+            new CheckpointManager(),
+            resume);
     logManager.init();
     Flux<BatchableStatement<?>> stmts =
         Flux.just(unmappableStmt1, unmappableStmt2, unmappableStmt3);
@@ -389,7 +407,10 @@ class LogManagerTest {
             ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
-            rowFormatter);
+            rowFormatter,
+            true,
+            new CheckpointManager(),
+            resume);
     logManager.init();
     Flux<Record> records = Flux.just(csvRecord1, csvRecord2, csvRecord3);
     try {
@@ -434,7 +455,10 @@ class LogManagerTest {
             ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
-            rowFormatter);
+            rowFormatter,
+            true,
+            new CheckpointManager(),
+            resume);
     logManager.init();
     Flux<WriteResult> stmts = Flux.just(failedWriteResult1, failedWriteResult2, failedWriteResult3);
     try {
@@ -490,7 +514,10 @@ class LogManagerTest {
             ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
-            rowFormatter);
+            rowFormatter,
+            true,
+            new CheckpointManager(),
+            resume);
     logManager.init();
     Flux<WriteResult> stmts = Flux.just(failedWriteResult1, failedWriteResult2, failedWriteResult3);
     stmts.transform(logManager.newFailedWritesHandler()).blockLast();
@@ -537,7 +564,10 @@ class LogManagerTest {
             ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
-            rowFormatter);
+            rowFormatter,
+            true,
+            new CheckpointManager(),
+            resume);
     logManager.init();
     Flux<WriteResult> stmts = Flux.just(batchWriteResult);
     try {
@@ -590,7 +620,10 @@ class LogManagerTest {
             ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
-            rowFormatter);
+            rowFormatter,
+            true,
+            new CheckpointManager(),
+            resume);
     logManager.init();
     Flux<ReadResult> stmts = Flux.just(failedReadResult1, failedReadResult2, failedReadResult3);
     try {
@@ -630,7 +663,10 @@ class LogManagerTest {
             ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
-            rowFormatter);
+            rowFormatter,
+            true,
+            new CheckpointManager(),
+            resume);
     logManager.init();
     Flux<Record> stmts = Flux.just(rowRecord1, rowRecord2, rowRecord3);
     try {
@@ -679,7 +715,10 @@ class LogManagerTest {
             ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
-            rowFormatter);
+            rowFormatter,
+            true,
+            new CheckpointManager(),
+            resume);
     // Emulate bad row with corrupted data, see DefaultReadResultMapper
     IllegalArgumentException cause =
         new IllegalArgumentException("Invalid 32-bits integer value, expecting 4 bytes but got 5");
@@ -721,7 +760,10 @@ class LogManagerTest {
             ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
-            rowFormatter);
+            rowFormatter,
+            true,
+            new CheckpointManager(),
+            resume);
     logManager.init();
     Flux<ReadResult> stmts = Flux.just(failedReadResult1, failedReadResult2, failedReadResult3);
     stmts
@@ -757,7 +799,10 @@ class LogManagerTest {
             ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
-            rowFormatter);
+            rowFormatter,
+            true,
+            new CheckpointManager(),
+            resume);
     logManager.init();
     Flux<ReadResult> stmts = Flux.just(failedReadResult1);
     try {
@@ -793,7 +838,10 @@ class LogManagerTest {
             ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
-            rowFormatter);
+            rowFormatter,
+            true,
+            new CheckpointManager(),
+            resume);
     logManager.init();
     DefaultWriteResult result =
         new DefaultWriteResult(
@@ -840,7 +888,10 @@ class LogManagerTest {
             ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
-            rowFormatter);
+            rowFormatter,
+            true,
+            new CheckpointManager(),
+            resume);
     logManager.init();
     DefaultReadResult result =
         new DefaultReadResult(
@@ -897,7 +948,10 @@ class LogManagerTest {
             ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
-            rowFormatter);
+            rowFormatter,
+            true,
+            new CheckpointManager(),
+            resume);
     logManager.init();
     Flux<WriteResult> stmts = Flux.just(casBatchWriteResult);
     try {
@@ -943,7 +997,10 @@ class LogManagerTest {
             ErrorThreshold.forAbsoluteValue(1),
             statementFormatter,
             EXTENDED,
-            rowFormatter);
+            rowFormatter,
+            true,
+            new CheckpointManager(),
+            resume);
     logManager.init();
     ExecutionInfo info1 = mock(ExecutionInfo.class);
     when(info1.getWarnings()).thenReturn(ImmutableList.of("warning1", "warning2"));
@@ -976,7 +1033,10 @@ class LogManagerTest {
             ErrorThreshold.forAbsoluteValue(1),
             statementFormatter,
             EXTENDED,
-            rowFormatter);
+            rowFormatter,
+            true,
+            new CheckpointManager(),
+            resume);
     logManager.init();
     ExecutionInfo info1 = mock(ExecutionInfo.class);
     when(info1.getWarnings()).thenReturn(ImmutableList.of("warning1", "warning2"));
@@ -1012,7 +1072,10 @@ class LogManagerTest {
             ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
-            rowFormatter);
+            rowFormatter,
+            true,
+            new CheckpointManager(),
+            resume);
     logManager.init();
     Record record = new DefaultErrorRecord(null, resource1, 1, new RuntimeException("error 1"));
     Flux<Record> stmts = Flux.just(record);
@@ -1041,7 +1104,10 @@ class LogManagerTest {
             ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
-            rowFormatter);
+            rowFormatter,
+            true,
+            new CheckpointManager(),
+            resume);
     logManager.init();
     Record record = DefaultRecord.indexed(null, resource1, 1, "foo", " bar");
     UnmappableStatement stmt = new UnmappableStatement(record, new RuntimeException("error 1"));
@@ -1072,7 +1138,10 @@ class LogManagerTest {
             ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
-            rowFormatter);
+            rowFormatter,
+            true,
+            new CheckpointManager(),
+            resume);
     logManager.init();
     Record record =
         new DefaultErrorRecord(null, tableResource1, 1, new RuntimeException("error 1"));
@@ -1092,8 +1161,9 @@ class LogManagerTest {
         .contains("java.lang.RuntimeException: error 1");
   }
 
-  @Test
-  void should_record_positions_and_successful_resources_when_loading() throws Exception {
+  @ParameterizedTest
+  @EnumSource(ReplayStrategy.class)
+  void should_resume_operation_when_loading(ReplayStrategy strategy) throws Exception {
     Path outputDir = Files.createTempDirectory("test");
     LogManager logManager =
         new LogManager(
@@ -1103,133 +1173,119 @@ class LogManagerTest {
             ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
-            rowFormatter);
+            rowFormatter,
+            true,
+            new CheckpointManager(),
+            strategy);
     logManager.init();
 
-    // Emulate connector parsing
+    Record record1_1 = DefaultRecord.indexed("line1", resource1, 1, "line1");
+    Record record1_2 = DefaultRecord.indexed("line2", resource1, 2, "line2");
+    Record record1_3 = DefaultRecord.indexed("line3", resource1, 3, "line3");
 
-    Record record1_1 = DefaultRecord.indexed(source1, resource1, 1, "line1");
-    Record record1_2 = DefaultRecord.indexed(source2, resource1, 2, "line2");
-    Record record1_3 = DefaultRecord.indexed(source3, resource1, 3, "line3");
-
-    Record record2_1 = DefaultRecord.indexed(source1, resource2, 1, "line1");
+    Record record2_1 = DefaultRecord.indexed("line1", resource2, 1, "line1");
     Record record2_2 =
         new DefaultErrorRecord(
-            source2, resource2, 2, new RuntimeException("connector error line2"));
-    DefaultRecord record2_3 = DefaultRecord.indexed(source3, resource2, 3, "line3");
-    DefaultRecord record2_4 =
-        DefaultRecord.indexed(source3, resource2, 3, "line4"); // emulate "lost" record
+            "line2", resource2, 2, new RuntimeException("connector error line2"));
+    Record record2_3 = DefaultRecord.indexed("line3", resource2, 3, "line3");
+    Record record2_4 = DefaultRecord.indexed("line3", resource2, 4, "line4");
 
-    // Emulate connector signaling successful resources
+    Resource res1 =
+        new DefaultResource(
+            resource1, Flux.defer(() -> Flux.just(record1_1, record1_2, record1_3)));
+    Resource res2 =
+        new DefaultResource(
+            resource2, Flux.defer(() -> Flux.just(record2_1, record2_2, record2_3, record2_4)));
+    Resource res3 = new DefaultResource(resource3, Flux.empty());
 
-    BiFunction<URI, Publisher<Record>, Publisher<Record>> connectorResourceHandler =
-        logManager.newConnectorResourceStatsHandler();
+    MappedBoundStatement stmt1_1 = mockMappedBoundStatement(1, "line1", resource1);
+    MappedBoundStatement stmt1_2 = mockMappedBoundStatement(2, "line2", resource1);
+    MappedBoundStatement stmt1_3 = mockMappedBoundStatement(3, "line3", resource1);
 
-    Flux.from(connectorResourceHandler.apply(resource1, Flux.just(record1_1, record1_2, record1_3)))
-        .blockLast();
-    Flux.from(
-            connectorResourceHandler.apply(
-                resource2, Flux.just(record2_1, record2_2, record2_3, record2_4)))
-        .blockLast();
-    Flux.from(connectorResourceHandler.apply(resource3, Flux.empty())).blockLast();
+    UnmappableStatement stmt2_1 =
+        new UnmappableStatement(record2_1, new RuntimeException("mapping error line1"));
+    MappedBoundStatement stmt2_3 = mockMappedBoundStatement(3, "line3", resource2);
 
-    Flux<Record> records =
-        Flux.just(record1_1, record1_2, record1_3, record2_1, record2_2, record2_3);
+    MockAsyncResultSet rs = new MockAsyncResultSet(0, null, null);
 
-    List<Record> goodRecords =
-        records.transform(logManager.newFailedRecordsHandler()).collectList().block();
+    // Emulate connector reading
+    Flux.just(res1, res2, res3)
+        .transform(logManager.newConnectorCheckpointHandler())
+        .concatMap(r -> r)
+        // Emulate an unfinished resource, i.e., not all its records were processed when the
+        // operation stopped.
+        .filter(r -> !r.equals(record2_4))
+        .transform(logManager.newFailedRecordsHandler())
 
-    assertThat(goodRecords).hasSize(5);
-    //    assertThat(logManager.mergePositionTrackers().getPositions()).containsOnlyKeys(resource2);
-    //    assertThat(logManager.mergePositionTrackers().getPositions().get(resource2))
-    //        .containsExactly(new Range(2));
+        // Emulate record->statement mapper
+        .<BatchableStatement<?>>map(
+            record -> {
+              // resource 1: 3 statements
+              if (record.equals(record1_1)) {
+                return stmt1_1;
+              } else if (record.equals(record1_2)) {
+                return stmt1_2;
+              } else if (record.equals(record1_3)) {
+                return stmt1_3;
+              }
+              // resource 2: 2 statements, one unmappable
+              if (record.equals(record2_1)) {
+                return stmt2_1;
+              } else if (record.equals(record2_3)) {
+                return stmt2_3;
+              }
+              throw new AssertionError();
+              // resource 3
+            })
+        .transform(logManager.newUnmappableStatementsHandler())
 
-    // Emulate record->statement mapper
-
-    Flux<BatchableStatement<?>> stmts =
-        Flux.just(
-            // resource 1: 3 statements total
-            mockMappedBoundStatement(1, source1, resource1),
-            mockMappedBoundStatement(2, source2, resource1),
-            mockMappedBoundStatement(3, source3, resource1),
-            // resource 2: 2 statements left, one unmappable
-            new UnmappableStatement(record2_1, new RuntimeException("mapping error line1")),
-            mockMappedBoundStatement(3, source1, resource3));
-
-    List<BatchableStatement<?>> goodStmts =
-        stmts.transform(logManager.newUnmappableStatementsHandler()).collectList().block();
-
-    assertThat(goodStmts).hasSize(4);
-    //    assertThat(logManager.mergePositionTrackers().getPositions()).containsOnlyKeys(resource2);
-    //    assertThat(logManager.mergePositionTrackers().getPositions().get(resource2))
-    //        .containsExactly(new Range(1, 2));
-
-    // Emulate statement execution
-
-    Flux<WriteResult> writes =
-        Flux.just(
-            // resource 1: 3 writes
-            new DefaultWriteResult(
-                mockMappedBoundStatement(1, source1, resource1),
-                new MockAsyncResultSet(0, null, null)),
-            new DefaultWriteResult(
-                mockMappedBoundStatement(2, source2, resource1),
-                new MockAsyncResultSet(0, null, null)),
-            new DefaultWriteResult(
-                mockMappedBoundStatement(3, source3, resource1),
-                new MockAsyncResultSet(0, null, null)),
-            // resource 2: 1 write left, which fails
-            new DefaultWriteResult(
-                new BulkExecutionException(
-                    new DriverTimeoutException("load error 3"),
-                    new MappedBoundStatement(
-                        record2_3, mockMappedBoundStatement(3, source3, resource2)))));
-
-    List<WriteResult> goodWrites =
-        writes.transform(logManager.newFailedWritesHandler()).collectList().block();
-
-    assertThat(goodWrites).isNotNull().hasSize(3);
-    //    assertThat(logManager.mergePositionTrackers().getPositions()).containsOnlyKeys(resource2);
-    //    assertThat(logManager.mergePositionTrackers().getPositions().get(resource2))
-    //        .containsExactly(new Range(1, 3));
-
-    // Emulate signaling successful writes
-
-    Flux.fromIterable(goodWrites)
-        .transform(logManager.newWriteResultPositionsHandler())
+        // Emulate statement execution
+        .<WriteResult>map(
+            stmt -> {
+              // resource 1: 3 writes
+              if (stmt == stmt1_1) {
+                return new DefaultWriteResult(stmt1_1, rs);
+              } else if (stmt == stmt1_2) {
+                return new DefaultWriteResult(stmt1_2, rs);
+              } else if (stmt == stmt1_3) {
+                return new DefaultWriteResult(stmt1_3, rs);
+              }
+              // resource 2: 1 write left, which fails
+              if (stmt == stmt2_3) {
+                return new DefaultWriteResult(
+                    new BulkExecutionException(
+                        new DriverTimeoutException("load error 3"), stmt2_3));
+              }
+              throw new AssertionError();
+            })
+        .transform(logManager.newFailedWritesHandler())
+        .transform(logManager.newSuccessfulWritesHandler())
         .blockLast();
 
     logManager.close();
 
-    assertThat(logManager.mergePositionTrackers().getPositions())
-        .containsOnlyKeys(resource1, resource2);
-    assertThat(logManager.mergePositionTrackers().getPositions().get(resource1))
-        .containsExactly(new Range(1, 3));
-    assertThat(logManager.mergePositionTrackers().getPositions().get(resource2))
-        .containsExactly(new Range(1, 3));
+    CheckpointManager checkpointManager = logManager.mergeCheckpointManagers();
+    Map<URI, Checkpoint> checkpoints = getCheckpoints(checkpointManager);
 
-    assertThat(logManager.resources)
-        .hasEntrySatisfying(
-            resource1,
-            stats -> {
-              assertThat(stats.completed).isTrue();
-              assertThat(stats.failed).isFalse();
-              assertThat(stats.produced).isEqualTo(3);
-            })
-        .hasEntrySatisfying(
-            resource2,
-            stats -> {
-              assertThat(stats.completed).isTrue();
-              assertThat(stats.failed).isFalse();
-              assertThat(stats.produced).isEqualTo(4);
-            })
-        .hasEntrySatisfying(
-            resource3,
-            stats -> {
-              assertThat(stats.completed).isTrue();
-              assertThat(stats.failed).isFalse();
-              assertThat(stats.produced).isEqualTo(0);
-            });
+    assertThat(checkpoints).containsOnlyKeys(resource1, resource2, resource3);
+
+    assertThat(resume.isComplete(checkpoints.get(resource1))).isTrue();
+    assertThat(resume.isComplete(checkpoints.get(resource2))).isFalse();
+    assertThat(resume.isComplete(checkpoints.get(resource3))).isTrue();
+
+    assertThat(checkpoints.get(resource1).getProduced()).isEqualTo(3L);
+    assertThat(checkpoints.get(resource2).getProduced()).isEqualTo(4L);
+    assertThat(checkpoints.get(resource3).getProduced()).isEqualTo(0L);
+
+    assertThat(checkpoints.get(resource1).getConsumedSuccessful().stream())
+        .containsExactly(new Range(1, 3));
+    assertThat(checkpoints.get(resource2).getConsumedSuccessful().stream()).isEmpty();
+    assertThat(checkpoints.get(resource3).getConsumedSuccessful().stream()).isEmpty();
+
+    assertThat(checkpoints.get(resource1).getConsumedFailed().stream()).isEmpty();
+    assertThat(checkpoints.get(resource2).getConsumedFailed().stream())
+        .containsExactly(new Range(1, 3));
+    assertThat(checkpoints.get(resource3).getConsumedFailed().stream()).isEmpty();
 
     // Check connector files
 
@@ -1237,7 +1293,7 @@ class LogManagerTest {
     assertThat(connectorBad.toFile()).exists();
     List<String> connectorBadLines = Files.readAllLines(connectorBad, UTF_8);
     assertThat(connectorBadLines).hasSize(1);
-    assertThat(connectorBadLines.get(0)).isEqualTo(source2.trim());
+    assertThat(connectorBadLines.get(0)).isEqualTo("line2".trim());
 
     Path connectorErrors = logManager.getOperationDirectory().resolve("connector-errors.log");
     assertThat(connectorErrors.toFile()).exists();
@@ -1245,7 +1301,7 @@ class LogManagerTest {
     assertThat(String.join("\n", connectorErrorLines))
         .containsOnlyOnce("Resource: " + resource2)
         .containsOnlyOnce("Position: 2")
-        .containsOnlyOnce("Source: " + LogManagerUtils.formatSingleLine(source2))
+        .containsOnlyOnce("Source: " + LogManagerUtils.formatSingleLine("line2"))
         .containsOnlyOnce("java.lang.RuntimeException: connector error line2");
 
     // Check mapping files
@@ -1254,7 +1310,7 @@ class LogManagerTest {
     assertThat(mappingBad.toFile()).exists();
     List<String> mappingBadLines = Files.readAllLines(mappingBad, UTF_8);
     assertThat(mappingBadLines).hasSize(1);
-    assertThat(mappingBadLines.get(0)).isEqualTo(source1.trim());
+    assertThat(mappingBadLines.get(0)).isEqualTo("line1".trim());
 
     Path mappingErrors = logManager.getOperationDirectory().resolve("mapping-errors.log");
     assertThat(mappingErrors.toFile()).exists();
@@ -1262,7 +1318,7 @@ class LogManagerTest {
     assertThat(String.join("\n", mappingErrorLines))
         .containsOnlyOnce("Resource: " + resource2)
         .containsOnlyOnce("Position: 1")
-        .containsOnlyOnce("Source: " + LogManagerUtils.formatSingleLine(source1))
+        .containsOnlyOnce("Source: " + LogManagerUtils.formatSingleLine("line1"))
         .containsOnlyOnce("java.lang.RuntimeException: mapping error line1");
 
     // Check load files
@@ -1271,7 +1327,7 @@ class LogManagerTest {
     assertThat(loadBad.toFile()).exists();
     List<String> loadBadLines = Files.readAllLines(loadBad, UTF_8);
     assertThat(loadBadLines).hasSize(1);
-    assertThat(loadBadLines.get(0)).isEqualTo(source3.trim());
+    assertThat(loadBadLines.get(0)).isEqualTo("line3".trim());
 
     Path loadErrors = logManager.getOperationDirectory().resolve("load-errors.log");
     assertThat(loadErrors.toFile()).exists();
@@ -1279,27 +1335,192 @@ class LogManagerTest {
     assertThat(String.join("\n", loadErrorLines))
         .containsOnlyOnce("Resource: " + resource2)
         .containsOnlyOnce("Position: 3")
-        .containsOnlyOnce("Source: " + LogManagerUtils.formatSingleLine(source3))
+        .containsOnlyOnce("Source: " + LogManagerUtils.formatSingleLine("line3"))
         .containsOnlyOnce(
             "BulkExecutionException: Statement execution failed: INSERT INTO 3 (load error 3)");
 
-    // Check summary.csv
+    // Check checkpoint.csv
 
-    logManager.writeSummaryFile();
-    Path summary = logManager.getOperationDirectory().resolve("summary.csv");
-    assertThat(summary.toFile()).exists();
-    List<String> summaryLines = Files.readAllLines(summary, UTF_8);
-    assertThat(summaryLines)
+    logManager.writeCheckpointFile(checkpointManager);
+    Path checkpointFile = logManager.getOperationDirectory().resolve("checkpoint.csv");
+    assertThat(checkpointFile.toFile()).exists();
+    List<String> checkpointLines = Files.readAllLines(checkpointFile, UTF_8);
+    assertThat(checkpointLines)
         .containsExactly(
-            "file:///file1.csv;[1,3];1", "file:///file2.csv;[1,3];0", "file:///file3.csv;[0,0];1");
+            "file:///file1.csv;1;3;1:3;", "file:///file2.csv;1;4;;1:3", "file:///file3.csv;1;0;;");
 
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(
-            connectorBad, connectorErrors, mappingBad, mappingErrors, loadBad, loadErrors, summary);
+            connectorBad,
+            connectorErrors,
+            mappingBad,
+            mappingErrors,
+            loadBad,
+            loadErrors,
+            checkpointFile);
+
+    // Resume the failed operation
+
+    outputDir = Files.createTempDirectory("test");
+    logManager =
+        new LogManager(
+            session,
+            outputDir,
+            ErrorThreshold.forAbsoluteValue(3),
+            ErrorThreshold.forAbsoluteValue(0),
+            statementFormatter,
+            EXTENDED,
+            rowFormatter,
+            true,
+            checkpointManager,
+            strategy);
+
+    logManager.init();
+
+    Record record2_2a = DefaultRecord.indexed("line2", resource2, 2, "line2");
+
+    MappedBoundStatement stmt2_1a = mockMappedBoundStatement(1, "line2", resource2);
+    MappedBoundStatement stmt2_2 = mockMappedBoundStatement(2, "line2", resource2);
+    MappedBoundStatement stmt2_3a = mockMappedBoundStatement(3, "line3", resource2);
+    MappedBoundStatement stmt2_4 = mockMappedBoundStatement(4, "line4", resource2);
+
+    res2 = new DefaultResource(resource2, Flux.just(record2_1, record2_2a, record2_3, record2_4));
+
+    // Only the unfinished resource2 should be read again.
+    // Emulate connector reading
+    Flux.just(res1, res2, res3)
+        .transform(logManager.newConnectorCheckpointHandler())
+        .concatMap(r -> r)
+        .transform(logManager.newFailedRecordsHandler())
+
+        // Emulate record->statement mapper
+        .<BatchableStatement<?>>map(
+            record -> {
+              switch (strategy) {
+                case retry:
+                case retryAll:
+                  if (record.equals(record2_1)) {
+                    return stmt2_1a;
+                  }
+                  if (record.equals(record2_2a)) {
+                    return stmt2_2;
+                  }
+                  if (record.equals(record2_3)) {
+                    return stmt2_3a;
+                  }
+                  // fall through
+                case resume:
+                  if (record.equals(record2_4)) {
+                    return stmt2_4;
+                  }
+                  break;
+              }
+              throw new AssertionError();
+              // resource 3
+            })
+        .transform(logManager.newUnmappableStatementsHandler())
+
+        // Emulate statement execution
+        .<WriteResult>map(
+            stmt -> {
+              switch (strategy) {
+                case retry:
+                case retryAll:
+                  if (stmt == stmt2_1a) {
+                    return new DefaultWriteResult(stmt2_1a, rs);
+                  }
+                  if (stmt == stmt2_2) {
+                    return new DefaultWriteResult(stmt2_2, rs);
+                  }
+                  if (stmt == stmt2_3a) {
+                    return new DefaultWriteResult(stmt2_3a, rs);
+                  }
+                  // fall through
+                case resume:
+                  if (stmt == stmt2_4) {
+                    return new DefaultWriteResult(stmt2_4, rs);
+                  }
+                  break;
+              }
+
+              throw new AssertionError();
+            })
+        .transform(logManager.newFailedWritesHandler())
+        .transform(logManager.newSuccessfulWritesHandler())
+        .blockLast();
+
+    logManager.close();
+
+    checkpointManager = logManager.mergeCheckpointManagers();
+
+    checkpoints = getCheckpoints(checkpointManager);
+
+    assertThat(checkpoints).containsOnlyKeys(resource1, resource2, resource3);
+
+    assertThat(resume.isComplete(checkpoints.get(resource1))).isTrue();
+    assertThat(resume.isComplete(checkpoints.get(resource2))).isTrue();
+    assertThat(resume.isComplete(checkpoints.get(resource3))).isTrue();
+
+    assertThat(checkpoints.get(resource1).getProduced()).isEqualTo(3L);
+    assertThat(checkpoints.get(resource2).getProduced()).isEqualTo(4L);
+    assertThat(checkpoints.get(resource3).getProduced()).isEqualTo(0L);
+
+    assertThat(checkpoints.get(resource1).getConsumedSuccessful().stream())
+        .containsExactly(new Range(1, 3));
+    switch (strategy) {
+      case retry:
+      case retryAll:
+        assertThat(checkpoints.get(resource2).getConsumedSuccessful().stream())
+            .containsExactly(new Range(1, 4));
+        assertThat(checkpoints.get(resource3).getConsumedSuccessful().stream()).isEmpty();
+
+        assertThat(checkpoints.get(resource1).getConsumedFailed().stream()).isEmpty();
+        assertThat(checkpoints.get(resource2).getConsumedFailed().stream()).isEmpty();
+        assertThat(checkpoints.get(resource3).getConsumedFailed().stream()).isEmpty();
+        break;
+      case resume:
+        assertThat(checkpoints.get(resource2).getConsumedSuccessful().stream())
+            .containsExactly(new Range(4, 4));
+        assertThat(checkpoints.get(resource3).getConsumedSuccessful().stream()).isEmpty();
+
+        assertThat(checkpoints.get(resource1).getConsumedFailed().stream()).isEmpty();
+        assertThat(checkpoints.get(resource2).getConsumedFailed().stream())
+            .containsExactly(new Range(1, 3));
+        assertThat(checkpoints.get(resource3).getConsumedFailed().stream()).isEmpty();
+        break;
+    }
+
+    // Check checkpoint.csv
+
+    logManager.writeCheckpointFile(checkpointManager);
+    checkpointFile = logManager.getOperationDirectory().resolve("checkpoint.csv");
+    assertThat(checkpointFile.toFile()).exists();
+    checkpointLines = Files.readAllLines(checkpointFile, UTF_8);
+    switch (strategy) {
+      case retry:
+      case retryAll:
+        assertThat(checkpointLines)
+            .containsExactly(
+                "file:///file1.csv;1;3;1:3;",
+                "file:///file2.csv;1;4;1:4;",
+                "file:///file3.csv;1;0;;");
+        break;
+      case resume:
+        assertThat(checkpointLines)
+            .containsExactly(
+                "file:///file1.csv;1;3;1:3;",
+                "file:///file2.csv;1;4;4;1:3",
+                "file:///file3.csv;1;0;;");
+        break;
+    }
+
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
+        .containsOnly(checkpointFile);
   }
 
-  @Test
-  void should_record_positions_and_successful_resources_when_unloading() throws Exception {
+  @ParameterizedTest
+  @EnumSource(ReplayStrategy.class)
+  void should_resume_operation_when_unloading(ReplayStrategy strategy) throws Exception {
     Path outputDir = Files.createTempDirectory("test");
     LogManager logManager =
         new LogManager(
@@ -1309,7 +1530,10 @@ class LogManagerTest {
             ErrorThreshold.forAbsoluteValue(0),
             statementFormatter,
             EXTENDED,
-            rowFormatter);
+            rowFormatter,
+            true,
+            new CheckpointManager(),
+            strategy);
     logManager.init();
 
     // Emulate statement execution
@@ -1331,105 +1555,92 @@ class LogManagerTest {
     RangeReadBoundStatement statement1 = mockRangeReadBoundStatement(tokenRange1);
     RangeReadBoundStatement statement2 = mockRangeReadBoundStatement(tokenRange2);
 
-    BulkExecutionException statement2Failure =
-        new BulkExecutionException(new DriverTimeoutException("unload error 2"), statement2);
-
-    // resource 1: 3 reads
-    DefaultReadResult result1_1 =
+    ReadResult result1_1 =
         new DefaultReadResult(statement1, mock(ExecutionInfo.class), mockRow(1), 1);
-    DefaultReadResult result1_2 =
+    ReadResult result1_2 =
         new DefaultReadResult(statement1, mock(ExecutionInfo.class), mockRow(2), 2);
-    DefaultReadResult result1_3 =
+    ReadResult result1_3 =
         new DefaultReadResult(statement1, mock(ExecutionInfo.class), mockRow(3), 3);
 
-    // resource 2: read fails
-    DefaultReadResult result2 = new DefaultReadResult(statement2Failure);
+    BulkExecutionException statement2Failure =
+        new BulkExecutionException(new DriverTimeoutException("unload error 2"), statement2);
+    ReadResult result2 = new DefaultReadResult(statement2Failure);
 
-    // resource 3: empty
-
-    BiFunction<URI, Publisher<ReadResult>, Publisher<ReadResult>> cqlResourceHandler =
-        logManager.newCqlResourceStatsHandler();
-    Flux.from(cqlResourceHandler.apply(resource1, Flux.just(result1_1, result1_2, result1_3)))
-        .blockLast();
-    Flux.from(cqlResourceHandler.apply(resource2, Flux.just(result2))).blockLast();
-    Flux.from(cqlResourceHandler.apply(resource3, Flux.empty())).blockLast();
-
-    Flux<ReadResult> reads = Flux.just(result1_1, result1_2, result1_3, result2);
-
-    List<ReadResult> goodReads =
-        reads.transform(logManager.newFailedReadsHandler()).collectList().block();
-
-    assertThat(goodReads).isNotNull().hasSize(3);
-    assertThat(logManager.mergePositionTrackers().getPositions()).isEmpty();
-
-    // Emulate result->record mapper
-
-    DefaultRecord record1_1 = new DefaultRecord(result1_1, resource1, 1);
-    DefaultErrorRecord record1_2 =
+    Record record1_1 = new DefaultRecord(result1_1, resource1, 1);
+    Record record1_2 =
         new DefaultErrorRecord(result1_2, resource1, 2, new RuntimeException("mapping error 2"));
-    DefaultRecord record1_3 = new DefaultRecord(result1_3, resource1, 3);
+    Record record1_3 = new DefaultRecord(result1_3, resource1, 3);
 
-    // resource 1: 3 records total, one not parsable
-    Flux<Record> records = Flux.just(record1_1, record1_2, record1_3);
+    // resource 1: 3 reads
+    RangeReadResource res1 =
+        mockRangeReadResource(
+            resource1, Flux.defer(() -> Flux.just(result1_1, result1_2, result1_3)));
+    // resource 2: read fails
+    RangeReadResource res2 = mockRangeReadResource(resource2, Flux.just(result2));
+    // resource 3: empty
+    RangeReadResource res3 = mockRangeReadResource(resource3, Flux.empty());
 
-    List<Record> goodRecords =
-        records.transform(logManager.newUnmappableRecordsHandler()).collectList().block();
+    Flux.just(res1, res2, res3)
+        .transform(logManager.newRangeReadCheckpointHandler())
+        .flatMap(r -> r)
+        .transform(logManager.newFailedReadsHandler())
 
-    assertThat(goodRecords).isNotNull().hasSize(2);
-    //    assertThat(logManager.mergePositionTrackers().getPositions()).containsOnlyKeys(resource1);
-    //    assertThat(logManager.mergePositionTrackers().getPositions().get(resource1))
-    //        .containsExactly(new Range(2));
+        // Emulate read result -> record mapper
+        .map(
+            result -> {
+              if (result.equals(result1_1)) {
+                return record1_1;
+              } else if (result.equals(result1_2)) {
+                return record1_2;
+              } else if (result.equals(result1_3)) {
+                return record1_3;
+              }
+              throw new AssertionError();
+            })
+        .transform(logManager.newUnmappableRecordsHandler())
 
-    // Emulate record -> connector
-
-    // resource 1: 2 records left, one nto writable
-    records =
-        Flux.just(
-            new DefaultErrorRecord(
-                result1_1, resource1, 1, new RuntimeException("connector error 1")),
-            record1_3);
-
-    goodRecords = records.transform(logManager.newFailedRecordsHandler()).collectList().block();
-
-    assertThat(goodRecords).isNotNull().hasSize(1);
-    //    assertThat(logManager.mergePositionTrackers().getPositions()).containsOnlyKeys(resource1);
-    //    assertThat(logManager.mergePositionTrackers().getPositions().get(resource1))
-    //        .containsExactly(new Range(1, 2));
-
-    // Emulate signaling successful records
-
-    Flux.fromIterable(goodRecords).transform(logManager.newRecordPositionsHandler()).blockLast();
+        // Emulate connector write
+        .map(
+            record -> {
+              if (record.equals(record1_1)) {
+                return new DefaultErrorRecord(
+                    record.getSource(),
+                    record.getResource(),
+                    record.getPosition(),
+                    new RuntimeException("connector error 1"));
+              } else if (record.equals(record1_3)) {
+                return record;
+              }
+              throw new AssertionError();
+            })
+        .transform(logManager.newFailedRecordsHandler())
+        .transform(logManager.newSuccessfulRecordsHandler())
+        .blockLast();
 
     logManager.close();
 
-    assertThat(logManager.mergePositionTrackers().getPositions()).containsOnlyKeys(resource1);
-    assertThat(logManager.mergePositionTrackers().getPositions().get(resource1))
-        .containsExactly(new Range(1, 3));
+    CheckpointManager checkpointManager = logManager.mergeCheckpointManagers();
+    Map<URI, Checkpoint> checkpoints = getCheckpoints(checkpointManager);
 
-    // Emulate listener signaling successful and failed resources
+    assertThat(checkpoints).containsOnlyKeys(resource1, resource2, resource3);
 
-    assertThat(logManager.resources)
-        .hasEntrySatisfying(
-            resource1,
-            stats -> {
-              assertThat(stats.completed).isTrue();
-              assertThat(stats.failed).isFalse();
-              assertThat(stats.produced).isEqualTo(3);
-            })
-        .hasEntrySatisfying(
-            resource2,
-            stats -> {
-              assertThat(stats.completed).isTrue(); // since the executor is failsafe
-              assertThat(stats.failed).isTrue();
-              assertThat(stats.produced).isEqualTo(0);
-            })
-        .hasEntrySatisfying(
-            resource3,
-            stats -> {
-              assertThat(stats.completed).isTrue();
-              assertThat(stats.failed).isFalse();
-              assertThat(stats.produced).isEqualTo(0);
-            });
+    assertThat(resume.isComplete(checkpoints.get(resource1))).isTrue();
+    assertThat(resume.isComplete(checkpoints.get(resource2))).isFalse();
+    assertThat(resume.isComplete(checkpoints.get(resource3))).isTrue();
+
+    assertThat(checkpoints.get(resource1).getProduced()).isEqualTo(3L);
+    assertThat(checkpoints.get(resource2).getProduced()).isEqualTo(0L);
+    assertThat(checkpoints.get(resource3).getProduced()).isEqualTo(0L);
+
+    assertThat(checkpoints.get(resource1).getConsumedSuccessful().stream())
+        .containsExactly(new Range(3, 3));
+    assertThat(checkpoints.get(resource2).getConsumedSuccessful().stream()).isEmpty();
+    assertThat(checkpoints.get(resource3).getConsumedSuccessful().stream()).isEmpty();
+
+    assertThat(checkpoints.get(resource1).getConsumedFailed().stream())
+        .containsExactly(new Range(1, 2));
+    assertThat(checkpoints.get(resource2).getConsumedFailed().stream()).isEmpty();
+    assertThat(checkpoints.get(resource3).getConsumedFailed().stream()).isEmpty();
 
     // Check unload files
 
@@ -1478,22 +1689,190 @@ class LogManagerTest {
         .containsOnlyOnce("Row: Row")
         .containsOnlyOnce("java.lang.RuntimeException: connector error 1");
 
-    // Check summary.csv
+    // Check checkpoint.csv
 
-    logManager.writeSummaryFile();
-    Path summary = logManager.getOperationDirectory().resolve("summary.csv");
-    assertThat(summary.toFile()).exists();
-    List<String> summaryLines = Files.readAllLines(summary, UTF_8);
-    assertThat(summaryLines)
+    logManager.writeCheckpointFile(checkpointManager);
+    Path checkpointFile = logManager.getOperationDirectory().resolve("checkpoint.csv");
+    assertThat(checkpointFile.toFile()).exists();
+    List<String> checkpointLines = Files.readAllLines(checkpointFile, UTF_8);
+    assertThat(checkpointLines)
         .containsExactly(
-            "cql://ks/t?start=1&end=2;[1,3];1", // 3 records processed, finished
-            "cql://ks/t?start=2&end=3;[0,0];0", // no records processed, failed
-            "cql://ks/t?start=3&end=4;[0,0];1" // no records processed, finished (empty)
+            "cql://ks/t?start=1&end=2;1;3;3;1:2", // 3 records processed, 2 failed, finished
+            "cql://ks/t?start=2&end=3;0;0;;", // no records processed, failed
+            "cql://ks/t?start=3&end=4;1;0;;" // no records processed, finished (empty)
             );
 
     assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
         .containsOnly(
-            connectorBad, connectorErrors, mappingBad, mappingErrors, unloadErrors, summary);
+            connectorBad, connectorErrors, mappingBad, mappingErrors, unloadErrors, checkpointFile);
+
+    // Resume the failed operation
+
+    outputDir = Files.createTempDirectory("test");
+    logManager =
+        new LogManager(
+            session,
+            outputDir,
+            ErrorThreshold.forAbsoluteValue(3),
+            ErrorThreshold.forAbsoluteValue(0),
+            statementFormatter,
+            EXTENDED,
+            rowFormatter,
+            true,
+            checkpointManager,
+            strategy);
+
+    logManager.init();
+
+    ReadResult result2_1 =
+        new DefaultReadResult(statement2, mock(ExecutionInfo.class), mockRow(1), 1);
+    ReadResult result2_2 =
+        new DefaultReadResult(statement2, mock(ExecutionInfo.class), mockRow(2), 2);
+    ReadResult result2_3 =
+        new DefaultReadResult(statement2, mock(ExecutionInfo.class), mockRow(3), 3);
+
+    Record record2_1 = new DefaultRecord(result2_1, resource2, 1);
+    Record record2_2 = new DefaultRecord(result2_2, resource2, 2);
+    Record record2_3 = new DefaultRecord(result2_3, resource2, 3);
+
+    Record record1_2a = new DefaultRecord(result1_2, resource1, 2);
+
+    res2 = mockRangeReadResource(resource2, Flux.just(result2_1, result2_2, result2_3));
+
+    Flux.just(res1, res2, res3)
+        .transform(logManager.newRangeReadCheckpointHandler())
+        .flatMap(r -> r)
+        .transform(logManager.newFailedReadsHandler())
+
+        // Emulate read result -> record mapper
+        .map(
+            result -> {
+              switch (strategy) {
+                case retryAll:
+                case retry:
+                  if (result.equals(result1_1)) {
+                    return record1_1;
+                  }
+                  if (result.equals(result1_2)) {
+                    return record1_2a;
+                  }
+                  // fall through
+                case resume:
+                  if (result.equals(result2_1)) {
+                    return record2_1;
+                  }
+                  if (result.equals(result2_2)) {
+                    return record2_2;
+                  }
+                  if (result.equals(result2_3)) {
+                    return record2_3;
+                  }
+                  break;
+              }
+              throw new AssertionError();
+            })
+        .transform(logManager.newUnmappableRecordsHandler())
+
+        // Emulate connector write
+        .map(
+            record -> {
+              switch (strategy) {
+                case retryAll:
+                case retry:
+                  if (record.equals(record1_1)) {
+                    return record1_1;
+                  }
+                  if (record.equals(record1_2a)) {
+                    return record1_2a;
+                  }
+                  // fall through
+                case resume:
+                  if (record.equals(record2_1)) {
+                    return record2_1;
+                  }
+                  if (record.equals(record2_2)) {
+                    return record2_2;
+                  }
+                  if (record.equals(record2_3)) {
+                    return record2_3;
+                  }
+                  break;
+              }
+              throw new AssertionError();
+            })
+        .transform(logManager.newFailedRecordsHandler())
+        .transform(logManager.newSuccessfulRecordsHandler())
+        .blockLast();
+
+    logManager.close();
+
+    checkpointManager = logManager.mergeCheckpointManagers();
+    checkpoints = getCheckpoints(checkpointManager);
+
+    assertThat(checkpoints).containsOnlyKeys(resource1, resource2, resource3);
+
+    assertThat(resume.isComplete(checkpoints.get(resource1))).isTrue();
+    assertThat(resume.isComplete(checkpoints.get(resource2))).isTrue();
+    assertThat(resume.isComplete(checkpoints.get(resource3))).isTrue();
+
+    assertThat(checkpoints.get(resource1).getProduced()).isEqualTo(3L);
+    assertThat(checkpoints.get(resource2).getProduced()).isEqualTo(3L);
+    assertThat(checkpoints.get(resource3).getProduced()).isEqualTo(0L);
+
+    switch (strategy) {
+      case retry:
+      case retryAll:
+        assertThat(checkpoints.get(resource1).getConsumedSuccessful().stream())
+            .containsExactly(new Range(1, 3));
+        assertThat(checkpoints.get(resource2).getConsumedSuccessful().stream())
+            .containsExactly(new Range(1, 3));
+        assertThat(checkpoints.get(resource3).getConsumedSuccessful().stream()).isEmpty();
+
+        assertThat(checkpoints.get(resource1).getConsumedFailed().stream()).isEmpty();
+        assertThat(checkpoints.get(resource2).getConsumedFailed().stream()).isEmpty();
+        assertThat(checkpoints.get(resource3).getConsumedFailed().stream()).isEmpty();
+        break;
+      case resume:
+        assertThat(checkpoints.get(resource1).getConsumedSuccessful().stream())
+            .containsExactly(new Range(3, 3));
+        assertThat(checkpoints.get(resource2).getConsumedSuccessful().stream())
+            .containsExactly(new Range(1, 3));
+        assertThat(checkpoints.get(resource3).getConsumedSuccessful().stream()).isEmpty();
+
+        assertThat(checkpoints.get(resource1).getConsumedFailed().stream())
+            .containsExactly(new Range(1, 2));
+        assertThat(checkpoints.get(resource2).getConsumedFailed().stream()).isEmpty();
+        assertThat(checkpoints.get(resource3).getConsumedFailed().stream()).isEmpty();
+        break;
+    }
+
+    // Check checkpoint.csv
+
+    logManager.writeCheckpointFile(checkpointManager);
+    checkpointFile = logManager.getOperationDirectory().resolve("checkpoint.csv");
+    assertThat(checkpointFile.toFile()).exists();
+    checkpointLines = Files.readAllLines(checkpointFile, UTF_8);
+
+    switch (strategy) {
+      case retry:
+      case retryAll:
+        assertThat(checkpointLines)
+            .containsExactly(
+                "cql://ks/t?start=1&end=2;1;3;1:3;",
+                "cql://ks/t?start=2&end=3;1;3;1:3;",
+                "cql://ks/t?start=3&end=4;1;0;;");
+        break;
+      case resume:
+        assertThat(checkpointLines)
+            .containsExactly(
+                "cql://ks/t?start=1&end=2;1;3;3;1:2",
+                "cql://ks/t?start=2&end=3;1;3;1:3;",
+                "cql://ks/t?start=3&end=4;1;0;;");
+        break;
+    }
+
+    assertThat(FileUtils.listAllFilesInDirectory(logManager.getOperationDirectory()))
+        .containsOnly(checkpointFile);
   }
 
   private static MappedBoundStatement mockMappedBoundStatement(
@@ -1508,5 +1887,18 @@ class LogManagerTest {
         RangeReadStatement.rangeReadResource(
             CqlIdentifier.fromInternal("ks"), CqlIdentifier.fromInternal("t"), range);
     return new RangeReadBoundStatement(bs, range, resource);
+  }
+
+  private static RangeReadResource mockRangeReadResource(URI resource, Flux<ReadResult> results) {
+    RangeReadResource mock = mock(RangeReadResource.class);
+    when(mock.getURI()).thenReturn(resource);
+    when(mock.read()).thenReturn(results);
+    return mock;
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<URI, Checkpoint> getCheckpoints(CheckpointManager checkpointManager) {
+    return (Map<URI, Checkpoint>)
+        ReflectionUtils.getInternalState(checkpointManager, "checkpoints");
   }
 }

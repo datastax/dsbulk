@@ -19,8 +19,8 @@ import static com.datastax.oss.dsbulk.runner.ExitStatus.STATUS_OK;
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.IP_BY_COUNTRY_MAPPING_INDEXED;
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.assertStatus;
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.createIpByCountryTable;
+import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.validateCheckpointFile;
 import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.validateOutputFiles;
-import static com.datastax.oss.dsbulk.runner.tests.EndToEndUtils.validatePositionsFile;
 import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat;
 import static com.datastax.oss.dsbulk.tests.logging.StreamType.STDERR;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
@@ -181,7 +181,7 @@ class EndToEndCloudIT {
     ResultSet set = session.execute("SELECT * FROM ip_by_country");
     List<Row> results = set.all();
     assertThat(results.size()).isEqualTo(24);
-    validatePositionsFile(CsvUtils.CSV_RECORDS_UNIQUE, 24);
+    validateCheckpointFile(CsvUtils.CSV_RECORDS_UNIQUE, 24);
     FileUtils.deleteDirectory(logDir);
   }
 

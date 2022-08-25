@@ -24,7 +24,9 @@ import static com.datastax.oss.dsbulk.tests.logging.StreamType.STDERR;
 import static com.datastax.oss.dsbulk.tests.logging.StreamType.STDOUT;
 
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableSet;
+import com.datastax.oss.dsbulk.connectors.api.DefaultResource;
 import com.datastax.oss.dsbulk.connectors.api.Record;
+import com.datastax.oss.dsbulk.connectors.api.Resource;
 import com.datastax.oss.dsbulk.connectors.csv.CSVConnector;
 import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader;
 import com.datastax.oss.dsbulk.runner.ExitStatus;
@@ -51,7 +53,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
-import java.util.function.BiFunction;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -280,8 +281,7 @@ class NodeFilterEndToEndSimulacronIT extends EndToEndSimulacronITBase {
 
     @NonNull
     @Override
-    public Publisher<Publisher<Record>> read(
-        BiFunction<URI, Publisher<Record>, Publisher<Record>> resourceTerminationHandler) {
+    public Publisher<Resource> read() {
       List<Record> records = new ArrayList<>(1000);
       URI resource = URI.create("file://file");
       for (int i = 0; i < 1000; i++) {
@@ -297,7 +297,7 @@ class NodeFilterEndToEndSimulacronIT extends EndToEndSimulacronITBase {
                 String.valueOf(i));
         records.add(record);
       }
-      return Flux.just(Flux.fromIterable(records));
+      return Flux.just(new DefaultResource(resource, Flux.fromIterable(records)));
     }
   }
 }

@@ -6,6 +6,14 @@
 
 Read the [manual](manual/) or the [online docs](https://docs.datastax.com/en/dsbulk/doc/). 
 
+## Building
+
+Install JDK8 and latest maven, and run the following command:
+
+```
+mvn package -Prelease
+```
+
 ## Understanding DSBulk's architecture 
 
 Make sure you understand how DSBulk works by reading the manual page about 

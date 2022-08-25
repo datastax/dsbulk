@@ -20,7 +20,7 @@ import java.io.IOException;
 
 public interface ReadResultCounter extends AutoCloseable {
 
-  CountingUnit newCountingUnit();
+  CountingUnit newCountingUnit(long initial);
 
   void reportTotals() throws IOException;
 

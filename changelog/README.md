@@ -1,13 +1,26 @@
 ## Changelog
 
-## 1.10.0 (in progress)
+## 1.11.0
 
 - [improvement] BULK-22: Add ability to read from `s3://` URLs (#398).
+
+## 1.10.0
+
 - [improvement] Upgrade driver to 4.14.1.
+- [improvement] [#423](https://github.com/datastax/dsbulk/issues/423): Upgrade driver to 4.14.1, and other DSBulk dependencies.
 - [bug] [#419](https://github.com/datastax/dsbulk/issues/419): Fix wrong ANSI mode option name.
 - [bug] [#425](https://github.com/datastax/dsbulk/issues/425): Don't print count results if read result counter is null.
 - [improvement] [#424](https://github.com/datastax/dsbulk/issues/424): Add "max" verbosity level for debugging purposes.
 - [new feature] [#429](https://github.com/datastax/dsbulk/issues/429): Produce a positions file when unloading / counting.
+- [improvement] [#437](https://github.com/datastax/dsbulk/issues/437): Add building instructions to CONTRIBUTING.md.
+- [improvement] [#438](https://github.com/datastax/dsbulk/issues/438): Ability to limit throughput in bytes per second.
+- [bug] [#440](https://github.com/datastax/dsbulk/issues/440): Properly close files when unload is interrupted.
+- [bug] [#444](https://github.com/datastax/dsbulk/issues/444): Increment records/failed counter for failed writes.
+- [new feature] [#431](https://github.com/datastax/dsbulk/issues/431): Ability to resume a failed operation.
+
+## 1.9.1
+
+- [improvement] [#435](https://github.com/datastax/dsbulk/issues/435): Auto-detect cloud server-side rate-limit.
 
 ## 1.9.0
 

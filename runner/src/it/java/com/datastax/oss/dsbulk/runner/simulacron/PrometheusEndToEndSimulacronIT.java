@@ -26,8 +26,10 @@ import com.datastax.oss.driver.shaded.guava.common.io.Resources;
 import com.datastax.oss.dsbulk.connectors.api.CommonConnectorFeature;
 import com.datastax.oss.dsbulk.connectors.api.Connector;
 import com.datastax.oss.dsbulk.connectors.api.ConnectorFeature;
+import com.datastax.oss.dsbulk.connectors.api.DefaultResource;
 import com.datastax.oss.dsbulk.connectors.api.Record;
 import com.datastax.oss.dsbulk.connectors.api.RecordMetadata;
+import com.datastax.oss.dsbulk.connectors.api.Resource;
 import com.datastax.oss.dsbulk.runner.DataStaxBulkLoader;
 import com.datastax.oss.dsbulk.runner.ExitStatus;
 import com.datastax.oss.dsbulk.runner.tests.MockConnector;
@@ -50,7 +52,6 @@ import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
@@ -260,12 +261,11 @@ class PrometheusEndToEndSimulacronIT extends EndToEndSimulacronITBase {
 
       @NonNull
       @Override
-      public Publisher<Publisher<Record>> read(
-          BiFunction<URI, Publisher<Record>, Publisher<Record>> resourceTerminationHandler) {
+      public Publisher<Resource> read() {
         AtomicInteger counter = new AtomicInteger();
         AtomicBoolean running = new AtomicBoolean(true);
         URI resource = URI.create("file://file");
-        return Flux.just(
+        Flux<Record> records =
             Flux.generate(
                 sink -> {
                   int i = counter.incrementAndGet();
@@ -280,7 +280,8 @@ class PrometheusEndToEndSimulacronIT extends EndToEndSimulacronITBase {
                   } else {
                     sink.complete();
                   }
-                }));
+                });
+        return Flux.just(new DefaultResource(resource, records));
       }
 
       @NonNull

@@ -47,7 +47,7 @@ public class WriteResultPublisherTest extends ResultPublisherTestBase<WriteResul
   public Publisher<WriteResult> createFailedPublisher() {
     Statement<?> statement = SimpleStatement.newInstance("irrelevant");
     CqlSession session = mock(CqlSession.class);
-    return new WriteResultPublisher(statement, session, true, FAILED_LISTENER, null, null);
+    return new WriteResultPublisher(statement, session, true, FAILED_LISTENER, null, null, null);
   }
 
   private static CqlSession setUpSession() {

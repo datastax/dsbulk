@@ -597,7 +597,7 @@ public class SchemaSettings {
         codecFactory);
   }
 
-  public List<RangeReadBoundStatement> createReadStatements(CqlSession session) {
+  public List<RangeReadBoundStatement> createReadStatements(@NonNull CqlSession session) {
     PreparedStatement preparedStatement = preparedStatements.get(0);
     ColumnDefinitions variables = preparedStatement.getVariableDefinitions();
     Metadata metadata = session.getMetadata();
@@ -645,10 +645,11 @@ public class SchemaSettings {
     LOGGER.debug("Generated {} token range read statements", statements.size());
     List<RangeReadBoundStatement> statementsList = new ArrayList<>();
     for (Entry<TokenRange, BoundStatement> entry : statements.entrySet()) {
+      TokenRange range = entry.getKey();
+      BoundStatement bs = entry.getValue();
       URI resource =
-          RangeReadStatement.rangeReadResource(keyspace.getName(), table.getName(), entry.getKey());
-      RangeReadBoundStatement stmt =
-          new RangeReadBoundStatement(entry.getValue(), entry.getKey(), resource);
+          RangeReadStatement.rangeReadResource(keyspace.getName(), table.getName(), range);
+      RangeReadBoundStatement stmt = new RangeReadBoundStatement(bs, range, resource);
       statementsList.add(stmt);
     }
     // Shuffle the statements to avoid hitting the same replicas sequentially when
