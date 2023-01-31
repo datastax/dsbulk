@@ -16,19 +16,35 @@
 package com.datastax.oss.dsbulk.url;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import com.typesafe.config.Config;
+import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 
+@TestMethodOrder(OrderAnnotation.class)
 class BulkLoaderURLStreamHandlerFactoryTest {
 
   @Test
   void should_handle_installed_handlers() {
+    Config config = mock(Config.class);
+    when(config.hasPath("dsbulk.s3.clientCacheSize")).thenReturn(true);
+    when(config.getInt("dsbulk.s3.clientCacheSize")).thenReturn(25);
+
+    BulkLoaderURLStreamHandlerFactory.install();
+    BulkLoaderURLStreamHandlerFactory.setConfig(config);
     BulkLoaderURLStreamHandlerFactory factory = BulkLoaderURLStreamHandlerFactory.INSTANCE;
+
     assertThat(factory.createURLStreamHandler("std"))
         .isNotNull()
         .isInstanceOf(StdinStdoutURLStreamHandler.class);
     assertThat(factory.createURLStreamHandler("STD"))
         .isNotNull()
         .isInstanceOf(StdinStdoutURLStreamHandler.class);
+    assertThat(factory.createURLStreamHandler("s3"))
+        .isNotNull()
+        .isInstanceOf(S3URLStreamHandler.class);
   }
 }

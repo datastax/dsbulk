@@ -16,19 +16,24 @@
 package com.datastax.oss.dsbulk.url;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import com.typesafe.config.Config;
 import org.junit.jupiter.api.Test;
 
-class StdinStdoutURLStreamHandlerProviderTest {
+class S3URLStreamHandlerProviderTest {
 
   @Test
-  void should_handle_std_protocol() {
-    StdinStdoutURLStreamHandlerProvider provider = new StdinStdoutURLStreamHandlerProvider();
-    assertThat(provider.maybeCreateURLStreamHandler("std", null))
+  void should_handle_s3_protocol() {
+    Config config = mock(Config.class);
+    when(config.hasPath("dsbulk.s3.clientCacheSize")).thenReturn(true);
+    when(config.getInt("dsbulk.s3.clientCacheSize")).thenReturn(25);
+
+    S3URLStreamHandlerProvider provider = new S3URLStreamHandlerProvider();
+
+    assertThat(provider.maybeCreateURLStreamHandler("s3", config))
         .isNotNull()
-        .containsInstanceOf(StdinStdoutURLStreamHandler.class);
-    assertThat(provider.maybeCreateURLStreamHandler("STD", null))
-        .isNotNull()
-        .containsInstanceOf(StdinStdoutURLStreamHandler.class);
+        .containsInstanceOf(S3URLStreamHandler.class);
   }
 }

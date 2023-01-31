@@ -20,20 +20,24 @@ import edu.umd.cs.findbugs.annotations.NonNull;
 import java.net.URLStreamHandler;
 import java.util.Optional;
 
-public class StdinStdoutURLStreamHandlerProvider implements URLStreamHandlerProvider {
+public class S3URLStreamHandlerProvider implements URLStreamHandlerProvider {
 
-  /**
-   * The protocol for standard input and standard output URLs. The only supported URL with such
-   * scheme is {@code std:/}.
-   */
-  public static final String STANDARD_STREAM_PROTOCOL = "std";
+  private static final String S3CLIENT_CACHE_SIZE_PATH = "dsbulk.s3.clientCacheSize";
+  private static final int DEFAULT_S3CLIENT_CACHE_SIZE = 20; // Totally arbitrary default.
+
+  /** The protocol for AWS S3 URLs. I.e., URLs beginning with {@code s3://} */
+  public static final String S3_STREAM_PROTOCOL = "s3";
 
   @Override
   @NonNull
   public Optional<URLStreamHandler> maybeCreateURLStreamHandler(
       @NonNull String protocol, Config config) {
-    if (STANDARD_STREAM_PROTOCOL.equalsIgnoreCase(protocol)) {
-      return Optional.of(new StdinStdoutURLStreamHandler());
+    if (S3_STREAM_PROTOCOL.equalsIgnoreCase(protocol)) {
+      int s3ClientCacheSize =
+          config.hasPath(S3CLIENT_CACHE_SIZE_PATH)
+              ? config.getInt(S3CLIENT_CACHE_SIZE_PATH)
+              : DEFAULT_S3CLIENT_CACHE_SIZE;
+      return Optional.of(new S3URLStreamHandler(s3ClientCacheSize));
     }
     return Optional.empty();
   }

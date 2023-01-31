@@ -1,4 +1,4 @@
-# DataStax Bulk Loader v1.10.0-SNAPSHOT Options
+# DataStax Bulk Loader v1.11.0-SNAPSHOT Options
 
 *NOTE:* The long options described here can be persisted in `conf/application.conf` and thus permanently override defaults and avoid specifying options on the command line.
 
@@ -18,6 +18,7 @@ A template configuration file can be found [here](./application.template.conf).
 <a href="#log">Log Settings</a><br>
 <a href="#monitoring">Monitoring Settings</a><br>
 <a href="#runner">Runner Settings</a><br>
+<a href="#s3">S3 Settings</a><br>
 <a href="#stats">Stats Settings</a><br>
 <a href="#datastax-java-driver">Driver Settings</a><br>
 <a name="Common"></a>
@@ -1567,6 +1568,23 @@ Prompting from passwords require interactive shells; if the standard input is no
 
 Default: **true**.
 
+<a name="s3"></a>
+## S3 Settings
+
+Settings applicable for reading from AWS S3 URLs.
+
+#### --s3.clientCacheSize<br />--dsbulk.s3.clientCacheSize _&lt;number&gt;_
+
+The size (count) of the S3Client cache. Since each S3 URL
+must contain the credentials for the target bucket, we cache
+the clients to prevent rebuilding the same client over and over.
+The default size of 20 is totally arbitrary, as we generally
+expect that most S3 URLs in a given batch will be using the
+same credentials, meaning the cache will really only ever
+contain one entry.
+
+Default: **20**.
+
 <a name="stats"></a>
 ## Stats Settings
 
@@ -2013,3 +2031,4 @@ The node-level metrics to enable. Available metrics are:
 - errors.connection.auth
 
 Default: **[]**.
+

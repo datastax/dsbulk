@@ -44,8 +44,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ConfigUtils {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigUtils.class);
 
   private static final Pattern THREADS_PATTERN =
       Pattern.compile("(.+)\\s*C", Pattern.CASE_INSENSITIVE);
@@ -696,6 +700,10 @@ public class ConfigUtils {
         throw new IllegalArgumentException(
             String.format("%s: Expecting valid filepath or URL, got '%s'", urlfile, path), e);
       }
+    }
+    if (result.size() > 100_000) {
+      LOGGER.warn(
+          "You seem to have a lot of URLs in your urlfile. Consider breaking it into pieces to avoid out-of-memory errors.");
     }
     return result;
   }

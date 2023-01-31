@@ -15,6 +15,7 @@
  */
 package com.datastax.oss.dsbulk.url;
 
+import com.typesafe.config.Config;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.net.URLStreamHandler;
 import java.util.Optional;
@@ -35,8 +36,9 @@ public interface URLStreamHandlerProvider {
    * empty.
    *
    * @param protocol The protocol to create a handler for.
+   * @param config The DSBulk config.
    * @return The created handler, or empty if the protocol is not supported.
    */
   @NonNull
-  Optional<URLStreamHandler> maybeCreateURLStreamHandler(@NonNull String protocol);
+  Optional<URLStreamHandler> maybeCreateURLStreamHandler(@NonNull String protocol, Config config);
 }

@@ -1,7 +1,12 @@
 ## Changelog
 
+## 1.11.0
+
+- [improvement] BULK-22: Add ability to read from `s3://` URLs (#398).
+
 ## 1.10.0
 
+- [improvement] Upgrade driver to 4.14.1.
 - [improvement] [#423](https://github.com/datastax/dsbulk/issues/423): Upgrade driver to 4.14.1, and other DSBulk dependencies.
 - [bug] [#419](https://github.com/datastax/dsbulk/issues/419): Fix wrong ANSI mode option name.
 - [bug] [#425](https://github.com/datastax/dsbulk/issues/425): Don't print count results if read result counter is null.
