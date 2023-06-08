@@ -62,6 +62,7 @@ import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.VARI
 
 import com.datastax.oss.driver.api.core.data.TupleValue;
 import com.datastax.oss.driver.api.core.data.UdtValue;
+import com.datastax.oss.driver.api.core.type.CqlVectorType;
 import com.datastax.oss.driver.api.core.type.CustomType;
 import com.datastax.oss.driver.api.core.type.DataType;
 import com.datastax.oss.driver.api.core.type.DataTypes;
@@ -69,6 +70,7 @@ import com.datastax.oss.driver.api.core.type.codec.CodecNotFoundException;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
+import com.datastax.oss.driver.internal.core.type.codec.CqlVectorCodec;
 import com.datastax.oss.driver.internal.core.type.codec.registry.DefaultCodecRegistry;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
 import com.datastax.oss.dsbulk.codecs.api.ConversionContext;
@@ -321,6 +323,18 @@ public class StringConvertingCodecProvider implements ConvertingCodecProvider {
       case CUSTOM:
         {
           CustomType customType = (CustomType) cqlType;
+
+          // CqlVectorType also implements CustomType so check to see if we're dealing with a vector
+          // type
+          if (customType instanceof CqlVectorType) {
+            CqlVectorType cqlVectorType = (CqlVectorType) cqlType;
+            ConvertingCodec<String, ?> subtypeCodec =
+                codecFactory.createConvertingCodec(
+                    cqlVectorType.getSubtype(), GenericType.STRING, false);
+            return new StringToVectorCodec(
+                new CqlVectorCodec(cqlVectorType, subtypeCodec), nullStrings);
+          }
+
           switch (customType.getClassName()) {
             case POINT_CLASS_NAME:
               return new StringToPointCodec(context.getAttribute(GEO_FORMAT), nullStrings);
