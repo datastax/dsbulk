@@ -64,6 +64,7 @@ import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.VARI
 import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.data.TupleValue;
 import com.datastax.oss.driver.api.core.data.UdtValue;
+import com.datastax.oss.driver.api.core.type.CqlVectorType;
 import com.datastax.oss.driver.api.core.type.CustomType;
 import com.datastax.oss.driver.api.core.type.DataType;
 import com.datastax.oss.driver.api.core.type.DataTypes;
@@ -114,6 +115,9 @@ public class JsonNodeConvertingCodecProvider implements ConvertingCodecProvider 
   private static final String POLYGON_CLASS_NAME = "org.apache.cassandra.db.marshal.PolygonType";
   private static final String DATE_RANGE_CLASS_NAME =
       "org.apache.cassandra.db.marshal.DateRangeType";
+
+  private static final String CQL_VECTOR_TYPE_CLASS_NAME =
+      "org.apache.cassandra.db.marshal.VectorType";
 
   @NonNull
   @Override
@@ -328,6 +332,7 @@ public class JsonNodeConvertingCodecProvider implements ConvertingCodecProvider 
           return new JsonNodeToMapCodec<>(
               mapCodec, keyCodec, valueCodec, context.getAttribute(OBJECT_MAPPER), nullStrings);
         }
+
       case TUPLE:
         {
           TypeCodec<TupleValue> tupleCodec = codecRegistry.codecFor(cqlType);
@@ -391,6 +396,14 @@ public class JsonNodeConvertingCodecProvider implements ConvertingCodecProvider 
                   nullStrings);
             case DATE_RANGE_CLASS_NAME:
               return new JsonNodeToDateRangeCodec(nullStrings);
+            case CQL_VECTOR_TYPE_CLASS_NAME:
+              CqlVectorType vectorType = (CqlVectorType) cqlType;
+              return new JsonNodeToCqlVectorCodec(
+                  vectorType,
+                  createJsonNodeConvertingCodec(vectorType.getSubtype(), codecFactory, false),
+                  TypeCodecs.FLOAT,
+                  context.getAttribute(OBJECT_MAPPER),
+                  nullStrings);
           }
           // fall through
         }
@@ -399,11 +412,12 @@ public class JsonNodeConvertingCodecProvider implements ConvertingCodecProvider 
           TypeCodec<?> innerCodec = codecRegistry.codecFor(cqlType);
           LOGGER.warn(
               String.format(
-                  "CQL type %s is not officially supported by this version of DSBulk; "
+                  "CQL type %s (cqlTypeCode %d) is not officially supported by this version of DSBulk; "
                       + "JSON literals will be parsed and formatted using registered codec %s",
-                  cqlType, innerCodec.getClass().getSimpleName()));
+                  cqlType, cqlTypeCode, innerCodec + ""));
           return new JsonNodeToUnknownTypeCodec<>(innerCodec, nullStrings);
         } catch (CodecNotFoundException ignored) {
+          LOGGER.warn("Codec not found for CQL type {}", cqlType, ignored);
         }
         return null;
     }
