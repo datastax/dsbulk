@@ -323,18 +323,6 @@ public class StringConvertingCodecProvider implements ConvertingCodecProvider {
       case CUSTOM:
         {
           CustomType customType = (CustomType) cqlType;
-
-          // CqlVectorType also implements CustomType so check to see if we're dealing with a vector
-          // type
-          if (customType instanceof CqlVectorType) {
-            CqlVectorType cqlVectorType = (CqlVectorType) cqlType;
-            ConvertingCodec<String, ?> subtypeCodec =
-                codecFactory.createConvertingCodec(
-                    cqlVectorType.getSubtype(), GenericType.STRING, false);
-            return new StringToVectorCodec(
-                new CqlVectorCodec(cqlVectorType, subtypeCodec), nullStrings);
-          }
-
           switch (customType.getClassName()) {
             case POINT_CLASS_NAME:
               return new StringToPointCodec(context.getAttribute(GEO_FORMAT), nullStrings);
@@ -344,9 +332,16 @@ public class StringConvertingCodecProvider implements ConvertingCodecProvider {
               return new StringToPolygonCodec(context.getAttribute(GEO_FORMAT), nullStrings);
             case DATE_RANGE_CLASS_NAME:
               return new StringToDateRangeCodec(nullStrings);
+            case CqlVectorType.CQLVECTOR_CLASS_NAME:
+              CqlVectorType cqlVectorType = (CqlVectorType) cqlType;
+              ConvertingCodec<String, ?> subtypeCodec =
+                  codecFactory.createConvertingCodec(
+                      cqlVectorType.getSubtype(), GenericType.STRING, false);
+              return new StringToVectorCodec(
+                  new CqlVectorCodec(cqlVectorType, subtypeCodec), nullStrings);
           }
-          // fall through
         }
+        // fall through
       default:
         try {
           TypeCodec<?> innerCodec = codecFactory.getCodecRegistry().codecFor(cqlType);
