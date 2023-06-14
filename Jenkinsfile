@@ -161,7 +161,9 @@ def notifySlack(status = 'started') {
 
 // branch pattern for cron
 // should match 3.x, 4.x, 4.5.x, etc
-def branchPatternCron = ~"\\d+(\\.\\d+)*\\.x"
+def branchPatternCron() {
+    ~"\\d+(\\.\\d+)*\\.x"
+}
 
 pipeline {
   agent none
@@ -212,7 +214,7 @@ pipeline {
   }
 
   triggers {
-    parameterizedCron(branchPatternCron.matcher(env.BRANCH_NAME).matches() ? """
+    parameterizedCron(branchPatternCron().matcher(env.BRANCH_NAME).matches() ? """
       # Every weeknight (Monday - Friday) around 6:00 AM
       H 6 * * 1-5 % MATRIX_TYPE=FULL; RUN_LONG_TESTS=true; RUN_VERY_LONG_TESTS=true; GENERATE_DISTRO=true
     """ : "")
