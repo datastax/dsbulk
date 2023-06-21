@@ -7,7 +7,7 @@ def initializeEnvironment() {
   env.GITHUB_COMMIT_URL = "${GITHUB_PROJECT_URL}/commit/${env.GIT_COMMIT}"
   env.BLUE_OCEAN_URL = "${JENKINS_URL}/blue/organizations/jenkins/tools%2Fdsbulk/detail/${BRANCH_NAME}/${BUILD_NUMBER}"
 
-  env.MAVEN_HOME = "${env.HOME}/.mvn/apache-maven-3.2.5"
+  env.MAVEN_HOME = "${env.HOME}/.mvn/apache-maven-3.6.3"
   env.PATH = "${env.MAVEN_HOME}/bin:${env.PATH}"
 
   env.JAVA_HOME = sh(label: 'Get JAVA_HOME', script: '''#!/bin/bash -le
