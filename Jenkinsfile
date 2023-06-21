@@ -56,7 +56,8 @@ def buildAndExecuteTests() {
     else
       mavenArgs="$mavenArgs -Dmaven.javadoc.skip=true"
     fi
-    
+
+    mvn dependency:resolve-plugins
     mvn verify $mavenArgs -B \
       -Ddsbulk.ccm.CCM_VERSION=${CCM_VERSION} \
       -Ddsbulk.ccm.CCM_IS_DSE=${CCM_IS_DSE} \
