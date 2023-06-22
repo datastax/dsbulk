@@ -7,7 +7,7 @@ def initializeEnvironment() {
   env.GITHUB_COMMIT_URL = "${GITHUB_PROJECT_URL}/commit/${env.GIT_COMMIT}"
   env.BLUE_OCEAN_URL = "${JENKINS_URL}/blue/organizations/jenkins/tools%2Fdsbulk/detail/${BRANCH_NAME}/${BUILD_NUMBER}"
 
-  env.MAVEN_HOME = "${env.HOME}/.mvn/apache-maven-3.2.5"
+  env.MAVEN_HOME = "${env.HOME}/.mvn/apache-maven-3.6.3"
   env.PATH = "${env.MAVEN_HOME}/bin:${env.PATH}"
 
   env.JAVA_HOME = sh(label: 'Get JAVA_HOME', script: '''#!/bin/bash -le
@@ -56,7 +56,8 @@ def buildAndExecuteTests() {
     else
       mavenArgs="$mavenArgs -Dmaven.javadoc.skip=true"
     fi
-    
+
+    mvn dependency:resolve-plugins
     mvn verify $mavenArgs -B \
       -Ddsbulk.ccm.CCM_VERSION=${CCM_VERSION} \
       -Ddsbulk.ccm.CCM_IS_DSE=${CCM_IS_DSE} \

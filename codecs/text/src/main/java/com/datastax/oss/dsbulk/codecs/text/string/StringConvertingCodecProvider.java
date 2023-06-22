@@ -62,6 +62,7 @@ import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.VARI
 
 import com.datastax.oss.driver.api.core.data.TupleValue;
 import com.datastax.oss.driver.api.core.data.UdtValue;
+import com.datastax.oss.driver.api.core.type.CqlVectorType;
 import com.datastax.oss.driver.api.core.type.CustomType;
 import com.datastax.oss.driver.api.core.type.DataType;
 import com.datastax.oss.driver.api.core.type.DataTypes;
@@ -69,6 +70,7 @@ import com.datastax.oss.driver.api.core.type.codec.CodecNotFoundException;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import com.datastax.oss.driver.api.core.type.reflect.GenericType;
+import com.datastax.oss.driver.internal.core.type.codec.CqlVectorCodec;
 import com.datastax.oss.driver.internal.core.type.codec.registry.DefaultCodecRegistry;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
 import com.datastax.oss.dsbulk.codecs.api.ConversionContext;
@@ -330,9 +332,16 @@ public class StringConvertingCodecProvider implements ConvertingCodecProvider {
               return new StringToPolygonCodec(context.getAttribute(GEO_FORMAT), nullStrings);
             case DATE_RANGE_CLASS_NAME:
               return new StringToDateRangeCodec(nullStrings);
+            case CqlVectorType.CQLVECTOR_CLASS_NAME:
+              CqlVectorType cqlVectorType = (CqlVectorType) cqlType;
+              ConvertingCodec<String, ?> subtypeCodec =
+                  codecFactory.createConvertingCodec(
+                      cqlVectorType.getSubtype(), GenericType.STRING, false);
+              return new StringToVectorCodec(
+                  new CqlVectorCodec(cqlVectorType, subtypeCodec), nullStrings);
           }
-          // fall through
         }
+        // fall through
       default:
         try {
           TypeCodec<?> innerCodec = codecFactory.getCodecRegistry().codecFor(cqlType);

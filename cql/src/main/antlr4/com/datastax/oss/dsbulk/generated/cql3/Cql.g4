@@ -449,6 +449,7 @@ relation
     | cident K_IN singleColumnInValues
     | cident K_CONTAINS (K_KEY)? term
     | cident '[' term ']' relationType term
+    | cident K_ANN_OF term
     | tupleOfIdentifiers
       ( K_IN
           ( '(' ')'
@@ -639,6 +640,7 @@ K_TOKEN:       T O K E N;
 K_WRITETIME:   W R I T E T I M E;
 K_DATE:        D A T E;
 K_TIME:        T I M E;
+K_VECTOR:      V E C T O R;
 
 K_NULL:        N U L L;
 K_NOT:         N O T;
@@ -656,6 +658,8 @@ K_JSON:        J S O N;
 K_DEFAULT:     D E F A U L T;
 K_UNSET:       U N S E T;
 K_LIKE:        L I K E;
+
+K_ANN_OF:      A N N WS+ O F;
 
 // Case-insensitive alpha characters
 fragment A: ('a'|'A');
