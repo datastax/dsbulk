@@ -16,21 +16,24 @@
 package com.datastax.oss.dsbulk.codecs.text.json;
 
 import com.datastax.oss.driver.api.core.data.CqlVector;
-import com.datastax.oss.driver.internal.core.type.codec.CqlVectorCodec;
+import com.datastax.oss.driver.internal.core.type.codec.VectorCodec;
+import com.datastax.oss.driver.shaded.guava.common.collect.Streams;
 import com.datastax.oss.dsbulk.codecs.api.ConvertingCodec;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import java.util.Iterator;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
-public class JsonNodeToVectorCodec<SubtypeT> extends JsonNodeConvertingCodec<CqlVector<SubtypeT>> {
+public class JsonNodeToVectorCodec<SubtypeT extends Number>
+    extends JsonNodeConvertingCodec<CqlVector<SubtypeT>> {
 
   private final ConvertingCodec<JsonNode, SubtypeT> subtypeCodec;
   private final ObjectMapper objectMapper;
 
   public JsonNodeToVectorCodec(
-      CqlVectorCodec<SubtypeT> targetCodec,
+      VectorCodec<SubtypeT> targetCodec,
       ConvertingCodec<JsonNode, SubtypeT> subtypeCodec,
       ObjectMapper objectMapper,
       List<String> nullStrings) {
@@ -42,17 +45,18 @@ public class JsonNodeToVectorCodec<SubtypeT> extends JsonNodeConvertingCodec<Cql
   @Override
   public CqlVector<SubtypeT> externalToInternal(JsonNode jsonNode) {
     if (jsonNode == null || !jsonNode.isArray()) return null;
-    CqlVector.Builder<SubtypeT> builder = CqlVector.builder();
-    for (Iterator<JsonNode> it = jsonNode.elements(); it.hasNext(); )
-      builder.add(subtypeCodec.externalToInternal(it.next()));
-    return builder.build();
+    List<SubtypeT> elems =
+        Streams.stream(jsonNode.elements())
+            .map(e -> subtypeCodec.externalToInternal(e))
+            .collect(Collectors.toCollection(ArrayList::new));
+    return CqlVector.newInstance(elems);
   }
 
   @Override
   public JsonNode internalToExternal(CqlVector<SubtypeT> value) {
     if (value == null) return null;
     ArrayNode root = objectMapper.createArrayNode();
-    for (SubtypeT element : value.getValues()) {
+    for (SubtypeT element : value) {
       root.add(subtypeCodec.internalToExternal(element));
     }
     return root;
