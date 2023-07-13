@@ -21,7 +21,7 @@
   <parent>
     <artifactId>dsbulk-connectors</artifactId>
     <groupId>com.datastax.oss</groupId>
-    <version>1.11.0</version>
+    <version>1.11.1-SNAPSHOT</version>
   </parent>
   <artifactId>dsbulk-connectors-api</artifactId>
   <name>DataStax Bulk Loader - Connectors - API</name>
