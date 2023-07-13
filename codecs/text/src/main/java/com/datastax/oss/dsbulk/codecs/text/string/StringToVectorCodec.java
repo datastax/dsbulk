@@ -16,13 +16,14 @@
 package com.datastax.oss.dsbulk.codecs.text.string;
 
 import com.datastax.oss.driver.api.core.data.CqlVector;
-import com.datastax.oss.driver.internal.core.type.codec.CqlVectorCodec;
+import com.datastax.oss.driver.internal.core.type.codec.VectorCodec;
 import java.util.List;
 
-public class StringToVectorCodec<SubtypeT> extends StringConvertingCodec<CqlVector<SubtypeT>> {
+public class StringToVectorCodec<SubtypeT extends Number>
+    extends StringConvertingCodec<CqlVector<SubtypeT>> {
 
-  public StringToVectorCodec(CqlVectorCodec<SubtypeT> subcodec, List<String> nullStrings) {
-    super(subcodec, nullStrings);
+  public StringToVectorCodec(VectorCodec<SubtypeT> targetCodec, List<String> nullStrings) {
+    super(targetCodec, nullStrings);
   }
 
   @Override

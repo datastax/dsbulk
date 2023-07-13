@@ -16,24 +16,24 @@
 package com.datastax.oss.dsbulk.codecs.text.string;
 
 import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.datastax.oss.driver.api.core.ProtocolVersion;
 import com.datastax.oss.driver.api.core.data.CqlVector;
-import com.datastax.oss.driver.api.core.type.CqlVectorType;
 import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
-import com.datastax.oss.driver.internal.core.type.codec.CqlVectorCodec;
+import com.datastax.oss.driver.internal.core.type.DefaultVectorType;
+import com.datastax.oss.driver.internal.core.type.codec.VectorCodec;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import java.util.ArrayList;
-
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 public class StringToVectorCodecTest {
 
   private final ArrayList<Float> values = Lists.newArrayList(1.1f, 2.2f, 3.3f, 4.4f, 5.5f);
-  private final CqlVector vector = CqlVector.builder().addAll(values).build();
-  private final CqlVectorCodec vectorCodec =
-      new CqlVectorCodec(new CqlVectorType(DataTypes.FLOAT, 5), TypeCodecs.FLOAT);
+  private final CqlVector vector = CqlVector.newInstance(values);
+  private final VectorCodec vectorCodec =
+      new VectorCodec(new DefaultVectorType(DataTypes.FLOAT, 5), TypeCodecs.FLOAT);
 
   private final StringToVectorCodec dsbulkCodec =
       new StringToVectorCodec(vectorCodec, Lists.newArrayList("NULL"));
@@ -58,20 +58,32 @@ public class StringToVectorCodecTest {
         .toExternal(vectorCodec.format(vector))
         .convertsFromInternal(null)
         .toExternal("NULL");
+
+    // We should encode
   }
 
   @Test
-  @Disabled("Requires driver support for validating a CqlVector against a CqlVectorType")
   void should_not_convert_from_invalid_internal() {
-    // Too few values to match dimensions
+    assertThat(dsbulkCodec)
+        .cannotConvertFromInternal("not a valid vector");
+  }
+
+  // To keep usage consistent with VectorCodec we confirm that we support encoding when too many elements are
+  // available but not when too few are.  Note that it's actually VectorCodec that enforces this constraint so we
+  // have to go through encode() rather than the internal/external methods.
+  @Test
+  void should_encode_too_many_but_not_too_few() {
+
     ArrayList<Float> tooMany = Lists.newArrayList(values);
     tooMany.add(6.6f);
+    CqlVector<Float> tooManyVector = CqlVector.newInstance(tooMany);
+    String tooManyString = dsbulkCodec.internalToExternal(tooManyVector);
     ArrayList<Float> tooFew = Lists.newArrayList(values);
     tooFew.remove(0);
+    CqlVector<Float> tooFewVector = CqlVector.newInstance(tooFew);
+    String tooFewString = dsbulkCodec.internalToExternal(tooFewVector);
 
-    assertThat(dsbulkCodec)
-        .cannotConvertFromInternal(CqlVector.builder().addAll(tooMany).build())
-        .cannotConvertFromInternal(CqlVector.builder().addAll(tooFew).build())
-        .cannotConvertFromInternal("not a valid vector");
+    assertThat(dsbulkCodec.encode(tooManyString, ProtocolVersion.DEFAULT)).isNotNull();
+    assertThatThrownBy(() -> dsbulkCodec.encode(tooFewString, ProtocolVersion.DEFAULT)).isInstanceOf(IllegalArgumentException.class);
   }
 }
