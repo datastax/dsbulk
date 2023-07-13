@@ -2,7 +2,9 @@
 
 ## 1.11.0
 
-- [improvement] BULK-22: Add ability to read from `s3://` URLs (#398).
+- [improvement] Upgrade driver to 4.17.0
+- [improvement] [#398](https://github.com/datastax/dsbulk/issues/398): Support reading records from AWS S3.
+- [new feature] [#481](https://github.com/datastax/dsbulk/issues/481): Add support for loading/unloading vector type data
 
 ## 1.10.0
 
