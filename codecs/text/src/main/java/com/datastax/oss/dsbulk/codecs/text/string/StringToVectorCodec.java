@@ -22,8 +22,8 @@ import java.util.List;
 public class StringToVectorCodec<SubtypeT extends Number>
     extends StringConvertingCodec<CqlVector<SubtypeT>> {
 
-  public StringToVectorCodec(VectorCodec<SubtypeT> subcodec, List<String> nullStrings) {
-    super(subcodec, nullStrings);
+  public StringToVectorCodec(VectorCodec<SubtypeT> targetCodec, List<String> nullStrings) {
+    super(targetCodec, nullStrings);
   }
 
   @Override
