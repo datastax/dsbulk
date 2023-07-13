@@ -59,7 +59,7 @@
     make sure the resulting binary tarball contains only
     required jars, and that no jar has an offending license.
     -->
-    <driver.version>4.16.1-SNAPSHOT</driver.version>
+    <driver.version>4.17.0</driver.version>
     <reactive-streams.version>1.0.3</reactive-streams.version>
     <reactor.version>2020.0.19</reactor.version>
     <config.version>1.4.2</config.version>
