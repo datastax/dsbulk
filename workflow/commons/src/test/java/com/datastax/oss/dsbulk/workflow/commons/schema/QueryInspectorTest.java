@@ -64,6 +64,8 @@ class QueryInspectorTest {
   private static final CQLWord T_1 = CQLWord.fromInternal("t1");
   private static final CQLWord T_2 = CQLWord.fromInternal("t2");
 
+  private static final CQLWord VECTOR = CQLWord.fromInternal("vector");
+
   private static final CQLLiteral _16 = new CQLLiteral("16");
   private static final CQLLiteral _2 = new CQLLiteral("2");
   private static final CQLLiteral _3 = new CQLLiteral("3");
@@ -226,6 +228,26 @@ class QueryInspectorTest {
         .containsEntry(PK, PK)
         .containsEntry(CC, CC)
         .containsEntry(V, FUNC_NOW);
+  }
+
+  @Test
+  void should_detect_named_vector_insert() {
+    QueryInspector inspector =
+        new QueryInspector("INSERT INTO ks.table1 (pk, cc, vector) VALUES (:pk, :cc, :vector)");
+    assertThat(inspector.getAssignments())
+        .containsEntry(PK, PK)
+        .containsEntry(CC, CC)
+        .containsEntry(VECTOR, VECTOR);
+  }
+
+  @Test
+  void should_detect_positional_vector_insert() {
+    QueryInspector inspector =
+        new QueryInspector("INSERT INTO ks.table1 (pk, cc, vector) VALUES (?,?,?)");
+    assertThat(inspector.getAssignments())
+        .containsEntry(PK, PK)
+        .containsEntry(CC, CC)
+        .containsEntry(VECTOR, VECTOR);
   }
 
   @Test

@@ -524,6 +524,7 @@ nativeType
     | K_TIMEUUID
     | K_DATE
     | K_TIME
+    | K_VECTOR
     ;
 
 collectionType
