@@ -657,6 +657,17 @@ class QueryInspectorTest {
 
   @ParameterizedTest
   @MethodSource
+  void should_detect_unsupported_vector_selector(String query, boolean expected) {
+    assertThat(new QueryInspector(query).hasUnsupportedSelectors()).isEqualTo(expected);
+  }
+
+  @SuppressWarnings("unused")
+  static List<Arguments> should_detect_unsupported_vector_selector() {
+    return Lists.newArrayList(arguments("SELECT (vector<int,3>)[0.123] FROM ks.t1", true));
+  }
+
+  @ParameterizedTest
+  @MethodSource
   void should_detect_functions_in_assignments(
       String query, int expectedTotalAssignments, FunctionCall expectedValue) {
     QueryInspector inspector = new QueryInspector(query);
