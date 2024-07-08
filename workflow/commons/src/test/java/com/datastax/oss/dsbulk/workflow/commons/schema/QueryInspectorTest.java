@@ -34,6 +34,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import javax.management.Query;
+
 class QueryInspectorTest {
 
   private static final CQLWord NOW = CQLWord.fromInternal("now");
@@ -655,15 +657,11 @@ class QueryInspectorTest {
         arguments("SELECT * FROM ks.t1", false));
   }
 
-  @ParameterizedTest
-  @MethodSource
-  void should_detect_unsupported_vector_selector(String query, boolean expected) {
-    assertThat(new QueryInspector(query).hasUnsupportedSelectors()).isEqualTo(expected);
-  }
-
-  @SuppressWarnings("unused")
-  static List<Arguments> should_detect_unsupported_vector_selector() {
-    return Lists.newArrayList(arguments("SELECT (vector<int,3>)[0.123] FROM ks.t1", true));
+  @Test
+  void should_detect_unsupported_vector_selector() {
+    String query = "SELECT (vector<int,3>)[0.123] FROM ks.t1";
+    QueryInspector inspector = new QueryInspector(query);
+    assertThat(inspector.hasUnsupportedSelectors()).isTrue();
   }
 
   @ParameterizedTest
