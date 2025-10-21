@@ -43,6 +43,10 @@ public class JsonNodeToStringCodec extends JsonNodeConvertingCodec<String> {
       } catch (JsonProcessingException e) {
         throw new IllegalArgumentException("Cannot deserialize node " + node, e);
       }
+    } else if (node.isTextual()) {
+      // Return the original text value without processing escape sequences for text nodes
+      // This preserves unicode escape sequences like \u001a instead of converting them to characters
+      return node.textValue();
     } else {
       return node.asText();
     }
