@@ -73,9 +73,7 @@ DSBulk code is divided in several modules:
 
 ## Issue Management
 
-DataStax Bulk Loader has its own [Jira project](https://datastax.jira.com/projects/DAT/summary), but
-it's private to DataStax. For external contributors, feel free to open an issue in DSBulk's 
-GitHub repository.
+DataStax Bulk Loader uses [Github Issues](https://github.com/datastax/dsbulk/issues) to manage all outstanding issues.
 
 # Contribution guidelines
 

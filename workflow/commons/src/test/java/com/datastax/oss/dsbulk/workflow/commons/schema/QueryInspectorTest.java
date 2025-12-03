@@ -64,6 +64,8 @@ class QueryInspectorTest {
   private static final CQLWord T_1 = CQLWord.fromInternal("t1");
   private static final CQLWord T_2 = CQLWord.fromInternal("t2");
 
+  private static final CQLWord VECTOR = CQLWord.fromInternal("vector");
+
   private static final CQLLiteral _16 = new CQLLiteral("16");
   private static final CQLLiteral _2 = new CQLLiteral("2");
   private static final CQLLiteral _3 = new CQLLiteral("3");
@@ -226,6 +228,26 @@ class QueryInspectorTest {
         .containsEntry(PK, PK)
         .containsEntry(CC, CC)
         .containsEntry(V, FUNC_NOW);
+  }
+
+  @Test
+  void should_detect_named_vector_insert() {
+    QueryInspector inspector =
+        new QueryInspector("INSERT INTO ks.table1 (pk, cc, vector) VALUES (:pk, :cc, :vector)");
+    assertThat(inspector.getAssignments())
+        .containsEntry(PK, PK)
+        .containsEntry(CC, CC)
+        .containsEntry(VECTOR, VECTOR);
+  }
+
+  @Test
+  void should_detect_positional_vector_insert() {
+    QueryInspector inspector =
+        new QueryInspector("INSERT INTO ks.table1 (pk, cc, vector) VALUES (?,?,?)");
+    assertThat(inspector.getAssignments())
+        .containsEntry(PK, PK)
+        .containsEntry(CC, CC)
+        .containsEntry(VECTOR, VECTOR);
   }
 
   @Test
@@ -631,6 +653,13 @@ class QueryInspectorTest {
             "SELECT col1, writetime(col1) AS wrt, ttl(col1) as ttl, now() as now FROM ks.t1",
             false),
         arguments("SELECT * FROM ks.t1", false));
+  }
+
+  @Test
+  void should_detect_unsupported_vector_selector() {
+    String query = "SELECT (vector<int,3>)[0.123] FROM ks.t1";
+    QueryInspector inspector = new QueryInspector(query);
+    assertThat(inspector.hasUnsupportedSelectors()).isTrue();
   }
 
   @ParameterizedTest

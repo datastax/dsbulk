@@ -449,7 +449,7 @@ relation
     | cident K_IN singleColumnInValues
     | cident K_CONTAINS (K_KEY)? term
     | cident '[' term ']' relationType term
-    | cident K_ANN_OF term
+    | cident K_ANN K_OF term
     | tupleOfIdentifiers
       ( K_IN
           ( '(' ')'
@@ -499,6 +499,7 @@ comparatorType
     | collectionType
     | tupleType
     | userTypeName
+    | vectorType
     | K_FROZEN '<' comparatorType '>'
     ;
 
@@ -536,6 +537,9 @@ tupleType
     : K_TUPLE '<' comparatorType (',' comparatorType)* '>'
     ;
 
+vectorType
+    : K_VECTOR '<' comparatorType ',' INTEGER '>'
+    ;
 
 // Basically the same as cident, but we need to exlude existing CQL3 types
 // (which for some reason are not reserved otherwise)
@@ -572,6 +576,8 @@ basicUnreservedKeyword
         | K_PER
         | K_PARTITION
         | K_GROUP
+        | K_VECTOR
+        | K_ANN
         )
     ;
 
@@ -659,7 +665,8 @@ K_DEFAULT:     D E F A U L T;
 K_UNSET:       U N S E T;
 K_LIKE:        L I K E;
 
-K_ANN_OF:      A N N WS+ O F;
+K_ANN:         A N N;
+K_OF:          O F;
 
 // Case-insensitive alpha characters
 fragment A: ('a'|'A');
