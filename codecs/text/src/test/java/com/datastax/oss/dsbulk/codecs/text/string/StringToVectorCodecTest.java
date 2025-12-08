@@ -82,6 +82,13 @@ public class StringToVectorCodecTest {
 
   @Test
   void should_not_convert_from_invalid_external() {
+
+    // Issue 484: now that we're using the dsbulk string-to-subtype converters we should get
+    // enforcement of existing dsbulk policies.  For our purposes that means the failure on
+    // arithmetic overflow.
+    assertThat(codec).cannotConvertFromExternal("6.646329843");
+
+    // dsbulk should effectively treat this as "6.646329843" so we should also fail in this case
     assertThat(codec).cannotConvertFromExternal("[6.646329843]");
   }
 
@@ -104,14 +111,5 @@ public class StringToVectorCodecTest {
     assertThat(codec.encode(tooManyString, ProtocolVersion.DEFAULT)).isNotNull();
     assertThatThrownBy(() -> codec.encode(tooFewString, ProtocolVersion.DEFAULT))
         .isInstanceOf(IllegalArgumentException.class);
-  }
-
-  // Issue 484: now that we're using the dsbulk string-to-subtype converters we should get
-  // enforcement of existing dsbulk policies.  For our purposes that means the failure on
-  // arithmetic overflow.
-  @Test
-  void should_not_convert_too_much_precision() {
-    assertThatThrownBy(() -> codec.encode("6.646329843", ProtocolVersion.DEFAULT))
-        .isInstanceOf(ArithmeticException.class);
   }
 }
