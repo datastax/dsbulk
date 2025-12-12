@@ -73,7 +73,7 @@
     <lz4.version>1.8.0</lz4.version>
     <snappy.version>1.1.10.8</snappy.version>
     <hdr.version>2.1.12</hdr.version>
-    <jackson.version>2.13.3</jackson.version>
+    <jackson.version>2.20.1</jackson.version>
     <univocity.version>2.9.1</univocity.version>
     <commons-compress.version>1.28.0</commons-compress.version>
     <compress.zstd.version>1.5.7-6</compress.zstd.version>
@@ -84,7 +84,7 @@
     <spotbugs.version>4.5.3</spotbugs.version>
     <esri.version>1.2.1</esri.version>
     <jackson-core-asl.version>1.9.13</jackson-core-asl.version>
-    <org-json.version>20220320</org-json.version>
+    <org-json.version>20250517</org-json.version>
     <jansi.version>1.18</jansi.version>
     <aws.sdk.version>2.40.7</aws.sdk.version>
     <prometheus.client.version>0.15.0</prometheus.client.version>
