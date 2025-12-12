@@ -83,13 +83,10 @@ public class JsonNodeToVectorCodecTest {
     assertThat(dsbulkCodec).cannotConvertFromInternal("not a valid vector");
   }
 
-  // To keep usage consistent with VectorCodec we confirm that we support encoding when too many
-  // elements are
-  // available but not when too few are.  Note that it's actually VectorCodec that enforces this
-  // constraint so we
-  // have to go through encode() rather than the internal/external methods.
+  // VectorCodec throws IllegalArgumentExcpetion if we don't have exactly the expected number
+  // of elements in our vector
   @Test
-  void should_encode_too_many_but_not_too_few() {
+  void should_fail_to_encode_too_many_or_too_few() {
 
     ArrayList<Float> tooMany = Lists.newArrayList(values);
     tooMany.add(6.6f);
@@ -100,7 +97,8 @@ public class JsonNodeToVectorCodecTest {
     CqlVector<Float> tooFewVector = CqlVector.newInstance(tooFew);
     JsonNode tooFewNode = dsbulkCodec.internalToExternal(tooFewVector);
 
-    assertThat(dsbulkCodec.encode(tooManyNode, ProtocolVersion.DEFAULT)).isNotNull();
+    assertThatThrownBy(() -> dsbulkCodec.encode(tooManyNode, ProtocolVersion.DEFAULT))
+        .isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(() -> dsbulkCodec.encode(tooFewNode, ProtocolVersion.DEFAULT))
         .isInstanceOf(IllegalArgumentException.class);
   }

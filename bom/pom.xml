@@ -161,7 +161,7 @@
       </dependency>
       <!-- DataStax Java Driver BOM -->
       <dependency>
-        <groupId>com.datastax.oss</groupId>
+        <groupId>org.apache.cassandra</groupId>
         <artifactId>java-driver-core</artifactId>
         <version>${driver.version}</version>
         <exclusions>
@@ -177,7 +177,7 @@
         </exclusions>
       </dependency>
       <dependency>
-        <groupId>com.datastax.oss</groupId>
+        <groupId>org.apache.cassandra</groupId>
         <artifactId>java-driver-test-infra</artifactId>
         <version>${driver.version}</version>
         <exclusions>
@@ -189,7 +189,7 @@
         </exclusions>
       </dependency>
       <dependency>
-        <groupId>com.datastax.oss</groupId>
+        <groupId>org.apache.cassandra</groupId>
         <artifactId>java-driver-bom</artifactId>
         <version>${driver.version}</version>
         <type>pom</type>
@@ -381,6 +381,16 @@
         <version>${aws.sdk.version}</version>
         <type>pom</type>
         <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>com.github.stephenc.jcip</groupId>
+        <artifactId>jcip-annotations</artifactId>
+        <version>${jcip.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.github.spotbugs</groupId>
+        <artifactId>spotbugs-annotations</artifactId>
+        <version>${spotbugs.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>

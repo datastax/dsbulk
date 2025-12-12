@@ -43,7 +43,7 @@
       <artifactId>dsbulk-sampler</artifactId>
     </dependency>
     <dependency>
-      <groupId>com.datastax.oss</groupId>
+      <groupId>org.apache.cassandra</groupId>
       <artifactId>java-driver-core</artifactId>
     </dependency>
     <dependency>
@@ -51,8 +51,8 @@
       <artifactId>reactive-streams</artifactId>
     </dependency>
     <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>java-driver-shaded-guava</artifactId>
+      <groupId>org.apache.cassandra</groupId>
+      <artifactId>java-driver-guava-shaded</artifactId>
     </dependency>
     <dependency>
       <groupId>io.netty</groupId>
