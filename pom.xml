@@ -75,7 +75,7 @@
     <hdr.version>2.1.12</hdr.version>
     <jackson.version>2.13.3</jackson.version>
     <univocity.version>2.9.1</univocity.version>
-    <commons-compress.version>1.21</commons-compress.version>
+    <commons-compress.version>1.28</commons-compress.version>
     <compress.zstd.version>1.5.2-1</compress.zstd.version>
     <compress.xz.version>1.9</compress.xz.version>
     <compress.brotli.version>0.1.2</compress.brotli.version>
@@ -191,7 +191,7 @@
       <dependency>
         <groupId>org.apache.commons</groupId>
         <artifactId>commons-text</artifactId>
-        <version>1.9</version>
+        <version>1.15</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
