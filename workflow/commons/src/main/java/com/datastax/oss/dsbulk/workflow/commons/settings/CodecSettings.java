@@ -66,6 +66,7 @@ public class CodecSettings {
   private static final String TIME_UUID_GENERATOR = "uuidStrategy";
   private static final String BINARY = "binary";
   private static final String GEO = "geo";
+  private static final String ALLOW_NULL_COLLECTIONS = "allowNullCollections";
 
   private final Config config;
 
@@ -88,9 +89,12 @@ public class CodecSettings {
   private Map<Boolean, String> booleanOutputWords;
   private BinaryFormat binaryFormat;
   private GeoFormat geoFormat;
+  private boolean allowNullCollections;
 
   public CodecSettings(Config config) {
+
     this.config = config;
+    this.allowNullCollections = config.getBoolean(ALLOW_NULL_COLLECTIONS);
   }
 
   public void init() {
@@ -260,5 +264,9 @@ public class CodecSettings {
     builder.put(true, tokenizer.nextToken().toLowerCase());
     builder.put(false, tokenizer.nextToken().toLowerCase());
     return builder.build();
+  }
+
+  public boolean allowsNullCollections() {
+    return allowNullCollections;
   }
 }

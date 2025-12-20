@@ -142,7 +142,7 @@ public class LoadWorkflow implements Workflow {
         codecSettings.createCodecFactory(
             schemaSettings.isAllowExtraFields(),
             schemaSettings.isAllowMissingFields(),
-            schemaSettings.isAllowNullCollections());
+            codecSettings.allowsNullCollections());
     session =
         driverSettings.newSession(
             executionId, codecFactory.getCodecRegistry(), monitoringSettings.getRegistry());

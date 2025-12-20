@@ -766,15 +766,6 @@ This setting is ignored when counting.
 
 Default: **false**.
 
-#### --schema.allowNullCollections<br />--dsbulk.schema.allowNullCollections _&lt;boolean&gt;_
-
-Whether or not null collection values (lists, sets or maps) should be converted to a null value.  By default the driver will
-convert these values to an empty collection.
-
-This setting is only used on unload
-
-Default: **false**.
-
 #### -e,<br />--schema.edge<br />--dsbulk.schema.edge _&lt;string&gt;_
 
 Edge label used for loading or unloading graph data. This option can only be used for modern graphs created with the Native engine (DSE 6.8+). The edge label must correspond to an existing table created with the `WITH EDGE LABEL` option; also, when `edge` is specified, then `from` and `to` must be specified as well. Edge labels should not be quoted and are case-sensitive. `MyEdge` will match a label named `MyEdge` but not `myedge`. Either `table`, `vertex` or `edge` is required if `query` is not specified.
@@ -942,6 +933,13 @@ When writing, these settings determine how record fields emitted by connectors a
 When unloading, these settings determine how row cells emitted by DSE are formatted.
 
 When counting, these settings are ignored.
+
+#### --codec.allowNullCollections<br />--dsbulk.codec.allowNullCollections _&lt;boolean&gt;_
+
+Whether or not null collection values (lists, sets or maps) should be converted to a null value.  By default the driver will
+convert these values to an empty collection.
+
+Default: **false**.
 
 #### --codec.binary<br />--dsbulk.codec.binary _&lt;string&gt;_
 
