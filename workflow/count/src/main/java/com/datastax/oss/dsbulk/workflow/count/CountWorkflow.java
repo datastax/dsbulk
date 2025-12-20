@@ -112,7 +112,9 @@ public class CountWorkflow implements Workflow {
     statsSettings.init();
     ConvertingCodecFactory codecFactory =
         codecSettings.createCodecFactory(
-            schemaSettings.isAllowExtraFields(), schemaSettings.isAllowMissingFields());
+            schemaSettings.isAllowExtraFields(),
+            schemaSettings.isAllowMissingFields(),
+            schemaSettings.isAllowNullCollections());
     session =
         driverSettings.newSession(
             executionId, codecFactory.getCodecRegistry(), monitoringSettings.getRegistry());

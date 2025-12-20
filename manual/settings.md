@@ -1,4 +1,4 @@
-# DataStax Bulk Loader v1.11.0-SNAPSHOT Options
+# DataStax Bulk Loader v1.11.1-SNAPSHOT Options
 
 *NOTE:* The long options described here can be persisted in `conf/application.conf` and thus permanently override defaults and avoid specifying options on the command line.
 
@@ -763,6 +763,15 @@ Default: **true**.
 Specify whether or not to accept records that are missing fields declared in the mapping. For example, if the mapping declares three fields A, B, and C, but a record contains only fields A and B, then if this option is true, C will be silently assigned null and the record will be considered valid, and if false, the record will be rejected. If the missing field is mapped to a primary key column, the record will always be rejected, since the database will reject the record. This setting also applies to user-defined types and tuples. Only applicable for loading, ignored otherwise.
 
 This setting is ignored when counting.
+
+Default: **false**.
+
+#### --schema.allowNullCollections<br />--dsbulk.schema.allowNullCollections _&lt;boolean&gt;_
+
+Whether or not null collection values (lists, sets or maps) should be converted to a null value.  By default the driver will
+convert these values to an empty collection.
+
+This setting is only used on unload
 
 Default: **false**.
 

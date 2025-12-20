@@ -66,7 +66,7 @@ class CodecSettingsTest {
     Config config = TestConfigUtils.createTestConfig("dsbulk.codec");
     CodecSettings settings = new CodecSettings(config);
     settings.init();
-    ConvertingCodecFactory codecFactory = settings.createCodecFactory(false, false);
+    ConvertingCodecFactory codecFactory = settings.createCodecFactory(false, false, false);
 
     assertThat(codecFactory.createConvertingCodec(DataTypes.BOOLEAN, GenericType.STRING, true))
         .isNotNull()
@@ -118,7 +118,7 @@ class CodecSettingsTest {
     Config config = TestConfigUtils.createTestConfig("dsbulk.codec");
     CodecSettings settings = new CodecSettings(config);
     settings.init();
-    ConvertingCodecFactory codecFactory = settings.createCodecFactory(false, false);
+    ConvertingCodecFactory codecFactory = settings.createCodecFactory(false, false, false);
 
     assertThat(
             codecFactory.createConvertingCodec(
@@ -156,7 +156,7 @@ class CodecSettingsTest {
             "dsbulk.codec", "roundingStrategy", "UP", "formatNumbers", "true");
     CodecSettings settings = new CodecSettings(config);
     settings.init();
-    ConvertingCodecFactory codecFactory = settings.createCodecFactory(false, false);
+    ConvertingCodecFactory codecFactory = settings.createCodecFactory(false, false, false);
     ConvertingCodec<String, Float> codec =
         codecFactory.createConvertingCodec(DataTypes.FLOAT, GenericType.STRING, true);
     assertThat(codec.internalToExternal(0.123f)).isEqualTo("0.13");
@@ -168,7 +168,7 @@ class CodecSettingsTest {
         TestConfigUtils.createTestConfig("dsbulk.codec", "overflowStrategy", "TRUNCATE");
     CodecSettings settings = new CodecSettings(config);
     settings.init();
-    ConvertingCodecFactory codecFactory = settings.createCodecFactory(false, false);
+    ConvertingCodecFactory codecFactory = settings.createCodecFactory(false, false, false);
     ConvertingCodec<String, Byte> codec =
         codecFactory.createConvertingCodec(DataTypes.TINYINT, GenericType.STRING, true);
     assertThat(codec.externalToInternal("128")).isEqualTo((byte) 127);
@@ -309,7 +309,7 @@ class CodecSettingsTest {
     Config config = TestConfigUtils.createTestConfig("dsbulk.codec");
     CodecSettings settings = new CodecSettings(config);
     settings.init();
-    ConvertingCodecFactory codecFactory = settings.createCodecFactory(false, false);
+    ConvertingCodecFactory codecFactory = settings.createCodecFactory(false, false, false);
     assertThat(
             codecFactory.createConvertingCodec(
                 DataTypes.custom("org.apache.cassandra.db.marshal.DynamicCompositeType"),

@@ -140,6 +140,7 @@ public class SchemaSettings {
   private static final String MAPPING = "mapping";
   private static final String ALLOW_EXTRA_FIELDS = "allowExtraFields";
   private static final String ALLOW_MISSING_FIELDS = "allowMissingFields";
+  private static final String ALLOW_NULL_COLLECTIONS = "allowNullCollections";
   private static final String QUERY = "query";
   private static final String QUERY_TTL = "queryTtl";
   private static final String QUERY_TIMESTAMP = "queryTimestamp";
@@ -157,6 +158,7 @@ public class SchemaSettings {
   private boolean nullToUnset;
   private boolean allowExtraFields;
   private boolean allowMissingFields;
+  private boolean allowNullCollections;
   private int splits;
   private MappingInspector mapping;
   private int ttlSeconds;
@@ -176,6 +178,8 @@ public class SchemaSettings {
   public SchemaSettings(Config config, SchemaGenerationStrategy schemaGenerationStrategy) {
     this.config = config;
     this.schemaGenerationStrategy = schemaGenerationStrategy;
+
+    this.allowNullCollections = config.getBoolean(ALLOW_NULL_COLLECTIONS);
   }
 
   public void init(
@@ -677,6 +681,10 @@ public class SchemaSettings {
 
   public boolean isAllowMissingFields() {
     return allowMissingFields;
+  }
+
+  public boolean isAllowNullCollections() {
+    return allowNullCollections;
   }
 
   public boolean isSearchQuery() {
