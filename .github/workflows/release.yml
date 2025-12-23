@@ -1,0 +1,122 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.11.1)'
+        required: true
+        type: string
+
+jobs:
+  build-and-release:
+    name: Build and Release Artifacts
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      
+      - name: Set up JDK 8
+        uses: actions/setup-java@v5
+        with:
+          java-version: '8'
+          distribution: 'temurin'
+          cache: 'maven'
+      
+      - name: Extract version from tag
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION=${GITHUB_REF#refs/tags/v}
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+      
+      - name: Build with release profile
+        run: |
+          mvn clean verify -Prelease -Dgpg.skip=true -B -V \
+            -Pmedium -Plong \
+            -Dmaven.test.failure.ignore=false \
+            -Dmax.simulacron.clusters=2 \
+            -Dmax.ccm.clusters=1
+      
+      - name: Verify artifacts exist
+        run: |
+          echo "Checking for release artifacts..."
+          ls -lh distribution/target/dsbulk-*.tar.gz
+          ls -lh distribution/target/dsbulk-*.zip
+          ls -lh distribution/target/dsbulk-*.jar
+      
+      - name: Generate checksums
+        run: |
+          cd distribution/target
+          sha256sum dsbulk-*.tar.gz > dsbulk-${{ steps.get_version.outputs.VERSION }}.tar.gz.sha256
+          sha256sum dsbulk-*.zip > dsbulk-${{ steps.get_version.outputs.VERSION }}.zip.sha256
+          sha256sum dsbulk-*.jar > dsbulk-${{ steps.get_version.outputs.VERSION }}.jar.sha256
+          cat *.sha256
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: dsbulk-release-${{ steps.get_version.outputs.VERSION }}
+          path: |
+            distribution/target/dsbulk-*.tar.gz
+            distribution/target/dsbulk-*.zip
+            distribution/target/dsbulk-*.jar
+            distribution/target/*.sha256
+          retention-days: 90
+      
+      - name: Create GitHub Release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            distribution/target/dsbulk-*.tar.gz
+            distribution/target/dsbulk-*.zip
+            distribution/target/dsbulk-*.jar
+            distribution/target/*.sha256
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            ## DataStax Bulk Loader ${{ steps.get_version.outputs.VERSION }}
+            
+            ### Release Artifacts
+            - `dsbulk-${{ steps.get_version.outputs.VERSION }}.tar.gz` - Linux/Mac distribution
+            - `dsbulk-${{ steps.get_version.outputs.VERSION }}.zip` - Windows distribution
+            - `dsbulk-${{ steps.get_version.outputs.VERSION }}.jar` - Standalone JAR
+            
+            ### Verification
+            Verify checksums using:
+            ```bash
+            sha256sum -c dsbulk-${{ steps.get_version.outputs.VERSION }}.tar.gz.sha256
+            ```
+            
+            See [CHANGELOG](CHANGELOG.md) for details.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: |
+            **/target/surefire-reports/TEST-*.xml
+            **/target/failsafe-reports/TEST-*.xml
+          check_name: Release Test Results
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: release-test-results
+          path: |
+            **/target/surefire-reports/
+            **/target/failsafe-reports/
+          retention-days: 30
