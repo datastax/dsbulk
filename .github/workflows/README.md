@@ -118,9 +118,9 @@ release.yml (on tags) or nightly.yml (scheduled)
 - `cassandra:5.0` - Latest 5.0.x
 
 ### DataStax Enterprise (Public - Docker Hub)
-- `datastax/dse-server:5.1.35`
-- `datastax/dse-server:6.8.49`
-- `datastax/dse-server:6.9.0`
+- `datastax/dse-server:5.1.48`
+- `datastax/dse-server:6.8.61`
+- `datastax/dse-server:6.9.17`
 
 **Note**: All images are publicly available - no credentials required!
 
