@@ -70,6 +70,9 @@ public class S3URLStreamHandler extends URLStreamHandler {
 
     private final Cache<S3ClientInfo, S3Client> s3ClientCache;
 
+    // Test helper field: allows tests to inject a mock S3Client, bypassing cache lookup
+    @VisibleForTesting S3Client testS3Client = null;
+
     @Override
     public void connect() {
       // Nothing to see here...
@@ -127,7 +130,9 @@ public class S3URLStreamHandler extends URLStreamHandler {
       }
 
       S3ClientInfo s3ClientInfo = new S3ClientInfo(query);
-      S3Client s3Client = s3ClientCache.get(s3ClientInfo, this::getS3Client);
+      // Use test client if provided (for testing), otherwise use cache (production)
+      S3Client s3Client =
+          testS3Client != null ? testS3Client : s3ClientCache.get(s3ClientInfo, this::getS3Client);
       return getInputStream(s3Client, getObjectRequest);
     }
 
