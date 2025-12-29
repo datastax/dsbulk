@@ -81,8 +81,10 @@ public class DriverUtils {
     when(h1.getCassandraVersion()).thenReturn(Version.parse("3.11.1"));
     when(h1.getExtras())
         .thenReturn(ImmutableMap.of(DseNodeProperties.DSE_VERSION, Version.parse("6.7.0")));
-    when(h1.getEndPoint())
-        .thenReturn(new DefaultEndPoint(InetSocketAddress.createUnresolved(address, 9042)));
+    // Create a resolved InetSocketAddress instead of unresolved
+    // This constructor resolves the address, which is more realistic for production scenarios
+    InetSocketAddress resolvedAddress = new InetSocketAddress(address, 9042);
+    when(h1.getEndPoint()).thenReturn(new DefaultEndPoint(resolvedAddress));
     when(h1.getDatacenter()).thenReturn(dataCenter);
     when(h1.getHostId()).thenReturn(hostId);
     return h1;
