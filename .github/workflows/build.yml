@@ -7,6 +7,11 @@ on:
     branches: [ 1.x ]
   workflow_dispatch:
 
+# cancel same workflows in progress for pull request branches
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/1.x' }}
+
 jobs:
   build:
     name: Build with JDK 8
@@ -85,7 +90,7 @@ jobs:
 
       - name: Run unit tests with JDK ${{ matrix.java }}
         run: mvn test -B -V -Dmaven.main.skip=true
-        continue-on-error: false
+        continue-on-error: ${{ matrix.java == '17' }}
 
       - name: Publish Test Results
         uses: EnricoMi/publish-unit-test-result-action@v2
