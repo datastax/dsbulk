@@ -418,7 +418,6 @@ limitations under the License.]]></inlineHeader>
         <configuration>
           <source>${java.version}</source>
           <target>${java.version}</target>
-          <optimize>true</optimize>
           <showDeprecation>true</showDeprecation>
           <showWarnings>true</showWarnings>
           <failOnWarning>false</failOnWarning>
