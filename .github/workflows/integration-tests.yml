@@ -14,6 +14,11 @@ on:
           - medium
           - long
 
+# cancel same workflows in progress for pull request branches
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/1.x' }}
+
 jobs:
   cassandra-tests:
     name: Cassandra ${{ matrix.cassandra-version }}
