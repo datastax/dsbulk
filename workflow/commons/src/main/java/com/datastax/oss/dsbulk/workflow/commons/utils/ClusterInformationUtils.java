@@ -20,6 +20,8 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.metadata.Metadata;
 import com.datastax.oss.driver.api.core.metadata.Node;
 import com.datastax.oss.driver.api.core.metadata.TokenMap;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -86,9 +88,22 @@ public class ClusterInformationUtils {
   }
 
   private static String getNodeInfo(Node h) {
+    SocketAddress socketAddress = h.getEndPoint().resolve();
+    String addressString;
+
+    if (socketAddress instanceof InetSocketAddress) {
+      InetSocketAddress inetAddr = (InetSocketAddress) socketAddress;
+      // Format consistently: hostname:port (works for both resolved and unresolved)
+      // getHostString() is available in JDK 7+ and works for both resolved and unresolved addresses
+      addressString = inetAddr.getHostString() + ":" + inetAddr.getPort();
+    } else {
+      // Fallback to toString() for non-InetSocketAddress types
+      addressString = socketAddress.toString();
+    }
+
     return String.format(
         "address: %s, dseVersion: %s, cassandraVersion: %s, dataCenter: %s",
-        h.getEndPoint().resolve(),
+        addressString,
         h.getExtras().get(DseNodeProperties.DSE_VERSION),
         h.getCassandraVersion(),
         h.getDatacenter());
