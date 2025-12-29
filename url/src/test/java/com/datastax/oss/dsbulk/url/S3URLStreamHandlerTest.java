@@ -106,8 +106,8 @@ class S3URLStreamHandlerTest {
         .thenReturn(
             ResponseBytes.fromInputStream(GetObjectResponse.builder().build(), testInputStream));
 
-    // Inject mock client directly - no spy needed!
-    connection.testS3Client = mockS3Client;
+    // Inject mock client via test-only setter - no spy needed!
+    connection.setTestS3Client(mockS3Client);
 
     assertThat(connection.getInputStream()).isNotNull();
   }

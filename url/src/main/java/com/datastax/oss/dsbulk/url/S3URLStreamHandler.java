@@ -71,7 +71,12 @@ public class S3URLStreamHandler extends URLStreamHandler {
     private final Cache<S3ClientInfo, S3Client> s3ClientCache;
 
     // Test helper field: allows tests to inject a mock S3Client, bypassing cache lookup
-    @VisibleForTesting S3Client testS3Client = null;
+    S3Client testS3Client = null;
+
+    @VisibleForTesting
+    void setTestS3Client(S3Client client) {
+      this.testS3Client = client;
+    }
 
     @Override
     public void connect() {
@@ -85,14 +90,6 @@ public class S3URLStreamHandler extends URLStreamHandler {
 
     @Override
     public InputStream getInputStream() {
-      // Defensive check: Mockito spies in JDK 17 may not properly initialize the url field
-      // inherited from URLConnection. This ensures we fail fast with a clear error message.
-      if (url == null) {
-        throw new IllegalStateException(
-            "URL is null. This may occur when using Mockito spy without proper initialization. "
-                + "Ensure the spy is created correctly or use the updated Mockito version (4.11.0+).");
-      }
-
       // Convert URL to URI for robust parsing across JDK versions (JDK 8, 11, 17).
       // This avoids NPE issues with URL.getHost() in JDK 17 when used with custom URL handlers.
       URI uri;
