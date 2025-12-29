@@ -90,7 +90,7 @@ jobs:
 
       - name: Run unit tests with JDK ${{ matrix.java }}
         run: mvn test -B -V -Dmaven.main.skip=true
-        continue-on-error: ${{ matrix.java == '17' }}
+        continue-on-error: false
 
       - name: Publish Test Results
         uses: EnricoMi/publish-unit-test-result-action@v2
