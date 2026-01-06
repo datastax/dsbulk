@@ -10,8 +10,8 @@ This directory contains the CI/CD workflows for the DSBulk project.
 **Purpose**: Primary CI workflow for fast feedback on code changes
 
 **What it does**:
-- Builds the project with JDK 8 and 11
-- Runs unit tests
+- Builds the project with JDK 8
+- Runs unit tests with JDK 8, 11 and 17
 - Publishes test results
 - Caches Maven dependencies for faster builds
 
