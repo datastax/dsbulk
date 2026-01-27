@@ -266,7 +266,7 @@ public class CodecSettings {
     return builder.build();
   }
 
-  public boolean allowsNullCollections() {
+  public boolean isAllowNullCollections() {
     return allowNullCollections;
   }
 }
