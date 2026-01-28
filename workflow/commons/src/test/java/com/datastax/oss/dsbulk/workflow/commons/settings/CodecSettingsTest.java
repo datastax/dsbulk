@@ -19,6 +19,7 @@ import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
 
+import com.datastax.oss.driver.api.core.ProtocolVersion;
 import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.api.core.type.TupleType;
 import com.datastax.oss.driver.api.core.type.UserDefinedType;
@@ -52,8 +53,10 @@ import com.datastax.oss.dsbulk.tests.driver.DriverUtils;
 import com.datastax.oss.dsbulk.tests.utils.ReflectionUtils;
 import com.datastax.oss.dsbulk.tests.utils.TestConfigUtils;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.collect.Maps;
 import com.typesafe.config.Config;
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -66,7 +69,7 @@ class CodecSettingsTest {
     Config config = TestConfigUtils.createTestConfig("dsbulk.codec");
     CodecSettings settings = new CodecSettings(config);
     settings.init();
-    ConvertingCodecFactory codecFactory = settings.createCodecFactory(false, false);
+    ConvertingCodecFactory codecFactory = settings.createCodecFactory(false, false, false);
 
     assertThat(codecFactory.createConvertingCodec(DataTypes.BOOLEAN, GenericType.STRING, true))
         .isNotNull()
@@ -118,7 +121,7 @@ class CodecSettingsTest {
     Config config = TestConfigUtils.createTestConfig("dsbulk.codec");
     CodecSettings settings = new CodecSettings(config);
     settings.init();
-    ConvertingCodecFactory codecFactory = settings.createCodecFactory(false, false);
+    ConvertingCodecFactory codecFactory = settings.createCodecFactory(false, false, false);
 
     assertThat(
             codecFactory.createConvertingCodec(
@@ -156,7 +159,7 @@ class CodecSettingsTest {
             "dsbulk.codec", "roundingStrategy", "UP", "formatNumbers", "true");
     CodecSettings settings = new CodecSettings(config);
     settings.init();
-    ConvertingCodecFactory codecFactory = settings.createCodecFactory(false, false);
+    ConvertingCodecFactory codecFactory = settings.createCodecFactory(false, false, false);
     ConvertingCodec<String, Float> codec =
         codecFactory.createConvertingCodec(DataTypes.FLOAT, GenericType.STRING, true);
     assertThat(codec.internalToExternal(0.123f)).isEqualTo("0.13");
@@ -168,10 +171,40 @@ class CodecSettingsTest {
         TestConfigUtils.createTestConfig("dsbulk.codec", "overflowStrategy", "TRUNCATE");
     CodecSettings settings = new CodecSettings(config);
     settings.init();
-    ConvertingCodecFactory codecFactory = settings.createCodecFactory(false, false);
+    ConvertingCodecFactory codecFactory = settings.createCodecFactory(false, false, false);
     ConvertingCodec<String, Byte> codec =
         codecFactory.createConvertingCodec(DataTypes.TINYINT, GenericType.STRING, true);
     assertThat(codec.externalToInternal("128")).isEqualTo((byte) 127);
+  }
+
+  // The default case, based on functionality built into the Java driver
+  @Test
+  void should_return_codecs_that_convert_null_collections_to_empty_collections() {
+    CodecSettings settings = new CodecSettings(TestConfigUtils.createTestConfig("dsbulk.codec"));
+    settings.init();
+    ConvertingCodecFactory codecFactory = settings.createCodecFactory(false, false, false);
+    ConvertingCodec<Map<String, Integer>, Byte> codec =
+        codecFactory.createConvertingCodec(
+            DataTypes.mapOf(DataTypes.TEXT, DataTypes.INT),
+            GenericType.mapOf(GenericType.STRING, GenericType.INTEGER),
+            true);
+    assertThat(codec.decode(null, ProtocolVersion.V4)).isEqualTo(Maps.newHashMap());
+    assertThat(codec.decode(ByteBuffer.allocate(0), ProtocolVersion.V4))
+        .isEqualTo(Maps.newHashMap());
+  }
+
+  @Test
+  void should_return_codecs_that_allow_null_collections_when_specified() {
+    CodecSettings settings = new CodecSettings(TestConfigUtils.createTestConfig("dsbulk.codec"));
+    settings.init();
+    ConvertingCodecFactory codecFactory = settings.createCodecFactory(false, false, true);
+    ConvertingCodec<Map<String, Integer>, Byte> codec =
+        codecFactory.createConvertingCodec(
+            DataTypes.mapOf(DataTypes.TEXT, DataTypes.INT),
+            GenericType.mapOf(GenericType.STRING, GenericType.INTEGER),
+            true);
+    assertThat(codec.decode(null, ProtocolVersion.V4)).isEqualTo(null);
+    assertThat(codec.decode(ByteBuffer.allocate(0), ProtocolVersion.V4)).isEqualTo(null);
   }
 
   @Test
@@ -309,7 +342,7 @@ class CodecSettingsTest {
     Config config = TestConfigUtils.createTestConfig("dsbulk.codec");
     CodecSettings settings = new CodecSettings(config);
     settings.init();
-    ConvertingCodecFactory codecFactory = settings.createCodecFactory(false, false);
+    ConvertingCodecFactory codecFactory = settings.createCodecFactory(false, false, false);
     assertThat(
             codecFactory.createConvertingCodec(
                 DataTypes.custom("org.apache.cassandra.db.marshal.DynamicCompositeType"),

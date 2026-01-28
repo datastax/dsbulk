@@ -202,7 +202,7 @@ class DefaultReadResultCounterTest {
     Config config = TestConfigUtils.createTestConfig("dsbulk.codec");
     CodecSettings settings = new CodecSettings(config);
     settings.init();
-    this.codecFactory = settings.createCodecFactory(false, false);
+    this.codecFactory = settings.createCodecFactory(false, false, false);
   }
 
   @Test
