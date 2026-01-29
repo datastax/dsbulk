@@ -24,7 +24,7 @@ This directory contains the CI/CD workflows for the DSBulk project.
 
 **What it does**:
 - Tests against Cassandra 3.11, 4.0, 4.1, 5.0
-- Tests against DSE 5.1.48, 6.8.61, 6.9.17
+- Tests against DSE 5.1.49, 6.8.62, 6.9.18
 - Uses Docker service containers (no CCM required)
 - Supports medium and long test profiles
 - Publishes detailed test results
