@@ -1,4 +1,4 @@
-# DataStax Bulk Loader v1.11.0-SNAPSHOT Options
+# DataStax Bulk Loader v1.11.1-SNAPSHOT Options
 
 *NOTE:* The long options described here can be persisted in `conf/application.conf` and thus permanently override defaults and avoid specifying options on the command line.
 
@@ -933,6 +933,13 @@ When writing, these settings determine how record fields emitted by connectors a
 When unloading, these settings determine how row cells emitted by DSE are formatted.
 
 When counting, these settings are ignored.
+
+#### --codec.allowNullCollections<br />--dsbulk.codec.allowNullCollections _&lt;boolean&gt;_
+
+Whether or not null collection values (lists, sets or maps) should be converted to a null value.  By default the driver will
+convert these values to an empty collection.
+
+Default: **false**.
 
 #### --codec.binary<br />--dsbulk.codec.binary _&lt;string&gt;_
 
