@@ -2,10 +2,11 @@
 
 ## 1.11.1
 
-- [improvement] [#506](https://github.com/datastax/dsbulk/issues/506): Upgrade driver to 4.19.2.
+- [bug] [#483](https://github.com/datastax/dsbulk/issues/483): Parsing trouble when a column is called "vector".
+- [bug] [#484](https://github.com/datastax/dsbulk/issues/484): Parsing vector data from JSON fails for "floats" with too many digits (aka doubles).
 - [improvement] [#497](https://github.com/datastax/dsbulk/issues/497), [#499](https://github.com/datastax/dsbulk/issues/499), [#504](https://github.com/datastax/dsbulk/issues/504): Omnibus dependency update.
 - [bug] [#502](https://github.com/datastax/dsbulk/issues/502): Config params to allow extra, empty fields not respected since 1.8.0.
-- [bug] [#484](https://github.com/datastax/dsbulk/issues/484): Parsing vector data from JSON fails for "floats" with too many digits (aka doubles).
+- [improvement] [#506](https://github.com/datastax/dsbulk/issues/506): Upgrade driver to 4.19.2.
 - [bug] [#507](https://github.com/datastax/dsbulk/issues/507): Frozen field is exporting as {}, instead of null.
 
 ## 1.11.0
