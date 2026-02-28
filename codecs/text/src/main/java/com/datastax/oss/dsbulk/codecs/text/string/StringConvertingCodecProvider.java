@@ -335,11 +335,15 @@ public class StringConvertingCodecProvider implements ConvertingCodecProvider {
               return new StringToDateRangeCodec(nullStrings);
             case DefaultVectorType.VECTOR_CLASS_NAME:
               VectorType vectorType = (VectorType) cqlType;
-              return new StringToVectorCodec(
-                  new VectorCodec(
+              VectorCodec<Number> vectorCodec =
+                  new VectorCodec<>(
                       vectorType,
-                      codecFactory.getCodecRegistry().codecFor(vectorType.getElementType())),
-                  nullStrings);
+                      codecFactory.getCodecRegistry().codecFor(vectorType.getElementType()));
+              ConvertingCodec<JsonNode, List<Number>> jsonCodec =
+                  codecFactory.createConvertingCodec(
+                      DataTypes.listOf(vectorType.getElementType()), JSON_NODE_TYPE, false);
+              return new StringToVectorCodec<>(
+                  vectorCodec, jsonCodec, context.getAttribute(OBJECT_MAPPER), nullStrings);
           }
         }
         // fall through
