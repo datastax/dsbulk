@@ -55,7 +55,7 @@
       <artifactId>dsbulk-url</artifactId>
     </dependency>
     <dependency>
-      <groupId>com.datastax.oss</groupId>
+      <groupId>org.apache.cassandra</groupId>
       <artifactId>java-driver-core</artifactId>
     </dependency>
     <dependency>
@@ -71,8 +71,8 @@
       <artifactId>snappy-java</artifactId>
     </dependency>
     <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>java-driver-shaded-guava</artifactId>
+      <groupId>org.apache.cassandra</groupId>
+      <artifactId>java-driver-guava-shaded</artifactId>
     </dependency>
     <dependency>
       <groupId>org.fusesource.jansi</groupId>
@@ -81,6 +81,10 @@
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.github.spotbugs</groupId>
+      <artifactId>spotbugs-annotations</artifactId>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
@@ -93,7 +97,7 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>com.datastax.oss</groupId>
+      <groupId>org.apache.cassandra</groupId>
       <artifactId>java-driver-test-infra</artifactId>
       <scope>test</scope>
     </dependency>

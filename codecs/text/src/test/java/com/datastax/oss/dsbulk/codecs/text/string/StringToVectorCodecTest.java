@@ -97,7 +97,7 @@ public class StringToVectorCodecTest {
   // enforces this constraint so we have to go through encode() rather than the internal/external
   // methods.
   @Test
-  void should_encode_too_many_but_not_too_few() {
+  void should_fail_to_encode_too_many_or_too_few() {
 
     ArrayList<Float> tooMany = Lists.newArrayList(values);
     tooMany.add(6.6f);
