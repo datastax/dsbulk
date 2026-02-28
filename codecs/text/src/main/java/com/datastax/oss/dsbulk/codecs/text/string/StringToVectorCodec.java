@@ -17,22 +17,57 @@ package com.datastax.oss.dsbulk.codecs.text.string;
 
 import com.datastax.oss.driver.api.core.data.CqlVector;
 import com.datastax.oss.driver.internal.core.type.codec.VectorCodec;
+import com.datastax.oss.dsbulk.codecs.api.ConvertingCodec;
+import com.datastax.oss.dsbulk.codecs.text.utils.StringUtils;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class StringToVectorCodec<SubtypeT extends Number>
     extends StringConvertingCodec<CqlVector<SubtypeT>> {
 
-  public StringToVectorCodec(VectorCodec<SubtypeT> targetCodec, List<String> nullStrings) {
+  private final ConvertingCodec<JsonNode, List<SubtypeT>> jsonCodec;
+  private final ObjectMapper objectMapper;
+
+  public StringToVectorCodec(
+      VectorCodec<SubtypeT> targetCodec,
+      ConvertingCodec<JsonNode, List<SubtypeT>> jsonCodec,
+      ObjectMapper objectMapper,
+      List<String> nullStrings) {
     super(targetCodec, nullStrings);
+    this.jsonCodec = jsonCodec;
+    this.objectMapper = objectMapper;
   }
 
   @Override
   public CqlVector<SubtypeT> externalToInternal(String s) {
-    return this.internalCodec.parse(s);
+    if (isNullOrEmpty(s)) {
+      return null;
+    }
+    try {
+      JsonNode node = objectMapper.readTree(StringUtils.ensureBrackets(s));
+      List<SubtypeT> vals = jsonCodec.externalToInternal(node);
+      return CqlVector.newInstance(vals);
+    } catch (IOException e) {
+      throw new IllegalArgumentException(String.format("Could not parse '%s' as Json", s), e);
+    }
   }
 
   @Override
   public String internalToExternal(CqlVector<SubtypeT> cqlVector) {
-    return this.internalCodec.format(cqlVector);
+    if (cqlVector == null) {
+      return nullString();
+    }
+    try {
+      List<SubtypeT> vals = cqlVector.stream().collect(Collectors.toList());
+      JsonNode node = jsonCodec.internalToExternal(vals);
+      return objectMapper.writeValueAsString(node);
+    } catch (JsonProcessingException e) {
+      throw new IllegalArgumentException(
+          String.format("Could not format '%s' to Json", cqlVector), e);
+    }
   }
 }

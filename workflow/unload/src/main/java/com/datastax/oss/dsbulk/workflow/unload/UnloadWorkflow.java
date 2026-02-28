@@ -127,7 +127,9 @@ public class UnloadWorkflow implements Workflow {
     executorSettings.init();
     ConvertingCodecFactory codecFactory =
         codecSettings.createCodecFactory(
-            schemaSettings.isAllowExtraFields(), schemaSettings.isAllowMissingFields());
+            schemaSettings.isAllowExtraFields(),
+            schemaSettings.isAllowMissingFields(),
+            codecSettings.isAllowNullCollections());
     session =
         driverSettings.newSession(
             executionId, codecFactory.getCodecRegistry(), monitoringSettings.getRegistry());

@@ -29,16 +29,16 @@ import java.util.stream.Collectors;
 public class JsonNodeToVectorCodec<SubtypeT extends Number>
     extends JsonNodeConvertingCodec<CqlVector<SubtypeT>> {
 
-  private final ConvertingCodec<JsonNode, SubtypeT> subtypeCodec;
+  private final ConvertingCodec<JsonNode, SubtypeT> leafCodec;
   private final ObjectMapper objectMapper;
 
   public JsonNodeToVectorCodec(
       VectorCodec<SubtypeT> targetCodec,
-      ConvertingCodec<JsonNode, SubtypeT> subtypeCodec,
+      ConvertingCodec<JsonNode, SubtypeT> leafCodec,
       ObjectMapper objectMapper,
       List<String> nullStrings) {
     super(targetCodec, nullStrings);
-    this.subtypeCodec = subtypeCodec;
+    this.leafCodec = leafCodec;
     this.objectMapper = objectMapper;
   }
 
@@ -47,7 +47,7 @@ public class JsonNodeToVectorCodec<SubtypeT extends Number>
     if (jsonNode == null || !jsonNode.isArray()) return null;
     List<SubtypeT> elems =
         Streams.stream(jsonNode.elements())
-            .map(e -> subtypeCodec.externalToInternal(e))
+            .map(e -> leafCodec.externalToInternal(e))
             .collect(Collectors.toCollection(ArrayList::new));
     return CqlVector.newInstance(elems);
   }
@@ -57,7 +57,7 @@ public class JsonNodeToVectorCodec<SubtypeT extends Number>
     if (value == null) return null;
     ArrayNode root = objectMapper.createArrayNode();
     for (SubtypeT element : value) {
-      root.add(subtypeCodec.internalToExternal(element));
+      root.add(leafCodec.internalToExternal(element));
     }
     return root;
   }
