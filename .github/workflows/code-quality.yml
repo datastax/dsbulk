@@ -166,7 +166,7 @@ jobs:
 
       - name: Check for dependency vulnerabilities
         run: |
-          mvn dependency:tree -B
+          mvn dependency:tree -B > target/dependency-tree.txt
           mvn versions:display-dependency-updates -B
         continue-on-error: true
 
