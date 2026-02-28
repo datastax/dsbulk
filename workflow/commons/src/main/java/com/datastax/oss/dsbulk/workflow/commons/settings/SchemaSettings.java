@@ -176,6 +176,16 @@ public class SchemaSettings {
   public SchemaSettings(Config config, SchemaGenerationStrategy schemaGenerationStrategy) {
     this.config = config;
     this.schemaGenerationStrategy = schemaGenerationStrategy;
+
+    /* Issue 502
+     *
+     * We set these two values early because (a) they're entirely driven by settings in the HOCON config and
+     * (b) they're exposed via accessor methods below (isAllowExtraFields and isAllowMissingFields).  To avoid
+     * any order-of-operations issues in which a SchemaSettings instance may have been created (but not yet
+     * initialized) and these values are accessed we set them as early as possible here.
+     */
+    allowExtraFields = config.getBoolean(ALLOW_EXTRA_FIELDS);
+    allowMissingFields = config.getBoolean(ALLOW_MISSING_FIELDS);
   }
 
   public void init(
@@ -470,8 +480,6 @@ public class SchemaSettings {
       // Misc
 
       nullToUnset = config.getBoolean(NULL_TO_UNSET);
-      allowExtraFields = config.getBoolean(ALLOW_EXTRA_FIELDS);
-      allowMissingFields = config.getBoolean(ALLOW_MISSING_FIELDS);
       splits = ConfigUtils.getThreads(config, SPLITS);
 
       // Final checks related to graph operations
