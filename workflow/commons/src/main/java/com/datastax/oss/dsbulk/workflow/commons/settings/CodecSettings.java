@@ -19,6 +19,7 @@ import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableList;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
 import com.datastax.oss.dsbulk.codecs.api.ConversionContext;
 import com.datastax.oss.dsbulk.codecs.api.ConvertingCodecFactory;
+import com.datastax.oss.dsbulk.codecs.api.NullAllowingConvertingCodecFactory;
 import com.datastax.oss.dsbulk.codecs.api.format.binary.Base64BinaryFormat;
 import com.datastax.oss.dsbulk.codecs.api.format.binary.BinaryFormat;
 import com.datastax.oss.dsbulk.codecs.api.format.binary.HexBinaryFormat;
@@ -65,6 +66,7 @@ public class CodecSettings {
   private static final String TIME_UUID_GENERATOR = "uuidStrategy";
   private static final String BINARY = "binary";
   private static final String GEO = "geo";
+  private static final String ALLOW_NULL_COLLECTIONS = "allowNullCollections";
 
   private final Config config;
 
@@ -87,9 +89,12 @@ public class CodecSettings {
   private Map<Boolean, String> booleanOutputWords;
   private BinaryFormat binaryFormat;
   private GeoFormat geoFormat;
+  private boolean allowNullCollections;
 
   public CodecSettings(Config config) {
+
     this.config = config;
+    this.allowNullCollections = config.getBoolean(ALLOW_NULL_COLLECTIONS);
   }
 
   public void init() {
@@ -199,7 +204,7 @@ public class CodecSettings {
   }
 
   public ConvertingCodecFactory createCodecFactory(
-      boolean allowExtraFields, boolean allowMissingFields) {
+      boolean allowExtraFields, boolean allowMissingFields, boolean allowNullCollections) {
     ConversionContext context =
         new TextConversionContext()
             .setObjectMapper(objectMapper)
@@ -223,7 +228,8 @@ public class CodecSettings {
             .setGeoFormat(geoFormat)
             .setAllowExtraFields(allowExtraFields)
             .setAllowMissingFields(allowMissingFields);
-    return new ConvertingCodecFactory(context);
+    ConvertingCodecFactory base = new ConvertingCodecFactory(context);
+    return allowNullCollections ? new NullAllowingConvertingCodecFactory(base) : base;
   }
 
   public static Map<String, Boolean> getBooleanInputWords(List<String> list) {
@@ -258,5 +264,9 @@ public class CodecSettings {
     builder.put(true, tokenizer.nextToken().toLowerCase());
     builder.put(false, tokenizer.nextToken().toLowerCase());
     return builder.build();
+  }
+
+  public boolean isAllowNullCollections() {
+    return allowNullCollections;
   }
 }

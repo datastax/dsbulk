@@ -934,6 +934,13 @@ When unloading, these settings determine how row cells emitted by DSE are format
 
 When counting, these settings are ignored.
 
+#### --codec.allowNullCollections<br />--dsbulk.codec.allowNullCollections _&lt;boolean&gt;_
+
+Whether or not null collection values (lists, sets or maps) should be converted to a null value.  By default the driver will
+convert these values to an empty collection.
+
+Default: **false**.
+
 #### --codec.binary<br />--dsbulk.codec.binary _&lt;string&gt;_
 
 Strategy to use when converting binary data to strings. Only applicable when unloading columns of CQL type `blob`, or columns of geometry types, if the value of `codec.geo` is `WKB`; and only if the connector in use requires stringification. Valid values are:

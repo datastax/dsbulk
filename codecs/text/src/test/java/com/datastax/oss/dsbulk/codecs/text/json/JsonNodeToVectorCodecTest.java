@@ -42,7 +42,7 @@ public class JsonNodeToVectorCodecTest {
 
   private final ConvertingCodecFactory factory = new ConvertingCodecFactory();
   private final JsonNodeConvertingCodecProvider provider = new JsonNodeConvertingCodecProvider();
-  private final JsonNodeToVectorCodec dsbulkCodec =
+  private final JsonNodeToVectorCodec<Float> dsbulkCodec =
       new JsonNodeToVectorCodec(
           vectorCodec,
           provider
@@ -79,8 +79,21 @@ public class JsonNodeToVectorCodecTest {
   }
 
   @Test
-  void should_not_convert_from_invalid_internal() {
-    assertThat(dsbulkCodec).cannotConvertFromInternal("not a valid vector");
+  void should_not_convert_from_invalid_external() {
+
+    /* Current impl only supports vectors of floats so this should fail.  We'll have
+     * to revise this test once #512 is addressed.
+     */
+    ArrayNode invalidTypeNode = JSON_NODE_FACTORY.arrayNode();
+    invalidTypeNode.add(JSON_NODE_FACTORY.textNode("not a valid vector"));
+    assertThat(dsbulkCodec).cannotConvertFromExternal(invalidTypeNode);
+
+    /* Issue 484: now that we're using the dsbulk string-to-subtype converters we should get
+     * enforcement of existing dsbulk policies.  For our purposes that means the failure on
+     * arithmetic overflow */
+    ArrayNode tooPreciseNode = JSON_NODE_FACTORY.arrayNode();
+    tooPreciseNode.add(JSON_NODE_FACTORY.numberNode(6.646329843));
+    assertThat(dsbulkCodec).cannotConvertFromExternal(tooPreciseNode);
   }
 
   // VectorCodec throws IllegalArgumentExcpetion if we don't have exactly the expected number
