@@ -108,7 +108,8 @@ public class StringToVectorCodecTest {
     CqlVector<Float> tooFewVector = CqlVector.newInstance(tooFew);
     String tooFewString = codec.internalToExternal(tooFewVector);
 
-    assertThat(codec.encode(tooManyString, ProtocolVersion.DEFAULT)).isNotNull();
+    assertThatThrownBy(() -> codec.encode(tooManyString, ProtocolVersion.DEFAULT))
+        .isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(() -> codec.encode(tooFewString, ProtocolVersion.DEFAULT))
         .isInstanceOf(IllegalArgumentException.class);
   }
