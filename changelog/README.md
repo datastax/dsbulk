@@ -8,6 +8,7 @@
 - [bug] [#502](https://github.com/datastax/dsbulk/issues/502): Config params to allow extra, empty fields not respected since 1.8.0.
 - [improvement] [#506](https://github.com/datastax/dsbulk/issues/506): Upgrade driver to 4.19.2.
 - [bug] [#507](https://github.com/datastax/dsbulk/issues/507): Frozen field is exporting as {}, instead of null.
+- [improvement] [#523](https://github.com/datastax/dsbulk/pull/523): Bump org.assertj:assertj-core from 3.22.0 to 3.27.7.
 
 ## 1.11.0
 
