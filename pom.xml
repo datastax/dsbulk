@@ -47,7 +47,6 @@
     <module>executor</module>
     <module>workflow</module>
     <module>runner</module>
-    <module>docs</module>
     <module>distribution</module>
   </modules>
   <properties>
