@@ -90,7 +90,7 @@
     <!-- Test dependencies -->
     <junit.version>5.8.2</junit.version>
     <assertj.version>3.27.7</assertj.version>
-    <mockito.version>4.5.1</mockito.version>
+    <mockito.version>4.11.0</mockito.version>
     <testcontainers.version>1.17.2</testcontainers.version>
     <simulacron.version>0.11.0</simulacron.version>
     <tinkerpop.version>3.4.10</tinkerpop.version>
@@ -244,7 +244,7 @@
         <plugin>
           <groupId>org.jacoco</groupId>
           <artifactId>jacoco-maven-plugin</artifactId>
-          <version>0.8.5</version>
+          <version>0.8.8</version>
         </plugin>
         <plugin>
           <artifactId>maven-source-plugin</artifactId>
