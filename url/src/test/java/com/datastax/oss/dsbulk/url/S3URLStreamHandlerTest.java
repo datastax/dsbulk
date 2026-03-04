@@ -80,11 +80,12 @@ class S3URLStreamHandlerTest {
   })
   void should_require_query_parameters(String s3Url, String errorMessage) throws IOException {
     URL url = new URL(s3Url);
-    S3Connection connection = spy((S3Connection) url.openConnection());
+    S3Connection connection = (S3Connection) url.openConnection();
+    S3Connection spyConnection = spy(connection);
 
-    doReturn(mockInputStream).when(connection).getInputStream(any(), any());
+    doReturn(mockInputStream).when(spyConnection).getInputStream(any(), any());
 
-    Throwable t = catchThrowable(connection::getInputStream);
+    Throwable t = catchThrowable(spyConnection::getInputStream);
 
     assertThat(t).isNotNull().isInstanceOf(IllegalArgumentException.class).hasMessage(errorMessage);
   }
@@ -101,19 +102,22 @@ class S3URLStreamHandlerTest {
       })
   void should_provide_input_stream_when_parameters_are_correct(String s3Url) throws IOException {
     URL url = new URL(s3Url);
-    S3Connection connection = spy((S3Connection) url.openConnection());
+    S3Connection connection = (S3Connection) url.openConnection();
+    S3Connection spyConnection = spy(connection);
 
-    doReturn(mockInputStream).when(connection).getInputStream(any(), any());
+    doReturn(mockInputStream).when(spyConnection).getInputStream(any(), any());
 
-    assertThat(connection.getInputStream()).isNotNull();
+    assertThat(spyConnection.getInputStream()).isNotNull();
   }
 
   @Test
   void should_cache_clients() throws IOException {
     URL url1 = new URL("s3://test-bucket/test-key-1?region=us-west-1&test=should_cache");
-    S3Connection connection1 = spy((S3Connection) url1.openConnection());
+    S3Connection connection1 = (S3Connection) url1.openConnection();
+    S3Connection spyConnection1 = spy(connection1);
     URL url2 = new URL("s3://test-bucket/test-key-2?region=us-west-1&test=should_cache");
-    S3Connection connection2 = spy((S3Connection) url2.openConnection());
+    S3Connection connection2 = (S3Connection) url2.openConnection();
+    S3Connection spyConnection2 = spy(connection2);
 
     S3Client mockClient = mock(S3Client.class);
     when(mockClient.getObjectAsBytes(any(GetObjectRequest.class)))
@@ -125,26 +129,27 @@ class S3URLStreamHandlerTest {
                   InputStream is = new ByteArrayInputStream(bytes);
                   return ResponseBytes.fromInputStream(response, is);
                 });
-    doReturn(mockClient).when(connection1).getS3Client(any());
+    doReturn(mockClient).when(spyConnection1).getS3Client(any());
 
-    InputStream stream1 = connection1.getInputStream();
-    InputStream stream2 = connection2.getInputStream();
+    InputStream stream1 = spyConnection1.getInputStream();
+    InputStream stream2 = spyConnection2.getInputStream();
 
     assertThat(stream1).isNotSameAs(stream2); // Two different URls produce different streams.
     verify(mockClient, times(2)).getObjectAsBytes(any(GetObjectRequest.class));
-    verify(connection1)
+    verify(spyConnection1)
         .getS3Client(
             new S3ClientInfo(
                 "region=us-west-1&test=should_cache")); // We got the client for one connection...
-    verify(connection2, never()).getS3Client(any()); // ... but not the second connection.
+    verify(spyConnection2, never()).getS3Client(any()); // ... but not the second connection.
   }
 
   @Test
   void should_not_support_writing_to_s3() throws IOException {
     URL url = new URL("s3://test-bucket/test-key");
-    S3Connection connection = spy((S3Connection) url.openConnection());
+    S3Connection connection = (S3Connection) url.openConnection();
+    S3Connection spyConnection = spy(connection);
 
-    Throwable t = catchThrowable(connection::getOutputStream);
+    Throwable t = catchThrowable(spyConnection::getOutputStream);
 
     assertThat(t)
         .isNotNull()
