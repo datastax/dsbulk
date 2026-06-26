@@ -18,6 +18,7 @@ package com.datastax.oss.dsbulk.tests.assertions;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
+import com.datastax.dse.driver.api.core.data.geometry.Geometry;
 import com.datastax.oss.dsbulk.codecs.api.ConvertingCodec;
 import org.assertj.core.api.AbstractObjectAssert;
 
@@ -95,11 +96,19 @@ public class ConvertingCodecAssert<EXTERNAL, INTERNAL>
     }
 
     public ConvertingCodecAssert<EXTERNAL, INTERNAL> toInternal(INTERNAL internal) {
-      assertThat(this.internal)
-          .overridingErrorMessage(
-              "Expecting codec to convert from external %s to internal %s but it converted to %s",
-              external, internal, this.internal)
-          .isEqualTo(internal);
+      if (this.internal instanceof Geometry && internal instanceof Geometry) {
+        assertThat(((Geometry) this.internal).asWellKnownText())
+            .overridingErrorMessage(
+                "Expecting codec to convert from external %s to internal %s but it converted to %s",
+                external, internal, this.internal)
+            .isEqualTo(((Geometry) internal).asWellKnownText());
+      } else {
+        assertThat(this.internal)
+            .overridingErrorMessage(
+                "Expecting codec to convert from external %s to internal %s but it converted to %s",
+                external, internal, this.internal)
+            .isEqualTo(internal);
+      }
       return this;
     }
   }
