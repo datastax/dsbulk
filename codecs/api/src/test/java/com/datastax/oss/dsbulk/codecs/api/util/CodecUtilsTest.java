@@ -1007,18 +1007,23 @@ class CodecUtilsTest {
 
   @Test
   void should_parse_point() {
+    DefaultPoint defaultPoint = DefaultPoint(-1.1d, -2.2d);
     assertThat(CodecUtils.parsePoint(null)).isNull();
     assertThat(CodecUtils.parsePoint("")).isNull();
     assertThat(CodecUtils.parsePoint("POINT (-1.1 -2.2)"))
-        .isEqualTo(new DefaultPoint(-1.1d, -2.2d));
+        .isNotNull()
+        .satisfies(dp -> dp.asWellKnownText())
+        .isEqualTo(defaultPoint);
     assertThat(CodecUtils.parsePoint("'POINT (-1.1 -2.2)'"))
-        .isEqualTo(new DefaultPoint(-1.1d, -2.2d));
+        .isNotNull()
+        .satisfies(dp -> dp.asWellKnownText())
+        .isEqualTo(defaultPoint);
     assertThat(CodecUtils.parsePoint("{\"type\":\"Point\",\"coordinates\":[-1.1,-2.2]}"))
-        .isEqualTo(new DefaultPoint(-1.1d, -2.2d));
+        .isEqualTo(defaultPoint);
     assertThat(CodecUtils.parsePoint("AQEAAACamZmZmZnxv5qZmZmZmQHA"))
-        .isEqualTo(new DefaultPoint(-1.1d, -2.2d));
+        .isEqualTo(defaultPoint);
     assertThat(CodecUtils.parsePoint("0x01010000009a9999999999f1bf9a999999999901c0"))
-        .isEqualTo(new DefaultPoint(-1.1d, -2.2d));
+        .isEqualTo(defaultPoint);
     assertThatThrownBy(() -> CodecUtils.parsePoint("not a valid point"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Invalid point literal");
@@ -1032,8 +1037,12 @@ class CodecUtilsTest {
     assertThat(CodecUtils.parseLineString(null)).isNull();
     assertThat(CodecUtils.parseLineString("")).isNull();
     assertThat(CodecUtils.parseLineString("LINESTRING (30 10, 10 30, 40 40)"))
+        .isNotNull()
+        .satisfies(ls -> ls.asWellKnownText())
         .isEqualTo(lineString);
     assertThat(CodecUtils.parseLineString("'LINESTRING (30 10, 10 30, 40 40)'"))
+        .isNotNull()
+        .satisfies(ls -> ls.asWellKnownText())
         .isEqualTo(lineString);
     assertThat(
             CodecUtils.parseLineString(
