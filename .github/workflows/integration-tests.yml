@@ -113,7 +113,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        dse-version: ['5.1.49', '6.8.62', '6.9.18']
+        dse-version: ['5.1.50', '6.8.64', '6.9.23']
       fail-fast: false
     
     services:
