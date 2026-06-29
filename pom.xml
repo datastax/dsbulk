@@ -81,7 +81,7 @@
     <!-- ANTLR 4.10+ requires Java 11 -->
     <antlr4.version>4.9.3</antlr4.version>
     <spotbugs.version>4.5.3</spotbugs.version>
-    <esri.version>1.2.1</esri.version>
+    <esri.version>2.2.4</esri.version>
     <jackson-core-asl.version>1.9.13</jackson-core-asl.version>
     <org-json.version>20250517</org-json.version>
     <jansi.version>1.18</jansi.version>
