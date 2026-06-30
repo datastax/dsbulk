@@ -108,14 +108,14 @@ class JsonNodeToPolygonCodecTest {
         new JsonNodeToPolygonCodec(objectMapper, WellKnownTextGeoFormat.INSTANCE, nullStrings);
     assertThat(codec).convertsFromInternal(polygon).toExternal(wktJsonNode);
     codec = new JsonNodeToPolygonCodec(objectMapper, JsonGeoFormat.INSTANCE, nullStrings);
-    assertThat(codec).convertsFromInternal(polygon)
-            .externalPredicate(
-                    Predicates.jsonNodeWithField(
-                            "type",geoJsonNode.get("type").toString()));
-    assertThat(codec).convertsFromInternal(polygon)
-            .externalPredicate(
-                    Predicates.jsonNodeWithField(
-                            "coordinates",geoJsonNode.get("coordinates").toString()));
+    assertThat(codec)
+        .convertsFromInternal(polygon)
+        .externalPredicate(
+            Predicates.jsonNodeWithField("type", geoJsonNode.get("type").toString()));
+    assertThat(codec)
+        .convertsFromInternal(polygon)
+        .externalPredicate(
+            Predicates.jsonNodeWithField("coordinates", geoJsonNode.get("coordinates").toString()));
     codec =
         new JsonNodeToPolygonCodec(
             objectMapper, WellKnownBinaryGeoFormat.BASE64_INSTANCE, nullStrings);

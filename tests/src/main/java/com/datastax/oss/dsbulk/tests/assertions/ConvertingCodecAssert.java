@@ -19,9 +19,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
 import com.datastax.oss.dsbulk.codecs.api.ConvertingCodec;
-import org.assertj.core.api.AbstractObjectAssert;
-
 import java.util.function.Predicate;
+import org.assertj.core.api.AbstractObjectAssert;
 
 public class ConvertingCodecAssert<EXTERNAL, INTERNAL>
     extends AbstractObjectAssert<
@@ -128,9 +127,10 @@ public class ConvertingCodecAssert<EXTERNAL, INTERNAL>
       return this;
     }
 
-    public ConvertingCodecAssert<EXTERNAL, INTERNAL> externalPredicate(Predicate<EXTERNAL> predicate) {
-        assertThat(predicate.test(this.external)).isTrue();
-        return this;
+    public ConvertingCodecAssert<EXTERNAL, INTERNAL> externalPredicate(
+        Predicate<EXTERNAL> predicate) {
+      assertThat(predicate.test(this.external)).isTrue();
+      return this;
     }
   }
 }

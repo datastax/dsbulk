@@ -31,7 +31,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.List;
-
 import org.junit.jupiter.api.Test;
 
 class JsonNodeToPointCodecTest {
@@ -88,14 +87,14 @@ class JsonNodeToPointCodecTest {
         new JsonNodeToPointCodec(objectMapper, WellKnownTextGeoFormat.INSTANCE, nullStrings);
     assertThat(codec).convertsFromInternal(point).toExternal(wktJsonNode);
     codec = new JsonNodeToPointCodec(objectMapper, JsonGeoFormat.INSTANCE, nullStrings);
-    assertThat(codec).convertsFromInternal(point)
-            .externalPredicate(
-                    Predicates.jsonNodeWithField(
-                            "type",geoJsonNode.get("type").toString()));
-    assertThat(codec).convertsFromInternal(point)
-            .externalPredicate(
-                    Predicates.jsonNodeWithField(
-                            "coordinates",geoJsonNode.get("coordinates").toString()));
+    assertThat(codec)
+        .convertsFromInternal(point)
+        .externalPredicate(
+            Predicates.jsonNodeWithField("type", geoJsonNode.get("type").toString()));
+    assertThat(codec)
+        .convertsFromInternal(point)
+        .externalPredicate(
+            Predicates.jsonNodeWithField("coordinates", geoJsonNode.get("coordinates").toString()));
     codec =
         new JsonNodeToPointCodec(
             objectMapper, WellKnownBinaryGeoFormat.BASE64_INSTANCE, nullStrings);

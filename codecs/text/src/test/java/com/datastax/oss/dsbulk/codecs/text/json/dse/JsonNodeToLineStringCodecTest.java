@@ -41,8 +41,7 @@ class JsonNodeToLineStringCodecTest {
           new DefaultPoint(30, 10), new DefaultPoint(10, 30), new DefaultPoint(40, 40));
   private final ObjectMapper objectMapper = JsonCodecUtils.getObjectMapper();
   private final JsonNode geoJsonNode =
-      objectMapper.readTree(
-          "{\"type\":\"LineString\",\"coordinates\":[[30,10],[10,30],[40,40]]}");
+      objectMapper.readTree("{\"type\":\"LineString\",\"coordinates\":[[30,10],[10,30],[40,40]]}");
   private final JsonNode wktJsonNode =
       objectMapper.getNodeFactory().textNode("LINESTRING (30 10, 10 30, 40 40)");
   private final JsonNode wkbBase64JsonNode =
@@ -87,14 +86,14 @@ class JsonNodeToLineStringCodecTest {
         new JsonNodeToLineStringCodec(objectMapper, WellKnownTextGeoFormat.INSTANCE, nullStrings);
     assertThat(codec).convertsFromInternal(lineString).toExternal(wktJsonNode);
     codec = new JsonNodeToLineStringCodec(objectMapper, JsonGeoFormat.INSTANCE, nullStrings);
-    assertThat(codec).convertsFromInternal(lineString)
-            .externalPredicate(
-                    Predicates.jsonNodeWithField(
-                            "type",geoJsonNode.get("type").toString()));
-    assertThat(codec).convertsFromInternal(lineString)
-            .externalPredicate(
-                    Predicates.jsonNodeWithField(
-                            "coordinates",geoJsonNode.get("coordinates").toString()));
+    assertThat(codec)
+        .convertsFromInternal(lineString)
+        .externalPredicate(
+            Predicates.jsonNodeWithField("type", geoJsonNode.get("type").toString()));
+    assertThat(codec)
+        .convertsFromInternal(lineString)
+        .externalPredicate(
+            Predicates.jsonNodeWithField("coordinates", geoJsonNode.get("coordinates").toString()));
     codec =
         new JsonNodeToLineStringCodec(
             objectMapper, WellKnownBinaryGeoFormat.BASE64_INSTANCE, nullStrings);
