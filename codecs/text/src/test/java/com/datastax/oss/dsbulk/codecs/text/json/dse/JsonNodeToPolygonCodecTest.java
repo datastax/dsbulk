@@ -27,6 +27,7 @@ import com.datastax.oss.dsbulk.codecs.api.format.geo.JsonGeoFormat;
 import com.datastax.oss.dsbulk.codecs.api.format.geo.WellKnownBinaryGeoFormat;
 import com.datastax.oss.dsbulk.codecs.api.format.geo.WellKnownTextGeoFormat;
 import com.datastax.oss.dsbulk.codecs.text.json.JsonCodecUtils;
+import com.datastax.oss.dsbulk.tests.utils.Predicates;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -45,7 +46,7 @@ class JsonNodeToPolygonCodecTest {
   private final ObjectMapper objectMapper = JsonCodecUtils.getObjectMapper();
   private final JsonNode geoJsonNode =
       objectMapper.readTree(
-          "{\"type\":\"Polygon\",\"coordinates\":[[[30.0,10.0],[10.0,20.0],[20.0,40.0],[40.0,40.0],[30.0,10.0]]]}");
+          "{\"type\":\"Polygon\",\"coordinates\":[[[30,10],[40,40],[20,40],[10,20],[30,10]]]}");
   private final JsonNode wktJsonNode =
       objectMapper.getNodeFactory().textNode("POLYGON ((30 10, 40 40, 20 40, 10 20, 30 10))");
   private final JsonNode wkbJsonNode =
@@ -107,7 +108,14 @@ class JsonNodeToPolygonCodecTest {
         new JsonNodeToPolygonCodec(objectMapper, WellKnownTextGeoFormat.INSTANCE, nullStrings);
     assertThat(codec).convertsFromInternal(polygon).toExternal(wktJsonNode);
     codec = new JsonNodeToPolygonCodec(objectMapper, JsonGeoFormat.INSTANCE, nullStrings);
-    assertThat(codec).convertsFromInternal(polygon).toExternal(geoJsonNode);
+    assertThat(codec)
+        .convertsFromInternal(polygon)
+        .externalPredicate(
+            Predicates.jsonNodeWithField("type", geoJsonNode.get("type").toString()));
+    assertThat(codec)
+        .convertsFromInternal(polygon)
+        .externalPredicate(
+            Predicates.jsonNodeWithField("coordinates", geoJsonNode.get("coordinates").toString()));
     codec =
         new JsonNodeToPolygonCodec(
             objectMapper, WellKnownBinaryGeoFormat.BASE64_INSTANCE, nullStrings);

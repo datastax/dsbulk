@@ -24,7 +24,9 @@ import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import com.datastax.oss.dsbulk.codecs.api.format.geo.JsonGeoFormat;
 import com.datastax.oss.dsbulk.codecs.api.format.geo.WellKnownBinaryGeoFormat;
 import com.datastax.oss.dsbulk.codecs.api.format.geo.WellKnownTextGeoFormat;
+import com.datastax.oss.dsbulk.tests.utils.Predicates;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class StringToPolygonCodecTest {
@@ -74,8 +76,14 @@ class StringToPolygonCodecTest {
     codec = new StringToPolygonCodec(JsonGeoFormat.INSTANCE, nullStrings);
     assertThat(codec)
         .convertsFromInternal(polygon)
-        .toExternal(
-            "{\"type\":\"Polygon\",\"coordinates\":[[[30.0,10.0],[10.0,20.0],[20.0,40.0],[40.0,40.0],[30.0,10.0]]]}");
+        .externalPredicate(
+            Predicates.jsonStringWithField(
+                "type", "Polygon", Optional.of((String s) -> s.replaceAll("\"", ""))));
+    assertThat(codec)
+        .convertsFromInternal(polygon)
+        .externalPredicate(
+            Predicates.jsonStringWithField(
+                "coordinates", "[[[30,10],[40,40],[20,40],[10,20],[30,10]]]"));
     codec = new StringToPolygonCodec(WellKnownBinaryGeoFormat.BASE64_INSTANCE, nullStrings);
     assertThat(codec)
         .convertsFromInternal(polygon)

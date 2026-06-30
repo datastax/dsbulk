@@ -249,7 +249,7 @@
                   <links>
                     <link>https://www.javadoc.io/doc/org.apache.cassandra/java-driver-core/${driver.version}</link>
                     <link>https://www.javadoc.io/doc/io.netty/netty-all/${netty.version}</link>
-                    <link>https://www.javadoc.io/doc/com.typesafe/config/${config.version}</link>
+                    <link>https://www.javadoc.io/doc/com.typesafe/config/${typesafe.config.version}</link>
                     <link>https://www.reactive-streams.org/reactive-streams-${reactive-streams.version}-javadoc/</link>
                     <link>https://www.javadoc.io/doc/io.projectreactor/reactor-core/${reactor.version}</link>
                     <link>https://www.javadoc.io/doc/com.fasterxml.jackson.core/jackson-core/${jackson.version}</link>

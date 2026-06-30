@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
 import com.datastax.oss.dsbulk.codecs.api.ConvertingCodec;
+import java.util.function.Predicate;
 import org.assertj.core.api.AbstractObjectAssert;
 
 public class ConvertingCodecAssert<EXTERNAL, INTERNAL>
@@ -123,6 +124,12 @@ public class ConvertingCodecAssert<EXTERNAL, INTERNAL>
               "Expecting codec to convert from internal %s to external %s but it converted to %s",
               internal, external, this.external)
           .isEqualTo(external);
+      return this;
+    }
+
+    public ConvertingCodecAssert<EXTERNAL, INTERNAL> externalPredicate(
+        Predicate<EXTERNAL> predicate) {
+      assertThat(predicate.test(this.external)).isTrue();
       return this;
     }
   }

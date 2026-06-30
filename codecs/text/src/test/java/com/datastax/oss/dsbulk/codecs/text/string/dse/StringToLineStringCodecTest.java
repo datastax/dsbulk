@@ -24,7 +24,9 @@ import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import com.datastax.oss.dsbulk.codecs.api.format.geo.JsonGeoFormat;
 import com.datastax.oss.dsbulk.codecs.api.format.geo.WellKnownBinaryGeoFormat;
 import com.datastax.oss.dsbulk.codecs.api.format.geo.WellKnownTextGeoFormat;
+import com.datastax.oss.dsbulk.tests.utils.Predicates;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class StringToLineStringCodecTest {
@@ -70,8 +72,13 @@ class StringToLineStringCodecTest {
     codec = new StringToLineStringCodec(JsonGeoFormat.INSTANCE, nullStrings);
     assertThat(codec)
         .convertsFromInternal(lineString)
-        .toExternal(
-            "{\"type\":\"LineString\",\"coordinates\":[[30.0,10.0],[10.0,30.0],[40.0,40.0]]}");
+        .externalPredicate(
+            Predicates.jsonStringWithField(
+                "type", "LineString", Optional.of((String s) -> s.replaceAll("\"", ""))));
+    assertThat(codec)
+        .convertsFromInternal(lineString)
+        .externalPredicate(
+            Predicates.jsonStringWithField("coordinates", "[[30,10],[10,30],[40,40]]"));
     codec = new StringToLineStringCodec(WellKnownBinaryGeoFormat.BASE64_INSTANCE, nullStrings);
     assertThat(codec)
         .convertsFromInternal(lineString)

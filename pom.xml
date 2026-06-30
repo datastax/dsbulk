@@ -58,21 +58,21 @@
     make sure the resulting binary tarball contains only
     required jars, and that no jar has an offending license.
     -->
-    <driver.version>4.19.2</driver.version>
+    <driver.version>4.19.3</driver.version>
     <reactive-streams.version>1.0.3</reactive-streams.version>
     <reactor.version>2020.0.19</reactor.version>
-    <config.version>1.4.2</config.version>
-    <netty.version>4.1.119.Final</netty.version>
+    <typesafe.config.version>1.4.2</typesafe.config.version>
+    <netty.version>4.1.135.Final</netty.version>
     <!-- Note: Caffeine 3 requires java 11 or higher -->
     <caffeine.version>2.9.3</caffeine.version>
     <jctools.version>3.3.0</jctools.version>
     <slf4j.version>2.0.16</slf4j.version>
-    <logback.version>1.3.15</logback.version>
+    <logback.version>1.3.16</logback.version>
     <metrics.version>4.2.9</metrics.version>
     <lz4.version>1.8.0</lz4.version>
     <snappy.version>1.1.10.8</snappy.version>
     <hdr.version>2.1.12</hdr.version>
-    <jackson.version>2.20.1</jackson.version>
+    <jackson.version>2.21.4</jackson.version>
     <univocity.version>2.9.1</univocity.version>
     <commons-compress.version>1.28.0</commons-compress.version>
     <compress.zstd.version>1.5.7-6</compress.zstd.version>
@@ -81,9 +81,8 @@
     <!-- ANTLR 4.10+ requires Java 11 -->
     <antlr4.version>4.9.3</antlr4.version>
     <spotbugs.version>4.5.3</spotbugs.version>
-    <esri.version>1.2.1</esri.version>
+    <esri.version>2.2.4</esri.version>
     <jackson-core-asl.version>1.9.13</jackson-core-asl.version>
-    <org-json.version>20250517</org-json.version>
     <jansi.version>1.18</jansi.version>
     <aws.sdk.version>2.40.7</aws.sdk.version>
     <prometheus.client.version>0.15.0</prometheus.client.version>
