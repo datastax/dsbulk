@@ -72,7 +72,7 @@
     <lz4.version>1.8.0</lz4.version>
     <snappy.version>1.1.10.8</snappy.version>
     <hdr.version>2.1.12</hdr.version>
-    <jackson.version>2.20.1</jackson.version>
+    <jackson.version>2.21.4</jackson.version>
     <univocity.version>2.9.1</univocity.version>
     <commons-compress.version>1.28.0</commons-compress.version>
     <compress.zstd.version>1.5.7-6</compress.zstd.version>
