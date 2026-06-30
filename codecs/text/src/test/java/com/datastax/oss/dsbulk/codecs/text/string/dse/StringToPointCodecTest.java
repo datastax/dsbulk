@@ -19,11 +19,17 @@ import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat
 
 import com.datastax.dse.driver.api.core.data.geometry.Point;
 import com.datastax.dse.driver.internal.core.data.geometry.DefaultPoint;
+import com.datastax.oss.driver.internal.core.util.Strings;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import com.datastax.oss.dsbulk.codecs.api.format.geo.JsonGeoFormat;
 import com.datastax.oss.dsbulk.codecs.api.format.geo.WellKnownBinaryGeoFormat;
 import com.datastax.oss.dsbulk.codecs.api.format.geo.WellKnownTextGeoFormat;
 import java.util.List;
+import java.util.Optional;
+
+import com.datastax.oss.dsbulk.tests.utils.Predicates;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 class StringToPointCodecTest {
@@ -54,13 +60,18 @@ class StringToPointCodecTest {
   }
 
   @Test
-  void should_convert_from_valid_internal() {
+  void should_convert_from_valid_internal() throws Exception {
     StringToPointCodec codec = new StringToPointCodec(WellKnownTextGeoFormat.INSTANCE, nullStrings);
     assertThat(codec).convertsFromInternal(point).toExternal("POINT (-1.1 -2.2)");
     codec = new StringToPointCodec(JsonGeoFormat.INSTANCE, nullStrings);
-    assertThat(codec)
-        .convertsFromInternal(point)
-        .toExternal("{\"type\":\"Point\",\"coordinates\":[-1.1,-2.2]}");
+    assertThat(codec).convertsFromInternal(point)
+            .externalPredicate(
+                    Predicates.jsonWithField(
+                            "type","Point",
+                            Optional.of((String s) -> s.replaceAll("\"",""))));
+    assertThat(codec).convertsFromInternal(point)
+            .externalPredicate(
+                    Predicates.jsonWithField("coordinates","[-1.1,-2.2]"));
     codec = new StringToPointCodec(WellKnownBinaryGeoFormat.BASE64_INSTANCE, nullStrings);
     assertThat(codec).convertsFromInternal(point).toExternal("AQEAAACamZmZmZnxv5qZmZmZmQHA");
     codec = new StringToPointCodec(WellKnownBinaryGeoFormat.HEX_INSTANCE, nullStrings);

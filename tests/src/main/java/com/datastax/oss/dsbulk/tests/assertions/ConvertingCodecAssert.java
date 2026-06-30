@@ -19,7 +19,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
 import com.datastax.oss.dsbulk.codecs.api.ConvertingCodec;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.assertj.core.api.AbstractObjectAssert;
+
+import java.util.function.Predicate;
 
 public class ConvertingCodecAssert<EXTERNAL, INTERNAL>
     extends AbstractObjectAssert<
@@ -124,6 +128,11 @@ public class ConvertingCodecAssert<EXTERNAL, INTERNAL>
               internal, external, this.external)
           .isEqualTo(external);
       return this;
+    }
+
+    public ConvertingCodecAssert<EXTERNAL, INTERNAL> externalPredicate(Predicate<EXTERNAL> predicate) {
+        assertThat(predicate.test(this.external)).isTrue();
+        return this;
     }
   }
 }
