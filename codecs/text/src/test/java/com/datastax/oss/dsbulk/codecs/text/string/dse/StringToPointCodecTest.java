@@ -57,7 +57,7 @@ class StringToPointCodecTest {
   }
 
   @Test
-  void should_convert_from_valid_internal() throws Exception {
+  void should_convert_from_valid_internal() {
     StringToPointCodec codec = new StringToPointCodec(WellKnownTextGeoFormat.INSTANCE, nullStrings);
     assertThat(codec).convertsFromInternal(point).toExternal("POINT (-1.1 -2.2)");
     codec = new StringToPointCodec(JsonGeoFormat.INSTANCE, nullStrings);
