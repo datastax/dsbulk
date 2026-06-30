@@ -19,7 +19,6 @@ import static com.datastax.oss.dsbulk.tests.assertions.TestAssertions.assertThat
 
 import com.datastax.dse.driver.api.core.data.geometry.Point;
 import com.datastax.dse.driver.internal.core.data.geometry.DefaultPoint;
-import com.datastax.oss.driver.internal.core.util.Strings;
 import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import com.datastax.oss.dsbulk.codecs.api.format.geo.JsonGeoFormat;
 import com.datastax.oss.dsbulk.codecs.api.format.geo.WellKnownBinaryGeoFormat;
@@ -28,8 +27,6 @@ import java.util.List;
 import java.util.Optional;
 
 import com.datastax.oss.dsbulk.tests.utils.Predicates;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 class StringToPointCodecTest {
@@ -66,12 +63,12 @@ class StringToPointCodecTest {
     codec = new StringToPointCodec(JsonGeoFormat.INSTANCE, nullStrings);
     assertThat(codec).convertsFromInternal(point)
             .externalPredicate(
-                    Predicates.jsonWithField(
+                    Predicates.jsonStringWithField(
                             "type","Point",
                             Optional.of((String s) -> s.replaceAll("\"",""))));
     assertThat(codec).convertsFromInternal(point)
             .externalPredicate(
-                    Predicates.jsonWithField("coordinates","[-1.1,-2.2]"));
+                    Predicates.jsonStringWithField("coordinates","[-1.1,-2.2]"));
     codec = new StringToPointCodec(WellKnownBinaryGeoFormat.BASE64_INSTANCE, nullStrings);
     assertThat(codec).convertsFromInternal(point).toExternal("AQEAAACamZmZmZnxv5qZmZmZmQHA");
     codec = new StringToPointCodec(WellKnownBinaryGeoFormat.HEX_INSTANCE, nullStrings);

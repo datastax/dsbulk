@@ -77,12 +77,12 @@ class StringToPolygonCodecTest {
     codec = new StringToPolygonCodec(JsonGeoFormat.INSTANCE, nullStrings);
     assertThat(codec).convertsFromInternal(polygon)
             .externalPredicate(
-                    Predicates.jsonWithField(
+                    Predicates.jsonStringWithField(
                             "type","Polygon",
                             Optional.of((String s) -> s.replaceAll("\"",""))));
     assertThat(codec).convertsFromInternal(polygon)
             .externalPredicate(
-                    Predicates.jsonWithField("coordinates","[[[30,10],[40,40],[20,40],[10,20],[30,10]]]"));
+                    Predicates.jsonStringWithField("coordinates","[[[30,10],[40,40],[20,40],[10,20],[30,10]]]"));
     codec = new StringToPolygonCodec(WellKnownBinaryGeoFormat.BASE64_INSTANCE, nullStrings);
     assertThat(codec)
         .convertsFromInternal(polygon)

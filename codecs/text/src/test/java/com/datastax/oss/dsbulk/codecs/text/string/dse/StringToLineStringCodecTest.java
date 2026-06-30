@@ -73,12 +73,12 @@ class StringToLineStringCodecTest {
     codec = new StringToLineStringCodec(JsonGeoFormat.INSTANCE, nullStrings);
     assertThat(codec).convertsFromInternal(lineString)
             .externalPredicate(
-                    Predicates.jsonWithField(
+                    Predicates.jsonStringWithField(
                             "type","LineString",
                             Optional.of((String s) -> s.replaceAll("\"",""))));
     assertThat(codec).convertsFromInternal(lineString)
             .externalPredicate(
-                    Predicates.jsonWithField("coordinates","[[30,10],[10,30],[40,40]]"));
+                    Predicates.jsonStringWithField("coordinates","[[30,10],[10,30],[40,40]]"));
     codec = new StringToLineStringCodec(WellKnownBinaryGeoFormat.BASE64_INSTANCE, nullStrings);
     assertThat(codec)
         .convertsFromInternal(lineString)
