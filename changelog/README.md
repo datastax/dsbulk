@@ -1,5 +1,9 @@
 ## Changelog
 
+## 1.11.2
+
+- [improvement] [#526](https://github.com/datastax/dsbulk/issues/526): Upgrade Netty, Java driver, logback and Jackson to address CVEs.
+
 ## 1.11.1
 
 - [bug] [#483](https://github.com/datastax/dsbulk/issues/483): Parsing trouble when a column is called "vector".
