@@ -83,7 +83,6 @@
     <spotbugs.version>4.5.3</spotbugs.version>
     <esri.version>2.2.4</esri.version>
     <jackson-core-asl.version>1.9.13</jackson-core-asl.version>
-    <org-json.version>20250517</org-json.version>
     <jansi.version>1.18</jansi.version>
     <aws.sdk.version>2.40.7</aws.sdk.version>
     <prometheus.client.version>0.15.0</prometheus.client.version>
