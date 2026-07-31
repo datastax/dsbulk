@@ -101,6 +101,9 @@ public class FileUtils {
             @Override
             public FileVisitResult postVisitDirectory(Path dir, IOException exc)
                 throws IOException {
+              if (exc != null) {
+                throw exc;
+              }
               // Do not delete directories on Windows as deletes are not executed immediately,
               // but they do result in an IO exception the next time we try to access a directory in
               // pending-deletion state. Leaving directories empty is good enough for DSBulk anyway,
@@ -111,7 +114,8 @@ public class FileUtils {
               return FileVisitResult.CONTINUE;
             }
           });
-    } catch (IOException ignored) {
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
     }
   }
 
