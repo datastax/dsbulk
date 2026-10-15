@@ -1,5 +1,9 @@
 ## Changelog
 
+## 1.11.3
+
+- [improvement] [#534](https://github.com/datastax/dsbulk/issues/534): Added self-hosted user guides user-guides/
+
 ## 1.11.2
 
 - [improvement] [#526](https://github.com/datastax/dsbulk/issues/526): Upgrade Netty, Java driver, logback and Jackson to address CVEs.
