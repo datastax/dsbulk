@@ -237,15 +237,7 @@ Use `-m` ([`--schema.mapping`](options/schema-options.md#schemaMapping)) to map 
 - Map JSON fields to table columns.
 
   > [!TIP]
-  > The following example also shows how a function call can be used to apply a function to one or more fields before mapping to a single column named `odd_column`.
-
-  ```bash
-  dsbulk load \
-    -url /tmp/dsbulkblog/iris.json \
-    -k dsbulkblog \
-    -t iris_with_id \
-    --schema.mapping "sepal_length = sepal_length, sepal_width = sepal_width, petal_length = petal_length, petal_width = petal_width, species = species, id = id, max(sepal_length, petal_length) = odd_column"
-  ```
+  > You can also use a function call in `--schema.mapping` to apply a function to one or more fields before mapping them to a column.
 
 ## Set a delimiter
 
