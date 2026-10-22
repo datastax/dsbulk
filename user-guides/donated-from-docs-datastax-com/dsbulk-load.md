@@ -62,8 +62,8 @@ If your cluster has both [authentication and SSL enabled](options/driver-options
 For example:
 
 ```bash
-dsbulk load -h '["fe80::f861:3eff:fe1d:9d7a"]' -u myaccount -p mypassword \
-  --driver.advanced.auth-provider.class DseGSSAPIAuthProvider \
+dsbulk load -h '["fe80::f861:3eff:fe1d:9d7a"]' \
+  --driver.advanced.auth-provider.class DseGssApiAuthProvider \
   --driver.ssl.provider JDK \
   --driver.ssl.keystore.path /etc/dse/keystores/client.keystore \
   --driver.ssl.keystore.password mysslkspass \
@@ -143,7 +143,7 @@ dsbulk load -url https://192.168.1.100/data/export.csv
 ```
 
 > [!IMPORTANT]
-> When loading from a URL, the data is read directly and options like `recursive` and `filenamePattern` are ignored.
+> When loading from a URL, the data is read directly and options like `recursive` and `fileNamePattern` are ignored.
 > For more information, see [CSV and JSON connector options](options/connector-options.md).
 
 ### <a id="load-from-aws-s3"></a>Load from AWS S3
@@ -194,19 +194,19 @@ If your S3 bucket contains folders, you must either use the `urlfile` option to 
 
 > [!TIP]
 > DSBulk provides options to customize load behavior and file selection.
-> For example, to load files from a directory and its subdirectory, use the `recursive` option, and to select files with a specific name pattern, use the `filenamePattern` option.
+> For example, to load files from a directory and its subdirectory, use the `recursive` option, and to select files with a specific name pattern, use the `fileNamePattern` option.
 > For more information, see [CSV and JSON connector options](options/connector-options.md).
 
 ### <a id="load-data-from-stdin"></a>Load from stdin
 
-If you omit `-url`, or you set `-url stdin:/`, then DSBulk reads data from standard input (`stdin`).
+If you omit `-url`, or you set `-url -`, then DSBulk reads data from standard input (`stdin`).
 
 This is useful for loading data as it is generated or transformed by another process.
 
 The following example runs a script called `generate_data`, and then pipes it to `dsbulk load`:
 
 ```bash
-generate_data | dsbulk load -url stdin:/ -k ks1 -t table1
+generate_data | dsbulk load -url - -k ks1 -t table1
 ```
 
 ### Load a compressed file

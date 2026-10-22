@@ -24,13 +24,13 @@ The following examples show the same command with different forms of the `dryRun
 
 ```bash
 # Short form
-dsbulk load -dryRun -url filename.csv -k ks1 -t table1
+dsbulk load -dryRun true -url filename.csv -k ks1 -t table1
 
 # Standard form
-dsbulk load --engine.dryRun -url filename.csv -k ks1 -t table1
+dsbulk load --engine.dryRun true -url filename.csv -k ks1 -t table1
 
 # Long form
-dsbulk load --dsbulk.engine.dryRun -url filename.csv -k ks1 -t table1
+dsbulk load --dsbulk.engine.dryRun true -url filename.csv -k ks1 -t table1
 ```
 
 In [configuration files](../02-usage.md#use-a-configuration-file), you must use the long form with the `dsbulk.` prefix.
@@ -47,7 +47,7 @@ Whether to use data size sampling to optimize the DSBulk execution engine.
 - **`true` (default)**: Enable data size sampling for applicable `dsbulk load` commands.
 
   This option only applies to `dsbulk load` commands that read from a file, directory, or HTTP/HTTPS URL.
-  Data size sampling never occurs for `dsbulk unload`, `dsbulk count`, or `dsbulk load` commands that read from standard input (`-url -` or `-url stdin:/`).
+  Data size sampling never occurs for `dsbulk unload`, `dsbulk count`, or `dsbulk load` commands that read from standard input (`-url -`).
 
 - **`false`**: Disable data size sampling.
 
@@ -89,9 +89,8 @@ Set a unique identifier for each `dsbulk load`, `dsbulk unload`, and `dsbulk cou
     This parameter isn't available on all operating systems.
     If the PID cannot be determined, DSBulk inserts a random integer instead.
 
-  `--engine.executionId "%1$s-%2$t"` is the same as the default identifier format (`WORKFLOW_TIMESTAMP`).
-  You can use this template to amend the default identifier format.
-  For example, to add a `test-` prefix to the default identifier format, set `--engine.executionID "test-%1$s-%2$t"`.
+  You can use a template to change the default identifier format.
+  For example, to add a `test-` prefix, set `--engine.executionId "test-%1$s-%3$s"`. This produces an identifier such as `test-LOAD-62` (workflow type and process ID).
 
 ## <a id="dsbulkEngineOptionsMaxConcurrentQueries"></a>--engine.maxConcurrentQueries (-maxConcurrentQueries)
 

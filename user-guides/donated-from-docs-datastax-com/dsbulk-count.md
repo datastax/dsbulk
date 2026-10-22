@@ -14,7 +14,7 @@ Replace the following:
 
   Or, use other [schema options](options/schema-options.md) to specify the data source, such as `-query` to select data with a Cassandra Query Language (CQL) statement or `-g` to count graph data.
 
-- **`OPTIONS`**: Any options for the `count` command, such as [`-stats.modes`](#stats-modes), authentication options, or other [DSBulk options](02-usage.md).
+- **`OPTIONS`**: Any options for the `count` command, such as [`--stats.modes`](#stats-modes), authentication options, or other [DSBulk options](02-usage.md).
 
 ## <a id="count-with-authentication"></a>Count with authentication
 
@@ -44,8 +44,8 @@ If your cluster has both [authentication and SSL enabled](options/driver-options
 For example:
 
 ```bash
-dsbulk count -h '["fe80::f861:3eff:fe1d:9d7a"]' -u username -p password \
-  --driver.advanced.auth-provider.class DseGSSAPIAuthProvider \
+dsbulk count -h '["fe80::f861:3eff:fe1d:9d7a"]' \
+  --driver.advanced.auth-provider.class DseGssApiAuthProvider \
   --driver.ssl.provider JDK \
   --driver.ssl.keystore.path /etc/dse/keystores/client.keystore \
   --driver.ssl.keystore.password sslkspassword \

@@ -58,8 +58,8 @@ If your cluster has both [authentication and SSL enabled](options/driver-options
 For example:
 
 ```bash
-dsbulk unload -h '["fe80::f861:3eff:fe1d:9d7a"]' -u myaccount -p mypassword \
-  --driver.advanced.auth-provider.class DseGSSAPIAuthProvider \
+dsbulk unload -h '["fe80::f861:3eff:fe1d:9d7a"]' \
+  --driver.advanced.auth-provider.class DseGssApiAuthProvider \
   --driver.ssl.provider JDK \
   --driver.ssl.keystore.path /etc/dse/keystores/client.keystore \
   --driver.ssl.keystore.password mysslkspass \
@@ -105,7 +105,7 @@ Use the `-url` option to specify the filesystem path or URL where you want to wr
 
 ### Unload to stdout
 
-If `-url` is omitted or you set `-url stdout:/`, the unloaded data is written to standard output (`stdout`).
+If `-url` is omitted or you set `-url -`, the unloaded data is written to standard output (`stdout`).
 
 This is useful if you want to pipe the output from `stdout` to another command.
 For example, you could pipe the output to an AWS CLI command to upload the data to an S3 bucket.
@@ -166,7 +166,7 @@ You can use the `-query` option to unload only data matching a given `SELECT` st
 - Unload data using a CQL query with a WHERE clause:
 
   ```bash
-  dsbulk unload -query
+  dsbulk unload -query \
     "SELECT id, petal_length, petal_width, sepal_length, sepal_width, species
       FROM dsbulkblog.iris_with_id
       WHERE species='Iris-setosa' AND token(id) > :start AND token(id) <= :end"
@@ -175,7 +175,7 @@ You can use the `-query` option to unload only data matching a given `SELECT` st
 - Unload data using a CQL query with function calls:
 
   ```bash
-  dsbulk unload -query
+  dsbulk unload -query \
     "SELECT id, species, writetime(species) AS TIMESTAMP, ttl(species) AS TTL FROM dsbulkblog.iris_with_id"
   ```
 
@@ -188,10 +188,10 @@ You can use the `-query` option to unload only data matching a given `SELECT` st
   The `solr_query` requires double-escaping of the double-quotes in the `solr_query` string.
 
   ```bash
-  dsbulk unload -query
+  dsbulk unload -query \
     "SELECT id, petal_length, petal_width, sepal_length, sepal_width, species
       FROM dsbulkblog.iris_with_id
-      WHERE solr_query = '{\\\"q\\\": \\\"species:Iris-setosa\\\"}'"
+      WHERE solr_query = '{\\\"q\\\": \\\"species:Iris-setosa\\\"}'" \
     --executor.continuousPaging.enabled false
   ```
 

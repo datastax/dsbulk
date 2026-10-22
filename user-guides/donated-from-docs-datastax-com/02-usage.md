@@ -114,7 +114,7 @@ When supplied on the command line, all option values must be in valid HOCON synt
   For example, if your CQL statement contains a mixed-case table name, you must quote and escape the table name:
 
   ```bash
-  dsbulk unload -query
+  dsbulk unload -query \
     "SELECT id, row1, row2
       FROM ks1.\\\"tableMixedCase\\\"
       WHERE row1='some-value'"

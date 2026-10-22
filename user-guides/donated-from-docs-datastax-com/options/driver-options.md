@@ -13,7 +13,7 @@ If you are using an earlier version of DSBulk, refer to the documentation for th
 
 The `driver` options in DSBulk are derived from the Java driver itself.
 
-When passing driver options to DSBulk on the command line, the standard form is `--driver.` followed by one or more segments, such as `--driver.basic.contact-points` or `--driver.basic.load-balancing-policy.filter.allow`.
+When passing driver options to DSBulk on the command line, the standard form is `--driver.` followed by one or more segments, such as `--driver.basic.contact-points` or `--driver.basic.load-balancing-policy.evaluator.allow`.
 
 For the values of DSBulk options, HOCON syntax rules apply unless otherwise noted.
 For more information, see [Escape and quote DSBulk command line arguments](../02-usage.md#escape-and-quote-command-line-arguments).
@@ -576,7 +576,7 @@ If you choose to use this option, you must provide the fully-qualified name of a
 The predicate's `test(Node)` method is invoked each time the policy processes a topology or state change.
 If the method returns `false`, the node is set at distance `IGNORED`, which means the Java driver never connects to it, and the node is never included in query plans.
 
-With the default DSBulk node evaluator implementation, you can further limit the available nodes with the [`--driver.basic.load-balancing-policy.evaluator.allow`](#datastaxJavaDriverBasicLoadBalancingPolicyFilterAllow) and [`--driver.basic.load-balancing-policy.evaluator.deny`](#datastaxJavaDriverBasicLoadBalancingPolicyFilterDeny) options.
+With the default DSBulk node evaluator implementation, you can further limit the available nodes with the [`--driver.basic.load-balancing-policy.evaluator.allow`](#datastaxJavaDriverBasicLoadBalancingPolicyEvaluatorAllow) and [`--driver.basic.load-balancing-policy.evaluator.deny`](#datastaxJavaDriverBasicLoadBalancingPolicyEvaluatorDeny) options.
 
 Default: `"com.datastax.oss.dsbulk.workflow.commons.policies.lbp.SimpleNodeDistanceEvaluator"`
 
@@ -795,12 +795,6 @@ Default: `[]` (no session-level metrics monitored)
 
 - **--driver.auth.username (-u)**: Deprecated. Use [`--driver.advanced.auth-provider.username`](#datastaxJavaDriverAdvancedAuthProviderUsername).
 
-- <a id="datastaxJavaDriverBasicLoadBalancingPolicyFilterClass"></a>**--driver.basic.load-balancing-policy.filter.class**: Deprecated. Use [`--driver.basic.load-balancing-policy.evaluator.class`](#datastaxJavaDriverBasicLoadBalancingPolicyEvaluatorClass).
-
-- <a id="datastaxJavaDriverBasicLoadBalancingPolicyFilterAllow"></a>**--driver.basic.load-balancing-policy.filter.allow (-allow)**: Deprecated. Use [`--driver.basic.load-balancing-policy.evaluator.allow`](#datastaxJavaDriverBasicLoadBalancingPolicyEvaluatorAllow).
-
-- <a id="datastaxJavaDriverBasicLoadBalancingPolicyFilterDeny"></a>**--driver.basic.load-balancing-policy.filter.deny**: Deprecated. Use [`--driver.basic.load-balancing-policy.evaluator.deny`](#datastaxJavaDriverBasicLoadBalancingPolicyEvaluatorDeny).
-
 - **--driver.policy.lbp.dcAwareRoundRobin.allowRemoteDCsForLocalConsistencyLevel**: Deprecated. See [`--driver.basic.load-balancing-policy.class`](#datastaxJavaDriverBasicLoadBalancingPolicyClass).
 
 - **--driver.policy.lbp.dcAwareRoundRobin.localDc**: Deprecated. Use [`--driver.basic.load-balancing-policy.local-datacenter`](#datastaxJavaDriverBasicLoadBalancingPolicyLocalDatacenter).
@@ -812,8 +806,6 @@ Default: `[]` (no session-level metrics monitored)
 - **--driver.policy.lbp.name (-lbp)**: Deprecated. Use [`--driver.basic.load-balancing-policy.class`](#datastaxJavaDriverBasicLoadBalancingPolicyClass).
 
 - **--driver.policy.lbp.tokenAware.childPolicy**: Deprecated. See [`--driver.basic.load-balancing-policy.class`](#datastaxJavaDriverBasicLoadBalancingPolicyClass).
-
-- **--driver.policy.lbp.tokenAware.shuffleReplicas**: Deprecated. See [`--driver.basic.load-balancing-policy.class`](#datastaxJavaDriverBasicLoadBalancingPolicyClass).
 
 - **--driver.policy.lbp.whiteList.childPolicy**: Deprecated. See [`--driver.basic.load-balancing-policy.class`](#datastaxJavaDriverBasicLoadBalancingPolicyClass).
 

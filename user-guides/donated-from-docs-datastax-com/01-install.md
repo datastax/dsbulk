@@ -65,7 +65,7 @@ Review the following information to ensure your DSBulk installation functions as
 
 ### Java executable
 
-A Java executable is required.
+Java 8 or later is required.
 
 On macOS, Linux, and *nix systems, the rules used to find a Java executable are as follows:
 

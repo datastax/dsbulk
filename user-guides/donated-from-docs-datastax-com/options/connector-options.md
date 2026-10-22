@@ -371,7 +371,7 @@ When reading from CSV files, the following examples show how the line `a,,""` is
 
 See also [`--codec.nullStrings`](codec-options.md#dsbulkCodecOptionsNullStrings).
 
-### <a id="connectorCSVquote"></a>--connector.csv.quote
+### <a id="connectorCSVquote"></a>--connector.csv.quote (-quote)
 
 Specify the character used for quoting fields when the field delimiter is part of the field value.
 
@@ -422,7 +422,7 @@ For more examples, see [Load data](../dsbulk-load.md) and [Unload data](../dsbul
 For a `dsbulk load` operation, specify the location where the input files are stored.
 Allowed values include the following:
 
-- **Standard input**: Specified by `-` or `stdin:/`.
+- **Standard input**: Specified by `-`.
   This is the default source if `-url` is omitted.
 - **URL**: If `-url` begins with `http:` or `https:`, the source is read directly, and options like `fileNamePattern` and `recursive` are ignored.
 
@@ -445,7 +445,7 @@ Allowed values include the following:
 For a `dsbulk unload` operation, specify the destination where the output will be written.
 Allowed values include the following:
 
-- **Standard output**: Specified by `-` or `stdout:/`.
+- **Standard output**: Specified by `-`.
   This is the default destination if `-url` is omitted.
 - **URL**: If `-url` begins with `http:` or `https:`, the output is written directly to the given URL, and options like `fileNameFormat` are ignored.
 
@@ -699,7 +699,7 @@ Whether to use pretty printing for JSON output from the `dsbulk unload` command.
 This option doesn't apply to `dsbulk load`.
 
 - **`false` (default)**: Disable pretty printing to write JSON records in a compact format without extra spaces or line breaks.
-- **`true`**: Enable pretty printing to write JSON records with indentation and line breaks.
+- **`true`**: Sets the pretty printer. In 1.11.2 the records stay on one line unless `--connector.json.serializationFeatures '{INDENT_OUTPUT:true}'` is also set.
 
   > [!IMPORTANT]
   > Enabling `prettyPrint` produces much larger JSON records.
@@ -759,7 +759,7 @@ For more examples, see [Load data](../dsbulk-load.md) and [Unload data](../dsbul
 For a `dsbulk load` operation, specify the location where the input files are stored.
 Allowed values include the following:
 
-- **Standard input**: Specified by `-` or `stdin:/`.
+- **Standard input**: Specified by `-`.
   This is the default source if `-url` is omitted.
 - **URL**: If `-url` begins with `http:` or `https:`, the source is read directly, and options like `fileNamePattern` and `recursive` are ignored.
 
@@ -782,7 +782,7 @@ Allowed values include the following:
 For a `dsbulk unload` operation, specify the destination where the output will be written.
 Allowed values include the following:
 
-- **Standard output**: Specified by `-` or `stdout:/`.
+- **Standard output**: Specified by `-`.
   This is the default destination if `-url` is omitted.
 - **URL**: If `-url` begins with `http:` or `https:`, the output is written directly to the given URL, and options like `fileNameFormat` are ignored.
 

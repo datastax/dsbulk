@@ -62,7 +62,7 @@ dsbulk.log.verbosity = 0
 The following options relate to general DSBulk logging behavior.
 They use the [standard form](#synopsis) of `--log.KEY VALUE`.
 
-### --log.ansiMode (-ansiMode)
+### --log.ansiMode
 
 Configure use of ANSI colors and other escape sequences in log messages printed to the console:
 
@@ -75,7 +75,7 @@ Configure use of ANSI colors and other escape sequences in log messages printed 
   For Windows, ANSI support works best with the Microsoft Visual C++ 2008 SP1 Redistributable Package installed.
 
 - **`force`**: Always use ANSI colors even if the terminal isn't detected as ANSI-compatible.
-- **`disable`**: Disable ANSI support in DSBulk log messages.
+- **`disabled`**: Disable ANSI support in DSBulk log messages.
 
   This is necessary only if colored messages aren't desired or ANSI escape sequences cause printing errors.
 
@@ -146,7 +146,8 @@ This information is collected in addition to the record's resource and position,
 
 ### <a id="log-verbosity"></a>--log.verbosity (-verbosity)
 
-Set the overall level of verbosity for logs:
+Set the overall level of verbosity for logs.
+The numeric values `0`, `1`, and `2` are deprecated. DSBulk prints a warning if you use them. Use `quiet`, `normal`, `high`, or `max` instead:
 
 - `0` (`quiet`): Only log `WARN` and `ERROR` messages.
 - `1` (`normal`): Log `WARN`, `ERROR`, and some `INFO` messages.
@@ -161,9 +162,9 @@ Set the overall level of verbosity for logs:
   >
   > ```console
   > Partitioner: name-of-partitioner
-  > Total number of hosts: number
+  > Total number of nodes: number
   > DataCenters: list-of-datacenter-names
-  > Hosts: list-of-hosts: address, dseVersion, cassandraVersion, dataCenter
+  > Nodes: list-of-nodes: address, dseVersion, cassandraVersion, dataCenter
   > ```
   >
   > The output is sorted by ascending IP address.

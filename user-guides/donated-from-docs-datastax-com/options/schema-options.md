@@ -35,10 +35,10 @@ The following examples show the same command with different forms of the `keyspa
 dsbulk load -url filename.csv -k ks1 -t table1
 
 # Standard form
-dsbulk load -url filename.csv -schema.keyspace ks1 -schema.table table1
+dsbulk load -url filename.csv --schema.keyspace ks1 --schema.table table1
 
 # Long form
-dsbulk load -url filename.csv -dsbulk.schema.keyspace ks1 -dsbulk.schema.table table1
+dsbulk load -url filename.csv --dsbulk.schema.keyspace ks1 --dsbulk.schema.table table1
 ```
 
 In [configuration files](../02-usage.md#use-a-configuration-file), you must use the long form with the `dsbulk.` prefix.
@@ -131,7 +131,7 @@ WHERE token(COLUMNS) > :start and token(COLUMNS) <= :end
 ```
 
 Then, the engine generates as many read range statements as there are token ranges in the cluster.
-This allows parallelization of reads while simultaneously targeting coordinators that are also replicas (see [`--schema.splits`](##schemaOptionsschemasplits-number)).
+This allows parallelization of reads while simultaneously targeting coordinators that are also replicas (see [`--schema.splits`](#schemaOptionsschemasplits-number)).
 
 If the `SELECT` statement _does_ contain a `WHERE`, `ORDER BY`, `GROUP BY`, or `LIMIT` clause, then the DSBulk engine executes the query as it is given without parallelization.
 DSBulk can only parallelize the operation if the `WHERE` clause also includes the token range relation in the aforementioned format.
@@ -162,7 +162,7 @@ Mixed-case keyspace and table names in `-query` statements must be double-quoted
 For example:
 
 ```bash
-dsbulk unload -query
+dsbulk unload -query \
   "SELECT id, row1, row2
     FROM ks1.\\\"tableMixedCase\\\"
     WHERE row1='some-value'"
@@ -275,7 +275,7 @@ Whether to map `null` input values to `unset` for `load` operations:
 
 Whether to preserve timestamps when loading and unloading cells.
 
-Ignored if [`--schema.query`](#dsbulkSchemaQuery) is used or the target table is a counter table.
+Not allowed together with [`--schema.query`](#dsbulkSchemaQuery) (the command fails). Ignored if the target table is a counter table.
 
 - **`false` (default)**: Timestamps aren't preserved during `load` and `unload` operations.
 - **`true`**: The following rules are applied to generated queries:
@@ -295,7 +295,7 @@ Ignored if [`--schema.query`](#dsbulkSchemaQuery) is used or the target table is
 
 Whether to preserve the TTL when loading and unloading cells.
 
-Ignored if [`--schema.query`](#dsbulkSchemaQuery) is used or the target table is a counter table.
+Not allowed together with [`--schema.query`](#dsbulkSchemaQuery) (the command fails). Ignored if the target table is a counter table.
 
 - **`false` (default)**: TTLs aren't preserved during `load` and `unload` operations.
 - **`true`**: The following rules are applied to generated queries:

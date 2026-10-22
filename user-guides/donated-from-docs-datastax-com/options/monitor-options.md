@@ -65,7 +65,7 @@ Whether to stream metrics to the console.
   DSBulk prints useful metrics about the ongoing operation to standard error, including total records, failed records, throughput, latency, and average batch size (if [batching](batch-options.md) is used).
   The metrics are refreshed at the interval set in [`-reportRate`](#dsbulkMonitoringOptionsReportRate).
 
-  If [`--log.verbosity 0`](logging-options.md#log-verbosity), DSBulk disables the console reporter regardless of the value of `--monitoring.console`.
+  If [`--log.verbosity quiet`](logging-options.md#log-verbosity) (or the deprecated `0`), DSBulk disables the console reporter regardless of the value of `--monitoring.console`.
 
 - **`false`**: Disable the console reporter.
 

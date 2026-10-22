@@ -51,7 +51,7 @@ For example:
 dsbulk.codec.locale = "en_US"
 ```
 
-## --codec.allowNullConnections
+## --codec.allowNullCollections
 
 Whether null collection values (lists, sets or maps) are converted to null values instead of empty collections:
 

@@ -16,14 +16,14 @@ If the Kerberos configuration file is not the default location (`/etc`), set the
    For example:
 
    ```bash
-   EXPORT KRB5_CONFIG=$JAVA_HOME/lib/security/krb5.conf
+   export KRB5_CONFIG=$JAVA_HOME/lib/security/krb5.conf
    ```
 
 2. Add the path to `DSBULK_JAVA_OPTS`.
    For example:
 
    ```bash
-   EXPORT DSBULK_JAVA_OPTS=$DSBULK_JAVA_OPTS -Djava.security.krb5.conf=$JAVA_HOME/lib/security/krb5.conf
+   export DSBULK_JAVA_OPTS="$DSBULK_JAVA_OPTS -Djava.security.krb5.conf=$JAVA_HOME/lib/security/krb5.conf"
    ```
 
 ## Use a Kerberos Keytab file for authentication
@@ -61,7 +61,7 @@ To use a Kerberos keytab file, use the `kadmin` command to create the keytab fil
 
       ```bash
       dsbulk load -k ks -t t1 -url ~/data.csv \
-      --driver.advanced.auth-provider.class DseGSSAPIAuthProvider \
+      --driver.advanced.auth-provider.class DseGssApiAuthProvider \
       --driver.advanced.auth-provider.login-configuration.principal dsbulk_principal_name \
       --driver.advanced.auth-provider.login-configuration.keyTab file_path
       ```
@@ -70,7 +70,7 @@ To use a Kerberos keytab file, use the `kadmin` command to create the keytab fil
 
       Set the following parameters in `application.conf`:
 
-      - [`driver.advanced.auth-provider.class`](options/driver-options.md#datastaxJavaDriverAdvancedAuthProviderClass) to `DseGSSAPIAuthProvider`.
+      - [`driver.advanced.auth-provider.class`](options/driver-options.md#datastaxJavaDriverAdvancedAuthProviderClass) to `DseGssApiAuthProvider`.
       - `driver.advanced.auth-provider.login-configuration.principal` to the principal name.
       - `driver.advanced.auth-provider.login-configuration.keyTab` to keytab file using the full path.
 
@@ -78,7 +78,7 @@ To use a Kerberos keytab file, use the `kadmin` command to create the keytab fil
       You can specify the principal explicitly by setting the `driver.advanced.auth-provider.login-configuration.principal` to the principal name.
       For example:
 
-      ```json
+      
       ############ MyConfFile.conf ############
 
       dsbulk {
@@ -93,7 +93,7 @@ To use a Kerberos keytab file, use the `kadmin` command to create the keytab fil
          # The field-to-column mapping
          schema.mapping = "0=name, 1=age, 2=email"
          # The authentication configuration for Kerberos
-         driver.advanced.auth-provider.class="DseGSSAPIAuthProvider"
+         driver.advanced.auth-provider.class="DseGssApiAuthProvider"
          driver.advanced.auth-provider.login-configuration.principal="principal_name"
          driver.advanced.auth-provider.login-configuration.keyTab="file_path"
       }
