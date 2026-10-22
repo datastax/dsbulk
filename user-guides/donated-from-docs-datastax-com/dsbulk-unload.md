@@ -199,10 +199,8 @@ You can use the `-query` option to unload only data matching a given `SELECT` st
 
 Specify the materialized view name in the `-t` (`--schema.table`) parameter.
 
-The following command unloads and counts data from a materialized view to a local directory:
+The following command unloads data from a materialized view to a local directory:
 
-```bash
-dsbulk unload count -k healthcare -t health_data_mv -url ~/export-mv
 ```
 
 ## Unload graph data
