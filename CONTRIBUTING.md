@@ -16,7 +16,7 @@ mvn package -Prelease
 
 ## Understanding DSBulk's architecture
 
-Make sure you understand how DSBulk works by reviewing the [DSBulk architecture diagrams](user-guides/donated-from-docs-datastax-com/images/).
+Make sure you understand how DSBulk works by reviewing the [DSBulk workflow diagrams](user-guides/donated-from-docs-datastax-com/02-usage.md#dsbulk-loading-workflow-diagram).
 
 DSBulk code is divided in several modules:
 

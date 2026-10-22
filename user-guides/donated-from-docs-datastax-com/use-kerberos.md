@@ -144,26 +144,26 @@ To use the Kerberos ticket cache, first use the `kinit` command to authenticate 
 
          ```bash
          dsbulk load -k ks -t t1 -url ~/data.csv \
-            --driver.advanced.auth-provider.class DseGSSAPIAuthProvider
+            --driver.advanced.auth-provider.class DseGssApiAuthProvider
          ```
 
       - Use a specific principal if multiple tickets are cached:
 
          ```bash
          dsbulk load -k ks -t t1 -url ~/data.csv \
-            --driver.advanced.auth-provider.class DseGSSAPIAuthProvider \
+            --driver.advanced.auth-provider.class DseGssApiAuthProvider \
             --driver.advanced.auth-provider.login-configuration.principal dsbulk_principal_name
          ```
 
    - **Configure Kerberos ticket cache authentication in `application.conf`**:
 
-      In `application.conf`, set [`driver.advanced.auth-provider.class`](options/driver-options.md#datastaxJavaDriverAdvancedAuthProviderClass) to `DseGSSAPIAuthProvider`.
+      In `application.conf`, set [`driver.advanced.auth-provider.class`](options/driver-options.md#datastaxJavaDriverAdvancedAuthProviderClass) to `DseGssApiAuthProvider`.
 
       If multiple principals may have valid tickets in the ticket cache, DSBulk arbitrarily chooses one to use.
       You can specify the principal explicitly by setting the `driver.advanced.auth-provider.login-configuration.principal` to the principal name.
       For example:
 
-      ```json
+      
       ############ MyConfFile.conf ############
 
       dsbulk {
@@ -178,7 +178,7 @@ To use the Kerberos ticket cache, first use the `kinit` command to authenticate 
          # The field-to-column mapping
          schema.mapping = "0=name, 1=age, 2=email"
          # The authentication provider for Kerberos
-         driver.advanced.auth-provider.class="DseGSSAPIAuthProvider"
+         driver.advanced.auth-provider.class="DseGssApiAuthProvider"
          driver.advanced.auth-provider.login-configuration.principal="principal_name"
       }
       ```
