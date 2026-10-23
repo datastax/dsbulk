@@ -142,6 +142,19 @@ The default value is arbitrary, and it only needs to be changed when loading fro
 
 For more information, see [Load from AWS S3](../dsbulk-load.md#load-from-aws-s3) and [`--connector.csv.urlfile`](connector-options.md#connectorUrlFile) or [`--connector.json.urlfile`](connector-options.md#jsonUrlFile).
 
+## --runner.promptForPasswords
+
+You can use the `--runner.promptForPasswords` (`--dsbulk.runner.promptForPasswords`) option to control whether DSBulk prompts for passwords that are missing from configuration files:
+
+- **`true` (default)**: If a username is present in the configuration, but the corresponding password is missing, DSBulk prompts the user to enter the password on the command line.
+
+  Prompting for passwords requires an interactive shell.
+  If the standard input isn't connected to a terminal, DSBulk doesn't prompt for passwords, even if this option is enabled.
+
+  Because DSBulk bypasses password prompting when it's impossible, only disable this option if DSBulk assumes incorrectly that it is running in an interactive shell.
+
+- **`false`**: DSBulk never prompts for missing passwords.
+
 ## See also
 
 - [Driver options](driver-options.md)

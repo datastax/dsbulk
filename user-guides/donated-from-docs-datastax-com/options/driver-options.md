@@ -97,6 +97,14 @@ For example:
 
 Default: `null`
 
+### --driver.basic.session-name
+
+The name used to identify the driver session in log messages.
+DSBulk uses `"driver"` by default.
+The session name appears in square brackets in all driver log messages.
+
+Default: `"driver"`
+
 ### <a id="driverBasicContactPoints"></a>--driver.basic.contact-points (-h)
 
 When connecting to a self-managed cluster (DSE, HCD, or open-source Apache Cassandra®), specify the contact points to use for the initial connection to the cluster.
