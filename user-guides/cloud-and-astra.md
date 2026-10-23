@@ -14,7 +14,7 @@ not a local file or a directly connected Cassandra cluster:
 The examples use a table named `iris_with_id` in a keyspace named
 `dsbulkblog`. Replace these with your own values.
 
-## Astra DB with a secure connect bundle
+## Astra DB with a Secure Connect Bundle
 
 To connect to DataStax Astra DB, download the secure connect bundle for your
 database and pass its location with the `-b` shortcut
