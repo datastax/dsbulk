@@ -26,8 +26,7 @@ They can also be downloaded from the command line:
 
     curl -OL https://downloads.datastax.com/dsbulk/dsbulk.tar.gz
 
-Detailed download and installation instructions can be found
-[here](https://docs.datastax.com/en/dsbulk/doc/dsbulk/install/dsbulkInstall.html).
+Detailed download and installation instructions can be found in the [user guides](../user-guides/).
 
 Starting with DSBulk 1.9.0, the binary distribution is also available from Maven Central and can be
 downloaded from [this

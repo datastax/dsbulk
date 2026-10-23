@@ -4,7 +4,7 @@
 
 ## Documentation
 
-Read the [manual](manual/) or the [online docs](https://docs.datastax.com/en/dsbulk/doc/). 
+Read the [manual](manual/) or the [user guides](user-guides/).
 
 ## Building
 
@@ -14,10 +14,9 @@ Install JDK8 and latest maven, and run the following command:
 mvn package -Prelease
 ```
 
-## Understanding DSBulk's architecture 
+## Understanding DSBulk's architecture
 
-Make sure you understand how DSBulk works by reading the manual page about 
-[DSBulk's architecture](https://docs.datastax.com/en/dsbulk/doc/dsbulk/dsbulkArch.html).
+Make sure you understand how DSBulk works by reviewing the [DSBulk workflow diagrams](user-guides/donated-from-docs-datastax-com/02-usage.md#dsbulk-loading-workflow-diagram).
 
 DSBulk code is divided in several modules:
 
