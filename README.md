@@ -38,16 +38,15 @@ The executable jar can be executed with a command like `java -jar dsbulk-distrib
 
 The most up-to-date documentation is available [online][onlineDocs]. 
 
-We also recommend reading the series of blog posts made by 
-[Brian Hess](https://github.com/brianmhess); they target a somewhat older version of DSBulk, but
-most of the contents are still valid and very useful:
+We also recommend reading the [user guides](user-guides/README.md) for common
+DSBulk operations with worked examples:
 
-1. [DataStax Bulk Loader Pt. 1 — Introduction and Loading]
-2. [DataStax Bulk Loader Pt. 2 — More Loading]
-3. [DataStax Bulk Loader Pt. 3 — Common Settings]
-4. [DataStax Bulk Loader Pt. 4 — Unloading]
-5. [DataStax Bulk Loader Pt. 5 — Counting]
-5. [DataStax Bulk Loader: Examples for Loading From Other Locations]
+1. [Connecting DSBulk to your cluster](user-guides/connection.md)
+2. [Loading data with DSBulk](user-guides/loading.md)
+3. [Tuning and monitoring DSBulk](user-guides/tuning-and-monitoring.md)
+4. [Unloading data with DSBulk](user-guides/unloading.md)
+5. [Counting data with DSBulk](user-guides/counting.md)
+6. [Loading from cloud storage, Astra DB, and other systems](user-guides/cloud-and-astra.md)
 
 Developers and contributors: please read our [Contribution Guidelines](./CONTRIBUTING.md).
 
@@ -365,12 +364,6 @@ available on the command-line via the `help` subcommand.
   
 [onlineDocs]:https://docs.datastax.com/en/dsbulk/doc/
 [HOCON]:https://github.com/lightbend/config/blob/master/HOCON.md
-[DataStax Bulk Loader Pt. 1 — Introduction and Loading]: https://www.datastax.com/blog/2019/03/datastax-bulk-loader-introduction-and-loading
-[DataStax Bulk Loader Pt. 2 — More Loading]: https://www.datastax.com/blog/2019/04/datastax-bulk-loader-more-loading
-[DataStax Bulk Loader Pt. 3 — Common Settings]: https://www.datastax.com/blog/2019/04/datastax-bulk-loader-common-settings
-[DataStax Bulk Loader Pt. 4 — Unloading]: https://www.datastax.com/blog/2019/06/datastax-bulk-loader-unloading
-[DataStax Bulk Loader Pt. 5 — Counting]: https://www.datastax.com/blog/2019/07/datastax-bulk-loader-counting
-[DataStax Bulk Loader: Examples for Loading From Other Locations]: https://www.datastax.com/blog/2019/12/datastax-bulk-loader-examples-loading-other-locations
  
 ## License
 Copyright DataStax, Inc.
