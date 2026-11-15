@@ -92,10 +92,10 @@ public class StringToVectorCodecTest {
     assertThat(codec).cannotConvertFromExternal("[6.646329843]");
   }
 
-  // To keep usage consistent with VectorCodec we confirm that we support encoding when too many
-  // elements are available but not when too few are.  Note that it's actually VectorCodec that
-  // enforces this constraint so we have to go through encode() rather than the internal/external
-  // methods.
+  // VectorCodec enforces strict dimension matching: encoding fails for both too-many and too-few
+  // elements.  We have to go through encode() rather than the internal/external methods because
+  // the dimension check is performed by VectorCodec during binary encoding, not during
+  // String-to-CqlVector conversion.
   @Test
   void should_fail_to_encode_too_many_or_too_few() {
 

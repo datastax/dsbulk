@@ -21,6 +21,8 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLDecoder;
@@ -68,6 +70,14 @@ public class S3URLStreamHandler extends URLStreamHandler {
 
     private final Cache<S3ClientInfo, S3Client> s3ClientCache;
 
+    // Test helper field: allows tests to inject a mock S3Client, bypassing cache lookup
+    S3Client testS3Client = null;
+
+    @VisibleForTesting
+    void setTestS3Client(S3Client client) {
+      this.testS3Client = client;
+    }
+
     @Override
     public void connect() {
       // Nothing to see here...
@@ -80,18 +90,46 @@ public class S3URLStreamHandler extends URLStreamHandler {
 
     @Override
     public InputStream getInputStream() {
-      String bucket = url.getHost();
-      String key = url.getPath().substring(1); // Strip leading '/'.
+      // Convert URL to URI for robust parsing across JDK versions (JDK 8, 11, 17).
+      // This avoids NPE issues with URL.getHost() in JDK 17 when used with custom URL handlers.
+      URI uri;
+      try {
+        uri = url.toURI();
+      } catch (URISyntaxException e) {
+        throw new IllegalArgumentException("Invalid S3 URL: " + url, e);
+      }
+
+      // Extract and validate bucket (host component)
+      String bucket = uri.getHost();
+      if (StringUtils.isBlank(bucket)) {
+        throw new IllegalArgumentException(
+            "S3 URL must specify a bucket as the host component: " + url);
+      }
+
+      // Extract and validate key (path component)
+      String path = uri.getPath();
+      if (StringUtils.isBlank(path) || path.length() <= 1) {
+        throw new IllegalArgumentException(
+            "S3 URL must specify an object key as the path component: " + url);
+      }
+      String key = path.substring(1); // Strip leading '/'.
+
       LOGGER.debug("Getting S3 input stream for object '{}' in bucket '{}'...", key, bucket);
+
       GetObjectRequest getObjectRequest =
           GetObjectRequest.builder().bucket(bucket).key(key).build();
-      String query = url.getQuery();
+
+      // Extract and validate query parameters for S3 client credentials
+      String query = uri.getQuery();
       if (StringUtils.isBlank(query)) {
         throw new IllegalArgumentException(
             "You must provide S3 client credentials in the URL query parameters.");
       }
+
       S3ClientInfo s3ClientInfo = new S3ClientInfo(query);
-      S3Client s3Client = s3ClientCache.get(s3ClientInfo, this::getS3Client);
+      // Use test client if provided (for testing), otherwise use cache (production)
+      S3Client s3Client =
+          testS3Client != null ? testS3Client : s3ClientCache.get(s3ClientInfo, this::getS3Client);
       return getInputStream(s3Client, getObjectRequest);
     }
 

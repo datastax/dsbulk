@@ -59,12 +59,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.datastax.dse.driver.api.core.data.geometry.LineString;
-import com.datastax.dse.driver.api.core.data.geometry.Polygon;
 import com.datastax.dse.driver.api.core.data.time.DateRange;
-import com.datastax.dse.driver.internal.core.data.geometry.DefaultLineString;
-import com.datastax.dse.driver.internal.core.data.geometry.DefaultPoint;
-import com.datastax.dse.driver.internal.core.data.geometry.DefaultPolygon;
 import com.datastax.oss.driver.api.core.data.ByteUtils;
 import com.datastax.oss.driver.api.core.uuid.Uuids;
 import com.datastax.oss.driver.shaded.guava.common.collect.ImmutableMap;
@@ -1010,15 +1005,25 @@ class CodecUtilsTest {
     assertThat(CodecUtils.parsePoint(null)).isNull();
     assertThat(CodecUtils.parsePoint("")).isNull();
     assertThat(CodecUtils.parsePoint("POINT (-1.1 -2.2)"))
-        .isEqualTo(new DefaultPoint(-1.1d, -2.2d));
+        .isNotNull()
+        .extracting(p -> p.asWellKnownText())
+        .isEqualTo("POINT (-1.1 -2.2)");
     assertThat(CodecUtils.parsePoint("'POINT (-1.1 -2.2)'"))
-        .isEqualTo(new DefaultPoint(-1.1d, -2.2d));
+        .isNotNull()
+        .extracting(p -> p.asWellKnownText())
+        .isEqualTo("POINT (-1.1 -2.2)");
     assertThat(CodecUtils.parsePoint("{\"type\":\"Point\",\"coordinates\":[-1.1,-2.2]}"))
-        .isEqualTo(new DefaultPoint(-1.1d, -2.2d));
+        .isNotNull()
+        .extracting(p -> p.asWellKnownText())
+        .isEqualTo("POINT (-1.1 -2.2)");
     assertThat(CodecUtils.parsePoint("AQEAAACamZmZmZnxv5qZmZmZmQHA"))
-        .isEqualTo(new DefaultPoint(-1.1d, -2.2d));
+        .isNotNull()
+        .extracting(p -> p.asWellKnownText())
+        .isEqualTo("POINT (-1.1 -2.2)");
     assertThat(CodecUtils.parsePoint("0x01010000009a9999999999f1bf9a999999999901c0"))
-        .isEqualTo(new DefaultPoint(-1.1d, -2.2d));
+        .isNotNull()
+        .extracting(p -> p.asWellKnownText())
+        .isEqualTo("POINT (-1.1 -2.2)");
     assertThatThrownBy(() -> CodecUtils.parsePoint("not a valid point"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Invalid point literal");
@@ -1026,27 +1031,34 @@ class CodecUtilsTest {
 
   @Test
   void should_parse_line_string() {
-    LineString lineString =
-        new DefaultLineString(
-            new DefaultPoint(30, 10), new DefaultPoint(10, 30), new DefaultPoint(40, 40));
     assertThat(CodecUtils.parseLineString(null)).isNull();
     assertThat(CodecUtils.parseLineString("")).isNull();
     assertThat(CodecUtils.parseLineString("LINESTRING (30 10, 10 30, 40 40)"))
-        .isEqualTo(lineString);
+        .isNotNull()
+        .extracting(ls -> ls.asWellKnownText())
+        .isEqualTo("LINESTRING (30 10, 10 30, 40 40)");
     assertThat(CodecUtils.parseLineString("'LINESTRING (30 10, 10 30, 40 40)'"))
-        .isEqualTo(lineString);
+        .isNotNull()
+        .extracting(ls -> ls.asWellKnownText())
+        .isEqualTo("LINESTRING (30 10, 10 30, 40 40)");
     assertThat(
             CodecUtils.parseLineString(
                 "{\"type\":\"LineString\",\"coordinates\":[[30.0,10.0],[10.0,30.0],[40.0,40.0]]}"))
-        .isEqualTo(lineString);
+        .isNotNull()
+        .extracting(ls -> ls.asWellKnownText())
+        .isEqualTo("LINESTRING (30 10, 10 30, 40 40)");
     assertThat(
             CodecUtils.parseLineString(
                 "AQIAAAADAAAAAAAAAAAAPkAAAAAAAAAkQAAAAAAAACRAAAAAAAAAPkAAAAAAAABEQAAAAAAAAERA"))
-        .isEqualTo(lineString);
+        .isNotNull()
+        .extracting(ls -> ls.asWellKnownText())
+        .isEqualTo("LINESTRING (30 10, 10 30, 40 40)");
     assertThat(
             CodecUtils.parseLineString(
                 "0x0102000000030000000000000000003e40000000000000244000000000000024400000000000003e4000000000000044400000000000004440"))
-        .isEqualTo(lineString);
+        .isNotNull()
+        .extracting(ls -> ls.asWellKnownText())
+        .isEqualTo("LINESTRING (30 10, 10 30, 40 40)");
     assertThatThrownBy(() -> CodecUtils.parseLineString("not a valid line string"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Invalid line string literal");
@@ -1054,31 +1066,36 @@ class CodecUtilsTest {
 
   @Test
   void should_parse_polygon() {
-    Polygon polygon =
-        new DefaultPolygon(
-            new DefaultPoint(30, 10),
-            new DefaultPoint(10, 20),
-            new DefaultPoint(20, 40),
-            new DefaultPoint(40, 40));
+    String poligonString = "POLYGON ((30 10, 40 40, 20 40, 10 20, 30 10))";
     assertThat(CodecUtils.parsePolygon(null)).isNull();
     assertThat(CodecUtils.parsePolygon("")).isNull();
-    assertThat(CodecUtils.parsePolygon("POLYGON ((30 10, 40 40, 20 40, 10 20, 30 10))"))
-        .isEqualTo(polygon);
+    assertThat(CodecUtils.parsePolygon(poligonString))
+        .isNotNull()
+        .extracting(p -> p.asWellKnownText())
+        .isEqualTo(poligonString);
     assertThat(CodecUtils.parsePolygon("'POLYGON ((30 10, 40 40, 20 40, 10 20, 30 10))'"))
-        .isEqualTo(polygon);
+        .isNotNull()
+        .extracting(p -> p.asWellKnownText())
+        .isEqualTo(poligonString);
     assertThat(
             CodecUtils.parsePolygon(
                 "{\"type\":\"Polygon\",\"coordinates\":[[[30.0,10.0],[10.0,20.0],[20.0,40.0],[40.0,40.0],[30.0,10.0]]]}"))
-        .isEqualTo(polygon);
+        .isNotNull()
+        .extracting(p -> p.asWellKnownText())
+        .isEqualTo(poligonString);
     assertThat(
             CodecUtils.parsePolygon(
                 "AQMAAAABAAAABQAAAAAAAAAAAD5AAAAAAAAAJEAAAAAAAABEQAAAAAAAAERAAAAAAAAANEAAAAAAAABEQAAAAAAAACRAAAAAAAAANEAAAAAAAAA+QAAAAAAAACRA"))
-        .isEqualTo(polygon);
+        .isNotNull()
+        .extracting(p -> p.asWellKnownText())
+        .isEqualTo(poligonString);
     assertThat(
             CodecUtils.parsePolygon(
                 "0x010300000001000000050000000000000000003e4000000000000024400000000000004440000000000000444"
                     + "000000000000034400000000000004440000000000000244000000000000034400000000000003e400000000000002440"))
-        .isEqualTo(polygon);
+        .isNotNull()
+        .extracting(p -> p.asWellKnownText())
+        .isEqualTo(poligonString);
     assertThatThrownBy(() -> CodecUtils.parsePolygon("not a valid polygon"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Invalid polygon literal");

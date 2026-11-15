@@ -1535,7 +1535,7 @@ class CSVConnectorTest {
             t ->
                 assertThat(t)
                     .hasCauseInstanceOf(IOException.class)
-                    .hasMessageContaining("ArrayIndexOutOfBoundsException - 1")
+                    .hasMessageContaining("maximum number of columns per record (1) was exceeded")
                     .hasMessageContaining(
                         "Please increase the value of the connector.csv.maxColumns setting")
                     .hasRootCauseInstanceOf(ArrayIndexOutOfBoundsException.class));

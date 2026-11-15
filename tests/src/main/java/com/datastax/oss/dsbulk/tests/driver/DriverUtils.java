@@ -81,8 +81,12 @@ public class DriverUtils {
     when(h1.getCassandraVersion()).thenReturn(Version.parse("3.11.1"));
     when(h1.getExtras())
         .thenReturn(ImmutableMap.of(DseNodeProperties.DSE_VERSION, Version.parse("6.7.0")));
-    when(h1.getEndPoint())
-        .thenReturn(new DefaultEndPoint(InetSocketAddress.createUnresolved(address, 9042)));
+    // Use InetSocketAddress(String, int), which performs DNS resolution immediately.
+    // This is more realistic for production scenarios, but tests that pass non-resolvable
+    // hostnames for 'address' may fail here. For such tests, consider using
+    // InetSocketAddress.createUnresolved(...) instead.
+    InetSocketAddress resolvedAddress = new InetSocketAddress(address, 9042);
+    when(h1.getEndPoint()).thenReturn(new DefaultEndPoint(resolvedAddress));
     when(h1.getDatacenter()).thenReturn(dataCenter);
     when(h1.getHostId()).thenReturn(hostId);
     return h1;
