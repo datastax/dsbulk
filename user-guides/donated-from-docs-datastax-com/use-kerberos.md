@@ -78,7 +78,7 @@ To use a Kerberos keytab file, use the `kadmin` command to create the keytab fil
       You can specify the principal explicitly by setting the `driver.advanced.auth-provider.login-configuration.principal` to the principal name.
       For example:
 
-      
+     
       ############ MyConfFile.conf ############
 
       dsbulk {

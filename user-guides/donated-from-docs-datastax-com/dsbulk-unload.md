@@ -199,9 +199,6 @@ You can use the `-query` option to unload only data matching a given `SELECT` st
 
 Specify the materialized view name in the `-t` (`--schema.table`) parameter.
 
-The following command unloads data from a materialized view to a local directory:
-
-```
 
 ## Unload graph data
 
